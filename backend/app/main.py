@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.errors import http_exception_handler, validation_exception_handler
 from app.core.logging import get_logger, request_id_ctx
-from app.operator import router as operator_router
+from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import auth, audit, billing, connectors, health, metrics, org, rag, rag_admin, workflows, sources, environments, settings
 

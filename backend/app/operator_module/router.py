@@ -8,7 +8,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
-from app.operator.schemas import (
+from app.operator_module.schemas import (
     ActionPlanRequest,
     ActionPlanResponse,
     ConnectorContextResponse,
@@ -16,8 +16,8 @@ from app.operator.schemas import (
     SourceContextResponse,
     WorkflowContextResponse,
 )
-from app.operator.services.action_plans import build_action_plan
-from app.operator.services.context_packs import (
+from app.operator_module.services.action_plans import build_action_plan
+from app.operator_module.services.context_packs import (
     build_connector_context,
     build_run_context,
     build_source_context,

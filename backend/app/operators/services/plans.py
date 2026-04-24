@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.operator.services.action_plans import build_action_plan
+from app.operator_module.services.action_plans import build_action_plan
 
 
 def _merge_permissions(base: list[str], requires_admin: bool, approval_roles: list[str]) -> list[str]:

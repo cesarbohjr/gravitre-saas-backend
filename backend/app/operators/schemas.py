@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.operator.schemas import ContextRef
+from app.operator_module.schemas import ContextRef
 
 OperatorStatus = Literal["draft", "active", "inactive"]
 SessionStatus = Literal[
