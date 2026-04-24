@@ -170,7 +170,7 @@ async def require_admin(
 
 
 async def get_environment_context(
-    x_environment: Annotated[str | None, Header(default=None)],
+    x_environment: Annotated[str | None, Header()] = None,
 ) -> str:
     """Optional environment selector; defaults to 'production'."""
     env = (x_environment or "production").strip().lower()

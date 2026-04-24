@@ -351,11 +351,11 @@ def _session_summary(session: dict) -> dict:
 
 @router.get("", response_model=OperatorListResponse)
 async def list_operators_route(
-    include_inactive: bool = False,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    include_inactive: bool = False,
 ) -> OperatorListResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -559,11 +559,11 @@ async def update_operator_route(
 @router.get("/{operator_id}/links", response_model=OperatorLinkListResponse)
 async def list_operator_links_route(
     operator_id: UUID,
-    direction: str | None = None,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    direction: str | None = None,
 ) -> OperatorLinkListResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -791,11 +791,11 @@ async def activate_operator_version_route(
 @router.get("/{operator_id}/sessions", response_model=OperatorSessionListResponse)
 async def list_operator_sessions_route(
     operator_id: UUID,
-    scope: str | None = None,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    scope: str | None = None,
 ) -> OperatorSessionListResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -1139,11 +1139,11 @@ async def run_operator_action_route(
 
 @agents_router.get("")
 async def list_agents_route(
-    include_inactive: bool = False,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    include_inactive: bool = False,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -1263,10 +1263,10 @@ async def get_agent_detail_route(
 @agents_router.post("/{agent_id}/versions", status_code=status.HTTP_201_CREATED)
 async def create_agent_version_route(
     agent_id: UUID,
-    body: AgentVersionCreateRequest | None = None,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    body: AgentVersionCreateRequest | None = None,
 ) -> dict:
     if body is None:
         return await create_operator_version_route(agent_id, _admin, environment, settings)
