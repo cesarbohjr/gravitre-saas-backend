@@ -1,0 +1,35 @@
+# Environment and secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Supabase
+supabase/.branches
+supabase/.temp
+
+# OS and IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# Node / Next.js
+node_modules/
+apps/web/node_modules/
+.next/
+apps/web/.next/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Build / misc
+dist/
+build/

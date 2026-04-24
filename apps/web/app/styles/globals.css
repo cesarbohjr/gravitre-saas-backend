@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * FE-00: Semantic design tokens per Gravitre_Brand_Alignment_Spec.md §3.2
+ * TEMPORARY: No design/tokens/*.json in repo; replace with Figma export values when available.
+ * Action Blue = primary CTA; highlight = lime/positive (not primary).
+ * Approved radii: 10, 12, 16, 20px only.
+ */
+
+:root {
+  /* Surfaces */
+  --bg: 0 0% 100%;
+  --surface: 210 20% 98%;
+  --surface-2: 210 20% 94%;
+  /* Text */
+  --text: 220 15% 15%;
+  --text-muted: 220 10% 46%;
+  /* Action Blue (primary CTA) */
+  --action: 217 91% 60%;
+  --action-hover: 217 91% 50%;
+  --action-pressed: 217 91% 45%;
+  --action-foreground: 0 0% 100%;
+  /* Focus ring */
+  --focus: 217 91% 60%;
+  /* Highlight (lime/positive, not primary) */
+  --highlight: 84 81% 44%;
+  /* Borders */
+  --border: 220 13% 91%;
+  --border-strong: 220 13% 78%;
+  /* Status */
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --danger: 0 72% 51%;
+  /* Radius (Brand Spec §4.1) */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+.dark {
+  --bg: 220 20% 9%;
+  --surface: 220 20% 12%;
+  --surface-2: 220 20% 16%;
+  --text: 220 15% 95%;
+  --text-muted: 220 10% 65%;
+  --action: 217 91% 60%;
+  --action-hover: 217 91% 65%;
+  --action-pressed: 217 91% 55%;
+  --action-foreground: 0 0% 100%;
+  --focus: 217 91% 60%;
+  --highlight: 84 81% 50%;
+  --border: 220 13% 22%;
+  --border-strong: 220 13% 32%;
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --danger: 0 72% 55%;
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}

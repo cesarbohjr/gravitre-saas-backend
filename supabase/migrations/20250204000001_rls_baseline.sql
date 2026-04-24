@@ -1,0 +1,24 @@
+-- SA-00: RLS Baseline — Documentation and posture
+-- No application tables exist yet. This migration documents RLS strategy.
+--
+-- RLS PRINCIPLES (per MASTER_PHASED_MODULE_PLAN):
+-- 1. RLS is MANDATORY for all application tables (BE-00+).
+-- 2. Every org-scoped table must have org_id.
+-- 3. Policies use auth.uid() or auth.jwt() for user context.
+-- 4. Service role bypasses RLS — backend only, never client.
+--
+-- POLICY TEMPLATE (for future migrations):
+--   ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY "org_isolation" ON <table>
+--     USING (org_id = (
+--       SELECT org_id FROM organization_members
+--       WHERE user_id = auth.uid() LIMIT 1
+--     ));
+--
+-- AUDIT FIELDS (all tables):
+--   created_at timestamptz NOT NULL DEFAULT now()
+--   updated_at timestamptz NOT NULL DEFAULT now()
+--   created_by uuid REFERENCES auth.users(id)  -- where relevant
+--
+-- Row security is ON by default for new tables when RLS is enabled.
+-- This migration ensures the baseline is documented; no schema changes.

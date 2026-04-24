@@ -1,0 +1,25 @@
+{
+  "plugins": {
+    "stripe": {
+      "enabled": true
+    },
+    "linear": {
+      "enabled": true
+    },
+    "vercel": {
+      "enabled": true
+    },
+    "supabase": {
+      "enabled": true
+    },
+    "neon-postgres": {
+      "enabled": true
+    },
+    "mongodb": {
+      "enabled": true
+    },
+    "pinecone": {
+      "enabled": true
+    }
+  }
+}
