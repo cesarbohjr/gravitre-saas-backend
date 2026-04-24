@@ -21,6 +21,10 @@ LIMIT_MAX = 200
 
 @router.get("")
 async def get_audit(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     date_from: Annotated[str | None, Query(alias="dateFrom")] = None,
     date_to: Annotated[str | None, Query(alias="dateTo")] = None,
     action: Annotated[str | None, Query(alias="action")] = None,
@@ -29,9 +33,6 @@ async def get_audit(
     environment: Annotated[str | None, Query(alias="environment")] = None,
     page: Annotated[int | None, Query(ge=1)] = 1,
     limit: Annotated[int, Query(ge=1, le=LIMIT_MAX)] = LIMIT_DEFAULT,
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ):
     """Query audit log with filters. Org-scoped."""
     if org_id is None:

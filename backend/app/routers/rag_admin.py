@@ -162,11 +162,12 @@ async def list_documents_route(
 @router.get("/documents/{doc_id}")
 async def get_document_route(
     doc_id: UUID,
-    include_chunks: bool = Query(default=False),
+    *,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    include_chunks: bool = Query(default=False),
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")

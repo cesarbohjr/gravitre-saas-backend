@@ -14,7 +14,7 @@ from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import auth, audit, billing, connectors, metrics, org, rag, rag_admin, workflows, sources, environments, settings
 
-print("🚀 Gravitre backend booting...")
+print("Gravitre backend booting...")
 logger = get_logger(__name__)
 
 

@@ -32,10 +32,11 @@ def _validate_range(range_str: str | None) -> str:
 
 @router.get("/overview")
 async def overview(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "7d",
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -75,10 +76,11 @@ async def overview(
 
 @router.get("/workflows")
 async def workflows(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "7d",
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -98,10 +100,11 @@ async def workflows(
 
 @router.get("/rag")
 async def rag(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "7d",
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -121,10 +124,11 @@ async def rag(
 
 @router.get("/connectors")
 async def connectors(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "7d",
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -144,21 +148,23 @@ async def connectors(
 
 @router.get("/integrations")
 async def integrations(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "7d",
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
-    return await connectors(range, _user, org_id, settings)
+    return await connectors(_user=_user, org_id=org_id, settings=settings, range=range)
 
 
 @router.get("/timeseries")
 async def timeseries(
+    *,
     metric: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "30d",
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -182,11 +188,12 @@ async def timeseries(
 
 @router.get("/runs")
 async def runs(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query()] = "30d",
     period: Annotated[str | None, Query()] = None,
-    _user: Annotated[dict, Depends(get_current_user)] = None,
-    org_id: Annotated[str | None, Depends(get_org_context)] = None,
-    settings: Annotated[Settings, Depends(get_settings)] = None,
 ) -> dict:
     """Alias for run time series metrics."""
     if org_id is None:
