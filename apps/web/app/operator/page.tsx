@@ -21,8 +21,7 @@ import {
   CheckCircle, Sparkles, Loader2, ArrowRight,
   Activity
 } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { fetcher } from "@/lib/fetcher"
 
 interface Task {
   id: string
@@ -60,6 +59,12 @@ interface SuggestedActionData {
     tokenCount: number
     approvalRequired: boolean
   }
+}
+
+interface MetricsOverview {
+  totalRuns?: number
+  activeWorkflows?: number
+  totalWorkflows?: number
 }
 
 // Flow steps for the progress indicator
@@ -239,6 +244,59 @@ const quickActions = [
   },
 ]
 
+function toRelativeTime(value: string | null | undefined) {
+  if (!value) return "just now"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "just now"
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / (1000 * 60)))
+  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d ago`
+}
+
+function mapSessionStatusToTaskStatus(
+  status: string | null | undefined
+): Task["status"] {
+  if (!status) return "pending"
+  if (status === "completed" || status === "success") return "success"
+  if (status === "failed" || status === "error") return "failed"
+  if (status === "running" || status === "active" || status === "in_progress") return "running"
+  return "pending"
+}
+
+function mapSessionsToTasks(
+  sessions: Array<{
+    id?: string
+    title?: string
+    status?: string
+    createdAt?: string
+    created_at?: string
+    contextEntityType?: string
+    context_entity_type?: string
+    contextEntityId?: string
+    context_entity_id?: string
+  }> | undefined
+) {
+  if (!sessions || sessions.length === 0) return fallbackTasks
+  return sessions.map((session, index) => {
+    const contextTypeRaw = session.contextEntityType ?? session.context_entity_type
+    const contextType = ["run", "workflow", "connector", "source"].includes(String(contextTypeRaw))
+      ? (contextTypeRaw as Task["contextEntity"])
+      : "run"
+    return {
+      id: session.id ?? `session-${index}`,
+      title: session.title || "Investigation",
+      timestamp: toRelativeTime(session.createdAt ?? session.created_at),
+      environment: "production",
+      contextEntity: contextType,
+      contextName: session.contextEntityId ?? session.context_entity_id ?? "unknown",
+      status: mapSessionStatusToTaskStatus(session.status),
+    } satisfies Task
+  })
+}
+
 
 
 export default function OperatorPage() {
@@ -256,13 +314,20 @@ export default function OperatorPage() {
   } | null>(null)
 
   // Fetch tasks (formerly sessions)
-  const { data: tasksData } = useSWR<{ sessions: Task[] }>(
+  const { data: tasksData } = useSWR<{ sessions: Array<Record<string, unknown>> }>(
     "/api/sessions",
     fetcher,
     { fallbackData: { sessions: fallbackTasks }, revalidateOnFocus: false }
   )
 
-  const tasks = tasksData?.sessions ?? fallbackTasks
+  const { data: metricsData } = useSWR<MetricsOverview>(
+    "/api/metrics/overview",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+
+  const tasks = mapSessionsToTasks(tasksData?.sessions as Array<Record<string, unknown>>)
+  const activeSystemCount = metricsData?.activeWorkflows ?? 12
   const insightSections = generatedPlan?.findings ?? fallbackInsightSections
 
   // Suggested actions for the secondary panel
@@ -338,7 +403,7 @@ export default function OperatorPage() {
         const data = await response.json()
         if (data.plan) {
           setGeneratedPlan({
-            findings: data.plan.reasoning ?? fallbackFindings,
+            findings: data.plan.reasoning ?? fallbackInsightSections,
             steps: data.plan.steps ?? fallbackActionPlanSteps,
             suggestedActions: data.plan.proposals ?? fallbackSuggestedActions,
           })
@@ -429,7 +494,7 @@ export default function OperatorPage() {
                 <div className="h-4 w-px bg-border" />
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                   <StatusBeacon status="active" size="sm" />
-                  <span className="text-xs font-medium text-emerald-500">12 systems</span>
+                  <span className="text-xs font-medium text-emerald-500">{activeSystemCount} systems</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
                   <Activity className="h-3.5 w-3.5 text-blue-500" />

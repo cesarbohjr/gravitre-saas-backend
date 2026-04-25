@@ -218,7 +218,7 @@ export function NeuralNetwork({
   className,
 }: {
   nodeCount?: number
-  color?: "emerald" | "violet" | "blue"
+  color?: "emerald" | "violet" | "blue" | "cyan"
   className?: string
 }) {
   const nodes = useMemo<Node[]>(() => {
@@ -249,6 +249,7 @@ export function NeuralNetwork({
     emerald: { node: "bg-emerald-400", line: "stroke-emerald-500/30" },
     violet: { node: "bg-violet-400", line: "stroke-violet-500/30" },
     blue: { node: "bg-blue-400", line: "stroke-blue-500/30" },
+    cyan: { node: "bg-cyan-400", line: "stroke-cyan-500/30" },
   }
 
   return (

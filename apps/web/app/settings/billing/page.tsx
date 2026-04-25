@@ -409,7 +409,7 @@ export default function BillingPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>

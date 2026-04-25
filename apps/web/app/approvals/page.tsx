@@ -26,8 +26,7 @@ import {
   ArrowRight,
   Bot
 } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { fetcher } from "@/lib/fetcher"
 
 interface Approval {
   id: string
@@ -148,6 +147,39 @@ const fallbackApprovals: Approval[] = [
     },
   },
 ]
+
+function toRelativeTime(value: string | null | undefined) {
+  if (!value) return "just now"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "just now"
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000))
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours} hours ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays} days ago`
+}
+
+function mapApprovals(items: Array<Record<string, unknown>> | undefined): Approval[] {
+  if (!items || items.length === 0) return fallbackApprovals
+  return items.map((approval, index) => ({
+    id: String(approval.id ?? `approval-${index}`),
+    title: String(approval.title ?? "Approval request"),
+    description: String(approval.description ?? "Review requested action"),
+    type: (String(approval.type ?? "workflow") as Approval["type"]),
+    environment: approval.environment === "staging" ? "staging" : "production",
+    requestedBy: String(approval.requestedBy ?? approval.requested_by ?? "System"),
+    requestedAt: toRelativeTime((approval.requestedAt as string | undefined) ?? (approval.requested_at as string | undefined)),
+    priority: (String(approval.priority ?? "medium") as Approval["priority"]),
+    status: (String(approval.status ?? "pending") as Approval["status"]),
+    context: {
+      entity: String((approval.context as Record<string, unknown> | undefined)?.workflow_id ?? "workflow"),
+      action: "Approve workflow execution",
+      impact: undefined,
+    },
+    aiRecommendation: undefined,
+  }))
+}
 
 const typeIcons = {
   workflow: Workflow,
@@ -457,12 +489,12 @@ function DetailPanel({ approval, onApprove, onReject }: {
 export default function ApprovalsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   
-  const { data, error, isLoading, mutate } = useSWR<{ approvals: Approval[] }>("/api/approvals", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<{ approvals: Array<Record<string, unknown>> }>("/api/approvals", fetcher, {
     fallbackData: { approvals: fallbackApprovals },
     revalidateOnFocus: false,
   })
 
-  const approvals = data?.approvals ?? fallbackApprovals
+  const approvals = mapApprovals(data?.approvals)
   const pendingApprovals = approvals.filter(a => a.status === "pending")
   const selectedApproval = approvals.find(a => a.id === selectedId) || null
 
@@ -471,13 +503,21 @@ export default function ApprovalsPage() {
   const aiRecommendedCount = pendingApprovals.filter(a => a.aiRecommendation?.action === "approve").length
 
   const handleApprove = async (id: string) => {
-    await fetch(`/api/approvals/${id}/approve`, { method: "POST" })
+    await fetch(`/api/approvals/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
     mutate()
     setSelectedId(null)
   }
 
   const handleReject = async (id: string) => {
-    await fetch(`/api/approvals/${id}/reject`, { method: "POST" })
+    await fetch(`/api/approvals/${id}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
     mutate()
     setSelectedId(null)
   }

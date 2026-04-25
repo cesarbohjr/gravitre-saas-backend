@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { use } from "react"
+import useSWR from "swr"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
@@ -41,6 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { fetcher } from "@/lib/fetcher"
 
 // Node types
 type NodeType = "agent" | "task" | "connector" | "tool" | "source" | "approval"
@@ -62,12 +64,21 @@ interface Connection {
 }
 
 // Mock workflow data
-const workflowMeta = {
+type WorkflowMeta = {
+  id: string
+  name: string
+  description: string
+  status: "active" | "paused" | "draft" | "error"
+  environment: "production" | "staging"
+  version: string
+}
+
+const workflowMeta: WorkflowMeta = {
   id: "wf-001",
   name: "Customer Data Pipeline",
   description: "End-to-end customer data sync with validation and enrichment",
-  status: "draft" as const,
-  environment: "staging" as const,
+  status: "draft",
+  environment: "staging",
   version: "v1.2.0",
 }
 
@@ -119,6 +130,43 @@ const initialNodes: WorkflowNode[] = [
     connections: [],
   },
 ]
+
+function mapBackendNodeType(type: string | null | undefined): NodeType {
+  if (type === "agent" || type === "task" || type === "connector" || type === "tool" || type === "source" || type === "approval") {
+    return type
+  }
+  return "task"
+}
+
+function mapBuilderNodes(
+  nodes: Array<Record<string, unknown>> | undefined,
+  edges: Array<Record<string, unknown>> | undefined
+): WorkflowNode[] {
+  if (!nodes || nodes.length === 0) return initialNodes
+  const outgoing: Record<string, string[]> = {}
+  for (const edge of edges ?? []) {
+    const from = String(edge.from_node_id ?? edge.fromNodeId ?? "")
+    const to = String(edge.to_node_id ?? edge.toNodeId ?? "")
+    if (!from || !to) continue
+    outgoing[from] = [...(outgoing[from] ?? []), to]
+  }
+  return nodes.map((node, index) => {
+    const nodeId = String(node.id ?? `node-${index}`)
+    const position = (node.position as Record<string, unknown> | undefined) ?? {}
+    return {
+      id: nodeId,
+      type: mapBackendNodeType(String(node.type ?? node.node_type ?? "task")),
+      name: String(node.name ?? node.title ?? `Node ${index + 1}`),
+      description: String(node.description ?? node.instruction ?? ""),
+      config: (node.config as Record<string, unknown> | undefined) ?? {},
+      position: {
+        x: Number(position.x ?? node.position_x ?? 0),
+        y: Number(position.y ?? node.position_y ?? 0),
+      },
+      connections: outgoing[nodeId] ?? [],
+    }
+  })
+}
 
 // Library items
 const agentLibrary = [
@@ -548,12 +596,61 @@ function ConfigPanel({
 
 export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const { data } = useSWR<{ workflow?: Record<string, unknown>; nodes?: Array<Record<string, unknown>>; edges?: Array<Record<string, unknown>> }>(
+    `/api/workflows/${id}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  )
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes)
+  const [workflowMetaState, setWorkflowMetaState] = useState<WorkflowMeta>(workflowMeta)
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools">("agents")
   const [searchQuery, setSearchQuery] = useState("")
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    if (!data) return
+    setNodes(mapBuilderNodes(data.nodes, data.edges))
+    if (data.workflow) {
+      setWorkflowMetaState((prev) => ({
+        ...prev,
+        id: String(data.workflow?.id ?? prev.id),
+        name: String(data.workflow?.name ?? prev.name),
+        description: String(data.workflow?.description ?? prev.description),
+        status: String(data.workflow?.status ?? prev.status) as WorkflowMeta["status"],
+        environment: data.workflow?.environment === "production" ? "production" : "staging",
+        version: String(data.workflow?.version ?? prev.version),
+      }))
+    }
+  }, [data])
+
+  const handleSaveWorkflow = async () => {
+    await fetch(`/api/workflows/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: workflowMetaState.name,
+        description: workflowMetaState.description,
+        status: workflowMetaState.status,
+        definition: {
+          nodes: nodes.map((node) => ({
+            id: node.id,
+            type: node.type,
+            name: node.name,
+            description: node.description,
+            config: node.config,
+            position: node.position,
+          })),
+          edges: connections.map((connection) => ({
+            from: connection.from.id,
+            to: connection.to.id,
+          })),
+          config: {},
+        },
+      }),
+    })
+  }
 
   const handleSelectNode = useCallback((node: WorkflowNode) => {
     setSelectedNode(node)
@@ -655,18 +752,18 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               </Link>
               <div className="hidden sm:flex items-center gap-2 min-w-0">
                 <Workflow className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium text-foreground truncate">{workflowMeta.name}</span>
+                <span className="text-sm font-medium text-foreground truncate">{workflowMetaState.name}</span>
               </div>
-              <StatusBadge variant="muted">{workflowMeta.status}</StatusBadge>
-              <EnvironmentBadge environment={workflowMeta.environment} />
-              <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version}</span>
+              <StatusBadge variant="muted">{workflowMetaState.status}</StatusBadge>
+              <EnvironmentBadge environment={workflowMetaState.environment} />
+              <span className="hidden md:inline text-xs text-muted-foreground">{workflowMetaState.version}</span>
             </div>
             <div className="flex items-center gap-1 md:gap-2 shrink-0">
               <Button variant="outline" size="sm" className="h-8 gap-2">
                 <Settings className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Settings</span>
               </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={handleSaveWorkflow}>
                 <Save className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Save</span>
               </Button>

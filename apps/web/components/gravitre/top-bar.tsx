@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -21,6 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
+import { supabaseClient } from "@/lib/supabaseClient"
 
 interface TopBarProps {
   title?: string
@@ -30,7 +31,56 @@ interface TopBarProps {
 export function TopBar({ title, onMenuClick }: TopBarProps) {
   const [environment, setEnvironment] = useState<"production" | "staging">("production")
   const [org, setOrg] = useState("Acme Corp")
+  const [userEmail, setUserEmail] = useState("john@acmecorp.com")
+  const [userName, setUserName] = useState("John Doe")
   const { mode, setMode, isLite } = useViewMode()
+
+  useEffect(() => {
+    let mounted = true
+    supabaseClient.auth.getUser().then(({ data }) => {
+      if (!mounted || !data.user) return
+      const email = data.user.email ?? "unknown@user"
+      const displayName =
+        (data.user.user_metadata?.full_name as string | undefined) ||
+        (data.user.user_metadata?.name as string | undefined) ||
+        email.split("@")[0]
+
+      setUserEmail(email)
+      setUserName(displayName)
+    })
+
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      const email = session?.user?.email ?? "john@acmecorp.com"
+      const displayName =
+        (session?.user?.user_metadata?.full_name as string | undefined) ||
+        (session?.user?.user_metadata?.name as string | undefined) ||
+        email.split("@")[0]
+
+      setUserEmail(email)
+      setUserName(displayName)
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const userInitials = useMemo(() => {
+    const clean = userName.trim()
+    if (!clean) return "U"
+    const parts = clean.split(/\s+/).filter(Boolean)
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  }, [userName])
+
+  const handleSignOut = async () => {
+    await supabaseClient.auth.signOut()
+    window.location.assign("/login")
+  }
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -182,7 +232,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />
                 <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-medium text-white ring-2 ring-background">
-                  JD
+                  {userInitials}
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -194,13 +244,13 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 <div className="relative flex items-center gap-3">
                   <div className="relative">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-base font-semibold text-white">
-                      JD
+                      {userInitials}
                     </div>
                     <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-background" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-foreground">John Doe</span>
-                    <span className="text-xs text-muted-foreground">john@acmecorp.com</span>
+                    <span className="text-sm font-semibold text-foreground">{userName}</span>
+                    <span className="text-xs text-muted-foreground">{userEmail}</span>
                     <span className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Active now
@@ -282,7 +332,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                     <span className="text-sm">Help & Documentation</span>
                   </a>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2 text-destructive focus:text-destructive focus:bg-destructive/10">
+                <DropdownMenuItem
+                  className="gap-3 cursor-pointer rounded-lg px-3 py-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={handleSignOut}
+                >
                   <Icon name="signOut" size="sm" />
                   <span className="text-sm">Sign out</span>
                 </DropdownMenuItem>

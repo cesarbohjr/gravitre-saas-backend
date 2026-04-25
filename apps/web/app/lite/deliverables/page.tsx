@@ -84,6 +84,7 @@ interface Deliverable {
   deliveryHistory: DeliveryHistoryEntry[]
 }
 
+// TODO: Replace with backend endpoint
 const deliverables: Deliverable[] = [
   {
     id: "1",
@@ -398,8 +399,10 @@ export default function LiteDeliverablesPage() {
                       </div>
                     </div>
                   </Card>
+              </motion.div>
                 )
               })}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -777,7 +780,6 @@ export default function LiteDeliverablesPage() {
             )}
           </div>
         </div>
-      </div>
     </AppShell>
   )
 }

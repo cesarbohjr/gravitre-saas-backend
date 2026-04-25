@@ -1,74 +1,52 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { snakeToCamel } from "@/lib/supabase/transforms"
 
-const runs = [
-  {
-    id: "run-001",
-    workflowId: "1",
-    workflowName: "sync-customers",
-    status: "running",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "2 minutes ago",
-    duration: "1m 23s",
-    triggeredBy: "schedule",
-  },
-  {
-    id: "run-002",
-    workflowId: "1",
-    workflowName: "sync-customers",
-    status: "failed",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "15 minutes ago",
-    duration: "45s",
-    triggeredBy: "manual",
-  },
-  {
-    id: "run-003",
-    workflowId: "2",
-    workflowName: "etl-main-pipeline",
-    status: "pending",
-    approvalStatus: "pending",
-    environment: "production",
-    startedAt: "20 minutes ago",
-    duration: "-",
-    triggeredBy: "api",
-  },
-  {
-    id: "run-004",
-    workflowId: "3",
-    workflowName: "invoice-processing",
-    status: "completed",
-    approvalStatus: "approved",
-    environment: "staging",
-    startedAt: "1 hour ago",
-    duration: "3m 12s",
-    triggeredBy: "schedule",
-  },
-  {
-    id: "run-005",
-    workflowId: "4",
-    workflowName: "user-onboarding",
-    status: "completed",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "2 hours ago",
-    duration: "28s",
-    triggeredBy: "webhook",
-  },
-  {
-    id: "run-006",
-    workflowId: "2",
-    workflowName: "etl-main-pipeline",
-    status: "completed",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "3 hours ago",
-    duration: "5m 45s",
-    triggeredBy: "schedule",
-  },
-]
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createSupabaseRouteClient(request)
+    const orgId = await resolveOrgId(supabase, request)
+    if (!orgId) {
+      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    }
 
-export async function GET() {
-  return NextResponse.json({ runs })
+    const { data, error } = await supabase
+      .from("runs")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const workflowIds = Array.from(new Set((data ?? []).map((row) => row.workflow_id).filter(Boolean)))
+    let workflowMap: Record<string, string> = {}
+    if (workflowIds.length > 0) {
+      const { data: workflows } = await supabase
+        .from("workflows")
+        .select("id, name")
+        .eq("org_id", orgId)
+        .in("id", workflowIds)
+      workflowMap = Object.fromEntries((workflows ?? []).map((workflow) => [workflow.id, workflow.name]))
+    }
+
+    const runs = (data ?? []).map((row) => {
+      const model = snakeToCamel<Record<string, unknown>>(row)
+      return {
+        ...model,
+        workflowName:
+          row.workflow_name ??
+          (row.workflow_id ? workflowMap[String(row.workflow_id)] : null) ??
+          "Workflow",
+        trigger: row.trigger ?? null,
+      }
+    })
+    return NextResponse.json({ runs })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    )
+  }
 }

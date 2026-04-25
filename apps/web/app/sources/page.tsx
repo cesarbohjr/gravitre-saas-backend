@@ -722,7 +722,7 @@ export default function SourcesPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Data landscape grid - Premium */}

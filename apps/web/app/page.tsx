@@ -2,12 +2,20 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { supabaseClient } from "@/lib/supabaseClient"
 
 export default function HomePage() {
   const router = useRouter()
   
   useEffect(() => {
-    router.replace("/operator")
+    let mounted = true
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      router.replace(data.session ? "/operator" : "/login")
+    })
+    return () => {
+      mounted = false
+    }
   }, [router])
 
   return (

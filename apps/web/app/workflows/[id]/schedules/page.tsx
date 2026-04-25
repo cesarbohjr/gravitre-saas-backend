@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ArrowLeft, Plus, AlertCircle, RefreshCw, CheckCircle, Clock, Trash2 } from "lucide-react"
+import { fetcher } from "@/lib/fetcher"
 
 interface Schedule {
   id: string
@@ -24,8 +25,6 @@ interface Schedule {
   lastRun?: string
   status: "enabled" | "disabled"
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackSchedules: Schedule[] = [
   {

@@ -34,6 +34,7 @@ import {
   Clock,
   Filter
 } from "lucide-react"
+import { fetcher } from "@/lib/fetcher"
 
 type Severity = "info" | "warning" | "error"
 type ActorType = "user" | "system" | "ai"
@@ -55,8 +56,6 @@ interface AuditEvent {
     metadata: Record<string, string>
   }
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackEvents: AuditEvent[] = [
   {

@@ -38,8 +38,7 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts"
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { fetcher } from "@/lib/fetcher"
 
 const fallbackRunData = [
   { time: "00:00", completed: 45, failed: 2, latency: 120 },

@@ -1,68 +1,105 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
-const agents = [
-  {
-    id: "agent-001",
-    name: "Marketing Operator",
-    description: "Manages marketing campaigns, analyzes performance, and suggests optimizations",
-    status: "active",
-    activeVersion: "v3",
-    environment: "production",
-    workflowCount: 4,
-    capabilities: ["Analyze campaign data", "Generate reports", "Suggest improvements"],
-    connectedSystems: ["HubSpot", "Google Analytics"],
-    avatarColor: "bg-emerald-500",
-  },
-  {
-    id: "agent-002",
-    name: "Sales Assistant",
-    description: "Syncs customer data, tracks deals, and provides sales insights",
-    status: "active",
-    activeVersion: "v2",
-    environment: "production",
-    workflowCount: 6,
-    capabilities: ["Sync contacts", "Update deal stages", "Generate forecasts"],
-    connectedSystems: ["Salesforce", "Slack"],
-    avatarColor: "bg-blue-500",
-  },
-  {
-    id: "agent-003",
-    name: "Data Quality Agent",
-    description: "Monitors data integrity, detects anomalies, and alerts on issues",
-    status: "draft",
-    activeVersion: null,
-    environment: "staging",
-    workflowCount: 0,
-    capabilities: ["Validate records", "Detect duplicates", "Alert on anomalies"],
-    connectedSystems: ["PostgreSQL", "Snowflake"],
-    avatarColor: "bg-amber-500",
-  },
-  {
-    id: "agent-004",
-    name: "Finance Reporter",
-    description: "Generates weekly financial reports and budget summaries",
-    status: "active",
-    activeVersion: "v1",
-    environment: "production",
-    workflowCount: 2,
-    capabilities: ["Generate reports", "Calculate metrics", "Export to Excel"],
-    connectedSystems: ["QuickBooks", "Microsoft 365"],
-    avatarColor: "bg-violet-500",
-  },
-  {
-    id: "agent-005",
-    name: "Support Coordinator",
-    description: "Routes tickets, escalates issues, and tracks resolution times",
-    status: "error",
-    activeVersion: "v4",
-    environment: "staging",
-    workflowCount: 3,
-    capabilities: ["Route tickets", "Escalate issues", "Track SLAs"],
-    connectedSystems: ["Zendesk", "Slack"],
-    avatarColor: "bg-rose-500",
-  },
-]
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createSupabaseRouteClient(request)
+    const orgId = await resolveOrgId(supabase, request)
+    if (!orgId) {
+      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    }
 
-export async function GET() {
-  return NextResponse.json({ agents })
+    const { data, error } = await supabase
+      .from("agents")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const agents = (data ?? []).map((row) => {
+      const model = snakeToCamel<Record<string, unknown>>(row)
+      return {
+        id: String(model.id),
+        name: String(model.name ?? "Agent"),
+        role: String(model.role ?? model.name ?? "AI Agent"),
+        department: "Operations",
+        description: String(model.description ?? model.purpose ?? "AI teammate"),
+        status: String(model.status ?? "idle"),
+        personality: {
+          color: "blue",
+          gradient: "from-blue-500 to-indigo-500",
+          glow: "shadow-blue-500/30",
+        },
+        stats: {
+          tasksToday: 0,
+          successRate: 100,
+          avgResponseTime: "-",
+          workflowsUsing: 0,
+        },
+        capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
+        permissions: Array.isArray(model.systems) ? model.systems : [],
+        lastAction: "No recent activity",
+        lastActionTime: "recently",
+      }
+    })
+
+    return NextResponse.json({ agents, operators: agents })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createSupabaseRouteClient(request)
+    const orgId = await resolveOrgId(supabase, request)
+    if (!orgId) {
+      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const snake = camelToSnake(body as Record<string, unknown>)
+    const { data: userData } = await supabase.auth.getUser()
+
+    const insertPayload = {
+      org_id: orgId,
+      name: String(snake.name ?? "New Agent"),
+      purpose: (snake.purpose as string | undefined) ?? null,
+      role: (snake.role as string | undefined) ?? String(snake.name ?? "New Agent"),
+      model: (snake.model as string | undefined) ?? "auto",
+      description:
+        (snake.description as string | undefined) ??
+        (snake.purpose as string | undefined) ??
+        null,
+      capabilities: Array.isArray(snake.capabilities) ? snake.capabilities : [],
+      systems: Array.isArray(snake.systems) ? snake.systems : [],
+      guardrails: Array.isArray(snake.guardrails) ? snake.guardrails : [],
+      status: "active",
+      created_by: userData.user?.id ?? null,
+    }
+
+    const { data, error } = await supabase
+      .from("agents")
+      .insert(insertPayload)
+      .select("*")
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(snakeToCamel<Record<string, unknown>>(data), { status: 201 })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    )
+  }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -17,6 +17,7 @@ interface Agent {
   trainingProgress: number
 }
 
+// TODO: Replace with backend endpoint
 // Mock Data
 const agents: Agent[] = [
   { id: "agent-001", name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", trainingProgress: 87 },
@@ -57,7 +58,7 @@ const steps = [
   { id: 6, title: "Review", description: "Confirm and run" },
 ]
 
-export default function NewAssignmentPage() {
+function NewAssignmentPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedAgent = searchParams.get("agent")
@@ -662,5 +663,13 @@ export default function NewAssignmentPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+export default function NewAssignmentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <NewAssignmentPageContent />
+    </Suspense>
   )
 }

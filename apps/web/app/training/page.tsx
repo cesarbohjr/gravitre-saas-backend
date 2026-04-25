@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -496,7 +496,7 @@ function TrainingChat({ agentName }: { agentName: string }) {
   )
 }
 
-export default function TrainingPage() {
+function TrainingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedAgent, setSelectedAgent] = useState(agents[0])
@@ -739,5 +739,13 @@ export default function TrainingPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+export default function TrainingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <TrainingPageContent />
+    </Suspense>
   )
 }

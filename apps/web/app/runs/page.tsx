@@ -31,8 +31,7 @@ import {
   ArrowRight,
   Sparkles
 } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { fetcher } from "@/lib/fetcher"
 
 interface Run {
   id: string
@@ -153,6 +152,39 @@ const fallbackRuns: Run[] = [
     ],
   },
 ]
+
+function toRelativeTime(value: string | null | undefined) {
+  if (!value) return "just now"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "just now"
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000))
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours} hours ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays} days ago`
+}
+
+function mapRuns(items: Array<Record<string, unknown>> | undefined): Run[] {
+  if (!items || items.length === 0) return fallbackRuns
+  return items.map((run, index) => {
+    const startedAt = (run.startedAt as string | undefined) ?? (run.created_at as string | undefined)
+    const completedAt = run.completedAt as string | undefined
+    const durationMs = Number(run.durationMs ?? 0)
+    const duration = durationMs > 0 ? `${Math.round(durationMs / 1000)}s` : completedAt ? "done" : "-"
+    return {
+      id: String(run.id ?? `run-${index}`),
+      workflowName: String(run.workflow_name ?? run.workflowName ?? "Workflow"),
+      workflowId: String(run.workflow_id ?? run.workflowId ?? ""),
+      status: (String(run.status ?? "pending") as Run["status"]),
+      approvalStatus: (String(run.approval_status ?? run.approvalStatus ?? "not_required") as Run["approvalStatus"]),
+      environment: run.environment === "staging" ? "staging" : "production",
+      startedAt: toRelativeTime(startedAt),
+      duration,
+      steps: Array.isArray(run.steps) ? (run.steps as Run["steps"]) : undefined,
+    }
+  })
+}
 
 const statusConfig = {
   running: { color: "text-blue-400", bg: "bg-blue-500/20", glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]", icon: Activity },
@@ -354,12 +386,12 @@ export default function RunsPage() {
   const [timeRange, setTimeRange] = useState<string>("24h")
   const [expandedRun, setExpandedRun] = useState<string | null>(null)
 
-  const { data, isLoading, mutate } = useSWR<{ runs: Run[] }>("/api/runs", fetcher, {
+  const { data, isLoading, mutate } = useSWR<{ runs: Array<Record<string, unknown>> }>("/api/runs", fetcher, {
     fallbackData: { runs: fallbackRuns },
     revalidateOnFocus: false,
   })
 
-  const runs = data?.runs ?? fallbackRuns
+  const runs = mapRuns(data?.runs)
   const summaryStats = getSummaryStats(runs)
 
   // Filter runs

@@ -23,6 +23,7 @@ import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp } from "lucide
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
+import { fetcher } from "@/lib/fetcher"
 
 interface WorkflowNode {
   id: string
@@ -43,8 +44,6 @@ interface Workflow {
   nodes?: WorkflowNode[]
   isRunning?: boolean
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 // Fallback mock data with workflow nodes
 const fallbackWorkflows: Workflow[] = [
@@ -145,6 +144,50 @@ const fallbackWorkflows: Workflow[] = [
   },
 ]
 
+function toRelativeTime(value: string | null | undefined) {
+  if (!value) return "Never"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Never"
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000))
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours} hours ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays} days ago`
+}
+
+function mapWorkflowStatus(status: string | null | undefined): Workflow["status"] {
+  if (!status) return "draft"
+  if (status === "active" || status === "paused" || status === "draft" || status === "error") {
+    return status
+  }
+  if (status === "failed") return "error"
+  return "draft"
+}
+
+function mapWorkflows(items: Array<Record<string, unknown>> | undefined): Workflow[] {
+  if (!items || items.length === 0) return fallbackWorkflows
+  return items.map((workflow, index) => {
+    const successRateRaw = workflow.successRate
+    const successRate =
+      typeof successRateRaw === "number"
+        ? `${successRateRaw.toFixed(1)}%`
+        : String(successRateRaw ?? "0%")
+    return {
+      id: String(workflow.id ?? `workflow-${index}`),
+      name: String(workflow.name ?? "Workflow"),
+      description: String(workflow.description ?? workflow.goal ?? "No description provided"),
+      status: mapWorkflowStatus(String(workflow.status ?? "draft")),
+      environment: workflow.environment === "staging" ? "staging" : "production",
+      lastRun: toRelativeTime((workflow.lastRun as string | undefined) ?? (workflow.last_run_at as string | undefined)),
+      successRate,
+      runCount: Number(workflow.runCount ?? workflow.run_count ?? 0),
+      isRunning: String(workflow.status ?? "").toLowerCase() === "running",
+      nodes: Array.isArray(workflow.nodes) ? (workflow.nodes as WorkflowNode[]) : undefined,
+    }
+  })
+}
+
 const statusVariants: Record<string, "success" | "warning" | "muted"> = {
   active: "success",
   paused: "warning",
@@ -225,12 +268,12 @@ export default function WorkflowsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
   
-  const { data, error, isLoading, mutate } = useSWR<{ workflows: Workflow[] }>("/api/workflows", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<{ workflows: Array<Record<string, unknown>> }>("/api/workflows", fetcher, {
     fallbackData: { workflows: fallbackWorkflows },
     revalidateOnFocus: false,
   })
 
-  const workflows = data?.workflows ?? fallbackWorkflows
+  const workflows = mapWorkflows(data?.workflows)
   const activeCount = workflows.filter((w) => w.status === "active").length
   const pausedCount = workflows.filter((w) => w.status === "paused").length
   const runningCount = workflows.filter((w) => w.isRunning).length
@@ -250,32 +293,28 @@ export default function WorkflowsPage() {
   }
 
   const handleDuplicateWorkflow = (workflow: Workflow) => {
-    // In a real app, this would call an API to duplicate
-    const duplicated = {
-      ...workflow,
-      id: `${workflow.id}-copy-${Date.now()}`,
-      name: `${workflow.name}-copy`,
-      status: "draft" as const,
-    }
-    // Add to local state for demo
-    mutate({ workflows: [...workflows, duplicated] }, false)
+    // TODO: Replace with backend endpoint
+    void workflow
+    mutate()
   }
 
   const handleDeleteWorkflow = (id: string) => {
     if (confirm("Are you sure you want to delete this workflow?")) {
-      // In a real app, this would call an API to delete
-      mutate({ workflows: workflows.filter(w => w.id !== id) }, false)
+      // TODO: Replace with backend endpoint
+      void id
+      mutate()
     }
   }
 
   const handleToggleStatus = (workflow: Workflow) => {
     const newStatus = workflow.status === "active" ? "paused" : "active"
-    // In a real app, this would call an API to update
-    mutate({
-      workflows: workflows.map(w => 
-        w.id === workflow.id ? { ...w, status: newStatus } : w
-      )
-    }, false)
+    void fetch(`/api/workflows/${workflow.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    }).finally(() => {
+      mutate()
+    })
   }
 
   return (

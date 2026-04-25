@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -854,7 +854,7 @@ function AIModelsSettings() {
   )
 }
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const searchParams = useSearchParams()
   const initialSection = searchParams.get('section') || "organization"
   const [activeSection, setActiveSection] = useState(initialSection)
@@ -909,5 +909,13 @@ export default function SettingsPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <SettingsPageContent />
+    </Suspense>
   )
 }

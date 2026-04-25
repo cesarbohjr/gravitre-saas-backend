@@ -126,8 +126,38 @@ export default function NewAgentPage() {
 
   const handleCreate = async () => {
     setIsCreating(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    router.push("/agents")
+    try {
+      const payload = {
+        name: agentName.trim(),
+        purpose: agentPurpose.trim(),
+        model: agentModel,
+        capabilities: selectedCapabilities,
+        systems: selectedSystems,
+        guardrails: selectedGuardrails,
+        description: agentPurpose.trim(),
+        role: agentName.trim(),
+        config: {
+          purpose: agentPurpose.trim(),
+          model: agentModel,
+          systems: selectedSystems,
+          guardrails: selectedGuardrails,
+        },
+      }
+      const response = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const created = await response.json().catch(() => ({}))
+      const newId = created?.id ?? created?.agent?.id ?? created?.operator?.id
+      if (response.ok && newId) {
+        router.push(`/agents/${newId}`)
+        return
+      }
+      router.push("/agents")
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   return (

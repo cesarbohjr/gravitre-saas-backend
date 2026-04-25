@@ -1,8 +1,9 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import useSWR from "swr"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
@@ -43,6 +44,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
+import { fetcher } from "@/lib/fetcher"
 
 interface Agent {
   id: string
@@ -68,7 +70,7 @@ interface Agent {
   lastActionTime: string
 }
 
-const agents: Agent[] = [
+const fallbackAgents: Agent[] = [
   {
     id: "agent-001",
     name: "Atlas",
@@ -199,6 +201,74 @@ const statusConfig = {
   idle: { label: "Idle", color: "text-zinc-400", dotColor: "bg-zinc-500", animate: false },
   processing: { label: "Processing", color: "text-blue-400", dotColor: "bg-blue-500", animate: true },
   error: { label: "Error", color: "text-red-400", dotColor: "bg-red-500", animate: false },
+}
+
+function mapDepartment(input: string | null | undefined): Agent["department"] {
+  if (!input) return "Operations"
+  if (input.includes("marketing")) return "Marketing"
+  if (input.includes("sales")) return "Sales"
+  if (input.includes("finance")) return "Finance"
+  if (input.includes("support")) return "Support"
+  return "Operations"
+}
+
+function mapStatus(input: string | null | undefined): Agent["status"] {
+  if (!input) return "idle"
+  if (input === "active") return "active"
+  if (input === "running" || input === "processing" || input === "planning") return "processing"
+  if (input === "error" || input === "failed" || input === "inactive") return "error"
+  return "idle"
+}
+
+function fallbackPersonality(index: number) {
+  const variants = [
+    { color: "emerald", gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/30" },
+    { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/30" },
+    { color: "amber", gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/30" },
+    { color: "violet", gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/30" },
+    { color: "rose", gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/30" },
+  ] as const
+  return variants[index % variants.length]
+}
+
+function mapOperatorsToAgents(operators: Array<Record<string, unknown>> | undefined): Agent[] {
+  if (!operators || operators.length === 0) return fallbackAgents
+  return operators.map((operator, index) => {
+    const config = (operator.config ?? {}) as Record<string, unknown>
+    const role = String(operator.role ?? "AI Agent")
+    const description = String(operator.description ?? "AI teammate")
+    const capabilities = Array.isArray(operator.capabilities)
+      ? (operator.capabilities as string[])
+      : []
+    const connectors = Array.isArray(operator.connectors)
+      ? (operator.connectors as Array<{ vendor?: string; name?: string }>).map(
+          (connector) => connector.vendor ?? connector.name ?? "System"
+        )
+      : []
+    const personality = fallbackPersonality(index)
+    const status = mapStatus(String(operator.status ?? "idle"))
+    const lastAction = String(config.last_action ?? "No recent activity")
+    const lastActionTime = String(config.last_action_time ?? "recently")
+    return {
+      id: String(operator.id ?? `agent-${index}`),
+      name: String(operator.name ?? `Agent ${index + 1}`),
+      role,
+      department: mapDepartment(role.toLowerCase()),
+      description,
+      status,
+      personality,
+      stats: {
+        tasksToday: Number(config.tasks_today ?? 0),
+        successRate: Number(config.success_rate ?? (status === "error" ? 0 : 100)),
+        avgResponseTime: String(config.avg_response_time ?? "-"),
+        workflowsUsing: Number(config.workflows_using ?? operator.link_count ?? 0),
+      },
+      capabilities,
+      permissions: connectors,
+      lastAction,
+      lastActionTime,
+    }
+  })
 }
 
 // Agent Orb Component - Premium visual personality representation with depth
@@ -549,9 +619,25 @@ function AgentDetailPanel({ agent }: { agent: Agent }) {
 
 export default function AgentsPage() {
   const router = useRouter()
-  const [selectedAgent, setSelectedAgent] = useState<Agent>(agents[0])
+  const { data, mutate } = useSWR<{ operators?: Array<Record<string, unknown>> }>(
+    "/api/agents",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+  const agents = useMemo(() => mapOperatorsToAgents(data?.operators), [data?.operators])
+  const [selectedAgent, setSelectedAgent] = useState<Agent>(agents[0] ?? fallbackAgents[0])
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
+
+  useEffect(() => {
+    if (!selectedAgent && agents.length > 0) {
+      setSelectedAgent(agents[0])
+      return
+    }
+    if (selectedAgent && !agents.some((agent) => agent.id === selectedAgent.id) && agents.length > 0) {
+      setSelectedAgent(agents[0])
+    }
+  }, [agents, selectedAgent])
 
   const filteredAgents = agents.filter((a) =>
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -662,7 +748,7 @@ export default function AgentsPage() {
                     key={agent.id}
                     agent={agent}
                     index={index}
-                    isSelected={selectedAgent.id === agent.id}
+                    isSelected={selectedAgent?.id === agent.id}
                     onClick={() => setSelectedAgent(agent)}
                   />
                 ))}
@@ -714,7 +800,7 @@ export default function AgentsPage() {
           {/* Gradient accent */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
           <AnimatePresence mode="wait">
-            <AgentDetailPanel key={selectedAgent.id} agent={selectedAgent} />
+            {selectedAgent ? <AgentDetailPanel key={selectedAgent.id} agent={selectedAgent} /> : null}
           </AnimatePresence>
         </div>
       </div>
@@ -723,10 +809,24 @@ export default function AgentsPage() {
       <MesonWizard 
         open={mesonWizardOpen} 
         onClose={() => setMesonWizardOpen(false)}
-        onComplete={(result) => {
-          console.log("Meson result:", result)
-          // Navigate to the new agent or show success
-          router.push("/agents")
+        onComplete={async (result) => {
+          const payload = {
+            name: String(result?.name ?? "New Agent"),
+            description: String(result?.description ?? "Created from Meson wizard"),
+            role: String(result?.role ?? "AI Agent"),
+            capabilities: Array.isArray(result?.capabilities) ? result.capabilities : [],
+            status: "active",
+          }
+          try {
+            await fetch("/api/agents", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            })
+          } finally {
+            await mutate()
+            router.push("/agents")
+          }
         }}
       />
     </AppShell>
