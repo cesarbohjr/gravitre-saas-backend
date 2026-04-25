@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -32,6 +32,8 @@ import {
   Sparkles
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { toast } from "sonner"
 
 interface Run {
   id: string
@@ -45,113 +47,6 @@ interface Run {
   steps?: { name: string; status: "completed" | "running" | "pending" | "failed" }[]
 }
 
-const fallbackRuns: Run[] = [
-  {
-    id: "run-1234",
-    workflowName: "sync-customers",
-    workflowId: "wf-001",
-    status: "failed",
-    approvalStatus: "approved",
-    environment: "production",
-    startedAt: "2 minutes ago",
-    duration: "3m 24s",
-    steps: [
-      { name: "Fetch data", status: "completed" },
-      { name: "Transform", status: "completed" },
-      { name: "Sync to DB", status: "failed" },
-    ],
-  },
-  {
-    id: "run-1233",
-    workflowName: "etl-main-pipeline",
-    workflowId: "wf-002",
-    status: "running",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "5 minutes ago",
-    duration: "5m 12s",
-    steps: [
-      { name: "Extract", status: "completed" },
-      { name: "Transform", status: "running" },
-      { name: "Load", status: "pending" },
-      { name: "Validate", status: "pending" },
-    ],
-  },
-  {
-    id: "run-1232",
-    workflowName: "invoice-processing",
-    workflowId: "wf-003",
-    status: "pending",
-    approvalStatus: "pending",
-    environment: "staging",
-    startedAt: "15 minutes ago",
-    duration: "-",
-    steps: [
-      { name: "Parse invoices", status: "pending" },
-      { name: "Validate", status: "pending" },
-      { name: "Process", status: "pending" },
-    ],
-  },
-  {
-    id: "run-1231",
-    workflowName: "user-onboarding",
-    workflowId: "wf-004",
-    status: "completed",
-    approvalStatus: "approved",
-    environment: "production",
-    startedAt: "30 minutes ago",
-    duration: "45s",
-    steps: [
-      { name: "Create user", status: "completed" },
-      { name: "Send email", status: "completed" },
-      { name: "Setup workspace", status: "completed" },
-    ],
-  },
-  {
-    id: "run-1230",
-    workflowName: "data-cleanup",
-    workflowId: "wf-005",
-    status: "pending",
-    approvalStatus: "pending",
-    environment: "staging",
-    startedAt: "1 hour ago",
-    duration: "-",
-    steps: [
-      { name: "Scan records", status: "pending" },
-      { name: "Archive", status: "pending" },
-      { name: "Delete", status: "pending" },
-    ],
-  },
-  {
-    id: "run-1229",
-    workflowName: "sync-customers",
-    workflowId: "wf-001",
-    status: "completed",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "2 hours ago",
-    duration: "4m 12s",
-    steps: [
-      { name: "Fetch data", status: "completed" },
-      { name: "Transform", status: "completed" },
-      { name: "Sync to DB", status: "completed" },
-    ],
-  },
-  {
-    id: "run-1228",
-    workflowName: "report-generation",
-    workflowId: "wf-006",
-    status: "cancelled",
-    approvalStatus: "rejected",
-    environment: "staging",
-    startedAt: "3 hours ago",
-    duration: "1m 30s",
-    steps: [
-      { name: "Gather data", status: "completed" },
-      { name: "Generate", status: "failed" },
-    ],
-  },
-]
 
 function toRelativeTime(value: string | null | undefined) {
   if (!value) return "just now"
@@ -166,7 +61,7 @@ function toRelativeTime(value: string | null | undefined) {
 }
 
 function mapRuns(items: Array<Record<string, unknown>> | undefined): Run[] {
-  if (!items || items.length === 0) return fallbackRuns
+  if (!items || items.length === 0) return []
   return items.map((run, index) => {
     const startedAt = (run.startedAt as string | undefined) ?? (run.created_at as string | undefined)
     const completedAt = run.completedAt as string | undefined
@@ -386,10 +281,14 @@ export default function RunsPage() {
   const [timeRange, setTimeRange] = useState<string>("24h")
   const [expandedRun, setExpandedRun] = useState<string | null>(null)
 
-  const { data, isLoading, mutate } = useSWR<{ runs: Array<Record<string, unknown>> }>("/api/runs", fetcher, {
-    fallbackData: { runs: fallbackRuns },
+  const { data, error, isLoading, mutate } = useSWR<{ runs: Array<Record<string, unknown>> }>("/api/runs", fetcher, {
     revalidateOnFocus: false,
   })
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
 
   const runs = mapRuns(data?.runs)
   const summaryStats = getSummaryStats(runs)
@@ -399,6 +298,43 @@ export default function RunsPage() {
     if (statusFilter !== "all" && run.status !== statusFilter) return false
     return true
   })
+
+  if (isLoading) {
+    return (
+      <AppShell title="Runs">
+        <div className="space-y-4 p-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppShell title="Runs">
+        <EmptyState
+          icon={XCircle}
+          title="Error loading data"
+          description="Failed to load data"
+          variant="error"
+        />
+      </AppShell>
+    )
+  }
+
+  if (!runs.length) {
+    return (
+      <AppShell title="Runs">
+        <EmptyState
+          icon={Activity}
+          title="No runs yet"
+          description="Workflow executions will appear here once started."
+        />
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell title="Runs">

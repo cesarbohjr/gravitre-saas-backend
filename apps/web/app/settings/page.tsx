@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -38,6 +38,10 @@ import {
   Info
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
+import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { toast } from "sonner"
 
 interface SettingSection {
   id: string
@@ -60,13 +64,55 @@ function OrganizationSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadDialog, setUploadDialog] = useState(false)
+  const { data, error, isLoading, mutate } = useSWR<{ organization: Record<string, unknown> | null }>(
+    "/api/settings/organization",
+    fetcher
+  )
+  const organization = data?.organization ?? null
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await fetch("/api/settings/organization", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: organization?.name ?? null,
+        slug: organization?.slug ?? null,
+        primaryDomain: organization?.primaryDomain ?? null,
+        logoUrl: organization?.logoUrl ?? null,
+      }),
+    }).catch(() => null)
+    await mutate()
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Error loading data"
+        description="Failed to load data"
+        variant="error"
+      />
+    )
   }
 
   return (
@@ -79,7 +125,7 @@ function OrganizationSettings() {
         <div className="mt-2 flex items-center gap-4">
           <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-border bg-secondary p-2">
             <Image
-              src="/logo-white.svg"
+              src={String(organization?.logoUrl ?? "/logo-white.svg")}
               alt="Organization Logo"
               width={100}
               height={40}
@@ -103,7 +149,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="Acme Corp"
+          defaultValue={String(organization?.name ?? "")}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -113,7 +159,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="acme-corp"
+          defaultValue={String(organization?.slug ?? "")}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -123,7 +169,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="acme.gravitre.io"
+          defaultValue={String(organization?.primaryDomain ?? "")}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -296,14 +342,57 @@ function SecuritySettings() {
 function ApiKeysSettings() {
   const [showKey, setShowKey] = useState(false)
   const [copied, setCopied] = useState(false)
-  
-  const apiKey = "gv_live_sk_1234567890abcdef"
-  const maskedKey = "gv_live_sk_••••••••••••"
+  const { data, error, isLoading } = useSWR<{ apiKeys: Array<Record<string, unknown>> }>(
+    "/api/settings/api-keys",
+    fetcher
+  )
+  const apiKeys = data?.apiKeys ?? []
+  const activeKey = apiKeys[0]
+  const keyPrefix = String(activeKey?.keyPrefix ?? "gv_live_sk")
+  const maskedKey = `${keyPrefix}_••••••••••••`
+  const visibleKey = `${keyPrefix}_redacted`
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(apiKey)
+    navigator.clipboard.writeText(visibleKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Error loading data"
+        description="Failed to load data"
+        variant="error"
+      />
+    )
+  }
+
+  if (!apiKeys.length) {
+    return (
+      <EmptyState
+        icon={Key}
+        title="No API keys yet"
+        description="Create your first API key to get started."
+      />
+    )
   }
 
   return (
@@ -324,7 +413,7 @@ function ApiKeysSettings() {
           </div>
         </div>
         <code className="block w-full text-xs font-mono text-muted-foreground bg-secondary rounded px-3 py-2">
-          {showKey ? apiKey : maskedKey}
+          {showKey ? visibleKey : maskedKey}
         </code>
       </div>
       <div className="flex items-center gap-3">
@@ -343,16 +432,66 @@ function ApiKeysSettings() {
 
 function NotificationSettings() {
   const [slackDialog, setSlackDialog] = useState(false)
-  const [emailEnabled, setEmailEnabled] = useState(true)
+  const { data, error, isLoading, mutate } = useSWR<{ notifications: { emailEnabled?: boolean; slackEnabled?: boolean; recipients?: string[] } }>(
+    "/api/settings/notifications",
+    fetcher
+  )
+  const [emailEnabled, setEmailEnabled] = useState(false)
+  const [recipients, setRecipients] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await fetch("/api/settings/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        emailEnabled,
+        slackEnabled: Boolean(data?.notifications?.slackEnabled),
+        recipients: recipients
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      }),
+    }).catch(() => null)
+    await mutate()
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  useEffect(() => {
+    const incomingRecipients = data?.notifications?.recipients ?? []
+    setEmailEnabled(Boolean(data?.notifications?.emailEnabled))
+    setRecipients(incomingRecipients.join(", "))
+  }, [data?.notifications?.emailEnabled, data?.notifications?.recipients])
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Error loading data"
+        description="Failed to load data"
+        variant="error"
+      />
+    )
   }
 
   return (
@@ -388,7 +527,8 @@ function NotificationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="ops@acme.com, alerts@acme.com"
+          value={recipients}
+          onChange={(event) => setRecipients(event.target.value)}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -444,12 +584,66 @@ function TeamSettings() {
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("Member")
   const [isInviting, setIsInviting] = useState(false)
-  const [members, setMembers] = useState([
-    { name: "John Doe", email: "john@acme.com", role: "Admin", avatar: "JD" },
-    { name: "Sarah Chen", email: "sarah@acme.com", role: "Admin", avatar: "SC" },
-    { name: "Mike Johnson", email: "mike@acme.com", role: "Member", avatar: "MJ" },
-    { name: "Emily Davis", email: "emily@acme.com", role: "Member", avatar: "ED" },
-  ])
+  const { data, error, isLoading } = useSWR<{ team: Array<Record<string, unknown>> }>(
+    "/api/settings/team",
+    fetcher
+  )
+  const [members, setMembers] = useState<Array<{ name: string; email: string; role: string; avatar: string }>>([])
+
+  useEffect(() => {
+    const mapped = (data?.team ?? []).map((member) => {
+      const name = String(member.name ?? member.email ?? "Team Member")
+      return {
+        name,
+        email: String(member.email ?? ""),
+        role: String(member.role ?? "Member"),
+        avatar: name
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2),
+      }
+    })
+    setMembers(mapped)
+  }, [data?.team])
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Error loading data"
+        description="Failed to load data"
+        variant="error"
+      />
+    )
+  }
+
+  if (!members.length) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="No team members yet"
+        description="Invite a teammate to collaborate."
+      />
+    )
+  }
 
   const handleInvite = async () => {
     setIsInviting(true)
@@ -601,10 +795,11 @@ function WebhooksSettings() {
   const [addDialog, setAddDialog] = useState(false)
   const [newUrl, setNewUrl] = useState("")
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
-  const [webhooks, setWebhooks] = useState([
-    { url: "https://api.slack.com/hooks/xxx", events: ["workflow.completed", "approval.pending"], status: "active" },
-    { url: "https://hooks.zapier.com/xxx", events: ["run.failed"], status: "active" },
-  ])
+  const { data, error, isLoading } = useSWR<{ webhooks: Array<Record<string, unknown>> }>(
+    "/api/settings/webhooks",
+    fetcher
+  )
+  const [webhooks, setWebhooks] = useState<Array<{ url: string; events: string[]; status: string }>>([])
   const [isAdding, setIsAdding] = useState(false)
 
   const availableEvents = [
@@ -624,6 +819,42 @@ function WebhooksSettings() {
     setNewUrl("")
     setSelectedEvents([])
     setAddDialog(false)
+  }
+
+  useEffect(() => {
+    const mapped = (data?.webhooks ?? []).map((hook) => ({
+      url: String(hook.url ?? ""),
+      events: Array.isArray(hook.events) ? hook.events.map((event) => String(event)) : [],
+      status: String(hook.status ?? "active"),
+    }))
+    setWebhooks(mapped)
+  }, [data?.webhooks])
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Error loading data"
+        description="Failed to load data"
+        variant="error"
+      />
+    )
   }
 
   const handleDeleteWebhook = (index: number) => {
@@ -714,6 +945,10 @@ function WebhooksSettings() {
 }
 
 function AIModelsSettings() {
+  const { data, error, isLoading, mutate } = useSWR<{ modelSettings: Record<string, unknown> | null }>(
+    "/api/settings/models",
+    fetcher
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [workspaceModel, setWorkspaceModel] = useState("auto")
@@ -723,10 +958,56 @@ function AIModelsSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await fetch("/api/settings/models", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceModel,
+        operatorModel,
+        agentDefaultModel,
+        fallbackModel,
+      }),
+    }).catch(() => null)
+    await mutate()
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  useEffect(() => {
+    const settings = data?.modelSettings ?? null
+    if (!settings) return
+    setWorkspaceModel(String(settings.workspaceModel ?? "auto"))
+    setOperatorModel(String(settings.operatorModel ?? "auto"))
+    setAgentDefaultModel(String(settings.agentDefaultModel ?? "balanced"))
+    setFallbackModel(String(settings.fallbackModel ?? "fast"))
+  }, [data?.modelSettings])
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Error loading data"
+        description="Failed to load data"
+        variant="error"
+      />
+    )
   }
 
   return (

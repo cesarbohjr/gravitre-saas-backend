@@ -10,11 +10,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
 
-    const { data, error } = await supabase
+    const statusFilter = request.nextUrl.searchParams.get("status")
+    const statusValues =
+      statusFilter
+        ?.split(",")
+        .map((value) => value.trim())
+        .filter(Boolean) ?? []
+
+    let query = supabase
       .from("runs")
       .select("*")
       .eq("org_id", orgId)
       .order("created_at", { ascending: false })
+
+    if (statusValues.length > 0) {
+      query = query.in("status", statusValues)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

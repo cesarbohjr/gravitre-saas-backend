@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -22,6 +22,8 @@ import {
   Activity
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { toast } from "sonner"
 
 interface Task {
   id: string
@@ -76,44 +78,6 @@ const flowSteps = [
   { label: "Execute", key: "execute" },
 ]
 
-const fallbackTasks: Task[] = [
-  {
-    id: "1",
-    title: "Looking into failed customer sync",
-    timestamp: "2m ago",
-    environment: "production",
-    contextEntity: "run",
-    contextName: "sync-customers-1234",
-    status: "failed",
-  },
-  {
-    id: "2",
-    title: "Checking Salesforce connection issues",
-    timestamp: "15m ago",
-    environment: "staging",
-    contextEntity: "connector",
-    contextName: "salesforce-api",
-    status: "running",
-  },
-  {
-    id: "3",
-    title: "Reviewing slow data sync",
-    timestamp: "1h ago",
-    environment: "production",
-    contextEntity: "workflow",
-    contextName: "main-data-sync",
-    status: "success",
-  },
-  {
-    id: "4",
-    title: "Fixing database connection timeout",
-    timestamp: "3h ago",
-    environment: "staging",
-    contextEntity: "source",
-    contextName: "postgres-backup",
-    status: "pending",
-  },
-]
 
 const fallbackInsightSections = [
   {
@@ -266,33 +230,29 @@ function mapSessionStatusToTaskStatus(
   return "pending"
 }
 
-function mapSessionsToTasks(
-  sessions: Array<{
+function mapRunsToTasks(
+  runs: Array<{
     id?: string
-    title?: string
+    workflowName?: string
+    workflow_name?: string
     status?: string
     createdAt?: string
     created_at?: string
-    contextEntityType?: string
-    context_entity_type?: string
-    contextEntityId?: string
-    context_entity_id?: string
+    workflowId?: string
+    workflow_id?: string
+    environment?: string
   }> | undefined
 ) {
-  if (!sessions || sessions.length === 0) return fallbackTasks
-  return sessions.map((session, index) => {
-    const contextTypeRaw = session.contextEntityType ?? session.context_entity_type
-    const contextType = ["run", "workflow", "connector", "source"].includes(String(contextTypeRaw))
-      ? (contextTypeRaw as Task["contextEntity"])
-      : "run"
+  if (!runs || runs.length === 0) return []
+  return runs.map((run, index) => {
     return {
-      id: session.id ?? `session-${index}`,
-      title: session.title || "Investigation",
-      timestamp: toRelativeTime(session.createdAt ?? session.created_at),
-      environment: "production",
-      contextEntity: contextType,
-      contextName: session.contextEntityId ?? session.context_entity_id ?? "unknown",
-      status: mapSessionStatusToTaskStatus(session.status),
+      id: run.id ?? `run-${index}`,
+      title: run.workflowName ?? run.workflow_name ?? "Workflow run",
+      timestamp: toRelativeTime(run.createdAt ?? run.created_at),
+      environment: run.environment === "staging" ? "staging" : "production",
+      contextEntity: "run",
+      contextName: run.workflowId ?? run.workflow_id ?? "unknown",
+      status: mapSessionStatusToTaskStatus(run.status),
     } satisfies Task
   })
 }
@@ -300,7 +260,7 @@ function mapSessionsToTasks(
 
 
 export default function OperatorPage() {
-  const [activeTask, setActiveTask] = useState("1")
+  const [activeTask, setActiveTask] = useState("")
   const [activeContext, setActiveContext] = useState("run-1234")
   const [taskInput, setTaskInput] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -313,11 +273,10 @@ export default function OperatorPage() {
     suggestedActions: SuggestedActionData[]
   } | null>(null)
 
-  // Fetch tasks (formerly sessions)
-  const { data: tasksData } = useSWR<{ sessions: Array<Record<string, unknown>> }>(
-    "/api/sessions",
+  const { data: tasksData, error: tasksError, isLoading: tasksLoading } = useSWR<{ runs: Array<Record<string, unknown>> }>(
+    "/api/runs?status=running,queued,needs_approval",
     fetcher,
-    { fallbackData: { sessions: fallbackTasks }, revalidateOnFocus: false }
+    { revalidateOnFocus: false }
   )
 
   const { data: metricsData } = useSWR<MetricsOverview>(
@@ -326,7 +285,18 @@ export default function OperatorPage() {
     { revalidateOnFocus: false }
   )
 
-  const tasks = mapSessionsToTasks(tasksData?.sessions as Array<Record<string, unknown>>)
+  useEffect(() => {
+    if (tasksError) {
+      toast.error("Failed to load data")
+    }
+  }, [tasksError])
+
+  const tasks = mapRunsToTasks(tasksData?.runs as Array<Record<string, unknown>>)
+  useEffect(() => {
+    if (!activeTask && tasks.length > 0) {
+      setActiveTask(tasks[0].id)
+    }
+  }, [activeTask, tasks])
   const activeSystemCount = metricsData?.activeWorkflows ?? 12
   const insightSections = generatedPlan?.findings ?? fallbackInsightSections
 
@@ -383,6 +353,43 @@ export default function OperatorPage() {
 
   const activeContextLabel = getActiveContextLabel()
   const canCreateTask = activeTask && activeContext && taskInput.trim().length > 0
+
+  if (tasksLoading) {
+    return (
+      <AppShell title="AI Operator">
+        <div className="space-y-4 p-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (tasksError) {
+    return (
+      <AppShell title="AI Operator">
+        <EmptyState
+          icon={Activity}
+          title="Error loading data"
+          description="Failed to load data"
+          variant="error"
+        />
+      </AppShell>
+    )
+  }
+
+  if (!tasks.length) {
+    return (
+      <AppShell title="AI Operator">
+        <EmptyState
+          icon={Activity}
+          title="No active tasks"
+          description="Active runs will appear here when workflows execute."
+        />
+      </AppShell>
+    )
+  }
 
   const handleGeneratePlan = async () => {
     if (!canCreateTask) return

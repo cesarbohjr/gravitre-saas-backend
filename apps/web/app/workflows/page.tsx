@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -24,6 +24,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { toast } from "sonner"
 
 interface WorkflowNode {
   id: string
@@ -45,104 +47,6 @@ interface Workflow {
   isRunning?: boolean
 }
 
-// Fallback mock data with workflow nodes
-const fallbackWorkflows: Workflow[] = [
-  {
-    id: "1",
-    name: "sync-customers",
-    description: "Synchronize customer data from Salesforce",
-    status: "active",
-    environment: "production",
-    lastRun: "2 minutes ago",
-    successRate: "98.5%",
-    runCount: 1247,
-    isRunning: true,
-    nodes: [
-      { id: "n1", type: "source", name: "Salesforce", status: "success" },
-      { id: "n2", type: "agent", name: "Validator", status: "success" },
-      { id: "n3", type: "task", name: "Transform", status: "running" },
-      { id: "n4", type: "connector", name: "PostgreSQL", status: "pending" },
-    ],
-  },
-  {
-    id: "2",
-    name: "etl-main-pipeline",
-    description: "Main ETL pipeline for data warehouse",
-    status: "active",
-    environment: "production",
-    lastRun: "5 minutes ago",
-    successRate: "99.2%",
-    runCount: 856,
-    nodes: [
-      { id: "n1", type: "source", name: "S3 Bucket", status: "success" },
-      { id: "n2", type: "task", name: "Parse CSV", status: "success" },
-      { id: "n3", type: "agent", name: "Enricher", status: "success" },
-      { id: "n4", type: "approval", name: "QA Check", status: "success" },
-      { id: "n5", type: "connector", name: "Snowflake", status: "success" },
-    ],
-  },
-  {
-    id: "3",
-    name: "invoice-processing",
-    description: "Process and validate incoming invoices",
-    status: "paused",
-    environment: "staging",
-    lastRun: "1 hour ago",
-    successRate: "94.1%",
-    runCount: 432,
-    nodes: [
-      { id: "n1", type: "source", name: "Email", status: "success" },
-      { id: "n2", type: "agent", name: "OCR Agent", status: "success" },
-      { id: "n3", type: "task", name: "Validate", status: "success" },
-      { id: "n4", type: "connector", name: "QuickBooks" },
-    ],
-  },
-  {
-    id: "4",
-    name: "user-onboarding",
-    description: "Handle new user registration workflow",
-    status: "active",
-    environment: "production",
-    lastRun: "15 minutes ago",
-    successRate: "99.8%",
-    runCount: 2103,
-    nodes: [
-      { id: "n1", type: "source", name: "API Webhook", status: "success" },
-      { id: "n2", type: "agent", name: "Profile Builder", status: "success" },
-      { id: "n3", type: "connector", name: "SendGrid", status: "success" },
-    ],
-  },
-  {
-    id: "5",
-    name: "data-cleanup",
-    description: "Scheduled data cleanup and archival",
-    status: "draft",
-    environment: "staging",
-    lastRun: "Never",
-    successRate: "-",
-    runCount: 0,
-    nodes: [
-      { id: "n1", type: "source", name: "Database" },
-      { id: "n2", type: "task", name: "Filter Old" },
-      { id: "n3", type: "connector", name: "Archive" },
-    ],
-  },
-  {
-    id: "6",
-    name: "report-generation",
-    description: "Generate and distribute weekly reports",
-    status: "active",
-    environment: "production",
-    lastRun: "3 hours ago",
-    successRate: "100%",
-    runCount: 52,
-    nodes: [
-      { id: "n1", type: "source", name: "Analytics", status: "success" },
-      { id: "n2", type: "agent", name: "Report Writer", status: "success" },
-      { id: "n3", type: "connector", name: "Slack", status: "success" },
-    ],
-  },
-]
 
 function toRelativeTime(value: string | null | undefined) {
   if (!value) return "Never"
@@ -166,7 +70,7 @@ function mapWorkflowStatus(status: string | null | undefined): Workflow["status"
 }
 
 function mapWorkflows(items: Array<Record<string, unknown>> | undefined): Workflow[] {
-  if (!items || items.length === 0) return fallbackWorkflows
+  if (!items || items.length === 0) return []
   return items.map((workflow, index) => {
     const successRateRaw = workflow.successRate
     const successRate =
@@ -269,9 +173,13 @@ export default function WorkflowsPage() {
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
   
   const { data, error, isLoading, mutate } = useSWR<{ workflows: Array<Record<string, unknown>> }>("/api/workflows", fetcher, {
-    fallbackData: { workflows: fallbackWorkflows },
     revalidateOnFocus: false,
   })
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
 
   const workflows = mapWorkflows(data?.workflows)
   const activeCount = workflows.filter((w) => w.status === "active").length
@@ -315,6 +223,44 @@ export default function WorkflowsPage() {
     }).finally(() => {
       mutate()
     })
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell title="Workflows">
+        <div className="space-y-4 p-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppShell title="Workflows">
+        <EmptyState
+          icon={Activity}
+          title="Error loading data"
+          description="Failed to load data"
+          variant="error"
+        />
+      </AppShell>
+    )
+  }
+
+  if (!workflows.length) {
+    return (
+      <AppShell title="Workflows">
+        <EmptyState
+          icon={Workflow}
+          title="No workflows yet"
+          description="Create your first workflow to get started"
+          action={{ label: "New Workflow", onClick: () => router.push("/workflows/new/builder") }}
+        />
+      </AppShell>
+    )
   }
 
   return (

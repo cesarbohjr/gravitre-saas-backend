@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -27,6 +27,8 @@ import {
   Bot
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { toast } from "sonner"
 
 interface Approval {
   id: string
@@ -50,103 +52,6 @@ interface Approval {
   }
 }
 
-const fallbackApprovals: Approval[] = [
-  {
-    id: "apr-001",
-    title: "Retry failed sync-customers workflow",
-    description: "Request to retry the failed workflow run that encountered a connection timeout",
-    type: "workflow",
-    environment: "production",
-    requestedBy: "AI Operator",
-    requestedAt: "5 minutes ago",
-    priority: "high",
-    status: "pending",
-    aiRecommendation: {
-      action: "approve",
-      confidence: 94,
-      reason: "Previous failure was due to transient network issue. Retry is safe.",
-    },
-    context: {
-      entity: "sync-customers-1234",
-      action: "Retry workflow execution",
-      impact: "Will process 1,247 pending records",
-    },
-  },
-  {
-    id: "apr-002",
-    title: "Update Salesforce connector credentials",
-    description: "OAuth token refresh required due to security policy rotation",
-    type: "connector",
-    environment: "production",
-    requestedBy: "System",
-    requestedAt: "15 minutes ago",
-    priority: "high",
-    status: "pending",
-    aiRecommendation: {
-      action: "approve",
-      confidence: 98,
-      reason: "Routine credential rotation. New tokens validated.",
-    },
-    context: {
-      entity: "salesforce-api",
-      action: "Update OAuth credentials",
-      impact: "3 workflows depend on this connector",
-    },
-  },
-  {
-    id: "apr-003",
-    title: "Enable new workflow in production",
-    description: "Promote invoice-processing workflow from staging to production",
-    type: "workflow",
-    environment: "production",
-    requestedBy: "john.doe@company.com",
-    requestedAt: "1 hour ago",
-    priority: "medium",
-    status: "pending",
-    aiRecommendation: {
-      action: "review",
-      confidence: 72,
-      reason: "Workflow passed staging tests but has not been reviewed by ops team.",
-    },
-    context: {
-      entity: "invoice-processing",
-      action: "Deploy to production",
-      impact: "New workflow, will process incoming invoices",
-    },
-  },
-  {
-    id: "apr-004",
-    title: "Grant admin access for new team member",
-    description: "Request to add Sarah Chen as an admin user",
-    type: "access",
-    environment: "production",
-    requestedBy: "mike.johnson@company.com",
-    requestedAt: "2 hours ago",
-    priority: "medium",
-    status: "pending",
-    context: {
-      entity: "sarah.chen@company.com",
-      action: "Grant admin role",
-      impact: "Full system access",
-    },
-  },
-  {
-    id: "apr-005",
-    title: "Modify data retention policy",
-    description: "Change retention period from 90 days to 180 days",
-    type: "config",
-    environment: "staging",
-    requestedBy: "compliance@company.com",
-    requestedAt: "3 hours ago",
-    priority: "low",
-    status: "pending",
-    context: {
-      entity: "data-retention-policy",
-      action: "Update retention period",
-      impact: "Affects all data sources",
-    },
-  },
-]
 
 function toRelativeTime(value: string | null | undefined) {
   if (!value) return "just now"
@@ -161,7 +66,7 @@ function toRelativeTime(value: string | null | undefined) {
 }
 
 function mapApprovals(items: Array<Record<string, unknown>> | undefined): Approval[] {
-  if (!items || items.length === 0) return fallbackApprovals
+  if (!items || items.length === 0) return []
   return items.map((approval, index) => ({
     id: String(approval.id ?? `approval-${index}`),
     title: String(approval.title ?? "Approval request"),
@@ -490,9 +395,13 @@ export default function ApprovalsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   
   const { data, error, isLoading, mutate } = useSWR<{ approvals: Array<Record<string, unknown>> }>("/api/approvals", fetcher, {
-    fallbackData: { approvals: fallbackApprovals },
     revalidateOnFocus: false,
   })
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load data")
+    }
+  }, [error])
 
   const approvals = mapApprovals(data?.approvals)
   const pendingApprovals = approvals.filter(a => a.status === "pending")
@@ -503,23 +412,70 @@ export default function ApprovalsPage() {
   const aiRecommendedCount = pendingApprovals.filter(a => a.aiRecommendation?.action === "approve").length
 
   const handleApprove = async (id: string) => {
-    await fetch(`/api/approvals/${id}/approve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    })
-    mutate()
-    setSelectedId(null)
+    try {
+      const response = await fetch(`/api/approvals/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      if (!response.ok) throw new Error("Request failed")
+      mutate()
+      setSelectedId(null)
+    } catch {
+      toast.error("Failed to load data")
+    }
   }
 
   const handleReject = async (id: string) => {
-    await fetch(`/api/approvals/${id}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    })
-    mutate()
-    setSelectedId(null)
+    try {
+      const response = await fetch(`/api/approvals/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      if (!response.ok) throw new Error("Request failed")
+      mutate()
+      setSelectedId(null)
+    } catch {
+      toast.error("Failed to load data")
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell title="Approvals">
+        <div className="space-y-4 p-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppShell title="Approvals">
+        <EmptyState
+          icon={AlertCircle}
+          title="Error loading data"
+          description="Failed to load data"
+          variant="error"
+        />
+      </AppShell>
+    )
+  }
+
+  if (!approvals.length) {
+    return (
+      <AppShell title="Approvals">
+        <EmptyState
+          icon={CheckCircle2}
+          title="No approvals pending"
+          description="New approval requests will appear here."
+        />
+      </AppShell>
+    )
   }
 
   return (
