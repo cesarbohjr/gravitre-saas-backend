@@ -1,464 +1,514 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { getEnvironmentHeader } from "@/lib/environment";
-import { useAuth } from "@/lib/use-auth";
+import { useState } from "react"
+import useSWR from "swr"
+import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { StatusBadge } from "@/components/gravitre/status-badge"
+import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { Button } from "@/components/ui/button"
 import {
-  fetchRuns,
-  fetchWorkflows,
-  type RunListItem,
-  type WorkflowListItem,
-} from "@/lib/workflows-api";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { cn } from "@/lib/utils"
+import { 
+  Search, 
+  RefreshCw, 
+  Play, 
+  Clock, 
+  XCircle, 
+  CheckCircle2,
+  ChevronRight,
+  RotateCcw,
+  Eye,
+  Zap,
+  Activity,
+  ArrowRight,
+  Sparkles
+} from "lucide-react"
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "running", label: "Running" },
-  { value: "pending_approval", label: "Pending approval" },
-  { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
-  { value: "cancelled", label: "Cancelled" },
-];
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
-const APPROVAL_OPTIONS = [
-  { value: "all", label: "All approvals" },
-  { value: "pending_approval", label: "Needs approval" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-  { value: "none", label: "Not required" },
-];
+interface Run {
+  id: string
+  workflowName: string
+  workflowId: string
+  status: "running" | "completed" | "failed" | "pending" | "cancelled"
+  approvalStatus: "approved" | "pending" | "rejected" | "not_required"
+  environment: "production" | "staging"
+  startedAt: string
+  duration: string
+  steps?: { name: string; status: "completed" | "running" | "pending" | "failed" }[]
+}
 
-const TIME_RANGE_OPTIONS = [
-  { value: "24h", label: "Last 24h" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "90d", label: "Last 90 days" },
-  { value: "all", label: "All time" },
-];
+const fallbackRuns: Run[] = [
+  {
+    id: "run-1234",
+    workflowName: "sync-customers",
+    workflowId: "wf-001",
+    status: "failed",
+    approvalStatus: "approved",
+    environment: "production",
+    startedAt: "2 minutes ago",
+    duration: "3m 24s",
+    steps: [
+      { name: "Fetch data", status: "completed" },
+      { name: "Transform", status: "completed" },
+      { name: "Sync to DB", status: "failed" },
+    ],
+  },
+  {
+    id: "run-1233",
+    workflowName: "etl-main-pipeline",
+    workflowId: "wf-002",
+    status: "running",
+    approvalStatus: "not_required",
+    environment: "production",
+    startedAt: "5 minutes ago",
+    duration: "5m 12s",
+    steps: [
+      { name: "Extract", status: "completed" },
+      { name: "Transform", status: "running" },
+      { name: "Load", status: "pending" },
+      { name: "Validate", status: "pending" },
+    ],
+  },
+  {
+    id: "run-1232",
+    workflowName: "invoice-processing",
+    workflowId: "wf-003",
+    status: "pending",
+    approvalStatus: "pending",
+    environment: "staging",
+    startedAt: "15 minutes ago",
+    duration: "-",
+    steps: [
+      { name: "Parse invoices", status: "pending" },
+      { name: "Validate", status: "pending" },
+      { name: "Process", status: "pending" },
+    ],
+  },
+  {
+    id: "run-1231",
+    workflowName: "user-onboarding",
+    workflowId: "wf-004",
+    status: "completed",
+    approvalStatus: "approved",
+    environment: "production",
+    startedAt: "30 minutes ago",
+    duration: "45s",
+    steps: [
+      { name: "Create user", status: "completed" },
+      { name: "Send email", status: "completed" },
+      { name: "Setup workspace", status: "completed" },
+    ],
+  },
+  {
+    id: "run-1230",
+    workflowName: "data-cleanup",
+    workflowId: "wf-005",
+    status: "pending",
+    approvalStatus: "pending",
+    environment: "staging",
+    startedAt: "1 hour ago",
+    duration: "-",
+    steps: [
+      { name: "Scan records", status: "pending" },
+      { name: "Archive", status: "pending" },
+      { name: "Delete", status: "pending" },
+    ],
+  },
+  {
+    id: "run-1229",
+    workflowName: "sync-customers",
+    workflowId: "wf-001",
+    status: "completed",
+    approvalStatus: "not_required",
+    environment: "production",
+    startedAt: "2 hours ago",
+    duration: "4m 12s",
+    steps: [
+      { name: "Fetch data", status: "completed" },
+      { name: "Transform", status: "completed" },
+      { name: "Sync to DB", status: "completed" },
+    ],
+  },
+  {
+    id: "run-1228",
+    workflowName: "report-generation",
+    workflowId: "wf-006",
+    status: "cancelled",
+    approvalStatus: "rejected",
+    environment: "staging",
+    startedAt: "3 hours ago",
+    duration: "1m 30s",
+    steps: [
+      { name: "Gather data", status: "completed" },
+      { name: "Generate", status: "failed" },
+    ],
+  },
+]
 
-function getRangeStart(range: string): number | null {
-  const now = Date.now();
-  switch (range) {
-    case "24h":
-      return now - 24 * 60 * 60 * 1000;
-    case "7d":
-      return now - 7 * 24 * 60 * 60 * 1000;
-    case "30d":
-      return now - 30 * 24 * 60 * 60 * 1000;
-    case "90d":
-      return now - 90 * 24 * 60 * 60 * 1000;
-    default:
-      return null;
+const statusConfig = {
+  running: { color: "text-blue-400", bg: "bg-blue-500/20", glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]", icon: Activity },
+  completed: { color: "text-emerald-400", bg: "bg-emerald-500/20", glow: "", icon: CheckCircle2 },
+  failed: { color: "text-red-400", bg: "bg-red-500/20", glow: "shadow-[0_0_20px_rgba(239,68,68,0.3)]", icon: XCircle },
+  pending: { color: "text-amber-400", bg: "bg-amber-500/20", glow: "", icon: Clock },
+  cancelled: { color: "text-zinc-400", bg: "bg-zinc-500/20", glow: "", icon: XCircle },
+}
+
+// Summary stats helper
+function getSummaryStats(runs: Run[]) {
+  return {
+    active: runs.filter(r => r.status === "running").length,
+    needsApproval: runs.filter(r => r.approvalStatus === "pending").length,
+    failed: runs.filter(r => r.status === "failed").length,
+    completed: runs.filter(r => r.status === "completed").length,
   }
 }
 
-function formatDate(value?: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString();
-}
+// Timeline Node Component
+function TimelineNode({ 
+  run, 
+  isExpanded, 
+  onToggle,
+  isFirst 
+}: { 
+  run: Run
+  isExpanded: boolean
+  onToggle: () => void
+  isFirst: boolean
+}) {
+  const config = statusConfig[run.status]
+  const StatusIcon = config.icon
 
-function formatDuration(start?: string | null, end?: string | null): string {
-  if (!start) return "—";
-  const startMs = new Date(start).getTime();
-  if (Number.isNaN(startMs)) return "—";
-  if (!end) return "In progress";
-  const endMs = new Date(end).getTime();
-  if (Number.isNaN(endMs)) return "—";
-  const totalSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  const seconds = totalSeconds % 60;
-  if (hours > 0) return `${hours}h ${remainingMinutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
-
-function StatusBadge({ status }: { status?: string | null }) {
-  const normalized = status ?? "unknown";
-  const variant =
-    normalized === "completed"
-      ? "bg-success/15 text-success border-border"
-      : normalized === "failed"
-        ? "bg-destructive/15 text-destructive border-border"
-        : normalized === "running"
-          ? "bg-warning/15 text-warning border-border"
-          : normalized === "pending_approval"
-            ? "bg-warning/15 text-warning border-border"
-            : "bg-muted text-muted-foreground border-border";
   return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${variant}`}>
-      {normalized.replace("_", " ")}
-    </span>
-  );
-}
+    <motion.div
+      layout
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="relative"
+    >
+      {/* Timeline connector */}
+      <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-border via-border to-transparent" />
+      
+      {/* Node */}
+      <div className={cn(
+        "relative ml-0 pl-14 pr-4 py-3 group cursor-pointer transition-all duration-200",
+        isExpanded && "bg-card/50 rounded-lg border border-border/50"
+      )}>
+        {/* Status indicator */}
+        <div className={cn(
+          "absolute left-3 top-4 h-6 w-6 rounded-full flex items-center justify-center z-10 transition-all",
+          config.bg,
+          run.status === "running" && "animate-pulse",
+          run.status === "failed" && config.glow
+        )}>
+          <StatusIcon className={cn("h-3.5 w-3.5", config.color)} />
+        </div>
 
-function ApprovalBadge({ status }: { status?: string | null }) {
-  if (!status) {
-    return (
-      <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border-border">
-        Not required
-      </span>
-    );
-  }
-  const variant =
-    status === "approved"
-      ? "bg-success/15 text-success border-border"
-      : status === "rejected"
-        ? "bg-destructive/15 text-destructive border-border"
-        : "bg-warning/15 text-warning border-border";
-  return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${variant}`}>
-      {status.replace("_", " ")}
-    </span>
-  );
+        {/* Live indicator for running */}
+        {run.status === "running" && (
+          <div className="absolute left-3 top-4 h-6 w-6">
+            <span className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" />
+          </div>
+        )}
+
+        {/* Main content */}
+        <div 
+          className="flex items-start justify-between gap-4"
+          onClick={onToggle}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-foreground truncate">
+                {run.workflowName}
+              </span>
+              <EnvironmentBadge environment={run.environment} />
+              {run.approvalStatus === "pending" && (
+                <span className="flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                  <Clock className="h-2.5 w-2.5" />
+                  Awaiting
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="font-mono">{run.id}</span>
+              <span>{run.startedAt}</span>
+              {run.duration !== "-" && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {run.duration}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Duration bar visualization */}
+          <div className="hidden sm:flex items-center gap-3">
+            {run.duration !== "-" && (
+              <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
+                <motion.div 
+                  className={cn("h-full rounded-full", config.bg.replace("/20", ""))}
+                  initial={{ width: 0 }}
+                  animate={{ width: run.status === "running" ? "60%" : "100%" }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+            )}
+            <ChevronRight className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              isExpanded && "rotate-90"
+            )} />
+          </div>
+        </div>
+
+        {/* Expanded details */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 pt-4 border-t border-border/50">
+                {/* Step progress */}
+                {run.steps && (
+                  <div className="mb-4">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      Execution Steps
+                    </p>
+                    <div className="flex items-center gap-1">
+                      {run.steps.map((step, i) => (
+                        <div key={i} className="flex-1 flex items-center">
+                          <div className={cn(
+                            "flex-1 h-1.5 rounded-full transition-all",
+                            step.status === "completed" && "bg-emerald-500",
+                            step.status === "running" && "bg-blue-500 animate-pulse",
+                            step.status === "pending" && "bg-secondary",
+                            step.status === "failed" && "bg-red-500"
+                          )} />
+                          {i < run.steps.length - 1 && (
+                            <ArrowRight className="h-3 w-3 text-muted-foreground mx-0.5 shrink-0" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      {run.steps.map((step, i) => (
+                        <span 
+                          key={i} 
+                          className={cn(
+                            "text-[10px]",
+                            step.status === "running" ? "text-blue-400" :
+                            step.status === "completed" ? "text-emerald-400" :
+                            step.status === "failed" ? "text-red-400" :
+                            "text-muted-foreground"
+                          )}
+                        >
+                          {step.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick actions */}
+                <div className="flex items-center gap-2">
+                  <Link href={`/runs/${run.id}`}>
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                      <Eye className="h-3 w-3" />
+                      Inspect
+                    </Button>
+                  </Link>
+                  {run.status === "failed" && (
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10">
+                      <RotateCcw className="h-3 w-3" />
+                      Retry
+                    </Button>
+                  )}
+                  {run.approvalStatus === "pending" && (
+                    <Button size="sm" className="h-7 gap-1.5 text-xs">
+                      <Zap className="h-3 w-3" />
+                      Approve
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  )
 }
 
 export default function RunsPage() {
-  const auth = useAuth();
-  const environment = getEnvironmentHeader();
-  const [runs, setRuns] = useState<RunListItem[]>([]);
-  const [workflows, setWorkflows] = useState<WorkflowListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [approvalFilter, setApprovalFilter] = useState("all");
-  const [workflowFilter, setWorkflowFilter] = useState("all");
-  const [timeRange, setTimeRange] = useState("30d");
-  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [timeRange, setTimeRange] = useState<string>("24h")
+  const [expandedRun, setExpandedRun] = useState<string | null>(null)
 
-  const loadRuns = useCallback(() => {
-    if (auth.status !== "authenticated" || auth.orgId == null) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    Promise.all([fetchRuns(auth.token, { limit: 200 }), fetchWorkflows(auth.token)])
-      .then(([runsData, workflowsData]) => {
-        setRuns(runsData.runs);
-        setWorkflows(workflowsData.workflows);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load runs."))
-      .finally(() => setLoading(false));
-  }, [auth.status, auth.token, auth.orgId]);
+  const { data, isLoading, mutate } = useSWR<{ runs: Run[] }>("/api/runs", fetcher, {
+    fallbackData: { runs: fallbackRuns },
+    revalidateOnFocus: false,
+  })
 
-  useEffect(() => {
-    loadRuns();
-  }, [loadRuns]);
+  const runs = data?.runs ?? fallbackRuns
+  const summaryStats = getSummaryStats(runs)
 
-  const filteredRuns = useMemo(() => {
-    let filtered = runs;
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((run) => run.status === statusFilter);
-    }
-    if (approvalFilter !== "all") {
-      filtered =
-        approvalFilter === "none"
-          ? filtered.filter((run) => !run.approval_status)
-          : filtered.filter((run) => run.approval_status === approvalFilter);
-    }
-    if (workflowFilter !== "all") {
-      filtered = filtered.filter((run) => run.workflow_id === workflowFilter);
-    }
-    if (timeRange !== "all") {
-      const startAt = getRangeStart(timeRange);
-      if (startAt != null) {
-        filtered = filtered.filter((run) => {
-          if (!run.created_at) return false;
-          const createdAt = new Date(run.created_at).getTime();
-          return !Number.isNaN(createdAt) && createdAt >= startAt;
-        });
-      }
-    }
-    const trimmedSearch = search.trim().toLowerCase();
-    if (trimmedSearch) {
-      filtered = filtered.filter((run) => {
-        const idMatch = run.id?.toLowerCase().includes(trimmedSearch);
-        const nameMatch = run.workflow_name?.toLowerCase().includes(trimmedSearch);
-        return Boolean(idMatch || nameMatch);
-      });
-    }
-    return filtered;
-  }, [runs, statusFilter, approvalFilter, workflowFilter, timeRange, search]);
-
-  const activeCount = filteredRuns.filter((run) => run.status === "running").length;
-  const needsApprovalCount = filteredRuns.filter(
-    (run) => run.status === "pending_approval" || run.approval_status === "pending_approval"
-  ).length;
-  const failedCount = filteredRuns.filter((run) => run.status === "failed").length;
-
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Runs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to view runs."}
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (auth.orgId == null) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Runs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending. Contact admin for org access to view runs.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Filter runs
+  const filteredRuns = runs.filter((run) => {
+    if (statusFilter !== "all" && run.status !== statusFilter) return false
+    return true
+  })
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Runs</h1>
-        <p className="text-sm text-muted-foreground">
-          Environment: <span className="font-medium text-foreground">{environment}</span>
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Active</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <div className="text-2xl font-semibold text-foreground">{activeCount}</div>
-            <span className="h-2 w-2 rounded-full bg-success" />
-          </CardContent>
-        </Card>
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Needs approval</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <div className="text-2xl font-semibold text-foreground">{needsApprovalCount}</div>
-            <span className="h-2 w-2 rounded-full bg-warning" />
-          </CardContent>
-        </Card>
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Failed</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <div className="text-2xl font-semibold text-foreground">{failedCount}</div>
-            <span className="h-2 w-2 rounded-full bg-destructive" />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Run history</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="run-status">
-                Status
-              </label>
-              <select
-                id="run-status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+    <AppShell title="Runs">
+      <div className="flex flex-col h-full">
+        {/* Header - fixed */}
+        <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border bg-gradient-to-b from-background to-background/80">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div>
+              <h1 className="text-lg md:text-xl font-semibold text-foreground">Execution Timeline</h1>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">Real-time workflow monitoring</p>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="run-approval">
-                Approval status
-              </label>
-              <select
-                id="run-approval"
-                value={approvalFilter}
-                onChange={(event) => setApprovalFilter(event.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {APPROVAL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="run-workflow">
-                Workflow
-              </label>
-              <select
-                id="run-workflow"
-                value={workflowFilter}
-                onChange={(event) => setWorkflowFilter(event.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="all">All workflows</option>
-                {workflows.map((wf) => (
-                  <option key={wf.id} value={wf.id}>
-                    {wf.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="run-range">
-                Time range
-              </label>
-              <select
-                id="run-range"
-                value={timeRange}
-                onChange={(event) => setTimeRange(event.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {TIME_RANGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1 xl:col-span-1 md:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="run-search">
-                Search
-              </label>
-              <input
-                id="run-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Run ID or workflow"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 gap-2"
+              onClick={() => mutate()}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
           </div>
 
-          {error && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-destructive/5 px-3 py-2">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button variant="secondary" size="sm" onClick={loadRuns}>
-                Retry
-              </Button>
+          {/* Live Stats Bar */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
+            {/* Stats row */}
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              {/* Active indicator */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="relative">
+                  <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                  <div className="absolute inset-0 h-2.5 w-2.5 rounded-full bg-blue-500 animate-ping" />
+                </div>
+                <div>
+                  <span className="text-sm md:text-lg font-semibold text-blue-400">{summaryStats.active}</span>
+                  <span className="text-[10px] md:text-xs text-muted-foreground ml-1">running</span>
+                </div>
+              </div>
+
+              {/* Awaiting approval */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <Clock className="h-3.5 w-3.5 text-amber-400" />
+                <div>
+                  <span className="text-sm md:text-lg font-semibold text-amber-400">{summaryStats.needsApproval}</span>
+                  <span className="text-[10px] md:text-xs text-muted-foreground ml-1">awaiting</span>
+                </div>
+              </div>
+
+              {/* Failed */}
+              {summaryStats.failed > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <XCircle className="h-3.5 w-3.5 text-red-400" />
+                  <div>
+                    <span className="text-sm md:text-lg font-semibold text-red-400">{summaryStats.failed}</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground ml-1">failed</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Completed */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                <div>
+                  <span className="text-sm md:text-lg font-semibold text-emerald-400">{summaryStats.completed}</span>
+                  <span className="text-[10px] md:text-xs text-muted-foreground ml-1">done</span>
+                </div>
+              </div>
             </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-2 md:ml-auto">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 w-[110px] md:w-[130px] text-xs bg-secondary border-border">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="running">Running</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="h-8 w-[90px] md:w-[110px] text-xs bg-secondary border-border">
+                  <SelectValue placeholder="Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">Last hour</SelectItem>
+                  <SelectItem value="24h">Last 24h</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline - scrollable */}
+        <div className="flex-1 overflow-auto px-4 md:px-6 py-4 md:py-6">
+          {/* AI insight banner */}
+          {summaryStats.failed > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 flex items-center gap-3 px-4 py-3 rounded-lg bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent border border-red-500/20"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20">
+                <Sparkles className="h-4 w-4 text-red-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">AI detected {summaryStats.failed} failed run{summaryStats.failed > 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground">Connection timeout in sync-customers - retry recommended</p>
+              </div>
+              <Button size="sm" variant="outline" className="h-7 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10">
+                <RotateCcw className="h-3 w-3 mr-1.5" />
+                Auto-retry
+              </Button>
+            </motion.div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] text-left text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 pr-4 font-medium text-foreground">Run</th>
-                  <th className="py-2 pr-4 font-medium text-foreground">Workflow</th>
-                  <th className="py-2 pr-4 font-medium text-foreground">Status</th>
-                  <th className="py-2 pr-4 font-medium text-foreground">Approval</th>
-                  <th className="py-2 pr-4 font-medium text-foreground">Environment</th>
-                  <th className="py-2 pr-4 font-medium text-foreground">Started</th>
-                  <th className="py-2 font-medium text-foreground">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, idx) => (
-                    <tr key={`skeleton-${idx}`} className="border-b border-border animate-pulse">
-                      <td className="py-3 pr-4">
-                        <div className="h-4 w-32 rounded bg-muted" />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="h-4 w-40 rounded bg-muted" />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="h-4 w-20 rounded bg-muted" />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="h-4 w-24 rounded bg-muted" />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="h-4 w-20 rounded bg-muted" />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="h-4 w-28 rounded bg-muted" />
-                      </td>
-                      <td className="py-3">
-                        <div className="h-4 w-20 rounded bg-muted" />
-                      </td>
-                    </tr>
-                  ))
-                ) : filteredRuns.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-6 text-sm text-muted-foreground">
-                      No runs yet.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRuns.map((run) => (
-                    <tr key={run.id} className="border-b border-border hover:bg-muted/50">
-                      <td className="py-3 pr-4">
-                        <Link
-                          href={`/runs/${run.id}`}
-                          className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                        >
-                          {run.id.slice(0, 8)}…
-                        </Link>
-                      </td>
-                      <td className="py-3 pr-4">
-                        {run.workflow_id ? (
-                          <Link
-                            href={`/workflows/${run.workflow_id}`}
-                            className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                          >
-                            {run.workflow_name || "Workflow"}
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <StatusBadge status={run.status} />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <ApprovalBadge status={run.approval_status} />
-                      </td>
-                      <td className="py-3 pr-4 text-muted-foreground">
-                        {run.environment || environment}
-                      </td>
-                      <td className="py-3 pr-4 text-muted-foreground">
-                        {formatDate(run.created_at)}
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {formatDuration(run.created_at, run.completed_at)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          {/* Timeline */}
+          <div className="space-y-1">
+            {filteredRuns.map((run, index) => (
+              <TimelineNode
+                key={run.id}
+                run={run}
+                isFirst={index === 0}
+                isExpanded={expandedRun === run.id}
+                onToggle={() => setExpandedRun(expandedRun === run.id ? null : run.id)}
+              />
+            ))}
           </div>
-        </CardContent>
-      </Card>
 
-      <div className="text-sm text-muted-foreground">
-        Need to manage approvals?{" "}
-        <Link href="/approvals" className="text-primary hover:underline">
-          Go to approvals
-        </Link>
-        .
+          {filteredRuns.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary mb-4">
+                <Activity className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No runs matching your filters</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    </AppShell>
+  )
 }

@@ -1,747 +1,616 @@
-"use client";
+"use client"
 
-import { useRouter, useParams } from "next/navigation";
-import Link from "next/link";
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/use-auth";
-import { WorkflowCanvas } from "@/features/workflows/components/workflow-canvas";
-import { WorkflowConfigPanel } from "@/features/workflows/components/workflow-config-panel";
-import { WorkflowToolbox } from "@/features/workflows/components/workflow-toolbox";
+import { useState } from "react"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { StatusBadge } from "@/components/gravitre/status-badge"
+import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
-  activateWorkflowVersion,
-  ApiError,
-  createWorkflowVersion,
-  fetchActiveWorkflowVersion,
-  fetchWorkflow,
-  fetchWorkflowVersions,
-  fetchWorkflowNodes,
-  fetchWorkflowEdges,
-  createWorkflowNode,
-  updateWorkflowNode,
-  deleteWorkflowNode,
-  createWorkflowEdge,
-  deleteWorkflowEdge,
-  postExecute,
-  postDryRun,
-  promoteWorkflowVersion,
-  type ActiveWorkflowVersion,
-  type WorkflowVersionItem,
-  type WorkflowNode,
-  type WorkflowEdge,
-} from "@/lib/workflows-api";
-import { getDefaultDefinitionJson } from "@/lib/default-definition";
-import { getEnvironmentHeader } from "@/lib/environment";
-import { fetchOperators, type OperatorSummary } from "@/lib/operators-api";
-import { fetchIntegrations, type IntegrationItem } from "@/lib/integrations-api";
-import { fetchSources, type RagSource } from "@/lib/rag-api";
+  Play,
+  Pause,
+  ArrowLeft,
+  Sparkles,
+  Plus,
+  Database,
+  Bot,
+  Zap,
+  Shield,
+  ChevronRight,
+  Lightbulb,
+  MessageSquare,
+  Clock,
+  CheckCircle2,
+  Circle,
+  MoreHorizontal,
+  Settings,
+  Trash2,
+  Copy,
+  ExternalLink,
+} from "lucide-react"
+import Link from "next/link"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
-function parseJson(s: string): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
-  try {
-    const v = JSON.parse(s);
-    if (v == null || typeof v !== "object") return { ok: false, error: "Definition must be a JSON object" };
-    return { ok: true, value: v as Record<string, unknown> };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Invalid JSON" };
-  }
+// Mock data
+const automationData = {
+  id: "wf-001",
+  name: "Sync customer data from Salesforce to internal systems",
+  description: "Automatically pulls customer records, validates and cleans the data, then syncs to your database",
+  status: "active" as const,
+  environment: "production" as const,
+  version: "v2.4.1",
+  lastRun: "2 minutes ago",
+  lastRunStatus: "success" as const,
+  schedule: "Every 15 minutes",
+  successRate: 98.5,
+  totalRuns: 12847,
 }
 
+// Flow steps with simplified terminology
+const flowSteps = [
+  {
+    id: "step-1",
+    name: "Pull customer records",
+    system: "Salesforce",
+    systemType: "data-source",
+    environment: "production" as const,
+    status: "completed" as const,
+    description: "Fetch all customer records updated in the last 24 hours",
+    inputs: ["Salesforce API credentials", "Last sync timestamp"],
+    outputs: ["Raw customer records (JSON)"],
+    requiresApproval: false,
+  },
+  {
+    id: "step-2",
+    name: "Validate and clean data",
+    system: "Data Validator Agent",
+    systemType: "agent",
+    environment: "production" as const,
+    status: "completed" as const,
+    description: "Check for missing fields, duplicates, and format issues",
+    inputs: ["Raw customer records"],
+    outputs: ["Validated records", "Error report"],
+    requiresApproval: false,
+  },
+  {
+    id: "step-3",
+    name: "Review data quality",
+    system: "Quality Gate",
+    systemType: "approval",
+    environment: "production" as const,
+    status: "pending" as const,
+    description: "Human review required before proceeding to production database",
+    inputs: ["Validated records", "Quality score"],
+    outputs: ["Approved records"],
+    requiresApproval: true,
+    adminOnly: true,
+  },
+  {
+    id: "step-4",
+    name: "Sync to database",
+    system: "PostgreSQL",
+    systemType: "connected-system",
+    environment: "production" as const,
+    status: "waiting" as const,
+    description: "Write validated records to the main customer database",
+    inputs: ["Approved records"],
+    outputs: ["Sync confirmation", "Record count"],
+    requiresApproval: false,
+  },
+]
+
+const examplePrompts = [
+  "Sync CRM data daily",
+  "Alert Slack on failures",
+  "Add data validation step",
+]
+
+const systemIcons: Record<string, typeof Database> = {
+  "data-source": Database,
+  "agent": Bot,
+  "approval": Shield,
+  "connected-system": Zap,
+}
+
+const flowPhases = [
+  { label: "Build", status: "completed", description: "Design and configure your automation flow" },
+  { label: "Review", status: "completed", description: "Validate steps and test in staging" },
+  { label: "Activate", status: "current", description: "Deploy to production environment" },
+  { label: "Run", status: "upcoming", description: "Monitor live execution and performance" },
+]
+
 export default function WorkflowDetailPage() {
-  const router = useRouter();
-  const params = useParams();
-  const id = params.id as string;
-  const isNew = id === "new";
-  const auth = useAuth();
-  const [definitionJson, setDefinitionJson] = useState("");
-  const [parametersJson, setParametersJson] = useState('{"query": "example search"}');
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!isNew);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [dryRunLoading, setDryRunLoading] = useState(false);
-  const [dryRunError, setDryRunError] = useState<string | null>(null);
-  const [lastRunId, setLastRunId] = useState<string | null>(null);
-  const [executeLoading, setExecuteLoading] = useState(false);
-  const [executeError, setExecuteError] = useState<string | null>(null);
-  const [versions, setVersions] = useState<WorkflowVersionItem[]>([]);
-  const [activeVersion, setActiveVersion] = useState<ActiveWorkflowVersion | null>(null);
-  const [versionsLoading, setVersionsLoading] = useState(false);
-  const [versionActionLoading, setVersionActionLoading] = useState(false);
-  const [versionActionType, setVersionActionType] = useState<"create" | "activate" | "promote" | null>(
-    null
-  );
-  const [versionError, setVersionError] = useState<string | null>(null);
-  const [versionActionAllowed, setVersionActionAllowed] = useState(true);
-  const [promotionMessage, setPromotionMessage] = useState<string | null>(null);
-  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
-  const [edges, setEdges] = useState<WorkflowEdge[]>([]);
-  const [nodesLoading, setNodesLoading] = useState(false);
-  const [nodesError, setNodesError] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [operators, setOperators] = useState<OperatorSummary[]>([]);
-  const [integrations, setIntegrations] = useState<IntegrationItem[]>([]);
-  const [sources, setSources] = useState<RagSource[]>([]);
-  const [toolboxError, setToolboxError] = useState<string | null>(null);
-  const environment = getEnvironmentHeader();
-  const canManage = auth.status === "authenticated" && auth.role === "admin";
-  const canEditNodes = canManage && !isNew;
-  const selectedNode = useMemo(
-    () => nodes.find((node) => node.id === selectedNodeId) ?? null,
-    [nodes, selectedNodeId]
-  );
+  const [selectedStep, setSelectedStep] = useState<string | null>("step-3")
+  const [aiPrompt, setAiPrompt] = useState("")
 
-  const loadWorkflow = useCallback(() => {
-    if (!isNew && auth.status === "authenticated" && auth.orgId) {
-      setLoading(true);
-      setDetailError(null);
-      fetchWorkflow(auth.token, id)
-        .then((w) => {
-          setDefinitionJson(JSON.stringify(w.definition, null, 2));
-        })
-        .catch((e) => setDetailError(e.message ?? "Failed to load"))
-        .finally(() => setLoading(false));
-    } else if (isNew) {
-      setDefinitionJson(getDefaultDefinitionJson());
-      setLoading(false);
+  const selectedStepData = flowSteps.find((s) => s.id === selectedStep)
+
+  const [isGenerating, setIsGenerating] = useState(false)
+  
+  const handleGenerateWorkflow = async () => {
+    if (aiPrompt.trim()) {
+      setIsGenerating(true)
+      // Simulate AI processing
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      setIsGenerating(false)
+      setAiPrompt("")
     }
-  }, [id, isNew, auth.status, auth.token, auth.orgId]);
-
-  const loadVersions = useCallback((options?: { showSkeleton?: boolean }) => {
-    if (isNew || auth.status !== "authenticated" || !auth.orgId) return;
-    const showSkeleton = options?.showSkeleton ?? true;
-    if (showSkeleton) {
-      setVersionsLoading(true);
-    }
-    setVersionError(null);
-    Promise.all([
-      fetchWorkflowVersions(auth.token, id),
-      fetchActiveWorkflowVersion(auth.token, id).catch(() => null),
-    ])
-      .then(([list, active]) => {
-        setVersions(list.versions);
-        setActiveVersion(active);
-      })
-      .catch((e) => setVersionError(e.message ?? "Failed to load versions"))
-      .finally(() => {
-        if (showSkeleton) {
-          setVersionsLoading(false);
-        }
-      });
-  }, [id, isNew, auth.status, auth.token, auth.orgId]);
-
-  const loadNodes = useCallback(() => {
-    if (isNew || auth.status !== "authenticated" || !auth.orgId) return;
-    setNodesLoading(true);
-    setNodesError(null);
-    Promise.all([fetchWorkflowNodes(auth.token, id), fetchWorkflowEdges(auth.token, id)])
-      .then(([nodesRes, edgesRes]) => {
-        setNodes(nodesRes.nodes);
-        setEdges(edgesRes.edges);
-        if (nodesRes.nodes.length > 0) {
-          setSelectedNodeId((current) => current ?? nodesRes.nodes[0].id);
-        }
-      })
-      .catch((e) => setNodesError(e.message ?? "Failed to load orchestration"))
-      .finally(() => setNodesLoading(false));
-  }, [id, isNew, auth.status, auth.token, auth.orgId]);
-
-  const loadToolbox = useCallback(() => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setToolboxError(null);
-    Promise.all([
-      fetchOperators(auth.token).then((res) => res.operators),
-      fetchIntegrations(auth.token).then((res) => res.integrations),
-      fetchSources(auth.token).then((res) => res.sources),
-    ])
-      .then(([ops, ints, srcs]) => {
-        setOperators(ops);
-        setIntegrations(ints);
-        setSources(srcs);
-      })
-      .catch((e) => setToolboxError(e.message ?? "Failed to load toolbox data"));
-  }, [auth.status, auth.token, auth.orgId]);
-
-  const defaultNodePosition = (index: number) => ({
-    x: 40 + (index % 3) * 260,
-    y: 40 + Math.floor(index / 3) * 160,
-  });
-
-  useEffect(() => {
-    loadWorkflow();
-  }, [loadWorkflow]);
-
-  useEffect(() => {
-    loadVersions({ showSkeleton: true });
-  }, [loadVersions]);
-
-  useEffect(() => {
-    loadNodes();
-  }, [loadNodes]);
-
-  useEffect(() => {
-    loadToolbox();
-  }, [loadToolbox]);
-
-  const handleAddNode = async (payload: {
-    node_type: WorkflowNode["node_type"];
-    title: string;
-    operator_id?: string | null;
-    connector_id?: string | null;
-    source_id?: string | null;
-    tool_type?: string | null;
-  }) => {
-    if (auth.status !== "authenticated" || !auth.orgId || isNew || !canEditNodes) return;
-    setNodesError(null);
-    const position = defaultNodePosition(nodes.length);
-    try {
-      const created = await createWorkflowNode(auth.token, id, {
-        ...payload,
-        instruction: "",
-        tool_config: null,
-        position,
-        metadata: {},
-      });
-      setNodes((prev) => [...prev, created]);
-      setSelectedNodeId(created.id);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to create node";
-      setNodesError(message);
-    }
-  };
-
-  const handleSaveNode = async (payload: Partial<WorkflowNode>) => {
-    if (auth.status !== "authenticated" || !auth.orgId || !selectedNode || !canEditNodes) return;
-    setNodesError(null);
-    try {
-      const updated = await updateWorkflowNode(auth.token, selectedNode.id, payload);
-      setNodes((prev) => prev.map((node) => (node.id === updated.id ? updated : node)));
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to update node";
-      setNodesError(message);
-    }
-  };
-
-  const handleDeleteNode = async (nodeId: string) => {
-    if (auth.status !== "authenticated" || !auth.orgId || !canEditNodes) return;
-    setNodesError(null);
-    try {
-      await deleteWorkflowNode(auth.token, nodeId);
-      setNodes((prev) => prev.filter((node) => node.id !== nodeId));
-      setEdges((prev) => prev.filter((edge) => edge.from_node_id !== nodeId && edge.to_node_id !== nodeId));
-      if (selectedNodeId === nodeId) {
-        setSelectedNodeId(null);
-      }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to delete node";
-      setNodesError(message);
-    }
-  };
-
-  const handleCreateEdge = async (payload: { to_node_id: string; edge_type: WorkflowEdge["edge_type"] }) => {
-    if (auth.status !== "authenticated" || !auth.orgId || !selectedNode || !canEditNodes) return;
-    setNodesError(null);
-    try {
-      const created = await createWorkflowEdge(auth.token, id, {
-        from_node_id: selectedNode.id,
-        to_node_id: payload.to_node_id,
-        edge_type: payload.edge_type,
-        condition: null,
-      });
-      setEdges((prev) => [...prev, created]);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to create edge";
-      setNodesError(message);
-    }
-  };
-
-  const handleDeleteEdge = async (edgeId: string) => {
-    if (auth.status !== "authenticated" || !auth.orgId || !canEditNodes) return;
-    try {
-      await deleteWorkflowEdge(auth.token, edgeId);
-      setEdges((prev) => prev.filter((edge) => edge.id !== edgeId));
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to delete edge";
-      setNodesError(message);
-    }
-  };
-
-  const handleDryRun = () => {
-    setJsonError(null);
-    setDryRunError(null);
-    const def = parseJson(definitionJson);
-    if (!def.ok) {
-      setJsonError(def.error);
-      return;
-    }
-    let paramsObj: Record<string, unknown> = {};
-    try {
-      if (parametersJson.trim()) paramsObj = JSON.parse(parametersJson) as Record<string, unknown>;
-    } catch {
-      setJsonError("Parameters must be valid JSON");
-      return;
-    }
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setDryRunLoading(true);
-    postDryRun(auth.token, {
-      ...(isNew ? { definition: def.value } : { workflow_id: id }),
-      parameters: Object.keys(paramsObj).length ? paramsObj : undefined,
-    })
-      .then((res) => {
-        setLastRunId(res.run_id);
-        router.push(`/runs/${res.run_id}`);
-      })
-      .catch((e) => setDryRunError(e.message ?? "Dry-run failed"))
-      .finally(() => setDryRunLoading(false));
-  };
-
-  const handleExecute = () => {
-    setJsonError(null);
-    setExecuteError(null);
-    let paramsObj: Record<string, unknown> = {};
-    try {
-      if (parametersJson.trim()) paramsObj = JSON.parse(parametersJson) as Record<string, unknown>;
-    } catch {
-      setJsonError("Parameters must be valid JSON");
-      return;
-    }
-    if (auth.status !== "authenticated" || !auth.orgId || isNew) return;
-    setExecuteLoading(true);
-    postExecute(auth.token, {
-      workflow_id: id,
-      parameters: Object.keys(paramsObj).length ? paramsObj : undefined,
-    })
-      .then((res) => {
-        setLastRunId(res.run_id);
-        router.push(`/runs/${res.run_id}`);
-      })
-      .catch((e) => setExecuteError(e.message ?? "Execute failed"))
-      .finally(() => setExecuteLoading(false));
-  };
-
-  const handleCreateVersion = async () => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setVersionError(null);
-    setPromotionMessage(null);
-    setVersionActionLoading(true);
-    setVersionActionType("create");
-    try {
-      await createWorkflowVersion(auth.token, id);
-      loadVersions({ showSkeleton: false });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to create version";
-      setVersionError(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setVersionActionAllowed(false);
-      }
-    } finally {
-      setVersionActionLoading(false);
-      setVersionActionType(null);
-    }
-  };
-
-  const handleActivateVersion = async (versionId: string) => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setVersionError(null);
-    setPromotionMessage(null);
-    setVersionActionLoading(true);
-    setVersionActionType("activate");
-    try {
-      await activateWorkflowVersion(auth.token, id, versionId);
-      loadVersions({ showSkeleton: false });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to activate version";
-      setVersionError(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setVersionActionAllowed(false);
-      }
-    } finally {
-      setVersionActionLoading(false);
-      setVersionActionType(null);
-    }
-  };
-
-  const handlePromote = async (
-    versionId: string,
-    versionNumber: number,
-    toEnv: "staging" | "production"
-  ) => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    if (typeof window !== "undefined") {
-      const ok = window.confirm(
-        `Promote v${versionNumber} from ${environment} to ${toEnv}? This will create a new version in ${toEnv}.`
-      );
-      if (!ok) return;
-    }
-    setVersionError(null);
-    setPromotionMessage(null);
-    setVersionActionLoading(true);
-    setVersionActionType("promote");
-    try {
-      const result = await promoteWorkflowVersion(auth.token, id, versionId, toEnv);
-      setPromotionMessage(
-        `From ${environment} → ${result.environment}: v${result.version} (${result.target_version_id.slice(0, 8)}…)`
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to promote version";
-      setVersionError(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setVersionActionAllowed(false);
-      }
-    } finally {
-      setVersionActionLoading(false);
-      setVersionActionType(null);
-    }
-  };
-
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to view workflows."}
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (auth.orgId == null) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending. Contact admin for org access.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!isNew && loading) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">Loading workflow…</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!isNew && detailError) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-destructive">{detailError}</p>
-          <Link href="/workflows" className="mt-2 inline-block text-sm text-primary hover:underline">
-            Back to workflows
-          </Link>
-        </CardContent>
-      </Card>
-    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/workflows"
-            className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-          >
-            ← Workflows
-          </Link>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            {isNew ? "New workflow" : "Workflow"}
-          </h1>
-        </div>
-        {!isNew && (
-          <Link href={`/workflows/${id}/schedules`} passHref legacyBehavior>
-            <Button variant="secondary" size="sm" asChild>
-              <a>Schedules</a>
-            </Button>
-          </Link>
-        )}
-      </div>
+    <AppShell>
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Header - Goal Based */}
+        <div className="flex-shrink-0 border-b border-border px-4 md:px-6 py-3 md:py-4">
+          <div className="flex items-center gap-2 md:gap-3 mb-3">
+            <Link
+              href="/workflows"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <span className="hidden sm:inline text-muted-foreground text-sm">Automations</span>
+            <ChevronRight className="hidden sm:inline h-3 w-3 text-muted-foreground" />
+            <span className="text-sm text-foreground truncate">Customer Sync</span>
+          </div>
 
-      <div className="grid gap-4 lg:grid-cols-[240px,1fr,320px]">
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
-              Toolbox
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {toolboxError ? (
-              <p className="text-xs text-destructive">{toolboxError}</p>
-            ) : (
-              <WorkflowToolbox
-                operators={operators}
-                integrations={integrations}
-                sources={sources}
-                canManage={canEditNodes}
-                onAddNode={handleAddNode}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-lg">Orchestration builder</CardTitle>
-              <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                Environment: {environment}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Add agents, tasks, integrations, and sources. Connect nodes to define the workflow flow.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {nodesError && <p className="text-sm text-destructive">{nodesError}</p>}
-            {isNew ? (
-              <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
-                Create the workflow definition first. Orchestration nodes are available after the workflow exists.
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-2 min-w-0">
+              <div className="flex items-center gap-3">
+                <h1 className="text-base md:text-lg font-semibold text-foreground truncate">{automationData.name}</h1>
               </div>
-            ) : nodesLoading ? (
-              <div className="rounded-md border border-border p-6 text-sm text-muted-foreground">
-                Loading orchestration…
+              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
+                {automationData.description}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 md:gap-3 pt-1">
+                <StatusBadge status={automationData.status} />
+                <EnvironmentBadge environment={automationData.environment} />
+                <span className="hidden sm:inline text-xs text-muted-foreground">
+                  Last run: {automationData.lastRun}
+                </span>
+                <span className="hidden md:inline text-xs text-success flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {automationData.successRate}% success rate
+                </span>
               </div>
-            ) : (
-              <WorkflowCanvas
-                nodes={nodes}
-                edges={edges}
-                selectedNodeId={selectedNodeId}
-                onSelect={setSelectedNodeId}
-              />
-            )}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <Link href="/runs" className="text-primary hover:underline">
-                View runs
-              </Link>
-              <span>Use runs for execution logs and approval checkpoints.</span>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
-              Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-full">
-            <WorkflowConfigPanel
-              node={selectedNode}
-              nodes={nodes}
-              edges={edges}
-              operators={operators}
-              integrations={integrations}
-              sources={sources}
-              canManage={canEditNodes}
-              onSaveNode={handleSaveNode}
-              onDeleteNode={handleDeleteNode}
-              onCreateEdge={handleCreateEdge}
-              onDeleteEdge={handleDeleteEdge}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Definition (JSON)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {jsonError && (
-            <p className="text-sm text-destructive" role="alert">
-              {jsonError}
-            </p>
-          )}
-          <textarea
-            className="w-full min-h-[280px] rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-            value={definitionJson}
-            onChange={(e) => setDefinitionJson(e.target.value)}
-            spellCheck={false}
-            aria-label="Workflow definition JSON"
-          />
-        </CardContent>
-      </Card>
-
-      {!isNew && (
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader>
-            <CardTitle className="text-lg">Versions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Environment: <span className="font-medium text-foreground">{environment}</span>
-            </p>
-            {activeVersion ? (
-              <p className="text-sm text-foreground">
-                Active version: <span className="font-semibold">v{activeVersion.version}</span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No active version. Create and activate a version to enable execute.
-              </p>
-            )}
-            {versionError && (
-              <p className="text-sm text-destructive" role="alert">
-                {versionError}
-              </p>
-            )}
-            {promotionMessage && (
-              <p className="text-sm text-muted-foreground">{promotionMessage}</p>
-            )}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleCreateVersion}
-                disabled={versionActionLoading || !versionActionAllowed}
-              >
-                {versionActionType === "create" ? "Creating…" : "Create version"}
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Pause className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Pause</span>
               </Button>
-              <p className="text-xs text-muted-foreground">
-                Versions are created from the stored workflow definition.
-              </p>
+              <Button size="sm" className="gap-2">
+                <Play className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Run Now</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            {versionsLoading ? (
-              <div className="space-y-2" aria-label="Loading versions">
-                <div className="h-4 w-40 rounded-md bg-muted/60 animate-pulse" />
-                <div className="h-4 w-64 rounded-md bg-muted/60 animate-pulse" />
-                <div className="h-4 w-56 rounded-md bg-muted/60 animate-pulse" />
-              </div>
-            ) : versions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No versions yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="py-2 pr-4 font-medium text-foreground">Version</th>
-                      <th className="py-2 pr-4 font-medium text-foreground">Schema</th>
-                      <th className="py-2 pr-4 font-medium text-foreground">Created</th>
-                      <th className="py-2 font-medium text-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {versions.map((v) => (
-                      <tr key={v.id} className="border-b border-border">
-                        <td className="py-3 pr-4 text-foreground">
-                          v{v.version}
-                          {activeVersion?.id === v.id && (
-                            <span className="ml-2 inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-foreground">
-                              Active
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 pr-4 text-muted-foreground">{v.schema_version}</td>
-                        <td className="py-3 pr-4 text-muted-foreground">
-                          {new Date(v.created_at).toLocaleString()}
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleActivateVersion(v.id)}
-                              disabled={versionActionLoading || !versionActionAllowed}
-                            >
-                              Activate
-                            </Button>
-                            {environment !== "staging" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handlePromote(v.id, v.version, "staging")}
-                                disabled={versionActionLoading || !versionActionAllowed}
-                              >
-                                Promote to staging
-                              </Button>
-                            )}
-                            {environment !== "production" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handlePromote(v.id, v.version, "production")}
-                                disabled={versionActionLoading || !versionActionAllowed}
-                              >
-                                Promote to production
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+          </div>
+        </div>
+
+        {/* Flow Phase Progress Bar */}
+        <div className="flex-shrink-0 border-b border-border px-6 py-4 bg-secondary/20">
+          <div className="max-w-2xl mx-auto">
+            <div className="relative flex items-center justify-between">
+              {/* Progress Line Background */}
+              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-border" />
+              
+              {/* Progress Line Filled */}
+              <div 
+                className="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-emerald-500 via-emerald-500 to-blue-500 transition-all duration-500"
+                style={{ 
+                  width: `${(flowPhases.findIndex(p => p.status === "current") / (flowPhases.length - 1)) * 100}%` 
+                }}
+              />
+
+              {flowPhases.map((phase, index) => {
+                const isCompleted = phase.status === "completed"
+                const isCurrent = phase.status === "current"
+                const isUpcoming = phase.status === "upcoming"
+
+                return (
+                  <div key={phase.label} className="relative group z-10">
+                    {/* Step Circle */}
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`
+                          relative flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300
+                          ${isCompleted 
+                            ? "bg-emerald-500 border-emerald-500 text-white" 
+                            : isCurrent 
+                              ? "bg-blue-500 border-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]" 
+                              : "bg-card border-border text-muted-foreground"
+                          }
+                          ${isCurrent ? "scale-110" : "group-hover:scale-105"}
+                        `}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <span className="text-xs font-semibold">{index + 1}</span>
+                        )}
+                        
+                        {/* Glow effect for current */}
+                        {isCurrent && (
+                          <div className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" />
+                        )}
+                      </div>
+
+                      {/* Label */}
+                      <span
+                        className={`
+                          mt-2 text-xs font-medium transition-colors duration-200
+                          ${isCurrent 
+                            ? "text-foreground" 
+                            : isCompleted 
+                              ? "text-emerald-400" 
+                              : "text-muted-foreground"
+                          }
+                        `}
+                      >
+                        {phase.label}
+                      </span>
+                    </div>
+
+                    {/* Hover Tooltip */}
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20">
+                      <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
+                        <p className="text-xs font-medium text-foreground">{phase.label}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{phase.description}</p>
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-popover border-r border-b border-border rotate-45 -mt-1" />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex min-h-0 flex-col lg:flex-row">
+          {/* Left Panel - AI Entry + Flow */}
+          <div className="flex-1 lg:border-r border-border overflow-auto">
+            <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+              {/* AI Entry Point */}
+              <Card className="bg-secondary/30 border-border">
+                <CardContent className="p-4">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
+                    What do you want this automation to do?
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Describe a change or addition..."
+                      className="flex-1 bg-background border-border"
+                    />
+                    <Button onClick={handleGenerateWorkflow} className="gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Update Flow
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-xs text-muted-foreground">Try:</span>
+                    {examplePrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        onClick={() => setAiPrompt(prompt)}
+                        className="text-xs text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 px-2 py-1 rounded transition-colors"
+                      >
+                        {prompt}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Flow Steps */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                    Automation Flow
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    {flowSteps.length} steps
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {flowSteps.map((step, index) => {
+                    const Icon = systemIcons[step.systemType] || Zap
+                    const isSelected = selectedStep === step.id
+
+                    return (
+                      <div key={step.id} className="relative">
+                        {/* Connector Line */}
+                        {index < flowSteps.length - 1 && (
+                          <div className="absolute left-6 top-[72px] h-3 w-px bg-border" />
+                        )}
+
+                        {/* Step Card */}
+                        <button
+                          onClick={() => setSelectedStep(step.id)}
+                          className={`w-full text-left rounded-lg border p-4 transition-all ${
+                            isSelected
+                              ? "border-info bg-info/5"
+                              : "border-border bg-card hover:border-muted-foreground/50"
+                          }`}
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Icon */}
+                            <div
+                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
+                                step.systemType === "agent"
+                                  ? "bg-info/10 text-info"
+                                  : step.systemType === "approval"
+                                    ? "bg-warning/10 text-warning"
+                                    : step.systemType === "data-source"
+                                      ? "bg-success/10 text-success"
+                                      : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium text-foreground">
+                                  {step.name}
+                                </span>
+                                {step.requiresApproval && (
+                                  <span className="flex items-center gap-1 text-[10px] font-medium text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded">
+                                    <Shield className="h-2.5 w-2.5" />
+                                    Approval required
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>{step.system}</span>
+                                <span className="text-muted-foreground/50">|</span>
+                                <EnvironmentBadge environment={step.environment} />
+                              </div>
+                            </div>
+
+                            {/* Status */}
+                            <div className="flex items-center gap-2">
+                              {step.status === "completed" ? (
+                                <CheckCircle2 className="h-4 w-4 text-success" />
+                              ) : step.status === "pending" ? (
+                                <Clock className="h-4 w-4 text-warning" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    )
+                  })}
+
+                  {/* Add Step Button */}
+                  <button className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-border hover:border-muted-foreground/50 p-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <Plus className="h-4 w-4" />
+                    Add step
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Step Configuration - hidden on mobile */}
+          <div className="hidden lg:block w-96 flex-shrink-0 overflow-auto bg-secondary/20">
+            {selectedStepData ? (
+              <div className="p-6 space-y-6">
+                {/* Step Header */}
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    {(() => {
+                      const Icon = systemIcons[selectedStepData.systemType] || Zap
+                      return (
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                            selectedStepData.systemType === "agent"
+                              ? "bg-info/10 text-info"
+                              : selectedStepData.systemType === "approval"
+                                ? "bg-warning/10 text-warning"
+                                : selectedStepData.systemType === "data-source"
+                                  ? "bg-success/10 text-success"
+                                  : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </div>
+                      )
+                    })()}
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">
+                        {selectedStepData.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedStepData.system}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* What This Step Does */}
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    What this step does
+                  </h4>
+                  <p className="text-sm text-foreground">
+                    {selectedStepData.description}
+                  </p>
+                </div>
+
+                {/* Inputs */}
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    Inputs
+                  </h4>
+                  <ul className="space-y-1">
+                    {selectedStepData.inputs.map((input) => (
+                      <li
+                        key={input}
+                        className="text-sm text-muted-foreground flex items-center gap-2"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                        {input}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Outputs */}
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    Outputs
+                  </h4>
+                  <ul className="space-y-1">
+                    {selectedStepData.outputs.map((output) => (
+                      <li
+                        key={output}
+                        className="text-sm text-muted-foreground flex items-center gap-2"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                        {output}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Environment */}
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    Environment
+                  </h4>
+                  <EnvironmentBadge environment={selectedStepData.environment} />
+                </div>
+
+                {/* Safety Rules */}
+                {(selectedStepData.requiresApproval || selectedStepData.adminOnly) && (
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      Safety Rules
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedStepData.requiresApproval && (
+                        <div className="flex items-center gap-2 text-sm text-warning">
+                          <Shield className="h-4 w-4" />
+                          Needs approval first
+                        </div>
+                      )}
+                      {selectedStepData.adminOnly && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Shield className="h-4 w-4" />
+                          Admin only
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Assist */}
+                <div className="pt-4 border-t border-border">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    AI Assist
+                  </h4>
+                  <div className="space-y-2">
+                    <button className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground p-2 rounded hover:bg-muted/50 transition-colors">
+                      <Lightbulb className="h-4 w-4" />
+                      Improve this step
+                    </button>
+                    <button className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground p-2 rounded hover:bg-muted/50 transition-colors">
+                      <MessageSquare className="h-4 w-4" />
+                      Explain this step
+                    </button>
+                    <button className="w-full flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground p-2 rounded hover:bg-muted/50 transition-colors">
+                      <Sparkles className="h-4 w-4" />
+                      Suggest next step
+                    </button>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      Configure
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                Select a step to view details
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Admin permission required to create, activate, or promote versions.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
 
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Parameters (optional)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            className="w-full min-h-[80px] rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-            value={parametersJson}
-            onChange={(e) => setParametersJson(e.target.value)}
-            placeholder='{"query": "..."}'
-            spellCheck={false}
-            aria-label="Parameters JSON"
-          />
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center gap-4">
-        <Button
-          variant="primary"
-          size="md"
-          onClick={handleDryRun}
-          disabled={dryRunLoading}
-          aria-busy={dryRunLoading}
-        >
-          {dryRunLoading ? "Running…" : "Dry run"}
-        </Button>
-        {!isNew && (
-          <Button
-            variant="outline"
-            size="md"
-            onClick={handleExecute}
-            disabled={executeLoading || !activeVersion}
-            aria-busy={executeLoading}
-          >
-            {executeLoading ? "Executing…" : "Execute"}
-          </Button>
-        )}
-        {dryRunError && (
-          <p className="text-sm text-destructive" role="alert">
-            {dryRunError}
-          </p>
-        )}
-        {executeError && (
-          <p className="text-sm text-destructive" role="alert">
-            {executeError}
-          </p>
-        )}
-        {lastRunId && (
-          <Link
-            href={`/runs/${lastRunId}`}
-            className="text-sm text-primary hover:underline"
-          >
-            View last run
-          </Link>
-        )}
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-border px-6 py-3 bg-secondary/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span>
+                <Clock className="h-3 w-3 inline mr-1" />
+                Runs automatically: {automationData.schedule}
+              </span>
+              <Link
+                href={`/workflows/${automationData.id}/schedules`}
+                className="text-info hover:underline flex items-center gap-1"
+              >
+                Edit schedule
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {automationData.totalRuns.toLocaleString()} total runs
+              </span>
+              <Link href="/runs">
+                <Button variant="outline" size="sm" className="text-xs h-7">
+                  View run history
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    </AppShell>
+  )
 }

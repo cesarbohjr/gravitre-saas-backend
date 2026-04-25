@@ -1,290 +1,266 @@
-"use client";
+"use client"
 
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/use-auth";
+import { useState, use } from "react"
+import Link from "next/link"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { StatusBadge } from "@/components/gravitre/status-badge"
+import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { Button } from "@/components/ui/button"
 import {
-  ApiError,
-  fetchIntegration,
-  updateIntegration,
-  setIntegrationSecret,
-  type IntegrationItem,
-} from "@/lib/integrations-api";
-import { getEnvironmentHeader } from "@/lib/environment";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { ArrowLeft, Save, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
 
-function parseJson(s: string): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
-  try {
-    const v = JSON.parse(s);
-    if (v == null || typeof v !== "object") return { ok: false, error: "Config must be a JSON object" };
-    return { ok: true, value: v as Record<string, unknown> };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Invalid JSON" };
-  }
+interface Secret {
+  key: string
+  value: string
+  isVisible: boolean
 }
 
-function formatIntegrationType(type: IntegrationItem["type"]): string {
-  return type.charAt(0).toUpperCase() + type.slice(1);
-}
+export default function IntegrationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const isAdmin = true
 
-export default function IntegrationDetailPage() {
-  const params = useParams();
-  const id = params.id as string;
-  const auth = useAuth();
-  const [integration, setIntegration] = useState<IntegrationItem | null>(null);
-  const [configJson, setConfigJson] = useState("{}");
-  const [status, setStatus] = useState<"active" | "inactive" | "error">("active");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveLoading, setSaveLoading] = useState(false);
-  const [secretKey, setSecretKey] = useState("");
-  const [secretValue, setSecretValue] = useState("");
-  const [secretStatus, setSecretStatus] = useState<string | null>(null);
-  const [actionAllowed, setActionAllowed] = useState(true);
-  const [permissionRestricted, setPermissionRestricted] = useState(false);
-  const environment = getEnvironmentHeader();
-  const isAdmin = auth.status === "authenticated" && auth.role === "admin";
-  const canManage = isAdmin && actionAllowed;
+  const [status, setStatus] = useState<string>("active")
+  const [config, setConfig] = useState<string>(
+    JSON.stringify(
+      {
+        channel: "#alerts",
+        webhook_url: "https://hooks.slack.com/services/xxx",
+        notify_on_failure: true,
+        notify_on_success: false,
+      },
+      null,
+      2
+    )
+  )
+  const [secrets, setSecrets] = useState<Secret[]>([
+    { key: "API_TOKEN", value: "sk-xxxxxxxxxxxx", isVisible: false },
+    { key: "WEBHOOK_SECRET", value: "whsec_xxxxxxxx", isVisible: false },
+  ])
+  const [configError, setConfigError] = useState<string | null>(null)
+  const [configSuccess, setConfigSuccess] = useState<string | null>(null)
+  const [secretsError, setSecretsError] = useState<string | null>(null)
+  const [secretsSuccess, setSecretsSuccess] = useState<string | null>(null)
+  const [isSavingConfig, setIsSavingConfig] = useState(false)
+  const [isSavingSecrets, setIsSavingSecrets] = useState(false)
 
-  useEffect(() => {
-    if (auth.status !== "authenticated" || !auth.orgId) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setPermissionRestricted(false);
-    fetchIntegration(auth.token, id)
-      .then((data) => {
-        if (cancelled) return;
-        setIntegration(data);
-        setConfigJson(JSON.stringify(data.config ?? {}, null, 2));
-        setStatus(data.status);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        if (e instanceof ApiError && e.status === 403) {
-          setPermissionRestricted(true);
-          return;
-        }
-        setError(e.message ?? "Failed to load");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [auth.status, auth.token, auth.orgId, id]);
-
-  const handleSave = async () => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setSaveError(null);
-    const parsed = parseJson(configJson);
-    if (!parsed.ok) {
-      setSaveError(parsed.error);
-      return;
-    }
-    setSaveLoading(true);
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true)
+    setConfigError(null)
+    setConfigSuccess(null)
     try {
-      const updated = await updateIntegration(auth.token, id, {
-        config: parsed.value,
-        status,
-      });
-      setIntegration(updated);
-      setConfigJson(JSON.stringify(updated.config ?? {}, null, 2));
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to update";
-      setSaveError(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setActionAllowed(false);
-      }
+      // Validate JSON
+      JSON.parse(config)
+      // Simulate save
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      setConfigSuccess("Configuration saved successfully")
+    } catch {
+      setConfigError("Invalid JSON configuration")
     } finally {
-      setSaveLoading(false);
+      setIsSavingConfig(false)
     }
-  };
+  }
 
-  const handleSetSecret = async () => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setSecretStatus(null);
-    if (!secretKey.trim() || !secretValue.trim()) {
-      setSecretStatus("Provide both key and value.");
-      return;
-    }
+  const handleSaveSecrets = async () => {
+    setIsSavingSecrets(true)
+    setSecretsError(null)
+    setSecretsSuccess(null)
     try {
-      await setIntegrationSecret(auth.token, id, {
-        key_name: secretKey.trim(),
-        value: secretValue,
-      });
-      setSecretStatus("Secret saved.");
-      setSecretKey("");
-      setSecretValue("");
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to save secret";
-      setSecretStatus(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setActionAllowed(false);
-      }
+      // Simulate save
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      setSecretsSuccess("Secrets saved successfully")
+    } catch {
+      setSecretsError("Failed to save secrets")
+    } finally {
+      setIsSavingSecrets(false)
     }
-  };
-
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to view integration."}
-          </p>
-        </CardContent>
-      </Card>
-    );
   }
 
-  if (auth.orgId == null) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending. Contact admin for org access.
-          </p>
-        </CardContent>
-      </Card>
-    );
+  const toggleSecretVisibility = (index: number) => {
+    setSecrets((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, isVisible: !s.isVisible } : s))
+    )
   }
 
-  if (loading) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">Loading integration…</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (permissionRestricted) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Integration</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <p className="text-sm text-muted-foreground">
-            Admin permission required to view integrations in this environment.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Environment: <span className="font-medium text-foreground">{environment}</span>
-          </p>
-          <Link href="/integrations" className="mt-4 inline-block text-sm text-primary hover:underline">
-            Back to integrations
-          </Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error || !integration) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-destructive">{error ?? "Integration not found"}</p>
-          <Link href="/integrations" className="mt-2 inline-block text-sm text-primary hover:underline">
-            Back to integrations
-          </Link>
-        </CardContent>
-      </Card>
-    );
+  const updateSecretValue = (index: number, value: string) => {
+    setSecrets((prev) => prev.map((s, i) => (i === index ? { ...s, value } : s)))
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/integrations"
-          className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        >
-          ← Integrations
-        </Link>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          {formatIntegrationType(integration.type)} integration
-        </h1>
-      </div>
+    <AppShell title="Integration">
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <Link
+            href="/integrations"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Integrations
+          </Link>
 
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground">Status</label>
-            <select
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as "active" | "inactive" | "error")}
-              disabled={!canManage}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="error">Error</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Config (JSON)</label>
-            <textarea
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono"
-              rows={10}
-              value={configJson}
-              onChange={(e) => setConfigJson(e.target.value)}
-              disabled={!canManage}
-            />
-          </div>
-          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-          <div className="flex gap-2">
-            <Button variant="primary" size="sm" onClick={handleSave} disabled={!canManage || saveLoading}>
-              {saveLoading ? "Saving…" : "Save"}
-            </Button>
-            {!canManage && (
-              <span className="text-xs text-muted-foreground">Admin permission required.</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold text-foreground">Slack Notifications</h1>
+              <StatusBadge variant="success" dot>
+                active
+              </StatusBadge>
+              <EnvironmentBadge environment="production" />
+            </div>
+            {!isAdmin && (
+              <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                Read-only
+              </span>
             )}
           </div>
-        </CardContent>
-      </Card>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Integration ID: <span className="font-mono">{id}</span>
+          </p>
+        </div>
 
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Secrets</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-foreground">Key</label>
-              <input
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={secretKey}
-                onChange={(e) => setSecretKey(e.target.value)}
-                disabled={!canManage}
-              />
+        <div className="space-y-6">
+          {/* Configuration Card */}
+          <div className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold text-foreground">Configuration</h2>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">Value</label>
-              <input
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={secretValue}
-                onChange={(e) => setSecretValue(e.target.value)}
-                disabled={!canManage}
-              />
+            <div className="p-4 space-y-4">
+              {/* Status Select */}
+              <div className="flex items-center gap-4">
+                <label className="text-sm text-muted-foreground w-24">Status</label>
+                <Select
+                  value={status}
+                  onValueChange={setStatus}
+                  disabled={!isAdmin}
+                >
+                  <SelectTrigger className="w-40 h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Config JSON Editor */}
+              <div>
+                <label className="mb-2 block text-sm text-muted-foreground">
+                  Configuration JSON
+                </label>
+                <textarea
+                  value={config}
+                  onChange={(e) => setConfig(e.target.value)}
+                  disabled={!isAdmin}
+                  className="w-full h-48 rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Config Messages */}
+              {configError && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {configError}
+                </div>
+              )}
+              {configSuccess && (
+                <div className="flex items-center gap-2 text-sm text-success">
+                  <CheckCircle className="h-4 w-4" />
+                  {configSuccess}
+                </div>
+              )}
+
+              {/* Save Button */}
+              {isAdmin && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    className="h-8 gap-2"
+                    onClick={handleSaveConfig}
+                    disabled={isSavingConfig}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    {isSavingConfig ? "Saving..." : "Save configuration"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleSetSecret} disabled={!canManage}>
-            Save secret
-          </Button>
-          {secretStatus && <p className="text-sm text-muted-foreground">{secretStatus}</p>}
-        </CardContent>
-      </Card>
-    </div>
-  );
+
+          {/* Secrets Card */}
+          <div className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold text-foreground">Secrets</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {secrets.map((secret, index) => (
+                <div key={secret.key} className="flex items-center gap-4">
+                  <label className="text-sm text-muted-foreground w-36 font-mono">
+                    {secret.key}
+                  </label>
+                  <div className="flex flex-1 items-center gap-2">
+                    <Input
+                      type={secret.isVisible ? "text" : "password"}
+                      value={secret.value}
+                      onChange={(e) => updateSecretValue(index, e.target.value)}
+                      disabled={!isAdmin}
+                      className="h-8 font-mono text-sm"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => toggleSecretVisibility(index)}
+                    >
+                      {secret.isVisible ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Secrets Messages */}
+              {secretsError && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {secretsError}
+                </div>
+              )}
+              {secretsSuccess && (
+                <div className="flex items-center gap-2 text-sm text-success">
+                  <CheckCircle className="h-4 w-4" />
+                  {secretsSuccess}
+                </div>
+              )}
+
+              {/* Save Button */}
+              {isAdmin && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    className="h-8 gap-2"
+                    onClick={handleSaveSecrets}
+                    disabled={isSavingSecrets}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    {isSavingSecrets ? "Saving..." : "Save secrets"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  )
 }

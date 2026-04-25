@@ -1,204 +1,206 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/use-auth";
-import { ApiError, fetchIntegrations, type IntegrationItem } from "@/lib/integrations-api";
-import { getEnvironmentHeader } from "@/lib/environment";
+import { useState } from "react"
+import Link from "next/link"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { StatusBadge } from "@/components/gravitre/status-badge"
+import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { Button } from "@/components/ui/button"
+import { Plus, AlertCircle, RefreshCw } from "lucide-react"
 
-function formatIntegrationType(type: IntegrationItem["type"]): string {
-  return type.charAt(0).toUpperCase() + type.slice(1);
+interface Integration {
+  id: string
+  name: string
+  type: "slack" | "email" | "webhook"
+  status: "active" | "inactive" | "error"
+  environment: "production" | "staging"
+  lastUpdated: string
 }
 
-export default function IntegrationsListPage() {
-  const auth = useAuth();
-  const [items, setItems] = useState<IntegrationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [permissionRestricted, setPermissionRestricted] = useState(false);
-  const environment = getEnvironmentHeader();
-  const isAdmin = auth.status === "authenticated" && auth.role === "admin";
+const integrations: Integration[] = [
+  {
+    id: "int-001",
+    name: "Slack Notifications",
+    type: "slack",
+    status: "active",
+    environment: "production",
+    lastUpdated: "2 hours ago",
+  },
+  {
+    id: "int-002",
+    name: "Email Alerts",
+    type: "email",
+    status: "active",
+    environment: "production",
+    lastUpdated: "1 day ago",
+  },
+  {
+    id: "int-003",
+    name: "External API Webhook",
+    type: "webhook",
+    status: "error",
+    environment: "staging",
+    lastUpdated: "5 minutes ago",
+  },
+  {
+    id: "int-004",
+    name: "Billing Webhook",
+    type: "webhook",
+    status: "inactive",
+    environment: "production",
+    lastUpdated: "3 days ago",
+  },
+]
 
-  useEffect(() => {
-    if (auth.status !== "authenticated" || auth.orgId == null) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setPermissionRestricted(false);
-    fetchIntegrations(auth.token)
-      .then((data) => {
-        if (!cancelled) setItems(data.integrations);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        if (e instanceof ApiError && e.status === 403) {
-          setPermissionRestricted(true);
-          return;
-        }
-        setError(e.message ?? "Failed to load");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [auth.status, auth.token, auth.orgId]);
+const statusVariants: Record<string, "success" | "error" | "muted"> = {
+  active: "success",
+  inactive: "muted",
+  error: "error",
+}
 
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Integrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to view integrations."}
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+const typeLabels: Record<string, string> = {
+  slack: "Slack",
+  email: "Email",
+  webhook: "Webhook",
+}
 
-  if (auth.orgId == null) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Integrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending. Contact admin for org access to manage integrations.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+export default function IntegrationsPage() {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const isAdmin = true
 
-  if (error) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Integrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-destructive">{error}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (permissionRestricted) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Integrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Admin permission required to view integrations in this environment.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Environment: <span className="font-medium text-foreground">{environment}</span>
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Simulate loading state
+  // useEffect(() => { setIsLoading(true); setTimeout(() => setIsLoading(false), 1000); }, [])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Integrations
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Environment: <span className="font-medium text-foreground">{environment}</span>
-          </p>
-        </div>
-        {isAdmin ? (
-          <Link href="/integrations/new" passHref legacyBehavior>
-            <Button variant="primary" size="md" asChild disabled={loading}>
-              <a>New integration</a>
+    <AppShell title="Integrations">
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
+            <EnvironmentBadge environment="production" />
+          </div>
+          {isAdmin && (
+            <Button size="sm" className="h-8 gap-2" asChild>
+              <Link href="/integrations/new">
+                <Plus className="h-3.5 w-3.5" />
+                New integration
+              </Link>
             </Button>
-          </Link>
-        ) : (
-          <Button variant="primary" size="md" disabled>
-            New integration
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
 
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Configured integrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No integrations yet. Create one to enable workflow execution.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 pr-4 font-medium text-foreground">Name</th>
-                    <th className="py-2 pr-4 font-medium text-foreground">Type</th>
-                    <th className="py-2 pr-4 font-medium text-foreground">Status</th>
-                    <th className="py-2 pr-4 font-medium text-foreground">Environment</th>
-                    <th className="py-2 font-medium text-foreground">Last updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((c) => {
-                    const configName =
-                      typeof c.config?.name === "string" ? c.config.name.trim() : "";
-                    const displayName = configName || `${formatIntegrationType(c.type)} integration`;
-                    const updated = c.updated_at
-                      ? new Date(c.updated_at).toLocaleString()
-                      : "—";
-                    return (
-                      <tr key={c.id} className="border-b border-border hover:bg-muted/50">
-                        <td className="py-3 pr-4">
-                          <Link
-                            href={`/integrations/${c.id}`}
-                            className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                          >
-                            {displayName}
-                          </Link>
-                        </td>
-                        <td className="py-3 pr-4 text-muted-foreground">
-                          {formatIntegrationType(c.type)}
-                        </td>
-                        <td className="py-3 pr-4 text-muted-foreground">{c.status}</td>
-                        <td className="py-3 pr-4 text-muted-foreground">
-                          {c.environment ?? environment}
-                        </td>
-                        <td className="py-3 text-muted-foreground">{updated}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <span className="text-sm text-destructive">{error}</span>
             </div>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Admin permission required to create or edit integrations.
-          </p>
-          {!isAdmin && (
-            <p className="text-xs text-muted-foreground">Read-only access.</p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => setError(null)}
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="rounded-lg border border-border bg-card">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Environment
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Last Updated
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {isLoading ? (
+                // Loading skeleton
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-5 w-16 animate-pulse rounded bg-muted" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-5 w-20 animate-pulse rounded bg-muted" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                    </td>
+                  </tr>
+                ))
+              ) : integrations.length === 0 ? (
+                // Empty state
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center">
+                    <p className="text-sm text-muted-foreground">No integrations found.</p>
+                  </td>
+                </tr>
+              ) : (
+                // Data rows
+                integrations.map((integration) => (
+                  <tr
+                    key={integration.id}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                  >
+                    <td className="px-4 py-4">
+                      <Link
+                        href={`/integrations/${integration.id}`}
+                        className="text-sm font-medium text-foreground hover:underline"
+                      >
+                        {integration.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-muted-foreground">
+                        {typeLabels[integration.type]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <StatusBadge variant={statusVariants[integration.status]} dot>
+                        {integration.status}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-4 py-4">
+                      <EnvironmentBadge environment={integration.environment} />
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-muted-foreground">
+                        {integration.lastUpdated}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </AppShell>
+  )
 }

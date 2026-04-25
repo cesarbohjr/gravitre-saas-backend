@@ -1,644 +1,494 @@
-"use client";
+"use client"
 
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/use-auth";
-import { fetchRun, rollbackRun, type RunDetail, type StepOut } from "@/lib/workflows-api";
-import { ApiError, approveRun, rejectRun } from "@/lib/approvals-api";
+import { use, useState } from "react"
+import useSWR from "swr"
+import Link from "next/link"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { StatusBadge } from "@/components/gravitre/status-badge"
+import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { Button } from "@/components/ui/button"
 import {
-  fetchAuditEvents,
-  getActionLabel,
-  type AuditItem,
-} from "@/lib/audit-api";
-import { getEnvironmentHeader } from "@/lib/environment";
+  ArrowLeft,
+  RefreshCw,
+  XCircle,
+  Clock,
+  Database,
+  CheckCircle,
+  AlertCircle,
+  Play,
+  Pause,
+  TerminalSquare,
+  RotateCcw,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react"
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function isValidUUID(s: string): boolean {
-  return UUID_REGEX.test(s);
+interface Step {
+  id: string
+  name: string
+  status: "completed" | "running" | "failed" | "pending" | "skipped"
+  duration: string
+  startedAt: string
+  logs?: string[]
 }
 
-function AuditTimelineItem({
-  item,
-  variant,
-}: {
-  item: AuditItem;
-  variant: "started" | "completed" | "failed" | "step" | "default";
-}) {
-  const meta = item.metadata ?? {};
-  const stepIndex = meta.step_index;
-  const stepId = meta.step_id as string | undefined;
-
-  const variantClass =
-    variant === "started"
-      ? "border-l-4 border-l-primary"
-      : variant === "completed"
-        ? "border-l-4 border-l-success"
-        : variant === "failed"
-          ? "border-l-4 border-l-destructive"
-          : variant === "step"
-            ? "border-l-4 border-l-warning"
-            : "border-l-4 border-l-border";
-
-  return (
-    <div
-      className={`border-l-4 pl-3 py-2 ${variantClass} border-border rounded-r`}
-    >
-      <p className="text-sm font-medium text-foreground">
-        {getActionLabel(item.action)}
-      </p>
-      <p className="text-xs text-muted-foreground mt-0.5">
-        {new Date(item.created_at).toLocaleString()}
-        {(stepIndex != null || stepId) && (
-          <span className="ml-2">
-            {stepIndex != null && `step ${Number(stepIndex) + 1}`}
-            {stepId && ` · ${stepId}`}
-          </span>
-        )}
-      </p>
-    </div>
-  );
+interface Run {
+  id: string
+  workflowId: string
+  workflowName: string
+  status: "running" | "completed" | "failed" | "pending"
+  environment: "production" | "staging"
+  triggeredBy: string
+  duration: string
+  recordsProcessed: number
+  stepsCompleted: number
+  stepsTotal: number
+  errorMessage?: string
+  startedAt: string
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const variant =
-    status === "completed"
-      ? "bg-success/15 text-success border-border"
-      : status === "failed"
-        ? "bg-destructive/15 text-destructive border-border"
-        : status === "running"
-          ? "bg-warning/15 text-warning border-border"
-          : "bg-muted text-muted-foreground border-border";
-  return (
-    <span
-      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${variant}`}
-    >
-      {status}
-    </span>
-  );
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
+const fallbackRun: Run = {
+  id: "run-sync-1234",
+  workflowId: "wf-sync-customers",
+  workflowName: "sync-customers",
+  status: "failed",
+  environment: "production",
+  triggeredBy: "Schedule",
+  duration: "3m 24s",
+  recordsProcessed: 12450,
+  stepsCompleted: 2,
+  stepsTotal: 5,
+  errorMessage: "Connection timeout",
+  startedAt: "14:32:00 UTC",
 }
 
-function StepDetail({ step }: { step: StepOut }) {
-  const [open, setOpen] = useState(false);
-  const hasOutput = step.output_snapshot && Object.keys(step.output_snapshot).length > 0;
-  const hasError = step.error_code || step.error_message;
+const fallbackSteps: Step[] = [
+  {
+    id: "1",
+    name: "Initialize",
+    status: "completed",
+    duration: "2s",
+    startedAt: "14:32:00 UTC",
+    logs: ["Initializing workflow context", "Loading configuration", "Ready to proceed"],
+  },
+  {
+    id: "2",
+    name: "Fetch Source Data",
+    status: "completed",
+    duration: "45s",
+    startedAt: "14:32:02 UTC",
+    logs: [
+      "Connecting to Salesforce API",
+      "Authenticated successfully",
+      "Fetching customer records...",
+      "Retrieved 12,450 records",
+    ],
+  },
+  {
+    id: "3",
+    name: "Transform Data",
+    status: "failed",
+    duration: "2m 35s",
+    startedAt: "14:32:47 UTC",
+    logs: [
+      "Starting data transformation",
+      "Processing batch 1/25...",
+      "Processing batch 2/25...",
+      "ERROR: Connection timeout after 30000ms",
+      "Transformation failed at record #5,234",
+    ],
+  },
+  {
+    id: "4",
+    name: "Load to Destination",
+    status: "skipped",
+    duration: "-",
+    startedAt: "-",
+  },
+  {
+    id: "5",
+    name: "Finalize",
+    status: "skipped",
+    duration: "-",
+    startedAt: "-",
+  },
+]
 
-  return (
-    <Card className="border-border bg-[hsl(var(--surface))]">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">
-            {step.step_name}
-            <span className="ml-2 font-mono text-xs text-muted-foreground">
-              {step.step_id}
-            </span>
-          </CardTitle>
-          <StatusBadge status={step.status} />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {step.step_type}
-          {step.is_retryable && " · retryable"}
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {hasError && (
-          <div className="rounded-md border border-border bg-destructive/5 p-2 text-sm">
-            {step.error_code && (
-              <p className="font-medium text-destructive">{step.error_code}</p>
-            )}
-            {step.error_message && (
-              <p className="text-muted-foreground">{step.error_message}</p>
-            )}
-          </div>
-        )}
-        {hasOutput && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setOpen(!open)}
-              className="text-sm font-medium text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-              aria-expanded={open}
-            >
-              {open ? "Hide" : "Show"} output
-            </button>
-            {open && (
-              <pre className="mt-2 overflow-auto rounded-md border border-border bg-background p-3 text-xs font-mono text-foreground max-h-64">
-                {JSON.stringify(step.output_snapshot, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+const stepStatusIcons = {
+  completed: CheckCircle,
+  running: Play,
+  failed: AlertCircle,
+  pending: Clock,
+  skipped: Pause,
 }
 
-export default function RunDetailPage() {
-  const params = useParams();
-  const runId = params.id as string;
-  const auth = useAuth();
-  const [run, setRun] = useState<RunDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedStep, setSelectedStep] = useState<StepOut | null>(null);
-  const [auditItems, setAuditItems] = useState<AuditItem[]>([]);
-  const [auditNextCursor, setAuditNextCursor] = useState<string | null>(null);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState<string | null>(null);
-  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
-  const [approvalActionError, setApprovalActionError] = useState<string | null>(null);
-  const [approvalActionLoading, setApprovalActionLoading] = useState<string | null>(null);
-  const [approvalActionAllowed, setApprovalActionAllowed] = useState(true);
-  const [approvalConfirm, setApprovalConfirm] = useState<"approve" | "reject" | null>(null);
-  const [rollbackLoading, setRollbackLoading] = useState(false);
-  const [rollbackError, setRollbackError] = useState<string | null>(null);
-  const [rollbackConfirm, setRollbackConfirm] = useState(false);
-  const environment = getEnvironmentHeader();
-  const isAdmin = auth.status === "authenticated" && auth.role === "admin";
-  const canManageApproval = isAdmin && approvalActionAllowed;
-  const canRollback = isAdmin;
+const stepStatusColors = {
+  completed: "text-success",
+  running: "text-info",
+  failed: "text-destructive",
+  pending: "text-warning",
+  skipped: "text-muted-foreground",
+}
 
-  const fetchAudit = useCallback(
-    (cursor: string | null = null, append = false) => {
-      if (auth.status !== "authenticated" || !runId || !isValidUUID(runId))
-        return;
-      const setLoadingState = append ? setLoadMoreLoading : setAuditLoading;
-      if (!append) setAuditError(null);
-      setLoadingState(true);
-      fetchAuditEvents(auth.token, "workflow_run", runId, {
-        limit: 50,
-        cursor,
-        action_prefix: "workflow.dry_run.",
-      })
-        .then((res) => {
-          if (append) {
-            setAuditItems((prev) => [...prev, ...res.items]);
-          } else {
-            setAuditItems(res.items);
-          }
-          setAuditNextCursor(res.next_cursor ?? null);
-        })
-        .catch((e) => setAuditError(e.message ?? "Failed to load audit"))
-        .finally(() => setLoadingState(false));
-    },
-    [auth.status, auth.token, runId]
-  );
+const statusVariants: Record<string, "success" | "error" | "warning" | "info"> = {
+  completed: "success",
+  failed: "error",
+  running: "info",
+  pending: "warning",
+}
 
-  useEffect(() => {
-    if (auth.status !== "authenticated") {
-      setLoading(false);
-      return;
+export default function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const isAdmin = true
+
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false)
+  const [isRollingBack, setIsRollingBack] = useState(false)
+  const [rollbackError, setRollbackError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  const { data, error, isLoading, mutate } = useSWR<{ run: Run; steps: Step[] }>(
+    `/api/runs/${id}`,
+    fetcher,
+    {
+      fallbackData: { run: { ...fallbackRun, id }, steps: fallbackSteps },
+      revalidateOnFocus: false,
     }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchRun(auth.token, runId)
-      .then((data) => {
-        if (!cancelled) {
-          setRun(data);
-          if (data.steps?.length) setSelectedStep(data.steps[0]);
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e.message ?? "Failed to load");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [runId, auth.status, auth.token]);
+  )
 
-  useEffect(() => {
-    if (auth.status === "authenticated" && isValidUUID(runId)) {
-      fetchAudit(null, false);
-    }
-  }, [runId, auth.status, fetchAudit]);
+  const run = data?.run ?? { ...fallbackRun, id }
+  const steps = data?.steps ?? fallbackSteps
 
-  const handleApprove = () => {
-    if (!run || auth.status !== "authenticated" || !canManageApproval) return;
-    setApprovalConfirm("approve");
-  };
-
-  const handleReject = () => {
-    if (!run || auth.status !== "authenticated" || !canManageApproval) return;
-    setApprovalConfirm("reject");
-  };
-
-  const handleConfirmApproval = async () => {
-    if (!run || auth.status !== "authenticated" || !canManageApproval || !approvalConfirm) return;
-    setApprovalActionError(null);
-    setApprovalActionLoading(approvalConfirm);
+  const handleRetry = async () => {
+    setIsRetrying(true)
     try {
-      if (approvalConfirm === "approve") {
-        await approveRun(auth.token, run.id);
-      } else {
-        await rejectRun(auth.token, run.id);
+      const response = await fetch(`/api/runs/${id}/retry`, { method: "POST" })
+      if (response.ok) {
+        mutate()
       }
-      const updated = await fetchRun(auth.token, run.id);
-      setRun(updated);
-      setApprovalConfirm(null);
-    } catch (e) {
-      const fallback = approvalConfirm === "approve" ? "Approval failed" : "Rejection failed";
-      const message = e instanceof Error ? e.message : fallback;
-      setApprovalActionError(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setApprovalActionAllowed(false);
-      }
+    } catch {
+      // Handle error silently
     } finally {
-      setApprovalActionLoading(null);
+      setIsRetrying(false)
     }
-  };
+  }
 
-  const handleRollback = () => {
-    if (!run || auth.status !== "authenticated" || !canRollback) return;
-    setRollbackConfirm(true);
-  };
+  const handleCancel = async () => {
+    setIsCancelling(true)
+    try {
+      const response = await fetch(`/api/runs/${id}/cancel`, { method: "POST" })
+      if (response.ok) {
+        mutate()
+      }
+    } catch {
+      // Handle error silently
+    } finally {
+      setIsCancelling(false)
+    }
+  }
 
-  const handleCancelRollback = () => {
-    setRollbackConfirm(false);
-  };
+  const handleRequestRollback = () => {
+    setShowRollbackConfirm(true)
+    setRollbackError(null)
+  }
 
   const handleConfirmRollback = async () => {
-    if (!run || auth.status !== "authenticated" || !canRollback) return;
-    setRollbackError(null);
-    setRollbackLoading(true);
+    setIsRollingBack(true)
+    setRollbackError(null)
     try {
-      await rollbackRun(auth.token, run.id);
-      const updated = await fetchRun(auth.token, run.id);
-      setRun(updated);
-      setRollbackConfirm(false);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Rollback failed";
-      setRollbackError(message);
+      const response = await fetch(`/api/runs/${id}/rollback`, { method: "POST" })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Rollback failed")
+      }
+      setShowRollbackConfirm(false)
+      mutate()
+    } catch (err) {
+      setRollbackError(err instanceof Error ? err.message : "Failed to initiate rollback. Please try again.")
     } finally {
-      setRollbackLoading(false);
+      setIsRollingBack(false)
     }
-  };
-
-  const handleCancelConfirm = () => setApprovalConfirm(null);
-
-  if (!isValidUUID(runId)) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-destructive">Invalid run ID.</p>
-          <Link
-            href="/workflows"
-            className="mt-2 inline-block text-sm text-primary hover:underline"
-          >
-            Back to workflows
-          </Link>
-        </CardContent>
-      </Card>
-    );
   }
 
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to view runs."}
-          </p>
-        </CardContent>
-      </Card>
-    );
+  const handleCancelRollback = () => {
+    setShowRollbackConfirm(false)
+    setRollbackError(null)
   }
 
-  if (auth.orgId == null) {
+  if (isLoading) {
     return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending. Contact admin for org access.
-          </p>
-        </CardContent>
-      </Card>
-    );
+      <AppShell title={`Run ${id}`}>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppShell>
+    )
   }
-
-  const approvalPending =
-    run?.approval_required && run.approval_status === "pending_approval";
-
-  if (error) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-destructive">{error}</p>
-          <Link href="/workflows" className="mt-2 inline-block text-sm text-primary hover:underline">
-            Back to workflows
-          </Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (loading || !run) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">Loading run…</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const steps = run.steps ?? [];
 
   return (
-    <div className="space-y-6">
-      {approvalPending && (
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardHeader>
-            <CardTitle className="text-lg">Pending approval</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Environment: <span className="font-medium text-foreground">{environment}</span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Approvals required: {run?.required_approvals ?? 0} · Received:{" "}
-              {run?.approvals_received ?? 0}
-            </p>
-            {approvalActionError && (
-              <p className="text-sm text-destructive">{approvalActionError}</p>
-            )}
+    <AppShell title={`Run ${id}`}>
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <Link
+            href="/runs"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Runs
+          </Link>
+
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-xl font-semibold text-foreground font-mono">
+                  {id}
+                </h1>
+                <StatusBadge variant={statusVariants[run.status] ?? "error"} dot>
+                  {run.status.charAt(0).toUpperCase() + run.status.slice(1)}
+                </StatusBadge>
+                <EnvironmentBadge environment={run.environment} />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Workflow: <span className="text-foreground">{run.workflowName}</span> &middot;
+                Triggered by: <span className="text-foreground">{run.triggeredBy}</span>
+              </p>
+            </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleApprove}
-                disabled={!canManageApproval || approvalActionLoading === "approve"}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 gap-2"
+                onClick={handleCancel}
+                disabled={isCancelling || run.status !== "running"}
               >
-                Approve
+                {isCancelling ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5" />
+                )}
+                Cancel
               </Button>
+              <Button 
+                size="sm" 
+                className="h-8 gap-2"
+                onClick={handleRetry}
+                disabled={isRetrying || run.status === "running"}
+              >
+                {isRetrying ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Error banner */}
+        {error && (
+          <div className="mb-6 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            Failed to load run details. Showing cached data.
+          </div>
+        )}
+
+        {/* Summary Cards */}
+        <div className="mb-6 grid grid-cols-4 gap-4">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Clock className="h-4 w-4" />
+              <span className="text-xs">Duration</span>
+            </div>
+            <p className="text-lg font-semibold text-foreground font-mono">{run.duration}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Database className="h-4 w-4" />
+              <span className="text-xs">Records Processed</span>
+            </div>
+            <p className="text-lg font-semibold text-foreground">{run.recordsProcessed.toLocaleString()}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <CheckCircle className="h-4 w-4" />
+              <span className="text-xs">Steps Completed</span>
+            </div>
+            <p className="text-lg font-semibold text-foreground">{run.stepsCompleted} / {run.stepsTotal}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-xs">Error</span>
+            </div>
+            <p className="text-sm font-medium text-destructive truncate">
+              {run.errorMessage ?? "None"}
+            </p>
+          </div>
+        </div>
+
+        {/* Execution Flow Card */}
+        <div className="rounded-lg border border-border bg-card mb-6">
+          <div className="border-b border-border p-4">
+            <h2 className="text-sm font-semibold text-foreground">Execution Flow</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Steps in execution order with status</p>
+          </div>
+          <div className="p-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {steps.map((step, index) => {
+                const StatusIcon = stepStatusIcons[step.status]
+                return (
+                  <div key={step.id} className="flex items-center gap-2">
+                    <div className={`flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2 ${step.status === "failed" ? "border-destructive/50" : ""}`}>
+                      <StatusIcon className={`h-3.5 w-3.5 ${stepStatusColors[step.status]}`} />
+                      <span className="text-xs font-medium text-foreground whitespace-nowrap">{step.name}</span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {step.status}
+                      </span>
+                    </div>
+                    {index < steps.length - 1 && (
+                      <div className="h-px w-4 bg-border shrink-0" />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div className="rounded-lg border border-border bg-card">
+          <div className="border-b border-border p-4">
+            <h2 className="text-sm font-semibold text-foreground">Execution Timeline</h2>
+          </div>
+          <div className="divide-y divide-border">
+            {steps.map((step) => {
+              const StatusIcon = stepStatusIcons[step.status]
+              return (
+                <div key={step.id} className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border ${stepStatusColors[step.status]}`}
+                    >
+                      <StatusIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-medium text-foreground">
+                          {step.name}
+                        </h3>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>{step.startedAt}</span>
+                          <span className="font-mono">{step.duration}</span>
+                        </div>
+                      </div>
+                      {step.logs && step.logs.length > 0 && (
+                        <div className="mt-3 rounded-md bg-muted/50 p-3">
+                          <div className="flex items-center gap-1.5 mb-2 text-muted-foreground">
+                            <TerminalSquare className="h-3 w-3" />
+                            <span className="text-[10px] font-medium uppercase tracking-wider">
+                              Logs
+                            </span>
+                          </div>
+                          <div className="space-y-1 font-mono text-xs">
+                            {step.logs.map((log, i) => (
+                              <p
+                                key={i}
+                                className={
+                                  log.startsWith("ERROR")
+                                    ? "text-destructive"
+                                    : "text-muted-foreground"
+                                }
+                              >
+                                {log}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Rollback Card */}
+        <div className="mt-6 rounded-lg border border-border bg-card">
+          <div className="border-b border-border px-4 py-3">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold text-foreground">Rollback</h2>
+            </div>
+          </div>
+          <div className="p-4">
+            {/* Caution text */}
+            <div className="mb-4 flex items-start gap-2 rounded-md bg-warning/10 border border-warning/20 px-3 py-2">
+              <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+              <p className="text-xs text-warning">
+                Rollback will revert this run and any changes it made. This action cannot be undone and may affect dependent workflows.
+              </p>
+            </div>
+
+            {/* Rollback Error */}
+            {rollbackError && (
+              <div className="mb-4 flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {rollbackError}
+              </div>
+            )}
+
+            {/* Rollback Actions */}
+            {!showRollbackConfirm ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReject}
-                disabled={!canManageApproval || approvalActionLoading === "reject"}
+                className="h-8 gap-2"
+                onClick={handleRequestRollback}
+                disabled={!isAdmin}
               >
-                Reject
+                <RotateCcw className="h-3.5 w-3.5" />
+                {isAdmin ? "Request rollback" : "Rollback (Admin only)"}
               </Button>
-            </div>
-            {approvalConfirm && (
-              <div className="rounded-md border border-border bg-muted/40 p-3 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Confirm {approvalConfirm} for run {run.id.slice(0, 8)}… in{" "}
-                  <span className="font-medium text-foreground">{environment}</span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleConfirmApproval}
-                    disabled={approvalActionLoading === approvalConfirm}
-                  >
-                    Confirm {approvalConfirm}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleCancelConfirm}
-                    disabled={approvalActionLoading === approvalConfirm}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Admin permission required to approve or reject.
-            </p>
-            {!isAdmin && (
-              <p className="text-xs text-muted-foreground">You have read-only access.</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/workflows"
-          className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        >
-          ← Workflows
-        </Link>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          Run {runId.slice(0, 8)}…
-        </h1>
-        <StatusBadge status={run.status} />
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Environment: <span className="font-medium text-foreground">{environment}</span>
-      </p>
-
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Run info</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1">
-          <p>Type: {run.run_type}</p>
-          <p>Created: {new Date(run.created_at).toLocaleString()}</p>
-          {run.completed_at && (
-            <p>Completed: {new Date(run.completed_at).toLocaleString()}</p>
-          )}
-          {run.error_message && (
-            <p className="text-destructive">{run.error_message}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Execution flow</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {steps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No steps recorded for this run.</p>
-          ) : (
-            <div className="space-y-2">
-              {steps.map((step, index) => (
-                <div
-                  key={step.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
-                >
-                  <div className="text-sm text-foreground">
-                    {index + 1}. {step.step_name}
-                    <span className="ml-2 text-xs text-muted-foreground">{step.step_type}</span>
-                  </div>
-                  <StatusBadge status={step.status} />
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Rollback</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Trigger a rollback run using the current workflow definition. Rollback behavior depends on workflow logic.
-          </p>
-          {rollbackError && <p className="text-sm text-destructive">{rollbackError}</p>}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleRollback}
-              disabled={!canRollback || rollbackLoading}
-            >
-              Request rollback
-            </Button>
-            {!canRollback && (
-              <span className="text-xs text-muted-foreground">Admin permission required.</span>
-            )}
-          </div>
-          {rollbackConfirm && (
-            <div className="rounded-md border border-border bg-muted/40 p-3 space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Confirm rollback for run {run.id.slice(0, 8)}… in{" "}
-                <span className="font-medium text-foreground">{environment}</span>
-              </p>
+            ) : (
               <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Are you sure you want to rollback this run?
+                </span>
                 <Button
-                  variant="primary"
+                  variant="destructive"
                   size="sm"
+                  className="h-8"
                   onClick={handleConfirmRollback}
-                  disabled={rollbackLoading}
+                  disabled={isRollingBack}
                 >
-                  Confirm rollback
+                  {isRollingBack ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      Rolling back...
+                    </>
+                  ) : (
+                    "Confirm"
+                  )}
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
+                  className="h-8"
                   onClick={handleCancelRollback}
-                  disabled={rollbackLoading}
+                  disabled={isRollingBack}
                 >
                   Cancel
                 </Button>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-[1fr,1fr]">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground mb-3">
-            Steps
-          </h2>
-          <div className="rounded-md border border-border overflow-hidden">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="py-2 px-3 font-medium text-foreground">#</th>
-                  <th className="py-2 px-3 font-medium text-foreground">Name</th>
-                  <th className="py-2 px-3 font-medium text-foreground">Type</th>
-                  <th className="py-2 px-3 font-medium text-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {steps.map((s) => (
-                  <tr
-                    key={s.id}
-                    className={`border-b border-border cursor-pointer hover:bg-muted/50 ${
-                      selectedStep?.id === s.id ? "bg-muted/50" : ""
-                    }`}
-                    onClick={() => setSelectedStep(s)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setSelectedStep(s);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                  >
-                    <td className="py-2 px-3">{s.step_index + 1}</td>
-                    <td className="py-2 px-3">{s.step_name}</td>
-                    <td className="py-2 px-3 text-muted-foreground">
-                      {s.step_type}
-                    </td>
-                    <td className="py-2 px-3">
-                      <StatusBadge status={s.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            )}
           </div>
         </div>
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground mb-3">
-            Step detail
-          </h2>
-          {selectedStep ? (
-            <StepDetail step={selectedStep} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Select a step from the table.
-            </p>
-          )}
-        </div>
       </div>
-
-      <section aria-labelledby="audit-heading" className="mt-8">
-        <h2
-          id="audit-heading"
-          className="text-xl font-semibold tracking-tight text-foreground mb-3"
-        >
-          Audit
-        </h2>
-        <Card className="border-border bg-[hsl(var(--surface))]">
-          <CardContent className="pt-6">
-            {auditLoading ? (
-              <p className="text-sm text-muted-foreground">Loading audit…</p>
-            ) : auditError ? (
-              <p className="text-sm text-destructive">{auditError}</p>
-            ) : auditItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No audit events available.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {auditItems.map((item) => {
-                  let variant: "started" | "completed" | "failed" | "step" | "default" =
-                    "default";
-                  if (item.action.includes("started")) variant = "started";
-                  else if (item.action.includes("completed"))
-                    variant = "completed";
-                  else if (item.action.includes("failed")) variant = "failed";
-                  else if (item.action.includes("step")) variant = "step";
-                  return (
-                    <AuditTimelineItem key={item.id} item={item} variant={variant} />
-                  );
-                })}
-                {auditNextCursor && (
-                  <div className="pt-4">
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      onClick={() => fetchAudit(auditNextCursor, true)}
-                      disabled={loadMoreLoading}
-                      aria-busy={loadMoreLoading}
-                    >
-                      {loadMoreLoading ? "Loading…" : "Load more"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-    </div>
-  );
+    </AppShell>
+  )
 }

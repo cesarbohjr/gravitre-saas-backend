@@ -1,246 +1,257 @@
-"use client";
+"use client"
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/use-auth";
-import { ApiError, createIntegration } from "@/lib/integrations-api";
-import { getEnvironmentHeader } from "@/lib/environment";
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ArrowLeft, Plus, AlertCircle } from "lucide-react"
 
-type IntegrationType = "slack" | "email" | "webhook";
+type IntegrationType = "slack" | "email" | "webhook"
 
 export default function NewIntegrationPage() {
-  const auth = useAuth();
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [type, setType] = useState<IntegrationType>("slack");
-  const [allowedHosts, setAllowedHosts] = useState("");
-  const [defaultPath, setDefaultPath] = useState("/");
-  const [timeoutSeconds, setTimeoutSeconds] = useState("5");
-  const [maxPayloadBytes, setMaxPayloadBytes] = useState("65536");
-  const [retryCount, setRetryCount] = useState("1");
-  const [retryBackoffMs, setRetryBackoffMs] = useState("250");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [actionAllowed, setActionAllowed] = useState(true);
-  const environment = getEnvironmentHeader();
-  const isAdmin = auth.status === "authenticated" && auth.role === "admin";
-  const canManage = isAdmin && actionAllowed;
+  const router = useRouter()
+  const isAdmin = true
 
-  const handleSubmit = async () => {
-    if (auth.status !== "authenticated" || !auth.orgId) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const config: Record<string, unknown> = {};
-      if (name.trim()) {
-        config.name = name.trim();
-      }
-      if (type === "webhook") {
-        const hosts = allowedHosts
-          .split(",")
-          .map((h) => h.trim())
-          .filter(Boolean);
-        if (hosts.length === 0) {
-          throw new Error("Webhook allowed_hosts is required");
-        }
-        config.allowed_hosts = hosts;
-        if (defaultPath.trim()) config.default_path = defaultPath.trim();
-        if (timeoutSeconds.trim()) config.timeout_seconds = Number(timeoutSeconds);
-        if (maxPayloadBytes.trim()) config.max_payload_bytes = Number(maxPayloadBytes);
-        if (retryCount.trim()) config.retry_count = Number(retryCount);
-        if (retryBackoffMs.trim()) config.retry_backoff_ms = Number(retryBackoffMs);
-      }
-      const created = await createIntegration(auth.token, { type, config });
-      router.push(`/integrations/${created.id}`);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to create integration";
-      setError(message);
-      if (e instanceof ApiError && e.status === 403) {
-        setActionAllowed(false);
-      }
-    } finally {
-      setLoading(false);
+  const [name, setName] = useState("")
+  const [type, setType] = useState<IntegrationType | "">("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Webhook-specific fields
+  const [allowedHosts, setAllowedHosts] = useState("")
+  const [defaultPath, setDefaultPath] = useState("/webhook")
+  const [timeout, setTimeout] = useState("30")
+  const [maxPayload, setMaxPayload] = useState("1048576")
+  const [retryCount, setRetryCount] = useState("3")
+  const [retryBackoff, setRetryBackoff] = useState("1000")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name || !type) {
+      setError("Please fill in all required fields")
+      return
     }
-  };
 
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to create integrations."}
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+    setIsSubmitting(true)
+    setError(null)
 
-  if (auth.orgId == null) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending. Contact admin for org access.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      router.push("/integrations")
+    } catch {
+      setError("Failed to create integration")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (!isAdmin) {
     return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Admin permission required to create integrations.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Environment: <span className="font-medium text-foreground">{environment}</span>
-          </p>
-          <Link href="/integrations" className="mt-4 inline-block text-sm text-primary hover:underline">
-            Back to integrations
+      <AppShell title="New Integration">
+        <div className="p-6">
+          <Link
+            href="/integrations"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Integrations
           </Link>
-        </CardContent>
-      </Card>
-    );
+
+          <div className="rounded-lg border border-border bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              You do not have permission to create integrations.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Contact an administrator to request access.
+            </p>
+          </div>
+        </div>
+      </AppShell>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/integrations"
-          className="text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        >
-          ← Integrations
-        </Link>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          New integration
-        </h1>
-      </div>
+    <AppShell title="New Integration">
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <Link
+            href="/integrations"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Integrations
+          </Link>
 
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardHeader>
-          <CardTitle className="text-lg">Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground">Integration name</label>
-            <input
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Payments Slack"
-              disabled={!canManage}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Type</label>
-            <select
-              className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value as IntegrationType)}
-              disabled={!canManage}
-            >
-              <option value="slack">Slack</option>
-              <option value="email">Email</option>
-              <option value="webhook">Webhook</option>
-            </select>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            Environment: <span className="font-medium text-foreground">{environment}</span>
-          </div>
-
-          {type === "webhook" ? (
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-foreground">
-                  Allowed hosts (comma-separated)
-                </label>
-                <input
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={allowedHosts}
-                  onChange={(e) => setAllowedHosts(e.target.value)}
-                  placeholder="example.com, api.vendor.com"
-                  disabled={!canManage}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">Default path</label>
-                <input
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={defaultPath}
-                  onChange={(e) => setDefaultPath(e.target.value)}
-                  placeholder="/webhook"
-                  disabled={!canManage}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground">Timeout (sec)</label>
-                  <input
-                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    value={timeoutSeconds}
-                    onChange={(e) => setTimeoutSeconds(e.target.value)}
-                    inputMode="numeric"
-                    disabled={!canManage}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground">Max payload (bytes)</label>
-                  <input
-                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    value={maxPayloadBytes}
-                    onChange={(e) => setMaxPayloadBytes(e.target.value)}
-                    inputMode="numeric"
-                    disabled={!canManage}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground">Retry count</label>
-                  <input
-                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    value={retryCount}
-                    onChange={(e) => setRetryCount(e.target.value)}
-                    inputMode="numeric"
-                    disabled={!canManage}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground">Retry backoff (ms)</label>
-                  <input
-                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    value={retryBackoffMs}
-                    onChange={(e) => setRetryBackoffMs(e.target.value)}
-                    inputMode="numeric"
-                    disabled={!canManage}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Additional configuration can be added after creation.
-            </p>
-          )}
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex items-center gap-3">
-            <Button variant="primary" size="md" onClick={handleSubmit} disabled={!canManage || loading}>
-              {loading ? "Creating…" : "Create integration"}
-            </Button>
-            {!canManage && (
-              <span className="text-xs text-muted-foreground">Admin permission required.</span>
-            )}
+            <h1 className="text-xl font-semibold text-foreground">New Integration</h1>
+            <EnvironmentBadge environment="production" />
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="max-w-xl">
+          <div className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold text-foreground">Integration Details</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="mb-1.5 block text-sm text-muted-foreground">
+                  Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Slack Notifications"
+                  className="h-9"
+                />
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="mb-1.5 block text-sm text-muted-foreground">
+                  Type <span className="text-destructive">*</span>
+                </label>
+                <Select value={type} onValueChange={(v) => setType(v as IntegrationType)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select integration type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="slack">Slack</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="webhook">Webhook</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Webhook-specific fields */}
+              {type === "webhook" && (
+                <>
+                  <div className="pt-2 border-t border-border">
+                    <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Webhook Configuration
+                    </h3>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm text-muted-foreground">
+                      Allowed Hosts
+                    </label>
+                    <Input
+                      value={allowedHosts}
+                      onChange={(e) => setAllowedHosts(e.target.value)}
+                      placeholder="e.g., api.example.com, *.internal.com"
+                      className="h-9"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Comma-separated list of allowed hosts
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm text-muted-foreground">
+                      Default Path
+                    </label>
+                    <Input
+                      value={defaultPath}
+                      onChange={(e) => setDefaultPath(e.target.value)}
+                      placeholder="/webhook"
+                      className="h-9 font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-sm text-muted-foreground">
+                        Timeout (ms)
+                      </label>
+                      <Input
+                        type="number"
+                        value={timeout}
+                        onChange={(e) => setTimeout(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm text-muted-foreground">
+                        Max Payload (bytes)
+                      </label>
+                      <Input
+                        type="number"
+                        value={maxPayload}
+                        onChange={(e) => setMaxPayload(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-sm text-muted-foreground">
+                        Retry Count
+                      </label>
+                      <Input
+                        type="number"
+                        value={retryCount}
+                        onChange={(e) => setRetryCount(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm text-muted-foreground">
+                        Retry Backoff (ms)
+                      </label>
+                      <Input
+                        type="number"
+                        value={retryBackoff}
+                        onChange={(e) => setRetryBackoff(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-border px-4 py-3 flex justify-end gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/integrations">Cancel</Link>
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="gap-2"
+                disabled={isSubmitting}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {isSubmitting ? "Creating..." : "Create integration"}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </AppShell>
+  )
 }

@@ -1,21 +1,21 @@
-import { IdentitySurface } from "@/components/identity-surface";
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+
 export default function HomePage() {
+  const router = useRouter()
+  
+  useEffect(() => {
+    router.replace("/operator")
+  }, [router])
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          Gravitre Operator Console
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Enterprise AI control plane for workflows, approvals, and operators.
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <span className="text-sm">Loading...</span>
       </div>
-      <section aria-labelledby="identity-heading">
-        <h2 id="identity-heading" className="sr-only">
-          Identity
-        </h2>
-        <IdentitySurface />
-      </section>
     </div>
-  );
+  )
 }

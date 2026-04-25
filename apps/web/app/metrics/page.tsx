@@ -1,435 +1,490 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/use-auth";
+import { useState } from "react"
+import useSWR from "swr"
+import { motion } from "framer-motion"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { 
+  Calendar, 
+  Download, 
+  RefreshCw, 
+  TrendingUp, 
+  TrendingDown, 
+  AlertCircle,
+  Sparkles,
+  Activity,
+  Zap,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertTriangle,
+  Eye
+} from "lucide-react"
 import {
-  fetchMetricsIntegrations,
-  fetchMetricsOverview,
-  fetchMetricsRag,
-  fetchMetricsTimeseries,
-  fetchMetricsWorkflows,
-  type MetricsIntegrations,
-  type MetricsOverview,
-  type MetricsRag,
-  type MetricsTimeseries,
-  type MetricsWorkflows,
-  type Range,
-} from "@/lib/metrics-api";
-import { MetricCard } from "@/components/metrics/metric-card";
-import { RangeSwitcher } from "@/components/metrics/range-switcher";
-import { MetricsSection } from "@/components/metrics/section";
-import { EmptyState } from "@/components/metrics/empty-state";
-import { ErrorState } from "@/components/metrics/error-state";
-import { getEnvironmentHeader } from "@/lib/environment";
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ReferenceLine,
+} from "recharts"
 
-const TIMESERIES_METRICS = [
-  { key: "exec_runs_total", label: "Exec runs total" },
-  { key: "exec_failures_total", label: "Exec failures total" },
-  { key: "rag_retrieval_total", label: "RAG retrieval total" },
-  { key: "ingest_jobs_total", label: "Ingest jobs total" },
-  { key: "connector_sends_total", label: "Integration sends total" },
-];
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
-function percent(value: number) {
-  return `${Math.round(value * 100)}%`;
+const fallbackRunData = [
+  { time: "00:00", completed: 45, failed: 2, latency: 120 },
+  { time: "04:00", completed: 32, failed: 1, latency: 110 },
+  { time: "08:00", completed: 78, failed: 3, latency: 145 },
+  { time: "12:00", completed: 124, failed: 5, latency: 180 },
+  { time: "14:32", completed: 89, failed: 8, latency: 320, anomaly: true }, // Anomaly point
+  { time: "16:00", completed: 156, failed: 4, latency: 165 },
+  { time: "20:00", completed: 98, failed: 2, latency: 130 },
+  { time: "Now", completed: 67, failed: 1, latency: 125 },
+]
+
+const fallbackLatencyData = [
+  { time: "00:00", p50: 120, p95: 450, p99: 890 },
+  { time: "04:00", p50: 110, p95: 420, p99: 780 },
+  { time: "08:00", p50: 145, p95: 520, p99: 1020 },
+  { time: "12:00", p50: 180, p95: 680, p99: 1340 },
+  { time: "14:32", p50: 320, p95: 890, p99: 1800 }, // Spike
+  { time: "16:00", p50: 165, p95: 590, p99: 1180 },
+  { time: "20:00", p50: 130, p95: 480, p99: 920 },
+  { time: "Now", p50: 125, p95: 460, p99: 880 },
+]
+
+const fallbackThroughputData = [
+  { day: "Mon", records: 245000, target: 250000 },
+  { day: "Tue", records: 312000, target: 250000 },
+  { day: "Wed", records: 287000, target: 250000 },
+  { day: "Thu", records: 356000, target: 250000 },
+  { day: "Fri", records: 298000, target: 250000 },
+  { day: "Sat", records: 145000, target: 250000 },
+  { day: "Sun", records: 123000, target: 250000 },
+]
+
+const fallbackOverview = {
+  totalRuns: 1247,
+  successRate: 98.7,
+  recordsProcessed: 1800000,
+  avgLatency: 142,
+  activeConnectors: 9,
+  totalConnectors: 12,
+  changes: {
+    totalRuns: 12,
+    successRate: 0.5,
+    recordsProcessed: 24,
+    avgLatency: -8,
+  },
 }
 
-export default function MetricsPage() {
-  const auth = useAuth();
-  const [range, setRange] = useState<Range>("7d");
+// Meson Insights
+const mesonInsights = [
+  {
+    id: "1",
+    type: "anomaly",
+    severity: "warning",
+    title: "Latency spike detected at 14:32",
+    description: "P50 latency increased 77% above baseline. Correlated with sync-customers workflow.",
+    timestamp: "2 hours ago",
+  },
+  {
+    id: "2",
+    type: "trend",
+    severity: "info",
+    title: "Weekend throughput consistently lower",
+    description: "Saturday/Sunday process 45% fewer records. Consider adjusting schedules.",
+    timestamp: "Today",
+  },
+  {
+    id: "3",
+    type: "optimization",
+    severity: "success",
+    title: "etl-main-pipeline optimization available",
+    description: "Parallelization could reduce avg duration by 35% based on resource analysis.",
+    timestamp: "Today",
+  },
+]
 
-  const [overview, setOverview] = useState<MetricsOverview | null>(null);
-  const [workflows, setWorkflows] = useState<MetricsWorkflows | null>(null);
-  const [rag, setRag] = useState<MetricsRag | null>(null);
-  const [integrations, setIntegrations] = useState<MetricsIntegrations | null>(null);
-  const [timeseries, setTimeseries] = useState<MetricsTimeseries | null>(null);
-  const [timeseriesMetric, setTimeseriesMetric] = useState(TIMESERIES_METRICS[0].key);
-  const environment = getEnvironmentHeader();
-
-  const [overviewLoading, setOverviewLoading] = useState(false);
-  const [workflowsLoading, setWorkflowsLoading] = useState(false);
-  const [ragLoading, setRagLoading] = useState(false);
-  const [integrationsLoading, setIntegrationsLoading] = useState(false);
-  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
-
-  const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [workflowsError, setWorkflowsError] = useState<string | null>(null);
-  const [ragError, setRagError] = useState<string | null>(null);
-  const [integrationsError, setIntegrationsError] = useState<string | null>(null);
-  const [timeseriesError, setTimeseriesError] = useState<string | null>(null);
-
-  const canFetch = auth.status === "authenticated" && auth.orgId != null;
-
-  const loadOverview = () => {
-    if (!canFetch) return;
-    setOverviewLoading(true);
-    setOverviewError(null);
-    fetchMetricsOverview(auth.token, range)
-      .then(setOverview)
-      .catch((e) => setOverviewError(e.message ?? "Metrics temporarily unavailable."))
-      .finally(() => setOverviewLoading(false));
-  };
-
-  const loadWorkflows = () => {
-    if (!canFetch) return;
-    setWorkflowsLoading(true);
-    setWorkflowsError(null);
-    fetchMetricsWorkflows(auth.token, range)
-      .then(setWorkflows)
-      .catch((e) => setWorkflowsError(e.message ?? "Metrics temporarily unavailable."))
-      .finally(() => setWorkflowsLoading(false));
-  };
-
-  const loadRag = () => {
-    if (!canFetch) return;
-    setRagLoading(true);
-    setRagError(null);
-    fetchMetricsRag(auth.token, range)
-      .then(setRag)
-      .catch((e) => setRagError(e.message ?? "Metrics temporarily unavailable."))
-      .finally(() => setRagLoading(false));
-  };
-
-  const loadIntegrations = () => {
-    if (!canFetch) return;
-    setIntegrationsLoading(true);
-    setIntegrationsError(null);
-    fetchMetricsIntegrations(auth.token, range)
-      .then(setIntegrations)
-      .catch((e) => setIntegrationsError(e.message ?? "Metrics temporarily unavailable."))
-      .finally(() => setIntegrationsLoading(false));
-  };
-
-  const loadTimeseries = () => {
-    if (!canFetch) return;
-    setTimeseriesLoading(true);
-    setTimeseriesError(null);
-    fetchMetricsTimeseries(auth.token, range, timeseriesMetric)
-      .then(setTimeseries)
-      .catch((e) => setTimeseriesError(e.message ?? "Metrics temporarily unavailable."))
-      .finally(() => setTimeseriesLoading(false));
-  };
-
-  useEffect(() => {
-    if (!canFetch) return;
-    loadOverview();
-    loadWorkflows();
-    loadRag();
-    loadIntegrations();
-    loadTimeseries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range, auth.status, auth.orgId]);
-
-  useEffect(() => {
-    if (!canFetch) return;
-    loadTimeseries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeseriesMetric]);
-
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            {auth.status === "loading" ? "Loading…" : "Sign in to view metrics."}
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (auth.orgId == null) {
-    return (
-      <Card className="border-border bg-[hsl(var(--surface))]">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Onboarding pending — contact admin for org access.
-          </p>
-        </CardContent>
-      </Card>
-    );
+// Metric card with trend visualization
+function MetricCard({ 
+  title, 
+  value, 
+  change, 
+  changeLabel,
+  icon: Icon,
+  trend,
+  accentColor = "blue"
+}: { 
+  title: string
+  value: string
+  change?: number
+  changeLabel?: string
+  icon: typeof Activity
+  trend?: number[]
+  accentColor?: "blue" | "emerald" | "amber" | "red"
+}) {
+  const isPositive = change === undefined ? null : change >= 0
+  const colorClasses = {
+    blue: "from-blue-500/20 to-blue-500/5 text-blue-400",
+    emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-400",
+    amber: "from-amber-500/20 to-amber-500/5 text-amber-400",
+    red: "from-red-500/20 to-red-500/5 text-red-400",
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Metrics</h1>
-          <p className="text-sm text-muted-foreground">
-            Environment: <span className="font-medium text-foreground">{environment}</span>
-          </p>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden rounded-xl border border-border bg-card"
+    >
+      {/* Background gradient */}
+      <div className={cn(
+        "absolute inset-0 bg-gradient-to-br opacity-30",
+        colorClasses[accentColor]
+      )} />
+      
+      <div className="relative p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-lg",
+            `bg-${accentColor}-500/10`
+          )}>
+            <Icon className={cn("h-5 w-5", colorClasses[accentColor].split(" ").pop())} />
+          </div>
+          {change !== undefined && (
+            <div className={cn(
+              "flex items-center gap-1 text-xs font-medium",
+              isPositive ? "text-emerald-400" : "text-red-400"
+            )}>
+              {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {isPositive ? "+" : ""}{change}%
+            </div>
+          )}
         </div>
-        <RangeSwitcher value={range} onChange={setRange} />
+        
+        <p className="text-2xl font-semibold text-foreground mb-1">{value}</p>
+        <p className="text-xs text-muted-foreground">{title}</p>
+        
+        {/* Mini sparkline */}
+        {trend && (
+          <div className="mt-3 h-8">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trend.map((v, i) => ({ v }))}>
+                <defs>
+                  <linearGradient id={`spark-${accentColor}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={`var(--${accentColor}-500)`} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={`var(--${accentColor}-500)`} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="v"
+                  stroke={`oklch(0.65 0.18 ${accentColor === 'emerald' ? 145 : accentColor === 'amber' ? 75 : accentColor === 'red' ? 25 : 250})`}
+                  strokeWidth={1.5}
+                  fill={`url(#spark-${accentColor})`}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
+    </motion.div>
+  )
+}
 
-      <MetricsSection
-        title="Overview"
-        actions={<Button size="sm" variant="secondary" onClick={loadOverview} disabled={overviewLoading}>Retry</Button>}
-      >
-        {overviewLoading ? (
-          <EmptyState message="Loading overview…" />
-        ) : overviewError ? (
-          <ErrorState message={overviewError} onRetry={loadOverview} />
-        ) : overview ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard label="Dry runs total" value={overview.workflows.dry_runs_total} />
-            <MetricCard label="Exec runs total" value={overview.workflows.exec_runs_total} />
-            <MetricCard label="Exec success rate" value={percent(overview.workflows.exec_success_rate)} tone="success" />
-            <MetricCard label="Pending approvals" value={overview.workflows.pending_approvals} tone="warning" />
-            <MetricCard label="RAG requests total" value={overview.rag.retrieval_requests_total} />
-            <MetricCard label="Avg RAG latency (ms)" value={Math.round(overview.rag.avg_latency_ms)} />
-            <MetricCard label="Ingest jobs total" value={overview.ingestion.ingest_jobs_total} />
-            <MetricCard label="Ingest success rate" value={percent(overview.ingestion.ingest_success_rate)} tone="success" />
-            <MetricCard label="Integration sends total" value={overview.connectors.slack_sent + overview.connectors.email_sent + overview.connectors.webhook_sent} />
-            <MetricCard label="Send failures total" value={overview.connectors.send_failures_total} tone="destructive" />
-          </div>
-        ) : (
-          <EmptyState message="No metrics available yet." />
-        )}
-      </MetricsSection>
+// AI Insight card
+function InsightCard({ insight }: { insight: typeof aiInsights[0] }) {
+  const config = {
+    anomaly: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    trend: { icon: TrendingUp, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+    optimization: { icon: Sparkles, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  }
+  const cfg = config[insight.type as keyof typeof config]
+  const Icon = cfg.icon
 
-      <MetricsSection
-        title="Workflows"
-        actions={<Button size="sm" variant="secondary" onClick={loadWorkflows} disabled={workflowsLoading}>Retry</Button>}
-      >
-        {workflowsLoading ? (
-          <EmptyState message="Loading workflow metrics…" />
-        ) : workflowsError ? (
-          <ErrorState message={workflowsError} onRetry={loadWorkflows} />
-        ) : workflows ? (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
-              <MetricCard label="Avg exec duration (ms)" value={Math.round(workflows.exec.avg_duration_ms)} />
-              <MetricCard label="P95 exec duration (ms)" value={Math.round(workflows.exec.p95_duration_ms)} subtext={workflows.exec.p95_duration_ms ? "" : "p95 unavailable"} />
-              <MetricCard label="Dry runs total" value={workflows.dry_run.total} />
-            </div>
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={cn(
+        "rounded-lg border p-3 transition-colors hover:bg-card/80",
+        cfg.border, cfg.bg
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", cfg.bg)}>
+          <Icon className={cn("h-4 w-4", cfg.color)} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground mb-0.5">{insight.title}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2">{insight.description}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{insight.timestamp}</p>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </motion.div>
+  )
+}
 
-            <div>
-              <div className="text-sm font-medium text-foreground mb-2">Status breakdown</div>
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 pr-4 font-medium text-foreground">Status</th>
-                    <th className="py-2 font-medium text-foreground">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(workflows.exec.by_status).map(([status, count]) => (
-                    <tr key={status} className="border-b border-border">
-                      <td className="py-2 pr-4 text-muted-foreground">{status}</td>
-                      <td className="py-2">{count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div>
-              <div className="text-sm font-medium text-foreground mb-2">Approval funnel</div>
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 pr-4 font-medium text-foreground">Stage</th>
-                    <th className="py-2 font-medium text-foreground">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(workflows.exec.approval_funnel).map(([stage, count]) => (
-                    <tr key={stage} className="border-b border-border">
-                      <td className="py-2 pr-4 text-muted-foreground">{stage}</td>
-                      <td className="py-2">{count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div>
-              <div className="text-sm font-medium text-foreground mb-2">Step failures by type</div>
-              {Object.keys(workflows.exec.step_failures_by_type).length === 0 ? (
-                <EmptyState message="No step failures recorded." />
-              ) : (
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="py-2 pr-4 font-medium text-foreground">Step type</th>
-                      <th className="py-2 font-medium text-foreground">Failures</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(workflows.exec.step_failures_by_type).map(([stepType, count]) => (
-                      <tr key={stepType} className="border-b border-border">
-                        <td className="py-2 pr-4 text-muted-foreground">{stepType}</td>
-                        <td className="py-2">{count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        ) : (
-          <EmptyState message="No workflow metrics yet." />
-        )}
-      </MetricsSection>
-
-      <MetricsSection
-        title="RAG"
-        actions={<Button size="sm" variant="secondary" onClick={loadRag} disabled={ragLoading}>Retry</Button>}
-      >
-        {ragLoading ? (
-          <EmptyState message="Loading RAG metrics…" />
-        ) : ragError ? (
-          <ErrorState message={ragError} onRetry={loadRag} />
-        ) : rag ? (
-          <div className="space-y-6">
-            {rag.retrieval.insufficient_data && (
-              <Card className="border-border bg-[hsl(var(--surface-2))]">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Not enough retrieval log data yet — metrics will appear as usage grows.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            <div className="grid gap-4 md:grid-cols-3">
-              <MetricCard label="Retrieval total" value={rag.retrieval.total} />
-              <MetricCard label="Avg latency (ms)" value={Math.round(rag.retrieval.avg_latency_ms)} />
-              <MetricCard label="P95 latency (ms)" value={Math.round(rag.retrieval.p95_latency_ms)} subtext={rag.retrieval.p95_latency_ms ? "" : "p95 unavailable"} />
-              <MetricCard label="Avg result count" value={Math.round(rag.retrieval.avg_result_count)} />
-              <MetricCard label="Zero-result rate" value={percent(rag.retrieval.zero_result_rate)} tone="warning" />
-            </div>
-
-            <div>
-              <div className="text-sm font-medium text-foreground mb-2">Ingestion status</div>
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 pr-4 font-medium text-foreground">Status</th>
-                    <th className="py-2 font-medium text-foreground">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(rag.ingestion.by_status).map(([status, count]) => (
-                    <tr key={status} className="border-b border-border">
-                      <td className="py-2 pr-4 text-muted-foreground">{status}</td>
-                      <td className="py-2">{count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <MetricCard label="Avg chunks/job" value={Math.round(rag.ingestion.avg_chunks_per_job)} />
-              <MetricCard label="P95 chunks/job" value={Math.round(rag.ingestion.p95_chunks_per_job)} subtext={rag.ingestion.p95_chunks_per_job ? "" : "p95 unavailable"} />
-            </div>
-          </div>
-        ) : (
-          <EmptyState message="No RAG metrics yet." />
-        )}
-      </MetricsSection>
-
-      <MetricsSection
-        title="Integrations & Ingestion"
-        actions={<Button size="sm" variant="secondary" onClick={loadIntegrations} disabled={integrationsLoading}>Retry</Button>}
-      >
-        {integrationsLoading ? (
-          <EmptyState message="Loading integration metrics…" />
-        ) : integrationsError ? (
-          <ErrorState message={integrationsError} onRetry={loadIntegrations} />
-        ) : integrations && overview ? (
-          <div className="space-y-6">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 pr-4 font-medium text-foreground">Integration</th>
-                  <th className="py-2 pr-4 font-medium text-foreground">Sent</th>
-                  <th className="py-2 font-medium text-foreground">Failed</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border">
-                  <td className="py-2 pr-4 text-muted-foreground">Slack</td>
-                  <td className="py-2">{integrations.slack.sent}</td>
-                  <td className="py-2">{integrations.slack.failed}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 pr-4 text-muted-foreground">Email</td>
-                  <td className="py-2">{integrations.email.sent}</td>
-                  <td className="py-2">{integrations.email.failed}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 pr-4 text-muted-foreground">Webhook</td>
-                  <td className="py-2">{integrations.webhook.sent}</td>
-                  <td className="py-2">{integrations.webhook.failed}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <MetricCard label="Ingest jobs total" value={overview.ingestion.ingest_jobs_total} />
-              <MetricCard label="Ingest success rate" value={percent(overview.ingestion.ingest_success_rate)} tone="success" />
-              <MetricCard label="Chunks embedded total" value={overview.ingestion.chunks_embedded_total} />
-            </div>
-          </div>
-        ) : (
-          <EmptyState message="No integration metrics yet." />
-        )}
-      </MetricsSection>
-
-      <MetricsSection
-        title="Trend"
-        actions={
-          <div className="flex items-center gap-2">
-            <select
-              className="rounded-[12px] border border-border bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={timeseriesMetric}
-              onChange={(e) => setTimeseriesMetric(e.target.value)}
-            >
-              {TIMESERIES_METRICS.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-            <Button size="sm" variant="secondary" onClick={loadTimeseries} disabled={timeseriesLoading}>
-              Retry
-            </Button>
-          </div>
-        }
-      >
-        {timeseriesLoading ? (
-          <EmptyState message="Loading trend…" />
-        ) : timeseriesError ? (
-          <ErrorState message={timeseriesError} onRetry={loadTimeseries} />
-        ) : timeseries ? (
-          timeseries.points.length === 0 ? (
-            <EmptyState message="No trend data yet." />
-          ) : (
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="py-2 pr-4 font-medium text-foreground">Date</th>
-                  <th className="py-2 font-medium text-foreground">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timeseries.points.map((p) => (
-                  <tr key={p.date} className="border-b border-border">
-                    <td className="py-2 pr-4 text-muted-foreground">{p.date}</td>
-                    <td className="py-2">{p.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        ) : (
-          <EmptyState message="Trend data unavailable." />
-        )}
-      </MetricsSection>
+// Custom tooltip with glow effect
+function GlowTooltip({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) {
+  if (!active || !payload?.length) return null
+  
+  return (
+    <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm px-3 py-2 shadow-lg">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      {(payload as { name: string; value: number; color: string }[]).map((entry, i) => (
+        <p key={i} className="text-xs font-medium" style={{ color: entry.color }}>
+          {entry.name}: {entry.value.toLocaleString()}
+        </p>
+      ))}
     </div>
-  );
+  )
+}
+
+export default function MetricsPage() {
+  const [timeRange, setTimeRange] = useState("24h")
+  
+  const { data: overviewData, isLoading, mutate } = useSWR(
+    "/api/metrics/overview",
+    fetcher,
+    { fallbackData: fallbackOverview, revalidateOnFocus: false }
+  )
+
+  const overview = overviewData ?? fallbackOverview
+  const runData = fallbackRunData
+  const latencyData = fallbackLatencyData
+  const throughputData = fallbackThroughputData
+
+  return (
+    <AppShell title="Metrics">
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+            <div>
+              <h1 className="text-lg md:text-xl font-semibold text-foreground">System Intelligence</h1>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">AI-powered monitoring and insights</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-2">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Last</span> 24h
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-2" onClick={() => mutate()}>
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 gap-2">
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+            {/* Top Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+              <MetricCard
+                title="Total Runs"
+                value={overview.totalRuns?.toLocaleString() ?? "1,247"}
+                change={overview.changes?.totalRuns ?? 12}
+                icon={Activity}
+                accentColor="blue"
+                trend={[45, 32, 78, 124, 89, 156, 98, 67]}
+              />
+              <MetricCard
+                title="Success Rate"
+                value={`${overview.successRate ?? 98.7}%`}
+                change={overview.changes?.successRate ?? 0.5}
+                icon={CheckCircle2}
+                accentColor="emerald"
+                trend={[98, 97, 99, 98, 96, 99, 98, 99]}
+              />
+              <MetricCard
+                title="Records Processed"
+                value={overview.recordsProcessed ? `${(overview.recordsProcessed / 1000000).toFixed(1)}M` : "1.8M"}
+                change={overview.changes?.recordsProcessed ?? 24}
+                icon={Zap}
+                accentColor="blue"
+                trend={[245, 312, 287, 356, 298, 145, 123, 267]}
+              />
+              <MetricCard
+                title="Avg Latency"
+                value={`${overview.avgLatency ?? 142}ms`}
+                change={overview.changes?.avgLatency ?? -8}
+                icon={Clock}
+                accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
+                trend={[120, 110, 145, 180, 320, 165, 130, 125]}
+              />
+              <MetricCard
+                title="Active Connectors"
+                value={`${overview.activeConnectors ?? 9}/${overview.totalConnectors ?? 12}`}
+                icon={Activity}
+                accentColor="blue"
+              />
+            </div>
+
+            {/* Main Charts + Meson Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+              {/* Run Volume Chart */}
+              <div className="lg:col-span-2 rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-foreground">Execution Volume</h3>
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="text-muted-foreground">Completed</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      <span className="text-muted-foreground">Failed</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <AreaChart data={runData}>
+                      <defs>
+                        <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="oklch(0.65 0.18 145)" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="oklch(0.65 0.18 145)" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<GlowTooltip />} />
+                      <Area
+                        type="monotone"
+                        dataKey="completed"
+                        name="Completed"
+                        stroke="oklch(0.65 0.18 145)"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorCompleted)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="failed"
+                        name="Failed"
+                        stroke="oklch(0.55 0.22 25)"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorFailed)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Meson Insights Panel */}
+              <div className="rounded-xl border border-border bg-gradient-to-br from-card to-primary/5 overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-medium text-foreground">Meson Insights</h3>
+                </div>
+                <div className="p-3 space-y-2 max-h-[280px] overflow-auto">
+                  {mesonInsights.map((insight) => (
+                    <InsightCard key={insight.id} insight={insight} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {/* Latency Chart with anomaly markers */}
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-foreground">Latency Distribution</h3>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
+                    <AlertTriangle className="h-3 w-3 text-amber-400" />
+                    <span className="text-[10px] font-medium text-amber-400">Spike detected at 14:32</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={latencyData}>
+                      <defs>
+                        <linearGradient id="latencyGlow" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="oklch(0.65 0.2 250)" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="oklch(0.65 0.2 250)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<GlowTooltip />} />
+                      {/* Anomaly reference area */}
+                      <ReferenceLine x="14:32" stroke="oklch(0.75 0.15 75)" strokeDasharray="3 3" />
+                      <Line type="monotone" dataKey="p50" name="P50" stroke="oklch(0.65 0.2 250)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p95" name="P95" stroke="oklch(0.75 0.15 75)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p99" name="P99" stroke="oklch(0.55 0.22 25)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center justify-center gap-6 mt-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-primary" />
+                      <span className="text-xs text-muted-foreground">P50</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-warning" />
+                      <span className="text-xs text-muted-foreground">P95</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-destructive" />
+                      <span className="text-xs text-muted-foreground">P99</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Throughput with target line */}
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="text-sm font-medium text-foreground">Weekly Throughput</h3>
+                </div>
+                <div className="p-4">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={throughputData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip content={<GlowTooltip />} />
+                      <ReferenceLine y={250000} stroke="oklch(0.65 0.18 145)" strokeDasharray="5 5" label={{ value: 'Target', fill: 'oklch(0.65 0.18 145)', fontSize: 10, position: 'right' }} />
+                      <Bar 
+                        dataKey="records" 
+                        name="Records"
+                        fill="oklch(0.65 0.2 250)" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  )
 }
