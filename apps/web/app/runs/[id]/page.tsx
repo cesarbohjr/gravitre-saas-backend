@@ -22,7 +22,6 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react"
-import { fetcher } from "@/lib/fetcher"
 
 interface Step {
   id: string
@@ -47,6 +46,8 @@ interface Run {
   errorMessage?: string
   startedAt: string
 }
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackRun: Run = {
   id: "run-sync-1234",
@@ -138,37 +139,6 @@ const statusVariants: Record<string, "success" | "error" | "warning" | "info"> =
   pending: "warning",
 }
 
-function mapRun(data: Record<string, unknown> | undefined, runId: string): Run {
-  if (!data) return { ...fallbackRun, id: runId }
-  const durationMs = Number(data.durationMs ?? 0)
-  return {
-    id: String(data.id ?? runId),
-    workflowId: String(data.workflowId ?? ""),
-    workflowName: String(data.workflowName ?? "Workflow"),
-    status: String(data.status ?? "pending") as Run["status"],
-    environment: data.environment === "staging" ? "staging" : "production",
-    triggeredBy: String(data.triggeredBy ?? "System"),
-    duration: durationMs > 0 ? `${Math.round(durationMs / 1000)}s` : "-",
-    recordsProcessed: Number(data.recordsProcessed ?? 0),
-    stepsCompleted: Number(data.stepsCompleted ?? 0),
-    stepsTotal: Number(data.stepsTotal ?? 0),
-    errorMessage: (data.errorMessage as string | undefined) ?? undefined,
-    startedAt: String(data.startedAt ?? ""),
-  }
-}
-
-function mapSteps(data: Array<Record<string, unknown>> | undefined): Step[] {
-  if (!data || data.length === 0) return fallbackSteps
-  return data.map((step, index) => ({
-    id: String(step.id ?? `step-${index}`),
-    name: String(step.name ?? step.title ?? `Step ${index + 1}`),
-    status: String(step.status ?? "pending") as Step["status"],
-    duration: step.durationMs ? `${Math.round(Number(step.durationMs) / 1000)}s` : "-",
-    startedAt: String(step.startedAt ?? step.started_at ?? "-"),
-    logs: Array.isArray(step.logs) ? (step.logs as string[]) : [],
-  }))
-}
-
 export default function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const isAdmin = true
@@ -185,12 +155,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     {
       fallbackData: { run: { ...fallbackRun, id }, steps: fallbackSteps },
       revalidateOnFocus: false,
-      refreshInterval: (currentData) => (currentData?.run?.status === "running" ? 5000 : 0),
     }
   )
 
-  const run = mapRun(data?.run as Record<string, unknown> | undefined, id)
-  const steps = mapSteps(data?.steps as Array<Record<string, unknown>> | undefined)
+  const run = data?.run ?? { ...fallbackRun, id }
+  const steps = data?.steps ?? fallbackSteps
 
   const handleRetry = async () => {
     setIsRetrying(true)

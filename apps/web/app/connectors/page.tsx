@@ -3,10 +3,12 @@
 // Connectors Page - Integration Hub with Network Topology View
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { VendorLogo } from "@/components/gravitre/vendor-logo"
+import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 import { 
   Plus, 
   Search,
@@ -28,6 +30,16 @@ import {
   Wifi,
   WifiOff,
   Cable,
+  Bot,
+  Workflow,
+  Filter,
+  LayoutGrid,
+  List,
+  Globe,
+  Key,
+  Link2,
+  Copy,
+  Check,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -58,6 +70,10 @@ interface Connector {
   dataFlowRate?: string
   requestsToday?: number
   latency?: number
+  category?: string
+  authType?: "oauth" | "apiKey" | "webhook"
+  usedByWorkflows?: number
+  triggeredByAgents?: number
   config?: {
     apiKey?: string
     webhookUrl?: string
@@ -78,6 +94,10 @@ const initialConnectors: Connector[] = [
     dataFlowRate: "2.4 MB/s",
     requestsToday: 12847,
     latency: 45,
+    category: "CRM / Marketing",
+    authType: "oauth",
+    usedByWorkflows: 8,
+    triggeredByAgents: 3,
     config: { apiKey: "sf_live_xxx", syncInterval: "5m" },
   },
   {
@@ -92,6 +112,10 @@ const initialConnectors: Connector[] = [
     dataFlowRate: "1.1 MB/s",
     requestsToday: 8234,
     latency: 32,
+    category: "Payments / Finance",
+    authType: "apiKey",
+    usedByWorkflows: 5,
+    triggeredByAgents: 2,
     config: { apiKey: "sk_live_xxx", syncInterval: "1m" },
   },
   {
@@ -106,6 +130,10 @@ const initialConnectors: Connector[] = [
     dataFlowRate: "0.3 MB/s",
     requestsToday: 3421,
     latency: 28,
+    category: "Communication",
+    authType: "oauth",
+    usedByWorkflows: 12,
+    triggeredByAgents: 6,
     config: { apiKey: "xoxb-xxx", syncInterval: "10m" },
   },
   {
@@ -120,6 +148,10 @@ const initialConnectors: Connector[] = [
     dataFlowRate: "0 MB/s",
     requestsToday: 0,
     latency: 0,
+    category: "CRM / Marketing",
+    authType: "oauth",
+    usedByWorkflows: 4,
+    triggeredByAgents: 1,
     config: { apiKey: "pat-xxx", syncInterval: "15m" },
   },
   {
@@ -134,6 +166,10 @@ const initialConnectors: Connector[] = [
     dataFlowRate: "5.2 MB/s",
     requestsToday: 45892,
     latency: 18,
+    category: "Storage / Dev / Infra",
+    authType: "apiKey",
+    usedByWorkflows: 15,
+    triggeredByAgents: 4,
     config: { apiKey: "AKIA_xxx", syncInterval: "30m" },
   },
   {
@@ -148,6 +184,10 @@ const initialConnectors: Connector[] = [
     dataFlowRate: "0 MB/s",
     requestsToday: 0,
     latency: 0,
+    category: "Storage / Dev / Infra",
+    authType: "oauth",
+    usedByWorkflows: 2,
+    triggeredByAgents: 0,
     config: { apiKey: "ghp_xxx", syncInterval: "5m" },
   },
 ]
@@ -286,14 +326,12 @@ function ConnectorNode({
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className={cn(
-                "rounded-lg p-2 ring-1",
-                config.ring,
-                connector.status === "connected" ? "bg-emerald-500/10" : 
-                connector.status === "error" ? "bg-red-500/10" : "bg-secondary"
-              )}>
-                <VendorLogo vendor={connector.type} size="sm" />
-              </div>
+              <ConnectorIcon 
+                vendor={connector.type} 
+                status={connector.status === "syncing" ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
+                size="sm"
+                showStatusIndicator={false}
+              />
               <div>
                 <h3 className="text-sm font-medium text-foreground">{connector.name}</h3>
                 <p className="text-[10px] text-muted-foreground">{connector.type}</p>
@@ -340,6 +378,24 @@ function ConnectorNode({
             </div>
           </div>
 
+          {/* AI Usage Indicators */}
+          {(connector.usedByWorkflows || connector.triggeredByAgents) && connector.status === "connected" && (
+            <div className="flex items-center gap-3 mb-3 text-[10px] text-muted-foreground">
+              {connector.usedByWorkflows && connector.usedByWorkflows > 0 && (
+                <div className="flex items-center gap-1">
+                  <Workflow className="h-3 w-3 text-blue-400" />
+                  <span>{connector.usedByWorkflows} workflows</span>
+                </div>
+              )}
+              {connector.triggeredByAgents && connector.triggeredByAgents > 0 && (
+                <div className="flex items-center gap-1">
+                  <Bot className="h-3 w-3 text-violet-400" />
+                  <span>{connector.triggeredByAgents} agents</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Footer */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -348,14 +404,23 @@ function ConnectorNode({
                 {isSyncing ? "Syncing..." : config.label}
               </span>
             </div>
-            <span className={cn(
-              "text-[10px] px-1.5 py-0.5 rounded",
-              connector.environment === "production" 
-                ? "bg-emerald-500/10 text-emerald-400" 
-                : "bg-amber-500/10 text-amber-400"
-            )}>
-              {connector.environment}
-            </span>
+            <div className="flex items-center gap-2">
+              <Link 
+                href={`/connectors/${connector.id}`}
+                className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Details
+              </Link>
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded",
+                connector.environment === "production" 
+                  ? "bg-emerald-500/10 text-emerald-400" 
+                  : "bg-amber-500/10 text-amber-400"
+              )}>
+                {connector.environment}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -397,7 +462,7 @@ function ConfigureModal({
       <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <VendorLogo vendor={connector.type} size="md" />
+            <ConnectorIcon vendor={connector.type} size="md" />
             <div>
               <DialogTitle>{connector.name}</DialogTitle>
               <DialogDescription>{connector.type} Configuration</DialogDescription>
@@ -508,21 +573,83 @@ function DeleteModal({
   )
 }
 
-// Available connector types for adding
-const availableConnectors = [
-  { type: "Salesforce", description: "CRM and sales platform", category: "CRM" },
-  { type: "Stripe", description: "Payment processing", category: "Payments" },
-  { type: "Slack", description: "Team communication", category: "Communication" },
-  { type: "HubSpot", description: "Marketing and CRM", category: "CRM" },
-  { type: "AWS S3", description: "Cloud storage", category: "Storage" },
-  { type: "GitHub", description: "Code repositories", category: "Development" },
-  { type: "Snowflake", description: "Data warehouse", category: "Data" },
-  { type: "PostgreSQL", description: "Database", category: "Database" },
-  { type: "MongoDB", description: "NoSQL database", category: "Database" },
-  { type: "Zendesk", description: "Customer support", category: "Support" },
-  { type: "Jira", description: "Project management", category: "Development" },
-  { type: "Google Sheets", description: "Spreadsheets", category: "Productivity" },
-]
+// Department-based connector categories
+const connectorCategories = {
+  "CRM / Marketing": {
+    color: "emerald",
+    connectors: [
+      { type: "Salesforce", description: "CRM and sales automation", authType: "oauth" },
+      { type: "HubSpot", description: "Marketing, sales, and service", authType: "oauth" },
+      { type: "Marketo", description: "Marketing automation", authType: "apiKey" },
+      { type: "Mailchimp", description: "Email marketing campaigns", authType: "apiKey" },
+      { type: "Segment", description: "Customer data platform", authType: "apiKey" },
+    ]
+  },
+  "Payments / Finance": {
+    color: "blue",
+    connectors: [
+      { type: "Stripe", description: "Payment processing", authType: "apiKey" },
+      { type: "QuickBooks", description: "Accounting software", authType: "oauth" },
+      { type: "Xero", description: "Cloud accounting", authType: "oauth" },
+      { type: "NetSuite", description: "Enterprise ERP", authType: "oauth" },
+      { type: "Plaid", description: "Financial data API", authType: "apiKey" },
+    ]
+  },
+  "Communication": {
+    color: "violet",
+    connectors: [
+      { type: "Slack", description: "Team messaging", authType: "oauth" },
+      { type: "Microsoft Teams", description: "Collaboration hub", authType: "oauth" },
+      { type: "Gmail", description: "Email integration", authType: "oauth" },
+      { type: "Outlook", description: "Microsoft email", authType: "oauth" },
+      { type: "Twilio", description: "SMS and voice API", authType: "apiKey" },
+    ]
+  },
+  "Operations / Workflow": {
+    color: "amber",
+    connectors: [
+      { type: "Notion", description: "All-in-one workspace", authType: "oauth" },
+      { type: "Airtable", description: "Database spreadsheets", authType: "apiKey" },
+      { type: "Asana", description: "Project management", authType: "oauth" },
+      { type: "Monday.com", description: "Work OS", authType: "oauth" },
+      { type: "ClickUp", description: "Productivity platform", authType: "apiKey" },
+    ]
+  },
+  "Customer Support": {
+    color: "pink",
+    connectors: [
+      { type: "Zendesk", description: "Customer service", authType: "oauth" },
+      { type: "Intercom", description: "Customer messaging", authType: "oauth" },
+      { type: "Freshdesk", description: "Help desk software", authType: "apiKey" },
+      { type: "Gorgias", description: "E-commerce helpdesk", authType: "apiKey" },
+    ]
+  },
+  "HR / People": {
+    color: "cyan",
+    connectors: [
+      { type: "Workday", description: "HR management", authType: "oauth" },
+      { type: "BambooHR", description: "HR software", authType: "apiKey" },
+      { type: "Gusto", description: "Payroll and benefits", authType: "oauth" },
+      { type: "ADP", description: "HR and payroll", authType: "oauth" },
+    ]
+  },
+  "Storage / Dev / Infra": {
+    color: "orange",
+    connectors: [
+      { type: "AWS S3", description: "Cloud object storage", authType: "apiKey" },
+      { type: "GitHub", description: "Code repository", authType: "oauth" },
+      { type: "PostgreSQL", description: "SQL database", authType: "apiKey" },
+      { type: "MongoDB", description: "NoSQL database", authType: "apiKey" },
+      { type: "Snowflake", description: "Data warehouse", authType: "apiKey" },
+      { type: "Google Sheets", description: "Spreadsheets", authType: "oauth" },
+    ]
+  },
+}
+
+// Flatten for search
+const availableConnectors = Object.entries(connectorCategories).flatMap(([category, data]) =>
+  data.connectors.map(c => ({ ...c, category }))
+)
 
 // Add Connector Modal
 function AddConnectorModal({
@@ -534,61 +661,127 @@ function AddConnectorModal({
   onClose: () => void
   onAdd: (connector: Connector) => void
 }) {
-  const [step, setStep] = useState<"select" | "configure">("select")
+  const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [selectedAuthType, setSelectedAuthType] = useState<"oauth" | "apiKey" | "webhook" | null>(null)
   const [name, setName] = useState("")
   const [apiKey, setApiKey] = useState("")
+  const [apiSecret, setApiSecret] = useState("")
   const [environment, setEnvironment] = useState<"production" | "staging">("staging")
   const [isConnecting, setIsConnecting] = useState(false)
+  const [oauthStatus, setOauthStatus] = useState<"idle" | "redirecting" | "success" | "error">("idle")
   const [searchQuery, setSearchQuery] = useState("")
+  const [modalCategoryFilter, setModalCategoryFilter] = useState<string>("all")
+  const [copied, setCopied] = useState(false)
+  const [showApiKey, setShowApiKey] = useState(false)
+  
+  // Webhook URL for webhook-based connectors
+  const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/${Date.now()}`
 
-  const filteredConnectors = availableConnectors.filter(
-    (c) =>
-      c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredModalConnectors = availableConnectors.filter((c) => {
+    const matchesSearch = c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.category.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    const matchesCategory = modalCategoryFilter === "all" || c.category === modalCategoryFilter
+    return matchesSearch && matchesCategory
+  })
 
-  const groupedConnectors = filteredConnectors.reduce((acc, c) => {
+  const groupedConnectors = filteredModalConnectors.reduce((acc, c) => {
     if (!acc[c.category]) acc[c.category] = []
     acc[c.category].push(c)
     return acc
   }, {} as Record<string, typeof availableConnectors>)
 
+  const getSelectedConnector = () => availableConnectors.find((c) => c.type === selectedType)
+
+  const handleOAuthConnect = async () => {
+    setOauthStatus("redirecting")
+    // Simulate OAuth redirect
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Simulate OAuth callback success
+    setOauthStatus("success")
+    toast.success(`Connected to ${selectedType}`, { description: "OAuth authentication successful" })
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    completeConnection()
+  }
+
   const handleConnect = async () => {
-    if (!selectedType || !name || !apiKey) return
+    if (!selectedType || !name) return
+    
+    // For API Key auth, require API key
+    if (selectedAuthType === "apiKey" && !apiKey) return
     
     setIsConnecting(true)
     await new Promise((resolve) => setTimeout(resolve, 1500))
-    
+    completeConnection()
+  }
+
+  const completeConnection = () => {
     const newConnector: Connector = {
       id: `new-${Date.now()}`,
       name: name.toLowerCase().replace(/\s+/g, "-"),
-      type: selectedType,
+      type: selectedType!,
       status: "connected",
       environment,
       lastSync: "Just now",
       health: 100,
-      description: availableConnectors.find((c) => c.type === selectedType)?.description || "",
+      description: getSelectedConnector()?.description || "",
+      category: getSelectedConnector()?.category,
+      authType: selectedAuthType || "apiKey",
       dataFlowRate: "0 MB/s",
       requestsToday: 0,
       latency: 0,
-      config: { apiKey, syncInterval: "5m" },
+      usedByWorkflows: 0,
+      triggeredByAgents: 0,
+      config: { 
+        apiKey: apiKey || `${selectedType?.toLowerCase()}_connected`, 
+        webhookUrl: selectedAuthType === "webhook" ? webhookUrl : undefined,
+        syncInterval: "5m" 
+      },
     }
     
     onAdd(newConnector)
+    toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
     setIsConnecting(false)
     handleClose()
+  }
+
+  const handleCopyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl)
+    setCopied(true)
+    toast.success("Webhook URL copied to clipboard")
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const handleClose = () => {
     setStep("select")
     setSelectedType(null)
+    setSelectedAuthType(null)
     setName("")
     setApiKey("")
+    setApiSecret("")
     setEnvironment("staging")
     setSearchQuery("")
+    setModalCategoryFilter("all")
+    setOauthStatus("idle")
+    setCopied(false)
+    setShowApiKey(false)
     onClose()
+  }
+
+  const handleSelectConnector = (connector: typeof availableConnectors[0]) => {
+    setSelectedType(connector.type)
+    setSelectedAuthType(connector.authType)
+    setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
+    
+    // Route to appropriate auth flow
+    if (connector.authType === "oauth") {
+      setStep("oauth")
+    } else if (connector.authType === "webhook") {
+      setStep("webhook")
+    } else {
+      setStep("configure")
+    }
   }
 
   return (
@@ -623,7 +816,7 @@ function AddConnectorModal({
               className="flex-1 overflow-hidden flex flex-col"
             >
               {/* Search */}
-              <div className="relative mb-4">
+              <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search connectors..."
@@ -633,8 +826,60 @@ function AddConnectorModal({
                 />
               </div>
 
+              {/* Category Filter Tabs */}
+              <div className="flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-border">
+                <button
+                  onClick={() => setModalCategoryFilter("all")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                    modalCategoryFilter === "all"
+                      ? "bg-blue-500 text-white"
+                      : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                  )}
+                >
+                  All ({availableConnectors.length})
+                </button>
+                {Object.entries(connectorCategories).map(([cat, data]) => {
+                  const colorMap: Record<string, { active: string, inactive: string }> = {
+                    emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-400" },
+                    blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-400" },
+                    violet: { active: "bg-violet-500 text-white", inactive: "hover:bg-violet-500/10 hover:text-violet-400" },
+                    amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-400" },
+                    pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
+                    cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-400" },
+                    orange: { active: "bg-orange-500 text-white", inactive: "hover:bg-orange-500/10 hover:text-orange-400" },
+                  }
+                  const colors = colorMap[data.color] || colorMap.blue
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setModalCategoryFilter(cat)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                        modalCategoryFilter === cat
+                          ? colors.active
+                          : `bg-secondary text-muted-foreground ${colors.inactive}`
+                      )}
+                    >
+                      {cat.split(" / ")[0]} ({data.connectors.length})
+                    </button>
+                  )
+                })}
+              </div>
+
               {/* Connector Grid */}
               <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-4">
+                {Object.keys(groupedConnectors).length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">No connectors found</p>
+                    <button 
+                      onClick={() => { setSearchQuery(""); setModalCategoryFilter("all"); }}
+                      className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                )}
                 {Object.entries(groupedConnectors).map(([category, connectors]) => (
                   <div key={category}>
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -644,24 +889,29 @@ function AddConnectorModal({
                       {connectors.map((connector) => (
                         <button
                           key={connector.type}
-                          onClick={() => {
-                            setSelectedType(connector.type)
-                            setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
-                            setStep("configure")
-                          }}
+                          onClick={() => handleSelectConnector(connector)}
                           className={cn(
-                            "flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-all hover:border-blue-500/30 hover:bg-blue-500/5",
+                            "group flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-all hover:border-blue-500/30 hover:bg-blue-500/5",
                             selectedType === connector.type && "border-blue-500 bg-blue-500/10"
                           )}
                         >
-                          <div className="rounded-lg bg-card p-2 ring-1 ring-border">
-                            <VendorLogo vendor={connector.type} size="sm" />
-                          </div>
+<ConnectorIcon vendor={connector.type} size="sm" />
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-foreground">{connector.type}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-foreground">{connector.type}</span>
+                              <span className={cn(
+                                "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
+                                connector.authType === "oauth" ? "bg-blue-500/10 text-blue-400" :
+                                connector.authType === "webhook" ? "bg-violet-500/10 text-violet-400" :
+                                "bg-amber-500/10 text-amber-400"
+                              )}>
+                                {connector.authType === "oauth" ? "OAuth" : 
+                                 connector.authType === "webhook" ? "Webhook" : "API Key"}
+                              </span>
+                            </div>
                             <div className="text-xs text-muted-foreground truncate">{connector.description}</div>
                           </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </button>
                       ))}
                     </div>
@@ -669,7 +919,252 @@ function AddConnectorModal({
                 ))}
               </div>
             </motion.div>
+          ) : step === "oauth" ? (
+            // OAuth Connection Flow
+            <motion.div
+              key="oauth"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-4 py-2"
+            >
+              {/* Selected Connector Preview */}
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3">
+                <ConnectorIcon vendor={selectedType || ""} size="sm" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{selectedType}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 uppercase font-medium">OAuth</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {getSelectedConnector()?.description}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto text-xs"
+                  onClick={() => setStep("select")}
+                  disabled={oauthStatus !== "idle"}
+                >
+                  Change
+                </Button>
+              </div>
+
+              {/* OAuth Status */}
+              <div className="rounded-xl border border-border bg-secondary/30 p-6 text-center">
+                {oauthStatus === "idle" && (
+                  <div className="space-y-4">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <Globe className="h-8 w-8 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Connect with {selectedType}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        You&apos;ll be redirected to {selectedType} to authorize Gravitre
+                      </p>
+                    </div>
+                    <Button onClick={handleOAuthConnect} className="gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Connect with {selectedType}
+                    </Button>
+                  </div>
+                )}
+                {oauthStatus === "redirecting" && (
+                  <div className="space-y-4">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Connecting to {selectedType}...</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Waiting for authorization
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {oauthStatus === "success" && (
+                  <div className="space-y-4">
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="mx-auto h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center"
+                    >
+                      <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                    </motion.div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Connected Successfully</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {selectedType} has been authorized
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {oauthStatus === "error" && (
+                  <div className="space-y-4">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                      <XCircle className="h-8 w-8 text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Connection Failed</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Unable to connect to {selectedType}. Please try again.
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => setOauthStatus("idle")}>
+                      Try Again
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Environment Selection */}
+              {oauthStatus === "idle" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Environment</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEnvironment("staging")}
+                      className={cn(
+                        "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
+                        environment === "staging"
+                          ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-amber-500 text-amber-500" : "fill-muted-foreground text-muted-foreground")} />
+                      Staging
+                    </button>
+                    <button
+                      onClick={() => setEnvironment("production")}
+                      className={cn(
+                        "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
+                        environment === "production"
+                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-emerald-500 text-emerald-500" : "fill-muted-foreground text-muted-foreground")} />
+                      Production
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ) : step === "webhook" ? (
+            // Webhook Connection Flow
+            <motion.div
+              key="webhook"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-4 py-2"
+            >
+              {/* Selected Connector Preview */}
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3">
+                <ConnectorIcon vendor={selectedType || ""} size="sm" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{selectedType}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 uppercase font-medium">Webhook</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {getSelectedConnector()?.description}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto text-xs"
+                  onClick={() => setStep("select")}
+                >
+                  Change
+                </Button>
+              </div>
+
+              {/* Webhook URL */}
+              <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Link2 className="h-4 w-4 text-violet-400" />
+                  Webhook Endpoint
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-card px-3 py-2 rounded-lg font-mono text-foreground border border-border truncate">
+                      {webhookUrl}
+                    </code>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCopyWebhook}
+                      className="gap-1.5 shrink-0"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Add this URL to your {selectedType} webhook settings
+                  </p>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <h4 className="text-sm font-medium text-foreground">Setup Instructions</h4>
+                <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>Go to your {selectedType} settings or admin panel</li>
+                  <li>Navigate to Webhooks or Integrations section</li>
+                  <li>Add a new webhook with the URL above</li>
+                  <li>Select the events you want to receive</li>
+                  <li>Click &quot;Verify Connection&quot; below to confirm</li>
+                </ol>
+              </div>
+
+              {/* Connector Name & Environment */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Connector Name</label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={`my-${selectedType?.toLowerCase().replace(/\s+/g, "-")}-webhook`}
+                    className="bg-secondary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Environment</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEnvironment("staging")}
+                      className={cn(
+                        "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
+                        environment === "staging"
+                          ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "staging" ? "fill-amber-500 text-amber-500" : "fill-muted-foreground text-muted-foreground")} />
+                      Staging
+                    </button>
+                    <button
+                      onClick={() => setEnvironment("production")}
+                      className={cn(
+                        "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
+                        environment === "production"
+                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Circle className={cn("h-2 w-2 inline mr-2", environment === "production" ? "fill-emerald-500 text-emerald-500" : "fill-muted-foreground text-muted-foreground")} />
+                      Production
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           ) : (
+            // API Key Connection Flow
             <motion.div
               key="configure"
               initial={{ opacity: 0, x: 20 }}
@@ -679,13 +1174,14 @@ function AddConnectorModal({
             >
               {/* Selected Connector Preview */}
               <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3">
-                <div className="rounded-lg bg-card p-2 ring-1 ring-border">
-                  <VendorLogo vendor={selectedType || ""} size="sm" />
-                </div>
+                <ConnectorIcon vendor={selectedType || ""} size="sm" />
                 <div>
-                  <div className="text-sm font-medium text-foreground">{selectedType}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{selectedType}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 uppercase font-medium">API Key</span>
+                  </div>
                   <div className="text-xs text-muted-foreground">
-                    {availableConnectors.find((c) => c.type === selectedType)?.description}
+                    {getSelectedConnector()?.description}
                   </div>
                 </div>
                 <Button
@@ -705,7 +1201,7 @@ function AddConnectorModal({
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="my-salesforce-connector"
+                    placeholder={`my-${selectedType?.toLowerCase().replace(/\s+/g, "-")}-connector`}
                     className="bg-secondary"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -714,21 +1210,46 @@ function AddConnectorModal({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">API Key / Credentials</label>
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Key className="h-4 w-4 text-amber-400" />
+                    API Key
+                  </label>
                   <div className="relative">
                     <Input
-                      type="password"
+                      type={showApiKey ? "text" : "password"}
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder="Enter your API key"
                       className="bg-secondary pr-10"
                     />
-                    <Eye className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Your {selectedType} API key or access token
                   </p>
                 </div>
+
+                {/* Optional API Secret for some services */}
+                {(selectedType === "Stripe" || selectedType === "AWS S3") && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      {selectedType === "AWS S3" ? "Secret Access Key" : "API Secret"} (Optional)
+                    </label>
+                    <Input
+                      type="password"
+                      value={apiSecret}
+                      onChange={(e) => setApiSecret(e.target.value)}
+                      placeholder={selectedType === "AWS S3" ? "Enter your secret access key" : "Enter API secret"}
+                      className="bg-secondary"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Environment</label>
@@ -779,8 +1300,27 @@ function AddConnectorModal({
                 </>
               ) : (
                 <>
-                  <Wifi className="h-4 w-4" />
-                  Connect
+                  <Key className="h-4 w-4" />
+                  Connect with API Key
+                </>
+              )}
+            </Button>
+          )}
+          {step === "webhook" && (
+            <Button 
+              onClick={handleConnect} 
+              disabled={!name || isConnecting}
+              className="gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  Verify Connection
                 </>
               )}
             </Button>
@@ -797,11 +1337,17 @@ export default function ConnectorsPage() {
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
+  const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
-  const filteredConnectors = connectors.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.type.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredConnectors = connectors.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.type.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter
+    const matchesCategory = categoryFilter === "all" || c.category === categoryFilter
+    return matchesSearch && matchesStatus && matchesCategory
+  })
 
   const leftConnectors = filteredConnectors.filter((_, i) => i % 2 === 0)
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
@@ -837,6 +1383,92 @@ export default function ConnectorsPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-64 pl-9 bg-secondary"
                 />
+              </div>
+              {/* Status Filter Pills */}
+              <div className="hidden lg:flex items-center gap-1 border rounded-lg p-1 bg-secondary/30">
+                {[
+                  { value: "all", label: "All", color: "text-foreground" },
+                  { value: "connected", label: "Connected", color: "text-emerald-400", dot: "bg-emerald-500" },
+                  { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
+                  { value: "error", label: "Error", color: "text-red-400", dot: "bg-red-500" },
+                  { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
+                ].map((status) => (
+                  <button
+                    key={status.value}
+                    onClick={() => setStatusFilter(status.value)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                      statusFilter === status.value 
+                        ? "bg-card shadow-sm text-foreground" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {status.dot && <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />}
+                    {status.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Category Dropdown - Now cleaner */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-2 hidden md:flex">
+                    <Filter className="h-3.5 w-3.5" />
+                    {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem 
+                    onClick={() => setCategoryFilter("all")}
+                    className="gap-2"
+                  >
+                    <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                    All Categories
+                    {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {Object.entries(connectorCategories).map(([cat, data]) => {
+                    const colorMap: Record<string, string> = {
+                      emerald: "text-emerald-400",
+                      blue: "text-blue-400",
+                      violet: "text-violet-400",
+                      amber: "text-amber-400",
+                      pink: "text-pink-400",
+                      cyan: "text-cyan-400",
+                      orange: "text-orange-400",
+                    }
+                    return (
+                      <DropdownMenuItem 
+                        key={cat} 
+                        onClick={() => setCategoryFilter(cat)}
+                        className="gap-2"
+                      >
+                        <div className={cn("h-2 w-2 rounded-full", `bg-${data.color}-500`)} />
+                        <span className="flex-1">{cat}</span>
+                        <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
+                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <div className="hidden md:flex border rounded-md">
+                <Button 
+                  variant={viewMode === "topology" ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="h-9 w-9 p-0 rounded-r-none"
+                  onClick={() => setViewMode("topology")}
+                >
+                  <Cable className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant={viewMode === "grid" ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="h-9 w-9 p-0 rounded-l-none"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
               </div>
               <Button onClick={() => setAddModal(true)} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
@@ -910,40 +1542,58 @@ export default function ConnectorsPage() {
           </div>
 
           {/* Desktop: Network topology view */}
-          <div className="hidden md:block relative min-h-[600px]">
-            <div className="flex items-center justify-center">
-              {/* Left column */}
-              <div className="flex flex-col gap-4 mr-8">
-                {leftConnectors.map((connector) => (
-                  <ConnectorNode
-                    key={connector.id}
-                    connector={connector}
-                    position="left"
-                    onConfigure={() => setConfigureModal(connector)}
-                    onSync={() => {}}
-                    onDelete={() => setDeleteModal(connector)}
-                  />
-                ))}
-              </div>
+          {viewMode === "topology" && (
+            <div className="hidden md:block relative min-h-[600px]">
+              <div className="flex items-center justify-center">
+                {/* Left column */}
+                <div className="flex flex-col gap-4 mr-8">
+                  {leftConnectors.map((connector) => (
+                    <ConnectorNode
+                      key={connector.id}
+                      connector={connector}
+                      position="left"
+                      onConfigure={() => setConfigureModal(connector)}
+                      onSync={() => {}}
+                      onDelete={() => setDeleteModal(connector)}
+                    />
+                  ))}
+                </div>
 
-              {/* Central Hub */}
-              <CentralHub connectedCount={connectedCount} totalCount={connectors.length} />
+                {/* Central Hub */}
+                <CentralHub connectedCount={connectedCount} totalCount={connectors.length} />
 
-              {/* Right column */}
-              <div className="flex flex-col gap-4 ml-8">
-                {rightConnectors.map((connector) => (
-                  <ConnectorNode
-                    key={connector.id}
-                    connector={connector}
-                    position="right"
-                    onConfigure={() => setConfigureModal(connector)}
-                    onSync={() => {}}
-                    onDelete={() => setDeleteModal(connector)}
-                  />
-                ))}
+                {/* Right column */}
+                <div className="flex flex-col gap-4 ml-8">
+                  {rightConnectors.map((connector) => (
+                    <ConnectorNode
+                      key={connector.id}
+                      connector={connector}
+                      position="right"
+                      onConfigure={() => setConfigureModal(connector)}
+                      onSync={() => {}}
+                      onDelete={() => setDeleteModal(connector)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Desktop: Grid view */}
+          {viewMode === "grid" && (
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredConnectors.map((connector) => (
+                <ConnectorNode
+                  key={connector.id}
+                  connector={connector}
+                  position="right"
+                  onConfigure={() => setConfigureModal(connector)}
+                  onSync={() => {}}
+                  onDelete={() => setDeleteModal(connector)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Modals */}

@@ -17,12 +17,20 @@ import {
 } from "@/components/ui/tooltip"
 import Link from "next/link"
 import { Icon, StatusIcon, type IconName } from "@/lib/icons"
+import { AlertTriangle } from "lucide-react"
 
 interface WorkflowNode {
   id: string
   type: "source" | "agent" | "task" | "connector" | "approval"
   name: string
   status?: "success" | "running" | "failed" | "pending"
+}
+
+interface ConnectorDependency {
+  name: string
+  vendor: string
+  status: "connected" | "disconnected" | "error"
+  lastSync?: string
 }
 
 interface WorkflowCardProps {
@@ -36,6 +44,7 @@ interface WorkflowCardProps {
   runCount: number
   nodes?: WorkflowNode[]
   isRunning?: boolean
+  connectorDependencies?: ConnectorDependency[]
   onClick?: () => void
   onEdit?: () => void
   onViewRuns?: () => void
@@ -135,6 +144,26 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
   )
 }
 
+// Generate mock connector dependencies based on nodes
+function getConnectorDependencies(nodes: WorkflowNode[]): ConnectorDependency[] {
+  const connectorNodes = nodes.filter(n => n.type === "connector" || n.type === "source")
+  const vendorMap: Record<string, ConnectorDependency> = {
+    "Salesforce": { name: "Salesforce", vendor: "salesforce", status: "connected", lastSync: "2 min ago" },
+    "PostgreSQL": { name: "PostgreSQL", vendor: "postgresql", status: "connected", lastSync: "Just now" },
+    "Slack": { name: "Slack", vendor: "slack", status: "connected", lastSync: "5 min ago" },
+    "HubSpot": { name: "HubSpot", vendor: "hubspot", status: "disconnected" },
+    "Stripe": { name: "Stripe", vendor: "stripe", status: "connected", lastSync: "1 min ago" },
+    "SendGrid": { name: "SendGrid", vendor: "sendgrid", status: "connected", lastSync: "10 min ago" },
+    "S3 Bucket": { name: "AWS S3", vendor: "aws", status: "connected", lastSync: "Just now" },
+    "Snowflake": { name: "Snowflake", vendor: "snowflake", status: "connected", lastSync: "3 min ago" },
+    "QuickBooks": { name: "QuickBooks", vendor: "quickbooks", status: "error" },
+  }
+  
+  return connectorNodes
+    .map(n => vendorMap[n.name])
+    .filter((dep): dep is ConnectorDependency => !!dep)
+}
+
 export function WorkflowCard({
   id,
   name,
@@ -146,6 +175,7 @@ export function WorkflowCard({
   runCount,
   nodes = [],
   isRunning = false,
+  connectorDependencies,
   onClick,
   onEdit,
   onViewRuns,
@@ -154,6 +184,10 @@ export function WorkflowCard({
   onToggleStatus,
 }: WorkflowCardProps) {
   const statusConf = statusConfig[status]
+  
+  // Use provided dependencies or generate from nodes
+  const dependencies = connectorDependencies || getConnectorDependencies(nodes)
+  const hasDisconnected = dependencies.some(d => d.status === "disconnected" || d.status === "error")
 
   return (
     <motion.div
@@ -213,6 +247,44 @@ export function WorkflowCard({
 
           {/* Workflow diagram */}
           <WorkflowDiagram nodes={nodes} />
+
+          {/* Connector Dependencies Warning */}
+          {hasDisconnected && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-3">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              <span className="text-xs text-amber-500">
+                Depends on {dependencies.filter(d => d.status !== "connected").map(d => d.name).join(", ")} (disconnected)
+              </span>
+            </div>
+          )}
+
+          {/* Connected Systems Mini-Icons */}
+          {dependencies.length > 0 && !hasDisconnected && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Systems:</span>
+              <div className="flex items-center gap-1">
+                {dependencies.slice(0, 4).map((dep, i) => (
+                  <Tooltip key={i}>
+                    <TooltipTrigger asChild>
+                      <div className={`
+                        flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-medium
+                        ${dep.status === "connected" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"}
+                      `}>
+                        {dep.name.charAt(0)}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      <div className="font-medium">{dep.name}</div>
+                      {dep.lastSync && <div className="text-muted-foreground">Last sync: {dep.lastSync}</div>}
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+                {dependencies.length > 4 && (
+                  <span className="text-[10px] text-muted-foreground">+{dependencies.length - 4}</span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Metrics bar */}
           <div className="flex items-center justify-between pt-3 border-t border-border/50">

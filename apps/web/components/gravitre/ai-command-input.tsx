@@ -19,7 +19,6 @@ import {
   Lightbulb,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { UserAvatar } from "./chat-avatars"
 
 interface SlashCommand {
   command: string
@@ -204,10 +203,6 @@ export function AICommandInput({
         {/* Input Area */}
         <div className="p-5 pb-4">
           <div className="flex items-start gap-4">
-            {/* User Avatar */}
-            <div className="mt-1 shrink-0">
-              <UserAvatar name="Sarah Chen" size="md" className="shadow-sm" />
-            </div>
             {/* AI Icon with glow effect */}
             <motion.div 
               className={`

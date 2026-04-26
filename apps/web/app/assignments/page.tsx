@@ -7,13 +7,21 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { 
+  Megaphone, 
+  TrendingUp, 
+  Database, 
+  PieChart, 
+  Headphones,
+  type LucideIcon 
+} from "lucide-react"
 
 // Types
 interface Assignment {
   id: string
   title: string
   brief: string
-  agent: { name: string; role: string; gradient: string; initials: string }
+  agent: { name: string; role: string; gradient: string; icon: LucideIcon }
   status: "running" | "completed" | "pending" | "failed" | "needs_approval"
   progress: number
   steps: { name: string; status: "done" | "running" | "pending" }[]
@@ -24,13 +32,23 @@ interface Assignment {
   confidence?: number
 }
 
+// Agent icon mapping based on role
+const agentIcons: Record<string, LucideIcon> = {
+  "Marketing Agent": Megaphone,
+  "Marketing Operator": Megaphone,
+  "Sales Assistant": TrendingUp,
+  "Data Quality Agent": Database,
+  "Finance Reporter": PieChart,
+  "Support Coordinator": Headphones,
+}
+
 // Mock Data
 const assignments: Assignment[] = [
   {
     id: "assign-001",
     title: "Q3 Healthcare Campaign",
     brief: "Create multi-channel campaign targeting healthcare decision makers",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", initials: "AT" },
+    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
     status: "running",
     progress: 67,
     steps: [
@@ -47,7 +65,7 @@ const assignments: Assignment[] = [
     id: "assign-002",
     title: "Weekly Performance Report",
     brief: "Generate comprehensive weekly marketing performance analysis",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", initials: "AT" },
+    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
     status: "needs_approval",
     progress: 100,
     steps: [
@@ -66,7 +84,7 @@ const assignments: Assignment[] = [
     id: "assign-003",
     title: "Lead Scoring Analysis",
     brief: "Analyze and score all leads from Q2 campaign activities",
-    agent: { name: "Nexus", role: "Sales Assistant", gradient: "from-blue-500 to-indigo-500", initials: "NX" },
+    agent: { name: "Nexus", role: "Sales Assistant", gradient: "from-blue-500 to-indigo-500", icon: TrendingUp },
     status: "completed",
     progress: 100,
     steps: [
@@ -85,7 +103,7 @@ const assignments: Assignment[] = [
     id: "assign-004",
     title: "Email Sequence - Re-engagement",
     brief: "Design 5-email re-engagement sequence for dormant leads",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", initials: "AT" },
+    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
     status: "pending",
     progress: 0,
     steps: [
@@ -102,7 +120,7 @@ const assignments: Assignment[] = [
     id: "assign-005",
     title: "Competitor Analysis Report",
     brief: "Deep dive analysis of top 5 competitors market positioning",
-    agent: { name: "Oracle", role: "Finance Reporter", gradient: "from-violet-500 to-purple-500", initials: "OR" },
+    agent: { name: "Oracle", role: "Finance Reporter", gradient: "from-violet-500 to-purple-500", icon: PieChart },
     status: "failed",
     progress: 45,
     steps: [
@@ -168,10 +186,10 @@ function AssignmentCard({ assignment, onClick }: { assignment: Assignment; onCli
         {/* Agent Avatar */}
         <div className="relative shrink-0">
           <div className={cn(
-            "h-10 w-10 sm:h-12 sm:w-12 rounded-lg sm:rounded-xl bg-gradient-to-br flex items-center justify-center text-xs sm:text-sm font-bold text-white",
+            "h-10 w-10 sm:h-12 sm:w-12 rounded-lg sm:rounded-xl bg-gradient-to-br flex items-center justify-center text-white",
             assignment.agent.gradient
           )}>
-            {assignment.agent.initials}
+            <assignment.agent.icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           {assignment.status === "running" && (
             <motion.div

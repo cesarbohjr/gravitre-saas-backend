@@ -142,60 +142,78 @@
     @apply bg-background text-foreground;
   }
 
-  /* Modern thin scrollbar styling */
+  /* 
+   Modern Auto-Hide Overlay Scrollbar
+   - Invisible by default, appears on scroll
+   - Overlay style (doesn't shift content)
+   - Smooth fade animation
+   - Inspired by Linear, Notion, Slack
+  */
+  
+  /* Firefox - thin scrollbar, auto behavior */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(0 0% 25%) transparent;
+    scrollbar-color: transparent transparent;
+  }
+  
+  *:hover,
+  *:focus,
+  *:active {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
 
+  /* Webkit (Chrome, Safari, Edge) - overlay scrollbar with fade */
   *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
+    background: transparent;
   }
 
   *::-webkit-scrollbar-track {
     background: transparent;
+    border-radius: 10px;
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: hsl(0 0% 25%);
-    border-radius: 3px;
+    background-color: transparent;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background-color 0.2s ease;
+  }
+  
+  /* Show scrollbar on container hover/scroll */
+  *:hover::-webkit-scrollbar-thumb,
+  *:focus::-webkit-scrollbar-thumb,
+  *:active::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  *:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
-  *::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(0 0% 35%);
+  /* Utility: Always visible subtle scrollbar */
+  .scrollbar-visible {
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
+  }
+  
+  .scrollbar-visible::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1) !important;
   }
 
-  /* Hide scrollbar until hover for cleaner look */
-  .scrollbar-hidden {
+  /* Utility: Hide scrollbar completely but keep scroll */
+  .scrollbar-none {
     scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   
-  .scrollbar-hidden::-webkit-scrollbar {
+  .scrollbar-none::-webkit-scrollbar {
     display: none;
-  }
-
-  .scrollbar-on-hover {
-    scrollbar-width: none;
-  }
-  
-  .scrollbar-on-hover::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .scrollbar-on-hover:hover {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(0 0% 25%) transparent;
-  }
-  
-  .scrollbar-on-hover:hover::-webkit-scrollbar {
-    display: block;
-    width: 6px;
-  }
-  
-  .scrollbar-on-hover:hover::-webkit-scrollbar-thumb {
-    background-color: hsl(0 0% 25%);
-    border-radius: 3px;
   }
 
   /* Shimmer animation for ambient effects */

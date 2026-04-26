@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Icon } from "@/lib/icons"
 
-// TODO: Replace with backend endpoint
 const organizations = [
   {
     id: "acme-corp",

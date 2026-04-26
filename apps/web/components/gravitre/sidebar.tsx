@@ -181,7 +181,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <img
                 src="/images/gravitre-icon.png"
                 alt="Gravitre"
-                className="h-12 w-12 object-contain"
+                className="h-12 w-12 object-contain dark:hidden"
+              />
+              <img
+                src="/images/gravitre-icon-white.png"
+                alt="Gravitre"
+                className="h-12 w-12 object-contain hidden dark:block"
               />
             </div>
             {/* Full logo on mobile drawer and desktop */}
@@ -189,8 +194,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <img
                 src="/images/gravitre-logo.png"
                 alt="Gravitre"
-                className="dark:invert"
+                className="dark:hidden"
                 style={{ width: '180px', height: 'auto' }}
+              />
+              <img
+                src="/images/gravitre-icon-white.png"
+                alt="Gravitre"
+                className="hidden dark:block"
+                style={{ width: '48px', height: 'auto' }}
               />
             </div>
           </Link>

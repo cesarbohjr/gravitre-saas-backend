@@ -12,9 +12,18 @@ import {
   ChevronRight,
   Check,
   Loader2,
-  ArrowUpRight
+  ArrowUpRight,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { toast } from "sonner"
 
 interface Action {
   id: string
@@ -88,12 +97,47 @@ export function SuggestedActions({
 }: SuggestedActionsProps) {
   const [expandedAction, setExpandedAction] = useState<string | null>(null)
   const [completedActions, setCompletedActions] = useState<Set<string>>(new Set())
+  const [showViewAll, setShowViewAll] = useState(false)
+  const [isExecutingAll, setIsExecutingAll] = useState(false)
+  const [executingActions, setExecutingActions] = useState<Set<string>>(new Set())
 
   const handleExecute = async (actionId: string) => {
+    setExecutingActions(prev => new Set([...prev, actionId]))
     onExecute?.(actionId)
     // Simulate completion
     await new Promise((resolve) => setTimeout(resolve, 2000))
+    setExecutingActions(prev => {
+      const next = new Set(prev)
+      next.delete(actionId)
+      return next
+    })
     setCompletedActions((prev) => new Set([...prev, actionId]))
+  }
+
+  const handleExecuteAll = async () => {
+    const pendingActions = actions.filter(a => !completedActions.has(a.id))
+    if (pendingActions.length === 0) {
+      toast.info("All actions have already been executed")
+      return
+    }
+    
+    setIsExecutingAll(true)
+    toast.info(`Executing ${pendingActions.length} actions...`)
+    
+    // Execute actions sequentially by priority
+    const sortedActions = [...pendingActions].sort((a, b) => {
+      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
+      return priorityOrder[a.priority] - priorityOrder[b.priority]
+    })
+    
+    for (const action of sortedActions) {
+      await handleExecute(action.id)
+    }
+    
+    setIsExecutingAll(false)
+    toast.success("All actions executed successfully", {
+      description: `${pendingActions.length} actions completed`
+    })
   }
 
   return (
@@ -113,7 +157,12 @@ export function SuggestedActions({
             {actions.length} available
           </span>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-7 text-xs gap-1"
+          onClick={() => setShowViewAll(true)}
+        >
           View All
           <ArrowUpRight className="h-3 w-3" />
         </Button>
@@ -254,11 +303,145 @@ export function SuggestedActions({
         <p className="text-[10px] text-muted-foreground">
           Actions are staged for review before execution
         </p>
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-          Execute All
-          <ChevronRight className="h-3 w-3" />
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-7 text-xs gap-1"
+          onClick={handleExecuteAll}
+          disabled={isExecutingAll || completedActions.size === actions.length}
+        >
+          {isExecutingAll ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Executing...
+            </>
+          ) : completedActions.size === actions.length ? (
+            <>
+              <Check className="h-3 w-3" />
+              All Done
+            </>
+          ) : (
+            <>
+              Execute All
+              <ChevronRight className="h-3 w-3" />
+            </>
+          )}
         </Button>
       </div>
+
+      {/* View All Dialog */}
+      <Dialog open={showViewAll} onOpenChange={setShowViewAll}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
+                <Zap className="h-4 w-4 text-amber-400" />
+              </div>
+              All Suggested Actions
+            </DialogTitle>
+            <DialogDescription>
+              Review and execute all recommended actions to resolve the issue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {actions.map((action) => {
+              const IconComponent = iconMap[action.icon || "zap"]
+              const config = priorityConfig[action.priority]
+              const isCompleted = completedActions.has(action.id)
+              const isCurrentlyExecuting = executingActions.has(action.id)
+
+              return (
+                <div 
+                  key={action.id}
+                  className={`relative rounded-lg border ${config.border} ${config.bg} p-4 ${isCompleted ? "opacity-60" : ""}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.bg} border ${config.border}`}>
+                      {isCompleted ? (
+                        <Check className={`h-5 w-5 ${config.text}`} />
+                      ) : isCurrentlyExecuting ? (
+                        <Loader2 className={`h-5 w-5 ${config.text} animate-spin`} />
+                      ) : (
+                        <IconComponent className={`h-5 w-5 ${config.text}`} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                          {action.title}
+                        </h4>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${config.badge}`}>
+                          {action.priority}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {action.description}
+                      </p>
+                      {action.estimatedImpact && (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                          <AlertTriangle className="h-3 w-3" />
+                          Impact: {action.estimatedImpact}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={isCompleted ? "outline" : "default"}
+                      className="h-8 text-xs gap-1.5 shrink-0"
+                      onClick={() => handleExecute(action.id)}
+                      disabled={isCompleted || isCurrentlyExecuting}
+                    >
+                      {isCurrentlyExecuting ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Running
+                        </>
+                      ) : isCompleted ? (
+                        <>
+                          <Check className="h-3 w-3" />
+                          Done
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3 w-3" />
+                          Execute
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-xs text-muted-foreground">
+              {completedActions.size} of {actions.length} completed
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowViewAll(false)}>
+                Close
+              </Button>
+              <Button 
+                onClick={handleExecuteAll}
+                disabled={isExecutingAll || completedActions.size === actions.length}
+                className="gap-1.5"
+              >
+                {isExecutingAll ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Executing...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Execute All Remaining
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }

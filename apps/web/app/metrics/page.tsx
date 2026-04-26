@@ -22,8 +22,16 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   AlertTriangle,
-  Eye
+  Eye,
+  Check
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 import {
   Area,
   AreaChart,
@@ -38,7 +46,8 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts"
-import { fetcher } from "@/lib/fetcher"
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackRunData = [
   { time: "00:00", completed: 45, failed: 2, latency: 120 },
@@ -254,8 +263,49 @@ function GlowTooltip({ active, payload, label }: { active?: boolean; payload?: u
   )
 }
 
+const timeRangeOptions = [
+  { value: "1h", label: "Last hour" },
+  { value: "24h", label: "Last 24h" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+]
+
 export default function MetricsPage() {
   const [timeRange, setTimeRange] = useState("24h")
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = () => {
+    setIsExporting(true)
+    // Simulate export
+    setTimeout(() => {
+      setIsExporting(false)
+      // Create a mock CSV download
+      const csvContent = `Time,Completed,Failed,Latency
+00:00,45,2,120
+04:00,32,1,110
+08:00,78,3,145
+12:00,124,5,180
+14:32,89,8,320
+16:00,156,4,165
+20:00,98,2,130
+Now,67,1,125`
+      const blob = new Blob([csvContent], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `metrics-${timeRange}-${new Date().toISOString().split("T")[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success("Metrics exported successfully")
+    }, 800)
+  }
+
+  const handleRefresh = () => {
+    mutate()
+    toast.success("Metrics refreshed")
+  }
   
   const { data: overviewData, isLoading, mutate } = useSWR(
     "/api/metrics/overview",
@@ -279,16 +329,46 @@ export default function MetricsPage() {
               <p className="text-xs md:text-sm text-muted-foreground mt-1">AI-powered monitoring and insights</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-2">
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Last</span> 24h
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-2" onClick={() => mutate()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-2">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Last</span> {timeRangeOptions.find(o => o.value === timeRange)?.label.replace("Last ", "") || "24h"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {timeRangeOptions.map((option) => (
+                    <DropdownMenuItem 
+                      key={option.value}
+                      onSelect={() => {
+                        setTimeRange(option.value)
+                        toast.success(`Showing ${option.label.toLowerCase()}`)
+                      }}
+                      className="gap-2"
+                    >
+                      {option.label}
+                      {timeRange === option.value && <Check className="h-3.5 w-3.5 ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-2" 
+                onClick={handleRefresh}
+              >
                 <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
               </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-2">
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Export</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 gap-2"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                <Download className={`h-3.5 w-3.5 ${isExporting ? "animate-pulse" : ""}`} />
+                <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
               </Button>
             </div>
           </div>

@@ -1,0 +1,659 @@
+"use client"
+
+import { cn } from "@/lib/utils"
+import { Plug } from "lucide-react"
+
+// ============================================================================
+// GRAVITRE CONNECTOR ICON + INTEGRATION TOKEN SYSTEM
+// Standardized, Scalable, Premium UI for all connector icons
+// ============================================================================
+
+// 1. Size Tokens - Three standard sizes only
+export const connectorIconSizes = {
+  xs: {
+    container: "h-7 w-7",
+    icon: "h-4 w-4",
+    radius: "rounded-lg",
+    dot: "h-2 w-2",
+  },
+  sm: {
+    container: "h-9 w-9",
+    icon: "h-5 w-5",
+    radius: "rounded-xl",
+    dot: "h-2.5 w-2.5",
+  },
+  md: {
+    container: "h-11 w-11",
+    icon: "h-6 w-6",
+    radius: "rounded-2xl",
+    dot: "h-3 w-3",
+  },
+} as const
+
+// 2. Status Tokens
+export const connectorStatusTokens = {
+  connected: {
+    label: "Connected",
+    dot: "bg-emerald-500",
+    text: "text-emerald-600 dark:text-emerald-400",
+    border: "border-emerald-200 dark:border-emerald-900/60",
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    ring: "ring-emerald-500/20",
+  },
+  syncing: {
+    label: "Syncing",
+    dot: "bg-blue-500",
+    text: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-900/60",
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    ring: "ring-blue-500/20",
+  },
+  error: {
+    label: "Error",
+    dot: "bg-red-500",
+    text: "text-red-600 dark:text-red-400",
+    border: "border-red-200 dark:border-red-900/60",
+    bg: "bg-red-50 dark:bg-red-950/30",
+    ring: "ring-red-500/20",
+  },
+  disconnected: {
+    label: "Disconnected",
+    dot: "bg-zinc-400",
+    text: "text-zinc-500 dark:text-zinc-400",
+    border: "border-zinc-200 dark:border-zinc-800",
+    bg: "bg-zinc-50 dark:bg-zinc-900/40",
+    ring: "ring-zinc-500/10",
+  },
+  warning: {
+    label: "Warning",
+    dot: "bg-amber-500",
+    text: "text-amber-600 dark:text-amber-400",
+    border: "border-amber-200 dark:border-amber-900/60",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    ring: "ring-amber-500/20",
+  },
+} as const
+
+// 3. Department Tokens
+export const connectorDepartmentTokens = {
+  crmMarketing: {
+    label: "CRM / Marketing",
+    bg: "bg-sky-50 dark:bg-sky-950/30",
+    border: "border-sky-200 dark:border-sky-900/60",
+    text: "text-sky-700 dark:text-sky-300",
+    accent: "bg-sky-500",
+  },
+  finance: {
+    label: "Finance / Payments",
+    bg: "bg-violet-50 dark:bg-violet-950/30",
+    border: "border-violet-200 dark:border-violet-900/60",
+    text: "text-violet-700 dark:text-violet-300",
+    accent: "bg-violet-500",
+  },
+  communication: {
+    label: "Communication",
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    border: "border-emerald-200 dark:border-emerald-900/60",
+    text: "text-emerald-700 dark:text-emerald-300",
+    accent: "bg-emerald-500",
+  },
+  operations: {
+    label: "Operations / Workflow",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-900/60",
+    text: "text-amber-700 dark:text-amber-300",
+    accent: "bg-amber-500",
+  },
+  support: {
+    label: "Customer Support",
+    bg: "bg-rose-50 dark:bg-rose-950/30",
+    border: "border-rose-200 dark:border-rose-900/60",
+    text: "text-rose-700 dark:text-rose-300",
+    accent: "bg-rose-500",
+  },
+  hr: {
+    label: "HR / People",
+    bg: "bg-teal-50 dark:bg-teal-950/30",
+    border: "border-teal-200 dark:border-teal-900/60",
+    text: "text-teal-700 dark:text-teal-300",
+    accent: "bg-teal-500",
+  },
+  devInfra: {
+    label: "Storage / Dev / Infrastructure",
+    bg: "bg-zinc-50 dark:bg-zinc-900/50",
+    border: "border-zinc-200 dark:border-zinc-800",
+    text: "text-zinc-700 dark:text-zinc-300",
+    accent: "bg-zinc-500",
+  },
+} as const
+
+// 4. Brand Tint Tokens
+export const connectorBrandTokens = {
+  salesforce: {
+    bg: "bg-[#00A1E0]/10 dark:bg-[#00A1E0]/15",
+    border: "border-[#00A1E0]/20",
+    text: "text-[#00A1E0]",
+  },
+  hubspot: {
+    bg: "bg-[#FF5C35]/10 dark:bg-[#FF5C35]/15",
+    border: "border-[#FF5C35]/20",
+    text: "text-[#FF5C35]",
+  },
+  stripe: {
+    bg: "bg-[#635BFF]/10 dark:bg-[#635BFF]/15",
+    border: "border-[#635BFF]/20",
+    text: "text-[#635BFF]",
+  },
+  slack: {
+    bg: "bg-[#4A154B]/10 dark:bg-white/10",
+    border: "border-[#4A154B]/20 dark:border-white/10",
+    text: "text-[#4A154B] dark:text-white",
+  },
+  github: {
+    bg: "bg-zinc-100 dark:bg-white/10",
+    border: "border-zinc-200 dark:border-white/10",
+    text: "text-zinc-950 dark:text-white",
+  },
+  notion: {
+    bg: "bg-zinc-100 dark:bg-white/10",
+    border: "border-zinc-200 dark:border-white/10",
+    text: "text-zinc-950 dark:text-white",
+  },
+  mailchimp: {
+    bg: "bg-[#FFE01B]/20 dark:bg-[#FFE01B]/15",
+    border: "border-[#FFE01B]/30",
+    text: "text-zinc-950 dark:text-[#FFE01B]",
+  },
+  zendesk: {
+    bg: "bg-[#03363D]/10 dark:bg-[#78A300]/15",
+    border: "border-[#03363D]/20 dark:border-[#78A300]/20",
+    text: "text-[#03363D] dark:text-[#78A300]",
+  },
+  intercom: {
+    bg: "bg-[#286EFA]/10 dark:bg-[#286EFA]/15",
+    border: "border-[#286EFA]/20",
+    text: "text-[#286EFA]",
+  },
+  quickbooks: {
+    bg: "bg-[#2CA01C]/10 dark:bg-[#2CA01C]/15",
+    border: "border-[#2CA01C]/20",
+    text: "text-[#2CA01C]",
+  },
+  xero: {
+    bg: "bg-[#13B5EA]/10 dark:bg-[#13B5EA]/15",
+    border: "border-[#13B5EA]/20",
+    text: "text-[#13B5EA]",
+  },
+  google: {
+    bg: "bg-[#4285F4]/10 dark:bg-[#4285F4]/15",
+    border: "border-[#4285F4]/20",
+    text: "text-[#4285F4]",
+  },
+  microsoft: {
+    bg: "bg-[#00A4EF]/10 dark:bg-[#00A4EF]/15",
+    border: "border-[#00A4EF]/20",
+    text: "text-[#00A4EF]",
+  },
+  jira: {
+    bg: "bg-[#0052CC]/10 dark:bg-[#0052CC]/15",
+    border: "border-[#0052CC]/20",
+    text: "text-[#0052CC]",
+  },
+  twilio: {
+    bg: "bg-[#F22F46]/10 dark:bg-[#F22F46]/15",
+    border: "border-[#F22F46]/20",
+    text: "text-[#F22F46]",
+  },
+  sendgrid: {
+    bg: "bg-[#1A82E2]/10 dark:bg-[#1A82E2]/15",
+    border: "border-[#1A82E2]/20",
+    text: "text-[#1A82E2]",
+  },
+  postgresql: {
+    bg: "bg-[#336791]/10 dark:bg-[#336791]/15",
+    border: "border-[#336791]/20",
+    text: "text-[#336791]",
+  },
+  mysql: {
+    bg: "bg-[#4479A1]/10 dark:bg-[#4479A1]/15",
+    border: "border-[#4479A1]/20",
+    text: "text-[#4479A1]",
+  },
+  mongodb: {
+    bg: "bg-[#47A248]/10 dark:bg-[#47A248]/15",
+    border: "border-[#47A248]/20",
+    text: "text-[#47A248]",
+  },
+  snowflake: {
+    bg: "bg-[#29B5E8]/10 dark:bg-[#29B5E8]/15",
+    border: "border-[#29B5E8]/20",
+    text: "text-[#29B5E8]",
+  },
+  airtable: {
+    bg: "bg-[#FCB400]/10 dark:bg-[#FCB400]/15",
+    border: "border-[#FCB400]/20",
+    text: "text-[#FCB400]",
+  },
+  segment: {
+    bg: "bg-[#52BD95]/10 dark:bg-[#52BD95]/15",
+    border: "border-[#52BD95]/20",
+    text: "text-[#52BD95]",
+  },
+  plaid: {
+    bg: "bg-zinc-100 dark:bg-white/10",
+    border: "border-zinc-200 dark:border-white/10",
+    text: "text-zinc-950 dark:text-white",
+  },
+  netsuite: {
+    bg: "bg-[#0098D7]/10 dark:bg-[#0098D7]/15",
+    border: "border-[#0098D7]/20",
+    text: "text-[#0098D7]",
+  },
+  "aws s3": {
+    bg: "bg-[#FF9900]/10 dark:bg-[#FF9900]/15",
+    border: "border-[#FF9900]/20",
+    text: "text-[#FF9900]",
+  },
+  aws: {
+    bg: "bg-[#FF9900]/10 dark:bg-[#FF9900]/15",
+    border: "border-[#FF9900]/20",
+    text: "text-[#FF9900]",
+  },
+  default: {
+    bg: "bg-zinc-100 dark:bg-zinc-900",
+    border: "border-zinc-200 dark:border-zinc-800",
+    text: "text-zinc-700 dark:text-zinc-300",
+  },
+} as const
+
+// Types
+export type ConnectorStatus = keyof typeof connectorStatusTokens
+export type ConnectorIconSize = keyof typeof connectorIconSizes
+export type ConnectorBrand = keyof typeof connectorBrandTokens
+export type ConnectorDepartment = keyof typeof connectorDepartmentTokens
+
+// ============================================================================
+// SVG LOGOS - Inline for performance
+// ============================================================================
+
+const logos: Record<string, React.ReactNode> = {
+  salesforce: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#00A1E0]">
+      <path d="M10.006 5.415a4.195 4.195 0 0 1 3.045-1.306c1.56 0 2.954.9 3.69 2.205.63-.3 1.35-.45 2.1-.45 2.85 0 5.159 2.34 5.159 5.22s-2.31 5.22-5.16 5.22c-.45 0-.884-.06-1.305-.165a3.975 3.975 0 0 1-3.54 2.19 3.96 3.96 0 0 1-1.95-.51 4.8 4.8 0 0 1-4.275 2.655c-2.34 0-4.32-1.665-4.77-3.87a4.138 4.138 0 0 1-.69.06C.975 16.664 0 14.744 0 12.494c0-1.83 1.125-3.39 2.73-4.02a4.5 4.5 0 0 1-.18-1.26c0-2.52 2.01-4.56 4.5-4.56 1.47 0 2.775.705 3.6 1.8l-.644-.039z"/>
+    </svg>
+  ),
+  stripe: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#635BFF]">
+      <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+    </svg>
+  ),
+  slack: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#E01E5A" d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"/>
+      <path fill="#36C5F0" d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z"/>
+      <path fill="#2EB67D" d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.521-2.521V2.522A2.528 2.528 0 0 1 15.164 0a2.528 2.528 0 0 1 2.522 2.522v6.312z"/>
+      <path fill="#ECB22E" d="M15.164 18.956a2.528 2.528 0 0 1 2.522 2.522A2.528 2.528 0 0 1 15.164 24a2.528 2.528 0 0 1-2.521-2.522v-2.522h2.521zm0-1.27a2.528 2.528 0 0 1-2.521-2.522 2.528 2.528 0 0 1 2.521-2.521h6.314A2.528 2.528 0 0 1 24 15.164a2.527 2.527 0 0 1-2.522 2.522h-6.314z"/>
+    </svg>
+  ),
+  hubspot: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#FF5C35]">
+      <path d="M18.164 7.93V5.084a2.198 2.198 0 0 0 1.267-1.984v-.066A2.2 2.2 0 0 0 17.231.836h-.066a2.2 2.2 0 0 0-2.2 2.198v.066c0 .867.507 1.617 1.24 1.973v2.86a6.27 6.27 0 0 0-2.8 1.162l-7.5-5.833a2.687 2.687 0 0 0 .087-.663 2.702 2.702 0 1 0-2.702 2.702c.474 0 .918-.124 1.305-.34l7.366 5.73a6.263 6.263 0 0 0-.612 2.72c0 1.04.253 2.02.7 2.883l-2.2 2.2a2.029 2.029 0 0 0-.596-.096 2.058 2.058 0 1 0 2.058 2.058c0-.211-.034-.415-.093-.607l2.157-2.157a6.297 6.297 0 1 0 4.63-10.476 6.242 6.242 0 0 0-2.063.348l-.013.006z"/>
+    </svg>
+  ),
+  github: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-foreground">
+      <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  ),
+  google: (
+    <svg viewBox="0 0 24 24" className="w-full h-full">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  ),
+  microsoft: (
+    <svg viewBox="0 0 24 24" className="w-full h-full">
+      <path fill="#F25022" d="M0 0h11.377v11.377H0z"/>
+      <path fill="#00A4EF" d="M0 12.623h11.377V24H0z"/>
+      <path fill="#7FBA00" d="M12.623 0H24v11.377H12.623z"/>
+      <path fill="#FFB900" d="M12.623 12.623H24V24H12.623z"/>
+    </svg>
+  ),
+  notion: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-foreground">
+      <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.84-.046.933-.56.933-1.167V6.354c0-.606-.233-.933-.746-.886l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.746 0-.933-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.22.186c-.094-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.454-.234 4.762 7.28V9.294l-1.214-.14c-.094-.514.28-.887.747-.933l3.221-.187z"/>
+    </svg>
+  ),
+  jira: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0052CC]">
+      <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
+    </svg>
+  ),
+  zendesk: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#03363D] dark:text-[#78A300]">
+      <path d="M11.085 0v17.568L0 24V6.432L11.085 0zm1.83 0l11.085 6.432L24 6.432 12.915 0zM0 6.432L11.085 0v6.432H0zm12.915 0L24 0v6.432h-11.085zm0 11.136V24l11.085-6.432V6.432l-11.085 11.136z"/>
+    </svg>
+  ),
+  intercom: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#286EFA]">
+      <path d="M20.802 18.267a.122.122 0 0 1-.167.034c-1.754-1.188-3.966-1.91-6.635-1.91-2.669 0-4.881.722-6.635 1.91a.122.122 0 0 1-.167-.034l-.795-1.322a.122.122 0 0 1 .031-.164c2.106-1.427 4.789-2.264 7.566-2.264 2.777 0 5.46.837 7.566 2.264a.122.122 0 0 1 .031.164l-.795 1.322zM4.267 14.133V6.134a.133.133 0 0 1 .133-.134h1.467a.133.133 0 0 1 .133.134v8a.133.133 0 0 1-.133.133H4.4a.133.133 0 0 1-.133-.134zm3.466 1.6V4.533a.133.133 0 0 1 .134-.133h1.466a.133.133 0 0 1 .134.133v11.2a.133.133 0 0 1-.134.134H7.867a.133.133 0 0 1-.134-.134zm3.467.8V3.733a.133.133 0 0 1 .133-.133h1.467a.133.133 0 0 1 .133.133v12.8a.133.133 0 0 1-.133.134h-1.467a.133.133 0 0 1-.133-.134zm3.467-.8V4.533a.133.133 0 0 1 .133-.133h1.467a.133.133 0 0 1 .133.133v11.2a.133.133 0 0 1-.133.134H14.8a.133.133 0 0 1-.133-.134zm3.466-1.6V6.134a.133.133 0 0 1 .134-.134h1.466a.133.133 0 0 1 .134.134v8a.133.133 0 0 1-.134.133h-1.466a.133.133 0 0 1-.134-.134zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/>
+    </svg>
+  ),
+  twilio: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#F22F46]">
+      <path d="M12 0C5.381 0 0 5.381 0 12s5.381 12 12 12 12-5.381 12-12S18.619 0 12 0zm0 20.797c-4.853 0-8.797-3.944-8.797-8.797S7.147 3.203 12 3.203s8.797 3.944 8.797 8.797-3.944 8.797-8.797 8.797zm3.95-12.066a2.395 2.395 0 1 1-4.79 0 2.395 2.395 0 0 1 4.79 0zm-6.074 0a2.395 2.395 0 1 1-4.79 0 2.395 2.395 0 0 1 4.79 0zm6.074 6.538a2.395 2.395 0 1 1-4.79 0 2.395 2.395 0 0 1 4.79 0zm-6.074 0a2.395 2.395 0 1 1-4.79 0 2.395 2.395 0 0 1 4.79 0z"/>
+    </svg>
+  ),
+  sendgrid: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#1A82E2]">
+      <path d="M.489 8.08h7.962V.054H.489zM8.451 8.08h7.963V.054H8.45zM8.451 16.024h7.963V8.08H8.45zM16.414 16.024h7.097V8.08h-7.097zM16.414 24h7.097v-7.976h-7.097zM8.451 24h7.963v-7.976H8.45z"/>
+    </svg>
+  ),
+  postgresql: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#336791]">
+      <path d="M17.128 0a10.134 10.134 0 0 0-2.755.403l-.063.02A10.922 10.922 0 0 0 12.6.258C11.422.238 10.418.524 9.586 1 8.233.512 6.092-.14 4.15.04 2.816.168 1.333.846.81 2.39c-.553 1.63-.147 3.712.507 5.479-.892 1.582-1.32 3.368-.865 4.96.505 1.77 1.861 2.943 3.11 3.61.06.032.12.063.182.092-.086.66-.163 1.363-.163 2.027 0 1.993 1.009 4.254 2.674 4.936.122.05.248.086.378.107.103.016.206.023.308.023.535 0 1.084-.237 1.612-.626.468.225 1.037.405 1.68.405.507 0 1.068-.115 1.609-.404.494.308 1.096.528 1.743.528.187 0 .376-.017.565-.053.104-.02.208-.044.309-.073.103-.029.204-.063.301-.103 1.416-.581 2.273-2.088 2.597-3.768.155-.81.218-1.656.175-2.47a9.236 9.236 0 0 0 1.343-.761c.737-.507 1.441-1.145 1.994-1.972.28-.42.52-.89.703-1.422.087-.254.161-.52.217-.8.04-.194.073-.396.095-.601.023-.21.035-.424.035-.64 0-.616-.077-1.27-.236-1.958-.159-.69-.396-1.413-.716-2.167-.32-.753-.722-1.537-1.202-2.341A10.16 10.16 0 0 0 17.128 0z"/>
+    </svg>
+  ),
+  mongodb: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#47A248]">
+      <path d="M17.193 9.555c-1.264-5.58-4.252-7.414-4.573-8.115-.28-.394-.53-.954-.735-1.44-.036.495-.055.685-.523 1.184-.723.566-4.438 3.682-4.74 10.02-.282 5.912 4.27 9.435 4.888 9.884l.07.05A73.49 73.49 0 0 1 11.91 24h.481c.114-1.032.284-2.056.51-3.07.417-.296.604-.463.85-.693a11.342 11.342 0 0 0 3.639-8.464c.01-.814-.103-1.662-.197-2.218zm-5.336 8.195s0-8.291.275-8.29c.213 0 .49 10.695.49 10.695-.381-.045-.765-1.76-.765-2.405z"/>
+    </svg>
+  ),
+  snowflake: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#29B5E8]">
+      <path d="M12.429 0l1.138 2.218 2.393-.668-.665 2.393L17.52 5.08l-2.218 1.138.668 2.392-2.393-.665-1.138 2.218V5.929L9.53 4.79l2.393.665-.665-2.393L12.429 0zm7.143 4.286l.668 2.393 2.218 1.138-2.218 1.138-.668 2.393-1.138-2.218-2.393.665.665-2.393-2.218-1.138 2.218-1.138.665-2.393 1.138 2.218 2.393-.665zM4.286 4.286l2.393.665 1.138-2.218.665 2.393 2.393.665-2.218 1.138.668 2.393-2.393-.665-1.138 2.218-.665-2.393-2.393-.665 2.218-1.138-.668-2.393z"/>
+    </svg>
+  ),
+  airtable: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#FCB400" d="M11.992 1.966L2.467 5.566c-.373.14-.373.655 0 .795l9.525 3.6c.336.127.712.127 1.048 0l9.525-3.6c.373-.14.373-.655 0-.795l-9.525-3.6a1.376 1.376 0 0 0-1.048 0z"/>
+      <path fill="#18BFFF" d="M12.74 13.636V22.5c0 .336.35.56.655.42l9.69-4.274c.228-.1.375-.327.375-.575V9.207c0-.336-.35-.56-.655-.42l-9.69 4.274a.618.618 0 0 0-.375.575z"/>
+      <path fill="#F82B60" d="M11.26 13.636V22.5c0 .336-.35.56-.655.42L.915 18.646a.618.618 0 0 1-.375-.575V9.207c0-.336.35-.56.655-.42l9.69 4.274c.228.1.375.327.375.575z"/>
+    </svg>
+  ),
+  mailchimp: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#FFE01B]">
+      <path d="M18.824 16.656a.71.71 0 0 1-.5.2.66.66 0 0 1-.33-.09c-.32-.17-.47-.59-.47-1.04 0-.17.02-.34.05-.5.03-.13-.1-.24-.21-.18l-.1.06c-.9.48-1.56 1.23-1.77 1.47l-.05.06c-.16.18-.31.37-.44.58-.4.56-.9 1.4-.95 1.5-.07.14-.24.44-.24.44-.16.3-.54 1-.91 1.32-.28.24-.54.32-.72.32-.42 0-.58-.33-.72-.7-.17-.43-.27-.9-.35-1.3-.07-.35-.28-1.18-.28-1.18-.16-.56-.43-1.27-.8-1.87-.45-.7-1.02-1.2-1.8-1.4-.56-.15-1.1-.2-1.6-.15-.43.05-.84.16-1.2.32l-.08.03-.07-.05c-.88-.68-1.42-1.65-1.82-2.38l-.14-.25a4.6 4.6 0 0 0-.47-.7c-.2-.24-.7-.74-1.14-.98-.27-.15-.73-.32-1.14-.24l-.06.02c-.09.03-.17.07-.24.12-.47.35-.5 1-.42 1.55.06.44.18.88.33 1.3.23.68.56 1.55 1.03 2.06.08.1.17.18.27.26l.1.07.08.04c.15.08.3.14.46.2-.02.2-.02.4-.01.6 0 .08.01.16.02.23.02.22.05.44.1.65l-.15.05-.15.06c-.27.12-.55.27-.82.44a4.69 4.69 0 0 0-1.48 1.6c-.4.64-.64 1.3-.72 1.93-.03.32-.04.64-.01.94.02.28.07.55.15.82.08.3.22.63.44.93.1.14.22.27.36.4.15.13.32.25.5.35.4.22.88.34 1.38.34.38 0 .78-.07 1.2-.22.78-.28 1.58-.8 2.36-1.56a12.1 12.1 0 0 0 2.4-3.18c.21.04.42.07.64.08.54.03 1.08-.03 1.58-.17.28-.08.55-.18.8-.3.08.27.19.55.33.82.26.47.58.88.97 1.2.42.35.9.6 1.43.73.24.06.5.1.76.1a2.98 2.98 0 0 0 1.95-.73c.6-.52.97-1.18 1.15-1.47.53-.85.8-1.56.98-2.06.18-.5.3-.97.38-1.34l.05-.25.05-.18s.05-.12.13-.28c.1-.22.3-.54.56-.8.25-.25.53-.43.83-.54.12-.04.24-.06.37-.07h.08c.2.02.36.1.45.17l.1.08c.03.02.05.05.06.08.06.1.08.22.08.37 0 .16-.02.33-.03.4l-.04.2-.04.24c-.02.14-.02.28-.02.42-.02.65.17 1.28.54 1.68.2.22.45.37.73.44.12.03.24.05.36.05.47 0 .92-.24 1.2-.64.12-.16.2-.33.25-.5.08-.28.1-.57.06-.85-.06-.47-.3-.93-.68-1.26z"/>
+    </svg>
+  ),
+  quickbooks: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#2CA01C]">
+      <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm5.52 16.656a3.095 3.095 0 0 1-2.196.912c-1.284 0-2.4-.78-2.88-1.896H9.12c.072 1.116-.264 2.22-.984 3.108l1.8 1.8c.144.144.144.372 0 .504l-.864.864a.363.363 0 0 1-.504 0l-1.8-1.8a5.088 5.088 0 0 1-3.108.984h-.012c-2.808 0-5.088-2.28-5.088-5.088 0-2.808 2.28-5.088 5.088-5.088h.012c1.116.072 2.22-.264 3.108-.984l-1.8-1.8a.363.363 0 0 1 0-.504l.864-.864c.144-.144.372-.144.504 0l1.8 1.8a5.088 5.088 0 0 1 .984-3.108V5.52c0-2.808 2.28-5.088 5.088-5.088 2.808 0 5.088 2.28 5.088 5.088 0 2.808-2.28 5.088-5.088 5.088a5.088 5.088 0 0 1-3.108-.984l-1.8 1.8c-.144.144-.372.144-.504 0l-.864-.864a.363.363 0 0 1 0-.504l1.8-1.8a5.088 5.088 0 0 1-.984-3.108c0-.012 0-.012 0 0 0-2.808 2.28-5.088 5.088-5.088z"/>
+    </svg>
+  ),
+  xero: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#13B5EA]">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 16.629l-2.188-3.128-2.188 3.128a.756.756 0 0 1-1.236 0l-2.188-3.128-2.188 3.128a.756.756 0 0 1-1.236-.87l2.562-3.663-2.562-3.663a.756.756 0 0 1 1.236-.87l2.188 3.128 2.188-3.128a.756.756 0 0 1 1.236 0l2.188 3.128 2.188-3.128a.756.756 0 0 1 1.236.87l-2.562 3.663 2.562 3.663a.756.756 0 0 1-1.236.87z"/>
+    </svg>
+  ),
+  "aws s3": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#E25444" d="M20.913 13.147l.12-.895c.947.576 1.258.922 1.354 1.071-.276.2-.706.452-1.474.824v-1zm-1.146 5.478c-.986.596-3.404 1.575-7.767 1.575-4.363 0-6.781-.98-7.767-1.575l-.113-.07v-6.14l7.88 4.9 7.88-4.9v6.139l-.113.071zM2.613 13.147v1c-.768-.372-1.198-.625-1.474-.824.096-.149.407-.495 1.354-1.071l.12.895z"/>
+      <path fill="#7B1D13" d="M12 2l9.196 5.407L12 13.407 2.804 7.407z"/>
+      <path fill="#58150D" d="M12 13.407v9.193L2.804 17.557V7.407L12 13.407z"/>
+      <path fill="#E25444" d="M12 13.407v9.193l9.196-5.043V7.407L12 13.407z"/>
+    </svg>
+  ),
+  aws: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#FF9900]">
+      <path d="M6.763 10.036c0 .296.032.535.088.71.064.176.144.368.256.576.04.063.056.127.056.183 0 .08-.048.16-.152.24l-.503.335a.383.383 0 0 1-.208.072c-.08 0-.16-.04-.239-.112a2.47 2.47 0 0 1-.287-.375 6.18 6.18 0 0 1-.248-.471c-.622.734-1.405 1.101-2.347 1.101-.67 0-1.205-.191-1.596-.574-.391-.384-.59-.894-.59-1.533 0-.678.239-1.23.726-1.644.487-.415 1.133-.623 1.955-.623.272 0 .551.024.846.064.296.04.6.104.918.176v-.583c0-.607-.127-1.03-.375-1.277-.255-.248-.686-.367-1.3-.367-.28 0-.568.031-.863.103-.295.072-.583.16-.862.272a2.287 2.287 0 0 1-.28.104.488.488 0 0 1-.127.023c-.112 0-.168-.08-.168-.247v-.391c0-.128.016-.224.056-.28a.597.597 0 0 1 .224-.167c.279-.144.614-.264 1.005-.36a4.84 4.84 0 0 1 1.246-.151c.95 0 1.644.216 2.091.647.439.43.662 1.085.662 1.963v2.586zm-3.24 1.214c.263 0 .534-.048.822-.144.287-.096.543-.271.758-.51.128-.152.224-.32.272-.512.047-.191.08-.423.08-.694v-.335a6.66 6.66 0 0 0-.735-.136 6.02 6.02 0 0 0-.75-.048c-.535 0-.926.104-1.19.32-.263.215-.39.518-.39.917 0 .375.095.655.295.846.191.2.47.296.838.296zm6.41.862c-.144 0-.24-.024-.304-.08-.064-.048-.12-.16-.168-.311L7.586 5.55a1.398 1.398 0 0 1-.072-.32c0-.128.064-.2.191-.2h.783c.151 0 .255.025.31.08.065.048.113.16.16.312l1.342 5.284 1.245-5.284c.04-.16.088-.264.151-.312a.549.549 0 0 1 .32-.08h.638c.152 0 .256.025.32.08.063.048.12.16.151.312l1.261 5.348 1.381-5.348c.048-.16.104-.264.16-.312a.52.52 0 0 1 .311-.08h.743c.127 0 .2.065.2.2 0 .04-.009.08-.017.128a1.137 1.137 0 0 1-.056.2l-1.923 6.17c-.048.16-.104.263-.168.311a.51.51 0 0 1-.303.08h-.687c-.151 0-.255-.024-.32-.08-.063-.056-.119-.16-.15-.32l-1.238-5.148-1.23 5.14c-.04.16-.087.264-.15.32-.065.056-.177.08-.32.08zm10.256.215c-.415 0-.83-.048-1.229-.143-.399-.096-.71-.2-.918-.32-.128-.071-.215-.151-.247-.223a.563.563 0 0 1-.048-.224v-.407c0-.167.064-.247.183-.247.048 0 .096.008.144.024.048.016.12.048.2.08.271.12.566.215.878.279.319.064.63.096.95.096.502 0 .894-.088 1.165-.264a.86.86 0 0 0 .415-.758.777.777 0 0 0-.215-.559c-.144-.151-.415-.287-.807-.414l-1.157-.36c-.583-.183-1.014-.454-1.277-.813a1.902 1.902 0 0 1-.4-1.158c0-.335.073-.63.216-.886.144-.255.335-.479.575-.654.24-.184.51-.32.83-.415.32-.096.655-.136 1.006-.136.176 0 .359.008.535.032.183.024.35.056.518.088.16.04.312.08.455.127.144.048.256.096.336.144a.69.69 0 0 1 .24.2.43.43 0 0 1 .071.263v.375c0 .168-.064.256-.184.256a.83.83 0 0 1-.303-.096 3.652 3.652 0 0 0-1.532-.311c-.455 0-.815.071-1.062.223-.248.152-.375.383-.375.71 0 .224.08.416.24.567.159.152.454.304.877.44l1.134.358c.574.184.99.44 1.237.767.247.327.367.702.367 1.117 0 .343-.072.655-.207.926-.144.272-.336.511-.583.703-.248.2-.543.343-.886.447-.36.111-.734.167-1.142.167zM21.698 16.207c-2.626 1.94-6.442 2.969-9.722 2.969-4.598 0-8.74-1.7-11.87-4.526-.247-.223-.024-.527.27-.351 3.384 1.963 7.559 3.153 11.877 3.153 2.914 0 6.114-.607 9.06-1.852.439-.2.814.287.385.607zM22.792 14.961c-.336-.43-2.22-.207-3.074-.103-.255.032-.295-.192-.063-.36 1.5-1.053 3.967-.75 4.254-.399.287.36-.08 2.826-1.485 4.007-.215.184-.423.088-.327-.151.32-.79 1.03-2.57.695-2.994z"/>
+    </svg>
+  ),
+  segment: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#52BD95]">
+      <path d="M1.85 14.86h18.75c.38 0 .69.31.69.7s-.31.69-.69.69H1.85a.7.7 0 0 1-.69-.69c0-.39.3-.7.69-.7zm1.09-7.38a.7.7 0 0 1 .69-.69h18.72c.38 0 .69.31.69.69s-.31.7-.69.7H3.63a.7.7 0 0 1-.69-.7z"/>
+    </svg>
+  ),
+  netsuite: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0098D7]">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm4.5 16.5h-9v-9h9v9z"/>
+    </svg>
+  ),
+  plaid: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-foreground">
+      <path d="M20.64 0H3.36C1.5 0 0 1.5 0 3.36v17.28C0 22.5 1.5 24 3.36 24h17.28c1.86 0 3.36-1.5 3.36-3.36V3.36C24 1.5 22.5 0 20.64 0zm-8.82 5.52h.82c.08 0 .14.06.14.14v12.68c0 .08-.06.14-.14.14h-.82c-.08 0-.14-.06-.14-.14V5.66c0-.08.06-.14.14-.14z"/>
+    </svg>
+  ),
+}
+
+// ============================================================================
+// CONNECTOR ICON COMPONENT
+// ============================================================================
+
+interface ConnectorIconProps {
+  /** Connector name or brand identifier */
+  name?: string
+  /** Vendor/brand key for styling and logo lookup */
+  vendor?: string
+  /** Custom icon to render instead of logo */
+  icon?: React.ReactNode
+  /** Brand token key for styling */
+  brand?: ConnectorBrand
+  /** Connection status */
+  status?: ConnectorStatus
+  /** Size variant */
+  size?: ConnectorIconSize
+  /** Whether the icon is selected */
+  selected?: boolean
+  /** Show status indicator dot */
+  showStatusIndicator?: boolean
+  /** Additional CSS classes */
+  className?: string
+  /** Click handler */
+  onClick?: () => void
+}
+
+// Helper to normalize vendor names to brand keys
+function getBrandKey(vendor?: string): ConnectorBrand {
+  if (!vendor) return "default"
+  const normalized = vendor.toLowerCase().trim()
+  if (normalized in connectorBrandTokens) {
+    return normalized as ConnectorBrand
+  }
+  return "default"
+}
+
+// Helper to get logo for vendor
+function getVendorLogo(vendor?: string): React.ReactNode | null {
+  if (!vendor) return null
+  const normalized = vendor.toLowerCase().trim()
+  return logos[normalized] || null
+}
+
+export function ConnectorIcon({
+  name,
+  vendor,
+  icon,
+  brand,
+  status = "disconnected",
+  size = "sm",
+  selected = false,
+  showStatusIndicator = true,
+  className,
+  onClick,
+}: ConnectorIconProps) {
+  const brandKey = brand || getBrandKey(vendor)
+  const brandToken = connectorBrandTokens[brandKey]
+  const statusToken = connectorStatusTokens[status]
+  const sizeToken = connectorIconSizes[size]
+  
+  const logo = icon || getVendorLogo(vendor)
+  const displayName = name || vendor || "Connector"
+
+  return (
+    <div className={cn("relative inline-flex", className)} onClick={onClick}>
+      <div
+        aria-label={`${displayName} connector`}
+        className={cn(
+          "inline-flex items-center justify-center border transition-all duration-200",
+          "shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_rgba(15,23,42,0.04)]",
+          "hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_36px_rgba(15,23,42,0.08)]",
+          sizeToken.container,
+          sizeToken.radius,
+          brandToken.bg,
+          brandToken.border,
+          selected && "ring-2 ring-offset-2 ring-blue-500/30 dark:ring-offset-zinc-950",
+          onClick && "cursor-pointer"
+        )}
+      >
+        <div className={cn("flex items-center justify-center", sizeToken.icon)}>
+          {logo || <Plug className={cn(sizeToken.icon, brandToken.text)} />}
+        </div>
+      </div>
+
+      {showStatusIndicator && status && (
+        <span
+          className={cn(
+            "absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-background",
+            sizeToken.dot,
+            statusToken.dot,
+            status === "syncing" && "animate-pulse"
+          )}
+        />
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// CONNECTOR ICON GRID - For displaying multiple connectors
+// ============================================================================
+
+interface ConnectorIconGridProps {
+  connectors: Array<{
+    vendor: string
+    status?: ConnectorStatus
+  }>
+  size?: ConnectorIconSize
+  maxVisible?: number
+  className?: string
+}
+
+export function ConnectorIconGrid({
+  connectors,
+  size = "xs",
+  maxVisible = 4,
+  className,
+}: ConnectorIconGridProps) {
+  const visible = connectors.slice(0, maxVisible)
+  const remaining = connectors.length - maxVisible
+
+  return (
+    <div className={cn("flex items-center -space-x-1.5", className)}>
+      {visible.map((connector, index) => (
+        <ConnectorIcon
+          key={`${connector.vendor}-${index}`}
+          vendor={connector.vendor}
+          status={connector.status}
+          size={size}
+          showStatusIndicator={false}
+          className="ring-2 ring-background"
+        />
+      ))}
+      {remaining > 0 && (
+        <div
+          className={cn(
+            "inline-flex items-center justify-center bg-muted text-muted-foreground text-[10px] font-medium ring-2 ring-background",
+            connectorIconSizes[size].container,
+            connectorIconSizes[size].radius
+          )}
+        >
+          +{remaining}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// FALLBACK ICON - For unknown connectors
+// ============================================================================
+
+interface ConnectorFallbackIconProps {
+  name: string
+  size?: ConnectorIconSize
+  className?: string
+}
+
+export function ConnectorFallbackIcon({
+  name,
+  size = "sm",
+  className,
+}: ConnectorFallbackIconProps) {
+  const initials = name
+    .split(/[\s-_]+/)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+
+  const sizeToken = connectorIconSizes[size]
+  const brandToken = connectorBrandTokens.default
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center justify-center border transition-all duration-200",
+        "shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_rgba(15,23,42,0.04)]",
+        sizeToken.container,
+        sizeToken.radius,
+        brandToken.bg,
+        brandToken.border,
+        className
+      )}
+    >
+      <span className={cn("font-medium", brandToken.text, size === "xs" ? "text-[9px]" : size === "sm" ? "text-[10px]" : "text-xs")}>
+        {initials}
+      </span>
+    </div>
+  )
+}
+
+// ============================================================================
+// CONNECTOR REGISTRY - Example data structure
+// ============================================================================
+
+export const connectorRegistry = [
+  {
+    id: "salesforce",
+    name: "Salesforce",
+    department: "crmMarketing" as ConnectorDepartment,
+    brand: "salesforce" as ConnectorBrand,
+    authType: "oauth",
+    actions: ["Fetch Records", "Create Lead", "Update Contact", "Query Object"],
+  },
+  {
+    id: "hubspot",
+    name: "HubSpot",
+    department: "crmMarketing" as ConnectorDepartment,
+    brand: "hubspot" as ConnectorBrand,
+    authType: "oauth",
+    actions: ["Create Contact", "Update Deal", "Send Marketing Email", "Get Engagements"],
+  },
+  {
+    id: "stripe",
+    name: "Stripe",
+    department: "finance" as ConnectorDepartment,
+    brand: "stripe" as ConnectorBrand,
+    authType: "api_key",
+    actions: ["Create Payment", "Retrieve Customer", "Create Invoice", "Issue Refund"],
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    department: "communication" as ConnectorDepartment,
+    brand: "slack" as ConnectorBrand,
+    authType: "oauth",
+    actions: ["Send Message", "Post to Channel", "Create Reminder", "Notify User"],
+  },
+  {
+    id: "github",
+    name: "GitHub",
+    department: "devInfra" as ConnectorDepartment,
+    brand: "github" as ConnectorBrand,
+    authType: "oauth",
+    actions: ["Create Issue", "Create PR", "Read Repository", "Comment on PR"],
+  },
+] as const

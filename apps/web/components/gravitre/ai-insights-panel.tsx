@@ -5,6 +5,15 @@ import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { Icon, type IconName } from "@/lib/icons"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { toast } from "sonner"
+import { Loader2, Check, Download, ExternalLink } from "lucide-react"
 
 interface ReasoningStep {
   id: string
@@ -29,6 +38,7 @@ interface MesonInsightsPanelProps {
   sections: InsightSection[]
   isGenerating?: boolean
   className?: string
+  onTakeAction?: () => void
 }
 
 const severityConfig: Record<string, { label: string; color: string; bg: string; border: string; glow: string; ring: string; icon: IconName }> = {
@@ -409,14 +419,53 @@ export function MesonInsightsPanel({
   sections,
   isGenerating = false,
   className,
+  onTakeAction,
 }: MesonInsightsPanelProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>(["root-cause", "summary"])
+  const [showFullAnalysis, setShowFullAnalysis] = useState(false)
+  const [showVerifySources, setShowVerifySources] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isTakingAction, setIsTakingAction] = useState(false)
   const severityConf = severityConfig[severity]
 
   const toggleSection = (id: string) => {
     setExpandedSections((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     )
+  }
+
+  const handleExport = () => {
+    setIsExporting(true)
+    setTimeout(() => {
+      // Create a text export of the analysis
+      const analysisText = sections.map(s => 
+        `## ${s.title}\n${s.content}\n`
+      ).join("\n")
+      const blob = new Blob([analysisText], { type: "text/plain" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `ai-analysis-${new Date().toISOString().split("T")[0]}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setIsExporting(false)
+      toast.success("Analysis exported successfully")
+    }, 800)
+  }
+
+  const handleTakeAction = () => {
+    setIsTakingAction(true)
+    setTimeout(() => {
+      setIsTakingAction(false)
+      if (onTakeAction) {
+        onTakeAction()
+      }
+      toast.success("Actions applied successfully", {
+        description: "The recommended fixes have been queued for execution."
+      })
+    }, 1000)
   }
 
   // Sort sections by priority, with root-cause first
@@ -511,27 +560,153 @@ export function MesonInsightsPanel({
       <div className="border-t border-border/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <button 
+              onClick={() => setShowFullAnalysis(true)}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
               <Icon name="search" size="sm" />
               View full analysis
             </button>
             <span className="text-border">|</span>
-            <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <button 
+              onClick={() => setShowVerifySources(true)}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
               <Icon name="shield" size="sm" />
               Verify sources
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs">
-              Export
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 text-xs gap-1.5"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {isExporting ? "Exporting..." : "Export"}
             </Button>
-            <Button size="sm" className="h-8 text-xs gap-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400">
-              <Icon name="execution" size="sm" />
-              Take Action
+            <Button 
+              size="sm" 
+              className="h-8 text-xs gap-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400"
+              onClick={handleTakeAction}
+              disabled={isTakingAction}
+            >
+              {isTakingAction ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Icon name="execution" size="sm" />
+              )}
+              {isTakingAction ? "Applying..." : "Take Action"}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Full Analysis Dialog */}
+      <Dialog open={showFullAnalysis} onOpenChange={setShowFullAnalysis}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Icon name="aiAnalysis" size="lg" className="text-blue-400" />
+              Full AI Analysis
+            </DialogTitle>
+            <DialogDescription>
+              Complete analysis breakdown with all findings and recommendations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {sections.map((section) => {
+              const config = sectionConfig[section.type] || sectionConfig.summary
+              return (
+                <div key={section.id} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", config.iconBg)}>
+                      <Icon name={config.icon} size="sm" className={config.iconColor} />
+                    </div>
+                    <h4 className="font-semibold text-foreground">{section.title}</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed pl-10">
+                    {section.content}
+                  </p>
+                  {section.actions && (
+                    <div className="pl-10 space-y-2 mt-3">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Recommended Actions:</p>
+                      {section.actions.map((action) => (
+                        <div key={action.id} className="flex items-center gap-2 text-sm">
+                          <Check className="h-4 w-4 text-emerald-400" />
+                          <span>{action.label}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full",
+                            action.priority === "high" ? "bg-red-500/10 text-red-400" :
+                            action.priority === "medium" ? "bg-amber-500/10 text-amber-400" :
+                            "bg-blue-500/10 text-blue-400"
+                          )}>{action.priority}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowFullAnalysis(false)}>Close</Button>
+            <Button onClick={handleExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export Report
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verify Sources Dialog */}
+      <Dialog open={showVerifySources} onOpenChange={setShowVerifySources}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Icon name="shield" size="lg" className="text-emerald-400" />
+              Source Verification
+            </DialogTitle>
+            <DialogDescription>
+              All data sources used in this analysis have been verified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {[
+              { name: "System Logs", status: "verified", timestamp: "2 min ago" },
+              { name: "Error Traces", status: "verified", timestamp: "2 min ago" },
+              { name: "Performance Metrics", status: "verified", timestamp: "5 min ago" },
+              { name: "Configuration Files", status: "verified", timestamp: "5 min ago" },
+            ].map((source) => (
+              <div key={source.name} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{source.name}</p>
+                    <p className="text-xs text-muted-foreground">Last checked {source.timestamp}</p>
+                  </div>
+                </div>
+                <span className="text-xs text-emerald-400 font-medium uppercase">{source.status}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between items-center pt-4 border-t">
+            <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <ExternalLink className="h-3.5 w-3.5" />
+              View raw data
+            </button>
+            <Button onClick={() => setShowVerifySources(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }

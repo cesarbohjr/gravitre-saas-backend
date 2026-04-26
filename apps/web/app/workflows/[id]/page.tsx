@@ -340,46 +340,60 @@ export default function WorkflowDetailPage() {
                   <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                     Automation Flow
                   </h2>
-                  <span className="text-xs text-muted-foreground">
-                    {flowSteps.length} steps
-                  </span>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3 text-success" />
+                      Done
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-warning" />
+                      Waiting
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Circle className="h-3 w-3 text-muted-foreground" />
+                      Pending
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-0">
                   {flowSteps.map((step, index) => {
                     const Icon = systemIcons[step.systemType] || Zap
                     const isSelected = selectedStep === step.id
+                    const stepNumber = index + 1
+                    const isLastStep = index === flowSteps.length - 1
 
                     return (
                       <div key={step.id} className="relative">
-                        {/* Connector Line */}
-                        {index < flowSteps.length - 1 && (
-                          <div className="absolute left-6 top-[72px] h-3 w-px bg-border" />
-                        )}
-
                         {/* Step Card */}
                         <button
                           onClick={() => setSelectedStep(step.id)}
                           className={`w-full text-left rounded-lg border p-4 transition-all ${
                             isSelected
-                              ? "border-info bg-info/5"
+                              ? "border-info bg-info/5 shadow-[0_0_0_1px_hsl(var(--info)/0.3)]"
                               : "border-border bg-card hover:border-muted-foreground/50"
                           }`}
                         >
                           <div className="flex items-start gap-4">
-                            {/* Icon */}
-                            <div
-                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
-                                step.systemType === "agent"
-                                  ? "bg-info/10 text-info"
-                                  : step.systemType === "approval"
-                                    ? "bg-warning/10 text-warning"
-                                    : step.systemType === "data-source"
-                                      ? "bg-success/10 text-success"
-                                      : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              <Icon className="h-5 w-5" />
+                            {/* Step Number + Icon */}
+                            <div className="relative">
+                              <div
+                                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
+                                  step.systemType === "agent"
+                                    ? "bg-info/10 text-info"
+                                    : step.systemType === "approval"
+                                      ? "bg-warning/10 text-warning"
+                                      : step.systemType === "data-source"
+                                        ? "bg-success/10 text-success"
+                                        : "bg-muted text-muted-foreground"
+                                }`}
+                              >
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              {/* Step number badge */}
+                              <div className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-secondary border border-border text-[10px] font-semibold text-muted-foreground">
+                                {stepNumber}
+                              </div>
                             </div>
 
                             {/* Content */}
@@ -397,23 +411,50 @@ export default function WorkflowDetailPage() {
                               </div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>{step.system}</span>
-                                <span className="text-muted-foreground/50">|</span>
-                                <EnvironmentBadge environment={step.environment} />
+                                {step.status === "completed" && (
+                                  <>
+                                    <span className="text-muted-foreground/50">|</span>
+                                    <span className="text-success">Completed</span>
+                                  </>
+                                )}
+                                {step.status === "pending" && (
+                                  <>
+                                    <span className="text-muted-foreground/50">|</span>
+                                    <span className="text-warning">Awaiting approval</span>
+                                  </>
+                                )}
+                                {step.status === "waiting" && (
+                                  <>
+                                    <span className="text-muted-foreground/50">|</span>
+                                    <span className="text-muted-foreground">Ready to run</span>
+                                  </>
+                                )}
                               </div>
                             </div>
 
                             {/* Status */}
                             <div className="flex items-center gap-2">
                               {step.status === "completed" ? (
-                                <CheckCircle2 className="h-4 w-4 text-success" />
+                                <CheckCircle2 className="h-5 w-5 text-success" />
                               ) : step.status === "pending" ? (
-                                <Clock className="h-4 w-4 text-warning" />
+                                <Clock className="h-5 w-5 text-warning" />
                               ) : (
-                                <Circle className="h-4 w-4 text-muted-foreground" />
+                                <Circle className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
                           </div>
                         </button>
+
+                        {/* Flow Arrow Connector */}
+                        {!isLastStep && (
+                          <div className="flex justify-center py-1">
+                            <div className="flex flex-col items-center">
+                              <div className="h-2 w-px bg-gradient-to-b from-border to-muted-foreground/30" />
+                              <ChevronRight className="h-3 w-3 text-muted-foreground/50 rotate-90" />
+                              <div className="h-2 w-px bg-gradient-to-b from-muted-foreground/30 to-border" />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -474,39 +515,70 @@ export default function WorkflowDetailPage() {
                   </p>
                 </div>
 
-                {/* Inputs */}
+                {/* Inputs - with source indication */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                     Inputs
                   </h4>
-                  <ul className="space-y-1">
-                    {selectedStepData.inputs.map((input) => (
-                      <li
-                        key={input}
-                        className="text-sm text-muted-foreground flex items-center gap-2"
-                      >
-                        <ChevronRight className="h-3 w-3" />
-                        {input}
-                      </li>
-                    ))}
+                  <ul className="space-y-2">
+                    {selectedStepData.inputs.map((input, idx) => {
+                      // Find previous step to show data source
+                      const stepIndex = flowSteps.findIndex(s => s.id === selectedStepData.id)
+                      const prevStep = stepIndex > 0 ? flowSteps[stepIndex - 1] : null
+                      
+                      return (
+                        <li
+                          key={input}
+                          className="text-sm bg-muted/30 rounded-md p-2 border border-border"
+                        >
+                          <div className="flex items-center gap-2 text-foreground">
+                            <div className="h-1.5 w-1.5 rounded-full bg-info" />
+                            {input}
+                          </div>
+                          {prevStep && idx === 0 && (
+                            <div className="text-[10px] text-muted-foreground mt-1 pl-3.5">
+                              From: Step {stepIndex}. {prevStep.name}
+                            </div>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
 
-                {/* Outputs */}
+                {/* Outputs - with destination indication */}
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                     Outputs
                   </h4>
-                  <ul className="space-y-1">
-                    {selectedStepData.outputs.map((output) => (
-                      <li
-                        key={output}
-                        className="text-sm text-muted-foreground flex items-center gap-2"
-                      >
-                        <ChevronRight className="h-3 w-3" />
-                        {output}
-                      </li>
-                    ))}
+                  <ul className="space-y-2">
+                    {selectedStepData.outputs.map((output, idx) => {
+                      // Find next step to show data destination
+                      const stepIndex = flowSteps.findIndex(s => s.id === selectedStepData.id)
+                      const nextStep = stepIndex < flowSteps.length - 1 ? flowSteps[stepIndex + 1] : null
+                      
+                      return (
+                        <li
+                          key={output}
+                          className="text-sm bg-success/5 rounded-md p-2 border border-success/20"
+                        >
+                          <div className="flex items-center gap-2 text-foreground">
+                            <div className="h-1.5 w-1.5 rounded-full bg-success" />
+                            {output}
+                          </div>
+                          {nextStep && idx === 0 && (
+                            <div className="text-[10px] text-muted-foreground mt-1 pl-3.5">
+                              To: Step {stepIndex + 2}. {nextStep.name}
+                            </div>
+                          )}
+                          {!nextStep && (
+                            <div className="text-[10px] text-success mt-1 pl-3.5">
+                              Final output
+                            </div>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
 
