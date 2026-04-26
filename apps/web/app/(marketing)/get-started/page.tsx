@@ -170,7 +170,7 @@ export default function GetStartedPage() {
                   </motion.div>
                   <h1 className="text-2xl font-semibold text-zinc-900">Create your account</h1>
                   <p className="mt-2 text-sm text-zinc-500">
-                    Start your 14-day free trial. No credit card required.
+                    Start your 7-day free trial. No credit card required.
                   </p>
                 </div>
 
@@ -392,7 +392,7 @@ export default function GetStartedPage() {
 
                 <h1 className="text-2xl font-semibold text-zinc-900">Choose your plan</h1>
                 <p className="mt-2 text-sm text-zinc-500 mb-8">
-                  Start with a 14-day free trial. Cancel anytime.
+                  Start with a 7-day free trial. Cancel anytime.
                 </p>
 
                 <div className="space-y-3">
@@ -484,7 +484,7 @@ export default function GetStartedPage() {
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 mb-6">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-zinc-500">Plan</span>
-                    <span className="text-zinc-900 font-medium capitalize">{selectedPlan} (14-day trial)</span>
+                    <span className="text-zinc-900 font-medium capitalize">{selectedPlan} (7-day trial)</span>
                   </div>
                 </div>
 

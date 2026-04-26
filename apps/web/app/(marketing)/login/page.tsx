@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "lucide-react"
-import { supabaseClient } from "@/lib/supabaseClient"
 
 const features = [
   "Deploy AI agents in minutes",
@@ -21,7 +20,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [activeFeature, setActiveFeature] = useState(0)
-  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,53 +28,17 @@ export default function LoginPage() {
     return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    let mounted = true
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      if (data.session) {
-        router.replace("/operator")
-      }
-    })
-    return () => {
-      mounted = false
-    }
-  }, [router])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setAuthError(null)
     setIsLoading(true)
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password,
-    })
-    setIsLoading(false)
-
-    if (error) {
-      setAuthError(error.message)
-      return
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 1500))
     router.push("/operator")
   }
 
   const handleOAuth = async (provider: string) => {
     setLoadingProvider(provider)
-    setAuthError(null)
-
-    const selectedProvider = provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: selectedProvider,
-      options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
-      },
-    })
-
-    if (error) {
-      setAuthError(error.message)
-      setLoadingProvider(null)
-    }
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    router.push("/operator")
   }
 
   return (
@@ -167,9 +129,6 @@ export default function LoginPage() {
                 <p className="mt-2 text-sm text-zinc-500">
                   Access your AI command center
                 </p>
-                {authError && (
-                  <p className="mt-3 text-sm text-red-600">{authError}</p>
-                )}
               </div>
 
               {/* OAuth buttons */}
