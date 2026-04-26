@@ -97,6 +97,7 @@ import {
   Trophy,
   Medal,
   TrendingUp,
+  TrendingDown,
   PieChart,
   Table,
   LayoutGrid,
@@ -210,9 +211,9 @@ export const iconMap = {
   
   // Actions
   add: Plus,
-  create: Plus,
-  close: X,
+  plus: Plus,
   remove: X,
+  close: X,
   more: MoreHorizontal,
   moreVertical: MoreVertical,
   play: Play,
@@ -228,6 +229,8 @@ export const iconMap = {
   forward: ArrowRight,
   up: ArrowUp,
   down: ArrowDown,
+  trendUp: TrendingUp,
+  trendDown: TrendingDown,
   logout: LogOut,
   signOut: LogOut,
   

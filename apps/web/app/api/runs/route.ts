@@ -11,11 +11,16 @@ export async function GET(request: NextRequest) {
     }
 
     const statusFilter = request.nextUrl.searchParams.get("status")
-    const statusValues =
+    const requestedStatuses =
       statusFilter
         ?.split(",")
         .map((value) => value.trim())
         .filter(Boolean) ?? []
+    const normalizedStatuses = requestedStatuses
+      .filter((value) => value !== "needs_approval")
+      .flatMap((value) => (value === "queued" ? ["pending"] : [value]))
+    const statusValues = Array.from(new Set(normalizedStatuses))
+    const includeNeedsApproval = requestedStatuses.includes("needs_approval")
 
     let query = supabase
       .from("runs")
@@ -23,8 +28,12 @@ export async function GET(request: NextRequest) {
       .eq("org_id", orgId)
       .order("created_at", { ascending: false })
 
-    if (statusValues.length > 0) {
+    if (includeNeedsApproval && statusValues.length > 0) {
+      query = query.or(`status.in.(${statusValues.join(",")}),approval_status.eq.pending`)
+    } else if (statusValues.length > 0) {
       query = query.in("status", statusValues)
+    } else if (includeNeedsApproval) {
+      query = query.eq("approval_status", "pending")
     }
 
     const { data, error } = await query

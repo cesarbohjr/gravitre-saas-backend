@@ -35,7 +35,8 @@ import {
   X,
   Brain,
   Sparkles,
-  Info
+  Info,
+  AlertCircle
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import useSWR from "swr"
