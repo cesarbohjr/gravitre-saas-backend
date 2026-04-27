@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
-import { supabaseClient } from "@/lib/supabaseClient"
+import { hasSupabasePublicEnv, supabaseClient } from "@/lib/supabaseClient"
 import type { User, Session } from "@supabase/supabase-js"
 
 interface AuthContextType {
@@ -13,6 +13,22 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AUTH_INIT_TIMEOUT_MS = 5000
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Auth initialization timed out")), timeoutMs)
+    promise
+      .then((value) => {
+        clearTimeout(timer)
+        resolve(value)
+      })
+      .catch((error) => {
+        clearTimeout(timer)
+        reject(error)
+      })
+  })
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -20,26 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
-    
-    // Timeout to prevent infinite loading if Supabase is misconfigured
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn("[v0] Auth check timed out - Supabase may not be configured")
-        setLoading(false)
-      }
-    }, 3000)
-
-    // Get initial session
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      setSession(session)
-      setUser(session?.user ?? null)
+    if (!hasSupabasePublicEnv) {
       setLoading(false)
-    }).catch((err) => {
-      console.warn("[v0] Auth session check failed:", err)
-      if (mounted) setLoading(false)
-    })
+      return
+    }
+
+    let mounted = true
+
+    // Get initial session with timeout guard
+    withTimeout(supabaseClient.auth.getSession(), AUTH_INIT_TIMEOUT_MS)
+      .then(({ data: { session } }) => {
+        if (!mounted) return
+        setSession(session)
+        setUser(session?.user ?? null)
+      })
+      .catch((err) => {
+        console.warn("[v0] Auth session check failed:", err)
+        if (!mounted) return
+        setSession(null)
+        setUser(null)
+      })
+      .finally(() => {
+        if (!mounted) return
+        setLoading(false)
+      })
 
     // Subscribe to auth changes
     const {
@@ -53,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false
-      clearTimeout(timeout)
       subscription.unsubscribe()
     }
   }, [])
@@ -88,6 +107,7 @@ export function useAuth() {
 
 // Helper to get access token for API requests
 export async function getAccessToken(): Promise<string | null> {
+  if (!hasSupabasePublicEnv) return null
   const { data: { session } } = await supabaseClient.auth.getSession()
   return session?.access_token ?? null
 }
