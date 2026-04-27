@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -20,6 +20,7 @@ import {
   Bot,
   Workflow
 } from "lucide-react"
+import { supabaseClient } from "@/lib/supabaseClient"
 
 const plans = [
   {
@@ -67,18 +68,57 @@ export default function GetStartedPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      if (data.session) {
+        router.replace("/operator")
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [router])
 
   const handleOAuth = async (provider: string) => {
+    setAuthError(null)
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setStep(2)
-    setIsLoading(false)
+    const selectedProvider = provider === "github" ? "github" : "google"
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: selectedProvider,
+      options: {
+        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/onboarding` : undefined,
+      },
+    })
+    if (error) {
+      setAuthError(error.message)
+      setIsLoading(false)
+    }
   }
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+    setAuthError(null)
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo:
+          typeof window !== "undefined" ? `${window.location.origin}/onboarding` : undefined,
+      },
+    })
+
+    if (error) {
+      setAuthError(error.message)
+      setIsLoading(false)
+      return
+    }
+
     setStep(2)
     setIsLoading(false)
   }
@@ -172,6 +212,9 @@ export default function GetStartedPage() {
                   <p className="mt-2 text-sm text-zinc-500">
                     Start your 7-day free trial. No credit card required.
                   </p>
+                  {authError && (
+                    <p className="mt-3 text-sm text-red-600">{authError}</p>
+                  )}
                 </div>
 
                 {/* OAuth Buttons */}

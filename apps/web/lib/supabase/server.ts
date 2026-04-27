@@ -49,7 +49,7 @@ export async function resolveOrgId(
   const { data: userData } = await supabase.auth.getUser()
   const userId = userData.user?.id
   if (!userId) {
-    return null
+    return DEMO_ORG_ID
   }
 
   const { data, error } = await supabase
