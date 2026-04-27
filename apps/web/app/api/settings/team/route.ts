@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
 import { snakeToCamel } from "@/lib/supabase/transforms"
 
 export async function GET(request: NextRequest) {
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
     if (!orgId) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
+    await ensureDemoDataForOrg(supabase, orgId)
 
     const { data: members, error: membersError } = await supabase
       .from("organization_members")
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const team = (members ?? []).map((member) => {
+    let team = (members ?? []).map((member) => {
       const base = snakeToCamel<Record<string, unknown>>(member)
       const user = usersById[String(member.user_id)] ?? {}
       return {
@@ -44,6 +46,25 @@ export async function GET(request: NextRequest) {
         name: user.full_name ?? null,
       }
     })
+
+    if (team.length === 0) {
+      const { data: orgUsers } = await supabase
+        .from("users")
+        .select("id, email, full_name, role, created_at")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false })
+        .limit(20)
+
+      team = (orgUsers ?? []).map((user) => ({
+        id: user.id,
+        orgId,
+        userId: user.id,
+        role: user.role ?? "member",
+        createdAt: user.created_at ?? null,
+        email: user.email ?? null,
+        name: user.full_name ?? null,
+      }))
+    }
 
     return NextResponse.json({ team })
   } catch (error) {

@@ -10,7 +10,19 @@ const DEMO_ORGS: Record<string, { name: string; slug: string }> = {
 
 function createDemoRows(orgId: string) {
   const suffix = orgId === SECONDARY_DEMO_ORG_ID ? "b" : "a"
+  const orgSuffix = suffix === "a" ? "1" : "2"
   return {
+    users: [
+      {
+        id: `20000000-0000-4000-8000-00000000000${orgSuffix}`,
+        org_id: orgId,
+        auth_user_id: null,
+        email: suffix === "a" ? "jordan.ortiz@acmecorp.com" : "riley.chen@gravitrelabs.com",
+        full_name: suffix === "a" ? "Jordan Ortiz" : "Riley Chen",
+        role: "owner",
+        status: "active",
+      },
+    ],
     agents: [
       {
         id: `30000000-0000-4000-8000-00000000000${suffix === "a" ? "1" : "7"}`,
@@ -104,6 +116,19 @@ function createDemoRows(orgId: string) {
         error_message: "Connector timeout while syncing CRM records.",
         metadata: { recordsProcessed: 480 },
       },
+      {
+        id: `60000000-0000-4000-8000-0000000000${suffix === "a" ? "10" : "11"}`,
+        org_id: orgId,
+        workflow_id: `50000000-0000-4000-8000-00000000000${suffix === "a" ? "2" : "8"}`,
+        workflow_name: "Customer Escalation Triage",
+        status: "pending",
+        trigger: "schedule",
+        approval_status: "pending",
+        started_at: null,
+        completed_at: null,
+        duration_ms: null,
+        metadata: { recordsProcessed: 0 },
+      },
     ],
     approvals: [
       {
@@ -133,6 +158,45 @@ function createDemoRows(orgId: string) {
         context: { guardrail: "high_impact_retry" },
       },
     ],
+    connectedSystems: [
+      {
+        id: `40000000-0000-4000-8000-00000000000${orgSuffix}`,
+        org_id: orgId,
+        system_key: "hubspot",
+        name: "HubSpot CRM",
+        type: "crm",
+        status: "connected",
+        config: { vendor: "hubspot" },
+      },
+      {
+        id: `40000000-0000-4000-8000-0000000000${suffix === "a" ? "12" : "13"}`,
+        org_id: orgId,
+        system_key: "slack",
+        name: "Slack",
+        type: "communication",
+        status: "connected",
+        config: { vendor: "slack" },
+      },
+    ],
+    apiKeys: [
+      {
+        id: `80000000-0000-4000-8000-00000000000${orgSuffix}`,
+        org_id: orgId,
+        name: "Production Integration Key",
+        key_prefix: suffix === "a" ? "gva_live_" : "gvl_live_",
+        key_hash: suffix === "a" ? "demo-hash-acme-live" : "demo-hash-labs-live",
+        status: "active",
+      },
+    ],
+    webhooks: [
+      {
+        id: `90000000-0000-4000-8000-00000000000${orgSuffix}`,
+        org_id: orgId,
+        url: suffix === "a" ? "https://hooks.acmecorp.com/gravitre/events" : "https://hooks.gravitrelabs.com/ops/events",
+        events: ["run.completed", "approval.requested"],
+        status: "active",
+      },
+    ],
   }
 }
 
@@ -141,14 +205,6 @@ export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: stri
   if (!orgTemplate) return
 
   try {
-    const { data: existingOrg } = await supabase
-      .from("organizations")
-      .select("id")
-      .eq("id", orgId)
-      .maybeSingle()
-
-    if (existingOrg) return
-
     const nowIso = new Date().toISOString()
     await supabase.from("organizations").upsert(
       {
@@ -164,10 +220,14 @@ export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: stri
     )
 
     const rows = createDemoRows(orgId)
+    await supabase.from("users").upsert(rows.users, { onConflict: "id" })
     await supabase.from("agents").upsert(rows.agents, { onConflict: "id" })
     await supabase.from("workflows").upsert(rows.workflows, { onConflict: "id" })
     await supabase.from("runs").upsert(rows.runs, { onConflict: "id" })
     await supabase.from("approvals").upsert(rows.approvals, { onConflict: "id" })
+    await supabase.from("connected_systems").upsert(rows.connectedSystems, { onConflict: "id" })
+    await supabase.from("api_keys").upsert(rows.apiKeys, { onConflict: "id" })
+    await supabase.from("webhooks").upsert(rows.webhooks, { onConflict: "id" })
     await supabase.from("model_settings").upsert(
       {
         org_id: orgId,
