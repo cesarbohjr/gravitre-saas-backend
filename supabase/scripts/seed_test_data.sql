@@ -534,3 +534,74 @@ VALUES (
   now()
 )
 ON CONFLICT (org_id) DO NOTHING;
+
+-- 10) normalize seeded data to demo org context used by API fallback
+-- Keeps this script idempotent and aligns seeded rows with:
+-- 00000000-0000-0000-0000-000000000001
+INSERT INTO public.organizations (
+  id,
+  name,
+  slug,
+  settings,
+  status,
+  created_at,
+  updated_at
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  'Gravitre Demo',
+  'gravitre-demo',
+  '{"theme":"dark","timezone":"UTC","locale":"en-US"}'::jsonb,
+  'active',
+  now() - interval '7 days',
+  now()
+)
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE public.users
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.organization_members
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.agents
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.workflows
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.runs
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.run_steps
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.approvals
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.connected_systems
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.api_keys
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.webhooks
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.audit_logs
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
+
+UPDATE public.model_settings
+SET org_id = '00000000-0000-0000-0000-000000000001'
+WHERE org_id = '11111111-1111-4111-8111-111111111111';
