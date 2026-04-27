@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { 
   Calendar, 
   Download, 
@@ -46,8 +47,6 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts"
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackRunData = [
   { time: "00:00", completed: 45, failed: 2, latency: 120 },
@@ -94,6 +93,84 @@ const fallbackOverview = {
     recordsProcessed: 24,
     avgLatency: -8,
   },
+}
+
+type MetricsOverview = {
+  totalRuns: number
+  successRate: number
+  recordsProcessed: number
+  avgLatency: number
+  activeConnectors: number
+  totalConnectors: number
+  changes: {
+    totalRuns: number
+    successRate: number
+    recordsProcessed: number
+    avgLatency: number
+  }
+}
+
+function parseNumber(value: unknown, defaultValue = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (trimmed.endsWith("M")) {
+      const scaled = Number.parseFloat(trimmed.slice(0, -1))
+      return Number.isFinite(scaled) ? scaled * 1_000_000 : defaultValue
+    }
+    const parsed = Number.parseFloat(trimmed.replace(/,/g, ""))
+    return Number.isFinite(parsed) ? parsed : defaultValue
+  }
+  return defaultValue
+}
+
+function normalizeOverview(payload: unknown): MetricsOverview {
+  const fallback: MetricsOverview = fallbackOverview
+  if (!payload || typeof payload !== "object") return fallback
+  const model = payload as Record<string, unknown>
+  return {
+    totalRuns: parseNumber(model.totalRuns, fallback.totalRuns),
+    successRate: parseNumber(model.successRate, fallback.successRate),
+    recordsProcessed: parseNumber(model.recordsProcessed, fallback.recordsProcessed),
+    avgLatency: parseNumber(model.avgLatency, fallback.avgLatency),
+    activeConnectors: parseNumber(model.activeConnectors, fallback.activeConnectors),
+    totalConnectors: parseNumber(model.totalConnectors, fallback.totalConnectors),
+    changes: {
+      totalRuns: parseNumber(
+        (model.changes as Record<string, unknown> | undefined)?.totalRuns ?? model.totalRunsChange,
+        fallback.changes.totalRuns
+      ),
+      successRate: parseNumber(
+        (model.changes as Record<string, unknown> | undefined)?.successRate ?? model.successRateChange,
+        fallback.changes.successRate
+      ),
+      recordsProcessed: parseNumber(
+        (model.changes as Record<string, unknown> | undefined)?.recordsProcessed ??
+          model.recordsProcessedChange,
+        fallback.changes.recordsProcessed
+      ),
+      avgLatency: parseNumber(
+        (model.changes as Record<string, unknown> | undefined)?.avgLatency ?? model.avgLatencyChange,
+        fallback.changes.avgLatency
+      ),
+    },
+  }
+}
+
+function normalizeSeries(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return {
+      runVolume: fallbackRunData,
+      latencyDistribution: fallbackLatencyData,
+    }
+  }
+  const model = payload as Record<string, unknown>
+  return {
+    runVolume: Array.isArray(model.runVolume) ? model.runVolume : fallbackRunData,
+    latencyDistribution: Array.isArray(model.latencyDistribution)
+      ? model.latencyDistribution
+      : fallbackLatencyData,
+  }
 }
 
 // Meson Insights
@@ -212,7 +289,7 @@ function MetricCard({
 }
 
 // AI Insight card
-function InsightCard({ insight }: { insight: typeof aiInsights[0] }) {
+function InsightCard({ insight }: { insight: typeof mesonInsights[0] }) {
   const config = {
     anomaly: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     trend: { icon: TrendingUp, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
@@ -309,13 +386,18 @@ Now,67,1,125`
   
   const { data: overviewData, isLoading, mutate } = useSWR(
     "/api/metrics/overview",
-    fetcher,
+    apiFetcher,
     { fallbackData: fallbackOverview, revalidateOnFocus: false }
   )
+  const { data: seriesData } = useSWR("/api/metrics/runs", apiFetcher, {
+    fallbackData: { runVolume: fallbackRunData, latencyDistribution: fallbackLatencyData },
+    revalidateOnFocus: false,
+  })
 
-  const overview = overviewData ?? fallbackOverview
-  const runData = fallbackRunData
-  const latencyData = fallbackLatencyData
+  const overview = normalizeOverview(overviewData)
+  const series = normalizeSeries(seriesData)
+  const runData = series.runVolume
+  const latencyData = series.latencyDistribution
   const throughputData = fallbackThroughputData
 
   return (

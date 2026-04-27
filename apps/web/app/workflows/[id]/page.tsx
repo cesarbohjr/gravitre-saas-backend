@@ -1,7 +1,6 @@
 "use client"
 
-import { use, useEffect, useMemo, useState } from "react"
-import useSWR from "swr"
+import { useState } from "react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -38,33 +37,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { fetcher } from "@/lib/fetcher"
-import { EmptyState } from "@/components/gravitre/empty-state"
-import { Skeleton } from "@/components/ui/skeleton"
-import { toast } from "sonner"
 
-interface WorkflowResponse {
-  workflow: Record<string, unknown>
-  nodes: Array<Record<string, unknown>>
-  edges: Array<Record<string, unknown>>
-  config: Record<string, unknown>
-}
-
-interface WorkflowHealthResponse {
-  healthScore: number
-  dimensions: Record<string, number>
-  trendData: Array<{ recordedAt: string; healthScore: number }>
-}
-
-interface WorkflowRecommendationsResponse {
-  recommendations: Array<{
-    id: string
-    issue: string
-    confidence: number | null
-  }>
-}
-
-const fallbackAutomationData = {
+// Mock data
+const automationData = {
   id: "wf-001",
   name: "Sync customer data from Salesforce to internal systems",
   description: "Automatically pulls customer records, validates and cleans the data, then syncs to your database",
@@ -79,7 +54,7 @@ const fallbackAutomationData = {
 }
 
 // Flow steps with simplified terminology
-const fallbackFlowSteps = [
+const flowSteps = [
   {
     id: "step-1",
     name: "Pull customer records",
@@ -151,127 +126,22 @@ const flowPhases = [
   { label: "Run", status: "upcoming", description: "Monitor live execution and performance" },
 ]
 
-export default function WorkflowDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = use(params)
-  const { data: workflowData, error: workflowError, isLoading: isLoadingWorkflow } = useSWR<WorkflowResponse>(
-    `/api/workflows/${id}`,
-    fetcher
-  )
-  const { data: healthData } = useSWR<WorkflowHealthResponse>(`/api/workflows/${id}/health`, fetcher)
-  const { data: recommendationData } = useSWR<WorkflowRecommendationsResponse>(
-    `/api/workflows/${id}/recommendations`,
-    fetcher
-  )
-
-  const automationData = useMemo(() => {
-    const workflow = workflowData?.workflow
-    if (!workflow) return fallbackAutomationData
-    const healthScore = Math.max(0, Math.min(100, Math.round(Number(healthData?.healthScore ?? 0))))
-    return {
-      id: String(workflow.id ?? id),
-      name: String(workflow.name ?? fallbackAutomationData.name),
-      description: String(workflow.description ?? fallbackAutomationData.description),
-      status: (String(workflow.status ?? "draft") as "active" | "paused" | "draft"),
-      environment: (String(workflow.environment ?? "production") as "production" | "staging"),
-      version: `v${String((workflowData?.config?.version as number | undefined) ?? 1)}.0`,
-      lastRun: String(workflow.updatedAt ?? "recently"),
-      lastRunStatus: "success" as const,
-      schedule: String((workflowData?.config?.schedule as string | undefined) ?? "Manual"),
-      successRate: healthScore,
-      totalRuns: healthData?.trendData?.length ?? 0,
-    }
-  }, [healthData?.healthScore, healthData?.trendData?.length, id, workflowData?.config?.version, workflowData?.config?.schedule, workflowData?.workflow])
-
-  const flowSteps = useMemo(() => {
-    const nodes = workflowData?.nodes
-    if (!nodes || nodes.length === 0) return fallbackFlowSteps
-    return nodes.map((node, index) => {
-      const nodeType = String(node.type ?? "task")
-      const mappedType =
-        nodeType === "source"
-          ? "data-source"
-          : nodeType === "agent"
-          ? "agent"
-          : nodeType === "approval"
-          ? "approval"
-          : "connected-system"
-      return {
-        id: String(node.id ?? `step-${index + 1}`),
-        name: String(node.name ?? `Step ${index + 1}`),
-        system: String(node.type ?? "Workflow node"),
-        systemType: mappedType as "data-source" | "agent" | "approval" | "connected-system",
-        environment: automationData.environment,
-        status: (index === 0 ? "completed" : index === 1 ? "pending" : "waiting") as
-          | "completed"
-          | "pending"
-          | "waiting",
-        description: String(node.description ?? "No description available."),
-        inputs: Array.isArray(node.inputs) ? (node.inputs as string[]) : ["Input context"],
-        outputs: Array.isArray(node.outputs) ? (node.outputs as string[]) : ["Output artifact"],
-        requiresApproval: mappedType === "approval",
-      }
-    })
-  }, [automationData.environment, workflowData?.nodes])
-
-  const [selectedStep, setSelectedStep] = useState<string | null>(null)
+export default function WorkflowDetailPage() {
+  const [selectedStep, setSelectedStep] = useState<string | null>("step-3")
   const [aiPrompt, setAiPrompt] = useState("")
-  const promptSuggestions =
-    recommendationData?.recommendations?.slice(0, 3).map((item) => item.issue) ?? examplePrompts
 
   const selectedStepData = flowSteps.find((s) => s.id === selectedStep)
 
   const [isGenerating, setIsGenerating] = useState(false)
-
-  useEffect(() => {
-    if (!selectedStep && flowSteps.length > 0) {
-      setSelectedStep(flowSteps[0].id)
-    }
-  }, [flowSteps, selectedStep])
-
-  useEffect(() => {
-    if (workflowError) {
-      toast.error("Failed to load workflow details")
-    }
-  }, [workflowError])
   
   const handleGenerateWorkflow = async () => {
     if (aiPrompt.trim()) {
       setIsGenerating(true)
+      // Simulate AI processing
       await new Promise(resolve => setTimeout(resolve, 1500))
       setIsGenerating(false)
-      toast.success("Flow prompt captured", {
-        description: "Planner integration is queued for this workflow.",
-      })
       setAiPrompt("")
     }
-  }
-
-  if (isLoadingWorkflow) {
-    return (
-      <AppShell>
-        <div className="p-6 space-y-4">
-          <Skeleton className="h-10 w-72" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-80 w-full" />
-        </div>
-      </AppShell>
-    )
-  }
-
-  if (workflowError || !workflowData?.workflow) {
-    return (
-      <AppShell>
-        <EmptyState
-          variant="error"
-          title="Workflow not found"
-          description="We could not load this workflow."
-        />
-      </AppShell>
-    )
   }
 
   return (
@@ -444,14 +314,14 @@ export default function WorkflowDetailPage({
                       placeholder="Describe a change or addition..."
                       className="flex-1 bg-background border-border"
                     />
-                    <Button onClick={handleGenerateWorkflow} className="gap-2" disabled={isGenerating}>
+                    <Button onClick={handleGenerateWorkflow} className="gap-2">
                       <Sparkles className="h-4 w-4" />
-                      {isGenerating ? "Updating..." : "Update Flow"}
+                      Update Flow
                     </Button>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-xs text-muted-foreground">Try:</span>
-                    {promptSuggestions.map((prompt) => (
+                    {examplePrompts.map((prompt) => (
                       <button
                         key={prompt}
                         onClick={() => setAiPrompt(prompt)}

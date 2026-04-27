@@ -40,11 +40,6 @@ export function getRouteClientAuthMode(request: NextRequest) {
 export function createSupabaseRouteClient(request: NextRequest): SupabaseClient {
   const authHeader = request.headers.get("authorization")
   const serviceRoleKey = getSupabaseServiceRoleKey()
-  if (!authHeader && !serviceRoleKey) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is required for unauthenticated API route access in demo mode"
-    )
-  }
   const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
   return createClient(getSupabaseUrl(), accessKey, {
     global: {

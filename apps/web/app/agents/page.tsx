@@ -1,9 +1,9 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo } from "react"
 import useSWR from "swr"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
@@ -40,14 +40,11 @@ import {
   Workflow,
   Shield,
   Blocks,
-  AlertCircle,
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
-import { apiFetch, fetcher } from "@/lib/fetcher"
-import { EmptyState } from "@/components/gravitre/empty-state"
-import { toast } from "sonner"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 
 interface Agent {
   id: string
@@ -73,6 +70,184 @@ interface Agent {
   lastActionTime: string
 }
 
+// Fallback agents for when API is empty or loading
+const fallbackAgents: Agent[] = [
+  {
+    id: "agent-001",
+    name: "Atlas",
+    role: "Marketing Operator",
+    department: "Marketing",
+    description: "Orchestrates marketing campaigns and analyzes performance metrics",
+    status: "active",
+    personality: {
+      color: "emerald",
+      gradient: "from-emerald-500 to-teal-500",
+      glow: "shadow-emerald-500/30",
+    },
+    stats: {
+      tasksToday: 147,
+      successRate: 98.2,
+      avgResponseTime: "1.2s",
+      workflowsUsing: 4,
+    },
+    capabilities: ["Campaign analysis", "Report generation", "A/B testing", "Email sequences", "Content creation"],
+    permissions: ["HubSpot", "Google Analytics", "Mailchimp", "LinkedIn Ads"],
+    lastAction: "Generated weekly performance report",
+    lastActionTime: "2 minutes ago",
+  },
+  {
+    id: "agent-002",
+    name: "Nexus",
+    role: "Sales Assistant",
+    department: "Sales",
+    description: "Syncs customer data and provides real-time sales insights",
+    status: "processing",
+    personality: {
+      color: "blue",
+      gradient: "from-blue-500 to-indigo-500",
+      glow: "shadow-blue-500/30",
+    },
+    stats: {
+      tasksToday: 234,
+      successRate: 99.1,
+      avgResponseTime: "0.8s",
+      workflowsUsing: 6,
+    },
+    capabilities: ["Contact sync", "Deal tracking", "Forecast modeling", "Lead scoring", "Outreach sequences"],
+    permissions: ["Salesforce", "HubSpot CRM", "LinkedIn Sales Nav", "Outreach.io"],
+    lastAction: "Syncing 1,247 contacts from Salesforce",
+    lastActionTime: "Now",
+  },
+  {
+    id: "agent-003",
+    name: "Sentinel",
+    role: "Data Quality Agent",
+    department: "Operations",
+    description: "Monitors data integrity and detects anomalies in real-time",
+    status: "idle",
+    personality: {
+      color: "amber",
+      gradient: "from-amber-500 to-orange-500",
+      glow: "shadow-amber-500/30",
+    },
+    stats: {
+      tasksToday: 56,
+      successRate: 100,
+      avgResponseTime: "2.1s",
+      workflowsUsing: 2,
+    },
+    capabilities: ["Anomaly detection", "Schema validation", "Deduplication", "Data enrichment"],
+    permissions: ["Snowflake", "BigQuery", "PostgreSQL", "AWS S3"],
+    lastAction: "Validated 50,000 records",
+    lastActionTime: "15 minutes ago",
+  },
+  {
+    id: "agent-004",
+    name: "Oracle",
+    role: "Finance Reporter",
+    department: "Finance",
+    description: "Generates financial reports and tracks budget metrics",
+    status: "active",
+    personality: {
+      color: "violet",
+      gradient: "from-violet-500 to-purple-500",
+      glow: "shadow-violet-500/30",
+    },
+    stats: {
+      tasksToday: 23,
+      successRate: 100,
+      avgResponseTime: "3.4s",
+      workflowsUsing: 2,
+    },
+    capabilities: ["Report generation", "Budget analysis", "Trend forecasting", "Expense tracking"],
+    permissions: ["QuickBooks", "NetSuite", "Excel", "Tableau"],
+    lastAction: "Compiled Q4 expense summary",
+    lastActionTime: "1 hour ago",
+  },
+  {
+    id: "agent-005",
+    name: "Harbor",
+    role: "Support Coordinator",
+    department: "Support",
+    description: "Routes tickets and tracks SLA compliance",
+    status: "error",
+    personality: {
+      color: "rose",
+      gradient: "from-rose-500 to-pink-500",
+      glow: "shadow-rose-500/30",
+    },
+    stats: {
+      tasksToday: 0,
+      successRate: 0,
+      avgResponseTime: "-",
+      workflowsUsing: 3,
+    },
+    capabilities: ["Ticket routing", "SLA tracking", "Escalation handling", "Customer sentiment"],
+    permissions: ["Zendesk", "Intercom", "Freshdesk", "Slack"],
+    lastAction: "Connection to Zendesk failed",
+    lastActionTime: "30 minutes ago",
+  },
+]
+
+function normalizeAgent(input: Record<string, unknown>): Agent {
+  const personality = (input.personality ?? {}) as Record<string, unknown>
+  const stats = (input.stats ?? {}) as Record<string, unknown>
+  const status = String(input.status ?? "idle")
+  const department = String(input.department ?? "Operations")
+  return {
+    id: String(input.id ?? ""),
+    name: String(input.name ?? "Agent"),
+    role: String(input.role ?? "Operator"),
+    department:
+      department === "Marketing" ||
+      department === "Sales" ||
+      department === "Finance" ||
+      department === "Support"
+        ? department
+        : "Operations",
+    description: String(input.description ?? ""),
+    status:
+      status === "active" || status === "processing" || status === "error"
+        ? status
+        : "idle",
+    personality: {
+      color: String(personality.color ?? "blue"),
+      gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
+      glow: String(personality.glow ?? "shadow-blue-500/30"),
+    },
+    stats: {
+      tasksToday: Number(stats.tasksToday ?? stats.tasks_today ?? 0),
+      successRate: Number(stats.successRate ?? stats.success_rate ?? 0),
+      avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
+      workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
+    },
+    capabilities: Array.isArray(input.capabilities)
+      ? (input.capabilities as string[])
+      : [],
+    permissions: Array.isArray(input.permissions)
+      ? (input.permissions as string[])
+      : Array.isArray(input.systems)
+      ? (input.systems as string[])
+      : [],
+    lastAction: String(input.lastAction ?? input.last_action ?? "No activity yet"),
+    lastActionTime: String(input.lastActionTime ?? input.last_action_time ?? "unknown"),
+  }
+}
+
+function normalizeAgentsResponse(payload: unknown): Agent[] {
+  if (!payload || typeof payload !== "object") return fallbackAgents
+  const model = payload as Record<string, unknown>
+  const raw =
+    (Array.isArray(model.agents) ? model.agents : null) ??
+    (Array.isArray(model.operators) ? model.operators : null) ??
+    (Array.isArray(model.data) ? model.data : null)
+  if (!raw) return fallbackAgents
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => normalizeAgent(item))
+    .filter((item) => item.id.length > 0)
+  return normalized.length > 0 ? normalized : fallbackAgents
+}
 
 const roleIcons: Record<string, LucideIcon> = {
   "Marketing Operator": Megaphone,
@@ -87,74 +262,6 @@ const statusConfig = {
   idle: { label: "Idle", color: "text-zinc-400", dotColor: "bg-zinc-500", animate: false },
   processing: { label: "Processing", color: "text-blue-400", dotColor: "bg-blue-500", animate: true },
   error: { label: "Error", color: "text-red-400", dotColor: "bg-red-500", animate: false },
-}
-
-function mapDepartment(input: string | null | undefined): Agent["department"] {
-  if (!input) return "Operations"
-  if (input.includes("marketing")) return "Marketing"
-  if (input.includes("sales")) return "Sales"
-  if (input.includes("finance")) return "Finance"
-  if (input.includes("support")) return "Support"
-  return "Operations"
-}
-
-function mapStatus(input: string | null | undefined): Agent["status"] {
-  if (!input) return "idle"
-  if (input === "active") return "active"
-  if (input === "running" || input === "processing" || input === "planning") return "processing"
-  if (input === "error" || input === "failed" || input === "inactive") return "error"
-  return "idle"
-}
-
-function fallbackPersonality(index: number) {
-  const variants = [
-    { color: "emerald", gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/30" },
-    { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/30" },
-    { color: "amber", gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/30" },
-    { color: "violet", gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/30" },
-    { color: "rose", gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/30" },
-  ] as const
-  return variants[index % variants.length]
-}
-
-function mapOperatorsToAgents(operators: Array<Record<string, unknown>> | undefined): Agent[] {
-  if (!operators || operators.length === 0) return []
-  return operators.map((operator, index) => {
-    const config = (operator.config ?? {}) as Record<string, unknown>
-    const role = String(operator.role ?? "AI Agent")
-    const description = String(operator.description ?? "AI teammate")
-    const capabilities = Array.isArray(operator.capabilities)
-      ? (operator.capabilities as string[])
-      : []
-    const connectors = Array.isArray(operator.connectors)
-      ? (operator.connectors as Array<{ vendor?: string; name?: string }>).map(
-          (connector) => connector.vendor ?? connector.name ?? "System"
-        )
-      : []
-    const personality = fallbackPersonality(index)
-    const status = mapStatus(String(operator.status ?? "idle"))
-    const lastAction = String(config.last_action ?? "No recent activity")
-    const lastActionTime = String(config.last_action_time ?? "recently")
-    return {
-      id: String(operator.id ?? `agent-${index}`),
-      name: String(operator.name ?? `Agent ${index + 1}`),
-      role,
-      department: mapDepartment(role.toLowerCase()),
-      description,
-      status,
-      personality,
-      stats: {
-        tasksToday: Number(config.tasks_today ?? 0),
-        successRate: Number(config.success_rate ?? (status === "error" ? 0 : 100)),
-        avgResponseTime: String(config.avg_response_time ?? "-"),
-        workflowsUsing: Number(config.workflows_using ?? operator.link_count ?? 0),
-      },
-      capabilities,
-      permissions: connectors,
-      lastAction,
-      lastActionTime,
-    }
-  })
 }
 
 // Agent Orb Component - Premium visual personality representation with depth
@@ -505,38 +612,31 @@ function AgentDetailPanel({ agent }: { agent: Agent }) {
 
 export default function AgentsPage() {
   const router = useRouter()
-  const { data, error, isLoading, mutate } = useSWR<{ agents?: Array<Record<string, unknown>>; operators?: Array<Record<string, unknown>> }>(
+  
+  // Fetch agents from API with SWR
+  const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
     "/api/agents",
-    fetcher,
-    { revalidateOnFocus: false }
+    apiFetcher,
+    {
+      fallbackData: { agents: fallbackAgents },
+      revalidateOnFocus: false,
+    }
   )
-  const agents = useMemo(
-    () => mapOperatorsToAgents((data?.agents ?? data?.operators) as Array<Record<string, unknown>> | undefined),
-    [data?.agents, data?.operators]
-  )
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(agents[0] ?? null)
+  
+  // Use API data or fallback
+  const agents = normalizeAgentsResponse(data)
+  
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
-
+  
+  // Set selected agent when agents load
   useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  useEffect(() => {
-    if (!selectedAgent && agents.length > 0) {
+    if (agents.length > 0 && !selectedAgent) {
       setSelectedAgent(agents[0])
-      return
-    }
-    if (selectedAgent && !agents.some((agent) => agent.id === selectedAgent.id) && agents.length > 0) {
-      setSelectedAgent(agents[0])
-    }
-    if (agents.length === 0) {
-      setSelectedAgent(null)
     }
   }, [agents, selectedAgent])
-
+  
   const filteredAgents = agents.filter((a) =>
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.role.toLowerCase().includes(searchQuery.toLowerCase())
@@ -544,44 +644,6 @@ export default function AgentsPage() {
 
   const activeCount = agents.filter((a) => a.status === "active" || a.status === "processing").length
   const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
-
-  if (isLoading) {
-    return (
-      <AppShell title="Agents">
-        <div className="space-y-4 p-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
-      </AppShell>
-    )
-  }
-
-  if (error) {
-    return (
-      <AppShell title="Agents">
-        <EmptyState
-          icon={AlertCircle}
-          title="Error loading data"
-          description="Failed to load data"
-          variant="error"
-        />
-      </AppShell>
-    )
-  }
-
-  if (agents.length === 0) {
-    return (
-      <AppShell title="Agents">
-        <EmptyState
-          icon={Bot}
-          title="No agents yet"
-          description="Create your first AI agent to get started"
-          action={{ label: "Create Agent", onClick: () => router.push("/agents/new") }}
-        />
-      </AppShell>
-    )
-  }
 
   return (
   <AppShell title="Agents">
@@ -736,7 +798,9 @@ export default function AgentsPage() {
           {/* Gradient accent */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
           <AnimatePresence mode="wait">
-            {selectedAgent ? <AgentDetailPanel key={selectedAgent.id} agent={selectedAgent} /> : null}
+            {selectedAgent && (
+              <AgentDetailPanel key={selectedAgent.id} agent={selectedAgent} />
+            )}
           </AnimatePresence>
         </div>
       </div>
@@ -745,24 +809,10 @@ export default function AgentsPage() {
       <MesonWizard 
         open={mesonWizardOpen} 
         onClose={() => setMesonWizardOpen(false)}
-        onComplete={async (result) => {
-          const payload = {
-            name: String(result?.name ?? "New Agent"),
-            description: String(result?.description ?? "Created from Meson wizard"),
-            role: String(result?.role ?? "AI Agent"),
-            capabilities: Array.isArray(result?.capabilities) ? result.capabilities : [],
-            status: "active",
-          }
-          try {
-            await apiFetch("/api/agents", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            })
-          } finally {
-            await mutate()
-            router.push("/agents")
-          }
+        onComplete={(result) => {
+          console.log("Meson result:", result)
+          // Navigate to the new agent or show success
+          router.push("/agents")
         }}
       />
     </AppShell>

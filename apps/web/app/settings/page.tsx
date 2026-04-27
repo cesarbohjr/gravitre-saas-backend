@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -35,14 +35,9 @@ import {
   X,
   Brain,
   Sparkles,
-  Info,
-  AlertCircle
+  Info
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
-import useSWR from "swr"
-import { apiFetch, fetcher } from "@/lib/fetcher"
-import { EmptyState } from "@/components/gravitre/empty-state"
-import { toast } from "sonner"
 
 interface SettingSection {
   id: string
@@ -65,55 +60,13 @@ function OrganizationSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadDialog, setUploadDialog] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR<{ organization: Record<string, unknown> | null }>(
-    "/api/settings/organization",
-    fetcher
-  )
-  const organization = data?.organization ?? null
 
   const handleSave = async () => {
     setIsSaving(true)
-    await apiFetch("/api/settings/organization", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: organization?.name ?? null,
-        slug: organization?.slug ?? null,
-        primaryDomain: organization?.primaryDomain ?? null,
-        logoUrl: organization?.logoUrl ?? null,
-      }),
-    }).catch(() => null)
-    await mutate()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   return (
@@ -126,7 +79,7 @@ function OrganizationSettings() {
         <div className="mt-2 flex items-center gap-4">
           <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-border bg-secondary p-2">
             <Image
-              src={String(organization?.logoUrl ?? "/logo-white.svg")}
+              src="/logo-white.svg"
               alt="Organization Logo"
               width={100}
               height={40}
@@ -150,7 +103,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue={String(organization?.name ?? "")}
+          defaultValue="Acme Corp"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -160,7 +113,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue={String(organization?.slug ?? "")}
+          defaultValue="acme-corp"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -170,7 +123,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue={String(organization?.primaryDomain ?? "")}
+          defaultValue="acme.gravitre.io"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -343,57 +296,14 @@ function SecuritySettings() {
 function ApiKeysSettings() {
   const [showKey, setShowKey] = useState(false)
   const [copied, setCopied] = useState(false)
-  const { data, error, isLoading } = useSWR<{ apiKeys: Array<Record<string, unknown>> }>(
-    "/api/settings/api-keys",
-    fetcher
-  )
-  const apiKeys = data?.apiKeys ?? []
-  const activeKey = apiKeys[0]
-  const keyPrefix = String(activeKey?.keyPrefix ?? "gv_live_sk")
-  const maskedKey = `${keyPrefix}_••••••••••••`
-  const visibleKey = `${keyPrefix}_redacted`
+  
+  const apiKey = "gv_live_sk_1234567890abcdef"
+  const maskedKey = "gv_live_sk_••••••••••••"
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(visibleKey)
+    navigator.clipboard.writeText(apiKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
-  }
-
-  if (!apiKeys.length) {
-    return (
-      <EmptyState
-        icon={Key}
-        title="No API keys yet"
-        description="Create your first API key to get started."
-      />
-    )
   }
 
   return (
@@ -414,7 +324,7 @@ function ApiKeysSettings() {
           </div>
         </div>
         <code className="block w-full text-xs font-mono text-muted-foreground bg-secondary rounded px-3 py-2">
-          {showKey ? visibleKey : maskedKey}
+          {showKey ? apiKey : maskedKey}
         </code>
       </div>
       <div className="flex items-center gap-3">
@@ -433,66 +343,16 @@ function ApiKeysSettings() {
 
 function NotificationSettings() {
   const [slackDialog, setSlackDialog] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR<{ notifications: { emailEnabled?: boolean; slackEnabled?: boolean; recipients?: string[] } }>(
-    "/api/settings/notifications",
-    fetcher
-  )
-  const [emailEnabled, setEmailEnabled] = useState(false)
-  const [recipients, setRecipients] = useState("")
+  const [emailEnabled, setEmailEnabled] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = async () => {
     setIsSaving(true)
-    await apiFetch("/api/settings/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        emailEnabled,
-        slackEnabled: Boolean(data?.notifications?.slackEnabled),
-        recipients: recipients
-          .split(",")
-          .map((value) => value.trim())
-          .filter(Boolean),
-      }),
-    }).catch(() => null)
-    await mutate()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  useEffect(() => {
-    const incomingRecipients = data?.notifications?.recipients ?? []
-    setEmailEnabled(Boolean(data?.notifications?.emailEnabled))
-    setRecipients(incomingRecipients.join(", "))
-  }, [data?.notifications?.emailEnabled, data?.notifications?.recipients])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   return (
@@ -528,8 +388,7 @@ function NotificationSettings() {
         </label>
         <input
           type="text"
-          value={recipients}
-          onChange={(event) => setRecipients(event.target.value)}
+          defaultValue="ops@acme.com, alerts@acme.com"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -585,66 +444,12 @@ function TeamSettings() {
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("Member")
   const [isInviting, setIsInviting] = useState(false)
-  const { data, error, isLoading } = useSWR<{ team: Array<Record<string, unknown>> }>(
-    "/api/settings/team",
-    fetcher
-  )
-  const [members, setMembers] = useState<Array<{ name: string; email: string; role: string; avatar: string }>>([])
-
-  useEffect(() => {
-    const mapped = (data?.team ?? []).map((member) => {
-      const name = String(member.name ?? member.email ?? "Team Member")
-      return {
-        name,
-        email: String(member.email ?? ""),
-        role: String(member.role ?? "Member"),
-        avatar: name
-          .split(" ")
-          .map((part) => part[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2),
-      }
-    })
-    setMembers(mapped)
-  }, [data?.team])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
-  }
-
-  if (!members.length) {
-    return (
-      <EmptyState
-        icon={Users}
-        title="No team members yet"
-        description="Invite a teammate to collaborate."
-      />
-    )
-  }
+  const [members, setMembers] = useState([
+    { name: "John Doe", email: "john@acme.com", role: "Admin", avatar: "JD" },
+    { name: "Sarah Chen", email: "sarah@acme.com", role: "Admin", avatar: "SC" },
+    { name: "Mike Johnson", email: "mike@acme.com", role: "Member", avatar: "MJ" },
+    { name: "Emily Davis", email: "emily@acme.com", role: "Member", avatar: "ED" },
+  ])
 
   const handleInvite = async () => {
     setIsInviting(true)
@@ -796,11 +601,10 @@ function WebhooksSettings() {
   const [addDialog, setAddDialog] = useState(false)
   const [newUrl, setNewUrl] = useState("")
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
-  const { data, error, isLoading } = useSWR<{ webhooks: Array<Record<string, unknown>> }>(
-    "/api/settings/webhooks",
-    fetcher
-  )
-  const [webhooks, setWebhooks] = useState<Array<{ url: string; events: string[]; status: string }>>([])
+  const [webhooks, setWebhooks] = useState([
+    { url: "https://api.slack.com/hooks/xxx", events: ["workflow.completed", "approval.pending"], status: "active" },
+    { url: "https://hooks.zapier.com/xxx", events: ["run.failed"], status: "active" },
+  ])
   const [isAdding, setIsAdding] = useState(false)
 
   const availableEvents = [
@@ -820,42 +624,6 @@ function WebhooksSettings() {
     setNewUrl("")
     setSelectedEvents([])
     setAddDialog(false)
-  }
-
-  useEffect(() => {
-    const mapped = (data?.webhooks ?? []).map((hook) => ({
-      url: String(hook.url ?? ""),
-      events: Array.isArray(hook.events) ? hook.events.map((event) => String(event)) : [],
-      status: String(hook.status ?? "active"),
-    }))
-    setWebhooks(mapped)
-  }, [data?.webhooks])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   const handleDeleteWebhook = (index: number) => {
@@ -946,10 +714,6 @@ function WebhooksSettings() {
 }
 
 function AIModelsSettings() {
-  const { data, error, isLoading, mutate } = useSWR<{ modelSettings: Record<string, unknown> | null }>(
-    "/api/settings/models",
-    fetcher
-  )
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [workspaceModel, setWorkspaceModel] = useState("auto")
@@ -959,56 +723,10 @@ function AIModelsSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await apiFetch("/api/settings/models", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workspaceModel,
-        operatorModel,
-        agentDefaultModel,
-        fallbackModel,
-      }),
-    }).catch(() => null)
-    await mutate()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  useEffect(() => {
-    const settings = data?.modelSettings ?? null
-    if (!settings) return
-    setWorkspaceModel(String(settings.workspaceModel ?? "auto"))
-    setOperatorModel(String(settings.operatorModel ?? "auto"))
-    setAgentDefaultModel(String(settings.agentDefaultModel ?? "balanced"))
-    setFallbackModel(String(settings.fallbackModel ?? "fast"))
-  }, [data?.modelSettings])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   return (
@@ -1136,7 +854,7 @@ function AIModelsSettings() {
   )
 }
 
-function SettingsPageContent() {
+function SettingsContent() {
   const searchParams = useSearchParams()
   const initialSection = searchParams.get('section') || "organization"
   const [activeSection, setActiveSection] = useState(initialSection)
@@ -1155,49 +873,49 @@ function SettingsPageContent() {
   }
 
   return (
-    <AppShell title="Settings">
-      <div className="flex h-full">
-        {/* Sidebar */}
-        <div className="w-64 border-r border-border p-4">
-          <nav className="space-y-1">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  activeSection === section.id
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                <section.icon className="h-4 w-4 shrink-0" />
-                <span>{section.title}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+    <div className="flex h-full">
+      {/* Sidebar */}
+      <div className="w-64 border-r border-border p-4">
+        <nav className="space-y-1">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                activeSection === section.id
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              }`}
+            >
+              <section.icon className="h-4 w-4 shrink-0" />
+              <span>{section.title}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 p-6">
-          <div className="max-w-2xl">
-            <h1 className="text-xl font-semibold text-foreground mb-1">
-              {sections.find((s) => s.id === activeSection)?.title}
-            </h1>
-            <p className="text-sm text-muted-foreground mb-6">
-              {sections.find((s) => s.id === activeSection)?.description}
-            </p>
-            {renderContent()}
-          </div>
+      {/* Content */}
+      <div className="flex-1 p-6">
+        <div className="max-w-2xl">
+          <h1 className="text-xl font-semibold text-foreground mb-1">
+            {sections.find((s) => s.id === activeSection)?.title}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            {sections.find((s) => s.id === activeSection)?.description}
+          </p>
+          {renderContent()}
         </div>
       </div>
-    </AppShell>
+    </div>
   )
 }
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
-      <SettingsPageContent />
-    </Suspense>
+    <AppShell title="Settings">
+      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+        <SettingsContent />
+      </Suspense>
+    </AppShell>
   )
 }

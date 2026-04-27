@@ -2,6 +2,7 @@
 
 // Connectors Page - Integration Hub with Network Topology View
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -57,6 +58,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 
 interface Connector {
   id: string
@@ -79,6 +81,51 @@ interface Connector {
     webhookUrl?: string
     syncInterval?: string
   }
+}
+
+function normalizeConnector(input: Record<string, unknown>): Connector {
+  const status = String(input.status ?? "disconnected")
+  const environment = String(input.environment ?? "staging")
+  const authType = String(input.authType ?? input.auth_type ?? "apiKey")
+  return {
+    id: String(input.id ?? ""),
+    name: String(input.name ?? "connector"),
+    type: String(input.type ?? "unknown"),
+    status:
+      status === "connected" || status === "syncing" || status === "error"
+        ? status
+        : "disconnected",
+    environment: environment === "production" ? "production" : "staging",
+    lastSync: String(input.lastSync ?? input.last_sync ?? "Never"),
+    health: Number(input.health ?? 0),
+    description: String(input.description ?? ""),
+    dataFlowRate: String(input.dataFlowRate ?? input.data_flow_rate ?? "0 MB/s"),
+    requestsToday: Number(input.requestsToday ?? input.requests_today ?? 0),
+    latency: Number(input.latency ?? 0),
+    category: String(input.category ?? ""),
+    authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
+    usedByWorkflows: Number(input.usedByWorkflows ?? input.used_by_workflows ?? 0),
+    triggeredByAgents: Number(input.triggeredByAgents ?? input.triggered_by_agents ?? 0),
+    config:
+      input.config && typeof input.config === "object"
+        ? (input.config as Connector["config"])
+        : undefined,
+  }
+}
+
+function normalizeConnectorsResponse(payload: unknown): Connector[] {
+  if (!payload || typeof payload !== "object") return initialConnectors
+  const model = payload as Record<string, unknown>
+  const raw =
+    (Array.isArray(model.connectors) ? model.connectors : null) ??
+    (Array.isArray(model.data) ? model.data : null) ??
+    (Array.isArray(model.items) ? model.items : null)
+  if (!raw) return initialConnectors
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => normalizeConnector(item))
+    .filter((item) => item.id.length > 0)
+  return normalized.length > 0 ? normalized : initialConnectors
 }
 
 const initialConnectors: Connector[] = [
@@ -771,7 +818,7 @@ function AddConnectorModal({
 
   const handleSelectConnector = (connector: typeof availableConnectors[0]) => {
     setSelectedType(connector.type)
-    setSelectedAuthType(connector.authType)
+    setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
     setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
     
     // Route to appropriate auth flow
@@ -1332,8 +1379,27 @@ function AddConnectorModal({
 }
 
 export default function ConnectorsPage() {
-  const [connectors, setConnectors] = useState(initialConnectors)
+  // Fetch connectors from API with SWR
+  const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
+    "/api/connectors",
+    apiFetcher,
+    {
+      fallbackData: { connectors: initialConnectors },
+      revalidateOnFocus: false,
+    }
+  )
+  
+  // Local state that syncs with API data
+  const [connectors, setConnectors] = useState<Connector[]>(initialConnectors)
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // Sync local state with API data
+  useEffect(() => {
+    const normalized = normalizeConnectorsResponse(data)
+    if (normalized.length) {
+      setConnectors(normalized)
+    }
+  }, [data])
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
