@@ -19,9 +19,15 @@ function getSupabaseAnonKey() {
   return value
 }
 
+function getSupabaseServiceRoleKey() {
+  const value = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  return value || null
+}
+
 export function createSupabaseRouteClient(request: NextRequest): SupabaseClient {
   const authHeader = request.headers.get("authorization")
-  return createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+  const accessKey = authHeader ? getSupabaseAnonKey() : (getSupabaseServiceRoleKey() ?? getSupabaseAnonKey())
+  return createClient(getSupabaseUrl(), accessKey, {
     global: {
       headers: authHeader ? { Authorization: authHeader } : {},
     },
