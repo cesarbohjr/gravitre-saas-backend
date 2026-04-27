@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { snakeToCamel } from "@/lib/supabase/transforms"
 
 export async function GET(request: NextRequest) {
   try {
+    const debugEnabled = isDebugRequest(request.nextUrl.searchParams)
+    const authMode = getRouteClientAuthMode(request)
     const supabase = createSupabaseRouteClient(request)
     const orgId = await resolveOrgId(supabase, request)
     if (!orgId) {
@@ -12,6 +15,7 @@ export async function GET(request: NextRequest) {
     }
     await ensureDemoDataForOrg(supabase, orgId)
 
+    const diagnostics = await getOrgCountDiagnostics(supabase, "runs", orgId)
     const statusFilter = request.nextUrl.searchParams.get("status")
     const requestedStatuses =
       statusFilter
@@ -41,7 +45,23 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: error.message,
+          ...(debugEnabled
+            ? {
+                _debug: {
+                  resolvedOrgId: orgId,
+                  table: "runs",
+                  statusFilter,
+                  ...diagnostics,
+                  authMode,
+                },
+              }
+            : {}),
+        },
+        { status: 500 }
+      )
     }
 
     const workflowIds = Array.from(new Set((data ?? []).map((row) => row.workflow_id).filter(Boolean)))
@@ -66,7 +86,30 @@ export async function GET(request: NextRequest) {
         trigger: row.trigger ?? null,
       }
     })
-    return NextResponse.json({ runs })
+    if ((data ?? []).length === 0) {
+      console.warn("Runs route returned empty result", {
+        orgId,
+        statusFilter,
+        diagnostics,
+        authMode,
+      })
+    }
+
+    return NextResponse.json({
+      runs,
+      ...(debugEnabled
+        ? {
+            _debug: {
+              resolvedOrgId: orgId,
+              table: "runs",
+              statusFilter,
+              ...diagnostics,
+              queryError: null,
+              authMode,
+            },
+          }
+        : {}),
+    })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

@@ -24,9 +24,28 @@ function getSupabaseServiceRoleKey() {
   return value || null
 }
 
+export function getRouteClientAuthMode(request: NextRequest) {
+  const authHeaderPresent = Boolean(request.headers.get("authorization"))
+  const serviceRoleAvailable = Boolean(getSupabaseServiceRoleKey())
+  const usingServiceRole = !authHeaderPresent && serviceRoleAvailable
+  const usingAnonKey = authHeaderPresent || !serviceRoleAvailable
+  return {
+    authHeaderPresent,
+    serviceRoleAvailable,
+    usingServiceRole,
+    usingAnonKey,
+  }
+}
+
 export function createSupabaseRouteClient(request: NextRequest): SupabaseClient {
   const authHeader = request.headers.get("authorization")
-  const accessKey = authHeader ? getSupabaseAnonKey() : (getSupabaseServiceRoleKey() ?? getSupabaseAnonKey())
+  const serviceRoleKey = getSupabaseServiceRoleKey()
+  if (!authHeader && !serviceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required for unauthenticated API route access in demo mode"
+    )
+  }
+  const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
   return createClient(getSupabaseUrl(), accessKey, {
     global: {
       headers: authHeader ? { Authorization: authHeader } : {},

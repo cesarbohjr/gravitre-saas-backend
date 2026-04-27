@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
 export async function GET(request: NextRequest) {
   try {
+    const debugEnabled = isDebugRequest(request.nextUrl.searchParams)
+    const authMode = getRouteClientAuthMode(request)
     const supabase = createSupabaseRouteClient(request)
     const orgId = await resolveOrgId(supabase, request)
     if (!orgId) {
@@ -12,6 +15,7 @@ export async function GET(request: NextRequest) {
     }
     await ensureDemoDataForOrg(supabase, orgId)
 
+    const diagnostics = await getOrgCountDiagnostics(supabase, "workflows", orgId)
     const { data, error } = await supabase
       .from("workflows")
       .select("*")
@@ -19,7 +23,22 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: error.message,
+          ...(debugEnabled
+            ? {
+                _debug: {
+                  resolvedOrgId: orgId,
+                  table: "workflows",
+                  ...diagnostics,
+                  authMode,
+                },
+              }
+            : {}),
+        },
+        { status: 500 }
+      )
     }
 
     const workflows = (data ?? []).map((row) => {
@@ -32,7 +51,28 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ workflows })
+    if ((data ?? []).length === 0) {
+      console.warn("Workflows route returned empty result", {
+        orgId,
+        diagnostics,
+        authMode,
+      })
+    }
+
+    return NextResponse.json({
+      workflows,
+      ...(debugEnabled
+        ? {
+            _debug: {
+              resolvedOrgId: orgId,
+              table: "workflows",
+              ...diagnostics,
+              queryError: null,
+              authMode,
+            },
+          }
+        : {}),
+    })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

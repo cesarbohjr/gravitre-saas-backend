@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
 export async function GET(request: NextRequest) {
   try {
+    const debugEnabled = isDebugRequest(request.nextUrl.searchParams)
+    const authMode = getRouteClientAuthMode(request)
     const supabase = createSupabaseRouteClient(request)
     const orgId = await resolveOrgId(supabase, request)
     if (!orgId) {
@@ -12,6 +15,7 @@ export async function GET(request: NextRequest) {
     }
     await ensureDemoDataForOrg(supabase, orgId)
 
+    const diagnostics = await getOrgCountDiagnostics(supabase, "agents", orgId)
     const { data, error } = await supabase
       .from("agents")
       .select("*")
@@ -19,7 +23,22 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: error.message,
+          ...(debugEnabled
+            ? {
+                _debug: {
+                  resolvedOrgId: orgId,
+                  table: "agents",
+                  ...diagnostics,
+                  authMode,
+                },
+              }
+            : {}),
+        },
+        { status: 500 }
+      )
     }
 
     const agents = (data ?? []).map((row) => {
@@ -49,7 +68,29 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ agents, operators: agents })
+    if ((data ?? []).length === 0) {
+      console.warn("Agents route returned empty result", {
+        orgId,
+        diagnostics,
+        authMode,
+      })
+    }
+
+    return NextResponse.json({
+      agents,
+      operators: agents,
+      ...(debugEnabled
+        ? {
+            _debug: {
+              resolvedOrgId: orgId,
+              table: "agents",
+              ...diagnostics,
+              queryError: null,
+              authMode,
+            },
+          }
+        : {}),
+    })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

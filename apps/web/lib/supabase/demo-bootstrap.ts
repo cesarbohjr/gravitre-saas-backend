@@ -242,5 +242,6 @@ export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: stri
     )
   } catch (error) {
     console.error("Failed to auto-bootstrap demo data", { orgId, error })
+    throw error instanceof Error ? error : new Error("Unknown demo bootstrap failure")
   }
 }
