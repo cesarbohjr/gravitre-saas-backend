@@ -1,5 +1,5 @@
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
-import { supabaseClient } from "@/lib/supabaseClient"
+import { getAccessToken } from "@/lib/auth-context"
 
 function withSelectedOrg(url: string): string {
   if (typeof window === "undefined" || !url.startsWith("/api/")) return url
@@ -12,35 +12,32 @@ function withSelectedOrg(url: string): string {
   return `${requestUrl.pathname}${requestUrl.search}`
 }
 
-async function withAuthHeader(headers: Headers): Promise<Headers> {
-  if (typeof window === "undefined" || headers.has("authorization")) {
-    return headers
-  }
-  try {
-    const { data } = await supabaseClient.auth.getSession()
-    const token = data.session?.access_token
-    if (token) {
-      headers.set("authorization", `Bearer ${token}`)
-    }
-  } catch {
-    // Keep request unauthenticated if session cannot be loaded.
-  }
-  return headers
-}
-
 export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
-  const headers = await withAuthHeader(new Headers(init?.headers))
+  const headers = new Headers(init?.headers)
   if (!headers.has("accept")) {
     headers.set("accept", "application/json")
   }
+  
+  // Add auth token if available
+  if (typeof window !== "undefined") {
+    const token = await getAccessToken()
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`)
+    }
+  }
+  
   const response = await fetch(withSelectedOrg(url), {
     ...init,
     headers,
     cache: init?.cache ?? "no-store",
   })
+  
+  // Handle 401 by redirecting to login
   if (response.status === 401 && typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("gravitre:unauthorized"))
+    window.location.assign("/login?session_expired=true")
+    throw new Error("Session expired")
   }
+  
   return response
 }
 

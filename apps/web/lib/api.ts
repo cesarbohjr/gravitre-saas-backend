@@ -1,58 +1,265 @@
-import { supabaseClient } from "@/lib/supabaseClient"
-import { getSelectedOrgFromStorage } from "@/lib/org-context"
+/**
+ * Typed API client for FastAPI backend
+ * All methods include auth headers automatically via fetcher
+ */
+
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import type {
-  ApiAuthMe,
-  ApiConnector,
-  ApiMetricsOverview,
-  ApiOperator,
-  ApiRun,
-  ApiSource,
-  ApiWorkflow,
+  User,
+  UserProfile,
+  OperatorSummary,
+  OperatorDetail,
+  OperatorListResponse,
+  OperatorSessionSummary,
+  OperatorSessionDetail,
+  OperatorSessionListResponse,
+  OperatorSessionCreateRequest,
+  OperatorActionPlanRequest,
+  Workflow,
+  WorkflowListResponse,
+  WorkflowNode,
+  WorkflowEdge,
+  WorkflowSchedule,
+  CreateWorkflowRequest,
+  UpdateWorkflowRequest,
+  Run,
+  RunListResponse,
+  ExecuteWorkflowRequest,
+  ApproveRejectRequest,
+  Connector,
+  ConnectorListResponse,
+  CreateConnectorRequest,
+  Source,
+  SourceListResponse,
+  CreateSourceRequest,
+  MetricsOverview,
 } from "@/types/api"
 
-const FASTAPI_PREFIX = "/fastapi"
+// Base URL for backend API (can be overridden via env)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
-async function getAccessToken(): Promise<string | null> {
-  try {
-    const { data } = await supabaseClient.auth.getSession()
-    return data.session?.access_token ?? null
-  } catch {
-    return null
-  }
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers)
-  headers.set("accept", "application/json")
-
-  const token = await getAccessToken()
-  if (token && !headers.has("authorization")) {
-    headers.set("authorization", `Bearer ${token}`)
-  }
-
-  const selectedOrg = getSelectedOrgFromStorage()
-  if (selectedOrg?.id && !headers.has("x-org-id")) {
-    headers.set("x-org-id", selectedOrg.id)
-  }
-
-  const response = await fetch(`${FASTAPI_PREFIX}${path}`, {
-    ...init,
-    headers,
-    cache: init?.cache ?? "no-store",
+async function postJson<T>(url: string, data: unknown): Promise<T> {
+  const response = await apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   })
-
   if (!response.ok) {
-    throw new Error(`API request failed (${response.status})`)
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.detail || `Request failed: ${response.status}`)
   }
-  return response.json() as Promise<T>
+  return response.json()
 }
 
-export const api = {
-  authMe: () => request<ApiAuthMe>("/api/auth/me"),
-  workflows: () => request<{ workflows: ApiWorkflow[] }>("/api/workflows"),
-  runs: () => request<{ runs: ApiRun[] }>("/api/runs"),
-  connectors: () => request<{ connectors: ApiConnector[] }>("/api/connectors"),
-  sources: () => request<{ sources: ApiSource[] }>("/api/sources"),
-  operators: () => request<{ operators?: ApiOperator[]; agents?: ApiOperator[] }>("/api/operators"),
-  metricsOverview: () => request<ApiMetricsOverview>("/api/metrics/overview"),
+async function patchJson<T>(url: string, data: unknown): Promise<T> {
+  const response = await apiFetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.detail || `Request failed: ${response.status}`)
+  }
+  return response.json()
 }
+
+async function deleteRequest(url: string): Promise<void> {
+  const response = await apiFetch(url, { method: "DELETE" })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.detail || `Request failed: ${response.status}`)
+  }
+}
+
+// ============ Auth ============
+export const authApi = {
+  me: () => fetcher<UserProfile>(apiUrl("/api/auth/me")),
+  updateProfile: (data: Partial<User>) => patchJson<User>(apiUrl("/api/auth/me"), data),
+}
+
+// ============ Operators ============
+export const operatorsApi = {
+  list: () => fetcher<OperatorListResponse>(apiUrl("/api/operators")),
+  get: (id: string) => fetcher<OperatorDetail>(apiUrl(`/api/operators/${id}`)),
+  create: (data: { name: string; description?: string }) =>
+    postJson<OperatorDetail>(apiUrl("/api/operators"), data),
+  update: (id: string, data: Partial<OperatorSummary>) =>
+    patchJson<OperatorDetail>(apiUrl(`/api/operators/${id}`), data),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/operators/${id}`)),
+  
+  // Sessions
+  listSessions: (operatorId: string) =>
+    fetcher<OperatorSessionListResponse>(apiUrl(`/api/operators/${operatorId}/sessions`)),
+  getSession: (operatorId: string, sessionId: string) =>
+    fetcher<OperatorSessionDetail>(apiUrl(`/api/operators/${operatorId}/sessions/${sessionId}`)),
+  createSession: (operatorId: string, data: OperatorSessionCreateRequest) =>
+    postJson<OperatorSessionSummary>(apiUrl(`/api/operators/${operatorId}/sessions`), data),
+  
+  // AI Planning
+  createPlan: (operatorId: string, data: OperatorActionPlanRequest) =>
+    postJson<{ plan_id: string; title: string; summary: string; steps: unknown[] }>(
+      apiUrl(`/api/operators/${operatorId}/plan`),
+      data
+    ),
+  executePlan: (operatorId: string, data: { session_id: string; plan_id: string; step_id: string }) =>
+    postJson<{ action_id: string; status: string }>(apiUrl(`/api/operators/${operatorId}/run`), data),
+}
+
+// ============ Workflows ============
+export const workflowsApi = {
+  list: () => fetcher<WorkflowListResponse>(apiUrl("/api/workflows")),
+  get: (id: string) => fetcher<Workflow>(apiUrl(`/api/workflows/${id}`)),
+  create: (data: CreateWorkflowRequest) => postJson<Workflow>(apiUrl("/api/workflows"), data),
+  update: (id: string, data: UpdateWorkflowRequest) =>
+    patchJson<Workflow>(apiUrl(`/api/workflows/${id}`), data),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/workflows/${id}`)),
+  
+  // Nodes
+  listNodes: (workflowId: string, versionId?: string) =>
+    fetcher<{ nodes: WorkflowNode[] }>(
+      apiUrl(`/api/workflows/${workflowId}/nodes${versionId ? `?version_id=${versionId}` : ""}`)
+    ),
+  createNode: (workflowId: string, data: Partial<WorkflowNode>) =>
+    postJson<WorkflowNode>(apiUrl(`/api/workflows/${workflowId}/nodes`), data),
+  updateNode: (workflowId: string, nodeId: string, data: Partial<WorkflowNode>) =>
+    patchJson<WorkflowNode>(apiUrl(`/api/workflows/${workflowId}/nodes/${nodeId}`), data),
+  deleteNode: (workflowId: string, nodeId: string) =>
+    deleteRequest(apiUrl(`/api/workflows/${workflowId}/nodes/${nodeId}`)),
+  
+  // Edges
+  listEdges: (workflowId: string, versionId?: string) =>
+    fetcher<{ edges: WorkflowEdge[] }>(
+      apiUrl(`/api/workflows/${workflowId}/edges${versionId ? `?version_id=${versionId}` : ""}`)
+    ),
+  createEdge: (workflowId: string, data: Partial<WorkflowEdge>) =>
+    postJson<WorkflowEdge>(apiUrl(`/api/workflows/${workflowId}/edges`), data),
+  deleteEdge: (workflowId: string, edgeId: string) =>
+    deleteRequest(apiUrl(`/api/workflows/${workflowId}/edges/${edgeId}`)),
+  
+  // Versions
+  listVersions: (workflowId: string) =>
+    fetcher<{ versions: Workflow["versions"] }>(apiUrl(`/api/workflows/${workflowId}/versions`)),
+  activateVersion: (workflowId: string, versionId: string) =>
+    postJson<void>(apiUrl(`/api/workflows/${workflowId}/versions/${versionId}/activate`), {}),
+  
+  // Schedules
+  listSchedules: (workflowId: string) =>
+    fetcher<{ schedules: WorkflowSchedule[] }>(apiUrl(`/api/workflows/${workflowId}/schedules`)),
+  createSchedule: (workflowId: string, data: { cron_expression: string; enabled?: boolean }) =>
+    postJson<WorkflowSchedule>(apiUrl(`/api/workflows/${workflowId}/schedules`), data),
+  updateSchedule: (workflowId: string, scheduleId: string, data: Partial<WorkflowSchedule>) =>
+    patchJson<WorkflowSchedule>(apiUrl(`/api/workflows/${workflowId}/schedules/${scheduleId}`), data),
+  deleteSchedule: (workflowId: string, scheduleId: string) =>
+    deleteRequest(apiUrl(`/api/workflows/${workflowId}/schedules/${scheduleId}`)),
+  
+  // Execution
+  execute: (data: ExecuteWorkflowRequest) => postJson<Run>(apiUrl("/api/workflows/execute"), data),
+  dryRun: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
+    postJson<{ run_id: string; result: unknown }>(apiUrl("/api/workflows/dry-run"), data),
+}
+
+// ============ Runs ============
+export const runsApi = {
+  list: (filters?: { status?: string; workflow_id?: string; limit?: number; offset?: number }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.set("status", filters.status)
+    if (filters?.workflow_id) params.set("workflow_id", filters.workflow_id)
+    if (filters?.limit) params.set("limit", String(filters.limit))
+    if (filters?.offset) params.set("offset", String(filters.offset))
+    const query = params.toString()
+    return fetcher<RunListResponse>(apiUrl(`/api/runs${query ? `?${query}` : ""}`))
+  },
+  get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
+  cancel: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/cancel`), {}),
+  retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
+}
+
+// ============ Approvals ============
+export const approvalsApi = {
+  list: () => fetcher<{ approvals: Run[] }>(apiUrl("/api/approvals")),
+  approve: (runId: string, data?: ApproveRejectRequest) =>
+    postJson<Run>(apiUrl(`/api/approvals/${runId}/approve`), data || {}),
+  reject: (runId: string, data?: ApproveRejectRequest) =>
+    postJson<Run>(apiUrl(`/api/approvals/${runId}/reject`), data || {}),
+}
+
+// ============ Connectors ============
+export const connectorsApi = {
+  list: () => fetcher<ConnectorListResponse>(apiUrl("/api/connectors")),
+  get: (id: string) => fetcher<Connector>(apiUrl(`/api/connectors/${id}`)),
+  create: (data: CreateConnectorRequest) => postJson<Connector>(apiUrl("/api/connectors"), data),
+  update: (id: string, data: Partial<Connector>) =>
+    patchJson<Connector>(apiUrl(`/api/connectors/${id}`), data),
+  delete: (id: string, confirmName: string) =>
+    postJson<void>(apiUrl(`/api/connectors/${id}/delete`), { confirmName }),
+  sync: (id: string, fullSync?: boolean) =>
+    postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
+  testConnection: (id: string) =>
+    postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
+}
+
+// ============ Sources ============
+export const sourcesApi = {
+  list: () => fetcher<SourceListResponse>(apiUrl("/api/sources")),
+  get: (id: string) => fetcher<Source>(apiUrl(`/api/sources/${id}`)),
+  create: (data: CreateSourceRequest) => postJson<Source>(apiUrl("/api/sources"), data),
+  update: (id: string, data: Partial<Source>) => patchJson<Source>(apiUrl(`/api/sources/${id}`), data),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/sources/${id}`)),
+  sync: (id: string) => postJson<{ status: string }>(apiUrl(`/api/sources/${id}/sync`), {}),
+}
+
+// ============ Metrics ============
+export const metricsApi = {
+  overview: () => fetcher<MetricsOverview>(apiUrl("/api/metrics/overview")),
+  workflowStats: (workflowId: string) =>
+    fetcher<{ runs: number; success_rate: number; avg_duration_ms: number }>(
+      apiUrl(`/api/metrics/workflows/${workflowId}`)
+    ),
+}
+
+// ============ Settings ============
+export const settingsApi = {
+  get: () => fetcher<Record<string, unknown>>(apiUrl("/api/settings")),
+  update: (data: Record<string, unknown>) => patchJson<Record<string, unknown>>(apiUrl("/api/settings"), data),
+  
+  // Organization
+  getOrg: () => fetcher<{ organization: Record<string, unknown> }>(apiUrl("/api/org")),
+  updateOrg: (data: Record<string, unknown>) =>
+    patchJson<{ organization: Record<string, unknown> }>(apiUrl("/api/org"), data),
+  
+  // Team
+  listTeamMembers: () => fetcher<{ members: User[] }>(apiUrl("/api/org/members")),
+  inviteMember: (email: string, role?: string) =>
+    postJson<{ invited: boolean }>(apiUrl("/api/org/members/invite"), { email, role }),
+  removeMember: (userId: string) => deleteRequest(apiUrl(`/api/org/members/${userId}`)),
+}
+
+// ============ Environments ============
+export const environmentsApi = {
+  list: () =>
+    fetcher<{ environments: { id: string; name: string; is_default: boolean }[] }>(apiUrl("/api/environments")),
+  create: (data: { name: string }) =>
+    postJson<{ id: string; name: string }>(apiUrl("/api/environments"), data),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/environments/${id}`)),
+}
+
+// Convenience export for all APIs
+export const api = {
+  auth: authApi,
+  operators: operatorsApi,
+  workflows: workflowsApi,
+  runs: runsApi,
+  approvals: approvalsApi,
+  connectors: connectorsApi,
+  sources: sourcesApi,
+  metrics: metricsApi,
+  settings: settingsApi,
+  environments: environmentsApi,
+}
+
+export default api

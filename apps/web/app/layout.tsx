@@ -6,8 +6,7 @@ import { ViewModeProvider } from '@/lib/view-mode-context'
 import { Toaster } from '@/components/ui/sonner'
 import { NotificationProvider } from '@/components/gravitre/notification-center'
 import { OnboardingProvider, OnboardingChecklist } from '@/components/gravitre/onboarding-checklist'
-import { UserProfileProvider } from '@/lib/user-profile-context'
-import { AuthProvider } from "@/lib/auth-context"
+import { AuthProvider } from '@/lib/auth-context'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -50,18 +49,16 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <UserProfileProvider>
-              <NotificationProvider>
-                <OnboardingProvider>
-                  <ViewModeProvider>
-                    {children}
-                  </ViewModeProvider>
-                  <OnboardingChecklist />
-                </OnboardingProvider>
-              </NotificationProvider>
-            </UserProfileProvider>
+            <NotificationProvider>
+              <OnboardingProvider>
+                <ViewModeProvider>
+                  {children}
+                </ViewModeProvider>
+                <OnboardingChecklist />
+              </OnboardingProvider>
+            </NotificationProvider>
+            <Toaster position="bottom-right" richColors closeButton />
           </AuthProvider>
-          <Toaster position="bottom-right" richColors closeButton />
         </ThemeProvider>
         <Analytics />
       </body>

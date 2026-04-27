@@ -1,111 +1,74 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
-import type { Session, User } from "@supabase/supabase-js"
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { supabaseClient } from "@/lib/supabaseClient"
+import type { User, Session } from "@supabase/supabase-js"
 
-type AuthProfile = {
-  user_id: string
-  org_id: string | null
-  email: string | null
-  role: string | null
-}
-
-type AuthContextValue = {
+interface AuthContextType {
   user: User | null
   session: Session | null
-  profile: AuthProfile | null
   loading: boolean
-  refreshSession: () => Promise<void>
   signOut: () => Promise<void>
+  refreshSession: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function fetchProfile(token: string): Promise<AuthProfile | null> {
-  try {
-    const response = await fetch("/fastapi/api/auth/me", {
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    })
-    if (!response.ok) return null
-    const data = await response.json()
-    return {
-      user_id: String(data.user_id ?? ""),
-      org_id: data.org_id ? String(data.org_id) : null,
-      email: data.email ? String(data.email) : null,
-      role: data.role ? String(data.role) : null,
-    }
-  } catch {
-    return null
-  }
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<AuthProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const refreshSession = useCallback(async () => {
-    setLoading(true)
-    const { data } = await supabaseClient.auth.getSession()
-    const nextSession = data.session ?? null
-    setSession(nextSession)
-    setUser(nextSession?.user ?? null)
-    if (nextSession?.access_token) {
-      const nextProfile = await fetchProfile(nextSession.access_token)
-      setProfile(nextProfile)
-    } else {
-      setProfile(null)
-    }
-    setLoading(false)
+  useEffect(() => {
+    // Get initial session
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // Subscribe to auth changes
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const signOut = useCallback(async () => {
     await supabaseClient.auth.signOut()
     setUser(null)
     setSession(null)
-    setProfile(null)
+    window.location.assign("/login")
   }, [])
 
-  useEffect(() => {
-    refreshSession()
-    const { data } = supabaseClient.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession)
-      setUser(nextSession?.user ?? null)
-      if (nextSession?.access_token) {
-        setProfile(await fetchProfile(nextSession.access_token))
-      } else {
-        setProfile(null)
-      }
-      setLoading(false)
-    })
-    const unauthorizedHandler = () => {
-      signOut()
-    }
-    window.addEventListener("gravitre:unauthorized", unauthorizedHandler)
-    return () => {
-      data.subscription.unsubscribe()
-      window.removeEventListener("gravitre:unauthorized", unauthorizedHandler)
-    }
-  }, [refreshSession, signOut])
+  const refreshSession = useCallback(async () => {
+    const { data: { session } } = await supabaseClient.auth.refreshSession()
+    setSession(session)
+    setUser(session?.user ?? null)
+  }, [])
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ user, session, profile, loading, refreshSession, signOut }),
-    [user, session, profile, loading, refreshSession, signOut]
+  return (
+    <AuthContext.Provider value={{ user, session, loading, signOut, refreshSession }}>
+      {children}
+    </AuthContext.Provider>
   )
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider")
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
+}
+
+// Helper to get access token for API requests
+export async function getAccessToken(): Promise<string | null> {
+  const { data: { session } } = await supabaseClient.auth.getSession()
+  return session?.access_token ?? null
 }
