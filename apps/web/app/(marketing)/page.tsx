@@ -495,7 +495,7 @@ export default function HomePage() {
           >
             <ProductPreview />
           </motion.div>
-        </div>
+        </motion.div>
         
         {/* Scroll indicator */}
         <motion.div

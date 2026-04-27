@@ -17,7 +17,6 @@ interface Agent {
   trainingProgress: number
 }
 
-// TODO: Replace with backend endpoint
 // Mock Data
 const agents: Agent[] = [
   { id: "agent-001", name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", trainingProgress: 87 },
@@ -668,7 +667,7 @@ function NewAssignmentPageContent() {
 
 export default function NewAssignmentPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<AppShell title="New Assignment" />}>
       <NewAssignmentPageContent />
     </Suspense>
   )

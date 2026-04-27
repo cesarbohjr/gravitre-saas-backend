@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -45,6 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 
 interface Source {
   id: string
@@ -63,7 +65,7 @@ interface Source {
   topTables?: string[]
 }
 
-const sources: Source[] = [
+const fallbackSources: Source[] = [
   {
     id: "1",
     name: "postgres-primary",
@@ -161,6 +163,95 @@ const sources: Source[] = [
     topTables: ["training_data", "features"],
   },
 ]
+
+function inferCategory(type: string): Source["category"] {
+  const normalized = type.toLowerCase()
+  if (normalized.includes("postgres") || normalized.includes("mysql")) return "sql"
+  if (normalized.includes("mongo")) return "nosql"
+  return "warehouse"
+}
+
+function formatRelativeSync(iso: string | null | undefined): string {
+  if (!iso) return "Never"
+  const timestamp = new Date(iso)
+  if (Number.isNaN(timestamp.getTime())) return "Never"
+  const diffMs = Date.now() - timestamp.getTime()
+  const minutes = Math.max(0, Math.floor(diffMs / 60000))
+  if (minutes < 1) return "Just now"
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? "" : "s"} ago`
+}
+
+function formatCompactCount(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0"
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
+  return String(value)
+}
+
+function normalizeSource(input: Record<string, unknown>): Source {
+  const status = String(input.status ?? "connected")
+  const type = String(input.type ?? "Unknown")
+  const rawRecordCount = Number(input.recordCount ?? input.record_count ?? 0)
+  const stringRecords = String(input.records ?? "")
+  const parsedStringRecords = Number.parseFloat(stringRecords.replace(/[^\d.]/g, ""))
+  const recordsFromString = stringRecords.includes("M")
+    ? parsedStringRecords * 1_000_000
+    : stringRecords.includes("K")
+    ? parsedStringRecords * 1_000
+    : parsedStringRecords
+  const effectiveRecordCount =
+    Number.isFinite(rawRecordCount) && rawRecordCount > 0
+      ? rawRecordCount
+      : Number.isFinite(recordsFromString)
+      ? recordsFromString
+      : 0
+  const environment = String(input.environment ?? "production")
+  return {
+    id: String(input.id ?? ""),
+    name: String(input.name ?? "source"),
+    type,
+    category:
+      input.category === "sql" || input.category === "nosql" || input.category === "warehouse"
+        ? input.category
+        : inferCategory(type),
+    status:
+      status === "disconnected" || status === "error" || status === "syncing"
+        ? status
+        : "connected",
+    environment: environment === "staging" ? "staging" : "production",
+    lastSync: formatRelativeSync((input.lastSync as string | null) ?? (input.last_sync as string | null)),
+    tables: Number(input.tables ?? 0),
+    records: formatCompactCount(effectiveRecordCount),
+    description: String(input.description ?? `${type} data source`),
+    workflowsUsing: Number(input.workflowsUsing ?? input.workflows_using ?? 0),
+    operatorsUsing: Number(input.operatorsUsing ?? input.operators_using ?? 0),
+    health:
+      Number.isFinite(Number(input.health)) && Number(input.health) > 0
+        ? Number(input.health)
+        : status === "error" || status === "disconnected"
+        ? 0
+        : status === "syncing"
+        ? 85
+        : 98,
+    topTables: Array.isArray(input.topTables) ? (input.topTables as string[]) : [],
+  }
+}
+
+function normalizeSourcesResponse(payload: unknown): Source[] {
+  if (!payload || typeof payload !== "object") return fallbackSources
+  const model = payload as Record<string, unknown>
+  const raw = Array.isArray(model.sources) ? model.sources : null
+  if (!raw) return fallbackSources
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => normalizeSource(item))
+    .filter((item) => item.id.length > 0)
+  return normalized.length > 0 ? normalized : fallbackSources
+}
 
 const typeConfig: Record<string, { icon: typeof Database; color: string; bgColor: string }> = {
   PostgreSQL: { icon: Database, color: "text-blue-400", bgColor: "bg-blue-500/20" },
@@ -587,6 +678,11 @@ export default function SourcesPage() {
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const { data } = useSWR("/api/sources", apiFetcher, {
+    fallbackData: { sources: fallbackSources },
+    revalidateOnFocus: false,
+  })
+  const sources = normalizeSourcesResponse(data)
 
   // Group sources by category
   const groupedSources = sources.reduce((acc, source) => {
@@ -621,7 +717,7 @@ export default function SourcesPage() {
         
         {/* Ambient orbs */}
         <div className="absolute top-40 right-20 pointer-events-none z-0">
-          <GlowOrb size={300} color="cyan" intensity={0.2} />
+          <GlowOrb size={300} color="blue" intensity={0.2} />
         </div>
         <div className="absolute bottom-20 left-1/4 pointer-events-none z-0">
           <GlowOrb size={200} color="blue" intensity={0.15} />
@@ -729,7 +825,7 @@ export default function SourcesPage() {
         <div className="relative z-10 flex-1 overflow-auto p-6">
           {/* Grid pattern */}
           <div className="absolute inset-0 pointer-events-none opacity-20">
-            <GridPattern size={50} color="cyan" animated />
+            <GridPattern size={50} color="blue" animated />
           </div>
           
           <AnimatePresence mode="wait">

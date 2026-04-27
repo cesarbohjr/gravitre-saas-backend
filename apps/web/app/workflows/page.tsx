@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -20,12 +20,22 @@ import {
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
 import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
-import { apiFetch, fetcher } from "@/lib/fetcher"
-import { EmptyState } from "@/components/gravitre/empty-state"
+import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
+import { Target } from "lucide-react"
+import { apiFetch } from "@/lib/fetcher"
 import { toast } from "sonner"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 
 interface WorkflowNode {
   id: string
@@ -47,50 +57,139 @@ interface Workflow {
   isRunning?: boolean
 }
 
-
-function toRelativeTime(value: string | null | undefined) {
-  if (!value) return "Never"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "Never"
-  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000))
-  if (diffMinutes < 60) return `${diffMinutes} minutes ago`
-  const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours} hours ago`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays} days ago`
-}
-
-function mapWorkflowStatus(status: string | null | undefined): Workflow["status"] {
-  if (!status) return "draft"
-  if (status === "active" || status === "paused" || status === "draft" || status === "error") {
-    return status
+function normalizeWorkflow(input: Record<string, unknown>): Workflow {
+  const status = String(input.status ?? "draft")
+  const environment = String(input.environment ?? "staging")
+  return {
+    id: String(input.id ?? ""),
+    name: String(input.name ?? "workflow"),
+    description: String(input.description ?? ""),
+    status:
+      status === "active" || status === "paused" || status === "error"
+        ? status
+        : "draft",
+    environment: environment === "production" ? "production" : "staging",
+    lastRun: String(input.lastRun ?? input.last_run ?? "Never"),
+    successRate: String(input.successRate ?? input.success_rate ?? "-"),
+    runCount: Number(input.runCount ?? input.run_count ?? 0),
+    nodes: Array.isArray(input.nodes) ? (input.nodes as WorkflowNode[]) : undefined,
+    isRunning: Boolean(input.isRunning ?? input.is_running ?? false),
   }
-  if (status === "failed") return "error"
-  return "draft"
 }
 
-function mapWorkflows(items: Array<Record<string, unknown>> | undefined): Workflow[] {
-  if (!items || items.length === 0) return []
-  return items.map((workflow, index) => {
-    const successRateRaw = workflow.successRate
-    const successRate =
-      typeof successRateRaw === "number"
-        ? `${successRateRaw.toFixed(1)}%`
-        : String(successRateRaw ?? "0%")
-    return {
-      id: String(workflow.id ?? `workflow-${index}`),
-      name: String(workflow.name ?? "Workflow"),
-      description: String(workflow.description ?? workflow.goal ?? "No description provided"),
-      status: mapWorkflowStatus(String(workflow.status ?? "draft")),
-      environment: workflow.environment === "staging" ? "staging" : "production",
-      lastRun: toRelativeTime((workflow.lastRun as string | undefined) ?? (workflow.last_run_at as string | undefined)),
-      successRate,
-      runCount: Number(workflow.runCount ?? workflow.run_count ?? 0),
-      isRunning: String(workflow.status ?? "").toLowerCase() === "running",
-      nodes: Array.isArray(workflow.nodes) ? (workflow.nodes as WorkflowNode[]) : undefined,
-    }
-  })
+function normalizeWorkflowsResponse(payload: unknown): Workflow[] {
+  if (!payload || typeof payload !== "object") return fallbackWorkflows
+  const model = payload as Record<string, unknown>
+  const raw =
+    (Array.isArray(model.workflows) ? model.workflows : null) ??
+    (Array.isArray(model.data) ? model.data : null) ??
+    (Array.isArray(model.items) ? model.items : null)
+  if (!raw) return fallbackWorkflows
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => normalizeWorkflow(item))
+    .filter((item) => item.id.length > 0)
+  return normalized.length > 0 ? normalized : fallbackWorkflows
 }
+
+// Fallback mock data with workflow nodes
+const fallbackWorkflows: Workflow[] = [
+  {
+    id: "1",
+    name: "sync-customers",
+    description: "Synchronize customer data from Salesforce",
+    status: "active",
+    environment: "production",
+    lastRun: "2 minutes ago",
+    successRate: "98.5%",
+    runCount: 1247,
+    isRunning: true,
+    nodes: [
+      { id: "n1", type: "source", name: "Salesforce", status: "success" },
+      { id: "n2", type: "agent", name: "Validator", status: "success" },
+      { id: "n3", type: "task", name: "Transform", status: "running" },
+      { id: "n4", type: "connector", name: "PostgreSQL", status: "pending" },
+    ],
+  },
+  {
+    id: "2",
+    name: "etl-main-pipeline",
+    description: "Main ETL pipeline for data warehouse",
+    status: "active",
+    environment: "production",
+    lastRun: "5 minutes ago",
+    successRate: "99.2%",
+    runCount: 856,
+    nodes: [
+      { id: "n1", type: "source", name: "S3 Bucket", status: "success" },
+      { id: "n2", type: "task", name: "Parse CSV", status: "success" },
+      { id: "n3", type: "agent", name: "Enricher", status: "success" },
+      { id: "n4", type: "approval", name: "QA Check", status: "success" },
+      { id: "n5", type: "connector", name: "Snowflake", status: "success" },
+    ],
+  },
+  {
+    id: "3",
+    name: "invoice-processing",
+    description: "Process and validate incoming invoices",
+    status: "paused",
+    environment: "staging",
+    lastRun: "1 hour ago",
+    successRate: "94.1%",
+    runCount: 432,
+    nodes: [
+      { id: "n1", type: "source", name: "Email", status: "success" },
+      { id: "n2", type: "agent", name: "OCR Agent", status: "success" },
+      { id: "n3", type: "task", name: "Validate", status: "success" },
+      { id: "n4", type: "connector", name: "QuickBooks" },
+    ],
+  },
+  {
+    id: "4",
+    name: "user-onboarding",
+    description: "Handle new user registration workflow",
+    status: "active",
+    environment: "production",
+    lastRun: "15 minutes ago",
+    successRate: "99.8%",
+    runCount: 2103,
+    nodes: [
+      { id: "n1", type: "source", name: "API Webhook", status: "success" },
+      { id: "n2", type: "agent", name: "Profile Builder", status: "success" },
+      { id: "n3", type: "connector", name: "SendGrid", status: "success" },
+    ],
+  },
+  {
+    id: "5",
+    name: "data-cleanup",
+    description: "Scheduled data cleanup and archival",
+    status: "draft",
+    environment: "staging",
+    lastRun: "Never",
+    successRate: "-",
+    runCount: 0,
+    nodes: [
+      { id: "n1", type: "source", name: "Database" },
+      { id: "n2", type: "task", name: "Filter Old" },
+      { id: "n3", type: "connector", name: "Archive" },
+    ],
+  },
+  {
+    id: "6",
+    name: "report-generation",
+    description: "Generate and distribute weekly reports",
+    status: "active",
+    environment: "production",
+    lastRun: "3 hours ago",
+    successRate: "100%",
+    runCount: 52,
+    nodes: [
+      { id: "n1", type: "source", name: "Analytics", status: "success" },
+      { id: "n2", type: "agent", name: "Report Writer", status: "success" },
+      { id: "n3", type: "connector", name: "Slack", status: "success" },
+    ],
+  },
+]
 
 const statusVariants: Record<string, "success" | "warning" | "muted"> = {
   active: "success",
@@ -171,25 +270,29 @@ export default function WorkflowsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
+  const [goalWizardOpen, setGoalWizardOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [envFilter, setEnvFilter] = useState<string[]>([])
   
-  const { data, error, isLoading, mutate } = useSWR<{ workflows: Array<Record<string, unknown>> }>("/api/workflows", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR("/api/workflows", apiFetcher, {
+    fallbackData: { workflows: fallbackWorkflows },
     revalidateOnFocus: false,
   })
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
 
-  const workflows = mapWorkflows(data?.workflows)
+  const workflows = normalizeWorkflowsResponse(data)
   const activeCount = workflows.filter((w) => w.status === "active").length
   const pausedCount = workflows.filter((w) => w.status === "paused").length
   const runningCount = workflows.filter((w) => w.isRunning).length
 
-  const filteredWorkflows = workflows.filter(w => 
-    w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    w.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredWorkflows = workflows.filter(w => {
+    const matchesSearch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      w.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(w.status)
+    const matchesEnv = envFilter.length === 0 || envFilter.includes(w.environment)
+    return matchesSearch && matchesStatus && matchesEnv
+  })
+  
+  const activeFiltersCount = statusFilter.length + envFilter.length
 
   // Handler functions for workflow actions
   const handleEditWorkflow = (id: string) => {
@@ -201,66 +304,44 @@ export default function WorkflowsPage() {
   }
 
   const handleDuplicateWorkflow = (workflow: Workflow) => {
-    // TODO: Replace with backend endpoint
-    void workflow
-    mutate()
+    // In a real app, this would call an API to duplicate
+    const duplicated = {
+      ...workflow,
+      id: `${workflow.id}-copy-${Date.now()}`,
+      name: `${workflow.name}-copy`,
+      status: "draft" as const,
+    }
+    // Add to local state for demo
+    mutate({ workflows: [...workflows, duplicated] }, false)
   }
 
   const handleDeleteWorkflow = (id: string) => {
     if (confirm("Are you sure you want to delete this workflow?")) {
-      // TODO: Replace with backend endpoint
-      void id
-      mutate()
+      // In a real app, this would call an API to delete
+      mutate({ workflows: workflows.filter(w => w.id !== id) }, false)
     }
   }
 
-  const handleToggleStatus = (workflow: Workflow) => {
+  const handleToggleStatus = async (workflow: Workflow) => {
     const newStatus = workflow.status === "active" ? "paused" : "active"
-    void apiFetch(`/api/workflows/${workflow.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    }).finally(() => {
-      mutate()
-    })
-  }
-
-  if (isLoading) {
-    return (
-      <AppShell title="Workflows">
-        <div className="space-y-4 p-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
-      </AppShell>
+    const optimistic = workflows.map((w) =>
+      w.id === workflow.id ? { ...w, status: newStatus } : w
     )
-  }
+    mutate({ workflows: optimistic }, false)
 
-  if (error) {
-    return (
-      <AppShell title="Workflows">
-        <EmptyState
-          icon={Activity}
-          title="Error loading data"
-          description="Failed to load data"
-          variant="error"
-        />
-      </AppShell>
-    )
-  }
-
-  if (!workflows.length) {
-    return (
-      <AppShell title="Workflows">
-        <EmptyState
-          icon={Workflow}
-          title="No workflows yet"
-          description="Create your first workflow to get started"
-          action={{ label: "New Workflow", onClick: () => router.push("/workflows/new/builder") }}
-        />
-      </AppShell>
-    )
+    try {
+      const response = await apiFetch(`/api/workflows/${workflow.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!response.ok) throw new Error("Failed to update workflow status")
+      await mutate()
+      toast.success(`Workflow ${newStatus}`)
+    } catch {
+      mutate({ workflows }, false)
+      toast.error("Unable to update workflow status")
+    }
   }
 
   return (
@@ -280,7 +361,7 @@ export default function WorkflowsPage() {
         
         {/* Ambient orbs */}
         <div className="absolute top-1/4 right-10 pointer-events-none z-0">
-          <GlowOrb size={250} color="cyan" intensity={0.2} />
+          <GlowOrb size={250} color="violet" intensity={0.2} />
         </div>
         <div className="absolute bottom-1/4 left-10 pointer-events-none z-0">
           <GlowOrb size={200} color="blue" intensity={0.15} />
@@ -295,18 +376,110 @@ export default function WorkflowsPage() {
             iconColor="from-blue-500/20 to-cyan-500/20"
             actions={
             <>
-              <Button variant="outline" size="sm" className="h-8 gap-2">
-                <Icon name="filter" size="sm" />
-                <span className="hidden sm:inline">Filter</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-2">
+                    <Icon name="filter" size="sm" />
+                    <span className="hidden sm:inline">Filter</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-info text-[10px] font-medium text-info-foreground">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Status</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem
+                    checked={statusFilter.includes("active")}
+                    onCheckedChange={(checked) => 
+                      setStatusFilter(checked 
+                        ? [...statusFilter, "active"] 
+                        : statusFilter.filter(s => s !== "active")
+                      )
+                    }
+                  >
+                    Active
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={statusFilter.includes("paused")}
+                    onCheckedChange={(checked) => 
+                      setStatusFilter(checked 
+                        ? [...statusFilter, "paused"] 
+                        : statusFilter.filter(s => s !== "paused")
+                      )
+                    }
+                  >
+                    Paused
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={statusFilter.includes("draft")}
+                    onCheckedChange={(checked) => 
+                      setStatusFilter(checked 
+                        ? [...statusFilter, "draft"] 
+                        : statusFilter.filter(s => s !== "draft")
+                      )
+                    }
+                  >
+                    Draft
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Environment</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem
+                    checked={envFilter.includes("production")}
+                    onCheckedChange={(checked) => 
+                      setEnvFilter(checked 
+                        ? [...envFilter, "production"] 
+                        : envFilter.filter(e => e !== "production")
+                      )
+                    }
+                  >
+                    Production
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={envFilter.includes("staging")}
+                    onCheckedChange={(checked) => 
+                      setEnvFilter(checked 
+                        ? [...envFilter, "staging"] 
+                        : envFilter.filter(e => e !== "staging")
+                      )
+                    }
+                  >
+                    Staging
+                  </DropdownMenuCheckboxItem>
+                  {activeFiltersCount > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <button
+                        onClick={() => {
+                          setStatusFilter([])
+                          setEnvFilter([])
+                        }}
+                        className="w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left"
+                      >
+                        Clear all filters
+                      </button>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setGoalWizardOpen(true)}
+                className="h-8 gap-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-colors"
+              >
+                <Target className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="hidden sm:inline text-emerald-400">Create from Goal</span>
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => setMesonWizardOpen(true)}
-                className="h-8 gap-2 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50"
+                className="h-8 gap-2 border-violet-500/30 bg-transparent hover:bg-violet-500/10 hover:border-violet-500/50 transition-colors"
               >
                 <Blocks className="h-3.5 w-3.5 text-violet-400" />
-                <span className="hidden sm:inline text-violet-400">Generate</span>
+                <span className="hidden sm:inline text-violet-400">Build with Meson</span>
               </Button>
               <Link href="/workflows/new/builder">
                 <Button size="sm" className="h-8 gap-2">
@@ -497,6 +670,16 @@ export default function WorkflowsPage() {
           onComplete={(result) => {
             console.log("Meson result:", result)
             router.push("/workflows")
+          }}
+        />
+
+        {/* Goal Workflow Wizard */}
+        <GoalWorkflowWizard
+          open={goalWizardOpen}
+          onOpenChange={setGoalWizardOpen}
+          onBuildWorkflow={(plan) => {
+            console.log("Goal plan:", plan)
+            router.push("/workflows/new/builder")
           }}
         />
       </div>

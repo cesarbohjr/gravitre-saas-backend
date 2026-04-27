@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Bot, Sparkles, Zap, Database, Workflow, BarChart3, User } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUserProfile } from "@/lib/user-profile-context"
 
 // Agent avatar configurations matching the actual agents in the platform
 export const agentAvatars = {
@@ -107,10 +108,28 @@ interface UserAvatarProps {
   image?: string | null
   size?: "xs" | "sm" | "md" | "lg"
   className?: string
+  useProfile?: boolean
 }
 
-export function UserAvatar({ name = "User", image, size = "md", className }: UserAvatarProps) {
-  const initials = name
+export function UserAvatar({ name, image, size = "md", className, useProfile = true }: UserAvatarProps) {
+  // Try to use the profile context for consistent user data
+  let profileData: { avatarImage: string | null; initials: string; fullName: string } | null = null
+  
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { profile, getInitials, getFullName } = useUserProfile()
+    profileData = {
+      avatarImage: profile.avatarImage,
+      initials: getInitials(),
+      fullName: getFullName(),
+    }
+  } catch {
+    // Context not available, use props
+  }
+
+  const displayName = name || profileData?.fullName || "User"
+  const displayImage = image !== undefined ? image : profileData?.avatarImage
+  const initials = profileData?.initials || displayName
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -125,8 +144,8 @@ export function UserAvatar({ name = "User", image, size = "md", className }: Use
         className
       )}
     >
-      {image ? (
-        <img src={image} alt={name} className="h-full w-full object-cover" />
+      {displayImage ? (
+        <img src={displayImage} alt={displayName} className="h-full w-full object-cover" />
       ) : (
         <span className={cn("font-semibold text-zinc-600 dark:text-zinc-300", {
           "text-[10px]": size === "xs",

@@ -27,26 +27,16 @@ import {
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { useUserProfile } from "@/lib/user-profile-context"
 
 export default function ProfilePage() {
+  const { profile, updateProfile, setAvatarImage: setContextAvatarImage, getInitials } = useUserProfile()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [activeField, setActiveField] = useState<string | null>(null)
-  const [avatarImage, setAvatarImage] = useState<string | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [profile, setProfile] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john@acmecorp.com",
-    phone: "+1 (555) 123-4567",
-    jobTitle: "Operations Manager",
-    department: "Operations",
-    location: "San Francisco, CA",
-    timezone: "America/Los_Angeles",
-    bio: "Operations manager focused on workflow automation and AI-driven process optimization."
-  })
 
   useEffect(() => {
     setMounted(true)
@@ -61,7 +51,7 @@ export default function ProfilePage() {
   }
 
   const handleChange = (field: string, value: string) => {
-    setProfile(prev => ({ ...prev, [field]: value }))
+    updateProfile({ [field]: value })
   }
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +59,7 @@ export default function ProfilePage() {
     if (file) {
       const reader = new FileReader()
       reader.onload = (event) => {
-        setAvatarImage(event.target?.result as string)
+        setContextAvatarImage(event.target?.result as string)
         setShowAvatarModal(false)
       }
       reader.readAsDataURL(file)
@@ -77,7 +67,7 @@ export default function ProfilePage() {
   }
 
   const handleRemoveAvatar = () => {
-    setAvatarImage(null)
+    setContextAvatarImage(null)
     setShowAvatarModal(false)
   }
 
@@ -135,15 +125,15 @@ export default function ProfilePage() {
                     onClick={() => setShowAvatarModal(true)}
                     className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-900 text-2xl font-semibold text-white ring-4 ring-background overflow-hidden cursor-pointer"
                   >
-                    {avatarImage ? (
+                    {profile.avatarImage ? (
                       <Image 
-                        src={avatarImage} 
+                        src={profile.avatarImage} 
                         alt="Profile" 
                         fill 
                         className="object-cover"
                       />
                     ) : (
-                      <span>JD</span>
+                      <span>{getInitials()}</span>
                     )}
                     {/* Hover overlay */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -178,15 +168,15 @@ export default function ProfilePage() {
                       {/* Current avatar preview */}
                       <div className="flex justify-center mb-6">
                         <div className="relative h-28 w-28 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-3xl font-semibold text-white overflow-hidden ring-4 ring-border">
-                          {avatarImage ? (
+                          {profile.avatarImage ? (
                             <Image 
-                              src={avatarImage} 
+                              src={profile.avatarImage} 
                               alt="Profile" 
                               fill 
                               className="object-cover"
                             />
                           ) : (
-                            <span>JD</span>
+                            <span>{getInitials()}</span>
                           )}
                         </div>
                       </div>
@@ -206,7 +196,7 @@ export default function ProfilePage() {
                           </div>
                         </button>
 
-                        {avatarImage && (
+                        {profile.avatarImage && (
                           <button
                             onClick={handleRemoveAvatar}
                             className="w-full flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors text-left"

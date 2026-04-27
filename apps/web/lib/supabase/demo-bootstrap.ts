@@ -30,12 +30,26 @@ function createDemoRows(orgId: string) {
         name: "Revenue Ops Agent",
         purpose: "Optimizes lead routing and opportunity progression.",
         role: "Revenue Operations",
+        department: "Operations",
         model: "gpt-4.1",
+        personality: {
+          color: "blue",
+          gradient: "from-blue-500 to-indigo-500",
+          glow: "shadow-blue-500/30",
+        },
+        stats: {
+          tasksToday: 37,
+          successRate: 96,
+          avgResponseTime: "1m 20s",
+          workflowsUsing: 8,
+        },
         capabilities: ["lead-scoring", "routing"],
         systems: ["hubspot", "salesforce", "slack"],
         guardrails: ["approval-for-high-value-actions"],
         config: { type: "ops" },
         status: "active",
+        last_action: "Optimized lead assignment for enterprise pipeline",
+        last_action_time: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
       },
       {
         id: `30000000-0000-4000-8000-00000000000${suffix === "a" ? "2" : "8"}`,
@@ -43,12 +57,26 @@ function createDemoRows(orgId: string) {
         name: "Customer Support Agent",
         purpose: "Triages escalations and drafts safe customer responses.",
         role: "Support Operations",
+        department: "Support",
         model: "claude-3.5-sonnet",
+        personality: {
+          color: "violet",
+          gradient: "from-violet-500 to-fuchsia-500",
+          glow: "shadow-violet-500/30",
+        },
+        stats: {
+          tasksToday: 52,
+          successRate: 98,
+          avgResponseTime: "45s",
+          workflowsUsing: 5,
+        },
         capabilities: ["ticket-triage", "response-drafting"],
         systems: ["zendesk", "slack", "gmail"],
         guardrails: ["require-human-approval-for-vip"],
         config: { type: "support" },
         status: "active",
+        last_action: "Queued VIP escalation draft for human approval",
+        last_action_time: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
       },
     ],
     workflows: [
@@ -178,6 +206,65 @@ function createDemoRows(orgId: string) {
         config: { vendor: "slack" },
       },
     ],
+    connectors: [
+      {
+        id: `a1000000-0000-4000-8000-00000000000${orgSuffix}`,
+        org_id: orgId,
+        name: "salesforce-api",
+        type: "Salesforce",
+        status: "connected",
+        environment: "production",
+        last_sync: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
+        health: 98,
+        description: "Salesforce REST API connector",
+        data_flow_rate: "2.4 MB/s",
+        requests_today: 12847,
+        latency: 45,
+        category: "CRM / Marketing",
+        auth_type: "oauth",
+        used_by_workflows: 8,
+        triggered_by_agents: 3,
+        config: { syncInterval: "5m" },
+      },
+      {
+        id: `a1000000-0000-4000-8000-0000000000${suffix === "a" ? "12" : "13"}`,
+        org_id: orgId,
+        name: "slack-notifications",
+        type: "Slack",
+        status: "syncing",
+        environment: "production",
+        last_sync: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+        health: 95,
+        description: "Workspace notifications",
+        data_flow_rate: "0.3 MB/s",
+        requests_today: 3421,
+        latency: 28,
+        category: "Communication",
+        auth_type: "oauth",
+        used_by_workflows: 12,
+        triggered_by_agents: 6,
+        config: { syncInterval: "10m" },
+      },
+      {
+        id: `a1000000-0000-4000-8000-0000000000${suffix === "a" ? "14" : "15"}`,
+        org_id: orgId,
+        name: "stripe-payments",
+        type: "Stripe",
+        status: "connected",
+        environment: "production",
+        last_sync: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
+        health: 100,
+        description: "Payment processing",
+        data_flow_rate: "1.1 MB/s",
+        requests_today: 8234,
+        latency: 32,
+        category: "Payments / Finance",
+        auth_type: "apiKey",
+        used_by_workflows: 5,
+        triggered_by_agents: 2,
+        config: { syncInterval: "1m" },
+      },
+    ],
     apiKeys: [
       {
         id: `80000000-0000-4000-8000-00000000000${orgSuffix}`,
@@ -241,6 +328,11 @@ export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: stri
     await supabase.from("runs").upsert(rows.runs, { onConflict: "id" })
     await supabase.from("approvals").upsert(rows.approvals, { onConflict: "id" })
     await supabase.from("connected_systems").upsert(rows.connectedSystems, { onConflict: "id" })
+    const { error: connectorsError } = await supabase.from("connectors").upsert(rows.connectors, { onConflict: "id" })
+    if (connectorsError) {
+      // Connectors table may not exist yet in older environments.
+      console.warn("Skipping connectors demo bootstrap", { orgId, message: connectorsError.message })
+    }
     await supabase.from("api_keys").upsert(rows.apiKeys, { onConflict: "id" })
     await supabase.from("webhooks").upsert(rows.webhooks, { onConflict: "id" })
     await supabase.from("model_settings").upsert(

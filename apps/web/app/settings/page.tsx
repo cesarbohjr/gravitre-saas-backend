@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -35,14 +35,9 @@ import {
   X,
   Brain,
   Sparkles,
-  Info,
-  AlertCircle
+  Info
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
-import useSWR from "swr"
-import { apiFetch, fetcher } from "@/lib/fetcher"
-import { EmptyState } from "@/components/gravitre/empty-state"
-import { toast } from "sonner"
 
 interface SettingSection {
   id: string
@@ -65,55 +60,13 @@ function OrganizationSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadDialog, setUploadDialog] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR<{ organization: Record<string, unknown> | null }>(
-    "/api/settings/organization",
-    fetcher
-  )
-  const organization = data?.organization ?? null
 
   const handleSave = async () => {
     setIsSaving(true)
-    await apiFetch("/api/settings/organization", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: organization?.name ?? null,
-        slug: organization?.slug ?? null,
-        primaryDomain: organization?.primaryDomain ?? null,
-        logoUrl: organization?.logoUrl ?? null,
-      }),
-    }).catch(() => null)
-    await mutate()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   return (
@@ -126,7 +79,7 @@ function OrganizationSettings() {
         <div className="mt-2 flex items-center gap-4">
           <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-border bg-secondary p-2">
             <Image
-              src={String(organization?.logoUrl ?? "/logo-white.svg")}
+              src="/logo-white.svg"
               alt="Organization Logo"
               width={100}
               height={40}
@@ -150,7 +103,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue={String(organization?.name ?? "")}
+          defaultValue="Acme Corp"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -160,7 +113,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue={String(organization?.slug ?? "")}
+          defaultValue="acme-corp"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -170,7 +123,7 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue={String(organization?.primaryDomain ?? "")}
+          defaultValue="acme.gravitre.io"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -343,57 +296,14 @@ function SecuritySettings() {
 function ApiKeysSettings() {
   const [showKey, setShowKey] = useState(false)
   const [copied, setCopied] = useState(false)
-  const { data, error, isLoading } = useSWR<{ apiKeys: Array<Record<string, unknown>> }>(
-    "/api/settings/api-keys",
-    fetcher
-  )
-  const apiKeys = data?.apiKeys ?? []
-  const activeKey = apiKeys[0]
-  const keyPrefix = String(activeKey?.keyPrefix ?? "gv_live_sk")
-  const maskedKey = `${keyPrefix}_••••••••••••`
-  const visibleKey = `${keyPrefix}_redacted`
+  
+  const apiKey = "gv_live_sk_1234567890abcdef"
+  const maskedKey = "gv_live_sk_••••••••••••"
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(visibleKey)
+    navigator.clipboard.writeText(apiKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
-  }
-
-  if (!apiKeys.length) {
-    return (
-      <EmptyState
-        icon={Key}
-        title="No API keys yet"
-        description="Create your first API key to get started."
-      />
-    )
   }
 
   return (
@@ -414,7 +324,7 @@ function ApiKeysSettings() {
           </div>
         </div>
         <code className="block w-full text-xs font-mono text-muted-foreground bg-secondary rounded px-3 py-2">
-          {showKey ? visibleKey : maskedKey}
+          {showKey ? apiKey : maskedKey}
         </code>
       </div>
       <div className="flex items-center gap-3">
@@ -433,66 +343,16 @@ function ApiKeysSettings() {
 
 function NotificationSettings() {
   const [slackDialog, setSlackDialog] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR<{ notifications: { emailEnabled?: boolean; slackEnabled?: boolean; recipients?: string[] } }>(
-    "/api/settings/notifications",
-    fetcher
-  )
-  const [emailEnabled, setEmailEnabled] = useState(false)
-  const [recipients, setRecipients] = useState("")
+  const [emailEnabled, setEmailEnabled] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = async () => {
     setIsSaving(true)
-    await apiFetch("/api/settings/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        emailEnabled,
-        slackEnabled: Boolean(data?.notifications?.slackEnabled),
-        recipients: recipients
-          .split(",")
-          .map((value) => value.trim())
-          .filter(Boolean),
-      }),
-    }).catch(() => null)
-    await mutate()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  useEffect(() => {
-    const incomingRecipients = data?.notifications?.recipients ?? []
-    setEmailEnabled(Boolean(data?.notifications?.emailEnabled))
-    setRecipients(incomingRecipients.join(", "))
-  }, [data?.notifications?.emailEnabled, data?.notifications?.recipients])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   return (
@@ -528,8 +388,7 @@ function NotificationSettings() {
         </label>
         <input
           type="text"
-          value={recipients}
-          onChange={(event) => setRecipients(event.target.value)}
+          defaultValue="ops@acme.com, alerts@acme.com"
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -581,161 +440,30 @@ function NotificationSettings() {
 
 function TeamSettings() {
   const [inviteDialog, setInviteDialog] = useState(false)
-  const [editDialog, setEditDialog] = useState<{ id: string; name: string; email: string; role: string } | null>(null)
+  const [editDialog, setEditDialog] = useState<{name: string; email: string; role: string} | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("Member")
-  const [editRole, setEditRole] = useState("Member")
   const [isInviting, setIsInviting] = useState(false)
-  const [isSavingMember, setIsSavingMember] = useState(false)
-  const [isRemovingMember, setIsRemovingMember] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR<{ team: Array<Record<string, unknown>> }>(
-    "/api/settings/team",
-    fetcher
-  )
-  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string; role: string; avatar: string }>>([])
-
-  useEffect(() => {
-    const mapped = (data?.team ?? []).map((member) => {
-      const name = String(member.name ?? member.email ?? "Team Member")
-      const rawRole = String(member.role ?? "member")
-      const normalizedRole = rawRole.toLowerCase() === "admin" ? "Admin" : rawRole.toLowerCase() === "owner" ? "Owner" : "Member"
-      return {
-        id: String(member.id ?? member.userId ?? member.email ?? crypto.randomUUID()),
-        name,
-        email: String(member.email ?? ""),
-        role: normalizedRole,
-        avatar: name
-          .split(" ")
-          .map((part) => part[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2),
-      }
-    })
-    setMembers(mapped)
-  }, [data?.team])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  useEffect(() => {
-    if (editDialog) {
-      setEditRole(editDialog.role)
-    }
-  }, [editDialog])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
-  }
-
-  if (!members.length) {
-    return (
-      <EmptyState
-        icon={Users}
-        title="No team members yet"
-        description="Invite a teammate to collaborate."
-      />
-    )
-  }
+  const [members, setMembers] = useState([
+    { name: "John Doe", email: "john@acme.com", role: "Admin", avatar: "JD" },
+    { name: "Sarah Chen", email: "sarah@acme.com", role: "Admin", avatar: "SC" },
+    { name: "Mike Johnson", email: "mike@acme.com", role: "Member", avatar: "MJ" },
+    { name: "Emily Davis", email: "emily@acme.com", role: "Member", avatar: "ED" },
+  ])
 
   const handleInvite = async () => {
-    try {
-      setIsInviting(true)
-      const role = inviteRole.toLowerCase() === "admin" ? "admin" : "member"
-      const response = await apiFetch("/api/settings/team", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: inviteEmail,
-          role,
-        }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(String(payload?.error ?? "Failed to invite member"))
-      }
-      await mutate()
-      setInviteEmail("")
-      setInviteDialog(false)
-      toast.success("Team member invited")
-    } catch (inviteError) {
-      toast.error(inviteError instanceof Error ? inviteError.message : "Failed to invite member")
-    } finally {
-      setIsInviting(false)
-    }
-  }
-
-  const handleSaveMember = async () => {
-    if (!editDialog) return
-    try {
-      setIsSavingMember(true)
-      const role = editRole.toLowerCase() === "admin" ? "admin" : "member"
-      const response = await apiFetch("/api/settings/team", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editDialog.id,
-          role,
-        }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(String(payload?.error ?? "Failed to save changes"))
-      }
-      await mutate()
-      setEditDialog(null)
-      toast.success("Team member updated")
-    } catch (saveError) {
-      toast.error(saveError instanceof Error ? saveError.message : "Failed to save changes")
-    } finally {
-      setIsSavingMember(false)
-    }
-  }
-
-  const handleRemoveMember = async () => {
-    if (!editDialog) return
-    try {
-      setIsRemovingMember(true)
-      const response = await apiFetch("/api/settings/team", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editDialog.id,
-          email: editDialog.email,
-        }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(String(payload?.error ?? "Failed to remove member"))
-      }
-      await mutate()
-      setEditDialog(null)
-      toast.success("Team member removed")
-    } catch (removeError) {
-      toast.error(removeError instanceof Error ? removeError.message : "Failed to remove member")
-    } finally {
-      setIsRemovingMember(false)
-    }
+    setIsInviting(true)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const name = inviteEmail.split("@")[0].split(".").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" ")
+    setMembers([...members, {
+      name,
+      email: inviteEmail,
+      role: inviteRole,
+      avatar: name.split(" ").map(s => s[0]).join("").toUpperCase().slice(0, 2)
+    }])
+    setIsInviting(false)
+    setInviteEmail("")
+    setInviteDialog(false)
   }
 
   return (
@@ -845,26 +573,23 @@ function TeamSettings() {
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase">Role</label>
               <select 
-                value={editRole}
-                onChange={(event) => setEditRole(event.target.value)}
+                defaultValue={editDialog?.role}
                 className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
               >
-                <option value="Owner">Owner</option>
                 <option value="Member">Member</option>
                 <option value="Admin">Admin</option>
               </select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="destructive" size="sm" onClick={handleRemoveMember} disabled={isRemovingMember}>
-              {isRemovingMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <Button variant="destructive" size="sm" onClick={() => {
+              setMembers(members.filter(m => m.email !== editDialog?.email))
+              setEditDialog(null)
+            }}>
               Remove from Team
             </Button>
             <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
-            <Button onClick={handleSaveMember} disabled={isSavingMember}>
-              {isSavingMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save Changes
-            </Button>
+            <Button onClick={() => setEditDialog(null)}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -876,13 +601,11 @@ function WebhooksSettings() {
   const [addDialog, setAddDialog] = useState(false)
   const [newUrl, setNewUrl] = useState("")
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
-  const { data, error, isLoading, mutate } = useSWR<{ webhooks: Array<Record<string, unknown>> }>(
-    "/api/settings/webhooks",
-    fetcher
-  )
-  const [webhooks, setWebhooks] = useState<Array<{ id: string; url: string; events: string[]; status: string }>>([])
+  const [webhooks, setWebhooks] = useState([
+    { url: "https://api.slack.com/hooks/xxx", events: ["workflow.completed", "approval.pending"], status: "active" },
+    { url: "https://hooks.zapier.com/xxx", events: ["run.failed"], status: "active" },
+  ])
   const [isAdding, setIsAdding] = useState(false)
-  const [deletingWebhookId, setDeletingWebhookId] = useState<string | null>(null)
 
   const availableEvents = [
     "workflow.completed",
@@ -894,113 +617,31 @@ function WebhooksSettings() {
   ]
 
   const handleAddWebhook = async () => {
-    try {
-      setIsAdding(true)
-      const response = await apiFetch("/api/settings/webhooks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: newUrl,
-          events: selectedEvents,
-          status: "active",
-        }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(String(payload?.error ?? "Failed to add webhook"))
-      }
-      await mutate()
-      setNewUrl("")
-      setSelectedEvents([])
-      setAddDialog(false)
-      toast.success("Webhook added")
-    } catch (addError) {
-      toast.error(addError instanceof Error ? addError.message : "Failed to add webhook")
-    } finally {
-      setIsAdding(false)
-    }
+    setIsAdding(true)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    setWebhooks([...webhooks, { url: newUrl, events: selectedEvents, status: "active" }])
+    setIsAdding(false)
+    setNewUrl("")
+    setSelectedEvents([])
+    setAddDialog(false)
   }
 
-  useEffect(() => {
-    const mapped = (data?.webhooks ?? []).map((hook) => ({
-      id: String(hook.id ?? hook.url ?? crypto.randomUUID()),
-      url: String(hook.url ?? ""),
-      events: Array.isArray(hook.events) ? hook.events.map((event) => String(event)) : [],
-      status: String(hook.status ?? "active"),
-    }))
-    setWebhooks(mapped)
-  }, [data?.webhooks])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
-  }
-
-  const handleDeleteWebhook = async (webhookId: string) => {
-    try {
-      setDeletingWebhookId(webhookId)
-      const response = await apiFetch("/api/settings/webhooks", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: webhookId }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(String(payload?.error ?? "Failed to delete webhook"))
-      }
-      await mutate()
-      toast.success("Webhook removed")
-    } catch (deleteError) {
-      toast.error(deleteError instanceof Error ? deleteError.message : "Failed to delete webhook")
-    } finally {
-      setDeletingWebhookId(null)
-    }
+  const handleDeleteWebhook = (index: number) => {
+    setWebhooks(webhooks.filter((_, i) => i !== index))
   }
 
   return (
     <div className="space-y-6">
-      {webhooks.map((webhook) => (
-        <div key={webhook.id} className="rounded-lg border border-border bg-card p-4">
+      {webhooks.map((webhook, i) => (
+        <div key={i} className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-start justify-between mb-2">
             <code className="text-xs font-mono text-foreground">{webhook.url}</code>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-success/10 text-success">
                 {webhook.status}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => handleDeleteWebhook(webhook.id)}
-                disabled={deletingWebhookId === webhook.id}
-              >
-                {deletingWebhookId === webhook.id ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <X className="h-3 w-3" />
-                )}
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteWebhook(i)}>
+                <X className="h-3 w-3" />
               </Button>
             </div>
           </div>
@@ -1073,10 +714,6 @@ function WebhooksSettings() {
 }
 
 function AIModelsSettings() {
-  const { data, error, isLoading, mutate } = useSWR<{ modelSettings: Record<string, unknown> | null }>(
-    "/api/settings/models",
-    fetcher
-  )
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [workspaceModel, setWorkspaceModel] = useState("auto")
@@ -1086,56 +723,10 @@ function AIModelsSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await apiFetch("/api/settings/models", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        workspaceModel,
-        operatorModel,
-        agentDefaultModel,
-        fallbackModel,
-      }),
-    }).catch(() => null)
-    await mutate()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  useEffect(() => {
-    const settings = data?.modelSettings ?? null
-    if (!settings) return
-    setWorkspaceModel(String(settings.workspaceModel ?? "auto"))
-    setOperatorModel(String(settings.operatorModel ?? "auto"))
-    setAgentDefaultModel(String(settings.agentDefaultModel ?? "balanced"))
-    setFallbackModel(String(settings.fallbackModel ?? "fast"))
-  }, [data?.modelSettings])
-
-  useEffect(() => {
-    if (error) {
-      toast.error("Failed to load data")
-    }
-  }, [error])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Error loading data"
-        description="Failed to load data"
-        variant="error"
-      />
-    )
   }
 
   return (
@@ -1263,7 +854,7 @@ function AIModelsSettings() {
   )
 }
 
-function SettingsPageContent() {
+function SettingsContent() {
   const searchParams = useSearchParams()
   const initialSection = searchParams.get('section') || "organization"
   const [activeSection, setActiveSection] = useState(initialSection)
@@ -1282,49 +873,49 @@ function SettingsPageContent() {
   }
 
   return (
-    <AppShell title="Settings">
-      <div className="flex h-full">
-        {/* Sidebar */}
-        <div className="w-64 border-r border-border p-4">
-          <nav className="space-y-1">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  activeSection === section.id
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                <section.icon className="h-4 w-4 shrink-0" />
-                <span>{section.title}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+    <div className="flex h-full">
+      {/* Sidebar */}
+      <div className="w-64 border-r border-border p-4">
+        <nav className="space-y-1">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                activeSection === section.id
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              }`}
+            >
+              <section.icon className="h-4 w-4 shrink-0" />
+              <span>{section.title}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 p-6">
-          <div className="max-w-2xl">
-            <h1 className="text-xl font-semibold text-foreground mb-1">
-              {sections.find((s) => s.id === activeSection)?.title}
-            </h1>
-            <p className="text-sm text-muted-foreground mb-6">
-              {sections.find((s) => s.id === activeSection)?.description}
-            </p>
-            {renderContent()}
-          </div>
+      {/* Content */}
+      <div className="flex-1 p-6">
+        <div className="max-w-2xl">
+          <h1 className="text-xl font-semibold text-foreground mb-1">
+            {sections.find((s) => s.id === activeSection)?.title}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            {sections.find((s) => s.id === activeSection)?.description}
+          </p>
+          {renderContent()}
         </div>
       </div>
-    </AppShell>
+    </div>
   )
 }
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
-      <SettingsPageContent />
-    </Suspense>
+    <AppShell title="Settings">
+      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+        <SettingsContent />
+      </Suspense>
+    </AppShell>
   )
 }

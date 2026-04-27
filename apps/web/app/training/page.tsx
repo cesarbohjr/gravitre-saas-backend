@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useRef, useState } from "react"
+import { Suspense, useState, useEffect, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -502,6 +502,19 @@ function TrainingPageContent() {
   const [selectedAgent, setSelectedAgent] = useState(agents[0])
   const [activeSection, setActiveSection] = useState("context")
   const [mounted, setMounted] = useState(false)
+  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setAgentDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -545,12 +558,63 @@ function TrainingPageContent() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-xs md:text-sm text-muted-foreground">Training:</span>
-                  <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-xl bg-card border border-border">
-                    <div className={cn("h-5 w-5 md:h-6 md:w-6 rounded-lg bg-gradient-to-br flex items-center justify-center text-[9px] md:text-[10px] font-bold text-white", selectedAgent.gradient)}>
-                      {selectedAgent.initials}
-                    </div>
-                    <span className="text-sm md:text-base font-medium text-foreground">{selectedAgent.name}</span>
-                    <Icon name="chevronDown" size="sm" className="text-muted-foreground" />
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
+                      className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-xl bg-card border border-border hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className={cn("h-5 w-5 md:h-6 md:w-6 rounded-lg bg-gradient-to-br flex items-center justify-center text-[9px] md:text-[10px] font-bold text-white", selectedAgent.gradient)}>
+                        {selectedAgent.initials}
+                      </div>
+                      <span className="text-sm md:text-base font-medium text-foreground">{selectedAgent.name}</span>
+                      <Icon 
+                        name="chevronDown" 
+                        size="sm" 
+                        className={cn("text-muted-foreground transition-transform", agentDropdownOpen && "rotate-180")} 
+                      />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {agentDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute top-full right-0 mt-2 w-64 rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden"
+                        >
+                          <div className="p-2">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1.5">Select Agent</p>
+                            {agents.map((agent) => (
+                              <button
+                                key={agent.id}
+                                onClick={() => {
+                                  setSelectedAgent(agent)
+                                  setAgentDropdownOpen(false)
+                                }}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors text-left",
+                                  selectedAgent.id === agent.id 
+                                    ? "bg-emerald-500/10 text-foreground" 
+                                    : "hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
+                                )}
+                              >
+                                <div className={cn("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-[10px] font-bold text-white", agent.gradient)}>
+                                  {agent.initials}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm">{agent.name}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{agent.role}</p>
+                                </div>
+                                {selectedAgent.id === agent.id && (
+                                  <Icon name="check" size="sm" className="text-emerald-500 shrink-0" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>
@@ -744,7 +808,7 @@ function TrainingPageContent() {
 
 export default function TrainingPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<AppShell title="Training Hub" />}>
       <TrainingPageContent />
     </Suspense>
   )

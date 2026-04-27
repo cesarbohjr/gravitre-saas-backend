@@ -19,14 +19,40 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
 
-    const { data: system, error: systemError } = await supabase
-      .from("connected_systems")
+    const { data: connector, error: connectorError } = await supabase
+      .from("connectors")
       .select("*")
       .eq("org_id", orgId)
       .eq("id", id)
       .single()
-    if (systemError) {
-      return NextResponse.json({ error: systemError.message }, { status: systemError.code === "PGRST116" ? 404 : 500 })
+
+    const isMissingConnectorsTable =
+      String(connectorError?.message ?? "").toLowerCase().includes("does not exist") ||
+      String(connectorError?.message ?? "").toLowerCase().includes("relation")
+
+    let system = connector as Record<string, unknown> | null
+
+    if (connectorError && !isMissingConnectorsTable) {
+      return NextResponse.json(
+        { error: connectorError.message },
+        { status: connectorError.code === "PGRST116" ? 404 : 500 }
+      )
+    }
+
+    if (!system) {
+      const { data: fallbackSystem, error: fallbackError } = await supabase
+        .from("connected_systems")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("id", id)
+        .single()
+      if (fallbackError) {
+        return NextResponse.json(
+          { error: fallbackError.message },
+          { status: fallbackError.code === "PGRST116" ? 404 : 500 }
+        )
+      }
+      system = fallbackSystem as Record<string, unknown>
     }
 
     const { data: runs } = await supabase
@@ -48,8 +74,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const failedRuns = (runs ?? []).filter((run) => run.status === "failed").length
     const recentErrors = (logs ?? []).filter((log) => log.severity === "error").length
 
-    const config =
-      system.config && typeof system.config === "object" ? (system.config as Record<string, unknown>) : {}
+    const config = system.config && typeof system.config === "object" ? (system.config as Record<string, unknown>) : {}
     const avgLatency = Number(config.avgLatencyMs ?? 0)
     const rateLimitHits = Number(config.rateLimitHits ?? 0)
 
@@ -58,8 +83,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       avgLatency: avgLatency || 0,
       errorCount: Math.max(failedRuns, recentErrors),
       rateLimitHits,
-      lastSuccessfulSync: system.last_synced_at ?? null,
-      status: system.status,
+      lastSuccessfulSync: system.last_sync ?? system.last_synced_at ?? null,
+      status: String(system.status ?? "disconnected"),
       trendOverTime: (runs ?? [])
         .slice(0, 7)
         .reverse()

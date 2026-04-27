@@ -96,7 +96,7 @@ import {
   Handshake,
   Trophy,
   Medal,
-  TrendingUp,
+TrendingUp,
   TrendingDown,
   PieChart,
   Table,
@@ -209,11 +209,12 @@ export const iconMap = {
   activity: Activity,
   pulse: Activity,
   
-  // Actions
+// Actions
   add: Plus,
   plus: Plus,
   remove: X,
   close: X,
+  remove: X,
   more: MoreHorizontal,
   moreVertical: MoreVertical,
   play: Play,

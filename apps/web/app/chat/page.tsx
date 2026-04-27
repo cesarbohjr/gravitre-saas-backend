@@ -1,8 +1,10 @@
 "use client"
 
-// Knowledge Search - Terminal-style Query Interface
+// AI Assistant - Conversational interface with RAG and tool calling
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport } from "ai"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { 
   Search, 
@@ -20,218 +22,122 @@ import {
   CornerDownLeft,
   Hash,
   Layers,
+  Bot,
+  User,
+  Send,
+  RefreshCw,
+  Copy,
+  Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-
-interface RAGResult {
-  id: string
-  score: number
-  sourceId: string
-  sourceName: string
-  documentName?: string
-  chunkIndex: number
-  chunkText: string
-  highlightedText?: string
-}
+import { Button } from "@/components/ui/button"
 
 const sampleQueries = [
+  "What's the status of my agents?",
   "How does customer sync work?",
-  "What happens when a workflow fails?",
-  "Explain the retry logic for connectors",
-  "How are approvals routed?",
+  "Which connectors have errors?",
+  "Help me troubleshoot HubSpot",
 ]
 
-const fallbackResults: RAGResult[] = [
-  {
-    id: "1",
-    score: 0.94,
-    sourceId: "src-salesforce",
-    sourceName: "salesforce-api",
-    documentName: "Customer Sync Guide",
-    chunkIndex: 12,
-    chunkText: "The customer synchronization process runs every 15 minutes and pulls updated records from Salesforce. Failed syncs are automatically retried up to 3 times with exponential backoff.",
-  },
-  {
-    id: "2",
-    score: 0.87,
-    sourceId: "src-postgres",
-    sourceName: "postgres-replica",
-    documentName: "Data Pipeline Architecture",
-    chunkIndex: 8,
-    chunkText: "Data transformations are applied in stages: extraction, normalization, enrichment, and loading. Each stage produces intermediate artifacts that can be inspected for debugging.",
-  },
-  {
-    id: "3",
-    score: 0.82,
-    sourceId: "src-salesforce",
-    sourceName: "salesforce-api",
-    chunkIndex: 45,
-    chunkText: "Error handling for API rate limits follows a circuit breaker pattern. When rate limits are exceeded, the connector enters a cooldown period and queues subsequent requests.",
-  },
-]
-
-// Terminal Input with typing effect
-function TerminalInput({ 
-  value, 
-  onChange, 
-  onSubmit, 
-  isProcessing,
-  placeholder,
-}: { 
-  value: string
-  onChange: (v: string) => void
-  onSubmit: () => void
-  isProcessing: boolean
-  placeholder: string
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [isFocused, setIsFocused] = useState(false)
-
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
-
-  return (
-    <div 
-      className={cn(
-        "flex items-center gap-3 rounded-lg border bg-card p-4 transition-all cursor-text",
-        isFocused ? "border-blue-500/50 ring-2 ring-blue-500/20" : "border-border hover:border-foreground/20"
-      )}
-      onClick={() => inputRef.current?.focus()}
-    >
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Terminal className="h-4 w-4" />
-        <ChevronRight className="h-3 w-3" />
-      </div>
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !isProcessing) {
-            onSubmit()
-          }
-        }}
-        placeholder={placeholder}
-        disabled={isProcessing}
-        className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-mono text-sm"
-      />
-      <div className="flex items-center gap-2">
-        {isProcessing ? (
-          <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
-        ) : (
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <CornerDownLeft className="h-3 w-3" />
-            <span>Enter</span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// Typewriter effect for AI responses
-function TypewriterText({ text, onComplete }: { text: string; onComplete?: () => void }) {
-  const [displayedText, setDisplayedText] = useState("")
-  const [isComplete, setIsComplete] = useState(false)
-
-  useEffect(() => {
-    let index = 0
-    const interval = setInterval(() => {
-      if (index < text.length) {
-        setDisplayedText(text.slice(0, index + 1))
-        index++
-      } else {
-        clearInterval(interval)
-        setIsComplete(true)
-        onComplete?.()
-      }
-    }, 15)
-    return () => clearInterval(interval)
-  }, [text, onComplete])
-
-  return (
-    <span>
-      {displayedText}
-      {!isComplete && <span className="animate-pulse">|</span>}
-    </span>
-  )
-}
-
-// Result Card with source highlighting
-function ResultCard({ result, index }: { result: RAGResult; index: number }) {
-  const [isExpanded, setIsExpanded] = useState(false)
+// Message component
+function ChatMessage({ message, isLatest }: { message: any; isLatest: boolean }) {
+  const [copied, setCopied] = useState(false)
+  const isUser = message.role === "user"
+  
+  // Extract text from parts
+  const text = message.parts
+    ?.filter((p: any) => p.type === "text")
+    .map((p: any) => p.text)
+    .join("") || ""
+  
+  // Check for tool calls
+  const toolCalls = message.parts?.filter((p: any) => p.type === "tool-invocation") || []
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="group rounded-lg border border-border bg-card/50 overflow-hidden hover:border-foreground/20 transition-colors"
+      className={cn(
+        "flex gap-3 px-4 py-3 rounded-xl",
+        isUser 
+          ? "bg-blue-500/10 border border-blue-500/20" 
+          : "bg-card border border-border"
+      )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-secondary/30 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          {/* Score badge */}
-          <div className={cn(
-            "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold",
-            result.score >= 0.9 ? "bg-emerald-500/10 text-emerald-400" :
-            result.score >= 0.8 ? "bg-blue-500/10 text-blue-400" :
-            "bg-amber-500/10 text-amber-400"
-          )}>
-            <Zap className="h-2.5 w-2.5" />
-            {Math.round(result.score * 100)}%
-          </div>
-          
-          {/* Source */}
-          <div className="flex items-center gap-2">
-            <Database className="h-3 w-3 text-muted-foreground" />
-            <span className="text-xs font-mono text-muted-foreground">{result.sourceName}</span>
-          </div>
-          
-          {result.documentName && (
-            <>
-              <span className="text-muted-foreground/30">/</span>
-              <div className="flex items-center gap-2">
-                <FileText className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">{result.documentName}</span>
-              </div>
-            </>
+      {/* Avatar */}
+      <div className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+        isUser 
+          ? "bg-blue-500/20 text-blue-400" 
+          : "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400"
+      )}>
+        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+      </div>
+      
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            {isUser ? "You" : "Gravitre AI"}
+          </span>
+          {!isUser && text && (
+            <button
+              onClick={handleCopy}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
           )}
         </div>
         
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground/50 font-mono">
-            <Hash className="h-2.5 w-2.5 inline" />{result.chunkIndex}
-          </span>
-          <Link
-            href={`/sources/${result.sourceId}`}
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        <p className={cn(
-          "text-sm text-foreground/90 leading-relaxed font-mono",
-          !isExpanded && "line-clamp-3"
-        )}>
-          {result.chunkText}
-        </p>
-        {result.chunkText.length > 200 && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 text-xs text-blue-400 hover:text-blue-300"
-          >
-            {isExpanded ? "Show less" : "Show more"}
-          </button>
+        {/* Text content */}
+        {text && (
+          <div className="prose prose-sm prose-invert max-w-none">
+            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+              {text}
+              {isLatest && !isUser && <span className="animate-pulse ml-0.5">|</span>}
+            </p>
+          </div>
+        )}
+        
+        {/* Tool invocations */}
+        {toolCalls.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {toolCalls.map((tool: any, i: number) => (
+              <div key={i} className="rounded-lg bg-secondary/50 border border-border/50 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="text-xs font-medium text-amber-400">
+                    {tool.toolName}
+                  </span>
+                  {tool.state === "output-available" && (
+                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      Complete
+                    </span>
+                  )}
+                  {(tool.state === "input-streaming" || tool.state === "input-available") && (
+                    <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
+                  )}
+                </div>
+                {tool.output && (
+                  <pre className="text-[11px] text-muted-foreground bg-background/50 rounded p-2 overflow-x-auto">
+                    {JSON.stringify(tool.output, null, 2)}
+                  </pre>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </motion.div>
@@ -243,100 +149,118 @@ interface HistoryEntry {
   id: string
   query: string
   timestamp: Date
-  resultCount: number
 }
 
 export default function ChatPage() {
-  const [query, setQuery] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [results, setResults] = useState<RAGResult[]>([])
-  const [showResults, setShowResults] = useState(false)
-  const [aiSummary, setAiSummary] = useState("")
+  const [input, setInput] = useState("")
   const [history, setHistory] = useState<HistoryEntry[]>([])
-  const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  
+  // AI SDK useChat hook
+  const { messages, sendMessage, status, setMessages } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
+  })
+  
+  const isLoading = status === "streaming" || status === "submitted"
 
-  // Rotate placeholder
+  // Auto-scroll to bottom
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPlaceholderIndex((i) => (i + 1) % sampleQueries.length)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
-  const handleSearch = async () => {
-    if (!query.trim()) return
-
-    setIsProcessing(true)
-    setShowResults(false)
-    setAiSummary("")
-    setResults([])
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    setResults(fallbackResults)
-    setShowResults(true)
-
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!input.trim() || isLoading) return
+    
+    // Send message
+    sendMessage({ text: input })
+    
     // Add to history
     setHistory((prev) => [
-      { id: Date.now().toString(), query, timestamp: new Date(), resultCount: fallbackResults.length },
+      { id: Date.now().toString(), query: input, timestamp: new Date() },
       ...prev.slice(0, 9),
     ])
+    
+    setInput("")
+  }
 
-    // Generate AI summary
-    setAiSummary(
-      "Based on the retrieved documents, customer synchronization runs on a 15-minute interval with automatic retry logic. The system uses a circuit breaker pattern for rate limiting and applies data transformations in four stages: extraction, normalization, enrichment, and loading."
-    )
+  const handleSampleQuery = (query: string) => {
+    setInput(query)
+    inputRef.current?.focus()
+  }
 
-    setIsProcessing(false)
+  const handleClearChat = () => {
+    setMessages([])
   }
 
   return (
-    <AppShell title="Knowledge Search">
+    <AppShell title="AI Assistant">
       <div className="flex h-full flex-col md:flex-row">
-        {/* Main Query Area */}
+        {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/20 shrink-0">
-                <BookOpen className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/20 shrink-0">
+                  <Bot className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-base md:text-lg font-semibold text-foreground">AI Assistant</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">
+                    Ask questions about your data and automations
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h1 className="text-base md:text-lg font-semibold text-foreground">Knowledge Search</h1>
-                <p className="text-xs md:text-sm text-muted-foreground truncate">Query your connected data sources</p>
-              </div>
+              {messages.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearChat}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Query Interface */}
+          {/* Messages Area */}
           <div className="flex-1 p-4 md:p-6 overflow-auto">
-            <div className="max-w-3xl mx-auto">
-              {/* Terminal Input */}
-              <div className="mb-6">
-                <TerminalInput
-                  value={query}
-                  onChange={setQuery}
-                  onSubmit={handleSearch}
-                  isProcessing={isProcessing}
-                  placeholder={sampleQueries[placeholderIndex]}
-                />
-              </div>
-
-              {/* Sample Queries */}
-              {!showResults && !isProcessing && (
+            <div className="max-w-3xl mx-auto space-y-4">
+              {messages.length === 0 ? (
+                // Empty state
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mb-8"
+                  className="flex flex-col items-center justify-center py-16 text-center"
                 >
-                  <p className="text-xs text-muted-foreground mb-3">Try asking:</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="relative mb-6">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+                      <Sparkles className="h-8 w-8 text-emerald-400" />
+                    </div>
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    />
+                  </div>
+                  <h2 className="text-lg font-semibold text-foreground mb-2">
+                    How can I help you today?
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-8 max-w-md">
+                    I can help you understand your automations, troubleshoot issues, and find information in your knowledge base.
+                  </p>
+                  
+                  {/* Sample queries */}
+                  <div className="flex flex-wrap justify-center gap-2">
                     {sampleQueries.map((q, i) => (
                       <button
                         key={i}
-                        onClick={() => setQuery(q)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                        onClick={() => handleSampleQuery(q)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
                       >
                         <ArrowRight className="h-3 w-3" />
                         {q}
@@ -344,74 +268,71 @@ export default function ChatPage() {
                     ))}
                   </div>
                 </motion.div>
-              )}
-
-              {/* Processing State */}
-              {isProcessing && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center py-16"
-                >
-                  <div className="relative">
-                    <div className="h-16 w-16 rounded-full border-2 border-blue-500/30 flex items-center justify-center">
-                      <Sparkles className="h-6 w-6 text-blue-400" />
-                    </div>
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-blue-500 border-t-transparent"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              ) : (
+                // Messages
+                <>
+                  {messages.map((message, index) => (
+                    <ChatMessage 
+                      key={message.id} 
+                      message={message} 
+                      isLatest={index === messages.length - 1 && status === "streaming"}
                     />
-                  </div>
-                  <p className="mt-4 text-sm text-muted-foreground font-mono">
-                    Searching knowledge base...
-                  </p>
-                </motion.div>
+                  ))}
+                  
+                  {/* Streaming indicator */}
+                  {status === "submitted" && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center gap-2 px-4 py-3"
+                    >
+                      <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Thinking...</span>
+                    </motion.div>
+                  )}
+                </>
               )}
-
-              {/* Results */}
-              <AnimatePresence>
-                {showResults && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
-                  >
-                    {/* AI Summary */}
-                    {aiSummary && (
-                      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Sparkles className="h-4 w-4 text-emerald-400" />
-                          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                            AI Summary
-                          </span>
-                        </div>
-                        <p className="text-sm text-foreground/90 leading-relaxed">
-                          <TypewriterText text={aiSummary} />
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Results Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Layers className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          Found <span className="text-foreground font-medium">{results.length}</span> relevant chunks
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Result Cards */}
-                    <div className="space-y-3">
-                      {results.map((result, index) => (
-                        <ResultCard key={result.id} result={result} index={index} />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div ref={messagesEndRef} />
             </div>
+          </div>
+
+          {/* Input Area */}
+          <div className="border-t border-border p-4 bg-card/50">
+            <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+              <div className={cn(
+                "flex items-center gap-3 rounded-lg border bg-card p-3 transition-all",
+                "border-border hover:border-foreground/20 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20"
+              )}>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Terminal className="h-4 w-4" />
+                  <ChevronRight className="h-3 w-3" />
+                </div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask me anything..."
+                  disabled={isLoading}
+                  className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-sm"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!input.trim() || isLoading}
+                  className="gap-2"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center mt-2">
+                Press Enter to send or click the send button
+              </p>
+            </form>
           </div>
         </div>
 
@@ -437,21 +358,15 @@ export default function ChatPage() {
                 {history.map((entry) => (
                   <button
                     key={entry.id}
-                    onClick={() => setQuery(entry.query)}
+                    onClick={() => handleSampleQuery(entry.query)}
                     className="w-full p-3 rounded-lg text-left hover:bg-secondary/50 transition-colors group"
                   >
                     <p className="text-sm text-foreground truncate group-hover:text-blue-400 transition-colors">
                       {entry.query}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-muted-foreground">
-                        {entry.timestamp.toLocaleTimeString()}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/50">|</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {entry.resultCount} results
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {entry.timestamp.toLocaleTimeString()}
+                    </span>
                   </button>
                 ))}
               </div>

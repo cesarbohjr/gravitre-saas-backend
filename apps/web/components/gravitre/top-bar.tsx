@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -21,13 +21,9 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
-import { supabaseClient } from "@/lib/supabaseClient"
-import {
-  DEFAULT_DEMO_ORG_ID,
-  SECONDARY_DEMO_ORG_ID,
-  getSelectedOrgFromStorage,
-  setSelectedOrgInStorage,
-} from "@/lib/org-context"
+import { useUserProfile } from "@/lib/user-profile-context"
+import { useAuth } from "@/lib/auth-context"
+import Image from "next/image"
 
 interface TopBarProps {
   title?: string
@@ -37,69 +33,11 @@ interface TopBarProps {
 export function TopBar({ title, onMenuClick }: TopBarProps) {
   const [environment, setEnvironment] = useState<"production" | "staging">("production")
   const [org, setOrg] = useState("Acme Corp")
-  const [userEmail, setUserEmail] = useState("john@acmecorp.com")
-  const [userName, setUserName] = useState("John Doe")
   const { mode, setMode, isLite } = useViewMode()
-
-  useEffect(() => {
-    const selectedOrg = getSelectedOrgFromStorage()
-    if (selectedOrg) {
-      setOrg(selectedOrg.name)
-    } else {
-      setSelectedOrgInStorage({ id: DEFAULT_DEMO_ORG_ID, name: "Acme Corp" })
-    }
-
-    let mounted = true
-    supabaseClient.auth.getUser().then(({ data }) => {
-      if (!mounted || !data.user) return
-      const email = data.user.email ?? "unknown@user"
-      const displayName =
-        (data.user.user_metadata?.full_name as string | undefined) ||
-        (data.user.user_metadata?.name as string | undefined) ||
-        email.split("@")[0]
-
-      setUserEmail(email)
-      setUserName(displayName)
-    })
-
-    const {
-      data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return
-      const email = session?.user?.email ?? "john@acmecorp.com"
-      const displayName =
-        (session?.user?.user_metadata?.full_name as string | undefined) ||
-        (session?.user?.user_metadata?.name as string | undefined) ||
-        email.split("@")[0]
-
-      setUserEmail(email)
-      setUserName(displayName)
-    })
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  const handleOrgChange = (nextOrgId: string, nextOrgName: string) => {
-    setOrg(nextOrgName)
-    setSelectedOrgInStorage({ id: nextOrgId, name: nextOrgName })
-    window.location.reload()
-  }
-
-  const userInitials = useMemo(() => {
-    const clean = userName.trim()
-    if (!clean) return "U"
-    const parts = clean.split(/\s+/).filter(Boolean)
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-  }, [userName])
-
-  const handleSignOut = async () => {
-    await supabaseClient.auth.signOut()
-    window.location.assign("/login")
-  }
+  const { profile, getInitials, getFullName } = useUserProfile()
+  const { profile: authProfile, signOut } = useAuth()
+  const displayName = getFullName() || authProfile?.email || "User"
+  const displayEmail = profile.email || authProfile?.email || ""
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -133,23 +71,17 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem
-                onClick={() => handleOrgChange(DEFAULT_DEMO_ORG_ID, "Acme Corp")}
-                className="gap-2"
-              >
+              <DropdownMenuItem onClick={() => setOrg("Acme Corp")} className="gap-2">
                 <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
                   <Icon name="company" size="xs" className="text-background" />
                 </div>
                 Acme Corp
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleOrgChange(SECONDARY_DEMO_ORG_ID, "Gravitre Labs")}
-                className="gap-2"
-              >
+              <DropdownMenuItem onClick={() => setOrg("Initech")} className="gap-2">
                 <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
                   <Icon name="company" size="xs" className="text-background" />
                 </div>
-                Gravitre Labs
+                Initech
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>
@@ -181,13 +113,25 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-40">
-              <DropdownMenuItem onClick={() => setEnvironment("production")} className="gap-2">
+              <DropdownMenuItem 
+                onSelect={() => setEnvironment("production")} 
+                className="gap-2 cursor-pointer"
+              >
                 <Icon name="production" size="sm" className="text-success" />
                 Production
+                {environment === "production" && (
+                  <Icon name="check" size="sm" className="ml-auto text-success" />
+                )}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setEnvironment("staging")} className="gap-2">
+              <DropdownMenuItem 
+                onSelect={() => setEnvironment("staging")} 
+                className="gap-2 cursor-pointer"
+              >
                 <Icon name="staging" size="sm" className="text-warning" />
                 Staging
+                {environment === "staging" && (
+                  <Icon name="check" size="sm" className="ml-auto text-warning" />
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -256,8 +200,12 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent group relative">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-50 blur transition-opacity duration-300" />
-                <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-medium text-white ring-2 ring-background">
-                  {userInitials}
+                <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-medium text-white ring-2 ring-background overflow-hidden">
+                  {profile.avatarImage ? (
+                    <Image src={profile.avatarImage} alt="Profile" fill className="object-cover" />
+                  ) : (
+                    getInitials()
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -268,14 +216,18 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
                 <div className="relative flex items-center gap-3">
                   <div className="relative">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-base font-semibold text-white">
-                      {userInitials}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-base font-semibold text-white overflow-hidden">
+                      {profile.avatarImage ? (
+                        <Image src={profile.avatarImage} alt="Profile" fill className="object-cover" />
+                      ) : (
+                        getInitials()
+                      )}
                     </div>
                     <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-background" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-foreground">{userName}</span>
-                    <span className="text-xs text-muted-foreground">{userEmail}</span>
+                    <span className="text-sm font-semibold text-foreground">{displayName}</span>
+                    <span className="text-xs text-muted-foreground">{displayEmail}</span>
                     <span className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Active now
@@ -359,7 +311,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="gap-3 cursor-pointer rounded-lg px-3 py-2 text-destructive focus:text-destructive focus:bg-destructive/10"
-                  onClick={handleSignOut}
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    signOut()
+                  }}
                 >
                   <Icon name="signOut" size="sm" />
                   <span className="text-sm">Sign out</span>

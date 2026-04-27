@@ -1,5 +1,6 @@
 # Environment and secrets — NEVER commit
 .env
+.env.*
 .env.local
 .env.*.local
 
@@ -33,3 +34,4 @@ __pycache__/
 # Build / misc
 dist/
 build/
+*.tsbuildinfo
