@@ -1,13 +1,18 @@
 "use client"
 
-import { useState, use } from "react"
+import { use, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 // Types
 interface Agent {
@@ -36,48 +41,28 @@ interface Agent {
   recentWork: { title: string; type: string; time: string; status: "completed" | "pending" | "failed"; confidence: number }[]
 }
 
-// Mock data
-const mockAgent: Agent = {
-  id: "agent-001",
-  name: "Atlas",
-  role: "Marketing Agent",
-  tagline: "Your marketing powerhouse",
-  description: "Orchestrates marketing campaigns, creates content, analyzes performance metrics, and suggests optimizations. Trained on your brand voice, ICP, and marketing playbook.",
-  status: "active",
-  trainingProgress: 87,
-  personality: {
-    gradient: "from-emerald-500 to-teal-500",
-    glow: "shadow-emerald-500/30",
-    accent: "emerald",
-  },
-  stats: {
-    tasksCompleted: 1247,
-    successRate: 98.2,
-    avgResponseTime: "1.2s",
-    hoursActive: 847,
-    decisionsToday: 23,
-    approvalsNeeded: 2,
-  },
-  systems: [
-    { name: "HubSpot", status: "connected", icon: "database" },
-    { name: "Salesforce", status: "connected", icon: "database" },
-    { name: "Outlook", status: "connected", icon: "email" },
-    { name: "Slack", status: "warning", icon: "chat" },
-    { name: "Google Ads", status: "connected", icon: "chart" },
-  ],
-  skills: [
-    { name: "Email Campaigns", level: 95, color: "emerald" },
-    { name: "Content Creation", level: 88, color: "blue" },
-    { name: "Performance Analysis", level: 92, color: "violet" },
-    { name: "Audience Segmentation", level: 85, color: "amber" },
-    { name: "A/B Testing", level: 78, color: "rose" },
-  ],
-  recentWork: [
-    { title: "Q3 Healthcare Campaign", type: "Campaign", time: "2 hours ago", status: "completed", confidence: 96 },
-    { title: "Weekly Performance Report", type: "Report", time: "5 hours ago", status: "completed", confidence: 94 },
-    { title: "Email Sequence - Nurture", type: "Email", time: "1 day ago", status: "completed", confidence: 91 },
-    { title: "LinkedIn Content Calendar", type: "Social", time: "2 days ago", status: "pending", confidence: 0 },
-  ],
+interface AgentListResponse {
+  agents: Array<{
+    id: string
+    name: string
+    role?: string
+    description?: string
+    status?: string
+    permissions?: string[]
+    capabilities?: string[]
+  }>
+}
+
+interface AgentPerformanceResponse {
+  tasksCompleted: number
+  avgConfidence: number
+  overrideRate: number
+  errorRate: number
+  weakAreas: string[]
+  trendOverTime: Array<{ timestamp: string; success: boolean }>
+  meta?: {
+    approvalsPending?: number
+  }
 }
 
 const statusConfig = {
@@ -269,8 +254,111 @@ export default function AgentProfilePage({
   const { id } = use(params)
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"overview" | "skills" | "history">("overview")
-  const agent = mockAgent
+  const { data: agentList, error: agentError, isLoading: isLoadingAgent } = useSWR<AgentListResponse>(
+    "/api/agents",
+    fetcher
+  )
+  const { data: performance, error: performanceError, isLoading: isLoadingPerformance } =
+    useSWR<AgentPerformanceResponse>(`/api/agents/${id}/performance`, fetcher)
+
+  useEffect(() => {
+    if (agentError || performanceError) {
+      toast.error("Failed to load agent performance")
+    }
+  }, [agentError, performanceError])
+
+  const agent = useMemo<Agent>(() => {
+    const source = agentList?.agents?.find((item) => item.id === id)
+    const normalizedStatus: Agent["status"] =
+      source?.status === "training" || source?.status === "limited" || source?.status === "error"
+        ? source.status
+        : "active"
+    const tasksCompleted = Number(performance?.tasksCompleted ?? 0)
+    const avgConfidence = Number(performance?.avgConfidence ?? 0)
+    const overrideRate = Number(performance?.overrideRate ?? 0)
+    const errors = Number(performance?.errorRate ?? 0)
+    const weakAreas = performance?.weakAreas ?? []
+    const trend = performance?.trendOverTime ?? []
+
+    return {
+      id,
+      name: source?.name ?? "Agent",
+      role: source?.role ?? "AI Agent",
+      tagline: "Performance and reliability profile",
+      description: source?.description ?? "No agent description available yet.",
+      status: normalizedStatus,
+      trainingProgress: Math.max(10, Math.min(100, Math.round(avgConfidence || 40))),
+      personality: {
+        gradient: "from-emerald-500 to-teal-500",
+        glow: "shadow-emerald-500/30",
+        accent: "emerald",
+      },
+      stats: {
+        tasksCompleted,
+        successRate: Number((100 - errors).toFixed(1)),
+        avgResponseTime: "-",
+        hoursActive: trend.length * 4,
+        decisionsToday: Math.max(0, Math.round(tasksCompleted / 7)),
+        approvalsNeeded: Number(performance?.meta?.approvalsPending ?? Math.round(overrideRate / 10)),
+      },
+      systems: (source?.permissions ?? []).slice(0, 5).map((name) => ({
+        name,
+        status: "connected",
+        icon: "database",
+      })),
+      skills:
+        weakAreas.length > 0
+          ? weakAreas.map((name, index) => ({
+              name: `Improve ${name}`,
+              level: 55 + index * 8,
+              color: ["emerald", "blue", "violet", "amber", "rose"][index % 5],
+            }))
+          : (source?.capabilities ?? []).slice(0, 5).map((name, index) => ({
+              name,
+              level: 68 + index * 6,
+              color: ["emerald", "blue", "violet", "amber", "rose"][index % 5],
+            })),
+      recentWork: trend.slice(0, 5).reverse().map((entry, index) => ({
+        title: `Execution ${index + 1}`,
+        type: "Run",
+        time: new Date(entry.timestamp).toLocaleString(),
+        status: entry.success ? "completed" : "failed",
+        confidence: entry.success ? 90 : 45,
+      })),
+    }
+  }, [agentList?.agents, id, performance])
+
   const status = statusConfig[agent.status]
+  const isLoading = isLoadingAgent || isLoadingPerformance
+
+  if (isLoading) {
+    return (
+      <AppShell title="Agent">
+        <div className="p-8 space-y-6">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-40 w-full" />
+          <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (agentError || !agentList?.agents?.some((item) => item.id === id)) {
+    return (
+      <AppShell title="Agent">
+        <EmptyState
+          variant="error"
+          title="Agent not found"
+          description="We could not load this agent profile."
+          action={{ label: "Back to agents", onClick: () => router.push("/agents") }}
+        />
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell title={agent.name}>

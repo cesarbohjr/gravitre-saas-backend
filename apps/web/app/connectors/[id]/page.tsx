@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,9 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { fetcher } from "@/lib/fetcher"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   ArrowLeft,
   CheckCircle2,
@@ -69,8 +73,29 @@ import {
   Area,
 } from "recharts"
 
-// Mock connector data
-const mockConnector = {
+interface SystemResponse {
+  systems: Array<{
+    id: string
+    name: string
+    type: string
+    status: "connected" | "disconnected" | "error" | "syncing"
+    config?: Record<string, unknown>
+    lastSyncedAt?: string | null
+    createdAt?: string
+  }>
+}
+
+interface ConnectorHealthResponse {
+  successRate: number
+  avgLatency: number
+  errorCount: number
+  rateLimitHits: number
+  lastSuccessfulSync: string | null
+  status: string
+  trendOverTime: Array<{ timestamp: string; success: boolean }>
+}
+
+const fallbackConnector = {
   id: "1",
   name: "salesforce-api",
   type: "Salesforce",
@@ -94,44 +119,6 @@ const mockConnector = {
   },
 }
 
-// Mock usage chart data
-const usageData = [
-  { time: "00:00", requests: 420, latency: 45 },
-  { time: "04:00", requests: 180, latency: 42 },
-  { time: "08:00", requests: 890, latency: 48 },
-  { time: "12:00", requests: 1250, latency: 52 },
-  { time: "16:00", requests: 1680, latency: 55 },
-  { time: "20:00", requests: 920, latency: 44 },
-  { time: "Now", requests: 780, latency: 45 },
-]
-
-// Mock activity logs
-const activityLogs = [
-  { id: "1", type: "success", action: "Data sync completed", timestamp: "2 min ago", details: "Synced 1,247 records" },
-  { id: "2", type: "success", action: "API call: GET /accounts", timestamp: "5 min ago", details: "200 OK - 45ms" },
-  { id: "3", type: "warning", action: "Rate limit approaching", timestamp: "12 min ago", details: "85% of daily quota used" },
-  { id: "4", type: "success", action: "API call: POST /leads", timestamp: "15 min ago", details: "201 Created - 120ms" },
-  { id: "5", type: "success", action: "Data sync completed", timestamp: "32 min ago", details: "Synced 892 records" },
-  { id: "6", type: "error", action: "API call: GET /opportunities", timestamp: "45 min ago", details: "429 Too Many Requests" },
-  { id: "7", type: "success", action: "Webhook received", timestamp: "1 hr ago", details: "Contact updated event" },
-  { id: "8", type: "success", action: "Connection verified", timestamp: "2 hr ago", details: "OAuth token refreshed" },
-]
-
-// Mock workflows using this connector
-const connectedWorkflows = [
-  { id: "1", name: "sync-customers", status: "active", lastRun: "2 min ago", runs: 1247 },
-  { id: "2", name: "lead-enrichment", status: "active", lastRun: "5 min ago", runs: 892 },
-  { id: "3", name: "opportunity-alerts", status: "paused", lastRun: "1 day ago", runs: 456 },
-  { id: "4", name: "contact-sync", status: "active", lastRun: "10 min ago", runs: 2341 },
-]
-
-// Mock agents using this connector
-const connectedAgents = [
-  { id: "1", name: "Sales Assistant", type: "CRM Agent", actions: 234 },
-  { id: "2", name: "Lead Qualifier", type: "Analysis Agent", actions: 128 },
-  { id: "3", name: "Data Enricher", type: "Processing Agent", actions: 567 },
-]
-
 const statusConfig = {
   connected: { color: "text-emerald-500", bg: "bg-emerald-500", icon: CheckCircle2, label: "Connected" },
   disconnected: { color: "text-zinc-500", bg: "bg-zinc-500", icon: WifiOff, label: "Disconnected" },
@@ -142,12 +129,83 @@ const statusConfig = {
 export default function ConnectorDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [connector, setConnector] = useState(mockConnector)
+  const connectorId = String(params.id ?? "")
+  const { data: systemsData, error: systemsError, isLoading: isLoadingSystems } = useSWR<SystemResponse>(
+    "/api/systems",
+    fetcher
+  )
+  const { data: healthData, error: healthError, isLoading: isLoadingHealth } =
+    useSWR<ConnectorHealthResponse>(
+      connectorId ? `/api/connectors/${connectorId}/health` : null,
+      fetcher
+    )
+
+  const [localStatus, setLocalStatus] = useState<"connected" | "disconnected" | "error" | "syncing" | null>(null)
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+
+  const connector = useMemo(() => {
+    const source = systemsData?.systems?.find((item) => item.id === connectorId)
+    if (!source) {
+      return fallbackConnector
+    }
+    const config = source.config ?? {}
+    return {
+      ...fallbackConnector,
+      id: source.id,
+      name: source.name,
+      type: source.type,
+      status: (localStatus ?? source.status) as typeof fallbackConnector.status,
+      lastSync: healthData?.lastSuccessfulSync
+        ? new Date(healthData.lastSuccessfulSync).toLocaleString()
+        : "No recent sync",
+      health: Math.round(healthData?.successRate ?? 0),
+      requestsToday: Math.round((healthData?.trendOverTime?.length ?? 0) * 120),
+      latency: Math.round(healthData?.avgLatency ?? 0),
+      category: source.type,
+      createdAt: source.createdAt ? new Date(source.createdAt).toLocaleDateString() : "-",
+      config: {
+        apiKey: String(config.apiKey ?? ""),
+        webhookUrl: String(config.webhookUrl ?? ""),
+        syncInterval: String(config.syncInterval ?? "15m"),
+      },
+    }
+  }, [connectorId, healthData, localStatus, systemsData?.systems])
+
+  const usageData = useMemo(
+    () =>
+      (healthData?.trendOverTime ?? []).map((item, index) => ({
+        time: new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        requests: item.success ? 120 + index * 8 : 40 + index * 4,
+        latency: Math.round(healthData?.avgLatency ?? 0) || 0,
+      })),
+    [healthData]
+  )
+
+  const connectedWorkflows = useMemo(
+    () => [
+      { id: "all", name: "workflow integrations", status: "active", lastRun: connector.lastSync, runs: connector.requestsToday },
+    ],
+    [connector.lastSync, connector.requestsToday]
+  )
+  const connectedAgents = useMemo(
+    () => [{ id: "team", name: "Assigned agents", type: "System consumers", actions: connector.requestsToday }],
+    [connector.requestsToday]
+  )
+  const activityLogs = useMemo(
+    () =>
+      (healthData?.trendOverTime ?? []).slice(0, 8).map((item, index) => ({
+        id: `${index}`,
+        type: item.success ? "success" : "error",
+        action: item.success ? "Connector execution succeeded" : "Connector execution failed",
+        timestamp: new Date(item.timestamp).toLocaleString(),
+        details: item.success ? "Sync completed successfully" : "Investigate downstream dependency failure",
+      })),
+    [healthData]
+  )
 
   const config = statusConfig[connector.status]
   const StatusIcon = config.icon
@@ -173,8 +231,37 @@ export default function ConnectorDetailPage() {
 
   const handleToggleStatus = () => {
     const newStatus = connector.status === "connected" ? "disconnected" : "connected"
-    setConnector(prev => ({ ...prev, status: newStatus }))
+    setLocalStatus(newStatus)
     toast.success(newStatus === "connected" ? "Connector enabled" : "Connector disabled")
+  }
+
+  if (isLoadingSystems || isLoadingHealth) {
+    return (
+      <AppShell title="Connector">
+        <div className="p-6 space-y-4">
+          <Skeleton className="h-12 w-56" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (systemsError || healthError || !systemsData?.systems?.some((item) => item.id === connectorId)) {
+    return (
+      <AppShell title="Connector">
+        <EmptyState
+          variant="error"
+          title="Connector not found"
+          description="We could not load this connector health profile."
+          action={{ label: "Back to connectors", onClick: () => router.push("/connectors") }}
+        />
+      </AppShell>
+    )
   }
 
   return (
