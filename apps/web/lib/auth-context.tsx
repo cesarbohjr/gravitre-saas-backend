@@ -41,22 +41,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    let active = true
+    let mounted = true
 
     // Get initial session with timeout guard
     withTimeout(supabaseClient.auth.getSession(), AUTH_INIT_TIMEOUT_MS)
       .then(({ data: { session } }) => {
-        if (!active) return
+        if (!mounted) return
         setSession(session)
         setUser(session?.user ?? null)
       })
-      .catch(() => {
-        if (!active) return
+      .catch((err) => {
+        console.warn("[v0] Auth session check failed:", err)
+        if (!mounted) return
         setSession(null)
         setUser(null)
       })
       .finally(() => {
-        if (!active) return
+        if (!mounted) return
         setLoading(false)
       })
 
@@ -64,14 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (!active) return
+      if (!mounted) return
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
     return () => {
-      active = false
+      mounted = false
       subscription.unsubscribe()
     }
   }, [])

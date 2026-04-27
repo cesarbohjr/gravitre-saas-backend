@@ -17,35 +17,37 @@ import {
   Zap,
   Shield,
   Sparkles,
-  Bot,
-  Workflow,
-  ChevronRight,
   Rocket
 } from "lucide-react"
+import { supabaseClient } from "@/lib/supabaseClient"
+import { useAuth } from "@/lib/auth-context"
 
 const plans = [
   {
     id: "starter",
     name: "Starter",
     price: "$79",
-    description: "Perfect for small teams",
-    features: ["5 agents", "1K runs/mo", "Email support"],
+    period: "/month",
+    description: "Perfect for small teams getting started",
+    features: ["5 AI agents", "1,000 runs/month", "Email support", "Basic analytics"],
     popular: false,
   },
   {
     id: "growth",
     name: "Growth",
     price: "$299",
-    description: "For growing teams",
-    features: ["25 agents", "10K runs/mo", "Priority support"],
+    period: "/month",
+    description: "For growing teams that need more power",
+    features: ["25 AI agents", "10,000 runs/month", "Priority support", "Advanced analytics", "Custom integrations"],
     popular: true,
   },
   {
     id: "scale",
     name: "Scale",
     price: "$999",
-    description: "Enterprise scale",
-    features: ["Unlimited", "SSO", "Dedicated CSM"],
+    period: "/month",
+    description: "Enterprise-grade for large organizations",
+    features: ["Unlimited agents", "Unlimited runs", "Dedicated CSM", "SSO & SAML", "SLA guarantee"],
     popular: false,
   },
 ]
@@ -58,69 +60,16 @@ const useCases = [
   { id: "support", label: "Support", icon: Shield },
 ]
 
-// Animated grid background
-function GridBackground() {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Base gradient */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black" />
-      
-      {/* Animated grid */}
-      <div 
-        className="absolute inset-0 opacity-[0.15]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-        }}
-      />
-      
-      {/* Glowing orbs */}
-      <motion.div
-        animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[120px]"
-      />
-      <motion.div
-        animate={{ 
-          scale: [1.2, 1, 1.2],
-          opacity: [0.2, 0.4, 0.2],
-        }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-1/4 right-1/4 h-[400px] w-[400px] rounded-full bg-blue-500/10 blur-[100px]"
-      />
-      
-      {/* Floating particles */}
-      {[...Array(20)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute h-1 w-1 rounded-full bg-white/20"
-          style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.2, 0.5, 0.2],
-          }}
-          transition={{
-            duration: 3 + Math.random() * 2,
-            repeat: Infinity,
-            delay: Math.random() * 2,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
+const stepTitles = [
+  { num: 1, title: "Create account" },
+  { num: 2, title: "Your workspace" },
+  { num: 3, title: "Select plan" },
+  { num: 4, title: "Ready to go" },
+]
 
 export default function GetStartedPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -131,20 +80,56 @@ export default function GetStartedPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/operator")
+    }
+  }, [user, authLoading, router])
 
   const handleOAuth = async (provider: string) => {
+    setAuthError(null)
     setLoadingProvider(provider)
-    await new Promise(resolve => setTimeout(resolve, 1200))
-    setStep(2)
-    setLoadingProvider(null)
+
+    const selectedProvider =
+      provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
+    
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: selectedProvider,
+      options: {
+        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+      },
+    })
+
+    if (error) {
+      setAuthError(error.message)
+      setLoadingProvider(null)
+    }
   }
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+    setAuthError(null)
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setStep(2)
+
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+      },
+    })
+
     setIsLoading(false)
+    
+    if (error) {
+      setAuthError(error.message)
+      return
+    }
+
+    setStep(2)
   }
 
   const handleCompanySetup = async (e: React.FormEvent) => {
@@ -161,8 +146,8 @@ export default function GetStartedPage() {
 
   const handleComplete = async () => {
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    router.push("/onboarding")
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    router.push("/operator")
   }
 
   const toggleUseCase = (id: string) => {
@@ -171,76 +156,85 @@ export default function GetStartedPage() {
     )
   }
 
-  const stepTitles = [
-    { title: "Create account", subtitle: "7-day free trial" },
-    { title: "Your workspace", subtitle: "Tell us about you" },
-    { title: "Select plan", subtitle: "Pick what fits" },
-    { title: "Ready to go", subtitle: "Launch time" },
-  ]
-
   return (
-    <div className="min-h-screen relative overflow-hidden bg-black">
-      <GridBackground />
-      
+    <div className="min-h-screen bg-zinc-50 relative overflow-hidden">
+      {/* Background grid */}
+      <div 
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      {/* Decorative gradient orb */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-emerald-100/60 to-teal-100/40 rounded-full blur-3xl pointer-events-none" />
+
       {/* Top navigation */}
-      <div className="relative z-20 flex items-center justify-between px-6 py-4">
+      <div className="relative z-20 flex items-center justify-between px-6 py-4 border-b border-zinc-200/50 bg-white/50 backdrop-blur-sm">
         <Link href="/" className="flex items-center gap-2">
           <img 
-            src="/images/gravitre-logo-white.png" 
+            src="/images/gravitre-logo.png" 
             alt="Gravitre" 
-            className="h-6"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-              e.currentTarget.nextElementSibling?.classList.remove('hidden')
-            }}
+            className="h-7"
           />
-          <span className="text-white font-semibold text-lg hidden">Gravitre</span>
         </Link>
         <Link 
           href="/login" 
-          className="text-sm text-zinc-400 hover:text-white transition-colors"
+          className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors"
         >
           Already have an account?
         </Link>
       </div>
+
+      {/* Step indicator */}
+      <div className="relative z-10 flex items-center justify-center py-8">
+        <div className="flex items-center gap-0">
+          {stepTitles.map((s, i) => (
+            <div key={i} className="flex items-center">
+              <button
+                onClick={() => i + 1 < step && setStep(i + 1)}
+                disabled={i + 1 > step}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  i + 1 === step 
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
+                    : i + 1 < step 
+                      ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer" 
+                      : "bg-zinc-100 text-zinc-400"
+                }`}
+              >
+                {i + 1 < step ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    i + 1 === step ? "bg-white/20" : "bg-current/10"
+                  }`}>
+                    {s.num}
+                  </span>
+                )}
+                <span>{s.title}</span>
+              </button>
+              {i < stepTitles.length - 1 && (
+                <div className={`w-8 h-0.5 mx-1 ${i + 1 < step ? "bg-emerald-300" : "bg-zinc-200"}`} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
       
       {/* Main content */}
-      <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-72px)] px-4 py-8">
+      <div className="relative z-10 flex items-start justify-center px-4 pb-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-lg"
+          className="w-full max-w-[480px]"
         >
-          {/* Step indicator - pill style */}
-          <div className="flex items-center justify-center gap-1 mb-6">
-            {stepTitles.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => i + 1 < step && setStep(i + 1)}
-                disabled={i + 1 >= step}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  i + 1 === step 
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                    : i + 1 < step 
-                      ? "bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 cursor-pointer" 
-                      : "bg-zinc-900/50 text-zinc-600"
-                }`}
-              >
-                {i + 1 < step ? (
-                  <Check className="h-3 w-3" />
-                ) : (
-                  <span className="h-4 w-4 rounded-full bg-current/20 flex items-center justify-center text-[10px]">
-                    {i + 1}
-                  </span>
-                )}
-                <span className="hidden sm:inline">{s.title}</span>
-              </button>
-            ))}
-          </div>
-
           {/* Card */}
-          <div className="bg-zinc-900/80 backdrop-blur-xl rounded-2xl border border-zinc-800/80 shadow-2xl shadow-black/50 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-xl shadow-zinc-200/40 overflow-hidden">
             <AnimatePresence mode="wait">
               {/* Step 1: Account Creation */}
               {step === 1 && (
@@ -261,87 +255,100 @@ export default function GetStartedPage() {
                     >
                       <Rocket className="h-7 w-7 text-white" />
                     </motion.div>
-                    <h1 className="text-2xl font-bold text-white">Start your journey</h1>
-                    <p className="mt-2 text-sm text-zinc-400">
+                    <h1 className="text-2xl font-bold text-zinc-900">Start your journey</h1>
+                    <p className="mt-2 text-sm text-zinc-500">
                       7-day free trial. No credit card needed.
                     </p>
+                    {authError && (
+                      <p className="mt-3 text-sm text-red-600">{authError}</p>
+                    )}
                   </div>
 
-                  {/* OAuth Buttons */}
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    <button
-                      onClick={() => handleOAuth("google")}
-                      disabled={loadingProvider !== null}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-medium text-zinc-900 transition-all hover:bg-zinc-100 disabled:opacity-50"
-                    >
-                      {loadingProvider === "google" ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          <svg className="h-5 w-5" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                          </svg>
-                          Google
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleOAuth("github")}
-                      disabled={loadingProvider !== null}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-700 disabled:opacity-50"
-                    >
-                      {loadingProvider === "github" ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          <Github className="h-5 w-5" />
-                          GitHub
-                        </>
-                      )}
-                    </button>
+                  {/* OAuth Buttons - All 3 providers */}
+                  <div className="space-y-3 mb-6">
+                    {[
+                      { id: "google", icon: (
+                        <svg className="h-5 w-5" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                      ), label: "Continue with Google" },
+                      { id: "github", icon: <Github className="h-5 w-5" />, label: "Continue with GitHub" },
+                      { id: "microsoft", icon: (
+                        <svg className="h-5 w-5" viewBox="0 0 24 24">
+                          <path fill="#F25022" d="M1 1h10v10H1z"/>
+                          <path fill="#00A4EF" d="M1 13h10v10H1z"/>
+                          <path fill="#7FBA00" d="M13 1h10v10H13z"/>
+                          <path fill="#FFB900" d="M13 13h10v10H13z"/>
+                        </svg>
+                      ), label: "Continue with Microsoft" },
+                    ].map((provider) => (
+                      <motion.button
+                        key={provider.id}
+                        onClick={() => handleOAuth(provider.id)}
+                        disabled={isLoading || loadingProvider !== null}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className="w-full flex items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300 disabled:opacity-50"
+                      >
+                        {loadingProvider === provider.id ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            {provider.icon}
+                            <span>{provider.label}</span>
+                          </>
+                        )}
+                      </motion.button>
+                    ))}
                   </div>
 
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-zinc-800" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-zinc-900 px-3 text-zinc-500">or with email</span>
-                    </div>
+                  {/* Divider */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="h-px flex-1 bg-zinc-200" />
+                    <span className="text-xs text-zinc-400 uppercase tracking-wide">or</span>
+                    <div className="h-px flex-1 bg-zinc-200" />
                   </div>
 
                   <form onSubmit={handleEmailSignup} className="space-y-4">
                     <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1.5">
+                        Work email
+                      </label>
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="w-full rounded-xl bg-zinc-800/50 border border-zinc-700/50 px-4 py-3 text-sm text-white placeholder-zinc-500 transition-all focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        placeholder="Work email"
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        placeholder="you@company.com"
                       />
                     </div>
 
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        className="w-full rounded-xl bg-zinc-800/50 border border-zinc-700/50 px-4 py-3 pr-10 text-sm text-white placeholder-zinc-500 transition-all focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        placeholder="Password (min 8 chars)"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-1.5">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 pr-12 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                          placeholder="Min 8 characters"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex items-start gap-3">
@@ -350,30 +357,32 @@ export default function GetStartedPage() {
                         id="terms"
                         checked={agreedToTerms}
                         onChange={(e) => setAgreedToTerms(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/20"
+                        className="mt-1 h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500/20"
                       />
-                      <label htmlFor="terms" className="text-xs text-zinc-400">
+                      <label htmlFor="terms" className="text-xs text-zinc-500">
                         I agree to the{" "}
-                        <Link href="/terms" className="text-emerald-400 hover:text-emerald-300">Terms</Link>
+                        <Link href="/terms" className="text-emerald-600 hover:text-emerald-700">Terms</Link>
                         {" "}and{" "}
-                        <Link href="/privacy" className="text-emerald-400 hover:text-emerald-300">Privacy Policy</Link>
+                        <Link href="/privacy" className="text-emerald-600 hover:text-emerald-700">Privacy Policy</Link>
                       </label>
                     </div>
 
-                    <button
+                    <motion.button
                       type="submit"
                       disabled={isLoading || !agreedToTerms}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
                     >
                       {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
                         <>
-                          Create account
+                          <span>Create account</span>
                           <ArrowRight className="h-4 w-4" />
                         </>
                       )}
-                    </button>
+                    </motion.button>
                   </form>
                 </motion.div>
               )}
@@ -390,20 +399,20 @@ export default function GetStartedPage() {
                 >
                   <button
                     onClick={() => setStep(1)}
-                    className="flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors"
+                    className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 mb-6 transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Back
                   </button>
 
-                  <h1 className="text-2xl font-bold text-white">Set up workspace</h1>
-                  <p className="mt-2 text-sm text-zinc-400 mb-8">
-                    Quick setup for your team
+                  <h1 className="text-2xl font-bold text-zinc-900">Set up your workspace</h1>
+                  <p className="mt-2 text-sm text-zinc-500 mb-8">
+                    Tell us a bit about your team
                   </p>
 
                   <form onSubmit={handleCompanySetup} className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-700 mb-1.5">
                         Company name
                       </label>
                       <input
@@ -411,14 +420,14 @@ export default function GetStartedPage() {
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         required
-                        className="w-full rounded-xl bg-zinc-800/50 border border-zinc-700/50 px-4 py-3 text-sm text-white placeholder-zinc-500 transition-all focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                         placeholder="Acme Inc"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-3">
-                        Primary use case
+                      <label className="block text-sm font-medium text-zinc-700 mb-3">
+                        What will you use Gravitre for?
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {useCases.map((useCase) => {
@@ -431,8 +440,8 @@ export default function GetStartedPage() {
                               onClick={() => toggleUseCase(useCase.id)}
                               className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-all ${
                                 isSelected
-                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                  : "bg-zinc-800/50 text-zinc-400 border border-zinc-700/50 hover:border-zinc-600"
+                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                                  : "bg-zinc-100 text-zinc-600 border border-zinc-200 hover:border-zinc-300"
                               }`}
                             >
                               <Icon className="h-4 w-4" />
@@ -443,20 +452,22 @@ export default function GetStartedPage() {
                       </div>
                     </div>
 
-                    <button
+                    <motion.button
                       type="submit"
                       disabled={isLoading || !companyName}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
                     >
                       {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
                         <>
-                          Continue
+                          <span>Continue</span>
                           <ArrowRight className="h-4 w-4" />
                         </>
                       )}
-                    </button>
+                    </motion.button>
                   </form>
                 </motion.div>
               )}
@@ -473,15 +484,15 @@ export default function GetStartedPage() {
                 >
                   <button
                     onClick={() => setStep(2)}
-                    className="flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors"
+                    className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 mb-6 transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Back
                   </button>
 
-                  <h1 className="text-2xl font-bold text-white">Choose your plan</h1>
-                  <p className="mt-2 text-sm text-zinc-400 mb-6">
-                    7-day free trial on all plans
+                  <h1 className="text-2xl font-bold text-zinc-900">Choose your plan</h1>
+                  <p className="mt-2 text-sm text-zinc-500 mb-6">
+                    Start with a 7-day free trial. Cancel anytime.
                   </p>
 
                   <div className="space-y-3">
@@ -489,41 +500,32 @@ export default function GetStartedPage() {
                       <button
                         key={plan.id}
                         onClick={() => setSelectedPlan(plan.id)}
-                        className={`w-full rounded-xl border p-4 text-left transition-all ${
+                        className={`w-full text-left rounded-xl p-4 border-2 transition-all ${
                           selectedPlan === plan.id
-                            ? "border-emerald-500/50 bg-emerald-500/10"
-                            : "border-zinc-700/50 bg-zinc-800/30 hover:border-zinc-600"
+                            ? "border-emerald-500 bg-emerald-50/50"
+                            : "border-zinc-200 hover:border-zinc-300 bg-white"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                              selectedPlan === plan.id ? "border-emerald-500" : "border-zinc-600"
-                            }`}>
-                              {selectedPlan === plan.id && (
-                                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-zinc-900">{plan.name}</span>
+                              {plan.popular && (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                                  Popular
+                                </span>
                               )}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-white">{plan.name}</span>
-                                {plan.popular && (
-                                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-400 font-medium">
-                                    Popular
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-zinc-500">{plan.description}</p>
-                            </div>
+                            <p className="text-sm text-zinc-500 mt-1">{plan.description}</p>
                           </div>
                           <div className="text-right">
-                            <span className="text-lg font-bold text-white">{plan.price}</span>
-                            <span className="text-xs text-zinc-500">/mo</span>
+                            <span className="text-xl font-bold text-zinc-900">{plan.price}</span>
+                            <span className="text-sm text-zinc-500">{plan.period}</span>
                           </div>
                         </div>
-                        <div className="mt-3 flex gap-3">
-                          {plan.features.map((feature) => (
-                            <span key={feature} className="flex items-center gap-1 text-xs text-zinc-400">
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {plan.features.map((feature, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 text-xs text-zinc-600">
                               <Check className="h-3 w-3 text-emerald-500" />
                               {feature}
                             </span>
@@ -533,89 +535,110 @@ export default function GetStartedPage() {
                     ))}
                   </div>
 
-                  <button
+                  <motion.button
                     onClick={handlePlanSelect}
-                    className="w-full mt-6 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/20"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="w-full mt-6 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800"
                   >
-                    Start free trial
+                    <span>Continue</span>
                     <ArrowRight className="h-4 w-4" />
-                  </button>
+                  </motion.button>
                 </motion.div>
               )}
 
-              {/* Step 4: Confirmation */}
+              {/* Step 4: Ready */}
               {step === 4 && (
                 <motion.div
                   key="step4"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
                   className="p-8 text-center"
                 >
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                    className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30"
+                    transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                    className="mb-6 inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25"
                   >
-                    <Check className="h-8 w-8 text-white" />
+                    <Rocket className="h-8 w-8 text-white" />
                   </motion.div>
 
-                  <h1 className="text-2xl font-bold text-white">You&apos;re all set!</h1>
-                  <p className="mt-2 text-sm text-zinc-400 mb-8">
-                    Welcome to <span className="text-white font-medium">{companyName || "Gravitre"}</span>
-                  </p>
+                  <motion.h1 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-2xl font-bold text-zinc-900"
+                  >
+                    You&apos;re all set!
+                  </motion.h1>
+                  <motion.p 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-2 text-sm text-zinc-500 mb-8"
+                  >
+                    Your workspace is ready. Let&apos;s build something amazing.
+                  </motion.p>
 
-                  <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/30 p-4 mb-6 text-left">
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-zinc-400">Plan</span>
-                      <span className="text-white font-medium capitalize">{selectedPlan}</span>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-zinc-50 rounded-xl p-4 mb-6 text-left"
+                  >
+                    <h3 className="font-medium text-zinc-900 mb-3">Your setup:</h3>
+                    <div className="space-y-2 text-sm text-zinc-600">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>Workspace: <strong className="text-zinc-900">{companyName || "Your Company"}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-emerald-500" />
+                        <span>Plan: <strong className="text-zinc-900">{plans.find(p => p.id === selectedPlan)?.name}</strong> (7-day trial)</span>
+                      </div>
+                      {selectedUseCases.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-emerald-500" />
+                          <span>Focus: <strong className="text-zinc-900">{selectedUseCases.map(id => useCases.find(u => u.id === id)?.label).join(", ")}</strong></span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-400">Trial</span>
-                      <span className="text-emerald-400 font-medium">7 days free</span>
-                    </div>
-                  </div>
+                  </motion.div>
 
-                  <button
+                  <motion.button
                     onClick={handleComplete}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
                       <>
-                        Launch Gravitre
-                        <Rocket className="h-4 w-4" />
+                        <span>Launch Dashboard</span>
+                        <ArrowRight className="h-4 w-4" />
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Trust badges below card */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex items-center justify-center gap-6 mt-8 text-zinc-500"
-          >
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="text-xs">SOC 2</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              <span className="text-xs">99.9% uptime</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="text-xs">500+ teams</span>
-            </div>
-          </motion.div>
+          {/* Sign in link */}
+          <p className="mt-6 text-center text-sm text-zinc-500">
+            Already have an account?{" "}
+            <Link href="/login" className="text-emerald-600 hover:text-emerald-700 transition-colors font-medium">
+              Sign in
+            </Link>
+          </p>
         </motion.div>
       </div>
     </div>
