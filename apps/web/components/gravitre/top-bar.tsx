@@ -21,7 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
-import { supabaseClient } from "@/lib/supabaseClient"
+import { useAuth } from "@/lib/auth-context"
 import {
   DEFAULT_DEMO_ORG_ID,
   SECONDARY_DEMO_ORG_ID,
@@ -37,9 +37,15 @@ interface TopBarProps {
 export function TopBar({ title, onMenuClick }: TopBarProps) {
   const [environment, setEnvironment] = useState<"production" | "staging">("production")
   const [org, setOrg] = useState("Acme Corp")
-  const [userEmail, setUserEmail] = useState("john@acmecorp.com")
-  const [userName, setUserName] = useState("John Doe")
   const { mode, setMode, isLite } = useViewMode()
+  const { user, signOut } = useAuth()
+
+  // Derive user info from auth context
+  const userEmail = user?.email ?? "john@acmecorp.com"
+  const userName = 
+    (user?.user_metadata?.full_name as string | undefined) ||
+    (user?.user_metadata?.name as string | undefined) ||
+    userEmail.split("@")[0]
 
   useEffect(() => {
     const selectedOrg = getSelectedOrgFromStorage()
@@ -47,38 +53,6 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       setOrg(selectedOrg.name)
     } else {
       setSelectedOrgInStorage({ id: DEFAULT_DEMO_ORG_ID, name: "Acme Corp" })
-    }
-
-    let mounted = true
-    supabaseClient.auth.getUser().then(({ data }) => {
-      if (!mounted || !data.user) return
-      const email = data.user.email ?? "unknown@user"
-      const displayName =
-        (data.user.user_metadata?.full_name as string | undefined) ||
-        (data.user.user_metadata?.name as string | undefined) ||
-        email.split("@")[0]
-
-      setUserEmail(email)
-      setUserName(displayName)
-    })
-
-    const {
-      data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return
-      const email = session?.user?.email ?? "john@acmecorp.com"
-      const displayName =
-        (session?.user?.user_metadata?.full_name as string | undefined) ||
-        (session?.user?.user_metadata?.name as string | undefined) ||
-        email.split("@")[0]
-
-      setUserEmail(email)
-      setUserName(displayName)
-    })
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
     }
   }, [])
 
@@ -96,9 +70,8 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
   }, [userName])
 
-  const handleSignOut = async () => {
-    await supabaseClient.auth.signOut()
-    window.location.assign("/login")
+  const handleSignOut = () => {
+    signOut()
   }
 
   return (

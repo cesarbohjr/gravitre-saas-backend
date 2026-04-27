@@ -1,4 +1,5 @@
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
+import { getAccessToken } from "@/lib/auth-context"
 
 function withSelectedOrg(url: string): string {
   if (typeof window === "undefined" || !url.startsWith("/api/")) return url
@@ -16,11 +17,28 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   if (!headers.has("accept")) {
     headers.set("accept", "application/json")
   }
-  return fetch(withSelectedOrg(url), {
+  
+  // Add auth token if available
+  if (typeof window !== "undefined") {
+    const token = await getAccessToken()
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`)
+    }
+  }
+  
+  const response = await fetch(withSelectedOrg(url), {
     ...init,
     headers,
     cache: init?.cache ?? "no-store",
   })
+  
+  // Handle 401 by redirecting to login
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.location.assign("/login?session_expired=true")
+    throw new Error("Session expired")
+  }
+  
+  return response
 }
 
 export async function fetcher<T>(url: string): Promise<T> {
