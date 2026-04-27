@@ -87,15 +87,7 @@ export default function LoginPage() {
     }
   }
 
-  // Show loading while checking auth state
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-      </div>
-    )
-  }
-
+  // Don't block render - show form immediately, redirect happens via useEffect if logged in
   return (
     <div className="min-h-screen bg-zinc-50 relative overflow-hidden">
       {/* Background grid */}
