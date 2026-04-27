@@ -23,7 +23,7 @@ import { Blocks, Edit, Workflow, Activity, Zap, Clock, TrendingUp } from "lucide
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
-import { fetcher } from "@/lib/fetcher"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { toast } from "sonner"
 
@@ -216,7 +216,7 @@ export default function WorkflowsPage() {
 
   const handleToggleStatus = (workflow: Workflow) => {
     const newStatus = workflow.status === "active" ? "paused" : "active"
-    void fetch(`/api/workflows/${workflow.id}`, {
+    void apiFetch(`/api/workflows/${workflow.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),

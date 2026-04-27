@@ -40,7 +40,7 @@ import {
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import useSWR from "swr"
-import { fetcher } from "@/lib/fetcher"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { toast } from "sonner"
 
@@ -73,7 +73,7 @@ function OrganizationSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await fetch("/api/settings/organization", {
+    await apiFetch("/api/settings/organization", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -444,7 +444,7 @@ function NotificationSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await fetch("/api/settings/notifications", {
+    await apiFetch("/api/settings/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -959,7 +959,7 @@ function AIModelsSettings() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    await fetch("/api/settings/models", {
+    await apiFetch("/api/settings/models", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

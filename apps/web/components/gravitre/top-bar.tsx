@@ -22,6 +22,12 @@ import { cn } from "@/lib/utils"
 import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
 import { supabaseClient } from "@/lib/supabaseClient"
+import {
+  DEFAULT_DEMO_ORG_ID,
+  SECONDARY_DEMO_ORG_ID,
+  getSelectedOrgFromStorage,
+  setSelectedOrgInStorage,
+} from "@/lib/org-context"
 
 interface TopBarProps {
   title?: string
@@ -36,6 +42,13 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
   const { mode, setMode, isLite } = useViewMode()
 
   useEffect(() => {
+    const selectedOrg = getSelectedOrgFromStorage()
+    if (selectedOrg) {
+      setOrg(selectedOrg.name)
+    } else {
+      setSelectedOrgInStorage({ id: DEFAULT_DEMO_ORG_ID, name: "Acme Corp" })
+    }
+
     let mounted = true
     supabaseClient.auth.getUser().then(({ data }) => {
       if (!mounted || !data.user) return
@@ -68,6 +81,12 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       subscription.unsubscribe()
     }
   }, [])
+
+  const handleOrgChange = (nextOrgId: string, nextOrgName: string) => {
+    setOrg(nextOrgName)
+    setSelectedOrgInStorage({ id: nextOrgId, name: nextOrgName })
+    window.location.reload()
+  }
 
   const userInitials = useMemo(() => {
     const clean = userName.trim()
@@ -114,17 +133,23 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem onClick={() => setOrg("Acme Corp")} className="gap-2">
+              <DropdownMenuItem
+                onClick={() => handleOrgChange(DEFAULT_DEMO_ORG_ID, "Acme Corp")}
+                className="gap-2"
+              >
                 <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
                   <Icon name="company" size="xs" className="text-background" />
                 </div>
                 Acme Corp
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setOrg("Initech")} className="gap-2">
+              <DropdownMenuItem
+                onClick={() => handleOrgChange(SECONDARY_DEMO_ORG_ID, "Gravitre Labs")}
+                className="gap-2"
+              >
                 <div className="flex h-5 w-5 items-center justify-center rounded bg-foreground">
                   <Icon name="company" size="xs" className="text-background" />
                 </div>
-                Initech
+                Gravitre Labs
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>

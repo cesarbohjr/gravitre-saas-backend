@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import {
   Select,
   SelectContent,
@@ -24,8 +25,6 @@ interface Schedule {
   lastRun?: string
   status: "enabled" | "disabled"
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackSchedules: Schedule[] = [
   {
@@ -92,7 +91,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
     setCreateSuccess(null)
 
     try {
-      const response = await fetch(`/api/workflows/${id}/schedules`, {
+      const response = await apiFetch(`/api/workflows/${id}/schedules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -118,7 +117,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
 
   const handleToggleStatus = async (scheduleId: string, currentStatus: "enabled" | "disabled") => {
     try {
-      await fetch(`/api/workflows/${id}/schedules/${scheduleId}`, {
+      await apiFetch(`/api/workflows/${id}/schedules/${scheduleId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -135,7 +134,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
     if (!confirm("Are you sure you want to delete this schedule?")) return
 
     try {
-      await fetch(`/api/workflows/${id}/schedules/${scheduleId}`, {
+      await apiFetch(`/api/workflows/${id}/schedules/${scheduleId}`, {
         method: "DELETE",
       })
       mutate()

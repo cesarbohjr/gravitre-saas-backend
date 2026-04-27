@@ -7,6 +7,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import {
   ArrowLeft,
   RefreshCw,
@@ -46,8 +47,6 @@ interface Run {
   errorMessage?: string
   startedAt: string
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 const fallbackRun: Run = {
   id: "run-sync-1234",
@@ -164,7 +163,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const handleRetry = async () => {
     setIsRetrying(true)
     try {
-      const response = await fetch(`/api/runs/${id}/retry`, { method: "POST" })
+      const response = await apiFetch(`/api/runs/${id}/retry`, { method: "POST" })
       if (response.ok) {
         mutate()
       }
@@ -178,7 +177,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const handleCancel = async () => {
     setIsCancelling(true)
     try {
-      const response = await fetch(`/api/runs/${id}/cancel`, { method: "POST" })
+      const response = await apiFetch(`/api/runs/${id}/cancel`, { method: "POST" })
       if (response.ok) {
         mutate()
       }
@@ -198,7 +197,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     setIsRollingBack(true)
     setRollbackError(null)
     try {
-      const response = await fetch(`/api/runs/${id}/rollback`, { method: "POST" })
+      const response = await apiFetch(`/api/runs/${id}/rollback`, { method: "POST" })
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || "Rollback failed")

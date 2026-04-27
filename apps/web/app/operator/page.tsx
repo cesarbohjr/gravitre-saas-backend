@@ -21,7 +21,7 @@ import {
   CheckCircle, Sparkles, Loader2, ArrowRight,
   Activity
 } from "lucide-react"
-import { fetcher } from "@/lib/fetcher"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { toast } from "sonner"
 
@@ -397,7 +397,7 @@ export default function OperatorPage() {
     setCurrentFlowStep("analysis")
 
     try {
-      const response = await fetch(`/api/sessions/${activeTask}/task`, {
+      const response = await apiFetch(`/api/sessions/${activeTask}/task`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -428,7 +428,7 @@ export default function OperatorPage() {
 
   const handleCreateTask = async () => {
     try {
-      const response = await fetch("/api/sessions", {
+      const response = await apiFetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "New investigation" }),

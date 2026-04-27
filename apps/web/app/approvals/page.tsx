@@ -26,7 +26,7 @@ import {
   ArrowRight,
   Bot
 } from "lucide-react"
-import { fetcher } from "@/lib/fetcher"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { toast } from "sonner"
 
@@ -413,7 +413,7 @@ export default function ApprovalsPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      const response = await fetch(`/api/approvals/${id}/approve`, {
+      const response = await apiFetch(`/api/approvals/${id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -428,7 +428,7 @@ export default function ApprovalsPage() {
 
   const handleReject = async (id: string) => {
     try {
-      const response = await fetch(`/api/approvals/${id}/reject`, {
+      const response = await apiFetch(`/api/approvals/${id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

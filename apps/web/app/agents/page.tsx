@@ -45,7 +45,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
-import { fetcher } from "@/lib/fetcher"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { toast } from "sonner"
 
@@ -754,7 +754,7 @@ export default function AgentsPage() {
             status: "active",
           }
           try {
-            await fetch("/api/agents", {
+            await apiFetch("/api/agents", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
