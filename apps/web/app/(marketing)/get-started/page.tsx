@@ -173,23 +173,6 @@ export default function GetStartedPage() {
       {/* Decorative gradient orb */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-emerald-100/60 to-teal-100/40 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top navigation */}
-      <div className="relative z-20 flex items-center justify-between px-6 py-4 border-b border-zinc-200/50 bg-white/50 backdrop-blur-sm">
-        <Link href="/" className="flex items-center gap-2">
-          <img 
-            src="/images/gravitre-logo.png" 
-            alt="Gravitre" 
-            className="h-7"
-          />
-        </Link>
-        <Link 
-          href="/login" 
-          className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors"
-        >
-          Already have an account?
-        </Link>
-      </div>
-
       {/* Step indicator */}
       <div className="relative z-10 flex items-center justify-center py-8">
         <div className="flex items-center gap-0">
