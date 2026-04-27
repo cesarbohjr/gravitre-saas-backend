@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
 export async function GET(request: NextRequest) {
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
     if (!orgId) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
+    await ensureDemoDataForOrg(supabase, orgId)
 
     const { data, error } = await supabase
       .from("organizations")
