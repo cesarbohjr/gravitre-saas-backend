@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "lucide-react"
 import { supabaseClient } from "@/lib/supabaseClient"
+import { useAuth } from "@/lib/auth-context"
 
 const features = [
   "Deploy AI agents in minutes",
@@ -15,6 +16,8 @@ const features = [
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -23,6 +26,13 @@ export default function LoginPage() {
   const [activeFeature, setActiveFeature] = useState(0)
   const [authError, setAuthError] = useState<string | null>(null)
 
+  // Show session expired message if redirected from middleware
+  useEffect(() => {
+    if (searchParams.get("session_expired") === "true") {
+      setAuthError("Your session has expired. Please sign in again.")
+    }
+  }, [searchParams])
+
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveFeature((prev) => (prev + 1) % features.length)
@@ -30,18 +40,13 @@ export default function LoginPage() {
     return () => clearInterval(interval)
   }, [])
 
+  // Redirect to operator if already logged in
   useEffect(() => {
-    let mounted = true
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      if (data.session) {
-        router.replace("/operator")
-      }
-    })
-    return () => {
-      mounted = false
+    if (!authLoading && user) {
+      const redirect = searchParams.get("redirect") || "/operator"
+      router.replace(redirect)
     }
-  }, [router])
+  }, [user, authLoading, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,7 +64,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push("/operator")
+    const redirect = searchParams.get("redirect") || "/operator"
+    router.push(redirect)
   }
 
   const handleOAuth = async (provider: string) => {
@@ -79,6 +85,15 @@ export default function LoginPage() {
       setAuthError(error.message)
       setLoadingProvider(null)
     }
+  }
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      </div>
+    )
   }
 
   return (

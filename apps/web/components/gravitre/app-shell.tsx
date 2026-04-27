@@ -7,6 +7,8 @@ import { NotificationProvider } from "./notification-center"
 import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import { Loader2 } from "lucide-react"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -17,6 +19,28 @@ export function AppShell({ children, title }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const router = useRouter()
+  const { user, loading } = useAuth()
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Redirect to login if not authenticated (backup to middleware)
+  if (!user) {
+    if (typeof window !== "undefined") {
+      router.replace("/login")
+    }
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <NotificationProvider>
