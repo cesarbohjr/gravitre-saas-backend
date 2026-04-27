@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
-import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { snakeToCamel } from "@/lib/supabase/transforms"
 
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
     await ensureDemoDataForOrg(supabase, orgId)
+    const demoRows = getDemoRowsForOrg(orgId)
 
     const diagnostics = await getOrgCountDiagnostics(supabase, "approvals", orgId)
     const { data, error } = await supabase
@@ -23,21 +24,27 @@ export async function GET(request: NextRequest) {
       .order("requested_at", { ascending: false })
 
     if (error) {
+      const fallbackApprovals = (demoRows?.approvals ?? []).map((row) =>
+        snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+      )
+
       return NextResponse.json(
         {
-          error: error.message,
+          ...(fallbackApprovals.length > 0 ? { approvals: fallbackApprovals } : { error: error.message }),
           ...(debugEnabled
             ? {
                 _debug: {
                   resolvedOrgId: orgId,
                   table: "approvals",
                   ...diagnostics,
+                  queryError: error.message,
+                  fallbackUsed: fallbackApprovals.length > 0,
                   authMode,
                 },
               }
             : {}),
         },
-        { status: 500 }
+        { status: fallbackApprovals.length > 0 ? 200 : 500 }
       )
     }
 
@@ -49,8 +56,16 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const approvals = (data ?? []).map((row) => snakeToCamel<Record<string, unknown>>(row))
+    const safeApprovals =
+      approvals.length > 0
+        ? approvals
+        : (demoRows?.approvals ?? []).map((row) =>
+            snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+          )
+
     return NextResponse.json({
-      approvals: (data ?? []).map((row) => snakeToCamel<Record<string, unknown>>(row)),
+      approvals: safeApprovals,
       ...(debugEnabled
         ? {
             _debug: {
@@ -58,6 +73,7 @@ export async function GET(request: NextRequest) {
               table: "approvals",
               ...diagnostics,
               queryError: null,
+              fallbackUsed: approvals.length === 0 && safeApprovals.length > 0,
               authMode,
             },
           }

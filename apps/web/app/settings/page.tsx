@@ -581,23 +581,29 @@ function NotificationSettings() {
 
 function TeamSettings() {
   const [inviteDialog, setInviteDialog] = useState(false)
-  const [editDialog, setEditDialog] = useState<{name: string; email: string; role: string} | null>(null)
+  const [editDialog, setEditDialog] = useState<{ id: string; name: string; email: string; role: string } | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("Member")
+  const [editRole, setEditRole] = useState("Member")
   const [isInviting, setIsInviting] = useState(false)
-  const { data, error, isLoading } = useSWR<{ team: Array<Record<string, unknown>> }>(
+  const [isSavingMember, setIsSavingMember] = useState(false)
+  const [isRemovingMember, setIsRemovingMember] = useState(false)
+  const { data, error, isLoading, mutate } = useSWR<{ team: Array<Record<string, unknown>> }>(
     "/api/settings/team",
     fetcher
   )
-  const [members, setMembers] = useState<Array<{ name: string; email: string; role: string; avatar: string }>>([])
+  const [members, setMembers] = useState<Array<{ id: string; name: string; email: string; role: string; avatar: string }>>([])
 
   useEffect(() => {
     const mapped = (data?.team ?? []).map((member) => {
       const name = String(member.name ?? member.email ?? "Team Member")
+      const rawRole = String(member.role ?? "member")
+      const normalizedRole = rawRole.toLowerCase() === "admin" ? "Admin" : rawRole.toLowerCase() === "owner" ? "Owner" : "Member"
       return {
+        id: String(member.id ?? member.userId ?? member.email ?? crypto.randomUUID()),
         name,
         email: String(member.email ?? ""),
-        role: String(member.role ?? "Member"),
+        role: normalizedRole,
         avatar: name
           .split(" ")
           .map((part) => part[0])
@@ -614,6 +620,12 @@ function TeamSettings() {
       toast.error("Failed to load data")
     }
   }, [error])
+
+  useEffect(() => {
+    if (editDialog) {
+      setEditRole(editDialog.role)
+    }
+  }, [editDialog])
 
   if (isLoading) {
     return (
@@ -647,18 +659,83 @@ function TeamSettings() {
   }
 
   const handleInvite = async () => {
-    setIsInviting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const name = inviteEmail.split("@")[0].split(".").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" ")
-    setMembers([...members, {
-      name,
-      email: inviteEmail,
-      role: inviteRole,
-      avatar: name.split(" ").map(s => s[0]).join("").toUpperCase().slice(0, 2)
-    }])
-    setIsInviting(false)
-    setInviteEmail("")
-    setInviteDialog(false)
+    try {
+      setIsInviting(true)
+      const role = inviteRole.toLowerCase() === "admin" ? "admin" : "member"
+      const response = await apiFetch("/api/settings/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: inviteEmail,
+          role,
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to invite member"))
+      }
+      await mutate()
+      setInviteEmail("")
+      setInviteDialog(false)
+      toast.success("Team member invited")
+    } catch (inviteError) {
+      toast.error(inviteError instanceof Error ? inviteError.message : "Failed to invite member")
+    } finally {
+      setIsInviting(false)
+    }
+  }
+
+  const handleSaveMember = async () => {
+    if (!editDialog) return
+    try {
+      setIsSavingMember(true)
+      const role = editRole.toLowerCase() === "admin" ? "admin" : "member"
+      const response = await apiFetch("/api/settings/team", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editDialog.id,
+          role,
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to save changes"))
+      }
+      await mutate()
+      setEditDialog(null)
+      toast.success("Team member updated")
+    } catch (saveError) {
+      toast.error(saveError instanceof Error ? saveError.message : "Failed to save changes")
+    } finally {
+      setIsSavingMember(false)
+    }
+  }
+
+  const handleRemoveMember = async () => {
+    if (!editDialog) return
+    try {
+      setIsRemovingMember(true)
+      const response = await apiFetch("/api/settings/team", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editDialog.id,
+          email: editDialog.email,
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to remove member"))
+      }
+      await mutate()
+      setEditDialog(null)
+      toast.success("Team member removed")
+    } catch (removeError) {
+      toast.error(removeError instanceof Error ? removeError.message : "Failed to remove member")
+    } finally {
+      setIsRemovingMember(false)
+    }
   }
 
   return (
@@ -768,23 +845,26 @@ function TeamSettings() {
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase">Role</label>
               <select 
-                defaultValue={editDialog?.role}
+                value={editRole}
+                onChange={(event) => setEditRole(event.target.value)}
                 className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
               >
+                <option value="Owner">Owner</option>
                 <option value="Member">Member</option>
                 <option value="Admin">Admin</option>
               </select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="destructive" size="sm" onClick={() => {
-              setMembers(members.filter(m => m.email !== editDialog?.email))
-              setEditDialog(null)
-            }}>
+            <Button variant="destructive" size="sm" onClick={handleRemoveMember} disabled={isRemovingMember}>
+              {isRemovingMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Remove from Team
             </Button>
             <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
-            <Button onClick={() => setEditDialog(null)}>Save Changes</Button>
+            <Button onClick={handleSaveMember} disabled={isSavingMember}>
+              {isSavingMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -796,12 +876,13 @@ function WebhooksSettings() {
   const [addDialog, setAddDialog] = useState(false)
   const [newUrl, setNewUrl] = useState("")
   const [selectedEvents, setSelectedEvents] = useState<string[]>([])
-  const { data, error, isLoading } = useSWR<{ webhooks: Array<Record<string, unknown>> }>(
+  const { data, error, isLoading, mutate } = useSWR<{ webhooks: Array<Record<string, unknown>> }>(
     "/api/settings/webhooks",
     fetcher
   )
-  const [webhooks, setWebhooks] = useState<Array<{ url: string; events: string[]; status: string }>>([])
+  const [webhooks, setWebhooks] = useState<Array<{ id: string; url: string; events: string[]; status: string }>>([])
   const [isAdding, setIsAdding] = useState(false)
+  const [deletingWebhookId, setDeletingWebhookId] = useState<string | null>(null)
 
   const availableEvents = [
     "workflow.completed",
@@ -813,17 +894,36 @@ function WebhooksSettings() {
   ]
 
   const handleAddWebhook = async () => {
-    setIsAdding(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setWebhooks([...webhooks, { url: newUrl, events: selectedEvents, status: "active" }])
-    setIsAdding(false)
-    setNewUrl("")
-    setSelectedEvents([])
-    setAddDialog(false)
+    try {
+      setIsAdding(true)
+      const response = await apiFetch("/api/settings/webhooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: newUrl,
+          events: selectedEvents,
+          status: "active",
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to add webhook"))
+      }
+      await mutate()
+      setNewUrl("")
+      setSelectedEvents([])
+      setAddDialog(false)
+      toast.success("Webhook added")
+    } catch (addError) {
+      toast.error(addError instanceof Error ? addError.message : "Failed to add webhook")
+    } finally {
+      setIsAdding(false)
+    }
   }
 
   useEffect(() => {
     const mapped = (data?.webhooks ?? []).map((hook) => ({
+      id: String(hook.id ?? hook.url ?? crypto.randomUUID()),
       url: String(hook.url ?? ""),
       events: Array.isArray(hook.events) ? hook.events.map((event) => String(event)) : [],
       status: String(hook.status ?? "active"),
@@ -858,22 +958,49 @@ function WebhooksSettings() {
     )
   }
 
-  const handleDeleteWebhook = (index: number) => {
-    setWebhooks(webhooks.filter((_, i) => i !== index))
+  const handleDeleteWebhook = async (webhookId: string) => {
+    try {
+      setDeletingWebhookId(webhookId)
+      const response = await apiFetch("/api/settings/webhooks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: webhookId }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to delete webhook"))
+      }
+      await mutate()
+      toast.success("Webhook removed")
+    } catch (deleteError) {
+      toast.error(deleteError instanceof Error ? deleteError.message : "Failed to delete webhook")
+    } finally {
+      setDeletingWebhookId(null)
+    }
   }
 
   return (
     <div className="space-y-6">
-      {webhooks.map((webhook, i) => (
-        <div key={i} className="rounded-lg border border-border bg-card p-4">
+      {webhooks.map((webhook) => (
+        <div key={webhook.id} className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-start justify-between mb-2">
             <code className="text-xs font-mono text-foreground">{webhook.url}</code>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-success/10 text-success">
                 {webhook.status}
               </span>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteWebhook(i)}>
-                <X className="h-3 w-3" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => handleDeleteWebhook(webhook.id)}
+                disabled={deletingWebhookId === webhook.id}
+              >
+                {deletingWebhookId === webhook.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <X className="h-3 w-3" />
+                )}
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
-import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
     await ensureDemoDataForOrg(supabase, orgId)
+    const demoRows = getDemoRowsForOrg(orgId)
 
     const diagnostics = await getOrgCountDiagnostics(supabase, "workflows", orgId)
     const { data, error } = await supabase
@@ -23,21 +24,32 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
+      const fallbackWorkflows = (demoRows?.workflows ?? []).map((row) => {
+        const model = snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+        return {
+          ...model,
+          runCount: Number(model.runCount ?? 0),
+          successRate: `${Number(model.successRate ?? 0).toFixed(1)}%`,
+          lastRun: model.updatedAt ?? null,
+        }
+      })
       return NextResponse.json(
         {
-          error: error.message,
+          ...(fallbackWorkflows.length > 0 ? { workflows: fallbackWorkflows } : { error: error.message }),
           ...(debugEnabled
             ? {
                 _debug: {
                   resolvedOrgId: orgId,
                   table: "workflows",
                   ...diagnostics,
+                  queryError: error.message,
+                  fallbackUsed: fallbackWorkflows.length > 0,
                   authMode,
                 },
               }
             : {}),
         },
-        { status: 500 }
+        { status: fallbackWorkflows.length > 0 ? 200 : 500 }
       )
     }
 
@@ -59,8 +71,21 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const safeWorkflows =
+      workflows.length > 0
+        ? workflows
+        : (demoRows?.workflows ?? []).map((row) => {
+            const model = snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+            return {
+              ...model,
+              runCount: Number(model.runCount ?? 0),
+              successRate: `${Number(model.successRate ?? 0).toFixed(1)}%`,
+              lastRun: model.updatedAt ?? null,
+            }
+          })
+
     return NextResponse.json({
-      workflows,
+      workflows: safeWorkflows,
       ...(debugEnabled
         ? {
             _debug: {
@@ -68,6 +93,7 @@ export async function GET(request: NextRequest) {
               table: "workflows",
               ...diagnostics,
               queryError: null,
+              fallbackUsed: workflows.length === 0 && safeWorkflows.length > 0,
               authMode,
             },
           }

@@ -449,3 +449,72 @@ SET
   allow_overrides = EXCLUDED.allow_overrides,
   show_model_in_logs = EXCLUDED.show_model_in_logs,
   updated_at = now();
+
+-- ------------------------------------------------------------
+-- 9) API Keys / Webhooks (settings page non-empty coverage)
+-- ------------------------------------------------------------
+INSERT INTO public.api_keys (
+  id,
+  org_id,
+  name,
+  key_prefix,
+  key_hash,
+  status,
+  last_used_at,
+  created_by,
+  created_at,
+  updated_at
+)
+VALUES (
+  '97000000-0000-4000-8000-000000000001',
+  '11111111-1111-4111-8111-111111111111',
+  'Gravitre Labs Integrations Key',
+  'grvtr_labs',
+  'sha256:gravitre-labs-demo-key-hash-v1',
+  'active',
+  now() - interval '3 hours',
+  NULL,
+  now() - interval '45 days',
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET
+  org_id = EXCLUDED.org_id,
+  name = EXCLUDED.name,
+  key_prefix = EXCLUDED.key_prefix,
+  key_hash = EXCLUDED.key_hash,
+  status = EXCLUDED.status,
+  last_used_at = EXCLUDED.last_used_at,
+  updated_at = now();
+
+INSERT INTO public.webhooks (
+  id,
+  org_id,
+  url,
+  events,
+  status,
+  secret_hash,
+  last_delivery_at,
+  created_at,
+  updated_at
+)
+VALUES (
+  '98000000-0000-4000-8000-000000000001',
+  '11111111-1111-4111-8111-111111111111',
+  'https://gravitre-labs.example/webhooks/gravitre',
+  ARRAY['run.completed','approval.pending','connector.error'],
+  'active',
+  'sha256:gravitre-labs-webhook-secret-hash',
+  now() - interval '18 minutes',
+  now() - interval '42 days',
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET
+  org_id = EXCLUDED.org_id,
+  url = EXCLUDED.url,
+  events = EXCLUDED.events,
+  status = EXCLUDED.status,
+  secret_hash = EXCLUDED.secret_hash,
+  last_delivery_at = EXCLUDED.last_delivery_at,
+  updated_at = now();

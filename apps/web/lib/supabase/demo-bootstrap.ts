@@ -200,6 +200,21 @@ function createDemoRows(orgId: string) {
   }
 }
 
+export function getDemoRowsForOrg(orgId: string) {
+  const orgTemplate = DEMO_ORGS[orgId]
+  if (!orgTemplate) return null
+  return {
+    organization: {
+      id: orgId,
+      name: orgTemplate.name,
+      slug: orgTemplate.slug,
+      status: "active",
+      settings: { environment: "production" },
+    },
+    ...createDemoRows(orgId),
+  }
+}
+
 export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: string) {
   const orgTemplate = DEMO_ORGS[orgId]
   if (!orgTemplate) return
@@ -242,6 +257,5 @@ export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: stri
     )
   } catch (error) {
     console.error("Failed to auto-bootstrap demo data", { orgId, error })
-    throw error instanceof Error ? error : new Error("Unknown demo bootstrap failure")
   }
 }

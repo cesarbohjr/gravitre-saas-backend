@@ -199,6 +199,86 @@ export const connectorBrandTokens = {
     border: "border-[#0052CC]/20",
     text: "text-[#0052CC]",
   },
+  asana: {
+    bg: "bg-[#F06A6A]/10 dark:bg-[#F06A6A]/15",
+    border: "border-[#F06A6A]/20",
+    text: "text-[#F06A6A]",
+  },
+  monday: {
+    bg: "bg-[#FF3D57]/10 dark:bg-[#FF3D57]/15",
+    border: "border-[#FF3D57]/20",
+    text: "text-[#FF3D57]",
+  },
+  "monday.com": {
+    bg: "bg-[#FF3D57]/10 dark:bg-[#FF3D57]/15",
+    border: "border-[#FF3D57]/20",
+    text: "text-[#FF3D57]",
+  },
+  clickup: {
+    bg: "bg-[#8930FD]/10 dark:bg-[#8930FD]/15",
+    border: "border-[#8930FD]/20",
+    text: "text-[#8930FD]",
+  },
+  workday: {
+    bg: "bg-[#F68D2E]/10 dark:bg-[#F68D2E]/15",
+    border: "border-[#F68D2E]/20",
+    text: "text-[#F68D2E]",
+  },
+  bamboohr: {
+    bg: "bg-[#73C41D]/10 dark:bg-[#73C41D]/15",
+    border: "border-[#73C41D]/20",
+    text: "text-[#73C41D]",
+  },
+  gusto: {
+    bg: "bg-[#F45D48]/10 dark:bg-[#F45D48]/15",
+    border: "border-[#F45D48]/20",
+    text: "text-[#F45D48]",
+  },
+  adp: {
+    bg: "bg-[#D0271D]/10 dark:bg-[#D0271D]/15",
+    border: "border-[#D0271D]/20",
+    text: "text-[#D0271D]",
+  },
+  freshdesk: {
+    bg: "bg-[#25C16F]/10 dark:bg-[#25C16F]/15",
+    border: "border-[#25C16F]/20",
+    text: "text-[#25C16F]",
+  },
+  gorgias: {
+    bg: "bg-[#FF5A00]/10 dark:bg-[#FF5A00]/15",
+    border: "border-[#FF5A00]/20",
+    text: "text-[#FF5A00]",
+  },
+  "microsoft teams": {
+    bg: "bg-[#6264A7]/10 dark:bg-[#6264A7]/15",
+    border: "border-[#6264A7]/20",
+    text: "text-[#6264A7]",
+  },
+  teams: {
+    bg: "bg-[#6264A7]/10 dark:bg-[#6264A7]/15",
+    border: "border-[#6264A7]/20",
+    text: "text-[#6264A7]",
+  },
+  gmail: {
+    bg: "bg-[#EA4335]/10 dark:bg-[#EA4335]/15",
+    border: "border-[#EA4335]/20",
+    text: "text-[#EA4335]",
+  },
+  outlook: {
+    bg: "bg-[#0078D4]/10 dark:bg-[#0078D4]/15",
+    border: "border-[#0078D4]/20",
+    text: "text-[#0078D4]",
+  },
+  "google sheets": {
+    bg: "bg-[#0F9D58]/10 dark:bg-[#0F9D58]/15",
+    border: "border-[#0F9D58]/20",
+    text: "text-[#0F9D58]",
+  },
+  googlesheets: {
+    bg: "bg-[#0F9D58]/10 dark:bg-[#0F9D58]/15",
+    border: "border-[#0F9D58]/20",
+    text: "text-[#0F9D58]",
+  },
   twilio: {
     bg: "bg-[#F22F46]/10 dark:bg-[#F22F46]/15",
     border: "border-[#F22F46]/20",
@@ -331,6 +411,111 @@ const logos: Record<string, React.ReactNode> = {
       <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
     </svg>
   ),
+  asana: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#F06A6A]">
+      <path d="M18.78 12.653c-2.882 0-5.22 2.336-5.22 5.218s2.338 5.218 5.22 5.218 5.22-2.336 5.22-5.218-2.338-5.218-5.22-5.218zm-13.56 0c-2.882 0-5.22 2.336-5.22 5.218S2.338 23.09 5.22 23.09s5.22-2.336 5.22-5.218-2.338-5.218-5.22-5.218zM12 1.91c-2.882 0-5.22 2.336-5.22 5.218S9.118 12.346 12 12.346s5.22-2.336 5.22-5.218S14.882 1.91 12 1.91z"/>
+    </svg>
+  ),
+  monday: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#FF3D57" d="M3.213 9.89a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#FFCB00" d="M3.213 18.31a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#00D647" d="M8.787 18.31c-.787 0-1.514-.438-1.875-1.135a2.1 2.1 0 0 1 2.84-2.84 2.1 2.1 0 0 1-.965 3.975z"/>
+      <path fill="#00D647" d="M14.362 9.89c-.787 0-1.514-.438-1.875-1.135a2.1 2.1 0 1 1 1.875 1.135z"/>
+      <path fill="#FF3D57" d="M8.787 9.89a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#FFCB00" d="M14.362 18.31a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#00D647" d="M19.937 9.89a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#FF3D57" d="M19.937 18.31a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+    </svg>
+  ),
+  "monday.com": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#FF3D57" d="M3.213 9.89a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#FFCB00" d="M3.213 18.31a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#00D647" d="M8.787 18.31c-.787 0-1.514-.438-1.875-1.135a2.1 2.1 0 0 1 2.84-2.84 2.1 2.1 0 0 1-.965 3.975z"/>
+      <path fill="#00D647" d="M14.362 9.89c-.787 0-1.514-.438-1.875-1.135a2.1 2.1 0 1 1 1.875 1.135z"/>
+      <path fill="#FF3D57" d="M8.787 9.89a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#FFCB00" d="M14.362 18.31a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#00D647" d="M19.937 9.89a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+      <path fill="#FF3D57" d="M19.937 18.31a2.1 2.1 0 1 1 0-4.2 2.1 2.1 0 0 1 0 4.2z"/>
+    </svg>
+  ),
+  clickup: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#8930FD" d="M3.314 13.6l2.927-2.273c1.696 2.185 3.063 3.14 5.759 3.14 2.671 0 4.083-.947 5.758-3.14l2.927 2.273c-2.333 3.003-4.91 4.538-8.685 4.538-3.775 0-6.352-1.535-8.686-4.538z"/>
+      <path fill="#49CCF9" d="M12 4.362l-6.297 5.33 2.45 2.895L12 9.37l3.847 3.217 2.45-2.895z"/>
+    </svg>
+  ),
+  workday: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#F68D2E]">
+      <circle cx="12" cy="12" r="10" fill="#F68D2E"/>
+      <circle cx="12" cy="9" r="3" fill="white"/>
+      <path d="M12 13c-3 0-5.5 1.5-5.5 4v1h11v-1c0-2.5-2.5-4-5.5-4z" fill="white"/>
+    </svg>
+  ),
+  bamboohr: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#73C41D]">
+      <path d="M12 2C8 2 6 5 6 8c0 2 1 4 2 5.5V22h8v-8.5c1-1.5 2-3.5 2-5.5 0-3-2-6-6-6zm0 2c2.5 0 4 2 4 4 0 1.5-.5 3-1.5 4h-5c-1-1-1.5-2.5-1.5-4 0-2 1.5-4 4-4z"/>
+    </svg>
+  ),
+  gusto: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#F45D48]">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+    </svg>
+  ),
+  adp: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#D0271D]">
+      <rect x="2" y="4" width="20" height="16" rx="2" fill="#D0271D"/>
+      <text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">ADP</text>
+    </svg>
+  ),
+  freshdesk: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#25C16F]">
+      <path d="M12 2C6.48 2 2 6.48 2 12v6c0 1.1.9 2 2 2h2v-8H4.5C4.5 7.57 7.86 4.5 12 4.5s7.5 3.07 7.5 7.5H18v8h2c1.1 0 2-.9 2-2v-6c0-5.52-4.48-10-10-10zM7 14v6H5v-6h2zm12 6h-2v-6h2v6z"/>
+    </svg>
+  ),
+  gorgias: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#FF5A00]">
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+      <circle cx="8" cy="10" r="1.5"/>
+      <circle cx="12" cy="10" r="1.5"/>
+      <circle cx="16" cy="10" r="1.5"/>
+    </svg>
+  ),
+  "microsoft teams": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#6264A7]">
+      <path d="M20.625 8.073h-1.27V6.428c0-.877-.712-1.588-1.588-1.588h-3.898c.275-.4.437-.885.437-1.408 0-1.892-1.54-3.432-3.431-3.432S7.444 1.54 7.444 3.432c0 .523.162 1.008.437 1.408H3.983c-.876 0-1.588.711-1.588 1.588v1.645H1.125C.504 8.073 0 8.577 0 9.198v6.354c0 .621.504 1.125 1.125 1.125h1.27v1.895c0 .877.712 1.588 1.588 1.588h14.034c.876 0 1.588-.711 1.588-1.588v-1.895h1.27c.621 0 1.125-.504 1.125-1.125V9.198c0-.621-.504-1.125-1.125-1.125z"/>
+    </svg>
+  ),
+  teams: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#6264A7]">
+      <path d="M20.625 8.073h-1.27V6.428c0-.877-.712-1.588-1.588-1.588h-3.898c.275-.4.437-.885.437-1.408 0-1.892-1.54-3.432-3.431-3.432S7.444 1.54 7.444 3.432c0 .523.162 1.008.437 1.408H3.983c-.876 0-1.588.711-1.588 1.588v1.645H1.125C.504 8.073 0 8.577 0 9.198v6.354c0 .621.504 1.125 1.125 1.125h1.27v1.895c0 .877.712 1.588 1.588 1.588h14.034c.876 0 1.588-.711 1.588-1.588v-1.895h1.27c.621 0 1.125-.504 1.125-1.125V9.198c0-.621-.504-1.125-1.125-1.125z"/>
+    </svg>
+  ),
+  gmail: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path fill="#4285F4" d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6z"/>
+      <path fill="#EA4335" d="M22 6l-10 7L2 6"/>
+      <path fill="#FBBC05" d="M2 6v12l6-6"/>
+      <path fill="#34A853" d="M22 6v12l-6-6"/>
+      <path fill="#C5221F" d="M22 6l-10 7L2 6h20z"/>
+    </svg>
+  ),
+  outlook: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0078D4]">
+      <path d="M24 7.387v10.478c0 .23-.08.424-.238.576-.158.152-.354.228-.588.228h-8.26v-6.182l1.602 1.197a.373.373 0 0 0 .48-.01l5.941-4.584V7.387zM14.914 6.545v12.058l-8.208 3.203a.721.721 0 0 1-.263.046.667.667 0 0 1-.461-.173.558.558 0 0 1-.188-.428V3.58c0-.189.066-.343.199-.463a.725.725 0 0 1 .489-.197h.057l8.375 3.625zm-4.457 8.37c.69 0 1.248-.23 1.676-.69.427-.46.641-1.073.641-1.84 0-.805-.22-1.456-.66-1.953-.44-.498-1.01-.746-1.713-.746-.666 0-1.21.243-1.634.728-.424.486-.636 1.115-.636 1.888 0 .783.21 1.411.63 1.883.42.471.983.73 1.696.73z"/>
+    </svg>
+  ),
+  "google sheets": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0F9D58]">
+      <path d="M19.385 3H7.692C6.308 3 5 4.308 5 5.692v12.616C5 19.692 6.308 21 7.692 21h11.693c1.384 0 2.615-1.308 2.615-2.692V5.692C22 4.308 20.769 3 19.385 3zM9.615 17.077H7.692v-1.923h1.923v1.923zm0-3.846H7.692v-1.923h1.923v1.923zm0-3.846H7.692V7.462h1.923v1.923zm6.77 7.692h-4.616v-1.923h4.615v1.923zm0-3.846h-4.616v-1.923h4.615v1.923zm0-3.846h-4.616V7.462h4.615v1.923z"/>
+    </svg>
+  ),
+  googlesheets: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0F9D58]">
+      <path d="M19.385 3H7.692C6.308 3 5 4.308 5 5.692v12.616C5 19.692 6.308 21 7.692 21h11.693c1.384 0 2.615-1.308 2.615-2.692V5.692C22 4.308 20.769 3 19.385 3zM9.615 17.077H7.692v-1.923h1.923v1.923zm0-3.846H7.692v-1.923h1.923v1.923zm0-3.846H7.692V7.462h1.923v1.923zm6.77 7.692h-4.616v-1.923h4.615v1.923zm0-3.846h-4.616v-1.923h4.615v1.923zm0-3.846h-4.616V7.462h4.615v1.923z"/>
+    </svg>
+  ),
   zendesk: (
     <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#03363D] dark:text-[#78A300]">
       <path d="M11.085 0v17.568L0 24V6.432L11.085 0zm1.83 0l11.085 6.432L24 6.432 12.915 0zM0 6.432L11.085 0v6.432H0zm12.915 0L24 0v6.432h-11.085zm0 11.136V24l11.085-6.432V6.432l-11.085 11.136z"/>
@@ -445,20 +630,25 @@ interface ConnectorIconProps {
   onClick?: () => void
 }
 
-// Helper to normalize vendor names to brand keys
-function getBrandKey(vendor?: string): ConnectorBrand {
-  if (!vendor) return "default"
-  const normalized = vendor.toLowerCase().trim()
+// Helper to normalize connector names for consistent lookup
+function normalizeConnectorName(value?: string): string {
+  return value?.toLowerCase().trim() ?? ""
+}
+
+// Helper to normalize names to brand keys
+function getBrandKey(value?: string): ConnectorBrand {
+  if (!value) return "default"
+  const normalized = normalizeConnectorName(value)
   if (normalized in connectorBrandTokens) {
     return normalized as ConnectorBrand
   }
   return "default"
 }
 
-// Helper to get logo for vendor
-function getVendorLogo(vendor?: string): React.ReactNode | null {
-  if (!vendor) return null
-  const normalized = vendor.toLowerCase().trim()
+// Helper to get logo for normalized connector name
+function getConnectorLogo(value?: string): React.ReactNode | null {
+  if (!value) return null
+  const normalized = normalizeConnectorName(value)
   return logos[normalized] || null
 }
 
@@ -474,12 +664,15 @@ export function ConnectorIcon({
   className,
   onClick,
 }: ConnectorIconProps) {
-  const brandKey = brand || getBrandKey(vendor)
-  const brandToken = connectorBrandTokens[brandKey]
+  const normalizedName = (name ?? vendor ?? "").toLowerCase().trim()
+  const logoByName = logos[normalizedName]
+  const tokensByName = connectorBrandTokens[normalizedName as ConnectorBrand]
+  const brandKey = brand || getBrandKey(normalizedName || vendor)
+  const brandToken = tokensByName || connectorBrandTokens[brandKey]
   const statusToken = connectorStatusTokens[status]
   const sizeToken = connectorIconSizes[size]
-  
-  const logo = icon || getVendorLogo(vendor)
+
+  const logo = icon || logoByName || getConnectorLogo(vendor)
   const displayName = name || vendor || "Connector"
 
   return (

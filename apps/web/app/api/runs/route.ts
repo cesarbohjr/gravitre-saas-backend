@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
-import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { snakeToCamel } from "@/lib/supabase/transforms"
 
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
     await ensureDemoDataForOrg(supabase, orgId)
+    const demoRows = getDemoRowsForOrg(orgId)
 
     const diagnostics = await getOrgCountDiagnostics(supabase, "runs", orgId)
     const statusFilter = request.nextUrl.searchParams.get("status")
@@ -45,9 +46,18 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
+      const fallbackRuns = (demoRows?.runs ?? []).map((row) => {
+        const model = snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+        return {
+          ...model,
+          workflowName: row.workflow_name ?? "Workflow",
+          trigger: row.trigger ?? null,
+        }
+      })
+
       return NextResponse.json(
         {
-          error: error.message,
+          ...(fallbackRuns.length > 0 ? { runs: fallbackRuns } : { error: error.message }),
           ...(debugEnabled
             ? {
                 _debug: {
@@ -55,12 +65,14 @@ export async function GET(request: NextRequest) {
                   table: "runs",
                   statusFilter,
                   ...diagnostics,
+                  queryError: error.message,
+                  fallbackUsed: fallbackRuns.length > 0,
                   authMode,
                 },
               }
             : {}),
         },
-        { status: 500 }
+        { status: fallbackRuns.length > 0 ? 200 : 500 }
       )
     }
 
@@ -95,8 +107,20 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const safeRuns =
+      runs.length > 0
+        ? runs
+        : (demoRows?.runs ?? []).map((row) => {
+            const model = snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+            return {
+              ...model,
+              workflowName: row.workflow_name ?? "Workflow",
+              trigger: row.trigger ?? null,
+            }
+          })
+
     return NextResponse.json({
-      runs,
+      runs: safeRuns,
       ...(debugEnabled
         ? {
             _debug: {
@@ -105,6 +129,7 @@ export async function GET(request: NextRequest) {
               statusFilter,
               ...diagnostics,
               queryError: null,
+              fallbackUsed: runs.length === 0 && safeRuns.length > 0,
               authMode,
             },
           }

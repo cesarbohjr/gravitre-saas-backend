@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
-import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
+import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
     await ensureDemoDataForOrg(supabase, orgId)
+    const demoRows = getDemoRowsForOrg(orgId)
     const diagnostics = await getOrgCountDiagnostics(supabase, "connected_systems", orgId)
     const { data, error } = await supabase
       .from("connected_systems")
@@ -21,21 +22,27 @@ export async function GET(request: NextRequest) {
       .eq("org_id", orgId)
       .order("created_at", { ascending: false })
     if (error) {
+      const fallbackSystems = (demoRows?.connectedSystems ?? []).map((row) =>
+        snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+      )
+
       return NextResponse.json(
         {
-          error: error.message,
+          ...(fallbackSystems.length > 0 ? { systems: fallbackSystems } : { error: error.message }),
           ...(debugEnabled
             ? {
                 _debug: {
                   resolvedOrgId: orgId,
                   table: "connected_systems",
                   ...diagnostics,
+                  queryError: error.message,
+                  fallbackUsed: fallbackSystems.length > 0,
                   authMode,
                 },
               }
             : {}),
         },
-        { status: 500 }
+        { status: fallbackSystems.length > 0 ? 200 : 500 }
       )
     }
     if ((data ?? []).length === 0) {
@@ -45,8 +52,16 @@ export async function GET(request: NextRequest) {
         authMode,
       })
     }
+    const systems = (data ?? []).map((row) => snakeToCamel<Record<string, unknown>>(row))
+    const safeSystems =
+      systems.length > 0
+        ? systems
+        : (demoRows?.connectedSystems ?? []).map((row) =>
+            snakeToCamel<Record<string, unknown>>(row as Record<string, unknown>)
+          )
+
     return NextResponse.json({
-      systems: (data ?? []).map((row) => snakeToCamel<Record<string, unknown>>(row)),
+      systems: safeSystems,
       ...(debugEnabled
         ? {
             _debug: {
@@ -54,6 +69,7 @@ export async function GET(request: NextRequest) {
               table: "connected_systems",
               ...diagnostics,
               queryError: null,
+              fallbackUsed: systems.length === 0 && safeSystems.length > 0,
               authMode,
             },
           }

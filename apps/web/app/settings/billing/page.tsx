@@ -65,6 +65,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/fetcher"
+import { toast } from "sonner"
 
 const invoices = [
   { id: "INV-2024-003", date: "Apr 1, 2024", amount: "$499.00", status: "Paid" },
@@ -229,45 +231,109 @@ export default function BillingPage() {
 
   // Handler functions
   const handleUpgrade = async (planId: string) => {
-    setSelectedPlan(planId)
-    setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsProcessing(false)
-    setUpgradeModalOpen(false)
-    setSelectedPlan(null)
+    try {
+      setSelectedPlan(planId)
+      setIsProcessing(true)
+      const response = await apiFetch("/api/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "upgrade_plan", planId }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to upgrade plan"))
+      }
+      setUpgradeModalOpen(false)
+      setSelectedPlan(null)
+      toast.success("Plan updated")
+    } catch (upgradeError) {
+      toast.error(upgradeError instanceof Error ? upgradeError.message : "Failed to upgrade plan")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleCancelSubscription = async () => {
-    setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsProcessing(false)
-    setCancelModalOpen(false)
+    try {
+      setIsProcessing(true)
+      const response = await apiFetch("/api/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel_subscription" }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to cancel subscription"))
+      }
+      setCancelModalOpen(false)
+      toast.success("Subscription cancellation scheduled")
+    } catch (cancelError) {
+      toast.error(cancelError instanceof Error ? cancelError.message : "Failed to cancel subscription")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleUpdateCard = async () => {
-    setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsProcessing(false)
-    setUpdateCardModalOpen(false)
-    // Reset form
-    setCardNumber("")
-    setCardExpiry("")
-    setCardCvc("")
+    try {
+      setIsProcessing(true)
+      const response = await apiFetch("/api/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_card",
+          cardNumber,
+          cardExpiry,
+          cardCvc,
+          cardName,
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to update card"))
+      }
+      setUpdateCardModalOpen(false)
+      setCardNumber("")
+      setCardExpiry("")
+      setCardCvc("")
+      toast.success("Payment method updated")
+    } catch (cardError) {
+      toast.error(cardError instanceof Error ? cardError.message : "Failed to update card")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleUpdateAddress = async () => {
-    setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsProcessing(false)
-    setEditAddressModalOpen(false)
+    try {
+      setIsProcessing(true)
+      const response = await apiFetch("/api/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_address",
+          ...billingAddress,
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(String(payload?.error ?? "Failed to update address"))
+      }
+      setEditAddressModalOpen(false)
+      toast.success("Billing address updated")
+    } catch (addressError) {
+      toast.error(addressError instanceof Error ? addressError.message : "Failed to update address")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
-  const handleExportAll = () => {
-    // Simulate export
+  const handleExportAll = async () => {
+    await apiFetch("/api/billing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "export_invoices" }),
+    }).catch(() => null)
     const csvContent = "Invoice ID,Date,Amount,Status\n" + 
       invoices.map(inv => `${inv.id},${inv.date},${inv.amount},${inv.status}`).join("\n")
     const blob = new Blob([csvContent], { type: "text/csv" })
@@ -279,8 +345,12 @@ export default function BillingPage() {
     URL.revokeObjectURL(url)
   }
 
-  const handleDownloadInvoice = (invoiceId: string) => {
-    // Simulate individual invoice download
+  const handleDownloadInvoice = async (invoiceId: string) => {
+    await apiFetch("/api/billing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "download_invoice", invoiceId }),
+    }).catch(() => null)
     const invoice = invoices.find(inv => inv.id === invoiceId)
     if (invoice) {
       const content = `Invoice: ${invoice.id}\nDate: ${invoice.date}\nAmount: ${invoice.amount}\nStatus: ${invoice.status}`
