@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { approvalsApi, runsApi } from "@/lib/api"
+import type { Run as ApiRun, RunStatus } from "@/types/api"
 import { 
   Search, 
   RefreshCw, 
@@ -45,21 +48,23 @@ interface Run {
   steps?: { name: string; status: "completed" | "running" | "pending" | "failed" }[]
 }
 
-function normalizeRun(input: Record<string, unknown>): Run {
-  const status = String(input.status ?? "pending")
+function normalizeRun(input: Record<string, unknown> | ApiRun): Run {
+  const status = String(input.status ?? "pending") as RunStatus | "cancelled"
   const approvalStatus = String(input.approvalStatus ?? input.approval_status ?? "not_required")
   const environment = String(input.environment ?? "staging")
+
+  const normalizedStatus: Run["status"] =
+    status === "running" || status === "completed" || status === "failed"
+      ? status
+      : status === "cancelled" || status === "rejected"
+        ? "cancelled"
+        : "pending"
+
   return {
     id: String(input.id ?? ""),
     workflowName: String(input.workflowName ?? input.workflow_name ?? "workflow"),
     workflowId: String(input.workflowId ?? input.workflow_id ?? ""),
-    status:
-      status === "running" ||
-      status === "completed" ||
-      status === "failed" ||
-      status === "cancelled"
-        ? status
-        : "pending",
+    status: normalizedStatus,
     approvalStatus:
       approvalStatus === "approved" ||
       approvalStatus === "pending" ||
@@ -221,12 +226,20 @@ function TimelineNode({
   run, 
   isExpanded, 
   onToggle,
-  isFirst 
+  isFirst,
+  onRetry,
+  onCancel,
+  onApprove,
+  isMutating,
 }: { 
   run: Run
   isExpanded: boolean
   onToggle: () => void
   isFirst: boolean
+  onRetry: (run: Run) => Promise<void>
+  onCancel: (run: Run) => Promise<void>
+  onApprove: (runId: string) => Promise<void>
+  isMutating: boolean
 }) {
   const config = statusConfig[run.status]
   const StatusIcon = config.icon
@@ -379,13 +392,36 @@ function TimelineNode({
                     </Button>
                   </Link>
                   {run.status === "failed" && (
-                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                      onClick={() => void onRetry(run)}
+                      disabled={isMutating}
+                    >
                       <RotateCcw className="h-3 w-3" />
                       Retry
                     </Button>
                   )}
+                  {run.status === "running" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                      onClick={() => void onCancel(run)}
+                      disabled={isMutating}
+                    >
+                      <XCircle className="h-3 w-3" />
+                      Cancel
+                    </Button>
+                  )}
                   {run.approvalStatus === "pending" && (
-                    <Button size="sm" className="h-7 gap-1.5 text-xs">
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs"
+                      onClick={() => void onApprove(run.id)}
+                      disabled={isMutating}
+                    >
                       <Zap className="h-3 w-3" />
                       Approve
                     </Button>
@@ -401,17 +437,71 @@ function TimelineNode({
 }
 
 export default function RunsPage() {
+  const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [timeRange, setTimeRange] = useState<string>("24h")
   const [expandedRun, setExpandedRun] = useState<string | null>(null)
+  const [isMutatingRun, setIsMutatingRun] = useState(false)
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date())
 
-  const { data, isLoading, mutate } = useSWR("/api/runs", apiFetcher, {
+  const { data, error, isLoading, mutate } = useSWR(user ? "/api/runs" : null, apiFetcher, {
     fallbackData: { runs: fallbackRuns },
-    revalidateOnFocus: false,
+    revalidateOnFocus: true,
+    refreshInterval: 10000,
+    onError: (err) => console.error("[v0] Runs fetch error:", err),
   })
 
+  useEffect(() => {
+    if (data) {
+      setLastRefreshedAt(new Date())
+    }
+  }, [data])
+
+  const refreshLabel = `${lastRefreshedAt.toLocaleTimeString()}`
   const runs = normalizeRunsResponse(data)
   const summaryStats = getSummaryStats(runs)
+
+  const handleRetryRun = async (run: Run) => {
+    setIsMutatingRun(true)
+    try {
+      await runsApi.retry(run.id)
+      toast.success("Run retry initiated")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to retry run:", err)
+      toast.error("Failed to retry run")
+    } finally {
+      setIsMutatingRun(false)
+    }
+  }
+
+  const handleCancelRun = async (run: Run) => {
+    setIsMutatingRun(true)
+    try {
+      await runsApi.cancel(run.id)
+      toast.success("Run cancelled")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to cancel run:", err)
+      toast.error("Failed to cancel run")
+    } finally {
+      setIsMutatingRun(false)
+    }
+  }
+
+  const handleApproveRun = async (runId: string) => {
+    setIsMutatingRun(true)
+    try {
+      await approvalsApi.approve(runId)
+      toast.success("Run approved")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to approve run:", err)
+      toast.error("Failed to approve run")
+    } finally {
+      setIsMutatingRun(false)
+    }
+  }
 
   // Filter runs
   const filteredRuns = runs.filter((run) => {
@@ -433,11 +523,20 @@ export default function RunsPage() {
               variant="outline" 
               size="sm" 
               className="h-8 gap-2"
-              onClick={() => mutate()}
+              onClick={async () => {
+                await mutate()
+                setLastRefreshedAt(new Date())
+              }}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-muted-foreground">
+              {error ? "Connection: error" : isLoading ? "Connection: syncing..." : "Connection: live"}
+            </p>
+            <p className="text-xs text-muted-foreground">Last refresh: {refreshLabel}</p>
           </div>
 
           {/* Live Stats Bar */}
@@ -546,6 +645,10 @@ export default function RunsPage() {
                 isFirst={index === 0}
                 isExpanded={expandedRun === run.id}
                 onToggle={() => setExpandedRun(expandedRun === run.id ? null : run.id)}
+                onRetry={handleRetryRun}
+                onCancel={handleCancelRun}
+                onApprove={handleApproveRun}
+                isMutating={isMutatingRun}
               />
             ))}
           </div>
