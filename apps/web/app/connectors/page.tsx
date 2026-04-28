@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
@@ -59,6 +59,9 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { connectorsApi } from "@/lib/api"
+import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
 interface Connector {
   id: string
@@ -83,32 +86,40 @@ interface Connector {
   }
 }
 
-function normalizeConnector(input: Record<string, unknown>): Connector {
-  const status = String(input.status ?? "disconnected")
+function normalizeConnector(input: Record<string, unknown> | ApiConnector): Connector {
+  const model = input as Record<string, unknown>
+  const status = String(model.status ?? "disconnected") as ConnectorStatus | Connector["status"]
   const environment = String(input.environment ?? "staging")
-  const authType = String(input.authType ?? input.auth_type ?? "apiKey")
+  const authType = String(model.authType ?? model.auth_type ?? "apiKey")
+  const normalizedStatus: Connector["status"] =
+    status === "connected" || status === "syncing" || status === "error" || status === "disconnected"
+      ? status
+      : status === "active"
+        ? "connected"
+        : status === "pending"
+          ? "syncing"
+          : status === "inactive"
+            ? "disconnected"
+            : "error"
   return {
-    id: String(input.id ?? ""),
-    name: String(input.name ?? "connector"),
-    type: String(input.type ?? "unknown"),
-    status:
-      status === "connected" || status === "syncing" || status === "error"
-        ? status
-        : "disconnected",
+    id: String(model.id ?? ""),
+    name: String(model.name ?? "connector"),
+    type: String(model.type ?? model.vendor ?? "unknown"),
+    status: normalizedStatus,
     environment: environment === "production" ? "production" : "staging",
-    lastSync: String(input.lastSync ?? input.last_sync ?? "Never"),
-    health: Number(input.health ?? 0),
-    description: String(input.description ?? ""),
-    dataFlowRate: String(input.dataFlowRate ?? input.data_flow_rate ?? "0 MB/s"),
-    requestsToday: Number(input.requestsToday ?? input.requests_today ?? 0),
-    latency: Number(input.latency ?? 0),
-    category: String(input.category ?? ""),
+    lastSync: String(model.lastSync ?? model.last_sync ?? model.last_sync_at ?? "Never"),
+    health: Number(model.health ?? 0),
+    description: String(model.description ?? ""),
+    dataFlowRate: String(model.dataFlowRate ?? model.data_flow_rate ?? "0 MB/s"),
+    requestsToday: Number(model.requestsToday ?? model.requests_today ?? 0),
+    latency: Number(model.latency ?? 0),
+    category: String(model.category ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
-    usedByWorkflows: Number(input.usedByWorkflows ?? input.used_by_workflows ?? 0),
-    triggeredByAgents: Number(input.triggeredByAgents ?? input.triggered_by_agents ?? 0),
+    usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
+    triggeredByAgents: Number(model.triggeredByAgents ?? model.triggered_by_agents ?? 0),
     config:
-      input.config && typeof input.config === "object"
-        ? (input.config as Connector["config"])
+      model.config && typeof model.config === "object"
+        ? (model.config as Connector["config"])
         : undefined,
   }
 }
@@ -315,24 +326,23 @@ function ConnectorNode({
   position,
   onConfigure,
   onSync,
+  onTestConnection,
   onDelete,
 }: { 
   connector: Connector
   position: "left" | "right"
   onConfigure: () => void
-  onSync: () => void
+  onSync: (connectorId: string) => Promise<void>
+  onTestConnection: (connectorId: string) => Promise<void>
   onDelete: () => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(connector.status === "syncing")
   const config = statusConfig[connector.status]
   const StatusIcon = config.icon
+  const isSyncing = connector.status === "syncing"
 
   const handleSync = async () => {
-    setIsSyncing(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsSyncing(false)
-    onSync()
+    await onSync(connector.id)
   }
 
   return (
@@ -399,6 +409,10 @@ function ConnectorNode({
                 <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
                   <RefreshCw className={cn("h-3.5 w-3.5 mr-2", isSyncing && "animate-spin")} />
                   Sync Now
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void onTestConnection(connector.id)}>
+                  <Wifi className="h-3.5 w-3.5 mr-2" />
+                  Test Connection
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
@@ -490,7 +504,7 @@ function ConfigureModal({
   connector: Connector
   open: boolean
   onClose: () => void
-  onSave: (config: Connector["config"]) => void
+  onSave: (connectorId: string, config: Connector["config"]) => Promise<void>
 }) {
   const [config, setConfig] = useState(connector.config || {})
   const [showApiKey, setShowApiKey] = useState(false)
@@ -498,10 +512,12 @@ function ConfigureModal({
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    onSave(config)
-    setIsSaving(false)
-    onClose()
+    try {
+      await onSave(connector.id, config)
+      onClose()
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -571,17 +587,19 @@ function DeleteModal({
   connector: Connector
   open: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (connectorId: string, confirmName: string) => Promise<void>
 }) {
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    onConfirm()
-    setIsDeleting(false)
-    onClose()
+    try {
+      await onConfirm(connector.id, confirmText)
+      onClose()
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -702,11 +720,11 @@ const availableConnectors = Object.entries(connectorCategories).flatMap(([catego
 function AddConnectorModal({
   open,
   onClose,
-  onAdd,
+  onCreated,
 }: {
   open: boolean
   onClose: () => void
-  onAdd: (connector: Connector) => void
+  onCreated: () => Promise<void>
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -715,7 +733,7 @@ function AddConnectorModal({
   const [apiKey, setApiKey] = useState("")
   const [apiSecret, setApiSecret] = useState("")
   const [environment, setEnvironment] = useState<"production" | "staging">("staging")
-  const [isConnecting, setIsConnecting] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [oauthStatus, setOauthStatus] = useState<"idle" | "redirecting" | "success" | "error">("idle")
   const [searchQuery, setSearchQuery] = useState("")
   const [modalCategoryFilter, setModalCategoryFilter] = useState<string>("all")
@@ -749,7 +767,7 @@ function AddConnectorModal({
     setOauthStatus("success")
     toast.success(`Connected to ${selectedType}`, { description: "OAuth authentication successful" })
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    completeConnection()
+    await completeConnection()
   }
 
   const handleConnect = async () => {
@@ -758,39 +776,29 @@ function AddConnectorModal({
     // For API Key auth, require API key
     if (selectedAuthType === "apiKey" && !apiKey) return
     
-    setIsConnecting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    completeConnection()
+    setIsCreating(true)
+    await completeConnection()
   }
 
-  const completeConnection = () => {
-    const newConnector: Connector = {
-      id: `new-${Date.now()}`,
-      name: name.toLowerCase().replace(/\s+/g, "-"),
-      type: selectedType!,
-      status: "connected",
-      environment,
-      lastSync: "Just now",
-      health: 100,
-      description: getSelectedConnector()?.description || "",
-      category: getSelectedConnector()?.category,
-      authType: selectedAuthType || "apiKey",
-      dataFlowRate: "0 MB/s",
-      requestsToday: 0,
-      latency: 0,
-      usedByWorkflows: 0,
-      triggeredByAgents: 0,
-      config: { 
-        apiKey: apiKey || `${selectedType?.toLowerCase()}_connected`, 
-        webhookUrl: selectedAuthType === "webhook" ? webhookUrl : undefined,
-        syncInterval: "5m" 
-      },
+  const completeConnection = async () => {
+    if (!selectedType || !name) return
+    setIsCreating(true)
+    try {
+      await connectorsApi.create({
+        name,
+        vendor: selectedType,
+        description: getSelectedConnector()?.description,
+        sync_frequency: "5m",
+      })
+      toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
+      await onCreated()
+      handleClose()
+    } catch (err) {
+      console.error("[v0] Failed to create connector:", err)
+      toast.error("Failed to create connector")
+    } finally {
+      setIsCreating(false)
     }
-    
-    onAdd(newConnector)
-    toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
-    setIsConnecting(false)
-    handleClose()
   }
 
   const handleCopyWebhook = () => {
@@ -992,7 +1000,7 @@ function AddConnectorModal({
                   size="sm"
                   className="ml-auto text-xs"
                   onClick={() => setStep("select")}
-                  disabled={oauthStatus !== "idle"}
+                  disabled={oauthStatus !== "idle" || isCreating}
                 >
                   Change
                 </Button>
@@ -1337,10 +1345,10 @@ function AddConnectorModal({
           {step === "configure" && (
             <Button 
               onClick={handleConnect} 
-              disabled={!name || !apiKey || isConnecting}
+              disabled={!name || !apiKey || isCreating}
               className="gap-2"
             >
-              {isConnecting ? (
+              {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Connecting...
@@ -1356,10 +1364,10 @@ function AddConnectorModal({
           {step === "webhook" && (
             <Button 
               onClick={handleConnect} 
-              disabled={!name || isConnecting}
+              disabled={!name || isCreating}
               className="gap-2"
             >
-              {isConnecting ? (
+              {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Verifying...
@@ -1379,33 +1387,98 @@ function AddConnectorModal({
 }
 
 export default function ConnectorsPage() {
+  const { user } = useAuth()
   // Fetch connectors from API with SWR
   const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
-    "/api/connectors",
+    user ? "/api/connectors" : null,
     apiFetcher,
     {
       fallbackData: { connectors: initialConnectors },
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      refreshInterval: 30000,
+      onError: (err) => console.error("[v0] Connectors fetch error:", err),
     }
   )
-  
-  // Local state that syncs with API data
-  const [connectors, setConnectors] = useState<Connector[]>(initialConnectors)
+
+  const connectors = normalizeConnectorsResponse(data)
   const [searchQuery, setSearchQuery] = useState("")
-  
-  // Sync local state with API data
-  useEffect(() => {
-    const normalized = normalizeConnectorsResponse(data)
-    if (normalized.length) {
-      setConnectors(normalized)
-    }
-  }, [data])
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
   const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+
+  const handleSync = async (connectorId: string) => {
+    const previousConnectors = connectors
+    await mutate(
+      {
+        connectors: previousConnectors.map((c) =>
+          c.id === connectorId ? { ...c, status: "syncing", lastSync: "Syncing..." } : c
+        ),
+      },
+      false
+    )
+
+    try {
+      await connectorsApi.sync(connectorId)
+      toast.success("Sync initiated")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to sync connector:", err)
+      await mutate({ connectors: previousConnectors }, false)
+      toast.error("Failed to initiate sync")
+    }
+  }
+
+  const handleSaveConfig = async (connectorId: string, config: Connector["config"]) => {
+    const previousConnectors = connectors
+    await mutate(
+      {
+        connectors: previousConnectors.map((c) => (c.id === connectorId ? { ...c, config } : c)),
+      },
+      false
+    )
+
+    try {
+      await connectorsApi.update(connectorId, { config })
+      toast.success("Configuration saved")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to save connector config:", err)
+      await mutate({ connectors: previousConnectors }, false)
+      toast.error("Failed to save configuration")
+    }
+  }
+
+  const handleDeleteConnector = async (connectorId: string, confirmName: string) => {
+    const previousConnectors = connectors
+    await mutate({ connectors: previousConnectors.filter((c) => c.id !== connectorId) }, false)
+
+    try {
+      await connectorsApi.delete(connectorId, confirmName)
+      toast.success("Connector removed")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to delete connector:", err)
+      await mutate({ connectors: previousConnectors }, false)
+      toast.error("Failed to remove connector")
+    }
+  }
+
+  const handleTestConnection = async (connectorId: string) => {
+    try {
+      const result = await connectorsApi.testConnection(connectorId)
+      if (result.success) {
+        toast.success("Connection successful")
+      } else {
+        toast.error(result.message || "Connection test failed")
+      }
+    } catch (err) {
+      console.error("[v0] Connection test failed:", err)
+      toast.error("Connection test failed")
+    }
+  }
 
   const filteredConnectors = connectors.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1600,7 +1673,8 @@ export default function ConnectorsPage() {
                   connector={connector}
                   position="right"
                   onConfigure={() => setConfigureModal(connector)}
-                  onSync={() => {}}
+                  onSync={handleSync}
+                  onTestConnection={handleTestConnection}
                   onDelete={() => setDeleteModal(connector)}
                 />
               ))}
@@ -1619,7 +1693,8 @@ export default function ConnectorsPage() {
                       connector={connector}
                       position="left"
                       onConfigure={() => setConfigureModal(connector)}
-                      onSync={() => {}}
+                      onSync={handleSync}
+                      onTestConnection={handleTestConnection}
                       onDelete={() => setDeleteModal(connector)}
                     />
                   ))}
@@ -1636,7 +1711,8 @@ export default function ConnectorsPage() {
                       connector={connector}
                       position="right"
                       onConfigure={() => setConfigureModal(connector)}
-                      onSync={() => {}}
+                      onSync={handleSync}
+                      onTestConnection={handleTestConnection}
                       onDelete={() => setDeleteModal(connector)}
                     />
                   ))}
@@ -1654,7 +1730,8 @@ export default function ConnectorsPage() {
                   connector={connector}
                   position="right"
                   onConfigure={() => setConfigureModal(connector)}
-                  onSync={() => {}}
+                  onSync={handleSync}
+                  onTestConnection={handleTestConnection}
                   onDelete={() => setDeleteModal(connector)}
                 />
               ))}
@@ -1668,11 +1745,7 @@ export default function ConnectorsPage() {
             connector={configureModal}
             open={!!configureModal}
             onClose={() => setConfigureModal(null)}
-            onSave={(config) => {
-              setConnectors((prev) =>
-                prev.map((c) => (c.id === configureModal.id ? { ...c, config } : c))
-              )
-            }}
+            onSave={handleSaveConfig}
           />
         )}
         {deleteModal && (
@@ -1680,16 +1753,14 @@ export default function ConnectorsPage() {
             connector={deleteModal}
             open={!!deleteModal}
             onClose={() => setDeleteModal(null)}
-            onConfirm={() => {
-              setConnectors((prev) => prev.filter((c) => c.id !== deleteModal.id))
-            }}
+            onConfirm={handleDeleteConnector}
           />
         )}
         <AddConnectorModal
           open={addModal}
           onClose={() => setAddModal(false)}
-          onAdd={(newConnector) => {
-            setConnectors((prev) => [...prev, newConnector])
+          onCreated={async () => {
+            await mutate()
           }}
         />
       </div>
