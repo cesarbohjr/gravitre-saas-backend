@@ -1,237 +1,108 @@
 "use client"
 
-// AI Assistant - Conversational interface with RAG and tool calling
-import { useState, useRef, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
+import { useMemo, useState } from "react"
+import useSWR from "swr"
+import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { 
-  Search, 
-  FileText, 
-  Database, 
-  Loader2, 
-  Terminal,
-  ChevronRight,
-  ExternalLink,
-  Sparkles,
-  Clock,
-  Zap,
-  BookOpen,
-  ArrowRight,
-  CornerDownLeft,
-  Hash,
-  Layers,
-  Bot,
-  User,
-  Send,
-  RefreshCw,
-  Copy,
-  Check,
-} from "lucide-react"
+import { Search, Loader2, Clock, Sparkles, Trash2, X, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { searchApi } from "@/lib/api"
+import type { SearchResult, SearchHistoryItem } from "@/types/api"
+import { toast } from "sonner"
 
 const sampleQueries = [
-  "What's the status of my agents?",
-  "How does customer sync work?",
-  "Which connectors have errors?",
-  "Help me troubleshoot HubSpot",
+  "failed runs in production today",
+  "connectors with sync errors",
+  "workflows using HubSpot",
+  "agents active in finance",
 ]
 
-// Message component
-function ChatMessage({ message, isLatest }: { message: any; isLatest: boolean }) {
-  const [copied, setCopied] = useState(false)
-  const isUser = message.role === "user"
-  
-  // Extract text from parts
-  const text = message.parts
-    ?.filter((p: any) => p.type === "text")
-    .map((p: any) => p.text)
-    .join("") || ""
-  
-  // Check for tool calls
-  const toolCalls = message.parts?.filter((p: any) => p.type === "tool-invocation") || []
-  
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "flex gap-3 px-4 py-3 rounded-xl",
-        isUser 
-          ? "bg-blue-500/10 border border-blue-500/20" 
-          : "bg-card border border-border"
-      )}
-    >
-      {/* Avatar */}
-      <div className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-        isUser 
-          ? "bg-blue-500/20 text-blue-400" 
-          : "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400"
-      )}>
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-      </div>
-      
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            {isUser ? "You" : "Gravitre AI"}
-          </span>
-          {!isUser && text && (
-            <button
-              onClick={handleCopy}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-          )}
-        </div>
-        
-        {/* Text content */}
-        {text && (
-          <div className="prose prose-sm prose-invert max-w-none">
-            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-              {text}
-              {isLatest && !isUser && <span className="animate-pulse ml-0.5">|</span>}
-            </p>
-          </div>
-        )}
-        
-        {/* Tool invocations */}
-        {toolCalls.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {toolCalls.map((tool: any, i: number) => (
-              <div key={i} className="rounded-lg bg-secondary/50 border border-border/50 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="h-3.5 w-3.5 text-amber-400" />
-                  <span className="text-xs font-medium text-amber-400">
-                    {tool.toolName}
-                  </span>
-                  {tool.state === "output-available" && (
-                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                      Complete
-                    </span>
-                  )}
-                  {(tool.state === "input-streaming" || tool.state === "input-available") && (
-                    <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
-                  )}
-                </div>
-                {tool.output && (
-                  <pre className="text-[11px] text-muted-foreground bg-background/50 rounded p-2 overflow-x-auto">
-                    {JSON.stringify(tool.output, null, 2)}
-                  </pre>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  )
-}
-
-// Command history entry
-interface HistoryEntry {
-  id: string
-  query: string
-  timestamp: Date
-}
-
 export default function ChatPage() {
-  const [input, setInput] = useState("")
-  const [history, setHistory] = useState<HistoryEntry[]>([])
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  
-  // AI SDK useChat hook
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
-  })
-  
-  const isLoading = status === "streaming" || status === "submitted"
+  const { user } = useAuth()
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  const { data: historyData, mutate: mutateHistory } = useSWR<{ searches: SearchHistoryItem[] }>(
+    user ? "/api/search/history" : null,
+    apiFetcher
+  )
 
-  const handleSubmit = (e?: React.FormEvent) => {
-    e?.preventDefault()
-    if (!input.trim() || isLoading) return
-    
-    // Send message
-    sendMessage({ text: input })
-    
-    // Add to history
-    setHistory((prev) => [
-      { id: Date.now().toString(), query: input, timestamp: new Date() },
-      ...prev.slice(0, 9),
-    ])
-    
-    setInput("")
+  const history = useMemo(() => historyData?.searches ?? [], [historyData])
+
+  const handleSearch = async (nextQuery?: string) => {
+    const effectiveQuery = (nextQuery ?? query).trim()
+    if (!effectiveQuery) return
+    setIsSearching(true)
+    try {
+      const response = await searchApi.search(effectiveQuery)
+      setResults(response.results)
+      setSuggestions(response.suggestions)
+      setQuery(effectiveQuery)
+      await mutateHistory()
+    } catch (err) {
+      console.error("[v0] Search failed:", err)
+      toast.error("Search failed")
+    } finally {
+      setIsSearching(false)
+    }
   }
 
-  const handleSampleQuery = (query: string) => {
-    setInput(query)
-    inputRef.current?.focus()
+  const handleClearHistory = async () => {
+    try {
+      await searchApi.clearHistory()
+      await mutateHistory()
+      toast.success("History cleared")
+    } catch (err) {
+      console.error("[v0] Clear history failed:", err)
+      toast.error("Failed to clear history")
+    }
   }
 
-  const handleClearChat = () => {
-    setMessages([])
+  const handleDeleteHistoryItem = async (id: string) => {
+    try {
+      await searchApi.deleteHistory(id)
+      await mutateHistory()
+    } catch (err) {
+      console.error("[v0] Delete history item failed:", err)
+      toast.error("Failed to remove item")
+    }
+  }
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    await handleSearch()
   }
 
   return (
-    <AppShell title="AI Assistant">
+    <AppShell title="Search">
       <div className="flex h-full flex-col md:flex-row">
-        {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
           <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/20 shrink-0">
-                  <Bot className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+                  <Search className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-base md:text-lg font-semibold text-foreground">AI Assistant</h1>
+                  <h1 className="text-base md:text-lg font-semibold text-foreground">Semantic Search</h1>
                   <p className="text-xs md:text-sm text-muted-foreground truncate">
-                    Ask questions about your data and automations
+                    AI-powered search across workflows, agents, connectors, and docs
                   </p>
                 </div>
               </div>
-              {messages.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearChat}
-                  className="gap-2"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Clear
-                </Button>
-              )}
+              <div className="text-xs text-muted-foreground">{results.length} result(s)</div>
             </div>
           </div>
 
-          {/* Messages Area */}
           <div className="flex-1 p-4 md:p-6 overflow-auto">
             <div className="max-w-3xl mx-auto space-y-4">
-              {messages.length === 0 ? (
-                // Empty state
+              {results.length === 0 && !isSearching ? (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -248,109 +119,134 @@ export default function ChatPage() {
                     />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">
-                    How can I help you today?
+                    What do you want to find?
                   </h2>
                   <p className="text-sm text-muted-foreground mb-8 max-w-md">
-                    I can help you understand your automations, troubleshoot issues, and find information in your knowledge base.
+                    Use natural language to search your workflows, runs, connectors, agents, and documents.
                   </p>
-                  
-                  {/* Sample queries */}
                   <div className="flex flex-wrap justify-center gap-2">
                     {sampleQueries.map((q, i) => (
                       <button
                         key={i}
-                        onClick={() => handleSampleQuery(q)}
+                        onClick={() => void handleSearch(q)}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
                       >
-                        <ArrowRight className="h-3 w-3" />
+                        <Sparkles className="h-3 w-3" />
                         {q}
                       </button>
                     ))}
                   </div>
                 </motion.div>
               ) : (
-                // Messages
                 <>
-                  {messages.map((message, index) => (
-                    <ChatMessage 
-                      key={message.id} 
-                      message={message} 
-                      isLatest={index === messages.length - 1 && status === "streaming"}
-                    />
-                  ))}
-                  
-                  {/* Streaming indicator */}
-                  {status === "submitted" && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex items-center gap-2 px-4 py-3"
-                    >
+                  {isSearching && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-card border border-border">
                       <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
-                      <span className="text-sm text-muted-foreground">Thinking...</span>
-                    </motion.div>
+                      <span className="text-sm text-muted-foreground">Searching...</span>
+                    </div>
                   )}
+                  {results.map((result) => (
+                    <motion.div
+                      key={result.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl border border-border bg-card p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                            {result.entity_type}
+                          </p>
+                          <h3 className="text-sm font-semibold text-foreground">{result.title}</h3>
+                          {result.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{result.description}</p>
+                          )}
+                          {result.highlight && (
+                            <p className="mt-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-1">
+                              {result.highlight}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-muted-foreground">score</p>
+                          <p className="text-sm font-medium text-foreground">{result.score.toFixed(2)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Link href={result.url} className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
+                          Open result
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    </motion.div>
+                  ))}
                 </>
               )}
-              <div ref={messagesEndRef} />
             </div>
           </div>
 
-          {/* Input Area */}
           <div className="border-t border-border p-4 bg-card/50">
-            <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+            <form onSubmit={onSubmit} className="max-w-3xl mx-auto">
               <div className={cn(
                 "flex items-center gap-3 rounded-lg border bg-card p-3 transition-all",
                 "border-border hover:border-foreground/20 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20"
               )}>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Terminal className="h-4 w-4" />
-                  <ChevronRight className="h-3 w-3" />
-                </div>
                 <input
-                  ref={inputRef}
                   type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask me anything..."
-                  disabled={isLoading}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search workflows, runs, connectors, agents, or docs..."
+                  disabled={isSearching}
                   className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-sm"
                 />
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!input.trim() || isLoading}
+                  disabled={!query.trim() || isSearching}
                   className="gap-2"
                 >
-                  {isLoading ? (
+                  {isSearching ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Search className="h-4 w-4" />
                   )}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-2">
-                Press Enter to send or click the send button
-              </p>
+              {suggestions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => void handleSearch(suggestion)}
+                      className="text-xs px-2 py-1 rounded border border-border bg-secondary/40 hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </form>
           </div>
         </div>
 
-        {/* Right - History Panel - hidden on mobile */}
         <div className="hidden lg:flex w-72 border-l border-border bg-card/30 flex-col">
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center gap-2">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Recent Queries</h2>
+              <h2 className="text-sm font-semibold text-foreground truncate">Recent Searches</h2>
             </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void handleClearHistory()}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
           
           <div className="flex-1 overflow-auto p-2">
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                <Terminal className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                <Clock className="h-8 w-8 text-muted-foreground/30 mb-3" />
                 <p className="text-xs text-muted-foreground">
-                  Your query history will appear here
+                  Your search history will appear here
                 </p>
               </div>
             ) : (
@@ -358,15 +254,38 @@ export default function ChatPage() {
                 {history.map((entry) => (
                   <button
                     key={entry.id}
-                    onClick={() => handleSampleQuery(entry.query)}
+                    onClick={() => void handleSearch(entry.query)}
                     className="w-full p-3 rounded-lg text-left hover:bg-secondary/50 transition-colors group"
                   >
-                    <p className="text-sm text-foreground truncate group-hover:text-blue-400 transition-colors">
-                      {entry.query}
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {entry.timestamp.toLocaleTimeString()}
-                    </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground truncate group-hover:text-blue-400 transition-colors">
+                          {entry.query}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleString()} · {entry.results_count} results
+                        </span>
+                      </div>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          void handleDeleteHistoryItem(entry.id)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            void handleDeleteHistoryItem(entry.id)
+                          }
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>

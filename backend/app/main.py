@@ -22,6 +22,7 @@ from app.routers import (
     org,
     rag,
     rag_admin,
+    search,
     workflows,
     sources,
     environments,
@@ -168,6 +169,7 @@ app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(rag.router)
 app.include_router(rag_admin.router)
+app.include_router(search.router)
 app.include_router(sources.router)
 app.include_router(workflows.router)
 app.include_router(workflows.approvals_router)

@@ -35,6 +35,8 @@ import type {
   Source,
   SourceListResponse,
   CreateSourceRequest,
+  SearchResponse,
+  SearchHistoryItem,
   ApiKey,
   ApiKeyListResponse,
   BillingUsageResponse,
@@ -241,6 +243,15 @@ export const sourcesApi = {
   sync: (id: string) => postJson<{ status: string }>(apiUrl(`/api/sources/${id}/sync`), {}),
 }
 
+// ============ Search ============
+export const searchApi = {
+  search: (query: string, filters?: { types?: string[]; dateRange?: string }) =>
+    postJson<SearchResponse>(apiUrl("/api/search"), { query, filters }),
+  history: () => fetcher<{ searches: SearchHistoryItem[] }>(apiUrl("/api/search/history")),
+  deleteHistory: (id: string) => deleteRequest(apiUrl(`/api/search/history/${id}`)),
+  clearHistory: () => deleteRequest(apiUrl("/api/search/history")),
+}
+
 // ============ Metrics ============
 export const metricsApi = {
   overview: (range?: string) =>
@@ -341,6 +352,7 @@ export const api = {
   approvals: approvalsApi,
   connectors: connectorsApi,
   sources: sourcesApi,
+  search: searchApi,
   metrics: metricsApi,
   settings: settingsApi,
   environments: environmentsApi,

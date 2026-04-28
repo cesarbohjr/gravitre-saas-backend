@@ -301,6 +301,31 @@ export interface Source {
   updated_at?: string
 }
 
+// ============ Search ============
+export interface SearchResult {
+  id: string
+  entity_type: "workflow" | "agent" | "connector" | "source" | "run" | "document"
+  title: string
+  description?: string
+  highlight?: string
+  score: number
+  url: string
+  metadata?: Record<string, unknown>
+}
+
+export interface SearchResponse {
+  results: SearchResult[]
+  suggestions: string[]
+  totalCount: number
+}
+
+export interface SearchHistoryItem {
+  id: string
+  query: string
+  results_count: number
+  created_at: string
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number
