@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
+import useSWR from "swr"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,12 @@ import {
   Info
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { settingsApi } from "@/lib/api"
+import type { ApiKey, User } from "@/types/api"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface SettingSection {
   id: string
@@ -56,17 +63,47 @@ const sections: SettingSection[] = [
   { id: "webhooks", title: "Webhooks", description: "Configure outbound webhooks", icon: Webhook },
 ]
 
-function OrganizationSettings() {
+function OrganizationSettings({
+  orgData,
+  onUpdate,
+  isAdmin,
+}: {
+  orgData?: Record<string, unknown>
+  onUpdate: () => Promise<void>
+  isAdmin: boolean
+}) {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadDialog, setUploadDialog] = useState(false)
+  const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
+  const [domain, setDomain] = useState("")
+
+  useEffect(() => {
+    if (!orgData) return
+    setName(String(orgData.name ?? ""))
+    setSlug(String(orgData.slug ?? ""))
+    setDomain(String(orgData.primaryDomain ?? orgData.primary_domain ?? ""))
+  }, [orgData])
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      await settingsApi.updateOrg({
+        name,
+        slug,
+        primaryDomain: domain,
+      })
+      toast.success("Organization settings saved")
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      await onUpdate()
+    } catch (err) {
+      console.error("[v0] Failed to save org settings:", err)
+      toast.error("Failed to save settings")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -103,7 +140,9 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="Acme Corp"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={!isAdmin}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -113,7 +152,9 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="acme-corp"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          disabled={!isAdmin}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -123,11 +164,13 @@ function OrganizationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="acme.gravitre.io"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          disabled={!isAdmin}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
-      <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving}>
+      <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving || !isAdmin}>
         {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
         {saved ? "Saved!" : "Save Changes"}
       </Button>
@@ -293,49 +336,101 @@ function SecuritySettings() {
   )
 }
 
-function ApiKeysSettings() {
-  const [showKey, setShowKey] = useState(false)
-  const [copied, setCopied] = useState(false)
-  
-  const apiKey = "gv_live_sk_1234567890abcdef"
-  const maskedKey = "gv_live_sk_••••••••••••"
+function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
+  const { data, mutate } = useSWR(isAdmin ? "/api/settings/api-keys" : null, apiFetcher, {
+    revalidateOnFocus: false,
+  })
+  const [showKeyId, setShowKeyId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [rotatingKeyId, setRotatingKeyId] = useState<string | null>(null)
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const apiKeys = (data as { apiKeys?: ApiKey[] } | undefined)?.apiKeys ?? []
+
+  const handleCopy = (key: ApiKey) => {
+    const value = key.key || key.key_prefix
+    navigator.clipboard.writeText(value)
+    setCopiedId(key.id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleCreateKey = async () => {
+    setIsCreating(true)
+    try {
+      await settingsApi.createApiKey("Production Key")
+      toast.success("API key created - copy it now, it won't be shown again")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to create API key:", err)
+      toast.error("Failed to create API key")
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleRotateKey = async (keyId: string) => {
+    if (!confirm("Rotating this key will invalidate the old key immediately. Continue?")) return
+    setRotatingKeyId(keyId)
+    try {
+      await settingsApi.rotateApiKey(keyId)
+      toast.success("API key rotated")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to rotate API key:", err)
+      toast.error("Failed to rotate key")
+    } finally {
+      setRotatingKeyId(null)
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm font-medium text-foreground">Production API Key</p>
-            <p className="text-xs text-muted-foreground">Created Jan 15, 2024</p>
+      {apiKeys.map((apiKey) => (
+        <div key={apiKey.id} className="rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">{apiKey.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Created {apiKey.created_at ? new Date(apiKey.created_at).toLocaleDateString() : "recently"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowKeyId(showKeyId === apiKey.id ? null : apiKey.id)}
+              >
+                {showKeyId === apiKey.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(apiKey)}>
+                {copiedId === apiKey.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowKey(!showKey)}>
-              {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
-              {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
+          <code className="block w-full text-xs font-mono text-muted-foreground bg-secondary rounded px-3 py-2">
+            {showKeyId === apiKey.id ? apiKey.key_prefix : `${apiKey.key_prefix}••••••••`}
+          </code>
         </div>
-        <code className="block w-full text-xs font-mono text-muted-foreground bg-secondary rounded px-3 py-2">
-          {showKey ? apiKey : maskedKey}
-        </code>
-      </div>
+      ))}
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={!isAdmin || apiKeys.length === 0 || Boolean(rotatingKeyId)}
+          onClick={() => apiKeys[0] && handleRotateKey(apiKeys[0].id)}
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", rotatingKeyId && "animate-spin")} />
           Rotate Key
         </Button>
-        <Button size="sm" className="gap-2">
-          <Key className="h-3.5 w-3.5" />
+        <Button size="sm" className="gap-2" disabled={!isAdmin || isCreating} onClick={handleCreateKey}>
+          {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Key className="h-3.5 w-3.5" />}
           Create New Key
         </Button>
+        {!isAdmin && (
+          <span className="text-xs text-muted-foreground">Admin/Owner required</span>
+        )}
       </div>
     </div>
   )
@@ -344,15 +439,28 @@ function ApiKeysSettings() {
 function NotificationSettings() {
   const [slackDialog, setSlackDialog] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(true)
+  const [recipients, setRecipients] = useState("ops@acme.com, alerts@acme.com")
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      await settingsApi.update({
+        notifications: {
+          emailEnabled,
+          recipients,
+        },
+      })
+      setSaved(true)
+      toast.success("Notification settings saved")
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error("[v0] Failed to save notifications:", err)
+      toast.error("Failed to save notification settings")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -388,7 +496,8 @@ function NotificationSettings() {
         </label>
         <input
           type="text"
-          defaultValue="ops@acme.com, alerts@acme.com"
+          value={recipients}
+          onChange={(e) => setRecipients(e.target.value)}
           className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -438,32 +547,54 @@ function NotificationSettings() {
   )
 }
 
-function TeamSettings() {
+function TeamSettings({
+  members,
+  onUpdate,
+  isAdmin,
+}: {
+  members: User[]
+  onUpdate: () => Promise<void>
+  isAdmin: boolean
+}) {
   const [inviteDialog, setInviteDialog] = useState(false)
   const [editDialog, setEditDialog] = useState<{name: string; email: string; role: string} | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState("Member")
+  const [inviteRole, setInviteRole] = useState("member")
   const [isInviting, setIsInviting] = useState(false)
-  const [members, setMembers] = useState([
-    { name: "John Doe", email: "john@acme.com", role: "Admin", avatar: "JD" },
-    { name: "Sarah Chen", email: "sarah@acme.com", role: "Admin", avatar: "SC" },
-    { name: "Mike Johnson", email: "mike@acme.com", role: "Member", avatar: "MJ" },
-    { name: "Emily Davis", email: "emily@acme.com", role: "Member", avatar: "ED" },
-  ])
+  const [isRemoving, setIsRemoving] = useState<string | null>(null)
 
   const handleInvite = async () => {
+    if (!isAdmin) return
     setIsInviting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const name = inviteEmail.split("@")[0].split(".").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" ")
-    setMembers([...members, {
-      name,
-      email: inviteEmail,
-      role: inviteRole,
-      avatar: name.split(" ").map(s => s[0]).join("").toUpperCase().slice(0, 2)
-    }])
-    setIsInviting(false)
-    setInviteEmail("")
-    setInviteDialog(false)
+    try {
+      await settingsApi.inviteMember(inviteEmail, inviteRole)
+      toast.success(`Invitation sent to ${inviteEmail}`)
+      setInviteEmail("")
+      setInviteDialog(false)
+      await onUpdate()
+    } catch (err) {
+      console.error("[v0] Failed to invite member:", err)
+      toast.error("Failed to send invitation")
+    } finally {
+      setIsInviting(false)
+    }
+  }
+
+  const handleRemoveMember = async (userId: string, userName: string) => {
+    if (!isAdmin) return
+    if (!confirm(`Remove ${userName} from the organization?`)) return
+    setIsRemoving(userId)
+    try {
+      await settingsApi.removeMember(userId)
+      toast.success(`${userName} removed`)
+      await onUpdate()
+    } catch (err) {
+      console.error("[v0] Failed to remove member:", err)
+      toast.error("Failed to remove member")
+    } finally {
+      setIsRemoving(null)
+      setEditDialog(null)
+    }
   }
 
   return (
@@ -479,27 +610,38 @@ function TeamSettings() {
           </thead>
           <tbody>
             {members.map((member) => (
-              <tr key={member.email} className="border-b border-border last:border-0">
+              <tr key={member.id ?? member.email} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                      {member.avatar}
+                      {(member.full_name ?? member.email ?? "U")
+                        .split(" ")
+                        .map((s) => s[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">{member.name}</p>
+                      <p className="text-sm font-medium text-foreground">{member.full_name ?? member.email}</p>
                       <p className="text-xs text-muted-foreground">{member.email}</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                    member.role === "Admin" ? "bg-info/10 text-info" : "bg-muted text-muted-foreground"
+                    member.role === "admin" || member.role === "owner" ? "bg-info/10 text-info" : "bg-muted text-muted-foreground"
                   }`}>
-                    {member.role}
+                    {member.role ?? "member"}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditDialog(member)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setEditDialog({ name: member.full_name ?? "", email: member.email, role: member.role ?? "member" })}
+                    disabled={!isAdmin}
+                  >
                     Edit
                   </Button>
                 </td>
@@ -508,7 +650,7 @@ function TeamSettings() {
           </tbody>
         </table>
       </div>
-      <Button size="sm" className="gap-2" onClick={() => setInviteDialog(true)}>
+      <Button size="sm" className="gap-2" onClick={() => setInviteDialog(true)} disabled={!isAdmin}>
         <Users className="h-3.5 w-3.5" />
         Invite Member
       </Button>
@@ -538,8 +680,8 @@ function TeamSettings() {
                 onChange={(e) => setInviteRole(e.target.value)}
                 className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
               >
-                <option value="Member">Member</option>
-                <option value="Admin">Admin</option>
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
           </div>
@@ -575,17 +717,26 @@ function TeamSettings() {
               <select 
                 defaultValue={editDialog?.role}
                 className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
+                disabled={!isAdmin}
               >
-                <option value="Member">Member</option>
-                <option value="Admin">Admin</option>
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="destructive" size="sm" onClick={() => {
-              setMembers(members.filter(m => m.email !== editDialog?.email))
-              setEditDialog(null)
-            }}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!isAdmin || !editDialog || !members.find((m) => m.email === editDialog.email)}
+              onClick={() => {
+                const member = members.find((m) => m.email === editDialog?.email)
+                if (member?.id) {
+                  void handleRemoveMember(member.id, member.full_name ?? member.email)
+                }
+              }}
+            >
+              {isRemoving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Remove from Team
             </Button>
             <Button variant="outline" onClick={() => setEditDialog(null)}>Cancel</Button>
@@ -856,19 +1007,80 @@ function AIModelsSettings() {
 
 function SettingsContent() {
   const searchParams = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
   const initialSection = searchParams.get('section') || "organization"
   const [activeSection, setActiveSection] = useState(initialSection)
+  const isAdmin = user?.role === "admin" || user?.role === "owner"
+
+  const { data: orgData, mutate: mutateOrg } = useSWR(
+    user ? "/api/settings/organization" : null,
+    apiFetcher,
+    { revalidateOnFocus: false }
+  )
+
+  const { data: teamData, mutate: mutateTeam } = useSWR(
+    user ? "/api/settings/team" : null,
+    apiFetcher,
+    { revalidateOnFocus: false }
+  )
+
+  const organization = (orgData as { organization?: Record<string, unknown> } | undefined)?.organization
+  const team = ((teamData as { team?: User[] } | undefined)?.team ?? []) as User[]
+  const adminOnlySections = new Set(["organization", "ai-models", "security", "api-keys", "team", "webhooks"])
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   const renderContent = () => {
+    if (adminOnlySections.has(activeSection) && !isAdmin) {
+      return (
+        <div className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+          Admin or owner permission is required to manage this section.
+        </div>
+      )
+    }
+
     switch (activeSection) {
-      case "organization": return <OrganizationSettings />
+      case "organization":
+        return (
+          <OrganizationSettings
+            orgData={organization}
+            isAdmin={isAdmin}
+            onUpdate={async () => {
+              await mutateOrg()
+            }}
+          />
+        )
       case "ai-models": return <AIModelsSettings />
       case "security": return <SecuritySettings />
-      case "api-keys": return <ApiKeysSettings />
+      case "api-keys": return <ApiKeysSettings isAdmin={isAdmin} />
       case "notifications": return <NotificationSettings />
-      case "team": return <TeamSettings />
+      case "team":
+        return (
+          <TeamSettings
+            members={team}
+            isAdmin={isAdmin}
+            onUpdate={async () => {
+              await mutateTeam()
+            }}
+          />
+        )
       case "webhooks": return <WebhooksSettings />
-      default: return <OrganizationSettings />
+      default:
+        return (
+          <OrganizationSettings
+            orgData={organization}
+            isAdmin={isAdmin}
+            onUpdate={async () => {
+              await mutateOrg()
+            }}
+          />
+        )
     }
   }
 

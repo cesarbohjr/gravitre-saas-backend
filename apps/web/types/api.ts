@@ -351,6 +351,22 @@ export interface SourceListResponse {
   sources: Source[]
 }
 
+export interface ApiKey {
+  id: string
+  org_id?: string
+  name: string
+  key_prefix: string
+  status: "active" | "revoked"
+  last_used_at?: string | null
+  created_at?: string
+  updated_at?: string
+  key?: string
+}
+
+export interface ApiKeyListResponse {
+  apiKeys: ApiKey[]
+}
+
 // ============ API Requests ============
 export interface CreateWorkflowRequest {
   name: string

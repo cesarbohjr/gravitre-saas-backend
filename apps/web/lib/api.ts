@@ -35,6 +35,8 @@ import type {
   Source,
   SourceListResponse,
   CreateSourceRequest,
+  ApiKey,
+  ApiKeyListResponse,
   MetricsOverview,
 } from "@/types/api"
 
@@ -250,15 +252,33 @@ export const settingsApi = {
   update: (data: Record<string, unknown>) => patchJson<Record<string, unknown>>(apiUrl("/api/settings"), data),
   
   // Organization
-  getOrg: () => fetcher<{ organization: Record<string, unknown> }>(apiUrl("/api/org")),
+  getOrg: () => fetcher<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization")),
   updateOrg: (data: Record<string, unknown>) =>
-    patchJson<{ organization: Record<string, unknown> }>(apiUrl("/api/org"), data),
+    patchJson<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization"), data),
   
   // Team
-  listTeamMembers: () => fetcher<{ members: User[] }>(apiUrl("/api/org/members")),
+  listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),
   inviteMember: (email: string, role?: string) =>
-    postJson<{ invited: boolean }>(apiUrl("/api/org/members/invite"), { email, role }),
-  removeMember: (userId: string) => deleteRequest(apiUrl(`/api/org/members/${userId}`)),
+    postJson<{ member: User }>(apiUrl("/api/settings/team"), { email, role }),
+  removeMember: async (userId: string) => {
+    const response = await apiFetch(apiUrl("/api/settings/team"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || `Request failed: ${response.status}`)
+    }
+  },
+
+  // API Keys
+  listApiKeys: () => fetcher<ApiKeyListResponse>(apiUrl("/api/settings/api-keys")),
+  createApiKey: (name: string) => postJson<{ apiKey: ApiKey }>(apiUrl("/api/settings/api-keys"), { name }),
+  rotateApiKey: (id: string) =>
+    postJson<{ apiKey: ApiKey }>(apiUrl(`/api/settings/api-keys/${id}/rotate`), {}),
+  revokeApiKey: (id: string) =>
+    patchJson<{ apiKey: ApiKey }>(apiUrl("/api/settings/api-keys"), { id, status: "revoked" }),
 }
 
 // ============ Environments ============
