@@ -142,14 +142,14 @@ const statusConfig = {
 export default function ConnectorDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [connector, setConnector] = useState(mockConnector)
+  const [connector, setConnector] = useState<any>(mockConnector)
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
 
-  const config = statusConfig[connector.status]
+  const config = statusConfig[(connector.status as keyof typeof statusConfig) || "connected"]
   const StatusIcon = config.icon
 
   const handleSync = async () => {
@@ -173,7 +173,7 @@ export default function ConnectorDetailPage() {
 
   const handleToggleStatus = () => {
     const newStatus = connector.status === "connected" ? "disconnected" : "connected"
-    setConnector(prev => ({ ...prev, status: newStatus }))
+    setConnector((prev: any) => ({ ...prev, status: newStatus }))
     toast.success(newStatus === "connected" ? "Connector enabled" : "Connector disabled")
   }
 

@@ -64,7 +64,6 @@ function BrainVisualization() {
             duration: 20 + i * 10,
             repeat: Infinity,
             ease: "linear",
-            direction: i % 2 === 0 ? "normal" : "reverse",
           }}
         >
           {/* Orbiting dots */}

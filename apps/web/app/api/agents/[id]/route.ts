@@ -7,10 +7,15 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
-  return proxyToFastApi(request, `/api/operators/${id}`)
+  return proxyToFastApi(request, `/api/agents/${id}`)
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
-  return proxyToFastApi(request, `/api/operators/${id}`)
+  return proxyToFastApi(request, `/api/agents/${id}`)
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  return proxyToFastApi(request, `/api/agents/${id}`)
 }

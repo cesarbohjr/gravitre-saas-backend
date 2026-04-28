@@ -302,7 +302,7 @@ export function MetricCard({
               change.trend === "neutral" && "text-muted-foreground"
             )}>
               <Icon 
-                name={change.trend === "up" ? "trendingUp" : change.trend === "down" ? "trendingDown" : "activity"} 
+                name={change.trend === "up" ? "trendUp" : change.trend === "down" ? "trendDown" : "activity"} 
                 size="xs" 
               />
               <span>{change.value}</span>

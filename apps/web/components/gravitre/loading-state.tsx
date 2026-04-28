@@ -41,7 +41,7 @@ export function LoadingSpinner({
       containerSizes[size],
       className
     )}>
-      <Spinner size={size} />
+      <Spinner className={spinnerSizes[size]} />
       {label && (
         <p className="text-sm text-muted-foreground animate-pulse">{label}</p>
       )}

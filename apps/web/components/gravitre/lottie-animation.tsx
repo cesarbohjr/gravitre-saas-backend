@@ -34,7 +34,6 @@ export function DotLottieAnimation({
         loop={loop}
         autoplay={autoplay}
         speed={speed}
-        onComplete={onComplete}
       />
     </motion.div>
   )

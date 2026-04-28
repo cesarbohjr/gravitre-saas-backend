@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { Icon, type IconName, getStatusIcon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 
 type BadgeVariant = "default" | "success" | "warning" | "error" | "info" | "muted"
 
@@ -62,8 +62,6 @@ interface AutoStatusBadgeProps {
 }
 
 export function AutoStatusBadge({ status, className, showIcon = true }: AutoStatusBadgeProps) {
-  const config = getStatusIcon(status)
-  
   const variantMap: Record<string, BadgeVariant> = {
     success: "success",
     completed: "success",
@@ -82,7 +80,7 @@ export function AutoStatusBadge({ status, className, showIcon = true }: AutoStat
   return (
     <StatusBadge 
       variant={variant} 
-      icon={showIcon ? config.icon : undefined}
+      dot={showIcon}
       className={className}
     >
       {status}

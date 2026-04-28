@@ -667,7 +667,7 @@ function NewAssignmentPageContent() {
 
 export default function NewAssignmentPage() {
   return (
-    <Suspense fallback={<AppShell title="New Assignment" />}>
+    <Suspense fallback={<AppShell title="New Assignment"><div /></AppShell>}>
       <NewAssignmentPageContent />
     </Suspense>
   )

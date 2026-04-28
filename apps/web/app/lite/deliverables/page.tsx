@@ -250,7 +250,7 @@ export default function LiteDeliverablesPage() {
       <div className="relative flex flex-col lg:flex-row h-full overflow-hidden">
         {/* Premium ambient background */}
         <div className="absolute inset-0 pointer-events-none z-0">
-          <MorphingBackground colors={["emerald", "teal", "cyan"]} />
+          <MorphingBackground colors={["emerald", "blue", "cyan"]} />
           <div className="absolute inset-0 bg-background/90 backdrop-blur-3xl" />
         </div>
         
@@ -259,7 +259,7 @@ export default function LiteDeliverablesPage() {
           <GlowOrb size={250} color="emerald" intensity={0.2} />
         </div>
         <div className="absolute bottom-40 left-10 pointer-events-none z-0">
-          <GlowOrb size={180} color="teal" intensity={0.15} />
+          <GlowOrb size={180} color="blue" intensity={0.15} />
         </div>
 
         {/* Left Panel - List */}

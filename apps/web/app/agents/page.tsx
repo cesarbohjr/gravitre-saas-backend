@@ -45,30 +45,12 @@ import {
 import { cn } from "@/lib/utils"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { agentsApi } from "@/lib/api"
+import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
+import { toast } from "sonner"
 
-interface Agent {
-  id: string
-  name: string
-  role: string
-  department: "Marketing" | "Sales" | "Operations" | "Finance" | "Support"
-  description: string
-  status: "active" | "idle" | "processing" | "error"
-  personality: {
-    color: string
-    gradient: string
-    glow: string
-  }
-  stats: {
-    tasksToday: number
-    successRate: number
-    avgResponseTime: string
-    workflowsUsing: number
-  }
-  capabilities: string[]
-  permissions: string[]
-  lastAction: string
-  lastActionTime: string
-}
+type Agent = ApiAgent
 
 // Fallback agents for when API is empty or loading
 const fallbackAgents: Agent[] = [
@@ -192,7 +174,7 @@ const fallbackAgents: Agent[] = [
 function normalizeAgent(input: Record<string, unknown>): Agent {
   const personality = (input.personality ?? {}) as Record<string, unknown>
   const stats = (input.stats ?? {}) as Record<string, unknown>
-  const status = String(input.status ?? "idle")
+  const status = String(input.status ?? "idle") as AgentStatus
   const department = String(input.department ?? "Operations")
   return {
     id: String(input.id ?? ""),
@@ -425,7 +407,17 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
 }
 
 // Agent Detail Panel
-function AgentDetailPanel({ agent }: { agent: Agent }) {
+function AgentDetailPanel({
+  agent,
+  onStart,
+  onStop,
+  isMutating,
+}: {
+  agent: Agent
+  onStart: (agent: Agent) => Promise<void>
+  onStop: (agent: Agent) => Promise<void>
+  isMutating: boolean
+}) {
   const router = useRouter()
   const Icon = roleIcons[agent.role] || Bot
   const status = statusConfig[agent.status]
@@ -459,17 +451,34 @@ function AgentDetailPanel({ agent }: { agent: Agent }) {
           </div>
           <div className="flex items-center gap-2">
             {agent.status === "active" ? (
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void onStop(agent)}
+                disabled={isMutating}
+              >
                 <Pause className="h-3.5 w-3.5" />
                 Pause
               </Button>
             ) : agent.status !== "error" ? (
-              <Button size="sm" className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
+              <Button
+                size="sm"
+                className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white"
+                onClick={() => void onStart(agent)}
+                disabled={isMutating}
+              >
                 <Play className="h-3.5 w-3.5" />
                 Activate
               </Button>
             ) : (
-              <Button variant="destructive" size="sm" className="gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+                onClick={() => void onStart(agent)}
+                disabled={isMutating}
+              >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Retry
               </Button>
@@ -612,14 +621,19 @@ function AgentDetailPanel({ agent }: { agent: Agent }) {
 
 export default function AgentsPage() {
   const router = useRouter()
+  const { user } = useAuth()
+  const [isMutatingAgent, setIsMutatingAgent] = useState<string | null>(null)
   
   // Fetch agents from API with SWR
   const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
-    "/api/agents",
+    user ? "/api/agents" : null,
     apiFetcher,
     {
       fallbackData: { agents: fallbackAgents },
       revalidateOnFocus: false,
+      onError: (err) => {
+        console.error("[v0] Agents fetch error:", err)
+      },
     }
   )
   
@@ -629,6 +643,34 @@ export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
+
+  const handleStartAgent = async (agent: Agent) => {
+    try {
+      setIsMutatingAgent(agent.id)
+      await agentsApi.start(agent.id)
+      toast.success(`${agent.name} started`)
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to start agent:", err)
+      toast.error(`Failed to start ${agent.name}`)
+    } finally {
+      setIsMutatingAgent((current) => (current === agent.id ? null : current))
+    }
+  }
+
+  const handleStopAgent = async (agent: Agent) => {
+    try {
+      setIsMutatingAgent(agent.id)
+      await agentsApi.stop(agent.id)
+      toast.success(`${agent.name} stopped`)
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to stop agent:", err)
+      toast.error(`Failed to stop ${agent.name}`)
+    } finally {
+      setIsMutatingAgent((current) => (current === agent.id ? null : current))
+    }
+  }
   
   // Set selected agent when agents load
   useEffect(() => {
@@ -799,7 +841,13 @@ export default function AgentsPage() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
           <AnimatePresence mode="wait">
             {selectedAgent && (
-              <AgentDetailPanel key={selectedAgent.id} agent={selectedAgent} />
+              <AgentDetailPanel
+                key={selectedAgent.id}
+                agent={selectedAgent}
+                onStart={handleStartAgent}
+                onStop={handleStopAgent}
+                isMutating={isMutatingAgent === selectedAgent.id}
+              />
             )}
           </AnimatePresence>
         </div>

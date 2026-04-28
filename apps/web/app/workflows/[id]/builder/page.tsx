@@ -10,6 +10,7 @@ import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { ModelSelector, ModelInheritanceChain } from "@/components/gravitre/model-selector"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   ArrowLeft,
@@ -4334,7 +4335,11 @@ const handleRun = useCallback(async () => {
           councilConfig: {
             ...debateNode.councilConfig,
             finalDecision: {
-              ...debateNode.councilConfig?.finalDecision,
+              recommendation: debateNode.councilConfig?.finalDecision?.recommendation ?? "Decision accepted",
+              method: debateNode.councilConfig?.finalDecision?.method ?? "consensus",
+              confidence: debateNode.councilConfig?.finalDecision?.confidence ?? 100,
+              keyReasons: debateNode.councilConfig?.finalDecision?.keyReasons ?? [],
+              dissentingOpinions: debateNode.councilConfig?.finalDecision?.dissentingOpinions,
               executedAction: debateNode.councilConfig?.finalDecision?.recommendation
             }
           }

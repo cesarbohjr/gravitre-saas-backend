@@ -47,7 +47,7 @@ export default function NewIntegrationPage() {
 
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise<void>((resolve) => window.setTimeout(() => resolve(), 1000))
       router.push("/integrations")
     } catch {
       setError("Failed to create integration")

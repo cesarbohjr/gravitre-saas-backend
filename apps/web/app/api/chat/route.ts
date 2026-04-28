@@ -205,7 +205,6 @@ export async function POST(req: NextRequest) {
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools,
-    maxSteps: 5,
     abortSignal: req.signal,
   })
 

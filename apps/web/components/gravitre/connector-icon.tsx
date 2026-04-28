@@ -319,11 +319,6 @@ export const connectorBrandTokens = {
     border: "border-[#52BD95]/20",
     text: "text-[#52BD95]",
   },
-  plaid: {
-    bg: "bg-zinc-100 dark:bg-white/10",
-    border: "border-zinc-200 dark:border-white/10",
-    text: "text-zinc-950 dark:text-white",
-  },
   netsuite: {
     bg: "bg-[#0098D7]/10 dark:bg-[#0098D7]/15",
     border: "border-[#0098D7]/20",
@@ -589,11 +584,6 @@ const logos: Record<string, React.ReactNode> = {
   netsuite: (
     <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0098D7]">
       <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm4.5 16.5h-9v-9h9v9z"/>
-    </svg>
-  ),
-  plaid: (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-foreground">
-      <path d="M20.64 0H3.36C1.5 0 0 1.5 0 3.36v17.28C0 22.5 1.5 24 3.36 24h17.28c1.86 0 3.36-1.5 3.36-3.36V3.36C24 1.5 22.5 0 20.64 0zm-8.82 5.52h.82c.08 0 .14.06.14.14v12.68c0 .08-.06.14-.14.14h-.82c-.08 0-.14-.06-.14-.14V5.66c0-.08.06-.14.14-.14z"/>
     </svg>
   ),
 }

@@ -118,6 +118,40 @@ export interface OperatorSessionDetail {
   actions: Record<string, unknown>[]
 }
 
+// ============ Agents ============
+export type AgentStatus = "active" | "idle" | "processing" | "error"
+export type AgentDepartment = "Marketing" | "Sales" | "Operations" | "Finance" | "Support"
+
+export interface AgentPersonality {
+  color: string
+  gradient: string
+  glow: string
+}
+
+export interface AgentStats {
+  tasksToday: number
+  successRate: number
+  avgResponseTime: string
+  workflowsUsing: number
+}
+
+export interface Agent {
+  id: string
+  name: string
+  role: string
+  department: AgentDepartment
+  description: string
+  status: AgentStatus
+  personality: AgentPersonality
+  stats: AgentStats
+  capabilities: string[]
+  permissions: string[]
+  lastAction: string
+  lastActionTime: string
+  created_at?: string
+  updated_at?: string
+}
+
 // ============ Workflows ============
 export type WorkflowStatus = "draft" | "active" | "inactive" | "archived"
 export type RunStatus = 
@@ -297,6 +331,10 @@ export interface OperatorSessionListResponse {
   sessions: OperatorSessionSummary[]
 }
 
+export interface AgentListResponse {
+  agents: Agent[]
+}
+
 export interface WorkflowListResponse {
   workflows: Workflow[]
 }
@@ -366,4 +404,13 @@ export interface OperatorActionPlanRequest {
   related_contexts?: { ref_type: string; ref_id: string }[]
   operator_goal?: string
   prompt?: string
+}
+
+export interface CreateAgentRequest {
+  name: string
+  role: string
+  department: AgentDepartment
+  description?: string
+  capabilities?: string[]
+  permissions?: string[]
 }

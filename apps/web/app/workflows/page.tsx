@@ -319,7 +319,6 @@ export default function WorkflowsPage() {
       const duplicated = await workflowsApi.create({
         name: `${workflow.name}-copy`,
         description: workflow.description,
-        status: "draft",
       })
       await mutate()
       toast.success(`Workflow duplicated: ${duplicated.name}`)

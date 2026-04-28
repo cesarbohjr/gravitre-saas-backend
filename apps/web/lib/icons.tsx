@@ -214,7 +214,6 @@ export const iconMap = {
   plus: Plus,
   remove: X,
   close: X,
-  remove: X,
   more: MoreHorizontal,
   moreVertical: MoreVertical,
   play: Play,
@@ -223,7 +222,6 @@ export const iconMap = {
   copy: Copy,
   duplicate: Copy,
   edit: Pencil,
-  view: Eye,
   expand: ChevronRight,
   collapse: ChevronDown,
   back: ArrowLeft,
@@ -278,8 +276,6 @@ export const iconMap = {
   phone: Phone,
   
   // Files & Media
-  file: File,
-  folder: Folder,
   image: Image,
   video: Video,
   audio: Mic,
@@ -327,7 +323,6 @@ export const iconMap = {
   chevronRight: ChevronRight,
   caretRight: ChevronRight,
   caretDown: ChevronDown,
-  chevronDown: ChevronDown,
   caretUp: ChevronUp,
   caretLeft: ChevronLeft,
   maximize: Maximize2,

@@ -151,10 +151,10 @@ export function SearchInput({
       {/* Keyboard shortcut hint */}
       {showShortcut && !value && !isFocused && (
         <div className="absolute right-2 flex items-center gap-0.5">
-          <Kbd size="sm">
+          <Kbd>
             <Command className="h-2.5 w-2.5" />
           </Kbd>
-          <Kbd size="sm">{shortcutKey.toUpperCase()}</Kbd>
+          <Kbd>{shortcutKey.toUpperCase()}</Kbd>
         </div>
       )}
     </div>
@@ -175,7 +175,7 @@ export function DebouncedSearchInput({
   ...props
 }: DebouncedSearchInputProps) {
   const [localValue, setLocalValue] = useState(props.value || "")
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleChange = (newValue: string) => {
     setLocalValue(newValue)

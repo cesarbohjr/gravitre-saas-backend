@@ -1500,6 +1500,70 @@ async def delete_agent_route(
     return {"success": True}
 
 
+@agents_router.post("/{agent_id}/start")
+async def start_agent_route(
+    agent_id: UUID,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    current_user, org_id = _admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    existing = get_operator(client, org_id, str(agent_id))
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    updated = update_operator(client, org_id, str(agent_id), {"status": "active"})
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action="agent.started",
+        resource_type="agent",
+        resource_id=str(agent_id),
+        metadata={"environment": environment},
+    )
+    bindings = list_operator_bindings(client, org_id, [str(agent_id)])
+    connector_ids = [str(b["connector_id"]) for b in bindings if b.get("connector_id")]
+    connectors = list_connectors_by_ids(client, org_id, connector_ids, environment)
+    detail = _operator_detail(updated, connectors, get_active_operator_version(client, org_id, str(agent_id), environment))
+    detail["environment"] = environment
+    return {"agent": detail}
+
+
+@agents_router.post("/{agent_id}/stop")
+async def stop_agent_route(
+    agent_id: UUID,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    current_user, org_id = _admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    existing = get_operator(client, org_id, str(agent_id))
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    updated = update_operator(client, org_id, str(agent_id), {"status": "inactive"})
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action="agent.stopped",
+        resource_type="agent",
+        resource_id=str(agent_id),
+        metadata={"environment": environment},
+    )
+    bindings = list_operator_bindings(client, org_id, [str(agent_id)])
+    connector_ids = [str(b["connector_id"]) for b in bindings if b.get("connector_id")]
+    connectors = list_connectors_by_ids(client, org_id, connector_ids, environment)
+    detail = _operator_detail(updated, connectors, get_active_operator_version(client, org_id, str(agent_id), environment))
+    detail["environment"] = environment
+    return {"agent": detail}
+
+
 @sessions_router.get("")
 async def list_sessions_route(
     current_user: Annotated[dict, Depends(get_current_user)],

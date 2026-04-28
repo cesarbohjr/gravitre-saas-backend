@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const completedBySteps = proposedSteps.length > 0 ? Math.min(95, Math.round((proposedSteps.length - 1) * (100 / proposedSteps.length))) : 0
     const completionPercentage = Math.max(completedByStatus, completedBySteps)
 
-    const milestoneStatus = proposedSteps.map((step, index) => ({
+    const milestoneStatus = proposedSteps.map((step: unknown, index: number) => ({
       id: (step as { id?: string }).id ?? `milestone-${index + 1}`,
       title: (step as { title?: string }).title ?? `Milestone ${index + 1}`,
       status: completionPercentage === 100 ? "completed" : index === 0 ? "in_progress" : "planned",

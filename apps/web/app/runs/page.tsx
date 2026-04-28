@@ -20,6 +20,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi, runsApi } from "@/lib/api"
 import type { Run as ApiRun, RunStatus } from "@/types/api"
+import { toast } from "sonner"
 import { 
   Search, 
   RefreshCw, 
@@ -49,9 +50,10 @@ interface Run {
 }
 
 function normalizeRun(input: Record<string, unknown> | ApiRun): Run {
-  const status = String(input.status ?? "pending") as RunStatus | "cancelled"
-  const approvalStatus = String(input.approvalStatus ?? input.approval_status ?? "not_required")
-  const environment = String(input.environment ?? "staging")
+  const model = input as Record<string, unknown>
+  const status = String(model.status ?? "pending") as RunStatus | "cancelled"
+  const approvalStatus = String(model.approvalStatus ?? model.approval_status ?? "not_required")
+  const environment = String(model.environment ?? "staging")
 
   const normalizedStatus: Run["status"] =
     status === "running" || status === "completed" || status === "failed"
@@ -61,9 +63,9 @@ function normalizeRun(input: Record<string, unknown> | ApiRun): Run {
         : "pending"
 
   return {
-    id: String(input.id ?? ""),
-    workflowName: String(input.workflowName ?? input.workflow_name ?? "workflow"),
-    workflowId: String(input.workflowId ?? input.workflow_id ?? ""),
+    id: String(model.id ?? ""),
+    workflowName: String(model.workflowName ?? model.workflow_name ?? "workflow"),
+    workflowId: String(model.workflowId ?? model.workflow_id ?? ""),
     status: normalizedStatus,
     approvalStatus:
       approvalStatus === "approved" ||
@@ -72,10 +74,10 @@ function normalizeRun(input: Record<string, unknown> | ApiRun): Run {
         ? approvalStatus
         : "not_required",
     environment: environment === "production" ? "production" : "staging",
-    startedAt: String(input.startedAt ?? input.started_at ?? "recently"),
-    duration: String(input.duration ?? "-"),
-    steps: Array.isArray(input.steps)
-      ? (input.steps as { name: string; status: "completed" | "running" | "pending" | "failed" }[])
+    startedAt: String(model.startedAt ?? model.started_at ?? "recently"),
+    duration: String(model.duration ?? "-"),
+    steps: Array.isArray(model.steps)
+      ? (model.steps as { name: string; status: "completed" | "running" | "pending" | "failed" }[])
       : undefined,
   }
 }

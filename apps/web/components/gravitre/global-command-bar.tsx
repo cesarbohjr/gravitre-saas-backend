@@ -40,7 +40,7 @@ const navigationItems: CommandItem[] = [
 
 const aiCommands: CommandItem[] = [
   { id: "ai-analyze", type: "ai", title: "Analyze pipeline failures", subtitle: "AI investigation", icon: "error", keywords: ["debug", "error", "failure"] },
-  { id: "ai-broken", type: "ai", title: "Find broken workflows", subtitle: "AI scan", icon: "debug", keywords: ["broken", "issue", "problem"] },
+  { id: "ai-broken", type: "ai", title: "Find broken workflows", subtitle: "AI scan", icon: "bug", keywords: ["broken", "issue", "problem"] },
   { id: "ai-performance", type: "ai", title: "Analyze system performance", subtitle: "AI analysis", icon: "chartLine", keywords: ["performance", "slow", "latency"] },
   { id: "ai-optimize", type: "ai", title: "Suggest optimizations", subtitle: "AI recommendations", icon: "execution", keywords: ["optimize", "improve", "speed"] },
   { id: "ai-agent", type: "ai", title: "Run marketing agent", subtitle: "Execute agent", icon: "agents", keywords: ["run", "agent", "marketing"] },
@@ -193,10 +193,10 @@ export function GlobalCommandBar() {
             >
               {/* Ambient orbs in backdrop */}
               <div className="absolute top-1/4 left-1/4 pointer-events-none">
-                <GlowOrb size={300} color="primary" intensity={0.15} />
+                <GlowOrb size={300} color="violet" intensity={0.15} />
               </div>
               <div className="absolute bottom-1/4 right-1/4 pointer-events-none">
-                <GlowOrb size={250} color="info" intensity={0.1} />
+                <GlowOrb size={250} color="blue" intensity={0.1} />
               </div>
             </motion.div>
 
@@ -210,11 +210,11 @@ export function GlobalCommandBar() {
             >
               <div className="relative overflow-hidden rounded-3xl border border-border/40 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/50">
                 {/* Top gradient accent */}
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-info to-primary" />
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-violet-500" />
                 
                 {/* Corner glow */}
                 <div className="absolute -top-20 -right-20 w-40 h-40 pointer-events-none">
-                  <GlowOrb size={160} color="info" intensity={0.2} />
+                  <GlowOrb size={160} color="blue" intensity={0.2} />
                 </div>
                 {/* Input - Premium */}
                 <div className="relative flex items-center gap-4 border-b border-border/30 px-5 py-4 bg-gradient-to-r from-transparent via-card/50 to-transparent">

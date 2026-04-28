@@ -808,7 +808,7 @@ function TrainingPageContent() {
 
 export default function TrainingPage() {
   return (
-    <Suspense fallback={<AppShell title="Training Hub" />}>
+    <Suspense fallback={<AppShell title="Training Hub"><div /></AppShell>}>
       <TrainingPageContent />
     </Suspense>
   )

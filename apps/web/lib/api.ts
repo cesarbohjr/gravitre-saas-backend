@@ -15,6 +15,9 @@ import type {
   OperatorSessionListResponse,
   OperatorSessionCreateRequest,
   OperatorActionPlanRequest,
+  Agent,
+  AgentListResponse,
+  CreateAgentRequest,
   Workflow,
   WorkflowListResponse,
   WorkflowNode,
@@ -40,6 +43,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
 function apiUrl(path: string): string {
   return `${API_BASE}${path}`
+}
+
+function unwrapAgent(payload: unknown): Agent {
+  if (payload && typeof payload === "object" && "agent" in payload) {
+    return (payload as { agent: Agent }).agent
+  }
+  return payload as Agent
 }
 
 async function postJson<T>(url: string, data: unknown): Promise<T> {
@@ -108,6 +118,18 @@ export const operatorsApi = {
     ),
   executePlan: (operatorId: string, data: { session_id: string; plan_id: string; step_id: string }) =>
     postJson<{ action_id: string; status: string }>(apiUrl(`/api/operators/${operatorId}/run`), data),
+}
+
+// ============ Agents ============
+export const agentsApi = {
+  list: () => fetcher<AgentListResponse>(apiUrl("/api/agents")),
+  get: async (id: string) => unwrapAgent(await fetcher<unknown>(apiUrl(`/api/agents/${id}`))),
+  create: async (data: CreateAgentRequest) => unwrapAgent(await postJson<unknown>(apiUrl("/api/agents"), data)),
+  update: async (id: string, data: Partial<Agent>) =>
+    unwrapAgent(await patchJson<unknown>(apiUrl(`/api/agents/${id}`), data)),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/agents/${id}`)),
+  start: async (id: string) => unwrapAgent(await postJson<unknown>(apiUrl(`/api/agents/${id}/start`), {})),
+  stop: async (id: string) => unwrapAgent(await postJson<unknown>(apiUrl(`/api/agents/${id}/stop`), {})),
 }
 
 // ============ Workflows ============
@@ -252,6 +274,7 @@ export const environmentsApi = {
 export const api = {
   auth: authApi,
   operators: operatorsApi,
+  agents: agentsApi,
   workflows: workflowsApi,
   runs: runsApi,
   approvals: approvalsApi,

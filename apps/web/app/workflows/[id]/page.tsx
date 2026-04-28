@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { StatusBadge } from "@/components/gravitre/status-badge"
+import { AutoStatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -170,7 +170,7 @@ export default function WorkflowDetailPage() {
                 {automationData.description}
               </p>
               <div className="flex flex-wrap items-center gap-2 md:gap-3 pt-1">
-                <StatusBadge status={automationData.status} />
+                <AutoStatusBadge status={automationData.status} />
                 <EnvironmentBadge environment={automationData.environment} />
                 <span className="hidden sm:inline text-xs text-muted-foreground">
                   Last run: {automationData.lastRun}

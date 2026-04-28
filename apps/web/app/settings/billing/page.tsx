@@ -318,7 +318,7 @@ export default function BillingPage() {
       <div className="relative flex-1 overflow-auto">
         {/* Premium ambient background */}
         <div className="fixed inset-0 pointer-events-none z-0">
-          <MorphingBackground colors={["emerald", "teal", "violet"]} />
+          <MorphingBackground colors={["emerald", "blue", "violet"]} />
           <div className="absolute inset-0 bg-background/95 backdrop-blur-3xl" />
         </div>
         

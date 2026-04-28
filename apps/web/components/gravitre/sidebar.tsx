@@ -296,7 +296,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                   name={item.icon}
                                   size="md"
                                   emphasis={item.emphasis && isActive}
-                                  weight={isActive ? "bold" : "regular"}
                                   className={cn(
                                     "shrink-0 transition-colors md:h-5 md:w-5 xl:h-4 xl:w-4",
                                     isActive ? colors.activeIcon : "text-muted-foreground/40 group-hover:text-muted-foreground/70"
@@ -335,7 +334,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex items-center justify-between md:justify-center xl:justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
-                <Icon name="shield" size="xs" className="text-white" weight="fill" />
+                <Icon name="shield" size="xs" className="text-white" />
               </div>
               <div className="flex flex-col md:hidden xl:flex">
                 <span className="text-[11px] font-medium text-foreground">Enterprise</span>
