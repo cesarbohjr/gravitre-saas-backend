@@ -3,10 +3,14 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { apiFetch } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { metricsApi } from "@/lib/api"
+import type { MetricInsight } from "@/types/api"
 import { 
   Calendar, 
   Download, 
@@ -166,15 +170,23 @@ function normalizeSeries(payload: unknown) {
   }
   const model = payload as Record<string, unknown>
   return {
-    runVolume: Array.isArray(model.runVolume) ? model.runVolume : fallbackRunData,
+    runVolume: Array.isArray(model.runVolume)
+      ? (model.runVolume as Record<string, unknown>[]).map((entry) => ({
+          ...entry,
+          time: String(entry.time ?? entry.hour ?? "Now"),
+        }))
+      : fallbackRunData,
     latencyDistribution: Array.isArray(model.latencyDistribution)
-      ? model.latencyDistribution
+      ? (model.latencyDistribution as Record<string, unknown>[]).map((entry) => ({
+          ...entry,
+          time: String(entry.time ?? entry.hour ?? "Now"),
+        }))
       : fallbackLatencyData,
   }
 }
 
 // Meson Insights
-const mesonInsights = [
+const mesonInsights: MetricInsight[] = [
   {
     id: "1",
     type: "anomaly",
@@ -200,6 +212,41 @@ const mesonInsights = [
     timestamp: "Today",
   },
 ]
+
+function normalizeInsights(payload: unknown): MetricInsight[] {
+  if (!payload || typeof payload !== "object") return mesonInsights
+  const model = payload as Record<string, unknown>
+  const raw = Array.isArray(model.insights) ? model.insights : null
+  if (!raw) return mesonInsights
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item, index): MetricInsight => {
+      const type: MetricInsight["type"] =
+        item.type === "anomaly" || item.type === "trend" || item.type === "optimization"
+          ? item.type
+          : "trend"
+      const severity: MetricInsight["severity"] =
+        item.severity === "info" ||
+        item.severity === "warning" ||
+        item.severity === "critical" ||
+        item.severity === "success"
+          ? item.severity
+          : "info"
+      return {
+        id: String(item.id ?? `insight-${index + 1}`),
+        type,
+        severity,
+        title: String(item.title ?? "Insight"),
+        description: String(item.description ?? ""),
+        timestamp: String(item.timestamp ?? "recently"),
+        relatedWorkflowId: item.relatedWorkflowId ? String(item.relatedWorkflowId) : undefined,
+        relatedRunId: item.relatedRunId ? String(item.relatedRunId) : undefined,
+        relatedConnectorId: item.relatedConnectorId ? String(item.relatedConnectorId) : undefined,
+        suggestedAction: item.suggestedAction ? String(item.suggestedAction) : undefined,
+      }
+    })
+  return normalized.length > 0 ? normalized : mesonInsights
+}
 
 // Metric card with trend visualization
 function MetricCard({ 
@@ -289,7 +336,8 @@ function MetricCard({
 }
 
 // AI Insight card
-function InsightCard({ insight }: { insight: typeof mesonInsights[0] }) {
+function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: () => void }) {
+  const router = useRouter()
   const config = {
     anomaly: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     trend: { icon: TrendingUp, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
@@ -297,13 +345,24 @@ function InsightCard({ insight }: { insight: typeof mesonInsights[0] }) {
   }
   const cfg = config[insight.type as keyof typeof config]
   const Icon = cfg.icon
+  const handleClick = () => {
+    if (insight.relatedWorkflowId) {
+      router.push(`/workflows/${insight.relatedWorkflowId}`)
+    } else if (insight.relatedRunId) {
+      router.push(`/runs?run=${insight.relatedRunId}`)
+    } else if (insight.relatedConnectorId) {
+      router.push(`/connectors/${insight.relatedConnectorId}`)
+    }
+    onClick?.()
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
+      onClick={handleClick}
       className={cn(
-        "rounded-lg border p-3 transition-colors hover:bg-card/80",
+        "rounded-lg border p-3 transition-colors hover:bg-card/80 cursor-pointer",
         cfg.border, cfg.bg
       )}
     >
@@ -348,54 +407,73 @@ const timeRangeOptions = [
 ]
 
 export default function MetricsPage() {
+  const { user } = useAuth()
   const [timeRange, setTimeRange] = useState("24h")
   const [isExporting, setIsExporting] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(true)
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true)
-    // Simulate export
-    setTimeout(() => {
-      setIsExporting(false)
-      // Create a mock CSV download
-      const csvContent = `Time,Completed,Failed,Latency
-00:00,45,2,120
-04:00,32,1,110
-08:00,78,3,145
-12:00,124,5,180
-14:32,89,8,320
-16:00,156,4,165
-20:00,98,2,130
-Now,67,1,125`
-      const blob = new Blob([csvContent], { type: "text/csv" })
+    try {
+      const response = await apiFetch(`/api/metrics/export?range=${timeRange}&format=csv`)
+      if (!response.ok) throw new Error("Export failed")
+      const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `metrics-${timeRange}-${new Date().toISOString().split("T")[0]}.csv`
+      a.download = `gravitre-metrics-${timeRange}-${new Date().toISOString().split("T")[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast.success("Metrics exported successfully")
-    }, 800)
+    } catch (err) {
+      console.error("[v0] Export failed:", err)
+      toast.error("Failed to export metrics")
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleRefresh = () => {
-    mutate()
+    void mutateOverview()
+    void mutateSeries()
+    void mutateInsights()
     toast.success("Metrics refreshed")
   }
   
-  const { data: overviewData, isLoading, mutate } = useSWR(
-    "/api/metrics/overview",
-    apiFetcher,
-    { fallbackData: fallbackOverview, revalidateOnFocus: false }
+  const { data: overviewData, isLoading, isValidating, mutate: mutateOverview } = useSWR<unknown>(
+    user ? ["metrics-overview", timeRange] : null,
+    () => metricsApi.overview(timeRange),
+    {
+      fallbackData: fallbackOverview,
+      revalidateOnFocus: false,
+      refreshInterval: autoRefresh ? 15000 : 0,
+      onError: (err) => console.error("[v0] Metrics fetch error:", err),
+    }
   )
-  const { data: seriesData } = useSWR("/api/metrics/runs", apiFetcher, {
-    fallbackData: { runVolume: fallbackRunData, latencyDistribution: fallbackLatencyData },
-    revalidateOnFocus: false,
-  })
+  const { data: seriesData, mutate: mutateSeries } = useSWR(
+    user ? ["metrics-runs", timeRange] : null,
+    () => metricsApi.runs(timeRange),
+    {
+      fallbackData: { runVolume: fallbackRunData, latencyDistribution: fallbackLatencyData },
+      revalidateOnFocus: false,
+      refreshInterval: autoRefresh ? 15000 : 0,
+    }
+  )
+  const { data: insightsData, mutate: mutateInsights } = useSWR(
+    user ? ["metrics-insights", timeRange] : null,
+    () => metricsApi.insights(timeRange),
+    {
+      fallbackData: { insights: mesonInsights },
+      revalidateOnFocus: false,
+      refreshInterval: autoRefresh ? 60000 : 0,
+    }
+  )
 
   const overview = normalizeOverview(overviewData)
   const series = normalizeSeries(seriesData)
+  const insights = normalizeInsights(insightsData)
   const runData = series.runVolume
   const latencyData = series.latencyDistribution
   const throughputData = fallbackThroughputData
@@ -440,7 +518,16 @@ Now,67,1,125`
                 className="h-8 w-8 p-0 md:w-auto md:px-3 md:gap-2" 
                 onClick={handleRefresh}
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading || isValidating ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                variant={autoRefresh ? "default" : "outline"}
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => setAutoRefresh(!autoRefresh)}
+              >
+                <Activity className={`h-3.5 w-3.5 ${autoRefresh ? "animate-pulse" : ""}`} />
+                <span className="hidden sm:inline">{autoRefresh ? "Live" : "Paused"}</span>
               </Button>
               <Button 
                 variant="outline" 
@@ -564,7 +651,7 @@ Now,67,1,125`
                   <h3 className="text-sm font-medium text-foreground">Meson Insights</h3>
                 </div>
                 <div className="p-3 space-y-2 max-h-[280px] overflow-auto">
-                  {mesonInsights.map((insight) => (
+                  {insights.map((insight) => (
                     <InsightCard key={insight.id} insight={insight} />
                   ))}
                 </div>

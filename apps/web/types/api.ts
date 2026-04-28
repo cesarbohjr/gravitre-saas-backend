@@ -314,6 +314,19 @@ export interface MetricsOverview {
   runs_by_status?: { status: string; count: number }[]
 }
 
+export interface MetricInsight {
+  id: string
+  type: "anomaly" | "trend" | "optimization"
+  severity: "info" | "warning" | "critical" | "success"
+  title: string
+  description: string
+  timestamp: string
+  relatedWorkflowId?: string
+  relatedRunId?: string
+  relatedConnectorId?: string
+  suggestedAction?: string
+}
+
 // ============ API Responses ============
 export interface PaginatedResponse<T> {
   data: T[]

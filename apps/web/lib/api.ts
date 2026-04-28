@@ -38,6 +38,7 @@ import type {
   ApiKey,
   ApiKeyListResponse,
   MetricsOverview,
+  MetricInsight,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -239,7 +240,16 @@ export const sourcesApi = {
 
 // ============ Metrics ============
 export const metricsApi = {
-  overview: () => fetcher<MetricsOverview>(apiUrl("/api/metrics/overview")),
+  overview: (range?: string) =>
+    fetcher<MetricsOverview>(apiUrl(`/api/metrics/overview${range ? `?range=${range}` : ""}`)),
+  runs: (range?: string) =>
+    fetcher<{ runVolume: Record<string, unknown>[]; latencyDistribution: Record<string, unknown>[] }>(
+      apiUrl(`/api/metrics/runs${range ? `?range=${range}` : ""}`)
+    ),
+  insights: (range?: string) =>
+    fetcher<{ insights: MetricInsight[] }>(apiUrl(`/api/metrics/insights${range ? `?range=${range}` : ""}`)),
+  exportCsv: (range?: string) =>
+    apiFetch(apiUrl(`/api/metrics/export?format=csv${range ? `&range=${range}` : ""}`)),
   workflowStats: (workflowId: string) =>
     fetcher<{ runs: number; success_rate: number; avg_duration_ms: number }>(
       apiUrl(`/api/metrics/workflows/${workflowId}`)
