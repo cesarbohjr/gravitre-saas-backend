@@ -19,6 +19,7 @@ from app.connectors.repository import (
 from app.core.crypto import decrypt_value, encrypt_value, mask_value
 from app.core.errors import error_detail
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
+from app.middleware.entitlements import resolve_entitlements
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
@@ -145,12 +146,33 @@ async def create_integration_route(
 ) -> dict:
     """Create integration. Config only; add secrets via POST /:id/secrets."""
     _user, org_id = _admin
-    plan = get_plan_for_org(create_client(settings.supabase_url, settings.supabase_service_role_key), org_id)
+    service_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    entitlements = resolve_entitlements(settings, org_id)
+    connector_limit = (entitlements.get("limits") or {}).get("connectors")
+    if connector_limit is not None:
+        connector_count_resp = (
+            service_client.table("connectors")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .is_("deleted_at", "null")
+            .execute()
+        )
+        connector_count = (
+            connector_count_resp.count
+            if hasattr(connector_count_resp, "count") and connector_count_resp.count is not None
+            else len(connector_count_resp.data or [])
+        )
+        if connector_count >= int(connector_limit):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Connector limit reached for {entitlements.get('tier', 'current')} tier",
+            )
+    plan = get_plan_for_org(service_client, org_id)
     normalized = (body.type or "").strip().lower()
     vendor_key = "microsoft365" if normalized == "microsoft_365" else normalized
     if vendor_key in ADVANCED_CONNECTORS:
         require_feature(plan, "advanced_connectors")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = service_client
     conn = create_connector(client, org_id, body.type, body.config, _user["user_id"], environment_name=environment_name)
     return {
         "id": str(conn["id"]),
@@ -420,6 +442,8 @@ async def create_connector_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
+    entitlements = resolve_entitlements(settings, org_id)
+    connector_limit = (entitlements.get("limits") or {}).get("connectors")
     vendor = (body.vendor or "").strip().lower()
     if vendor not in {
         "salesforce",
@@ -444,6 +468,24 @@ async def create_connector_route(
         api_key_encrypted = encrypt_value(body.api_key, settings.encryption_key)
     docs_url = _docs_url(vendor)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if connector_limit is not None:
+        connector_count_resp = (
+            client.table("connectors")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .is_("deleted_at", "null")
+            .execute()
+        )
+        connector_count = (
+            connector_count_resp.count
+            if hasattr(connector_count_resp, "count") and connector_count_resp.count is not None
+            else len(connector_count_resp.data or [])
+        )
+        if connector_count >= int(connector_limit):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Connector limit reached for {entitlements.get('tier', 'current')} tier",
+            )
     plan = get_plan_for_org(client, org_id)
     features = plan.get("features") or {}
     if vendor in ADVANCED_CONNECTORS and not features.get("advanced_connectors"):

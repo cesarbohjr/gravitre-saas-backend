@@ -380,6 +380,56 @@ export interface ApiKeyListResponse {
   apiKeys: ApiKey[]
 }
 
+export interface LiteSeatDepartment {
+  id: string
+  name: string
+  lite_seat_allocation: number
+  used_seats: number
+  available_seats: number
+  department_admin_id?: string | null
+  status?: string
+  created_at?: string
+}
+
+export interface LiteSeatsSummary {
+  included: number
+  allocated: number
+  used: number
+}
+
+export interface LiteSeatsResponse {
+  summary: LiteSeatsSummary
+  departments: LiteSeatDepartment[]
+}
+
+export interface MesonAddon {
+  id: string
+  code: string
+  name: string
+  description: string
+  monthly_price_usd: number
+  enabled: boolean
+}
+
+export interface MesonAddonsResponse {
+  addons: MesonAddon[]
+  monthly_total_usd: number
+}
+
+export interface BillingUsageResponse {
+  period_start: string
+  tier?: string
+  totals: {
+    outputs: number
+    workflow_runs: number
+    api_calls: number
+    ai_tokens: number
+  }
+  included_outputs: number | null
+  overage_outputs: number
+  overage_cost_usd: number
+}
+
 // ============ API Requests ============
 export interface CreateWorkflowRequest {
   name: string

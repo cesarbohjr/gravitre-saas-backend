@@ -68,6 +68,7 @@ from app.billing.service import (
     record_usage,
     require_limit,
 )
+from app.middleware.entitlements import resolve_entitlements
 from app.operators.services.execution import execute_operator_workflow, resolve_execution_target
 from app.operators.services.plans import build_operator_action_plan
 from app.workflows.audit import write_audit_event
@@ -828,6 +829,27 @@ async def create_operator_session_route(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    entitlements = resolve_entitlements(settings, org_id)
+    concurrent_limit = (entitlements.get("limits") or {}).get("operator_sessions_concurrent")
+    if concurrent_limit is not None:
+        active_sessions = (
+            client.table("operator_sessions")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .eq("environment", environment)
+            .in_("status", ["planning", "review", "awaiting_approval", "executing", "paused"])
+            .execute()
+        )
+        active_count = (
+            active_sessions.count
+            if hasattr(active_sessions, "count") and active_sessions.count is not None
+            else len(active_sessions.data or [])
+        )
+        if active_count >= int(concurrent_limit):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Concurrent operator session limit reached for {entitlements.get('tier', 'current')} tier",
+            )
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -1327,8 +1349,16 @@ async def create_agent_route(
 ) -> dict:
     current_user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    entitlements = resolve_entitlements(settings, org_id)
+    agent_limit = (entitlements.get("limits") or {}).get("agents")
+    existing_agents = len(list_operators(client, org_id))
+    if agent_limit is not None and existing_agents >= int(agent_limit):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Agent limit reached for {entitlements.get('tier', 'current')} tier",
+        )
     plan = get_plan_for_org(client, org_id)
-    require_limit(len(list_operators(client, org_id)), plan.get("agents_limit"), "agents")
+    require_limit(existing_agents, plan.get("agents_limit"), "agents")
     _validate_icon(body.icon)
     _validate_avatar_color(body.avatar_color)
     avatar_color = body.avatar_color or _default_avatar_color(body.role, "active")
@@ -1622,6 +1652,26 @@ async def create_session_route(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    entitlements = resolve_entitlements(settings, org_id)
+    concurrent_limit = (entitlements.get("limits") or {}).get("operator_sessions_concurrent")
+    if concurrent_limit is not None:
+        active_sessions = (
+            client.table("sessions")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .eq("status", "active")
+            .execute()
+        )
+        active_count = (
+            active_sessions.count
+            if hasattr(active_sessions, "count") and active_sessions.count is not None
+            else len(active_sessions.data or [])
+        )
+        if active_count >= int(concurrent_limit):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Concurrent operator session limit reached for {entitlements.get('tier', 'current')} tier",
+            )
     row = {
         "org_id": org_id,
         "user_id": current_user.get("user_id"),

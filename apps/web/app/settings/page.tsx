@@ -36,13 +36,16 @@ import {
   X,
   Brain,
   Sparkles,
-  Info
+  Info,
+  Plus,
+  Trash2,
+  DollarSign,
 } from "lucide-react"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { settingsApi } from "@/lib/api"
-import type { ApiKey, User } from "@/types/api"
+import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, User } from "@/types/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -60,6 +63,9 @@ const sections: SettingSection[] = [
   { id: "api-keys", title: "API Keys", description: "Manage API keys for integrations", icon: Key },
   { id: "notifications", title: "Notifications", description: "Configure alerts and notification channels", icon: Bell },
   { id: "team", title: "Team Members", description: "Invite and manage team access", icon: Users },
+  { id: "lite-seats", title: "Lite Seats", description: "Allocate Gravitre Lite seats by department", icon: Users },
+  { id: "meson-addons", title: "Meson Addons", description: "Enable premium AI addon capabilities", icon: Sparkles },
+  { id: "billing-usage", title: "Billing Usage", description: "Review outputs and overage usage", icon: DollarSign },
   { id: "webhooks", title: "Webhooks", description: "Configure outbound webhooks", icon: Webhook },
 ]
 
@@ -1005,6 +1011,252 @@ function AIModelsSettings() {
   )
 }
 
+function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
+  const { data, mutate } = useSWR(isAdmin ? "/api/settings/lite-seats" : null, apiFetcher, {
+    revalidateOnFocus: false,
+  })
+  const summary = (data as { summary?: { included: number; allocated: number; used: number } } | undefined)?.summary
+  const departments = ((data as { departments?: LiteSeatDepartment[] } | undefined)?.departments ?? []) as LiteSeatDepartment[]
+  const [newDeptName, setNewDeptName] = useState("")
+  const [newDeptSeats, setNewDeptSeats] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleAddDepartment = async () => {
+    if (!newDeptName.trim()) return
+    setIsSaving(true)
+    try {
+      await settingsApi.createDepartment({
+        name: newDeptName.trim(),
+        lite_seat_allocation: Math.max(0, newDeptSeats),
+      })
+      toast.success("Department added")
+      setNewDeptName("")
+      setNewDeptSeats(0)
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to add department:", err)
+      toast.error("Failed to add department")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUpdateAllocation = async (department: LiteSeatDepartment, delta: number) => {
+    const nextValue = Math.max(0, Number(department.lite_seat_allocation ?? 0) + delta)
+    setIsSaving(true)
+    try {
+      await settingsApi.updateDepartment({
+        id: department.id,
+        lite_seat_allocation: nextValue,
+      })
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to update allocation:", err)
+      toast.error("Failed to update seat allocation")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteDepartment = async (departmentId: string, name: string) => {
+    if (!confirm(`Delete department "${name}"?`)) return
+    setIsSaving(true)
+    try {
+      await settingsApi.deleteDepartment(departmentId)
+      toast.success("Department removed")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to delete department:", err)
+      toast.error("Failed to remove department")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-border bg-secondary/30 p-4">
+        <p className="text-sm font-medium text-foreground">Gravitre Lite Seats</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Included: {summary?.included ?? 0} | Allocated: {summary?.allocated ?? 0} | Used: {summary?.used ?? 0}
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {departments.map((department) => (
+          <div key={department.id} className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">{department.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Used {department.used_seats ?? 0} / Allocated {department.lite_seat_allocation ?? 0}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUpdateAllocation(department, -1)}
+                  disabled={!isAdmin || isSaving}
+                >
+                  -
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUpdateAllocation(department, 1)}
+                  disabled={!isAdmin || isSaving}
+                >
+                  +
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleDeleteDepartment(department.id, department.name)}
+                  disabled={!isAdmin || isSaving}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">Add Department</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Input
+            value={newDeptName}
+            onChange={(e) => setNewDeptName(e.target.value)}
+            placeholder="Department name"
+            disabled={!isAdmin || isSaving}
+            className="bg-secondary border-border"
+          />
+          <Input
+            value={String(newDeptSeats)}
+            onChange={(e) => setNewDeptSeats(Number.parseInt(e.target.value || "0", 10) || 0)}
+            placeholder="Seat allocation"
+            disabled={!isAdmin || isSaving}
+            className="bg-secondary border-border"
+          />
+        </div>
+        <Button
+          size="sm"
+          className="gap-2"
+          onClick={handleAddDepartment}
+          disabled={!isAdmin || isSaving || !newDeptName.trim()}
+        >
+          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          Add Department
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
+  const { data, mutate } = useSWR(isAdmin ? "/api/settings/meson-addons" : null, apiFetcher, {
+    revalidateOnFocus: false,
+  })
+  const addons = ((data as { addons?: MesonAddon[] } | undefined)?.addons ?? []) as MesonAddon[]
+  const monthlyTotal = Number((data as { monthly_total_usd?: number } | undefined)?.monthly_total_usd ?? 0)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleToggle = async (addon: MesonAddon) => {
+    setIsSaving(true)
+    try {
+      await settingsApi.toggleMesonAddon(addon.code, !addon.enabled)
+      toast.success(`${addon.name} ${addon.enabled ? "disabled" : "enabled"}`)
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Failed to toggle addon:", err)
+      toast.error("Failed to update addon")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-border bg-secondary/30 p-4">
+        <p className="text-sm font-medium text-foreground">Monthly addon total</p>
+        <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
+      </div>
+      <div className="space-y-3">
+        {addons.map((addon) => (
+          <div key={addon.code} className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">{addon.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{addon.description}</p>
+                <p className="text-xs text-muted-foreground mt-1">${addon.monthly_price_usd}/mo</p>
+              </div>
+              <Button
+                variant={addon.enabled ? "outline" : "default"}
+                size="sm"
+                onClick={() => handleToggle(addon)}
+                disabled={!isAdmin || isSaving}
+              >
+                {addon.enabled ? "Disable" : "Enable"}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BillingUsageSettings() {
+  const { data, isLoading, mutate } = useSWR("/api/settings/billing-usage", apiFetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 30000,
+  })
+  const usage = (data ?? {}) as BillingUsageResponse
+  const totals = usage.totals ?? { outputs: 0, workflow_runs: 0, api_calls: 0, ai_tokens: 0 }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">Outputs this cycle</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Included: {usage.included_outputs ?? "Unlimited"} | Overage: {usage.overage_outputs ?? 0}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => mutate()}>
+          Refresh
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase">Outputs</p>
+          <p className="text-xl font-semibold mt-1">{totals.outputs.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase">Workflow Runs</p>
+          <p className="text-xl font-semibold mt-1">{totals.workflow_runs.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase">API Calls</p>
+          <p className="text-xl font-semibold mt-1">{totals.api_calls.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase">AI Tokens</p>
+          <p className="text-xl font-semibold mt-1">{totals.ai_tokens.toLocaleString()}</p>
+        </div>
+      </div>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground uppercase">Estimated overage charge</p>
+        <p className="text-2xl font-semibold mt-1">${Number(usage.overage_cost_usd ?? 0).toFixed(2)}</p>
+        {isLoading && <p className="text-xs text-muted-foreground mt-2">Loading usage...</p>}
+      </div>
+    </div>
+  )
+}
+
 function SettingsContent() {
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
@@ -1026,7 +1278,17 @@ function SettingsContent() {
 
   const organization = (orgData as { organization?: Record<string, unknown> } | undefined)?.organization
   const team = ((teamData as { team?: User[] } | undefined)?.team ?? []) as User[]
-  const adminOnlySections = new Set(["organization", "ai-models", "security", "api-keys", "team", "webhooks"])
+  const adminOnlySections = new Set([
+    "organization",
+    "ai-models",
+    "security",
+    "api-keys",
+    "team",
+    "webhooks",
+    "lite-seats",
+    "meson-addons",
+    "billing-usage",
+  ])
 
   if (authLoading) {
     return (
@@ -1070,6 +1332,12 @@ function SettingsContent() {
             }}
           />
         )
+      case "lite-seats":
+        return <LiteSeatsSettings isAdmin={isAdmin} />
+      case "meson-addons":
+        return <MesonAddonsSettings isAdmin={isAdmin} />
+      case "billing-usage":
+        return <BillingUsageSettings />
       case "webhooks": return <WebhooksSettings />
       default:
         return (

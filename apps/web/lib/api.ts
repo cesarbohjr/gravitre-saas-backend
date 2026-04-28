@@ -37,6 +37,9 @@ import type {
   CreateSourceRequest,
   ApiKey,
   ApiKeyListResponse,
+  BillingUsageResponse,
+  LiteSeatsResponse,
+  MesonAddonsResponse,
   MetricsOverview,
   MetricInsight,
 } from "@/types/api"
@@ -289,6 +292,34 @@ export const settingsApi = {
     postJson<{ apiKey: ApiKey }>(apiUrl(`/api/settings/api-keys/${id}/rotate`), {}),
   revokeApiKey: (id: string) =>
     patchJson<{ apiKey: ApiKey }>(apiUrl("/api/settings/api-keys"), { id, status: "revoked" }),
+
+  // Lite seats / departments
+  getLiteSeats: () => fetcher<LiteSeatsResponse>(apiUrl("/api/settings/lite-seats")),
+  createDepartment: (data: { name: string; lite_seat_allocation: number; department_admin_id?: string }) =>
+    postJson<{ department: Record<string, unknown> }>(apiUrl("/api/settings/lite-seats"), data),
+  updateDepartment: (data: {
+    id: string
+    name?: string
+    lite_seat_allocation?: number
+    department_admin_id?: string
+  }) => patchJson<{ department: Record<string, unknown> }>(apiUrl("/api/settings/lite-seats"), data),
+  deleteDepartment: async (departmentId: string) => {
+    const response = await apiFetch(apiUrl(`/api/settings/lite-seats?departmentId=${encodeURIComponent(departmentId)}`), {
+      method: "DELETE",
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || `Request failed: ${response.status}`)
+    }
+  },
+
+  // Meson addons
+  getMesonAddons: () => fetcher<MesonAddonsResponse>(apiUrl("/api/settings/meson-addons")),
+  toggleMesonAddon: (code: string, enabled: boolean) =>
+    patchJson<{ subscription: Record<string, unknown> }>(apiUrl("/api/settings/meson-addons"), { code, enabled }),
+
+  // Usage-based billing
+  getBillingUsage: () => fetcher<BillingUsageResponse>(apiUrl("/api/settings/billing-usage")),
 }
 
 // ============ Environments ============

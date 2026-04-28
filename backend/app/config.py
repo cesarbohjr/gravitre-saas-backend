@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     stripe_price_id_starter: str = ""
     stripe_price_id_growth: str = ""
     stripe_price_id_scale: str = ""
+    stripe_price_id_node_monthly: str = ""
+    stripe_price_id_node_annual: str = ""
+    stripe_price_id_control_monthly: str = ""
+    stripe_price_id_control_annual: str = ""
+    stripe_price_id_command_monthly: str = ""
+    stripe_price_id_command_annual: str = ""
     public_app_url: str = Field(default="", alias="NEXT_PUBLIC_APP_URL")
 
     # Phase 6: kill switches (default off)

@@ -12,7 +12,22 @@ from app.core.errors import http_exception_handler, validation_exception_handler
 from app.core.logging import get_logger, request_id_ctx
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
-from app.routers import auth, audit, billing, connectors, metrics, org, rag, rag_admin, workflows, sources, environments, settings
+from app.routers import (
+    auth,
+    audit,
+    billing,
+    connectors,
+    entitlements,
+    metrics,
+    org,
+    rag,
+    rag_admin,
+    workflows,
+    sources,
+    environments,
+    settings,
+)
+from app.routers.webhooks import stripe as stripe_webhooks
 
 print("Gravitre backend booting...")
 logger = get_logger(__name__)
@@ -159,8 +174,10 @@ app.include_router(workflows.approvals_router)
 app.include_router(workflows.runs_router)
 app.include_router(audit.router)
 app.include_router(metrics.router)
+app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
+app.include_router(stripe_webhooks.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

@@ -18,6 +18,7 @@ from app.billing.service import (
     require_feature,
     require_limit,
 )
+from app.middleware.entitlements import resolve_entitlements
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
 from app.workflows.constants import (
@@ -2744,9 +2745,16 @@ async def create_workflow_route(
 ) -> dict:
     _user, org_id = _admin
     client = get_supabase_client(settings)
+    entitlements = resolve_entitlements(settings, org_id)
     plan = get_plan_for_org(client, org_id)
     count_result = client.table("workflow_defs").select("id", count="exact").eq("org_id", org_id).execute()
     current_count = count_result.count or 0 if hasattr(count_result, "count") else len(count_result.data or [])
+    ent_limit = (entitlements.get("limits") or {}).get("workflows")
+    if ent_limit is not None and current_count >= int(ent_limit):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Workflow limit reached for {entitlements.get('tier', 'current')} tier",
+        )
     require_limit(current_count, plan.get("workflows_limit"), "workflows")
     definition = {"schema_version": SCHEMA_VERSION, "steps": []}
     goal = body.goal or _generate_goal(body.name, body.description)

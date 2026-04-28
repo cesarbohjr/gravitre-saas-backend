@@ -3,6 +3,11 @@ import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
+function tierSupportsCustomWebhooks(tier: unknown): boolean {
+  const value = String(tier ?? "free").toLowerCase()
+  return value === "control" || value === "command" || value === "growth" || value === "scale" || value === "enterprise"
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseRouteClient(request)
@@ -84,6 +89,18 @@ export async function POST(request: NextRequest) {
       url,
       events: Array.isArray(snake.events) ? snake.events.map((value) => String(value)) : [],
       status: String(snake.status ?? "active"),
+    }
+
+    const { data: subData } = await supabase
+      .from("subscriptions")
+      .select("tier")
+      .eq("org_id", orgId)
+      .maybeSingle()
+    if (!tierSupportsCustomWebhooks(subData?.tier)) {
+      return NextResponse.json(
+        { error: "Custom webhooks require Control or Command tier" },
+        { status: 403 }
+      )
     }
 
     const { data, error } = await supabase
