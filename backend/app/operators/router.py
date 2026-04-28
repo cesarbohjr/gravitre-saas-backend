@@ -1510,20 +1510,35 @@ async def list_sessions_route(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    rows = (
+    try:
+        role = get_user_role(client, org_id, current_user["user_id"])
+    except PolicyResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Role validation failed",
+        ) from exc
+
+    sessions_query = (
         client.table("sessions")
-        .select("id, title, status, created_at, completed_at")
+        .select("id, title, status, created_at, completed_at, context_entity_type, context_entity_id, user_id")
         .eq("org_id", org_id)
         .order("created_at", desc=True)
-        .execute()
-        .data
-        or []
     )
+    # Non-admin users only see their own operator sessions.
+    if role != "admin":
+        sessions_query = sessions_query.eq("user_id", current_user["user_id"])
+
+    rows = sessions_query.execute().data or []
     activities = [
         {
             "id": str(row["id"]),
             "title": row.get("title") or "",
             "status": row.get("status") or "active",
+            "operator_id": None,
+            "environment": environment,
+            "current_task": row.get("title") or "",
+            "contextEntityType": row.get("context_entity_type"),
+            "contextEntityId": row.get("context_entity_id"),
             "createdAt": row.get("created_at"),
             "completedAt": row.get("completed_at"),
         }

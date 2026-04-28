@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
 
 interface Task {
   id: string
@@ -71,6 +72,26 @@ interface SuggestedActionData {
     tokenCount: number
     approvalRequired: boolean
   }
+}
+
+type OperatorSessionPayload = {
+  id?: string
+  title?: string
+  status?: string
+  environment?: string
+  current_task?: string
+  currentTask?: string
+  created_at?: string
+  createdAt?: string
+  context_entity_type?: string
+  contextEntityType?: string
+  context_entity_id?: string
+  contextEntityId?: string
+}
+
+type OperatorSessionsResponse = {
+  sessions?: OperatorSessionPayload[]
+  activities?: OperatorSessionPayload[]
 }
 
 // Flow steps for the progress indicator
@@ -250,10 +271,70 @@ const quickActions = [
   },
 ]
 
+function toRelativeTime(value: string | undefined): string {
+  if (!value) return "Just now"
+  const timestamp = new Date(value).getTime()
+  if (Number.isNaN(timestamp)) return "Just now"
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
+  if (diffSeconds < 60) return "Just now"
+  const diffMinutes = Math.floor(diffSeconds / 60)
+  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d ago`
+}
+
+function normalizeTaskStatus(input: string | undefined): Task["status"] {
+  const value = (input ?? "").toLowerCase()
+  if (value === "failed" || value === "error") return "failed"
+  if (value === "running" || value === "executing" || value === "planning") return "running"
+  if (value === "pending" || value === "awaiting_approval" || value === "idle") return "pending"
+  if (value === "completed" || value === "success" || value === "active" || value === "review") return "success"
+  return "pending"
+}
+
+function normalizeTask(input: OperatorSessionPayload): Task | null {
+  const id = input.id ? String(input.id) : null
+  if (!id) return null
+
+  const entityType = String(input.context_entity_type ?? input.contextEntityType ?? "workflow")
+  const contextEntity: Task["contextEntity"] =
+    entityType === "run" || entityType === "connector" || entityType === "source" ? entityType : "workflow"
+  const environmentValue = String(input.environment ?? "staging").toLowerCase()
+  const environment: Task["environment"] = environmentValue === "production" ? "production" : "staging"
+
+  return {
+    id,
+    title: String(input.title ?? "Operator Session"),
+    timestamp: toRelativeTime(String(input.created_at ?? input.createdAt ?? "")),
+    environment,
+    contextEntity,
+    contextName: String(input.context_entity_id ?? input.contextEntityId ?? "operator"),
+    status: normalizeTaskStatus(input.status),
+  }
+}
+
+function normalizeTasksResponse(input: OperatorSessionsResponse | undefined): Task[] {
+  if (!input) return []
+
+  const sessions = Array.isArray(input.sessions) ? input.sessions : []
+  const normalized = sessions
+    .map((item) => normalizeTask(item))
+    .filter((item): item is Task => item !== null)
+  if (normalized.length > 0) return normalized
+
+  const activities = Array.isArray(input.activities) ? input.activities : []
+  return activities
+    .map((item) => normalizeTask(item))
+    .filter((item): item is Task => item !== null)
+}
+
 
 
 export default function OperatorPage() {
-  const [activeTask, setActiveTask] = useState("1")
+  const { user } = useAuth()
+  const [activeTask, setActiveTask] = useState(fallbackTasks[0]?.id ?? "")
   const [activeContext, setActiveContext] = useState("run-1234")
   const [taskInput, setTaskInput] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -275,19 +356,28 @@ export default function OperatorPage() {
   } | null>(null)
 
   // Fetch tasks (formerly sessions)
-  const { data: tasksData } = useSWR<{ sessions: Task[] }>(
-    "/api/sessions",
+  const { data: tasksData } = useSWR<OperatorSessionsResponse>(
+    "/api/operators/sessions",
     apiFetcher,
-    { fallbackData: { sessions: fallbackTasks }, revalidateOnFocus: false }
+    { revalidateOnFocus: false }
   )
 
   useEffect(() => {
-    if (tasksData?.sessions?.length) {
-      setLocalTasks(tasksData.sessions)
+    const normalized = normalizeTasksResponse(tasksData)
+    if (normalized.length > 0) {
+      setLocalTasks(normalized)
+      return
     }
+    setLocalTasks(fallbackTasks)
   }, [tasksData])
 
   const tasks = localTasks
+  useEffect(() => {
+    if (!tasks.length) return
+    if (!tasks.some((task) => task.id === activeTask)) {
+      setActiveTask(tasks[0].id)
+    }
+  }, [tasks, activeTask])
   const insightSections = generatedPlan?.findings ?? fallbackInsightSections
 
   // Suggested actions for the secondary panel
@@ -350,7 +440,7 @@ export default function OperatorPage() {
     setCurrentFlowStep("analysis")
 
     try {
-      const response = await apiFetch(`/api/sessions/${activeTask}/task`, {
+      const response = await apiFetch(`/api/operators/sessions/${activeTask}/task`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -366,6 +456,13 @@ export default function OperatorPage() {
             findings: data.plan.reasoning ?? fallbackInsightSections,
             steps: data.plan.steps ?? fallbackActionPlanSteps,
             suggestedActions: data.plan.proposals ?? fallbackSuggestedActions,
+          })
+          setCurrentFlowStep("plan")
+        } else {
+          setGeneratedPlan({
+            findings: fallbackInsightSections,
+            steps: fallbackActionPlanSteps,
+            suggestedActions: fallbackSuggestedActions,
           })
           setCurrentFlowStep("plan")
         }
@@ -433,21 +530,24 @@ export default function OperatorPage() {
     
     setIsCreatingTask(true)
     try {
-      const response = await apiFetch("/api/sessions", {
+      const response = await apiFetch("/api/operators/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTaskTitle.trim() }),
       })
       if (response.ok) {
         const data = await response.json()
-        if (data.session) {
-          setActiveTask(data.session.id)
+        const normalizedSession = normalizeTask(data.session ?? data)
+        if (normalizedSession) {
+          setLocalTasks((prev) => [normalizedSession, ...prev])
+          setActiveTask(normalizedSession.id)
           setCurrentFlowStep("task")
           setGeneratedPlan(null)
           toast.success("Task created successfully")
+          return
         }
       }
-      // Create task locally for immediate feedback even if API fails
+      // Create task locally for immediate feedback when API payload is incomplete
       const newTask: Task = {
         id: `${Date.now()}`,
         title: newTaskTitle.trim(),
@@ -457,7 +557,7 @@ export default function OperatorPage() {
         contextName: "new-task",
         status: "pending",
       }
-      fallbackTasks.unshift(newTask)
+      setLocalTasks((prev) => [newTask, ...prev])
       setActiveTask(newTask.id)
       setCurrentFlowStep("task")
       setGeneratedPlan(null)
@@ -473,7 +573,7 @@ export default function OperatorPage() {
         contextName: "new-task",
         status: "pending",
       }
-      fallbackTasks.unshift(newTask)
+      setLocalTasks((prev) => [newTask, ...prev])
       setActiveTask(newTask.id)
       setCurrentFlowStep("task")
       setGeneratedPlan(null)
@@ -526,6 +626,9 @@ export default function OperatorPage() {
                   isProcessing={isGenerating} 
                   isListening={Boolean(taskInput.trim())}
                 />
+                <span className="text-xs text-muted-foreground">
+                  {user?.email ? `Signed in as ${user.email}` : "Signed in"}
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 {/* Model Selector - Premium, minimal */}
