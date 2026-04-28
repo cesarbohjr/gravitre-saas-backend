@@ -238,8 +238,8 @@ function TimelineNode({
   isExpanded: boolean
   onToggle: () => void
   isFirst: boolean
-  onRetry: (run: Run) => Promise<void>
-  onCancel: (run: Run) => Promise<void>
+  onRetry: (runId: string) => Promise<void>
+  onCancel: (runId: string) => Promise<void>
   onApprove: (runId: string) => Promise<void>
   isMutating: boolean
 }) {
@@ -398,7 +398,7 @@ function TimelineNode({
                       variant="outline"
                       size="sm"
                       className="h-7 gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                      onClick={() => void onRetry(run)}
+                      onClick={() => void onRetry(run.id)}
                       disabled={isMutating}
                     >
                       <RotateCcw className="h-3 w-3" />
@@ -410,7 +410,7 @@ function TimelineNode({
                       variant="outline"
                       size="sm"
                       className="h-7 gap-1.5 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
-                      onClick={() => void onCancel(run)}
+                      onClick={() => void onCancel(run.id)}
                       disabled={isMutating}
                     >
                       <XCircle className="h-3 w-3" />
@@ -463,10 +463,10 @@ export default function RunsPage() {
   const runs = normalizeRunsResponse(data)
   const summaryStats = getSummaryStats(runs)
 
-  const handleRetryRun = async (run: Run) => {
+  const handleRetryRun = async (runId: string) => {
     setIsMutatingRun(true)
     try {
-      await runsApi.retry(run.id)
+      await runsApi.retry(runId)
       toast.success("Run retry initiated")
       await mutate()
     } catch (err) {
@@ -477,10 +477,10 @@ export default function RunsPage() {
     }
   }
 
-  const handleCancelRun = async (run: Run) => {
+  const handleCancelRun = async (runId: string) => {
     setIsMutatingRun(true)
     try {
-      await runsApi.cancel(run.id)
+      await runsApi.cancel(runId)
       toast.success("Run cancelled")
       await mutate()
     } catch (err) {
