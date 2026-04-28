@@ -47,6 +47,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { sourcesApi } from "@/lib/api"
+import type { CreateSourceRequest } from "@/types/api"
+import { toast } from "sonner"
 
 interface Source {
   id: string
@@ -242,15 +246,15 @@ function normalizeSource(input: Record<string, unknown>): Source {
 }
 
 function normalizeSourcesResponse(payload: unknown): Source[] {
-  if (!payload || typeof payload !== "object") return fallbackSources
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw = Array.isArray(model.sources) ? model.sources : null
-  if (!raw) return fallbackSources
+  if (!raw) return []
   const normalized = raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeSource(item))
     .filter((item) => item.id.length > 0)
-  return normalized.length > 0 ? normalized : fallbackSources
+  return normalized
 }
 
 const typeConfig: Record<string, { icon: typeof Database; color: string; bgColor: string }> = {
@@ -310,12 +314,18 @@ function SourceTile({
   source, 
   isExpanded,
   onToggle,
-  index
+  index,
+  onSync,
+  onDelete,
+  isMutating,
 }: { 
   source: Source
   isExpanded: boolean
   onToggle: () => void
   index: number
+  onSync: (sourceId: string) => Promise<void>
+  onDelete: (sourceId: string) => Promise<void>
+  isMutating: boolean
 }) {
   const router = useRouter()
   const config = typeConfig[source.type] || { icon: Database, color: "text-muted-foreground", bgColor: "bg-secondary" }
@@ -517,9 +527,20 @@ function SourceTile({
                 <Button 
                   size="sm" 
                   className="h-7 gap-1.5 text-xs"
+                  onClick={() => void onSync(source.id)}
+                  disabled={isMutating}
                 >
-                  <RefreshCw className="h-3 w-3" />
+                  {isMutating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   Sync
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                  onClick={() => void onDelete(source.id)}
+                  disabled={isMutating}
+                >
+                  Delete
                 </Button>
               </div>
             </div>
@@ -531,11 +552,23 @@ function SourceTile({
 }
 
 // Add Source Modal
-function AddSourceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AddSourceModal({
+  open,
+  onClose,
+  onCreate,
+  creating,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreate: (data: CreateSourceRequest) => Promise<void>
+  creating: boolean
+}) {
   const [step, setStep] = useState(1)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null)
+  const [sourceName, setSourceName] = useState("")
+  const [connectionString, setConnectionString] = useState("")
 
   const sourceTypes = [
     { id: "postgresql", name: "PostgreSQL", icon: Database, color: "text-blue-400" },
@@ -558,6 +591,19 @@ function AddSourceModal({ open, onClose }: { open: boolean; onClose: () => void 
     setStep(1)
     setSelectedType(null)
     setTestResult(null)
+    setSourceName("")
+    setConnectionString("")
+  }
+
+  const handleCreateSource = async () => {
+    const typeName = sourceTypes.find((type) => type.id === selectedType)?.name ?? "Unknown"
+    await onCreate({
+      name: sourceName.trim(),
+      type: typeName,
+      description: `${typeName} data source`,
+      config: connectionString.trim() ? { connection_string: connectionString.trim() } : undefined,
+    })
+    resetAndClose()
   }
 
   return (
@@ -613,6 +659,8 @@ function AddSourceModal({ open, onClose }: { open: boolean; onClose: () => void 
               <input
                 type="text"
                 placeholder="my-database"
+                value={sourceName}
+                onChange={(event) => setSourceName(event.target.value)}
                 className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
               />
             </div>
@@ -623,6 +671,8 @@ function AddSourceModal({ open, onClose }: { open: boolean; onClose: () => void 
               <input
                 type="text"
                 placeholder="postgresql://user:pass@host:5432/db"
+                value={connectionString}
+                onChange={(event) => setConnectionString(event.target.value)}
                 className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
               />
             </div>
@@ -662,9 +712,9 @@ function AddSourceModal({ open, onClose }: { open: boolean; onClose: () => void 
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-              <Button onClick={resetAndClose} disabled={testResult !== "success"} className="gap-2">
-                <Check className="h-4 w-4" />
-                Add Source
+              <Button onClick={() => void handleCreateSource()} disabled={testResult !== "success" || creating || !sourceName.trim()} className="gap-2">
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {creating ? "Adding..." : "Add Source"}
               </Button>
             </div>
           </div>
@@ -675,14 +725,65 @@ function AddSourceModal({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 export default function SourcesPage() {
+  const { user } = useAuth()
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const { data } = useSWR("/api/sources", apiFetcher, {
-    fallbackData: { sources: fallbackSources },
+  const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
+  const [isCreatingSource, setIsCreatingSource] = useState(false)
+  const { data, error, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
+    fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
+    onError: (err) => console.error("[v0] Sources fetch error:", err),
   })
   const sources = normalizeSourcesResponse(data)
+
+  const handleSync = async (sourceId: string) => {
+    try {
+      setMutatingSourceId(sourceId)
+      await sourcesApi.sync(sourceId)
+      toast.success("Sync started")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Sync failed:", err)
+      toast.error("Sync failed")
+    } finally {
+      setMutatingSourceId((current) => (current === sourceId ? null : current))
+    }
+  }
+
+  const handleDelete = async (sourceId: string) => {
+    if (!window.confirm("Delete this source?")) return
+    try {
+      setMutatingSourceId(sourceId)
+      await sourcesApi.delete(sourceId)
+      toast.success("Source deleted")
+      await mutate()
+      if (expandedSource === sourceId) {
+        setExpandedSource(null)
+      }
+    } catch (err) {
+      console.error("[v0] Delete failed:", err)
+      toast.error("Failed to delete")
+    } finally {
+      setMutatingSourceId((current) => (current === sourceId ? null : current))
+    }
+  }
+
+  const handleCreate = async (payload: CreateSourceRequest) => {
+    try {
+      setIsCreatingSource(true)
+      await sourcesApi.create(payload)
+      toast.success("Source created")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Create failed:", err)
+      toast.error("Failed to create source")
+      throw err
+    } finally {
+      setIsCreatingSource(false)
+    }
+  }
 
   // Group sources by category
   const groupedSources = sources.reduce((acc, source) => {
@@ -725,6 +826,11 @@ export default function SourcesPage() {
 
         {/* Header */}
         <div className="relative z-10 flex-shrink-0 px-6 pt-6 pb-4 border-b border-border/50 bg-card/30 backdrop-blur-sm">
+          {error && (
+            <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              Failed to load sources. Showing latest available data.
+            </div>
+          )}
           <div className="flex items-center justify-between mb-6">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -855,6 +961,9 @@ export default function SourcesPage() {
                       index={index}
                       isExpanded={expandedSource === source.id}
                       onToggle={() => setExpandedSource(expandedSource === source.id ? null : source.id)}
+                      onSync={handleSync}
+                      onDelete={handleDelete}
+                      isMutating={mutatingSourceId === source.id}
                     />
                   ))}
                 </div>
@@ -864,7 +973,12 @@ export default function SourcesPage() {
         </div>
       </div>
 
-      <AddSourceModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />
+      <AddSourceModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onCreate={handleCreate}
+        creating={isCreatingSource}
+      />
     </AppShell>
   )
 }
