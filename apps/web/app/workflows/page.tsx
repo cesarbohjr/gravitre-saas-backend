@@ -33,9 +33,11 @@ import { useRouter } from "next/navigation"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { Target } from "lucide-react"
-import { apiFetch } from "@/lib/fetcher"
+import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { workflowsApi } from "@/lib/api"
+import type { Workflow as ApiWorkflow, WorkflowStatus } from "@/types/api"
 
 interface WorkflowNode {
   id: string
@@ -267,6 +269,7 @@ const columns = [
 
 export default function WorkflowsPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
@@ -274,10 +277,18 @@ export default function WorkflowsPage() {
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [envFilter, setEnvFilter] = useState<string[]>([])
   
-  const { data, error, isLoading, mutate } = useSWR("/api/workflows", apiFetcher, {
-    fallbackData: { workflows: fallbackWorkflows },
-    revalidateOnFocus: false,
-  })
+  // Fetch workflows - only when user is authenticated
+  const { data, error, isLoading, mutate } = useSWR(
+    user ? "/api/workflows" : null, 
+    apiFetcher, 
+    {
+      fallbackData: { workflows: fallbackWorkflows },
+      revalidateOnFocus: false,
+      onError: (err) => {
+        console.error("[v0] Workflows fetch error:", err)
+      }
+    }
+  )
 
   const workflows = normalizeWorkflowsResponse(data)
   const activeCount = workflows.filter((w) => w.status === "active").length
@@ -303,22 +314,36 @@ export default function WorkflowsPage() {
     router.push(`/runs?workflow=${id}`)
   }
 
-  const handleDuplicateWorkflow = (workflow: Workflow) => {
-    // In a real app, this would call an API to duplicate
-    const duplicated = {
-      ...workflow,
-      id: `${workflow.id}-copy-${Date.now()}`,
-      name: `${workflow.name}-copy`,
-      status: "draft" as const,
+  const handleDuplicateWorkflow = async (workflow: Workflow) => {
+    try {
+      const duplicated = await workflowsApi.create({
+        name: `${workflow.name}-copy`,
+        description: workflow.description,
+        status: "draft",
+      })
+      await mutate()
+      toast.success(`Workflow duplicated: ${duplicated.name}`)
+      router.push(`/workflows/${duplicated.id}/builder`)
+    } catch (err) {
+      console.error("[v0] Failed to duplicate workflow:", err)
+      toast.error("Failed to duplicate workflow")
     }
-    // Add to local state for demo
-    mutate({ workflows: [...workflows, duplicated] }, false)
   }
 
-  const handleDeleteWorkflow = (id: string) => {
-    if (confirm("Are you sure you want to delete this workflow?")) {
-      // In a real app, this would call an API to delete
-      mutate({ workflows: workflows.filter(w => w.id !== id) }, false)
+  const handleDeleteWorkflow = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this workflow?")) return
+    
+    // Optimistic update
+    const previousWorkflows = workflows
+    mutate({ workflows: workflows.filter(w => w.id !== id) }, false)
+    
+    try {
+      await workflowsApi.delete(id)
+      toast.success("Workflow deleted")
+    } catch (err) {
+      console.error("[v0] Failed to delete workflow:", err)
+      mutate({ workflows: previousWorkflows }, false)
+      toast.error("Failed to delete workflow")
     }
   }
 
@@ -330,15 +355,11 @@ export default function WorkflowsPage() {
     mutate({ workflows: optimistic }, false)
 
     try {
-      const response = await apiFetch(`/api/workflows/${workflow.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      if (!response.ok) throw new Error("Failed to update workflow status")
+      await workflowsApi.update(workflow.id, { status: newStatus as WorkflowStatus })
       await mutate()
-      toast.success(`Workflow ${newStatus}`)
-    } catch {
+      toast.success(`Workflow ${newStatus === "active" ? "activated" : "paused"}`)
+    } catch (err) {
+      console.error("[v0] Failed to toggle workflow status:", err)
       mutate({ workflows }, false)
       toast.error("Unable to update workflow status")
     }
