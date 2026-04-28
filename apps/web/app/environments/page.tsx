@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
@@ -33,6 +34,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { environmentsApi } from "@/lib/api"
+import { toast } from "sonner"
 
 interface Environment {
   id: string
@@ -54,7 +59,7 @@ interface Environment {
   receivesFrom?: string
 }
 
-const environments: Environment[] = [
+const fallbackEnvironments: Environment[] = [
   {
     id: "env-001",
     name: "Production",
@@ -111,6 +116,40 @@ const environments: Environment[] = [
     promotesTo: "staging",
   },
 ]
+
+function normalizeEnvironmentsResponse(payload: unknown): Environment[] {
+  if (!payload || typeof payload !== "object") return []
+  const model = payload as Record<string, unknown>
+  const raw = Array.isArray(model.environments) ? model.environments : null
+  if (!raw) return []
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => {
+      const name = String(item.name ?? "Environment")
+      const slug = name.trim().toLowerCase().replace(/\s+/g, "-")
+      const isDefault = Boolean(item.is_default ?? item.isDefault ?? false)
+      const status: Environment["status"] = "active"
+      return {
+        id: String(item.id ?? ""),
+        name,
+        slug,
+        status,
+        isDefault,
+        health: 100,
+        resources: {
+          workflows: 0,
+          agents: 0,
+          connectors: 0,
+          sources: 0,
+        },
+        apiUrl: `${window.location.origin}/api`,
+        createdAt: "Recently created",
+        lastActivity: "Just now",
+      } satisfies Environment
+    })
+    .filter((item) => item.id.length > 0)
+  return normalized
+}
 
 // Health ring component
 function HealthRing({ health, size = 48 }: { health: number; size?: number }) {
@@ -180,11 +219,15 @@ function ResourceIndicator({
 function EnvironmentNode({ 
   environment,
   isSelected,
-  onSelect
+  onSelect,
+  onDelete,
+  isDeleting,
 }: { 
   environment: Environment
   isSelected: boolean
   onSelect: () => void
+  onDelete: (envId: string) => Promise<void>
+  isDeleting: boolean
 }) {
   const [copied, setCopied] = useState(false)
 
@@ -318,9 +361,13 @@ function EnvironmentNode({
             {!environment.isDefault && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  className="gap-2 text-destructive focus:text-destructive"
+                  onClick={() => void onDelete(environment.id)}
+                  disabled={isDeleting}
+                >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Delete
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </DropdownMenuItem>
               </>
             )}
@@ -346,10 +393,52 @@ function ConnectionLine({ from, to, label }: { from: string; to: string; label: 
 }
 
 export default function EnvironmentsPage() {
+  const { user } = useAuth()
   const [selectedEnv, setSelectedEnv] = useState<string | null>(null)
+  const [mutatingEnvId, setMutatingEnvId] = useState<string | null>(null)
+  const { data, error, isLoading, mutate } = useSWR(
+    user ? "/api/environments" : null,
+    apiFetcher,
+    {
+      fallbackData: { environments: [] as Environment[] },
+      revalidateOnFocus: false,
+      onError: (err) => console.error("[v0] Environments fetch error:", err),
+    }
+  )
+  const environments = normalizeEnvironmentsResponse(data)
+  const displayEnvironments = environments.length > 0 ? environments : fallbackEnvironments
+
+  const handleCreate = async (name: string) => {
+    try {
+      await environmentsApi.create({ name })
+      toast.success("Environment created")
+      await mutate()
+    } catch (err) {
+      console.error("[v0] Create failed:", err)
+      toast.error("Failed to create environment")
+    }
+  }
+
+  const handleDelete = async (envId: string) => {
+    if (!window.confirm("Delete this environment? This cannot be undone.")) return
+    try {
+      setMutatingEnvId(envId)
+      await environmentsApi.delete(envId)
+      toast.success("Environment deleted")
+      await mutate()
+      if (selectedEnv === envId) {
+        setSelectedEnv(null)
+      }
+    } catch (err) {
+      console.error("[v0] Delete failed:", err)
+      toast.error("Failed to delete environment")
+    } finally {
+      setMutatingEnvId((current) => (current === envId ? null : current))
+    }
+  }
 
   // Sort environments: development -> staging -> production
-  const sortedEnvs = [...environments].sort((a, b) => {
+  const sortedEnvs = [...displayEnvironments].sort((a, b) => {
     const order = { development: 0, staging: 1, production: 2 }
     return (order[a.slug as keyof typeof order] ?? 0) - (order[b.slug as keyof typeof order] ?? 0)
   })
@@ -359,12 +448,26 @@ export default function EnvironmentsPage() {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              Failed to load environments. Showing latest available data.
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-xl font-semibold text-foreground">System Topology</h1>
               <p className="text-sm text-muted-foreground mt-1">Infrastructure overview and deployment pipeline</p>
             </div>
-            <Button size="sm" className="h-8 gap-2">
+            <Button
+              size="sm"
+              className="h-8 gap-2"
+              onClick={() => {
+                const name = window.prompt("Environment name")
+                if (!name?.trim()) return
+                void handleCreate(name.trim())
+              }}
+              disabled={isLoading}
+            >
               <Plus className="h-3.5 w-3.5" />
               New Environment
             </Button>
@@ -415,6 +518,8 @@ export default function EnvironmentsPage() {
                     environment={env}
                     isSelected={selectedEnv === env.id}
                     onSelect={() => setSelectedEnv(selectedEnv === env.id ? null : env.id)}
+                    onDelete={handleDelete}
+                    isDeleting={mutatingEnvId === env.id}
                   />
                   {index < sortedEnvs.length - 1 && (
                     <ConnectionLine 
