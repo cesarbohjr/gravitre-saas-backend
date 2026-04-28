@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,41 +29,81 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { useUserProfile } from "@/lib/user-profile-context"
+import { useAuth } from "@/lib/auth-context"
+import { authApi } from "@/lib/api"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { toast } from "sonner"
 
 export default function ProfilePage() {
+  const { user, loading } = useAuth()
   const { profile, updateProfile, setAvatarImage: setContextAvatarImage, getInitials } = useUserProfile()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [activeField, setActiveField] = useState<string | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [isRevokingAll, setIsRevokingAll] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { data: sessionsData, mutate: mutateSessions } = useSWR(
+    user ? "/api/auth/sessions" : null,
+    apiFetcher
+  )
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleSave = async () => {
+  useEffect(() => {
+    if (!user) return
+    const fullName = String(user.user_metadata?.full_name ?? "").trim()
+    const [firstName, ...rest] = fullName.split(" ").filter(Boolean)
+    const lastName = rest.join(" ")
+    updateProfile({
+      firstName: firstName || profile.firstName,
+      lastName: lastName || profile.lastName,
+      email: user.email ?? profile.email,
+    })
+  }, [user])
+
+  const handleSaveProfile = async () => {
     setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      const fullName = `${profile.firstName} ${profile.lastName}`.trim()
+      await authApi.updateProfile({
+        full_name: fullName || undefined,
+      })
+      setSaved(true)
+      toast.success("Profile updated")
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      console.error("[v0] Update failed:", err)
+      toast.error("Failed to update profile")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleChange = (field: string, value: string) => {
     updateProfile({ [field]: value })
   }
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setContextAvatarImage(event.target?.result as string)
+      try {
+        const response = await authApi.uploadAvatar(file)
+        setContextAvatarImage(response.avatar_url)
+        toast.success("Avatar updated")
         setShowAvatarModal(false)
+      } catch (err) {
+        console.error("[v0] Avatar upload failed:", err)
+        toast.error("Failed to upload avatar")
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -71,12 +112,72 @@ export default function ProfilePage() {
     setShowAvatarModal(false)
   }
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error("Current and new password are required")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match")
+      return
+    }
+    setIsChangingPassword(true)
+    try {
+      await authApi.changePassword(currentPassword, newPassword)
+      toast.success("Password changed")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (err) {
+      console.error("[v0] Password change failed:", err)
+      toast.error("Failed to change password")
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
+  const handleRevokeSession = async (sessionId: string) => {
+    try {
+      await authApi.revokeSession(sessionId)
+      toast.success("Session revoked")
+      await mutateSessions()
+    } catch (err) {
+      console.error("[v0] Revoke failed:", err)
+      toast.error("Failed to revoke session")
+    }
+  }
+
+  const handleRevokeAllSessions = async () => {
+    if (!window.confirm("Revoke all other sessions?")) return
+    setIsRevokingAll(true)
+    try {
+      await authApi.revokeAllSessions()
+      toast.success("All sessions revoked")
+      await mutateSessions()
+    } catch (err) {
+      console.error("[v0] Revoke all failed:", err)
+      toast.error("Failed to revoke all sessions")
+    } finally {
+      setIsRevokingAll(false)
+    }
+  }
+
   // Activity stats
   const activityStats = [
     { label: "Workflows Created", value: "47", icon: Zap, color: "text-blue-500" },
     { label: "Approvals Made", value: "156", icon: Check, color: "text-emerald-500" },
     { label: "Active Sessions", value: "3", icon: Activity, color: "text-amber-500" },
   ]
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>
@@ -240,7 +341,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <Button className="gap-2 bg-foreground text-background hover:bg-foreground/90" onClick={handleSave} disabled={isSaving}>
+                <Button className="gap-2 bg-foreground text-background hover:bg-foreground/90" onClick={handleSaveProfile} disabled={isSaving}>
                   {isSaving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -469,6 +570,82 @@ export default function ProfilePage() {
                   <p className="text-xs text-muted-foreground mt-2">
                     Brief description visible to your team members
                   </p>
+                </section>
+
+                {/* Security */}
+                <section>
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10">
+                      <Shield className="h-4 w-4 text-rose-500" />
+                    </div>
+                    <h2 className="text-sm font-semibold text-foreground">Security</h2>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <Input
+                      type="password"
+                      placeholder="Current password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                    />
+                    <Input
+                      type="password"
+                      placeholder="New password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                    />
+                    <Input
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                    />
+                    <div>
+                      <Button onClick={() => void handleChangePassword()} disabled={isChangingPassword} className="gap-2">
+                        {isChangingPassword && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Change Password
+                      </Button>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Sessions */}
+                <section>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                        <Activity className="h-4 w-4 text-violet-500" />
+                      </div>
+                      <h2 className="text-sm font-semibold text-foreground">Active Sessions</h2>
+                    </div>
+                    <Button variant="outline" onClick={() => void handleRevokeAllSessions()} disabled={isRevokingAll} className="gap-2">
+                      {isRevokingAll && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Revoke All
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {(sessionsData?.sessions ?? []).map((session) => (
+                      <div key={session.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{session.device}</p>
+                          <p className="text-xs text-muted-foreground">{session.ip} · {session.last_active}</p>
+                        </div>
+                        {session.current ? (
+                          <span className="text-xs text-emerald-500 font-medium">Current</span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleRevokeSession(session.id)}
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {(sessionsData?.sessions ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground">No active sessions found.</p>
+                    )}
+                  </div>
                 </section>
               </div>
             </div>

@@ -98,6 +98,27 @@ async function deleteRequest(url: string): Promise<void> {
 export const authApi = {
   me: () => fetcher<UserProfile>(apiUrl("/api/auth/me")),
   updateProfile: (data: Partial<User>) => patchJson<User>(apiUrl("/api/auth/me"), data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    postJson<void>(apiUrl("/api/auth/change-password"), {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  listSessions: () =>
+    fetcher<{
+      sessions: { id: string; device: string; ip: string; last_active: string; current: boolean }[]
+    }>(apiUrl("/api/auth/sessions")),
+  revokeSession: (sessionId: string) => deleteRequest(apiUrl(`/api/auth/sessions/${sessionId}`)),
+  revokeAllSessions: () => postJson<void>(apiUrl("/api/auth/sessions/revoke-all"), {}),
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData()
+    formData.append("avatar", file)
+    const response = await apiFetch(apiUrl("/api/auth/avatar"), {
+      method: "POST",
+      body: formData,
+    })
+    if (!response.ok) throw new Error("Upload failed")
+    return response.json() as Promise<{ avatar_url: string }>
+  },
 }
 
 // ============ Operators ============
