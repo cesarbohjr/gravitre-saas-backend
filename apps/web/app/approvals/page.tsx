@@ -7,7 +7,9 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import { approvalsApi } from "@/lib/api"
 import { toast } from "sonner"
 import { 
   Check, 
@@ -104,117 +106,19 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
 }
 
 function normalizeApprovalsResponse(payload: unknown): Approval[] {
-  if (!payload || typeof payload !== "object") return fallbackApprovals
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw =
     (Array.isArray(model.approvals) ? model.approvals : null) ??
     (Array.isArray(model.data) ? model.data : null) ??
     (Array.isArray(model.items) ? model.items : null)
-  if (!raw) return fallbackApprovals
+  if (!raw) return []
   const normalized = raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeApproval(item))
     .filter((item) => item.id.length > 0)
-  return normalized.length > 0 ? normalized : fallbackApprovals
+  return normalized
 }
-
-const fallbackApprovals: Approval[] = [
-  {
-    id: "apr-001",
-    title: "Retry failed sync-customers workflow",
-    description: "Request to retry the failed workflow run that encountered a connection timeout",
-    type: "workflow",
-    environment: "production",
-    requestedBy: "AI Operator",
-    requestedAt: "5 minutes ago",
-    priority: "high",
-    status: "pending",
-    aiRecommendation: {
-      action: "approve",
-      confidence: 94,
-      reason: "Previous failure was due to transient network issue. Retry is safe.",
-    },
-    context: {
-      entity: "sync-customers-1234",
-      action: "Retry workflow execution",
-      impact: "Will process 1,247 pending records",
-    },
-  },
-  {
-    id: "apr-002",
-    title: "Update Salesforce connector credentials",
-    description: "OAuth token refresh required due to security policy rotation",
-    type: "connector",
-    environment: "production",
-    requestedBy: "System",
-    requestedAt: "15 minutes ago",
-    priority: "high",
-    status: "pending",
-    aiRecommendation: {
-      action: "approve",
-      confidence: 98,
-      reason: "Routine credential rotation. New tokens validated.",
-    },
-    context: {
-      entity: "salesforce-api",
-      action: "Update OAuth credentials",
-      impact: "3 workflows depend on this connector",
-    },
-  },
-  {
-    id: "apr-003",
-    title: "Enable new workflow in production",
-    description: "Promote invoice-processing workflow from staging to production",
-    type: "workflow",
-    environment: "production",
-    requestedBy: "john.doe@company.com",
-    requestedAt: "1 hour ago",
-    priority: "medium",
-    status: "pending",
-    aiRecommendation: {
-      action: "review",
-      confidence: 72,
-      reason: "Workflow passed staging tests but has not been reviewed by ops team.",
-    },
-    context: {
-      entity: "invoice-processing",
-      action: "Deploy to production",
-      impact: "New workflow, will process incoming invoices",
-    },
-  },
-  {
-    id: "apr-004",
-    title: "Grant admin access for new team member",
-    description: "Request to add Sarah Chen as an admin user",
-    type: "access",
-    environment: "production",
-    requestedBy: "mike.johnson@company.com",
-    requestedAt: "2 hours ago",
-    priority: "medium",
-    status: "pending",
-    context: {
-      entity: "sarah.chen@company.com",
-      action: "Grant admin role",
-      impact: "Full system access",
-    },
-  },
-  {
-    id: "apr-005",
-    title: "Modify data retention policy",
-    description: "Change retention period from 90 days to 180 days",
-    type: "config",
-    environment: "staging",
-    requestedBy: "compliance@company.com",
-    requestedAt: "3 hours ago",
-    priority: "low",
-    status: "pending",
-    context: {
-      entity: "data-retention-policy",
-      action: "Update retention period",
-      impact: "Affects all data sources",
-    },
-  },
-]
 
 const typeIcons = {
   workflow: Workflow,
@@ -522,11 +426,14 @@ function DetailPanel({ approval, onApprove, onReject }: {
 }
 
 export default function ApprovalsPage() {
+  const { user } = useAuth()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   
-  const { data, error, isLoading, mutate } = useSWR("/api/approvals", apiFetcher, {
-    fallbackData: { approvals: fallbackApprovals },
-    revalidateOnFocus: false,
+  const { data, error, isLoading, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
+    fallbackData: { approvals: [] as Approval[] },
+    revalidateOnFocus: true,
+    refreshInterval: 30000,
+    onError: (err) => console.error("[v0] Approvals fetch error:", err),
   })
 
   const approvals = normalizeApprovalsResponse(data)
@@ -537,60 +444,38 @@ export default function ApprovalsPage() {
   const highPriorityCount = pendingApprovals.filter(a => a.priority === "high").length
   const aiRecommendedCount = pendingApprovals.filter(a => a.aiRecommendation?.action === "approve").length
 
-  const handleApprove = async (id: string) => {
-    const target = approvals.find((approval) => approval.id === id)
-    if (!target) return
-    const isBackendApprovalId = id.startsWith("run-")
-    if (!isBackendApprovalId) {
-      mutate(
-        {
-          approvals: approvals.map((approval) =>
-            approval.id === id ? { ...approval, status: "approved" } : approval
-          ),
-        },
-        false
-      )
-      setSelectedId(null)
-      toast.success("Approval accepted")
-      return
-    }
+  const handleApprove = async (runId: string, comment?: string) => {
     try {
-      const response = await apiFetch(`/api/approvals/${id}/approve`, { method: "POST" })
-      if (!response.ok) throw new Error("Failed to approve request")
+      await approvalsApi.approve(runId, { comment })
       await mutate()
       setSelectedId(null)
-      toast.success("Approval accepted")
-    } catch {
-      toast.error("Unable to approve request")
+      toast.success("Approved successfully")
+    } catch (err) {
+      console.error("[v0] Approve failed:", err)
+      toast.error("Failed to approve")
     }
   }
 
-  const handleReject = async (id: string) => {
-    const target = approvals.find((approval) => approval.id === id)
-    if (!target) return
-    const isBackendApprovalId = id.startsWith("run-")
-    if (!isBackendApprovalId) {
-      mutate(
-        {
-          approvals: approvals.map((approval) =>
-            approval.id === id ? { ...approval, status: "rejected" } : approval
-          ),
-        },
-        false
-      )
-      setSelectedId(null)
-      toast.success("Approval rejected")
+  const handleReject = async (runId: string, comment: string) => {
+    if (!comment.trim()) {
+      toast.error("Rejection reason is required")
       return
     }
     try {
-      const response = await apiFetch(`/api/approvals/${id}/reject`, { method: "POST" })
-      if (!response.ok) throw new Error("Failed to reject request")
+      await approvalsApi.reject(runId, { comment })
       await mutate()
       setSelectedId(null)
-      toast.success("Approval rejected")
-    } catch {
-      toast.error("Unable to reject request")
+      toast.success("Rejected")
+    } catch (err) {
+      console.error("[v0] Reject failed:", err)
+      toast.error("Failed to reject")
     }
+  }
+
+  const handleRejectWithPrompt = async (runId: string) => {
+    const comment = window.prompt("Enter rejection reason:")
+    if (comment === null) return
+    await handleReject(runId, comment)
   }
 
   return (
@@ -652,7 +537,7 @@ export default function ApprovalsPage() {
                   isSelected={selectedId === approval.id}
                   onSelect={() => setSelectedId(approval.id)}
                   onApprove={handleApprove}
-                  onReject={handleReject}
+                  onReject={handleRejectWithPrompt}
                 />
               ))}
             </AnimatePresence>
@@ -674,7 +559,7 @@ export default function ApprovalsPage() {
           <DetailPanel 
             approval={selectedApproval} 
             onApprove={handleApprove}
-            onReject={handleReject}
+            onReject={handleRejectWithPrompt}
           />
         </div>
       </div>
