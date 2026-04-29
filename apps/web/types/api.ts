@@ -518,6 +518,58 @@ export interface OnboardingProgress {
   skipped: boolean
 }
 
+// ============ Lite Mode ============
+export interface LiteTask {
+  id: string
+  workflow_id: string
+  workflow_name: string
+  status: "pending" | "processing" | "completed" | "failed"
+  progress: number
+  input_summary?: string
+  created_at: string
+  completed_at?: string
+  error?: string
+}
+
+export interface LiteDeliverable {
+  id: string
+  task_id: string
+  task_name?: string
+  name: string
+  type: string
+  size_bytes: number
+  download_url: string
+  preview_url?: string
+  created_at: string
+}
+
+export interface LiteQuickAction {
+  id: string
+  name: string
+  description?: string
+  workflow_id: string
+  icon?: string
+}
+
+export interface LiteHomeData {
+  recent_tasks: LiteTask[]
+  pending_deliverables: LiteDeliverable[]
+  quick_actions: LiteQuickAction[]
+  stats: {
+    tasks_this_week: number
+    completed_this_week: number
+    pending_deliverables: number
+  }
+}
+
+export interface LiteResultsSummary {
+  period: string
+  tasks_completed: number
+  success_rate: number
+  avg_completion_time_hours: number
+  by_workflow: { workflow_name: string; count: number }[]
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

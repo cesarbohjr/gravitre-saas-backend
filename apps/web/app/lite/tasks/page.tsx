@@ -1,75 +1,51 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Icon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-
-const tasks = [
-  {
-    id: "1",
-    title: "Q3 Healthcare Campaign",
-    description: "Create a campaign targeting mid-market healthcare companies",
-    agent: "Marketing Agent",
-    status: "running",
-    progress: 65,
-    eta: "2 min",
-    outputs: ["emails", "social"],
-    createdAt: "5 min ago",
-  },
-  {
-    id: "2",
-    title: "Weekly Performance Report",
-    description: "Analyze last week's campaign performance",
-    agent: "Analytics Agent",
-    status: "reviewing",
-    progress: 100,
-    outputs: ["reports"],
-    createdAt: "1 hour ago",
-  },
-  {
-    id: "3",
-    title: "Lead Scoring Update",
-    description: "Update lead scores based on recent activity",
-    agent: "Sales Agent",
-    status: "completed",
-    progress: 100,
-    outputs: ["segments"],
-    createdAt: "2 hours ago",
-  },
-  {
-    id: "4",
-    title: "Competitor Analysis",
-    description: "Research competitor positioning and messaging",
-    agent: "Research Agent",
-    status: "completed",
-    progress: 100,
-    outputs: ["reports"],
-    createdAt: "Yesterday",
-  },
-]
+import { liteApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 
 const statusConfig = {
-  running: { label: "Running", color: "bg-blue-500", icon: "spinner", className: "animate-spin" },
-  reviewing: { label: "Needs Review", color: "bg-amber-500", icon: "eye", className: "" },
+  pending: { label: "Pending", icon: "clock", className: "" },
+  processing: { label: "Processing", icon: "spinner", className: "animate-spin" },
   completed: { label: "Completed", color: "bg-emerald-500", icon: "check", className: "" },
   failed: { label: "Failed", color: "bg-red-500", icon: "error", className: "" },
 }
 
 export default function LiteTasksPage() {
+  const { user, loading } = useAuth()
   const [filter, setFilter] = useState<string>("all")
-  const [mounted, setMounted] = useState(false)
+  const { data, isLoading, mutate } = useSWR(
+    user ? ["lite-tasks", user.id, filter] : null,
+    () => liteApi.listTasks(filter === "all" ? undefined : { status: filter }),
+    { revalidateOnFocus: false, refreshInterval: 10000 }
+  )
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const handleCancel = async (id: string) => {
+    try {
+      await liteApi.cancelTask(id)
+      toast.success("Task cancelled")
+      await mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to cancel task")
+    }
+  }
 
-  const filteredTasks = filter === "all" 
-    ? tasks 
-    : tasks.filter(t => t.status === filter)
+  if (loading || isLoading) {
+    return <div className="p-8 text-sm text-muted-foreground">Loading tasks...</div>
+  }
+  if (!user) {
+    return <div className="p-8 text-sm text-muted-foreground">Sign in required.</div>
+  }
+
+  const tasks = data?.tasks ?? []
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,9 +69,10 @@ export default function LiteTasksPage() {
           <div className="flex gap-2">
             {[
               { id: "all", label: "All" },
-              { id: "running", label: "Running" },
-              { id: "reviewing", label: "Needs Review" },
+              { id: "pending", label: "Pending" },
+              { id: "processing", label: "Processing" },
               { id: "completed", label: "Completed" },
+              { id: "failed", label: "Failed" },
             ].map((f) => (
               <button
                 key={f.id}
@@ -117,34 +94,28 @@ export default function LiteTasksPage() {
       {/* Tasks List */}
       <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="space-y-4">
-          {filteredTasks.map((task, index) => {
+          {tasks.map((task) => {
             const status = statusConfig[task.status as keyof typeof statusConfig]
             
             return (
-              <Link key={task.id} href={`/lite/tasks/${task.id}`}>
-                <Card 
-                  className={cn(
-                    "p-6 border-border/50 hover:border-border transition-all cursor-pointer group",
-                    "transition-all duration-500",
-                    mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                  )}
-                  style={{ transitionDelay: `${index * 100}ms` }}
-                >
+              <Card key={task.id} className="p-6 border-border/50 transition-all group">
                   <div className="flex items-start gap-5">
                     {/* Status Icon */}
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                      task.status === "running" && "bg-blue-500/10",
-                      task.status === "reviewing" && "bg-amber-500/10",
-                      task.status === "completed" && "bg-emerald-500/10"
+                      task.status === "processing" && "bg-blue-500/10",
+                      task.status === "pending" && "bg-amber-500/10",
+                      task.status === "completed" && "bg-emerald-500/10",
+                      task.status === "failed" && "bg-red-500/10"
                     )}>
                       <Icon 
                         name={status.icon as any} 
                         size="lg" 
                         className={cn(
-                          task.status === "running" && "text-blue-500",
-                          task.status === "reviewing" && "text-amber-500",
+                          task.status === "processing" && "text-blue-500",
+                          task.status === "pending" && "text-amber-500",
                           task.status === "completed" && "text-emerald-500",
+                          task.status === "failed" && "text-red-500",
                           status.className
                         )} 
                       />
@@ -154,40 +125,32 @@ export default function LiteTasksPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1">
                         <h3 className="font-semibold text-foreground group-hover:text-emerald-500 transition-colors">
-                          {task.title}
+                          {task.workflow_name}
                         </h3>
                         <Badge 
                           variant="outline" 
                           className={cn(
                             "text-xs",
-                            task.status === "running" && "text-blue-500 border-blue-500/30 bg-blue-500/10",
-                            task.status === "reviewing" && "text-amber-500 border-amber-500/30 bg-amber-500/10",
-                            task.status === "completed" && "text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
+                            task.status === "processing" && "text-blue-500 border-blue-500/30 bg-blue-500/10",
+                            task.status === "pending" && "text-amber-500 border-amber-500/30 bg-amber-500/10",
+                            task.status === "completed" && "text-emerald-500 border-emerald-500/30 bg-emerald-500/10",
+                            task.status === "failed" && "text-red-500 border-red-500/30 bg-red-500/10"
                           )}
                         >
                           {status.label}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
+                      <p className="text-sm text-muted-foreground mb-3">{task.input_summary || "No input summary"}</p>
                       
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Icon name="ai" size="xs" />
-                          {task.agent}
-                        </span>
-                        <span className="flex items-center gap-1">
                           <Icon name="clock" size="xs" />
-                          {task.createdAt}
+                          {new Date(task.created_at).toLocaleString()}
                         </span>
-                        {task.outputs.map(output => (
-                          <Badge key={output} variant="secondary" className="text-[10px]">
-                            {output}
-                          </Badge>
-                        ))}
                       </div>
                       
                       {/* Progress bar for running tasks */}
-                      {task.status === "running" && (
+                      {(task.status === "processing" || task.status === "pending") && (
                         <div className="mt-4">
                           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                             <div 
@@ -197,7 +160,7 @@ export default function LiteTasksPage() {
                           </div>
                           <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground">
                             <span>{task.progress}% complete</span>
-                            {task.eta && <span>ETA: {task.eta}</span>}
+                            {task.completed_at ? <span>Completed</span> : null}
                           </div>
                         </div>
                       )}
@@ -205,23 +168,19 @@ export default function LiteTasksPage() {
                     
                     {/* Action */}
                     <div className="shrink-0">
-                      {task.status === "reviewing" && (
-                        <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white">
-                          Review
-                        </Button>
-                      )}
                       {task.status === "completed" && (
-                        <Button size="sm" variant="outline">
-                          View
-                        </Button>
+                        <Link href="/lite/deliverables">
+                          <Button size="sm" variant="outline">Deliverables</Button>
+                        </Link>
                       )}
-                      {task.status === "running" && (
-                        <Icon name="chevronRight" size="md" className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+                      {(task.status === "processing" || task.status === "pending") && (
+                        <Button size="sm" variant="outline" onClick={() => handleCancel(task.id)}>
+                          Cancel
+                        </Button>
                       )}
                     </div>
                   </div>
                 </Card>
-              </Link>
             )
           })}
         </div>

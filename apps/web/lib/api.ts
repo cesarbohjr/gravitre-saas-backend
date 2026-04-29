@@ -58,6 +58,10 @@ import type {
   MesonAddonsResponse,
   NotificationListResponse,
   OnboardingProgress,
+  LiteTask,
+  LiteDeliverable,
+  LiteHomeData,
+  LiteResultsSummary,
   MetricsOverview,
   MetricInsight,
 } from "@/types/api"
@@ -525,6 +529,48 @@ export const onboardingApi = {
     postJson<OnboardingProgress>(apiUrl("/api/onboarding/reset"), {}),
 }
 
+// ============ Lite Mode ============
+export const liteApi = {
+  // Home
+  home: () => fetcher<LiteHomeData>(apiUrl("/api/lite/home")),
+
+  // Assign Work
+  getAvailableWorkflows: () =>
+    fetcher<{ workflows: { id: string; name: string; description?: string; required_inputs: string[] }[] }>(
+      apiUrl("/api/lite/workflows")
+    ),
+  assignWork: (workflowId: string, inputs: Record<string, unknown>, notes?: string) =>
+    postJson<{ task_id: string }>(apiUrl("/api/lite/assign"), {
+      workflow_id: workflowId,
+      inputs,
+      notes,
+    }),
+
+  // Tasks
+  listTasks: (filters?: { status?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.set("status", filters.status)
+    const query = params.toString()
+    return fetcher<{ tasks: LiteTask[] }>(apiUrl(`/api/lite/tasks${query ? `?${query}` : ""}`))
+  },
+  getTask: (id: string) => fetcher<LiteTask>(apiUrl(`/api/lite/tasks/${id}`)),
+  cancelTask: (id: string) => postJson<void>(apiUrl(`/api/lite/tasks/${id}/cancel`), {}),
+
+  // Deliverables
+  listDeliverables: () =>
+    fetcher<{ deliverables: LiteDeliverable[] }>(apiUrl("/api/lite/deliverables")),
+  downloadDeliverable: (id: string) =>
+    apiFetch(apiUrl(`/api/lite/deliverables/${id}/download`)),
+
+  // Results
+  getResults: (range?: string) => {
+    const params = range ? `?range=${range}` : ""
+    return fetcher<{ summary: LiteResultsSummary; recent: LiteTask[] }>(
+      apiUrl(`/api/lite/results${params}`)
+    )
+  },
+}
+
 // Convenience export for all APIs
 export const api = {
   auth: authApi,
@@ -545,6 +591,7 @@ export const api = {
   organizations: organizationsApi,
   notifications: notificationsApi,
   onboarding: onboardingApi,
+  lite: liteApi,
 }
 
 export default api

@@ -22,6 +22,7 @@ from app.routers import (
     notifications,
     onboarding,
     org,
+    lite,
     rag,
     rag_admin,
     search,
@@ -183,6 +184,7 @@ app.include_router(audit.router)
 app.include_router(metrics.router)
 app.include_router(notifications.router)
 app.include_router(onboarding.router)
+app.include_router(lite.router)
 app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
