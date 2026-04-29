@@ -56,6 +56,7 @@ import type {
   BillingUsageResponse,
   LiteSeatsResponse,
   MesonAddonsResponse,
+  NotificationListResponse,
   MetricsOverview,
   MetricInsight,
 } from "@/types/api"
@@ -484,6 +485,30 @@ export const organizationsApi = {
     postJson<void>(apiUrl(`/api/organizations/${orgId}/transfer`), { new_owner_id: newOwnerId }),
 }
 
+// ============ Notifications ============
+export const notificationsApi = {
+  list: (filters?: { unread_only?: boolean; limit?: number; offset?: number }) => {
+    const params = new URLSearchParams()
+    if (filters?.unread_only) params.set("unread_only", "true")
+    if (filters?.limit) params.set("limit", String(filters.limit))
+    if (filters?.offset) params.set("offset", String(filters.offset))
+    const query = params.toString()
+    return fetcher<NotificationListResponse>(apiUrl(`/api/notifications${query ? `?${query}` : ""}`))
+  },
+  getUnreadCount: () =>
+    fetcher<{ count: number }>(apiUrl("/api/notifications/unread-count")),
+  markRead: (id: string) =>
+    postJson<void>(apiUrl(`/api/notifications/${id}/read`), {}),
+  markAllRead: () =>
+    postJson<void>(apiUrl("/api/notifications/read-all"), {}),
+  archive: (id: string) =>
+    postJson<void>(apiUrl(`/api/notifications/${id}/archive`), {}),
+  delete: (id: string) =>
+    deleteRequest(apiUrl(`/api/notifications/${id}`)),
+  updatePreferences: (preferences: Record<string, boolean>) =>
+    patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
+}
+
 // Convenience export for all APIs
 export const api = {
   auth: authApi,
@@ -502,6 +527,7 @@ export const api = {
   settings: settingsApi,
   environments: environmentsApi,
   organizations: organizationsApi,
+  notifications: notificationsApi,
 }
 
 export default api

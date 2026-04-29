@@ -471,6 +471,34 @@ export interface BillingOverview {
   payment_methods: PaymentMethod[]
 }
 
+// ============ Notifications ============
+export type NotificationType =
+  | "approval_needed"
+  | "assignment_created"
+  | "run_completed"
+  | "run_failed"
+  | "mention"
+  | "team_invite"
+  | "system"
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  body: string
+  entity_type?: string
+  entity_id?: string
+  url?: string
+  is_read: boolean
+  is_archived: boolean
+  created_at: string
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[]
+  unread_count: number
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

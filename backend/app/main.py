@@ -19,6 +19,7 @@ from app.routers import (
     connectors,
     entitlements,
     metrics,
+    notifications,
     org,
     rag,
     rag_admin,
@@ -179,6 +180,7 @@ app.include_router(workflows.approvals_router)
 app.include_router(workflows.runs_router)
 app.include_router(audit.router)
 app.include_router(metrics.router)
+app.include_router(notifications.router)
 app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
