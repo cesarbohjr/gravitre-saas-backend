@@ -7,6 +7,7 @@ import { apiFetch, fetcher } from "@/lib/fetcher"
 import type {
   User,
   UserProfile,
+  Organization,
   OperatorSummary,
   OperatorDetail,
   OperatorListResponse,
@@ -461,6 +462,28 @@ export const environmentsApi = {
   delete: (id: string) => deleteRequest(apiUrl(`/api/environments/${id}`)),
 }
 
+// ============ Organizations ============
+export const organizationsApi = {
+  list: () => fetcher<{ organizations: Organization[] }>(apiUrl("/api/organizations")),
+  get: (id: string) => fetcher<Organization>(apiUrl(`/api/organizations/${id}`)),
+  create: (data: { name: string; slug?: string }) =>
+    postJson<Organization>(apiUrl("/api/organizations"), data),
+  update: (id: string, data: Partial<Organization>) =>
+    patchJson<Organization>(apiUrl(`/api/organizations/${id}`), data),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/organizations/${id}`)),
+  switch: (id: string) => postJson<{ token: string }>(apiUrl(`/api/organizations/${id}/switch`), {}),
+  listMembers: (orgId: string) =>
+    fetcher<{ members: (User & { role: string })[] }>(apiUrl(`/api/organizations/${orgId}/members`)),
+  inviteMember: (orgId: string, email: string, role?: string) =>
+    postJson<void>(apiUrl(`/api/organizations/${orgId}/members/invite`), { email, role }),
+  updateMemberRole: (orgId: string, userId: string, role: string) =>
+    patchJson<void>(apiUrl(`/api/organizations/${orgId}/members/${userId}`), { role }),
+  removeMember: (orgId: string, userId: string) =>
+    deleteRequest(apiUrl(`/api/organizations/${orgId}/members/${userId}`)),
+  transferOwnership: (orgId: string, newOwnerId: string) =>
+    postJson<void>(apiUrl(`/api/organizations/${orgId}/transfer`), { new_owner_id: newOwnerId }),
+}
+
 // Convenience export for all APIs
 export const api = {
   auth: authApi,
@@ -478,6 +501,7 @@ export const api = {
   metrics: metricsApi,
   settings: settingsApi,
   environments: environmentsApi,
+  organizations: organizationsApi,
 }
 
 export default api

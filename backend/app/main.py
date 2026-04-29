@@ -165,6 +165,7 @@ async def request_tracing(request: Request, call_next):
 
 app.include_router(auth.router)
 app.include_router(org.router)
+app.include_router(org.organizations_router)
 app.include_router(billing.router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)

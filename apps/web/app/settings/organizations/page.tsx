@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,58 +24,163 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/lib/auth-context"
+import { organizationsApi } from "@/lib/api"
 import { Icon } from "@/lib/icons"
+import { toast } from "sonner"
+import type { Organization, User } from "@/types/api"
 
-const organizations = [
-  {
-    id: "acme-corp",
-    name: "Acme Corp",
-    slug: "acme-corp",
-    logo: null,
-    role: "Owner",
-    plan: "Business",
-    members: 12,
-    agents: 8,
-    workflows: 47,
-    createdAt: "Jan 2024",
-    current: true,
-  },
-  {
-    id: "initech",
-    name: "Initech",
-    slug: "initech",
-    logo: null,
-    role: "Admin",
-    plan: "Team",
-    members: 5,
-    agents: 3,
-    workflows: 12,
-    createdAt: "Mar 2024",
-    current: false,
-  },
-  {
-    id: "personal",
-    name: "Personal Workspace",
-    slug: "john-doe",
-    logo: null,
-    role: "Owner",
-    plan: "Free",
-    members: 1,
-    agents: 1,
-    workflows: 3,
-    createdAt: "Dec 2023",
-    current: false,
-  },
-]
+type OrganizationWithRole = Organization & { role?: string }
+type Member = User & { role: string }
 
 export default function ManageOrganizationsPage() {
+  const { user } = useAuth()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showMembersDialog, setShowMembersDialog] = useState(false)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [newOrgName, setNewOrgName] = useState("")
   const [newOrgSlug, setNewOrgSlug] = useState("")
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [isMutating, setIsMutating] = useState(false)
+
+  const { data, isLoading, mutate } = useSWR(
+    user ? "organizations:list" : null,
+    () => organizationsApi.list()
+  )
+
+  const organizations = useMemo(
+    () => (data?.organizations as OrganizationWithRole[] | undefined) ?? [],
+    [data]
+  )
+
+  const currentOrgId = selectedOrgId ?? organizations[0]?.id ?? null
+  const selectedOrg = organizations.find((org) => org.id === currentOrgId) ?? null
+
+  const { data: membersData, isLoading: membersLoading, mutate: mutateMembers } = useSWR(
+    user && showMembersDialog && selectedOrg?.id ? `organizations:members:${selectedOrg.id}` : null,
+    () => organizationsApi.listMembers(selectedOrg!.id)
+  )
+  const members = (membersData?.members as Member[] | undefined) ?? []
 
   const handleNameChange = (name: string) => {
     setNewOrgName(name)
     setNewOrgSlug(name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))
+  }
+
+  const handleCreateOrganization = async () => {
+    if (!newOrgName.trim()) {
+      toast.error("Organization name is required")
+      return
+    }
+    try {
+      setIsMutating(true)
+      await organizationsApi.create({ name: newOrgName.trim(), slug: newOrgSlug.trim() || undefined })
+      await mutate()
+      setNewOrgName("")
+      setNewOrgSlug("")
+      setShowCreateDialog(false)
+      toast.success("Organization created")
+    } catch (error) {
+      console.error("Failed to create organization", error)
+      toast.error(error instanceof Error ? error.message : "Failed to create organization")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleSwitchOrganization = async (orgId: string) => {
+    try {
+      setIsMutating(true)
+      await organizationsApi.switch(orgId)
+      setSelectedOrgId(orgId)
+      toast.success("Organization switched")
+    } catch (error) {
+      console.error("Failed to switch organization", error)
+      toast.error(error instanceof Error ? error.message : "Failed to switch organization")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleDeleteOrganization = async (orgId: string) => {
+    if (!window.confirm("Delete this organization? This action cannot be undone.")) return
+    try {
+      setIsMutating(true)
+      await organizationsApi.delete(orgId)
+      await mutate()
+      if (selectedOrgId === orgId) setSelectedOrgId(null)
+      toast.success("Organization deleted")
+    } catch (error) {
+      console.error("Failed to delete organization", error)
+      toast.error(error instanceof Error ? error.message : "Failed to delete organization")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleInviteMember = async () => {
+    if (!selectedOrg || !inviteEmail.trim()) {
+      toast.error("Invite email is required")
+      return
+    }
+    try {
+      setIsMutating(true)
+      await organizationsApi.inviteMember(selectedOrg.id, inviteEmail.trim())
+      setInviteEmail("")
+      await mutateMembers()
+      toast.success("Invitation sent")
+    } catch (error) {
+      console.error("Failed to invite member", error)
+      toast.error(error instanceof Error ? error.message : "Failed to invite member")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleUpdateMemberRole = async (member: Member, role: "admin" | "member") => {
+    if (!selectedOrg) return
+    try {
+      setIsMutating(true)
+      await organizationsApi.updateMemberRole(selectedOrg.id, member.id, role)
+      await mutateMembers()
+      toast.success("Member role updated")
+    } catch (error) {
+      console.error("Failed to update member role", error)
+      toast.error(error instanceof Error ? error.message : "Failed to update role")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleRemoveMember = async (member: Member) => {
+    if (!selectedOrg) return
+    if (!window.confirm(`Remove ${member.email ?? member.id} from organization?`)) return
+    try {
+      setIsMutating(true)
+      await organizationsApi.removeMember(selectedOrg.id, member.id)
+      await mutateMembers()
+      toast.success("Member removed")
+    } catch (error) {
+      console.error("Failed to remove member", error)
+      toast.error(error instanceof Error ? error.message : "Failed to remove member")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sign in required</CardTitle>
+              <CardDescription>Sign in to manage organizations and members.</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -141,7 +247,7 @@ export default function ManageOrganizationsPage() {
                   <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={() => setShowCreateDialog(false)}>
+                  <Button onClick={handleCreateOrganization} disabled={isMutating || !newOrgName.trim()}>
                     Create Organization
                   </Button>
                 </DialogFooter>
@@ -153,16 +259,21 @@ export default function ManageOrganizationsPage() {
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-6 py-8">
+        {isLoading && (
+          <Card className="mb-4">
+            <CardContent className="p-6 text-sm text-muted-foreground">Loading organizations...</CardContent>
+          </Card>
+        )}
         <div className="space-y-4">
           {organizations.map((org, index) => (
             <Card 
               key={org.id} 
               className={`relative overflow-hidden transition-all hover:shadow-md ${
-                org.current ? "ring-2 ring-primary/20 bg-primary/[0.02]" : ""
+                currentOrgId === org.id ? "ring-2 ring-primary/20 bg-primary/[0.02]" : ""
               }`}
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              {org.current && (
+              {currentOrgId === org.id && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-primary to-transparent" />
               )}
               
@@ -172,13 +283,13 @@ export default function ManageOrganizationsPage() {
                     {/* Org Avatar */}
                     <div className="relative">
                       <div className={`h-14 w-14 rounded-xl flex items-center justify-center text-lg font-semibold ${
-                        org.current 
+                        currentOrgId === org.id
                           ? "bg-primary/10 text-primary" 
                           : "bg-secondary text-muted-foreground"
                       }`}>
                         {org.name.charAt(0)}
                       </div>
-                      {org.current && (
+                      {currentOrgId === org.id && (
                         <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-background">
                           <Icon name="check" size="xs" className="text-white" />
                         </div>
@@ -189,7 +300,7 @@ export default function ManageOrganizationsPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-semibold text-foreground">{org.name}</h3>
-                        {org.current && (
+                        {currentOrgId === org.id && (
                           <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 border-0">
                             Current
                           </Badge>
@@ -201,15 +312,7 @@ export default function ManageOrganizationsPage() {
                       <div className="flex items-center gap-4 pt-2">
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                           <Icon name="users" size="sm" />
-                          <span>{org.members} members</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Icon name="agents" size="sm" />
-                          <span>{org.agents} agents</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Icon name="automations" size="sm" />
-                          <span>{org.workflows} workflows</span>
+                          <span>{currentOrgId === org.id ? members.length : "-" } members</span>
                         </div>
                       </div>
                     </div>
@@ -218,7 +321,7 @@ export default function ManageOrganizationsPage() {
                   {/* Right Side */}
                   <div className="flex items-start gap-4">
                     <div className="text-right space-y-1">
-                      <Badge 
+                      <Badge
                         variant="outline" 
                         className={`${
                           org.plan === "Business" 
@@ -228,9 +331,9 @@ export default function ManageOrganizationsPage() {
                             : "bg-secondary text-muted-foreground"
                         }`}
                       >
-                        {org.plan}
+                        {org.plan ?? "Free"}
                       </Badge>
-                      <p className="text-xs text-muted-foreground">{org.role}</p>
+                      <p className="text-xs text-muted-foreground">{org.role ?? "member"}</p>
                     </div>
                     
                     <DropdownMenu>
@@ -240,8 +343,12 @@ export default function ManageOrganizationsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        {!org.current && (
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
+                        {currentOrgId !== org.id && (
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            disabled={isMutating}
+                            onClick={() => void handleSwitchOrganization(org.id)}
+                          >
                             <Icon name="check" size="sm" />
                             Switch to this org
                           </DropdownMenuItem>
@@ -252,7 +359,13 @@ export default function ManageOrganizationsPage() {
                             Organization settings
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 cursor-pointer">
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer"
+                          onClick={() => {
+                            setSelectedOrgId(org.id)
+                            setShowMembersDialog(true)
+                          }}
+                        >
                           <Icon name="users" size="sm" />
                           Manage members
                         </DropdownMenuItem>
@@ -261,20 +374,24 @@ export default function ManageOrganizationsPage() {
                           Billing & plan
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        {org.role === "Owner" && (
+                        {(org.role ?? "").toLowerCase() === "admin" && (
                           <>
-                            <DropdownMenuItem className="gap-2 cursor-pointer">
+                            <DropdownMenuItem className="gap-2 cursor-pointer" disabled>
                               <Icon name="share" size="sm" />
                               Transfer ownership
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                              onClick={() => void handleDeleteOrganization(org.id)}
+                              disabled={isMutating}
+                            >
                               <Icon name="trash" size="sm" />
                               Delete organization
                             </DropdownMenuItem>
                           </>
                         )}
-                        {org.role !== "Owner" && (
-                          <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                        {(org.role ?? "").toLowerCase() !== "admin" && (
+                          <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" disabled>
                             <Icon name="signOut" size="sm" />
                             Leave organization
                           </DropdownMenuItem>
@@ -287,6 +404,13 @@ export default function ManageOrganizationsPage() {
             </Card>
           ))}
         </div>
+        {!isLoading && organizations.length === 0 && (
+          <Card className="mt-4">
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              You are not a member of any organizations yet.
+            </CardContent>
+          </Card>
+        )}
 
         {/* Help Section */}
         <div className="mt-12 p-6 rounded-xl bg-secondary/30 border border-border">
@@ -317,6 +441,71 @@ export default function ManageOrganizationsPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showMembersDialog} onOpenChange={setShowMembersDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage Members</DialogTitle>
+            <DialogDescription>
+              Invite and manage members in {selectedOrg?.name ?? "organization"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="member@company.com"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                disabled={isMutating}
+              />
+              <Button onClick={() => void handleInviteMember()} disabled={isMutating || !inviteEmail.trim()}>
+                Invite
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {membersLoading && <p className="text-sm text-muted-foreground">Loading members...</p>}
+              {!membersLoading && members.length === 0 && (
+                <p className="text-sm text-muted-foreground">No members found.</p>
+              )}
+              {members.map((member) => (
+                <div key={member.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">{member.full_name || member.email || member.id}</p>
+                    <p className="text-xs text-muted-foreground">{member.email ?? member.id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{member.role}</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isMutating}
+                      onClick={() =>
+                        void handleUpdateMemberRole(member, member.role === "admin" ? "member" : "admin")
+                      }
+                    >
+                      Toggle Role
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={isMutating}
+                      onClick={() => void handleRemoveMember(member)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMembersDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
