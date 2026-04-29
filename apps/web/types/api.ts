@@ -426,6 +426,51 @@ export interface AuditSummary {
   byEntityType: Record<string, number>
 }
 
+// ============ Billing ============
+export type SubscriptionTier = "free" | "node" | "control" | "command"
+export type SubscriptionStatus = "active" | "past_due" | "canceled" | "trialing"
+
+export interface Subscription {
+  id: string
+  stripe_subscription_id?: string
+  tier: SubscriptionTier
+  status: SubscriptionStatus
+  seat_count: number
+  lite_seats: number
+  current_period_start: string
+  current_period_end: string
+  cancel_at_period_end: boolean
+  meson_addons: string[]
+}
+
+export interface Invoice {
+  id: string
+  stripe_invoice_id?: string
+  amount_cents: number
+  currency: string
+  status: string
+  period_start: string
+  period_end: string
+  pdf_url?: string
+  created_at: string
+}
+
+export interface PaymentMethod {
+  id: string
+  type: string
+  last4: string
+  exp_month: number
+  exp_year: number
+  is_default: boolean
+}
+
+export interface BillingOverview {
+  subscription: Subscription
+  usage: BillingUsageResponse
+  invoices: Invoice[]
+  payment_methods: PaymentMethod[]
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

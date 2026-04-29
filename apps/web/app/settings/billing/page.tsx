@@ -65,6 +65,9 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
+import { billingApi } from "@/lib/api"
+import { toast } from "sonner"
 
 const invoices = [
   { id: "INV-2024-003", date: "Apr 1, 2024", amount: "$499.00", status: "Paid" },
@@ -142,6 +145,12 @@ const plans = [
   }
 ]
 
+const PLAN_PRICE_IDS: Record<string, string | undefined> = {
+  starter: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_NODE_MONTHLY,
+  business: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_CONTROL_MONTHLY,
+  enterprise: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_COMMAND_MONTHLY,
+}
+
 const colorClasses = {
   blue: {
     bg: "bg-blue-500/10",
@@ -190,6 +199,7 @@ const weeklyData = [
 ]
 
 export default function BillingPage() {
+  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [animatedValues, setAnimatedValues] = useState<Record<string, number>>({})
   
@@ -229,33 +239,71 @@ export default function BillingPage() {
 
   // Handler functions
   const handleUpgrade = async (planId: string) => {
+    if (!user) {
+      toast.error("Sign in required")
+      return
+    }
     setSelectedPlan(planId)
     setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsProcessing(false)
-    setUpgradeModalOpen(false)
-    setSelectedPlan(null)
+    try {
+      const priceId = PLAN_PRICE_IDS[planId]
+      if (!priceId) {
+        toast.error("Missing Stripe price ID configuration for selected plan")
+        return
+      }
+      const response = await billingApi.createCheckoutSession(priceId, 1)
+      if (response.checkout_url) {
+        window.location.assign(response.checkout_url)
+      }
+    } catch (error) {
+      console.error("[v0] Checkout failed:", error)
+      toast.error("Failed to start checkout")
+    } finally {
+      setIsProcessing(false)
+      setUpgradeModalOpen(false)
+      setSelectedPlan(null)
+    }
   }
 
   const handleCancelSubscription = async () => {
+    if (!user) {
+      toast.error("Sign in required")
+      return
+    }
     setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsProcessing(false)
-    setCancelModalOpen(false)
+    try {
+      await billingApi.cancelSubscription(true)
+      toast.success("Subscription will cancel at period end")
+    } catch (error) {
+      console.error("[v0] Cancel subscription failed:", error)
+      toast.error("Failed to cancel subscription")
+    } finally {
+      setIsProcessing(false)
+      setCancelModalOpen(false)
+    }
   }
 
   const handleUpdateCard = async () => {
+    if (!user) {
+      toast.error("Sign in required")
+      return
+    }
     setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsProcessing(false)
-    setUpdateCardModalOpen(false)
-    // Reset form
-    setCardNumber("")
-    setCardExpiry("")
-    setCardCvc("")
+    try {
+      const response = await billingApi.createPortalSession()
+      if (response.portal_url) {
+        window.location.assign(response.portal_url)
+      }
+    } catch (error) {
+      console.error("[v0] Portal session failed:", error)
+      toast.error("Failed to open billing portal")
+    } finally {
+      setIsProcessing(false)
+      setUpdateCardModalOpen(false)
+      setCardNumber("")
+      setCardExpiry("")
+      setCardCvc("")
+    }
   }
 
   const handleUpdateAddress = async () => {
@@ -267,31 +315,55 @@ export default function BillingPage() {
   }
 
   const handleExportAll = () => {
-    // Simulate export
-    const csvContent = "Invoice ID,Date,Amount,Status\n" + 
-      invoices.map(inv => `${inv.id},${inv.date},${inv.amount},${inv.status}`).join("\n")
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "invoices.csv"
-    a.click()
-    URL.revokeObjectURL(url)
+    void (async () => {
+      if (!user) {
+        toast.error("Sign in required")
+        return
+      }
+      try {
+        const response = await billingApi.listInvoices()
+        const csvContent =
+          "Invoice ID,Amount (cents),Currency,Status,Period Start,Period End,Created At\n" +
+          (response.invoices || [])
+            .map(
+              (inv) =>
+                `${inv.id},${inv.amount_cents},${inv.currency},${inv.status},${inv.period_start},${inv.period_end},${inv.created_at}`
+            )
+            .join("\n")
+        const blob = new Blob([csvContent], { type: "text/csv" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "invoices.csv"
+        a.click()
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        console.error("[v0] Export invoices failed:", error)
+        toast.error("Failed to export invoices")
+      }
+    })()
   }
 
   const handleDownloadInvoice = (invoiceId: string) => {
-    // Simulate individual invoice download
-    const invoice = invoices.find(inv => inv.id === invoiceId)
-    if (invoice) {
-      const content = `Invoice: ${invoice.id}\nDate: ${invoice.date}\nAmount: ${invoice.amount}\nStatus: ${invoice.status}`
-      const blob = new Blob([content], { type: "text/plain" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${invoiceId}.txt`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
+    void (async () => {
+      if (!user) {
+        toast.error("Sign in required")
+        return
+      }
+      try {
+        const response = await billingApi.downloadInvoice(invoiceId)
+        if (!response.ok) {
+          throw new Error(`Invoice download failed (${response.status})`)
+        }
+        const pdfUrl = await response.text()
+        if (pdfUrl) {
+          window.open(pdfUrl, "_blank", "noopener,noreferrer")
+        }
+      } catch (error) {
+        console.error("[v0] Download invoice failed:", error)
+        toast.error("Failed to download invoice")
+      }
+    })()
   }
 
   const formatCardNumber = (value: string) => {

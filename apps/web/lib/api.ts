@@ -47,6 +47,9 @@ import type {
   AuditLog,
   AuditListResponse,
   AuditSummary,
+  Subscription,
+  Invoice,
+  BillingOverview,
   ApiKey,
   ApiKeyListResponse,
   BillingUsageResponse,
@@ -344,6 +347,30 @@ export const auditApi = {
   },
 }
 
+// ============ Billing ============
+export const billingApi = {
+  overview: () => fetcher<BillingOverview>(apiUrl("/api/billing")),
+  createCheckoutSession: (priceId: string, quantity?: number) =>
+    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {
+      price_id: priceId,
+      quantity,
+    }),
+  createPortalSession: () =>
+    postJson<{ portal_url: string }>(apiUrl("/api/billing/portal"), {}),
+  updateSeats: (quantity: number) =>
+    postJson<{ subscription: Subscription; prorated_amount?: number }>(
+      apiUrl("/api/billing/seats"),
+      { quantity }
+    ),
+  cancelSubscription: (atPeriodEnd?: boolean) =>
+    postJson<Subscription>(apiUrl("/api/billing/cancel"), { at_period_end: atPeriodEnd ?? true }),
+  reactivateSubscription: () =>
+    postJson<Subscription>(apiUrl("/api/billing/reactivate"), {}),
+  listInvoices: () => fetcher<{ invoices: Invoice[] }>(apiUrl("/api/billing/invoices")),
+  downloadInvoice: (invoiceId: string) =>
+    apiFetch(apiUrl(`/api/billing/invoices/${invoiceId}/pdf`)),
+}
+
 // ============ Metrics ============
 export const metricsApi = {
   overview: (range?: string) =>
@@ -447,6 +474,7 @@ export const api = {
   search: searchApi,
   training: trainingApi,
   audit: auditApi,
+  billing: billingApi,
   metrics: metricsApi,
   settings: settingsApi,
   environments: environmentsApi,
