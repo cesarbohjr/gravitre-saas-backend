@@ -26,6 +26,7 @@ from app.routers import (
     rag,
     rag_admin,
     search,
+    sso,
     training,
     workflows,
     sources,
@@ -167,6 +168,7 @@ async def request_tracing(request: Request, call_next):
 
 
 app.include_router(auth.router)
+app.include_router(sso.router)
 app.include_router(org.router)
 app.include_router(org.organizations_router)
 app.include_router(billing.router)

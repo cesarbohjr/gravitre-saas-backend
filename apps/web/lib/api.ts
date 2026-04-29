@@ -62,6 +62,9 @@ import type {
   LiteDeliverable,
   LiteHomeData,
   LiteResultsSummary,
+  SSOConfiguration,
+  SSOConfigurationCreate,
+  SSOInitResponse,
   MetricsOverview,
   MetricInsight,
 } from "@/types/api"
@@ -571,6 +574,22 @@ export const liteApi = {
   },
 }
 
+// ============ SSO ============
+export const ssoApi = {
+  getConfig: () =>
+    fetcher<SSOConfiguration | null>(apiUrl("/api/auth/sso/config")),
+  saveConfig: (data: SSOConfigurationCreate) =>
+    postJson<SSOConfiguration>(apiUrl("/api/auth/sso/config"), data),
+  enable: () =>
+    postJson<{ enabled: boolean }>(apiUrl("/api/auth/sso/config/enable"), {}),
+  disable: () =>
+    postJson<{ enabled: boolean }>(apiUrl("/api/auth/sso/config/disable"), {}),
+  deleteConfig: () =>
+    deleteRequest(apiUrl("/api/auth/sso/config")),
+  initLogin: () =>
+    postJson<SSOInitResponse>(apiUrl("/api/auth/sso/init"), {}),
+}
+
 // Convenience export for all APIs
 export const api = {
   auth: authApi,
@@ -592,6 +611,7 @@ export const api = {
   notifications: notificationsApi,
   onboarding: onboardingApi,
   lite: liteApi,
+  sso: ssoApi,
 }
 
 export default api

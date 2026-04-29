@@ -570,6 +570,46 @@ export interface LiteResultsSummary {
   by_workflow: { workflow_name: string; count: number }[]
 }
 
+// ============ SSO ============
+export type SSOProviderType = "saml" | "oidc"
+
+export interface SSOConfiguration {
+  id: string
+  org_id: string
+  provider_type: SSOProviderType
+  is_enabled: boolean
+  saml_entity_id?: string
+  saml_sso_url?: string
+  oidc_issuer?: string
+  oidc_client_id?: string
+  auto_provision_users: boolean
+  default_role: string
+  allowed_domains?: string[]
+  created_at: string
+}
+
+export interface SSOConfigurationCreate {
+  provider_type: SSOProviderType
+  saml_entity_id?: string
+  saml_sso_url?: string
+  saml_slo_url?: string
+  saml_certificate?: string
+  oidc_issuer?: string
+  oidc_client_id?: string
+  oidc_client_secret?: string
+  oidc_authorization_endpoint?: string
+  oidc_token_endpoint?: string
+  oidc_userinfo_endpoint?: string
+  auto_provision_users?: boolean
+  default_role?: string
+  allowed_domains?: string[]
+}
+
+export interface SSOInitResponse {
+  redirect_url: string
+  state: string
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

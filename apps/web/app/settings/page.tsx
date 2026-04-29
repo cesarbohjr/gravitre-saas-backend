@@ -44,8 +44,8 @@ import {
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { settingsApi } from "@/lib/api"
-import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, User } from "@/types/api"
+import { settingsApi, ssoApi } from "@/lib/api"
+import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, SSOConfiguration, SSOProviderType, User } from "@/types/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -206,11 +206,37 @@ function OrganizationSettings({
 }
 
 function SecuritySettings() {
+  const { user } = useAuth()
+  const { data: ssoConfig, mutate: mutateSso } = useSWR<SSOConfiguration | null>(
+    user ? "/api/auth/sso/config" : null,
+    () => ssoApi.getConfig(),
+    { revalidateOnFocus: false }
+  )
+
   const [ssoDialog, setSsoDialog] = useState(false)
   const [twoFaDialog, setTwoFaDialog] = useState(false)
   const [ipDialog, setIpDialog] = useState(false)
   const [twoFaEnabled, setTwoFaEnabled] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [providerType, setProviderType] = useState<SSOProviderType>("saml")
+  const [entityId, setEntityId] = useState("")
+  const [ssoUrl, setSsoUrl] = useState("")
+  const [certificate, setCertificate] = useState("")
+  const [oidcIssuer, setOidcIssuer] = useState("")
+  const [oidcClientId, setOidcClientId] = useState("")
+  const [oidcClientSecret, setOidcClientSecret] = useState("")
+  const [isTogglingSso, setIsTogglingSso] = useState(false)
+  const [isDeletingSso, setIsDeletingSso] = useState(false)
+  const [isTestingSso, setIsTestingSso] = useState(false)
+
+  useEffect(() => {
+    if (!ssoConfig) return
+    setProviderType(ssoConfig.provider_type)
+    setEntityId(ssoConfig.saml_entity_id || "")
+    setSsoUrl(ssoConfig.saml_sso_url || "")
+    setOidcIssuer(ssoConfig.oidc_issuer || "")
+    setOidcClientId(ssoConfig.oidc_client_id || "")
+  }, [ssoConfig])
 
   const handleEnableTwoFa = async () => {
     setIsSaving(true)
@@ -220,6 +246,106 @@ function SecuritySettings() {
     setTwoFaDialog(false)
   }
 
+  const handleSaveSso = async () => {
+    setIsSaving(true)
+    try {
+      await ssoApi.saveConfig({
+        provider_type: providerType,
+        saml_entity_id: providerType === "saml" ? entityId : undefined,
+        saml_sso_url: providerType === "saml" ? ssoUrl : undefined,
+        saml_certificate: providerType === "saml" ? certificate : undefined,
+        oidc_issuer: providerType === "oidc" ? oidcIssuer : undefined,
+        oidc_client_id: providerType === "oidc" ? oidcClientId : undefined,
+        oidc_client_secret: providerType === "oidc" ? oidcClientSecret : undefined,
+      })
+      toast.success("SSO configuration saved")
+      await mutateSso()
+      setSsoDialog(false)
+    } catch (err) {
+      console.error("[v0] SSO save failed:", err)
+      toast.error("Failed to save SSO configuration")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleToggleSso = async () => {
+    setIsTogglingSso(true)
+    try {
+      if (ssoConfig?.is_enabled) {
+        await ssoApi.disable()
+        toast.success("SSO disabled")
+      } else {
+        await ssoApi.enable()
+        toast.success("SSO enabled")
+      }
+      await mutateSso()
+    } catch (err) {
+      console.error("[v0] SSO toggle failed:", err)
+      toast.error("Failed to toggle SSO")
+    } finally {
+      setIsTogglingSso(false)
+    }
+  }
+
+  const handleDeleteSso = async () => {
+    setIsDeletingSso(true)
+    try {
+      await ssoApi.deleteConfig()
+      toast.success("SSO configuration deleted")
+      await mutateSso()
+      setSsoDialog(false)
+      setEntityId("")
+      setSsoUrl("")
+      setCertificate("")
+      setOidcIssuer("")
+      setOidcClientId("")
+      setOidcClientSecret("")
+      setProviderType("saml")
+    } catch (err) {
+      console.error("[v0] SSO delete failed:", err)
+      toast.error("Failed to delete SSO configuration")
+    } finally {
+      setIsDeletingSso(false)
+    }
+  }
+
+  const getMetadataUrl = () => {
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/$/, "")
+    if (apiBase) return `${apiBase}/api/auth/sso/metadata`
+    if (typeof window !== "undefined") return `${window.location.origin}/api/auth/sso/metadata`
+    return "/api/auth/sso/metadata"
+  }
+
+  const handleCopyMetadataUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(getMetadataUrl())
+      toast.success("SP metadata URL copied")
+    } catch (err) {
+      console.error("[v0] Failed to copy metadata URL:", err)
+      toast.error("Failed to copy metadata URL")
+    }
+  }
+
+  const handleTestSsoLogin = async () => {
+    if (!ssoConfig?.is_enabled) {
+      toast.error("Enable SSO before testing")
+      return
+    }
+    setIsTestingSso(true)
+    try {
+      const result = await ssoApi.initLogin()
+      if (!result.redirect_url) {
+        throw new Error("Missing redirect URL")
+      }
+      window.location.href = result.redirect_url
+    } catch (err) {
+      console.error("[v0] SSO test init failed:", err)
+      toast.error("Failed to initialize SSO login test")
+      setIsTestingSso(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
@@ -227,10 +353,40 @@ function SecuritySettings() {
           <Lock className="h-5 w-5 text-muted-foreground" />
           <div>
             <p className="text-sm font-medium text-foreground">Single Sign-On (SSO)</p>
-            <p className="text-xs text-muted-foreground">Enable SAML or OIDC authentication</p>
+            <p className="text-xs text-muted-foreground">
+              {ssoConfig
+                ? `${ssoConfig.provider_type.toUpperCase()} configured ${ssoConfig.is_enabled ? "and enabled" : "but disabled"}`
+                : "Enable SAML or OIDC authentication"}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              SP metadata: <span className="font-mono">{getMetadataUrl()}</span>
+            </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setSsoDialog(true)}>Configure</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyMetadataUrl} disabled={!ssoConfig}>
+            Copy Metadata URL
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestSsoLogin}
+            disabled={!ssoConfig?.is_enabled || isTestingSso}
+          >
+            {isTestingSso ? <Loader2 className="h-4 w-4 animate-spin" /> : "Test SSO"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setSsoDialog(true)}>
+            Configure
+          </Button>
+          <Button
+            size="sm"
+            variant={ssoConfig?.is_enabled ? "outline" : "default"}
+            onClick={handleToggleSso}
+            disabled={!ssoConfig || isTogglingSso}
+          >
+            {isTogglingSso ? <Loader2 className="h-4 w-4 animate-spin" /> : ssoConfig?.is_enabled ? "Disable" : "Enable"}
+          </Button>
+        </div>
       </div>
       <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
         <div className="flex items-center gap-3">
@@ -265,23 +421,88 @@ function SecuritySettings() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase">Provider Type</label>
-              <select className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground">
-                <option>SAML 2.0</option>
-                <option>OpenID Connect</option>
+              <select
+                className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
+                value={providerType}
+                onChange={(event) => setProviderType(event.target.value as SSOProviderType)}
+              >
+                <option value="saml">SAML 2.0</option>
+                <option value="oidc">OpenID Connect</option>
               </select>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Entity ID</label>
-              <Input placeholder="https://your-idp.com/entity" className="bg-secondary border-border" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">SSO URL</label>
-              <Input placeholder="https://your-idp.com/sso" className="bg-secondary border-border" />
-            </div>
+            {providerType === "saml" ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">Entity ID</label>
+                  <Input
+                    placeholder="https://your-idp.com/entity"
+                    className="bg-secondary border-border"
+                    value={entityId}
+                    onChange={(event) => setEntityId(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">SSO URL</label>
+                  <Input
+                    placeholder="https://your-idp.com/sso"
+                    className="bg-secondary border-border"
+                    value={ssoUrl}
+                    onChange={(event) => setSsoUrl(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">X.509 Certificate</label>
+                  <textarea
+                    className="w-full h-28 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground resize-none"
+                    placeholder="-----BEGIN CERTIFICATE-----"
+                    value={certificate}
+                    onChange={(event) => setCertificate(event.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">Issuer URL</label>
+                  <Input
+                    placeholder="https://your-idp.com"
+                    className="bg-secondary border-border"
+                    value={oidcIssuer}
+                    onChange={(event) => setOidcIssuer(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">Client ID</label>
+                  <Input
+                    placeholder="OIDC client id"
+                    className="bg-secondary border-border"
+                    value={oidcClientId}
+                    onChange={(event) => setOidcClientId(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">Client Secret</label>
+                  <Input
+                    type="password"
+                    placeholder="OIDC client secret"
+                    className="bg-secondary border-border"
+                    value={oidcClientSecret}
+                    onChange={(event) => setOidcClientSecret(event.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSsoDialog(false)}>Cancel</Button>
-            <Button onClick={() => setSsoDialog(false)}>Save Configuration</Button>
+            <Button variant="outline" onClick={handleDeleteSso} disabled={!ssoConfig || isDeletingSso}>
+              {isDeletingSso ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Delete
+            </Button>
+            <Button onClick={handleSaveSso} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Save Configuration
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
