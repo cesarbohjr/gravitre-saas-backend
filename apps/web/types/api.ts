@@ -326,6 +326,69 @@ export interface SearchHistoryItem {
   created_at: string
 }
 
+// ============ Training ============
+export type TrainingDatasetType = "examples" | "documents" | "feedback"
+export type TrainingDatasetStatus = "processing" | "ready" | "failed"
+export type TrainingJobStatus = "queued" | "training" | "completed" | "failed"
+
+export interface TrainingDataset {
+  id: string
+  name: string
+  description?: string
+  type: TrainingDatasetType
+  status: TrainingDatasetStatus
+  record_count: number
+  created_by: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface TrainingRecord {
+  id: string
+  dataset_id: string
+  input: string
+  expected_output: string
+  metadata?: Record<string, unknown>
+  created_at: string
+}
+
+export interface TrainingJob {
+  id: string
+  dataset_id: string
+  dataset_name?: string
+  model_base: string
+  status: TrainingJobStatus
+  progress: number
+  metrics?: { accuracy?: number; loss?: number }
+  started_at?: string
+  completed_at?: string
+  error?: string
+  created_at: string
+}
+
+export interface CustomInstruction {
+  id: string
+  agent_id?: string
+  agent_name?: string
+  name: string
+  content: string
+  is_active: boolean
+  created_at: string
+  updated_at?: string
+}
+
+export interface TrainingDatasetListResponse {
+  datasets: TrainingDataset[]
+}
+
+export interface TrainingJobListResponse {
+  jobs: TrainingJob[]
+}
+
+export interface CustomInstructionListResponse {
+  instructions: CustomInstruction[]
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

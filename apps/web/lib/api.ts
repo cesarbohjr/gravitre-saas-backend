@@ -37,6 +37,13 @@ import type {
   CreateSourceRequest,
   SearchResponse,
   SearchHistoryItem,
+  TrainingDatasetType,
+  TrainingDataset,
+  TrainingJob,
+  CustomInstruction,
+  TrainingDatasetListResponse,
+  TrainingJobListResponse,
+  CustomInstructionListResponse,
   ApiKey,
   ApiKeyListResponse,
   BillingUsageResponse,
@@ -273,6 +280,36 @@ export const searchApi = {
   clearHistory: () => deleteRequest(apiUrl("/api/search/history")),
 }
 
+// ============ Training ============
+export const trainingApi = {
+  // Datasets
+  listDatasets: () => fetcher<TrainingDatasetListResponse>(apiUrl("/api/training/datasets")),
+  getDataset: (id: string) => fetcher<TrainingDataset>(apiUrl(`/api/training/datasets/${id}`)),
+  createDataset: (data: { name: string; type: TrainingDatasetType; description?: string }) =>
+    postJson<TrainingDataset>(apiUrl("/api/training/datasets"), data),
+  deleteDataset: (id: string) => deleteRequest(apiUrl(`/api/training/datasets/${id}`)),
+  uploadRecords: (datasetId: string, records: { input: string; expected_output: string }[]) =>
+    postJson<{ added: number }>(apiUrl(`/api/training/datasets/${datasetId}/records`), { records }),
+
+  // Jobs
+  listJobs: () => fetcher<TrainingJobListResponse>(apiUrl("/api/training/jobs")),
+  getJob: (id: string) => fetcher<TrainingJob>(apiUrl(`/api/training/jobs/${id}`)),
+  createJob: (datasetId: string, modelBase: string) =>
+    postJson<TrainingJob>(apiUrl("/api/training/jobs"), { dataset_id: datasetId, model_base: modelBase }),
+  cancelJob: (id: string) => postJson<void>(apiUrl(`/api/training/jobs/${id}/cancel`), {}),
+
+  // Instructions
+  listInstructions: () => fetcher<CustomInstructionListResponse>(apiUrl("/api/training/instructions")),
+  getInstruction: (id: string) => fetcher<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`)),
+  createInstruction: (data: { name: string; content: string; agent_id?: string }) =>
+    postJson<CustomInstruction>(apiUrl("/api/training/instructions"), data),
+  updateInstruction: (id: string, data: Partial<CustomInstruction>) =>
+    patchJson<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`), data),
+  deleteInstruction: (id: string) => deleteRequest(apiUrl(`/api/training/instructions/${id}`)),
+  toggleInstruction: (id: string, isActive: boolean) =>
+    patchJson<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`), { is_active: isActive }),
+}
+
 // ============ Metrics ============
 export const metricsApi = {
   overview: (range?: string) =>
@@ -374,6 +411,7 @@ export const api = {
   connectors: connectorsApi,
   sources: sourcesApi,
   search: searchApi,
+  training: trainingApi,
   metrics: metricsApi,
   settings: settingsApi,
   environments: environmentsApi,

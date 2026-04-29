@@ -34,6 +34,18 @@ import { authApi } from "@/lib/api"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
 
+interface AuthSession {
+  id: string
+  device: string
+  ip: string
+  last_active: string
+  current: boolean
+}
+
+interface AuthSessionsResponse {
+  sessions: AuthSession[]
+}
+
 export default function ProfilePage() {
   const { user, loading } = useAuth()
   const { profile, updateProfile, setAvatarImage: setContextAvatarImage, getInitials } = useUserProfile()
@@ -49,7 +61,7 @@ export default function ProfilePage() {
   const [isRevokingAll, setIsRevokingAll] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: sessionsData, mutate: mutateSessions } = useSWR(
+  const { data: sessionsData, mutate: mutateSessions } = useSWR<AuthSessionsResponse>(
     user ? "/api/auth/sessions" : null,
     apiFetcher
   )
