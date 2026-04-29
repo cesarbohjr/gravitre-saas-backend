@@ -389,6 +389,43 @@ export interface CustomInstructionListResponse {
   instructions: CustomInstruction[]
 }
 
+// ============ Audit ============
+export type AuditAction =
+  | "create" | "update" | "delete"
+  | "execute" | "cancel" | "retry"
+  | "approve" | "reject"
+  | "login" | "logout"
+  | "invite" | "remove"
+
+export interface AuditLog {
+  id: string
+  user_id?: string
+  user_name?: string
+  user_email?: string
+  agent_id?: string
+  agent_name?: string
+  action: AuditAction
+  entity_type: string
+  entity_id: string
+  entity_name?: string
+  details?: Record<string, unknown>
+  ip_address?: string
+  user_agent?: string
+  created_at: string
+}
+
+export interface AuditListResponse {
+  logs: AuditLog[]
+  total: number
+  hasMore: boolean
+}
+
+export interface AuditSummary {
+  byAction: Record<string, number>
+  byUser: { user_id: string; user_name: string; count: number }[]
+  byEntityType: Record<string, number>
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -14,431 +13,165 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
+import { auditApi } from "@/lib/api"
+import type { AuditLog } from "@/types/api"
+import { toast } from "sonner"
 import {
   Search,
-  ChevronDown,
   AlertCircle,
   RefreshCw,
   Calendar,
-  CheckCircle2,
-  XCircle,
-  Shield,
+  FileJson,
+  FileText,
   User,
-  Workflow,
-  Settings,
-  Bot,
-  LogIn,
-  AlertTriangle,
-  Eye,
   Clock,
-  Filter
+  FileText as EntityIcon,
 } from "lucide-react"
-
-type Severity = "info" | "warning" | "error"
-type ActorType = "user" | "system" | "ai"
-
-interface AuditEvent {
-  id: string
-  timestamp: string
-  timestampFull: string
-  action: string
-  actionLabel: string
-  actor: string
-  actorType: ActorType
-  resource: string
-  resourceType: string
-  environment: "production" | "staging"
-  severity: Severity
-  details: {
-    description: string
-    metadata: Record<string, string>
-  }
+function getRangeStart(range: string): string | undefined {
+  const now = Date.now()
+  if (range === "24h") return new Date(now - 24 * 60 * 60 * 1000).toISOString()
+  if (range === "7d") return new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+  if (range === "30d") return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
+  return undefined
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
-
-const fallbackEvents: AuditEvent[] = [
-  {
-    id: "evt-001",
-    timestamp: "2m ago",
-    timestampFull: "2024-01-15 14:32:45 UTC",
-    action: "approval.granted",
-    actionLabel: "Approval Granted",
-    actor: "sarah.chen@company.com",
-    actorType: "user",
-    resource: "sync-customers",
-    resourceType: "workflow",
-    environment: "production",
-    severity: "info",
-    details: {
-      description: "Approved retry action for sync-customers workflow run",
-      metadata: { run_id: "run-1234", step: "3", approval_type: "manual" },
-    },
-  },
-  {
-    id: "evt-002",
-    timestamp: "2m ago",
-    timestampFull: "2024-01-15 14:32:41 UTC",
-    action: "ai.action",
-    actionLabel: "AI Action Executed",
-    actor: "AI Operator",
-    actorType: "ai",
-    resource: "sync-customers",
-    resourceType: "workflow",
-    environment: "production",
-    severity: "info",
-    details: {
-      description: "AI operator executed approved retry on failed run",
-      metadata: { action_type: "retry", confidence: "0.94", tokens: "1,245" },
-    },
-  },
-  {
-    id: "evt-003",
-    timestamp: "15m ago",
-    timestampFull: "2024-01-15 14:19:22 UTC",
-    action: "workflow.run",
-    actionLabel: "Workflow Started",
-    actor: "james.wilson@company.com",
-    actorType: "user",
-    resource: "etl-main-pipeline",
-    resourceType: "workflow",
-    environment: "production",
-    severity: "info",
-    details: {
-      description: "Manual trigger of etl-main-pipeline workflow",
-      metadata: { trigger: "manual", estimated_duration: "12m" },
-    },
-  },
-  {
-    id: "evt-004",
-    timestamp: "32m ago",
-    timestampFull: "2024-01-15 14:02:11 UTC",
-    action: "approval.denied",
-    actionLabel: "Approval Denied",
-    actor: "admin@company.com",
-    actorType: "user",
-    resource: "postgres-replica",
-    resourceType: "connector",
-    environment: "staging",
-    severity: "warning",
-    details: {
-      description: "Denied schema migration on postgres-replica connector",
-      metadata: { reason: "Incomplete testing", requested_by: "devops@company.com" },
-    },
-  },
-  {
-    id: "evt-005",
-    timestamp: "1h ago",
-    timestampFull: "2024-01-15 13:34:55 UTC",
-    action: "connector.update",
-    actionLabel: "Connector Updated",
-    actor: "devops@company.com",
-    actorType: "user",
-    resource: "salesforce-api",
-    resourceType: "connector",
-    environment: "production",
-    severity: "info",
-    details: {
-      description: "Updated connection credentials for salesforce-api",
-      metadata: { field: "credentials", masked: "true" },
-    },
-  },
-  {
-    id: "evt-006",
-    timestamp: "2h ago",
-    timestampFull: "2024-01-15 12:28:33 UTC",
-    action: "workflow.update",
-    actionLabel: "Workflow Modified",
-    actor: "sarah.chen@company.com",
-    actorType: "user",
-    resource: "data-validation",
-    resourceType: "workflow",
-    environment: "staging",
-    severity: "info",
-    details: {
-      description: "Updated schedule for data-validation workflow",
-      metadata: { previous_schedule: "0 */4 * * *", new_schedule: "0 */2 * * *" },
-    },
-  },
-  {
-    id: "evt-007",
-    timestamp: "3h ago",
-    timestampFull: "2024-01-15 11:45:12 UTC",
-    action: "user.login",
-    actionLabel: "User Login",
-    actor: "james.wilson@company.com",
-    actorType: "user",
-    resource: "auth",
-    resourceType: "system",
-    environment: "production",
-    severity: "info",
-    details: {
-      description: "Successful login from new device",
-      metadata: { device: "MacBook Pro", location: "San Francisco, CA", ip: "192.168.1.xxx" },
-    },
-  },
-  {
-    id: "evt-008",
-    timestamp: "5h ago",
-    timestampFull: "2024-01-15 09:12:44 UTC",
-    action: "workflow.failed",
-    actionLabel: "Workflow Failed",
-    actor: "system",
-    actorType: "system",
-    resource: "sync-customers",
-    resourceType: "workflow",
-    environment: "production",
-    severity: "error",
-    details: {
-      description: "Automated run of sync-customers failed at step 3",
-      metadata: { step: "3", error: "Connection timeout", duration: "4m 32s" },
-    },
-  },
-]
-
-const actionIcons: Record<string, typeof CheckCircle2> = {
-  "approval.granted": CheckCircle2,
-  "approval.denied": XCircle,
-  "ai.action": Bot,
-  "workflow.run": Workflow,
-  "workflow.update": Settings,
-  "workflow.failed": AlertTriangle,
-  "connector.update": Shield,
-  "user.login": LogIn,
+function formatAction(action: string): string {
+  return action
+    .replaceAll("_", " ")
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
 }
 
-const severityConfig = {
-  info: { color: "text-foreground", dot: "bg-blue-500", bg: "bg-transparent" },
-  warning: { color: "text-amber-400", dot: "bg-amber-500", bg: "bg-amber-500/5" },
-  error: { color: "text-red-400", dot: "bg-red-500", bg: "bg-red-500/5" },
-}
-
-const actorTypeConfig = {
-  user: { icon: User, color: "text-blue-400", bg: "bg-blue-500/10" },
-  system: { icon: Settings, color: "text-zinc-400", bg: "bg-zinc-500/10" },
-  ai: { icon: Bot, color: "text-violet-400", bg: "bg-violet-500/10" },
-}
-
-// Timeline Event Component
-function TimelineEvent({ 
-  event, 
-  isExpanded, 
-  onToggle,
-  isFirst,
-  isLast
-}: { 
-  event: AuditEvent
-  isExpanded: boolean
-  onToggle: () => void
-  isFirst: boolean
-  isLast: boolean
-}) {
-  const ActionIcon = actionIcons[event.action] || Settings
-  const severityCfg = severityConfig[event.severity]
-  const actorCfg = actorTypeConfig[event.actorType]
-  const ActorIcon = actorCfg.icon
-
-  return (
-    <motion.div
-      layout
-      className="relative"
-    >
-      {/* Timeline line */}
-      {!isLast && (
-        <div className={cn(
-          "absolute left-5 top-12 bottom-0 w-px",
-          event.severity === "error" ? "bg-gradient-to-b from-red-500/50 to-border" : "bg-border"
-        )} />
-      )}
-      
-      {/* Event node */}
-      <div 
-        className={cn(
-          "relative flex gap-4 py-3 px-2 rounded-lg cursor-pointer transition-all",
-          isExpanded ? "bg-card" : "hover:bg-card/50",
-          event.severity === "error" && "bg-red-500/5"
-        )}
-        onClick={onToggle}
-      >
-        {/* Timeline dot */}
-        <div className="relative flex flex-col items-center">
-          <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all",
-            event.severity === "error" 
-              ? "border-red-500/50 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)]" 
-              : event.severity === "warning"
-                ? "border-amber-500/50 bg-amber-500/10"
-                : "border-border bg-secondary"
-          )}>
-            <ActionIcon className={cn(
-              "h-4 w-4",
-              event.severity === "error" ? "text-red-400" :
-              event.severity === "warning" ? "text-amber-400" :
-              "text-muted-foreground"
-            )} />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4 mb-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={cn("text-sm font-medium", severityCfg.color)}>
-                {event.actionLabel}
-              </span>
-              <EnvironmentBadge environment={event.environment} />
-              {event.actorType === "ai" && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
-                  <Bot className="h-2.5 w-2.5" />
-                  AI
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-              <Clock className="h-3 w-3" />
-              {event.timestamp}
-              <ChevronDown className={cn(
-                "h-3.5 w-3.5 transition-transform",
-                isExpanded && "rotate-180"
-              )} />
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-            {event.details.description}
-          </p>
-
-          {/* Actor & Resource */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <div className={cn("h-5 w-5 rounded flex items-center justify-center", actorCfg.bg)}>
-                <ActorIcon className={cn("h-3 w-3", actorCfg.color)} />
-              </div>
-              <span className="text-foreground">{event.actor}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-muted-foreground">on</span>
-              <span className="font-mono text-foreground">{event.resource}</span>
-            </span>
-          </div>
-
-          {/* Expanded details */}
-          <AnimatePresence>
-            {isExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
-                  <div>
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                      Full Timestamp
-                    </span>
-                    <p className="text-sm text-foreground mt-0.5 font-mono">{event.timestampFull}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                      Description
-                    </span>
-                    <p className="text-sm text-foreground mt-0.5">{event.details.description}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                      Metadata
-                    </span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {Object.entries(event.details.metadata).map(([key, value]) => (
-                        <span key={key} className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-xs">
-                          <span className="text-muted-foreground mr-1">{key}:</span>
-                          <span className="text-foreground font-mono">{value}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </motion.div>
-  )
+function formatTime(value: string): string {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return "N/A"
+  return parsed.toLocaleString()
 }
 
 export default function AuditPage() {
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedSeverity, setSelectedSeverity] = useState<string>("all")
-  const [selectedActorType, setSelectedActorType] = useState<string>("all")
+  const [selectedAction, setSelectedAction] = useState<string>("all")
+  const [selectedEntityType, setSelectedEntityType] = useState<string>("all")
   const [selectedDateRange, setSelectedDateRange] = useState<string>("7d")
-  const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
+  const [offset, setOffset] = useState(0)
+  const limit = 50
 
-  const { data, error, isLoading, mutate } = useSWR<{ events: AuditEvent[], total: number }>(
-    `/api/audit`,
-    fetcher,
+  const fromDate = getRangeStart(selectedDateRange)
+  const listKey = user
+    ? ["audit/list", selectedAction, selectedEntityType, selectedDateRange, offset] as const
+    : null
+  const summaryKey = user ? ["audit/summary", selectedDateRange] as const : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    listKey,
+    () =>
+      auditApi.list({
+        action: selectedAction !== "all" ? selectedAction : undefined,
+        entity_type: selectedEntityType !== "all" ? selectedEntityType : undefined,
+        from: fromDate,
+        limit,
+        offset,
+      }),
     {
-      fallbackData: { events: fallbackEvents, total: fallbackEvents.length },
+      fallbackData: { logs: [] as AuditLog[], total: 0, hasMore: false },
       revalidateOnFocus: false,
     }
   )
-
-  const events = data?.events ?? fallbackEvents
-
-  // Filter events
-  const filteredEvents = events.filter((event) => {
-    if (selectedSeverity !== "all" && event.severity !== selectedSeverity) return false
-    if (selectedActorType !== "all" && event.actorType !== selectedActorType) return false
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      return (
-        event.actionLabel.toLowerCase().includes(query) ||
-        event.actor.toLowerCase().includes(query) ||
-        event.resource.toLowerCase().includes(query) ||
-        event.details.description.toLowerCase().includes(query)
-      )
-    }
-    return true
+  const { data: summaryData } = useSWR(summaryKey, () => auditApi.summary(selectedDateRange), {
+    fallbackData: { byAction: {}, byUser: [], byEntityType: {} },
+    revalidateOnFocus: false,
   })
 
-  // Stats
-  const errorCount = events.filter(e => e.severity === "error").length
-  const aiEventCount = events.filter(e => e.actorType === "ai").length
+  const logs = data?.logs ?? []
+
+  const filteredLogs = useMemo(() => {
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      return logs.filter((log) => {
+        const description = String((log.details?.description as string | undefined) ?? "")
+        return (
+          String(log.action ?? "").toLowerCase().includes(query) ||
+          String(log.user_name ?? "").toLowerCase().includes(query) ||
+          String(log.user_email ?? "").toLowerCase().includes(query) ||
+          String(log.entity_type ?? "").toLowerCase().includes(query) ||
+          String(log.entity_name ?? "").toLowerCase().includes(query) ||
+          String(log.entity_id ?? "").toLowerCase().includes(query) ||
+          description.toLowerCase().includes(query)
+        )
+      })
+    }
+    return logs
+  }, [logs, searchQuery])
+
+  const actions = Object.keys(summaryData?.byAction ?? {}).sort()
+  const entityTypes = Object.keys(summaryData?.byEntityType ?? {}).sort()
+
+  useEffect(() => {
+    setOffset(0)
+  }, [selectedAction, selectedEntityType, selectedDateRange])
+
+  async function handleExport(format: "csv" | "json") {
+    try {
+      const response = await auditApi.export(format, fromDate)
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.status})`)
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = format === "csv" ? "audit-export.csv" : "audit-export.json"
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      toast.success(`Exported ${format.toUpperCase()}`)
+    } catch (exportError) {
+      console.error("[v0] Audit export failed:", exportError)
+      toast.error("Failed to export audit logs")
+    }
+  }
 
   return (
     <AppShell>
       <div className="flex flex-col h-full">
-        {/* Header */}
         <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-xl font-semibold text-foreground">Forensic Timeline</h1>
-              <p className="text-sm text-muted-foreground mt-1">System investigation and event analysis</p>
+              <h1 className="text-xl font-semibold text-foreground">Audit Trail</h1>
+              <p className="text-sm text-muted-foreground mt-1">Who did what, when, and the outcome</p>
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => mutate()}>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => void handleExport("csv")}>
+                <FileText className="h-3.5 w-3.5" />
+                CSV
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => void handleExport("json")}>
+                <FileJson className="h-3.5 w-3.5" />
+                JSON
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => void mutate()}>
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
 
-          {/* Quick stats & filters */}
           <div className="flex items-center gap-4">
-            {/* Stats */}
             <div className="flex items-center gap-3">
-              {errorCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <AlertTriangle className="h-3 w-3 text-red-400" />
-                  <span className="text-xs font-medium text-red-400">{errorCount} errors</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                <Bot className="h-3 w-3 text-violet-400" />
-                <span className="text-xs font-medium text-violet-400">{aiEventCount} AI actions</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary border border-border">
+                <Clock className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">{data?.total ?? 0} logs</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary border border-border">
+                <User className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">{summaryData?.byUser?.length ?? 0} active users</span>
               </div>
             </div>
 
-            {/* Filters */}
             <div className="flex items-center gap-2 ml-auto">
               <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
                 <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
@@ -452,27 +185,31 @@ export default function AuditPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-                <SelectTrigger className="w-[110px] h-8 text-xs bg-secondary border-border">
-                  <SelectValue placeholder="Severity" />
+              <Select value={selectedAction} onValueChange={setSelectedAction}>
+                <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
+                  <SelectValue placeholder="Action" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All levels</SelectItem>
-                  <SelectItem value="error">Errors</SelectItem>
-                  <SelectItem value="warning">Warnings</SelectItem>
-                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="all">All actions</SelectItem>
+                  {actions.map((action) => (
+                    <SelectItem key={action} value={action}>
+                      {formatAction(action)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
-              <Select value={selectedActorType} onValueChange={setSelectedActorType}>
-                <SelectTrigger className="w-[110px] h-8 text-xs bg-secondary border-border">
-                  <SelectValue placeholder="Actor" />
+              <Select value={selectedEntityType} onValueChange={setSelectedEntityType}>
+                <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
+                  <SelectValue placeholder="Entity Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All actors</SelectItem>
-                  <SelectItem value="user">Users</SelectItem>
-                  <SelectItem value="system">System</SelectItem>
-                  <SelectItem value="ai">AI</SelectItem>
+                  <SelectItem value="all">All entities</SelectItem>
+                  {entityTypes.map((entityType) => (
+                    <SelectItem key={entityType} value={entityType}>
+                      {entityType}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -489,15 +226,13 @@ export default function AuditPage() {
           </div>
         </div>
 
-        {/* Error banner */}
         {error && (
           <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <AlertCircle className="h-3.5 w-3.5" />
-            Failed to load. Showing cached data.
+            Failed to load audit logs.
           </div>
         )}
 
-        {/* Timeline */}
         <div className="flex-1 overflow-auto px-6 py-4">
           {isLoading ? (
             <div className="space-y-4">
@@ -512,7 +247,7 @@ export default function AuditPage() {
                 </div>
               ))}
             </div>
-          ) : filteredEvents.length === 0 ? (
+          ) : filteredLogs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary mb-3">
                 <Search className="h-6 w-6 text-muted-foreground" />
@@ -520,27 +255,82 @@ export default function AuditPage() {
               <p className="text-sm text-muted-foreground">No events match your filters</p>
             </div>
           ) : (
-            <div className="space-y-0">
-              {filteredEvents.map((event, index) => (
-                <TimelineEvent
-                  key={event.id}
-                  event={event}
-                  isExpanded={expandedEvent === event.id}
-                  onToggle={() => setExpandedEvent(expandedEvent === event.id ? null : event.id)}
-                  isFirst={index === 0}
-                  isLast={index === filteredEvents.length - 1}
-                />
+            <div className="space-y-3">
+              {filteredLogs.map((log, index) => (
+                <motion.div
+                  key={log.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.03, 0.25) }}
+                  className="rounded-lg border border-border bg-card/60 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">{formatAction(log.action)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {log.user_name || log.user_email || "System"} · {formatTime(log.created_at)}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+                      {log.entity_type}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
+                      <EntityIcon className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-foreground">{log.entity_name || log.entity_id}</span>
+                    </span>
+                    {log.user_email && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-foreground">{log.user_email}</span>
+                      </span>
+                    )}
+                    {log.ip_address && (
+                      <span className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-foreground">
+                        {log.ip_address}
+                      </span>
+                    )}
+                  </div>
+                  {log.details && Object.keys(log.details).length > 0 && (
+                    <div className="mt-3 rounded-md border border-border/60 bg-background/50 p-2">
+                      <p className="text-[10px] uppercase text-muted-foreground mb-1">Details</p>
+                      <pre className="text-[11px] text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+                        {JSON.stringify(log.details, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </motion.div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        {filteredEvents.length > 0 && (
+        {filteredLogs.length > 0 && (
           <div className="flex-shrink-0 border-t border-border px-6 py-3">
-            <p className="text-xs text-muted-foreground">
-              Showing {filteredEvents.length} of {events.length} events
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredLogs.length} logs (offset {offset}) · total {data?.total ?? 0}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={offset === 0}
+                  onClick={() => setOffset((current) => Math.max(0, current - limit))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!data?.hasMore}
+                  onClick={() => setOffset((current) => current + limit)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

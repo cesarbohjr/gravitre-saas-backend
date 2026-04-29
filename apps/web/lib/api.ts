@@ -44,6 +44,9 @@ import type {
   TrainingDatasetListResponse,
   TrainingJobListResponse,
   CustomInstructionListResponse,
+  AuditLog,
+  AuditListResponse,
+  AuditSummary,
   ApiKey,
   ApiKeyListResponse,
   BillingUsageResponse,
@@ -310,6 +313,37 @@ export const trainingApi = {
     patchJson<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`), { is_active: isActive }),
 }
 
+// ============ Audit ============
+export const auditApi = {
+  list: (filters?: {
+    user_id?: string
+    entity_type?: string
+    action?: string
+    from?: string
+    to?: string
+    limit?: number
+    offset?: number
+  }) => {
+    const params = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined) params.set(key, String(value))
+      })
+    }
+    const query = params.toString()
+    return fetcher<AuditListResponse>(apiUrl(`/api/audit${query ? `?${query}` : ""}`))
+  },
+  get: (id: string) => fetcher<AuditLog>(apiUrl(`/api/audit/${id}`)),
+  summary: (range?: string) =>
+    fetcher<AuditSummary>(apiUrl(`/api/audit/summary${range ? `?range=${range}` : ""}`)),
+  export: async (format: "csv" | "json", from?: string, to?: string) => {
+    const params = new URLSearchParams({ format })
+    if (from) params.set("from", from)
+    if (to) params.set("to", to)
+    return apiFetch(apiUrl(`/api/audit/export?${params.toString()}`))
+  },
+}
+
 // ============ Metrics ============
 export const metricsApi = {
   overview: (range?: string) =>
@@ -412,6 +446,7 @@ export const api = {
   sources: sourcesApi,
   search: searchApi,
   training: trainingApi,
+  audit: auditApi,
   metrics: metricsApi,
   settings: settingsApi,
   environments: environmentsApi,
