@@ -499,6 +499,25 @@ export interface NotificationListResponse {
   unread_count: number
 }
 
+// ============ Onboarding ============
+export interface OnboardingStep {
+  id: string
+  key: string
+  title: string
+  description: string
+  is_required: boolean
+  is_completed: boolean
+  order: number
+}
+
+export interface OnboardingProgress {
+  current_step: number
+  total_steps: number
+  steps: OnboardingStep[]
+  completed_at?: string
+  skipped: boolean
+}
+
 // ============ Metrics ============
 export interface MetricsOverview {
   total_workflows: number

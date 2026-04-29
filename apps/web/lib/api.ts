@@ -57,6 +57,7 @@ import type {
   LiteSeatsResponse,
   MesonAddonsResponse,
   NotificationListResponse,
+  OnboardingProgress,
   MetricsOverview,
   MetricInsight,
 } from "@/types/api"
@@ -509,6 +510,21 @@ export const notificationsApi = {
     patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
 }
 
+// ============ Onboarding ============
+export const onboardingApi = {
+  getProgress: () =>
+    fetcher<OnboardingProgress>(apiUrl("/api/onboarding")),
+  completeStep: (stepKey: string, data?: Record<string, unknown>) =>
+    postJson<OnboardingProgress>(apiUrl("/api/onboarding/complete-step"), {
+      step_key: stepKey,
+      data,
+    }),
+  skip: () =>
+    postJson<void>(apiUrl("/api/onboarding/skip"), {}),
+  reset: () =>
+    postJson<OnboardingProgress>(apiUrl("/api/onboarding/reset"), {}),
+}
+
 // Convenience export for all APIs
 export const api = {
   auth: authApi,
@@ -528,6 +544,7 @@ export const api = {
   environments: environmentsApi,
   organizations: organizationsApi,
   notifications: notificationsApi,
+  onboarding: onboardingApi,
 }
 
 export default api

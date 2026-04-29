@@ -1,10 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import useSWR from "swr"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { DotLottieAnimation } from "@/components/gravitre/lottie-animation"
+import { onboardingApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 import {
   ArrowRight,
   ArrowLeft,
@@ -130,8 +134,9 @@ const suggestedNextSteps = [
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Form state
   const [orgName, setOrgName] = useState("")
@@ -144,11 +149,42 @@ export default function OnboardingPage() {
   const [taskRunning, setTaskRunning] = useState(false)
   const [taskComplete, setTaskComplete] = useState(false)
 
+  const { data: progress, isLoading: progressLoading, mutate: mutateProgress } = useSWR(
+    user ? "onboarding:progress" : null,
+    () => onboardingApi.getProgress()
+  )
+
   const stepId = STEPS[currentStep].id
 
-  const handleNext = () => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1)
+  useEffect(() => {
+    if (!progress) return
+    const safeIndex = Math.max(0, Math.min(progress.current_step, STEPS.length - 1))
+    setCurrentStep(safeIndex)
+  }, [progress])
+
+  const handleNext = async () => {
+    if (currentStep >= STEPS.length - 1 || isSubmitting) return
+    const stepKey = STEPS[currentStep].id
+    const stepData: Record<string, unknown> = {
+      welcome: { org_name: orgName },
+      role: { selected_role: selectedRole, use_cases: selectedUseCases },
+      path: { selected_path: selectedPath },
+      connect: { selected_connector: selectedConnector },
+      operator: { selected_operator: selectedOperator },
+      task: { task_input: taskInput, task_complete: taskComplete },
+    }[stepKey] ?? {}
+
+    try {
+      setIsSubmitting(true)
+      const updated = await onboardingApi.completeStep(stepKey, stepData)
+      const nextStep = Math.max(currentStep + 1, updated.current_step)
+      setCurrentStep(Math.min(nextStep, STEPS.length - 1))
+      await mutateProgress(updated, { revalidate: false })
+    } catch (error) {
+      console.error("Failed to update onboarding step", error)
+      toast.error(error instanceof Error ? error.message : "Failed to save onboarding progress")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -158,12 +194,32 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleSkip = () => {
-    handleNext()
+  const handleSkip = async () => {
+    if (isSubmitting) return
+    try {
+      setIsSubmitting(true)
+      await onboardingApi.skip()
+      router.push("/operator")
+    } catch (error) {
+      console.error("Failed to skip onboarding", error)
+      toast.error(error instanceof Error ? error.message : "Failed to skip onboarding")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleFinish = () => {
-    router.push("/operator")
+  const handleFinish = async () => {
+    if (isSubmitting) return
+    try {
+      setIsSubmitting(true)
+      await onboardingApi.completeStep("next", {})
+      router.push("/operator")
+    } catch (error) {
+      console.error("Failed to finish onboarding", error)
+      toast.error(error instanceof Error ? error.message : "Failed to finish onboarding")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const toggleUseCase = (id: string) => {
@@ -178,6 +234,17 @@ export default function OnboardingPage() {
     await new Promise(resolve => setTimeout(resolve, 3000))
     setTaskRunning(false)
     setTaskComplete(true)
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground">Sign in required</p>
+          <p className="text-xs text-muted-foreground mt-1">Sign in to continue onboarding.</p>
+        </div>
+      </div>
+    )
   }
 
   const canProceed = () => {
@@ -197,6 +264,11 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      {progressLoading && (
+        <div className="fixed right-4 top-4 z-50 rounded-md border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+          Loading onboarding...
+        </div>
+      )}
       {/* Progress Bar */}
       <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-secondary">
         <div 
@@ -690,7 +762,7 @@ export default function OnboardingPage() {
           ) : (
             <Button
               onClick={handleNext}
-              disabled={!canProceed()}
+              disabled={!canProceed() || isSubmitting}
               className="gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50"
             >
               Continue
