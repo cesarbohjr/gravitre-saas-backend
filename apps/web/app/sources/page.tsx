@@ -731,7 +731,7 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
-  const { data, error, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
+  const { data, error, isLoading, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
     onError: (err) => console.error("[v0] Sources fetch error:", err),
@@ -845,7 +845,12 @@ export default function SourcesPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Button size="sm" className="h-9 gap-2 shadow-lg" onClick={() => setAddModalOpen(true)}>
+              <Button
+                size="sm"
+                className="h-9 gap-2 shadow-lg"
+                onClick={() => setAddModalOpen(true)}
+                disabled={isLoading}
+              >
                 <Sparkles className="h-3.5 w-3.5" />
                 Add Source
               </Button>

@@ -59,64 +59,6 @@ interface Environment {
   receivesFrom?: string
 }
 
-const fallbackEnvironments: Environment[] = [
-  {
-    id: "env-001",
-    name: "Production",
-    slug: "production",
-    status: "active",
-    isDefault: true,
-    health: 98,
-    resources: {
-      workflows: 24,
-      agents: 8,
-      connectors: 12,
-      sources: 6,
-    },
-    apiUrl: "https://api.gravitre.io/v1",
-    createdAt: "Jan 15, 2024",
-    lastActivity: "2 minutes ago",
-    receivesFrom: "staging",
-  },
-  {
-    id: "env-002",
-    name: "Staging",
-    slug: "staging",
-    status: "active",
-    isDefault: false,
-    health: 100,
-    resources: {
-      workflows: 24,
-      agents: 8,
-      connectors: 8,
-      sources: 4,
-    },
-    apiUrl: "https://staging-api.gravitre.io/v1",
-    createdAt: "Jan 15, 2024",
-    lastActivity: "15 minutes ago",
-    promotesTo: "production",
-    receivesFrom: "development",
-  },
-  {
-    id: "env-003",
-    name: "Development",
-    slug: "development",
-    status: "degraded",
-    isDefault: false,
-    health: 72,
-    resources: {
-      workflows: 12,
-      agents: 4,
-      connectors: 4,
-      sources: 2,
-    },
-    apiUrl: "https://dev-api.gravitre.io/v1",
-    createdAt: "Feb 20, 2024",
-    lastActivity: "1 hour ago",
-    promotesTo: "staging",
-  },
-]
-
 function normalizeEnvironmentsResponse(payload: unknown): Environment[] {
   if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
@@ -406,7 +348,6 @@ export default function EnvironmentsPage() {
     }
   )
   const environments = normalizeEnvironmentsResponse(data)
-  const displayEnvironments = environments.length > 0 ? environments : fallbackEnvironments
 
   const handleCreate = async (name: string) => {
     try {
@@ -438,7 +379,7 @@ export default function EnvironmentsPage() {
   }
 
   // Sort environments: development -> staging -> production
-  const sortedEnvs = [...displayEnvironments].sort((a, b) => {
+  const sortedEnvs = [...environments].sort((a, b) => {
     const order = { development: 0, staging: 1, production: 2 }
     return (order[a.slug as keyof typeof order] ?? 0) - (order[b.slug as keyof typeof order] ?? 0)
   })
