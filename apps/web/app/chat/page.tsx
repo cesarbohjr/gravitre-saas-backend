@@ -36,6 +36,10 @@ export default function ChatPage() {
   const history = useMemo(() => historyData?.searches ?? [], [historyData])
 
   const handleSearch = async (nextQuery?: string) => {
+    if (!user) {
+      toast.error("Sign in to use semantic search")
+      return
+    }
     const effectiveQuery = (nextQuery ?? query).trim()
     if (!effectiveQuery) return
     setIsSearching(true)
@@ -54,6 +58,7 @@ export default function ChatPage() {
   }
 
   const handleClearHistory = async () => {
+    if (!user) return
     try {
       await searchApi.clearHistory()
       await mutateHistory()
@@ -65,6 +70,7 @@ export default function ChatPage() {
   }
 
   const handleDeleteHistoryItem = async (id: string) => {
+    if (!user) return
     try {
       await searchApi.deleteHistory(id)
       await mutateHistory()
@@ -102,7 +108,21 @@ export default function ChatPage() {
 
           <div className="flex-1 p-4 md:p-6 overflow-auto">
             <div className="max-w-3xl mx-auto space-y-4">
-              {results.length === 0 && !isSearching ? (
+              {!user ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center py-16 text-center"
+                >
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 flex items-center justify-center mb-6">
+                    <Search className="h-8 w-8 text-blue-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-foreground mb-2">Sign in required</h2>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Semantic search and search history are available after authentication.
+                  </p>
+                </motion.div>
+              ) : results.length === 0 && !isSearching ? (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -196,13 +216,13 @@ export default function ChatPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search workflows, runs, connectors, agents, or docs..."
-                  disabled={isSearching}
+                  disabled={!user || isSearching}
                   className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-sm"
                 />
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!query.trim() || isSearching}
+                  disabled={!user || !query.trim() || isSearching}
                   className="gap-2"
                 >
                   {isSearching ? (
@@ -212,7 +232,7 @@ export default function ChatPage() {
                   )}
                 </Button>
               </div>
-              {suggestions.length > 0 && (
+              {user && suggestions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {suggestions.map((suggestion) => (
                     <button
@@ -236,13 +256,24 @@ export default function ChatPage() {
               <Clock className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground truncate">Recent Searches</h2>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void handleClearHistory()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => void handleClearHistory()}
+              disabled={!user}
+            >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
           
           <div className="flex-1 overflow-auto p-2">
-            {history.length === 0 ? (
+            {!user ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                <Clock className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                <p className="text-xs text-muted-foreground">Sign in to view search history</p>
+              </div>
+            ) : history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                 <Clock className="h-8 w-8 text-muted-foreground/30 mb-3" />
                 <p className="text-xs text-muted-foreground">
