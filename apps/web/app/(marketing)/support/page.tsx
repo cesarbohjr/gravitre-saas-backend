@@ -95,31 +95,31 @@ const faqs = [
 
 export default function SupportPage() {
   return (
-    <div className="bg-black">
+    <div className="bg-white">
       {/* Hero */}
       <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
               How can we help?
             </h1>
-            <p className="mt-6 text-lg text-zinc-400 max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
               Find answers, explore guides, and get support from our team.
             </p>
             
             {/* Search */}
             <div className="mt-8 max-w-xl mx-auto">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
                 <input
                   type="text"
                   placeholder="Search for help..."
-                  className="w-full rounded-xl border border-white/10 bg-white/5 pl-12 pr-4 py-4 text-sm text-white placeholder-zinc-500 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-zinc-300 bg-white pl-12 pr-4 py-4 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -140,16 +140,16 @@ export default function SupportPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  className="group rounded-xl border border-white/10 bg-zinc-900/50 p-6 transition-all hover:border-emerald-500/50 hover:bg-zinc-900"
+                  className="group rounded-xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 mb-4">
-                    <Icon className="h-5 w-5 text-emerald-400" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
+                    <Icon className="h-5 w-5 text-emerald-600" />
                   </div>
-                  <h3 className="font-medium text-white group-hover:text-emerald-400 transition-colors">
+                  <h3 className="font-medium text-zinc-900 group-hover:text-emerald-600 transition-colors">
                     {category.title}
                   </h3>
                   <p className="text-sm text-zinc-500 mt-1">{category.description}</p>
-                  <span className="text-xs text-zinc-600 mt-2 block">{category.articles} articles</span>
+                  <span className="text-xs text-zinc-400 mt-2 block">{category.articles} articles</span>
                 </motion.a>
               )
             })}
@@ -158,7 +158,7 @@ export default function SupportPage() {
       </section>
 
       {/* Popular Articles */}
-      <section className="px-6 py-16 border-t border-white/10">
+      <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -166,7 +166,7 @@ export default function SupportPage() {
             viewport={{ once: true }}
             className="mb-8"
           >
-            <h2 className="text-2xl font-semibold text-white">Popular Articles</h2>
+            <h2 className="text-2xl font-semibold text-zinc-900">Popular Articles</h2>
           </motion.div>
           <div className="space-y-2">
             {popularArticles.map((article, i) => (
@@ -177,10 +177,10 @@ export default function SupportPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900/50 p-4 transition-all hover:border-white/20 hover:bg-zinc-900"
+                className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
               >
-                <span className="text-sm text-white">{article.title}</span>
-                <span className="text-xs text-zinc-600">{article.views} views</span>
+                <span className="text-sm text-zinc-900">{article.title}</span>
+                <span className="text-xs text-zinc-500">{article.views} views</span>
               </motion.a>
             ))}
           </div>
@@ -188,7 +188,7 @@ export default function SupportPage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 border-t border-white/10">
+      <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -196,7 +196,7 @@ export default function SupportPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-2xl font-semibold text-white mb-4">Frequently Asked Questions</h2>
+            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Frequently Asked Questions</h2>
           </motion.div>
           <div className="space-y-4">
             {faqs.map((faq, i) => (
@@ -206,10 +206,10 @@ export default function SupportPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-white/10 bg-zinc-900/50 p-5"
+                className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm"
               >
-                <h3 className="font-medium text-white mb-2">{faq.question}</h3>
-                <p className="text-sm text-zinc-400">{faq.answer}</p>
+                <h3 className="font-medium text-zinc-900 mb-2">{faq.question}</h3>
+                <p className="text-sm text-zinc-600">{faq.answer}</p>
               </motion.div>
             ))}
           </div>
@@ -217,7 +217,7 @@ export default function SupportPage() {
       </section>
 
       {/* Contact Options */}
-      <section className="px-6 py-16 border-t border-white/10">
+      <section className="px-6 py-16 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -225,8 +225,8 @@ export default function SupportPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-2xl font-semibold text-white mb-4">Still need help?</h2>
-            <p className="text-zinc-400">Our team is ready to assist you.</p>
+            <h2 className="text-2xl font-semibold text-zinc-900 mb-4">Still need help?</h2>
+            <p className="text-zinc-600">Our team is ready to assist you.</p>
           </motion.div>
           <div className="grid gap-6 sm:grid-cols-3">
             <motion.a
@@ -234,12 +234,12 @@ export default function SupportPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="group rounded-xl border border-white/10 bg-zinc-900/50 p-6 text-center transition-all hover:border-emerald-500/50"
+              className="group rounded-xl border border-zinc-200 bg-white p-6 text-center transition-all hover:border-emerald-300 hover:shadow-md"
             >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 mb-4">
-                <Mail className="h-5 w-5 text-emerald-400" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                <Mail className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="font-medium text-white mb-1">Email Support</h3>
+              <h3 className="font-medium text-zinc-900 mb-1">Email Support</h3>
               <p className="text-sm text-zinc-500">Response within 24 hours</p>
             </motion.a>
             <motion.button
@@ -248,12 +248,12 @@ export default function SupportPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="group rounded-xl border border-white/10 bg-zinc-900/50 p-6 text-center transition-all hover:border-emerald-500/50"
+              className="group rounded-xl border border-zinc-200 bg-white p-6 text-center transition-all hover:border-emerald-300 hover:shadow-md"
             >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 mb-4">
-                <MessageSquare className="h-5 w-5 text-emerald-400" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                <MessageSquare className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="font-medium text-white mb-1">Live Chat</h3>
+              <h3 className="font-medium text-zinc-900 mb-1">Live Chat</h3>
               <p className="text-sm text-zinc-500">Available 9am-6pm PT</p>
             </motion.button>
             <motion.a
@@ -262,12 +262,12 @@ export default function SupportPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="group rounded-xl border border-white/10 bg-zinc-900/50 p-6 text-center transition-all hover:border-emerald-500/50"
+              className="group rounded-xl border border-zinc-200 bg-white p-6 text-center transition-all hover:border-emerald-300 hover:shadow-md"
             >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 mb-4">
-                <BookOpen className="h-5 w-5 text-emerald-400" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                <BookOpen className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="font-medium text-white mb-1">Documentation</h3>
+              <h3 className="font-medium text-zinc-900 mb-1">Documentation</h3>
               <p className="text-sm text-zinc-500">Technical guides & API docs</p>
             </motion.a>
           </div>

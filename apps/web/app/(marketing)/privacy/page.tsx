@@ -95,7 +95,7 @@ To exercise these rights, contact us at privacy@gravitre.com.`,
 
 export default function PrivacyPage() {
   return (
-    <div className="bg-black">
+    <div className="bg-white">
       <section className="px-6 py-24 lg:py-32">
         <div className="mx-auto max-w-3xl">
           <motion.div
@@ -103,9 +103,9 @@ export default function PrivacyPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl font-semibold text-white mb-4">Privacy Policy</h1>
-            <p className="text-zinc-400 mb-2">Last updated: April 1, 2026</p>
-            <p className="text-zinc-400 mb-12">
+            <h1 className="text-4xl font-semibold text-zinc-900 mb-4">Privacy Policy</h1>
+            <p className="text-zinc-500 mb-2">Last updated: April 1, 2026</p>
+            <p className="text-zinc-600 mb-12">
               This privacy policy describes how Gravitre Inc. (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) collects, 
               uses, and shares information about you when you use our services.
             </p>
@@ -119,10 +119,10 @@ export default function PrivacyPage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <h2 className="text-xl font-semibold text-white mb-4">{section.title}</h2>
-                  <div className="prose prose-invert prose-zinc max-w-none">
+                  <h2 className="text-xl font-semibold text-zinc-900 mb-4">{section.title}</h2>
+                  <div className="prose prose-zinc max-w-none">
                     {section.content.split('\n\n').map((paragraph, j) => (
-                      <p key={j} className="text-zinc-400 whitespace-pre-line mb-4">
+                      <p key={j} className="text-zinc-600 whitespace-pre-line mb-4">
                         {paragraph}
                       </p>
                     ))}
