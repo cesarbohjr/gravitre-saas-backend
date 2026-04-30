@@ -1129,7 +1129,7 @@ export default function FeaturesPage() {
             >
               <div className="lg:order-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 mb-4">
-                  <Plug className="h-3.5 w-3.5 text-amber-600" />
+                  <Zap className="h-3.5 w-3.5 text-amber-600" />
                   <span className="text-xs font-medium text-amber-700">Integrations</span>
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-900 mb-4">Connect to 100+ apps instantly</h3>
