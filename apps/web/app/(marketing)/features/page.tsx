@@ -22,10 +22,10 @@ import {
   FileText,
   Sparkles,
   ChevronRight,
-  Plug,
   Send
 } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
+import { VendorLogo } from "@/components/gravitre/vendor-logo"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
 
 // Bento card component - Light theme
@@ -1183,12 +1183,8 @@ export default function FeaturesPage() {
                               : 'border-zinc-200 bg-white'
                           }`}
                         >
-                          <div className={`h-8 w-8 rounded-lg mx-auto mb-2 flex items-center justify-center ${
-                            app.status === 'connected' ? 'bg-emerald-100' : 'bg-zinc-100'
-                          }`}>
-                            <Plug className={`h-4 w-4 ${
-                              app.status === 'connected' ? 'text-emerald-600' : 'text-zinc-400'
-                            }`} />
+                          <div className="mx-auto mb-2">
+                            <VendorLogo vendor={app.name} size="sm" />
                           </div>
                           <div className="text-[10px] font-medium text-zinc-700">{app.name}</div>
                           <div className={`text-[8px] mt-0.5 ${
