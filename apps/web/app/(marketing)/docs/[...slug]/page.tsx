@@ -427,9 +427,9 @@ export default function DocsSlugPage() {
   const content = docsContent[slug] || defaultContent
   
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-white min-h-screen">
       {/* Breadcrumb and header */}
-      <section className="border-b border-border bg-muted/30">
+      <section className="border-b border-zinc-200 bg-zinc-50/50">
         <div className="mx-auto max-w-4xl px-6 py-8">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -438,7 +438,7 @@ export default function DocsSlugPage() {
           >
             <Link 
               href="/docs"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
+              className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 mb-4"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Docs
@@ -448,16 +448,16 @@ export default function DocsSlugPage() {
               <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
                 {content.category}
               </span>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 text-xs text-zinc-500">
                 <Clock className="h-3 w-3" />
                 {content.readTime} read
               </span>
             </div>
             
-            <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">
+            <h1 className="text-3xl font-semibold text-zinc-900 sm:text-4xl">
               {content.title}
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground max-w-3xl">
+            <p className="mt-4 text-lg text-zinc-600 max-w-3xl">
               {content.description}
             </p>
           </motion.div>
@@ -475,12 +475,12 @@ export default function DocsSlugPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <h2 className="text-xl font-semibold text-foreground mb-4">
+                <h2 className="text-xl font-semibold text-zinc-900 mb-4">
                   {section.title}
                 </h2>
                 <div className="prose prose-zinc max-w-none">
                   {section.content.split('\n\n').map((paragraph, j) => (
-                    <p key={j} className="text-muted-foreground whitespace-pre-line mb-4">
+                    <p key={j} className="text-zinc-600 whitespace-pre-line mb-4">
                       {paragraph}
                     </p>
                   ))}
@@ -498,17 +498,17 @@ export default function DocsSlugPage() {
           </div>
 
           {/* Navigation */}
-          <div className="mt-16 pt-8 border-t border-border">
+          <div className="mt-16 pt-8 border-t border-zinc-200">
             <div className="flex items-center justify-between">
               {content.prevPage ? (
                 <Link
                   href={content.prevPage.href}
-                  className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                  className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900"
                 >
                   <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
                   <span>
-                    <span className="text-xs text-muted-foreground block">Previous</span>
-                    <span className="font-medium text-foreground">{content.prevPage.title}</span>
+                    <span className="text-xs text-zinc-500 block">Previous</span>
+                    <span className="font-medium text-zinc-900">{content.prevPage.title}</span>
                   </span>
                 </Link>
               ) : <div />}
@@ -516,11 +516,11 @@ export default function DocsSlugPage() {
               {content.nextPage ? (
                 <Link
                   href={content.nextPage.href}
-                  className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground text-right"
+                  className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 text-right"
                 >
                   <span>
-                    <span className="text-xs text-muted-foreground block">Next</span>
-                    <span className="font-medium text-foreground">{content.nextPage.title}</span>
+                    <span className="text-xs text-zinc-500 block">Next</span>
+                    <span className="font-medium text-zinc-900">{content.nextPage.title}</span>
                   </span>
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
@@ -531,22 +531,22 @@ export default function DocsSlugPage() {
       </section>
 
       {/* Help CTA */}
-      <section className="px-6 py-12 border-t border-border bg-muted/30">
+      <section className="px-6 py-12 border-t border-zinc-200 bg-zinc-50/50">
         <div className="mx-auto max-w-4xl text-center">
-          <h3 className="text-lg font-medium text-foreground mb-2">Need more help?</h3>
-          <p className="text-sm text-muted-foreground mb-4">
+          <h3 className="text-lg font-medium text-zinc-900 mb-2">Need more help?</h3>
+          <p className="text-sm text-zinc-500 mb-4">
             Can&apos;t find what you&apos;re looking for? Our team is here to help.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors"
+              className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
             >
               Contact Support
             </Link>
             <a
               href="https://github.com/gravitre"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 transition-colors"
             >
               <ExternalLink className="h-4 w-4" />
               GitHub
