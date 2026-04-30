@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "lucide-react"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
   "Deploy AI agents in minutes",
@@ -77,7 +78,7 @@ function LoginPageContent() {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: selectedProvider,
       options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+        redirectTo: getAuthRedirectUrl("/operator"),
       },
     })
 

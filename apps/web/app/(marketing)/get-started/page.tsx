@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const plans = [
   {
@@ -99,7 +100,7 @@ export default function GetStartedPage() {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: selectedProvider,
       options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+        redirectTo: getAuthRedirectUrl("/operator"),
       },
     })
 
@@ -118,7 +119,7 @@ export default function GetStartedPage() {
       email,
       password,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+        emailRedirectTo: getAuthRedirectUrl("/operator"),
       },
     })
 
