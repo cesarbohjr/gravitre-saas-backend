@@ -33,6 +33,13 @@ AI services layer also expects:
 - `RAG_CHUNK_OVERLAP` (default: `200`)
 - `RAG_TOP_K` (default: `8`)
 
+ML training/inference also expects:
+
+- `BLOB_READ_WRITE_TOKEN` (Vercel Blob token for model artifacts)
+- `ML_DEFAULT_CLASSIFIER` (default: `random_forest`)
+- `ML_ANOMALY_CONTAMINATION` (default: `0.1`)
+- `ML_FORECAST_HORIZON` (default: `7`)
+
 ## Endpoints
 
 - `GET /health` — no auth; returns `{ status, timestamp }`

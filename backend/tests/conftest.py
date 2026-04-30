@@ -41,6 +41,7 @@ def _set_required_env_vars():
     os.environ.setdefault("OPENAI_API_KEY", "sk-test-openai")
     os.environ.setdefault("ANTHROPIC_API_KEY", "sk-test-anthropic")
     os.environ.setdefault("GOOGLE_API_KEY", "test-google-key")
+    os.environ.setdefault("BLOB_READ_WRITE_TOKEN", "blob_test_token")
     yield
 
 
@@ -53,6 +54,10 @@ def _reset_singletons():
     import app.services.execution_service as execution_service_module
     import app.services.rag_service as rag_service_module
     import app.services.optimization_service as optimization_service_module
+    import app.ml.registry as ml_registry_module
+    import app.ml.inference as ml_inference_module
+    import app.ml.classifiers as ml_classifiers_module
+    import app.ml.anomaly as ml_anomaly_module
 
     model_router_module._model_router_singleton = None
     decision_service_module._decision_service_singleton = None
@@ -61,6 +66,10 @@ def _reset_singletons():
     execution_service_module._execution_service_singleton = None
     rag_service_module._rag_service_singleton = None
     optimization_service_module._optimization_service_singleton = None
+    ml_registry_module._registry = None
+    ml_inference_module._inference = None
+    ml_classifiers_module._classifier_cache = {}
+    ml_anomaly_module._anomaly_detector = None
     yield
 
 

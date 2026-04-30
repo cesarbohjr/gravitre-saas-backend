@@ -27,6 +27,7 @@ from app.routers import (
     optimization,
     org,
     lite,
+    ml_models,
     rag,
     rag_enhanced,
     rag_admin,
@@ -205,6 +206,7 @@ app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)
 app.include_router(scim.router)
+app.include_router(ml_models.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

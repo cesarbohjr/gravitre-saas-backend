@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     rag_chunk_size: int = 1000
     rag_chunk_overlap: int = 200
     rag_top_k: int = 8
+    blob_read_write_token: str = ""
+    ml_default_classifier: str = "random_forest"
+    ml_anomaly_contamination: float = 0.1
+    ml_forecast_horizon: int = 7
+    redis_url: str = ""
 
     # IN-00: Fernet key for connector_secrets (generate: from cryptography.fernet import Fernet; Fernet.generate_key())
     connector_secrets_encryption_key: str = ""
