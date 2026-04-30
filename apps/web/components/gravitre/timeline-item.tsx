@@ -262,7 +262,7 @@ export function TimelineItem({
           </div>
         </div>
       </motion.button>
-    </div>
+    </motion.div>
   )
 }
 
