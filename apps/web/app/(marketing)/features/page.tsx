@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
+import React from "react"
 import { 
   ArrowRight, 
   Bot, 
@@ -339,6 +340,61 @@ function WorkflowBuilderScreen() {
 }
 
 function AIOperatorScreen() {
+  const conversation = [
+    { 
+      type: 'user', 
+      message: "Analyze our Q4 sales data and find trends",
+      agent: null
+    },
+    { 
+      type: 'ai', 
+      message: "I found 3 key trends: 1) 23% increase in enterprise deals, 2) APAC region outperformed by 15%, 3) New product line contributed 40% of growth.",
+      agent: "Data Analyst"
+    },
+    { 
+      type: 'user', 
+      message: "Draft a summary email for the exec team",
+      agent: null
+    },
+    { 
+      type: 'ai', 
+      message: "Done! I've drafted a concise executive summary highlighting the key wins and included a chart. Ready to review in your drafts.",
+      agent: "Content Writer"
+    },
+  ]
+  
+  const [visibleMessages, setVisibleMessages] = React.useState<number[]>([])
+  const [currentIndex, setCurrentIndex] = React.useState(0)
+  
+  React.useEffect(() => {
+    const showNextMessage = () => {
+      setVisibleMessages(prev => {
+        if (prev.length >= conversation.length) {
+          // Reset after showing all messages
+          setTimeout(() => {
+            setVisibleMessages([])
+            setCurrentIndex(0)
+          }, 2000)
+          return prev
+        }
+        return [...prev, prev.length]
+      })
+    }
+    
+    const timer = setInterval(() => {
+      if (visibleMessages.length < conversation.length) {
+        showNextMessage()
+      }
+    }, 1500)
+    
+    // Show first message immediately
+    if (visibleMessages.length === 0) {
+      showNextMessage()
+    }
+    
+    return () => clearInterval(timer)
+  }, [visibleMessages.length, conversation.length])
+  
   return (
     <div className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden">
       {/* App Header */}
@@ -362,59 +418,79 @@ function AIOperatorScreen() {
       </div>
       
       {/* Chat */}
-      <div className="p-4 space-y-4 min-h-[280px] bg-zinc-50/30">
-        {/* User message */}
-        <motion.div 
-          className="flex items-start gap-3"
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-        >
-          <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center shrink-0 text-xs font-medium text-zinc-600">
-            JD
-          </div>
-          <div className="flex-1 rounded-2xl rounded-tl-sm bg-white border border-zinc-200 p-3 shadow-sm">
-            <p className="text-sm text-zinc-700">Analyze our Q4 sales data and find trends</p>
-          </div>
-        </motion.div>
-        
-        {/* AI response */}
-        <motion.div 
-          className="flex items-start gap-3 justify-end"
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="flex-1 rounded-2xl rounded-tr-sm bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-3 w-3 text-emerald-600" />
-              <span className="text-[10px] font-medium text-emerald-700">Processing with Data Analyst</span>
-            </div>
-            <p className="text-sm text-emerald-800">I found 3 key trends: 1) 23% increase in enterprise deals, 2) APAC region outperformed by 15%, 3) New product line contributed 40% of growth.</p>
-          </div>
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
-        </motion.div>
-        
-        {/* Quick actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="flex flex-wrap gap-2"
-        >
-          {['Show details', 'Export report', 'Compare to Q3'].map((action) => (
-            <span key={action} className="px-2.5 py-1 rounded-full border border-zinc-200 bg-white text-[10px] text-zinc-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors cursor-pointer">
-              {action}
-            </span>
+      <div className="p-4 space-y-3 min-h-[320px] bg-zinc-50/30 overflow-hidden">
+        <AnimatePresence mode="popLayout">
+          {conversation.map((msg, index) => (
+            visibleMessages.includes(index) && (
+              msg.type === 'user' ? (
+                <motion.div 
+                  key={`msg-${index}`}
+                  className="flex items-start gap-3"
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                >
+                  <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center shrink-0 text-xs font-medium text-zinc-600">
+                    JD
+                  </div>
+                  <div className="flex-1 rounded-2xl rounded-tl-sm bg-white border border-zinc-200 p-3 shadow-sm">
+                    <p className="text-sm text-zinc-700">{msg.message}</p>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key={`msg-${index}`}
+                  className="flex items-start gap-3 justify-end"
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                >
+                  <div className="flex-1 rounded-2xl rounded-tr-sm bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200 p-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Sparkles className="h-3 w-3 text-emerald-600" />
+                      <span className="text-[10px] font-medium text-emerald-700">via {msg.agent}</span>
+                    </div>
+                    <p className="text-sm text-emerald-800">{msg.message}</p>
+                  </div>
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                </motion.div>
+              )
+            )
           ))}
-        </motion.div>
+        </AnimatePresence>
+        
+        {/* Typing indicator */}
+        <AnimatePresence>
+          {visibleMessages.length > 0 && visibleMessages.length < conversation.length && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 pl-11"
+            >
+              <div className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] text-zinc-400">
+                {conversation[visibleMessages.length]?.type === 'user' ? 'typing...' : 'AI is thinking...'}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Input */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-2.5 flex items-center gap-2 shadow-sm">
+        <div className="rounded-xl border border-zinc-200 bg-white p-2.5 flex items-center gap-2 shadow-sm mt-auto">
           <input
             type="text"
             placeholder="Ask anything..."
