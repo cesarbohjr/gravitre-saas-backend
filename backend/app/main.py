@@ -30,6 +30,7 @@ from app.routers import (
     rag,
     rag_enhanced,
     rag_admin,
+    scim,
     search,
     sso,
     training,
@@ -39,6 +40,7 @@ from app.routers import (
     settings,
 )
 from app.routers.webhooks import stripe as stripe_webhooks
+from app.routers.webhooks import workflow_triggers
 
 print("Gravitre backend booting...")
 logger = get_logger(__name__)
@@ -196,11 +198,13 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(stripe_webhooks.router)
+app.include_router(workflow_triggers.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)
+app.include_router(scim.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
