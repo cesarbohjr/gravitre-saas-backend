@@ -22,7 +22,11 @@ import {
   FileText,
   Sparkles,
   ChevronRight,
-  Send
+  Send,
+  Blocks,
+  Cpu,
+  Layers,
+  Play
 } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { VendorLogo } from "@/components/gravitre/vendor-logo"
@@ -1418,6 +1422,128 @@ export default function FeaturesPage() {
                         </div>
                       </motion.div>
                     ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Feature 6: Meson - The AI System Builder */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              <div className="lg:order-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 border border-violet-200 px-3 py-1 mb-4">
+                  <Blocks className="h-3.5 w-3.5 text-violet-600" />
+                  <span className="text-xs font-medium text-violet-700">Meson</span>
+                </div>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">AI that completes work, not just suggestions</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
+                  Meson uses advanced ML to understand your intent and build complete, working systems. 
+                  Describe what you need once - Meson creates agents, training data, and workflows that 
+                  actually execute tasks, not just recommend next steps.
+                </p>
+                <ul className="space-y-3">
+                  {[
+                    'One prompt creates agents, training & workflows',
+                    'ML-powered intent understanding',
+                    'Executes real actions across your systems',
+                    'Deploys production-ready automation instantly'
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
+                      <div className="h-5 w-5 rounded-full bg-violet-100 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-violet-600" />
+                      </div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200">
+                  <p className="text-sm text-violet-800">
+                    <span className="font-semibold">Why upgrade?</span> Meson is available in Control and Command plans. 
+                    Build in seconds what would take hours manually.
+                  </p>
+                </div>
+              </div>
+              <div className="lg:order-1 relative">
+                <div className="absolute -inset-4 bg-gradient-to-r from-violet-100/60 to-purple-100/60 rounded-3xl blur-2xl" />
+                <div className="relative rounded-xl border border-zinc-200 bg-white shadow-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-400" />
+                      <div className="h-3 w-3 rounded-full bg-amber-400" />
+                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="px-3 py-1 rounded-md bg-violet-100 text-[10px] text-violet-600 font-medium">Meson Builder</div>
+                    </div>
+                  </div>
+                  <div className="p-5 bg-zinc-50/50 min-h-[340px]">
+                    {/* User prompt */}
+                    <div className="mb-4 p-3 rounded-xl border border-zinc-200 bg-white">
+                      <p className="text-xs text-zinc-500 mb-1">Your request</p>
+                      <p className="text-sm text-zinc-700">&quot;Create a marketing agent for SaaS onboarding campaigns that sends personalized welcome sequences&quot;</p>
+                    </div>
+                    
+                    {/* Meson processing visualization */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-3">
+                        <motion.div 
+                          className="h-2 w-2 rounded-full bg-violet-500"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                        <span className="text-xs font-medium text-violet-600">Meson generating...</span>
+                      </div>
+                      
+                      {[
+                        { icon: Bot, label: "Marketing Agent", desc: "Configured with brand voice", status: "created", color: "emerald" },
+                        { icon: Layers, label: "Training Data", desc: "ICP docs, campaign history", status: "generated", color: "blue" },
+                        { icon: Workflow, label: "Welcome Workflow", desc: "5-email nurture sequence", status: "built", color: "purple" },
+                        { icon: Play, label: "Ready to Deploy", desc: "One click to activate", status: "ready", color: "violet" },
+                      ].map((item, i) => (
+                        <motion.div
+                          key={item.label}
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.15 }}
+                          className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 bg-white shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
+                              item.color === 'emerald' ? 'bg-emerald-50' :
+                              item.color === 'blue' ? 'bg-blue-50' :
+                              item.color === 'purple' ? 'bg-purple-50' : 'bg-violet-50'
+                            }`}>
+                              <item.icon className={`h-4 w-4 ${
+                                item.color === 'emerald' ? 'text-emerald-500' :
+                                item.color === 'blue' ? 'text-blue-500' :
+                                item.color === 'purple' ? 'text-purple-500' : 'text-violet-500'
+                              }`} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-zinc-700">{item.label}</p>
+                              <p className="text-[10px] text-zinc-500">{item.desc}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${
+                              item.color === 'emerald' ? 'bg-emerald-500' :
+                              item.color === 'blue' ? 'bg-blue-500' :
+                              item.color === 'purple' ? 'bg-purple-500' : 'bg-violet-500'
+                            }`} />
+                            <span className={`text-[10px] capitalize ${
+                              item.color === 'emerald' ? 'text-emerald-600' :
+                              item.color === 'blue' ? 'text-blue-600' :
+                              item.color === 'purple' ? 'text-purple-600' : 'text-violet-600'
+                            }`}>{item.status}</span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
