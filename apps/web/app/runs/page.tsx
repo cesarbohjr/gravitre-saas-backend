@@ -249,18 +249,24 @@ function TimelineNode({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, x: -20, scale: 0.98 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 20, scale: 0.98 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className="relative"
     >
       {/* Timeline connector */}
       <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-border via-border to-transparent" />
       
       {/* Node */}
-      <div className={cn(
-        "relative ml-0 pl-14 pr-4 py-3 group cursor-pointer transition-all duration-200",
-        isExpanded && "bg-card/50 rounded-lg border border-border/50"
-      )}>
+      <motion.div 
+        className={cn(
+          "relative ml-0 pl-14 pr-4 py-3 group cursor-pointer transition-all duration-200",
+          isExpanded && "bg-card/50 rounded-lg border border-border/50"
+        )}
+        whileHover={{ x: 4 }}
+        transition={{ duration: 0.15 }}
+      >
         {/* Status indicator */}
         <div className={cn(
           "absolute left-3 top-4 h-6 w-6 rounded-full flex items-center justify-center z-10 transition-all",
@@ -433,7 +439,7 @@ function TimelineNode({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }

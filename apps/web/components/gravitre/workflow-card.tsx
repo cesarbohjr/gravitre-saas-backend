@@ -191,17 +191,22 @@ export function WorkflowCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{ 
+        y: -4, 
+        scale: 1.01,
+        transition: { duration: 0.15, ease: [0.2, 0, 0, 1] }
+      }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className="group relative"
     >
       <Link href={`/workflows/${id}`}>
         <div className={`
           relative rounded-xl border bg-card p-4 transition-all duration-200 cursor-pointer
-          hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5
-          ${isRunning ? "border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]" : "border-border"}
+          hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/10
+          ${isRunning ? "border-blue-500/30 shadow-[0_0_25px_rgba(59,130,246,0.15)]" : "border-border hover:shadow-lg hover:shadow-black/5"}
         `}>
           {/* Ambient glow for running workflows */}
           {isRunning && (

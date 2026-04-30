@@ -528,13 +528,18 @@ function AgentDetailPanel({
         </h3>
         <div className="flex flex-wrap gap-2">
           {agent.capabilities.map((cap, i) => (
-            <div 
+            <motion.div 
               key={i}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 25 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border cursor-default hover:border-muted-foreground/50 hover:shadow-sm transition-colors"
             >
               <Sparkles className="h-3 w-3 text-muted-foreground" />
               <span className="text-sm text-foreground">{cap}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -546,12 +551,16 @@ function AgentDetailPanel({
         </h3>
         <div className="flex flex-wrap gap-2">
           {agent.permissions.map((perm, i) => (
-            <div 
+            <motion.div 
               key={i}
-              className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.03 }}
+              whileHover={{ scale: 1.05 }}
+              className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 hover:border-blue-500/30 transition-colors cursor-default"
             >
               <span className="text-xs text-blue-400">{perm}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
