@@ -303,7 +303,7 @@ const myConnector = {
       },
       {
         title: "Security Model",
-        content: "Security is built into every layer:\n\n- **Encryption**: AES-256 encryption at rest, TLS 1.3 in transit\n- **Access Control**: Role-based access with fine-grained permissions\n- **Audit Logging**: Complete audit trail of all actions\n- **Compliance**: SOC 2 Type II, GDPR, CCPA compliant",
+        content: "Security is built into every layer:\n\n- **Encryption**: AES-256 encryption at rest, TLS 1.3 in transit\n- **Access Control**: Role-based access with fine-grained permissions\n- **Audit Logging**: Complete audit trail of all actions\n- **Compliance**: GDPR and CCPA compliant",
       }
     ],
     prevPage: { title: "Introduction", href: "/docs/introduction" },

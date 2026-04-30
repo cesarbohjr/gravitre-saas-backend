@@ -1292,7 +1292,7 @@ export default function PricingPage() {
         <div className="mx-auto max-w-5xl px-6">
           <div className="grid sm:grid-cols-4 gap-6">
             {[
-              { icon: Shield, title: "Enterprise-grade security", description: "SOC 2 compliant" },
+              { icon: Shield, title: "Enterprise-grade security", description: "End-to-end encryption" },
               { icon: Clock, title: "7-day free trial", description: "No credit card required" },
               { icon: RefreshCcw, title: "Cancel anytime", description: "No long-term contracts" },
               { icon: BadgeCheck, title: "Money-back guarantee", description: "30-day refund policy" },

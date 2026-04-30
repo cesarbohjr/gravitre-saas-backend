@@ -15,11 +15,10 @@ import {
 } from "lucide-react"
 
 const certifications = [
-  { name: "SOC 2 Type II", description: "Audited annually by independent third party" },
   { name: "GDPR Compliant", description: "Full compliance with EU data protection" },
   { name: "CCPA Compliant", description: "California consumer privacy rights" },
-  { name: "HIPAA Eligible", description: "Available for healthcare customers" },
-  { name: "ISO 27001", description: "Information security management" },
+  { name: "AES-256 Encryption", description: "Industry-standard data encryption" },
+  { name: "Role-based Access", description: "Fine-grained permission controls" },
 ]
 
 const features = [
@@ -220,7 +219,7 @@ export default function SecurityPage() {
             <Globe className="h-8 w-8 text-emerald-600 mx-auto mb-4" />
             <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Global Infrastructure</h2>
             <p className="text-zinc-600 max-w-2xl mx-auto">
-              Your data is hosted in SOC 2 certified data centers with geographic redundancy 
+              Your data is hosted in enterprise-grade data centers with geographic redundancy 
               and data residency options.
             </p>
           </motion.div>

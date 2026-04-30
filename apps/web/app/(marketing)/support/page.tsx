@@ -85,7 +85,7 @@ const faqs = [
   },
   {
     question: "Is my data secure?",
-    answer: "Yes. Gravitre is SOC 2 Type II certified, GDPR compliant, and uses AES-256 encryption for all data at rest and in transit.",
+    answer: "Yes. Gravitre uses AES-256 encryption for all data at rest and in transit, with role-based access control and complete audit trails.",
   },
   {
     question: "Can I cancel anytime?",

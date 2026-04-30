@@ -19,8 +19,8 @@ const roadmapItems = {
       comments: 18,
     },
     {
-      title: "SOC 2 Type II Certification",
-      description: "Enterprise-grade security compliance",
+      title: "Advanced Security Controls",
+      description: "Enhanced access controls and audit capabilities",
       votes: 412,
       comments: 8,
     },

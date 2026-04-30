@@ -517,7 +517,7 @@ function FeatureVisual({ type }: { type: string }) {
         {[
           { icon: Lock, label: "Role-based access control", status: true },
           { icon: FileText, label: "Complete audit trail", status: true },
-          { icon: Shield, label: "SOC 2 Type II certified", status: true },
+          { icon: Shield, label: "End-to-end encryption", status: true },
           { icon: Check, label: "Human-in-the-loop approvals", status: true },
         ].map((item, i) => (
           <motion.div

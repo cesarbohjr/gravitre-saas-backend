@@ -21,9 +21,9 @@ const featuredPost = {
 
 const posts = [
   {
-    slug: "soc2-type2-certification",
-    title: "Gravitre Achieves SOC 2 Type II Certification",
-    excerpt: "We're proud to announce that Gravitre has completed SOC 2 Type II certification, demonstrating our commitment to security and compliance.",
+    slug: "security-first-approach",
+    title: "Our Security-First Approach to AI Automation",
+    excerpt: "Learn how Gravitre protects your data with end-to-end encryption, role-based access control, and comprehensive audit trails.",
     author: { name: "Alex Kim", role: "Head of Security" },
     date: "March 28, 2026",
     readTime: "4 min read",

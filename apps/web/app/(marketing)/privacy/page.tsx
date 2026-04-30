@@ -42,7 +42,6 @@ const sections = [
 - Encryption of data in transit and at rest (AES-256)
 - Regular security assessments and penetration testing
 - Access controls and audit logging
-- SOC 2 Type II certification
 - GDPR and CCPA compliance programs
 
 While we strive to protect your information, no method of transmission over the Internet is 100% secure.`,
