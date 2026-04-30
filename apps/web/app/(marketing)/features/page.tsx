@@ -707,7 +707,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Interactive Product Screens */}
+      {/* How Gravitre Works - Architecture Diagram */}
       <section className="relative pb-32">
         <div className="mx-auto max-w-7xl px-6">
           {/* Section header */}
@@ -717,139 +717,289 @@ export default function FeaturesPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl font-bold text-zinc-900 mb-4">See it in action</h2>
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">How Gravitre works</h2>
             <p className="text-zinc-600 max-w-2xl mx-auto">
-              Explore the key screens that power your AI workforce
+              A unified platform that connects your team, AI agents, and tools
             </p>
           </motion.div>
 
-          {/* AI Operator - Full width featured */}
+          {/* Architecture Diagram */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mb-8"
+            className="relative"
           >
-            <div className="grid lg:grid-cols-2 gap-8 items-center">
-              <div className="lg:pr-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 ring-1 ring-emerald-200 flex items-center justify-center">
-                    <Bot className="h-6 w-6 text-emerald-600" />
+            {/* Background pattern */}
+            <div className="absolute inset-0 bg-gradient-to-b from-zinc-50 to-white rounded-3xl" />
+            <div className="absolute inset-0 opacity-[0.03]" style={{
+              backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)',
+              backgroundSize: '24px 24px'
+            }} />
+            
+            <div className="relative p-8 lg:p-12">
+              {/* Main Flow */}
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-4">
+                
+                {/* Your Team */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="relative">
+                    <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-50 border border-zinc-200 flex items-center justify-center shadow-sm">
+                      <Users className="h-10 w-10 text-zinc-600" />
+                    </div>
+                    <motion.div 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-white"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold text-zinc-900">AI Operator</h3>
-                    <p className="text-sm text-emerald-600">Your command center</p>
+                  <span className="mt-3 text-sm font-semibold text-zinc-900">Your Team</span>
+                  <span className="text-xs text-zinc-500">Natural language</span>
+                </motion.div>
+
+                {/* Arrow 1 */}
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  whileInView={{ opacity: 1, scaleX: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.2 }}
+                  className="hidden lg:flex items-center"
+                >
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-zinc-300 to-emerald-400" />
+                  <ArrowRight className="h-5 w-5 text-emerald-500 -ml-1" />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.2 }}
+                  className="lg:hidden flex flex-col items-center"
+                >
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-zinc-300 to-emerald-400" />
+                </motion.div>
+
+                {/* AI Operator (Central Hub) */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
+                  className="relative"
+                >
+                  {/* Pulse rings */}
+                  <motion.div
+                    className="absolute inset-0 rounded-3xl bg-emerald-400"
+                    animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0, 0.3] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                  />
+                  <motion.div
+                    className="absolute inset-0 rounded-3xl bg-emerald-400"
+                    animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0, 0.2] }}
+                    transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
+                  />
+                  
+                  <div className="relative h-32 w-32 lg:h-40 lg:w-40 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex flex-col items-center justify-center shadow-xl shadow-emerald-500/20">
+                    <Sparkles className="h-12 w-12 text-white mb-2" />
+                    <span className="text-sm font-bold text-white">AI Operator</span>
+                    <span className="text-[10px] text-emerald-100">Command Center</span>
                   </div>
-                </div>
-                <p className="text-zinc-600 mb-6">
-                  Talk to your AI team in plain English. Ask questions, start tasks, and get instant answers. 
-                  The AI Operator understands context, routes requests to the right agents, and provides 
-                  actionable insights.
-                </p>
-                <ul className="space-y-2">
-                  {['Natural language commands', 'Real-time task execution', 'Smart agent routing'].map((item) => (
-                    <li key={item} className="flex items-center gap-2 text-sm text-zinc-600">
-                      <Check className="h-4 w-4 text-emerald-600" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                </motion.div>
+
+                {/* Arrow 2 */}
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  whileInView={{ opacity: 1, scaleX: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 }}
+                  className="hidden lg:flex items-center"
+                >
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-emerald-400 to-blue-400" />
+                  <ArrowRight className="h-5 w-5 text-blue-500 -ml-1" />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 }}
+                  className="lg:hidden flex flex-col items-center"
+                >
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-emerald-400 to-blue-400" />
+                </motion.div>
+
+                {/* AI Agents */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.5 }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="flex gap-2">
+                    {[
+                      { color: "blue", icon: Bot },
+                      { color: "purple", icon: Bot },
+                      { color: "amber", icon: Bot },
+                    ].map((agent, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.5 + i * 0.1 }}
+                        className={`h-16 w-16 rounded-xl border flex items-center justify-center shadow-sm ${
+                          agent.color === 'blue' ? 'bg-blue-50 border-blue-200' :
+                          agent.color === 'purple' ? 'bg-purple-50 border-purple-200' :
+                          'bg-amber-50 border-amber-200'
+                        }`}
+                      >
+                        <agent.icon className={`h-7 w-7 ${
+                          agent.color === 'blue' ? 'text-blue-500' :
+                          agent.color === 'purple' ? 'text-purple-500' :
+                          'text-amber-500'
+                        }`} />
+                      </motion.div>
+                    ))}
+                  </div>
+                  <span className="mt-3 text-sm font-semibold text-zinc-900">AI Agents</span>
+                  <span className="text-xs text-zinc-500">Specialized workers</span>
+                </motion.div>
+
+                {/* Arrow 3 */}
+                <motion.div
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  whileInView={{ opacity: 1, scaleX: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.6 }}
+                  className="hidden lg:flex items-center"
+                >
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-blue-400 to-rose-400" />
+                  <ArrowRight className="h-5 w-5 text-rose-500 -ml-1" />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.6 }}
+                  className="lg:hidden flex flex-col items-center"
+                >
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-blue-400 to-rose-400" />
+                </motion.div>
+
+                {/* Your Tools */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.7 }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Salesforce', 'Slack', 'HubSpot', 'Google'].map((tool, i) => (
+                      <motion.div
+                        key={tool}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.7 + i * 0.05 }}
+                        className="h-11 w-11 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shadow-sm"
+                      >
+                        <VendorLogo vendor={tool} size="xs" />
+                      </motion.div>
+                    ))}
+                  </div>
+                  <span className="mt-3 text-sm font-semibold text-zinc-900">Your Tools</span>
+                  <span className="text-xs text-zinc-500">100+ integrations</span>
+                </motion.div>
               </div>
-              <AIOperatorScreen />
+
+              {/* Process Labels */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.8 }}
+                className="mt-12 flex flex-wrap justify-center gap-4"
+              >
+                {[
+                  { step: "1", label: "Ask anything", desc: "Natural language requests" },
+                  { step: "2", label: "Smart routing", desc: "AI selects the right agent" },
+                  { step: "3", label: "Execute tasks", desc: "Agents take real actions" },
+                  { step: "4", label: "Get results", desc: "Instant, actionable outputs" },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.step}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.8 + i * 0.1 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-zinc-200 shadow-sm"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                      <span className="text-sm font-bold text-emerald-600">{item.step}</span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-zinc-900">{item.label}</div>
+                      <div className="text-xs text-zinc-500">{item.desc}</div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
             </div>
           </motion.div>
 
-          {/* Three column grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Agents */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Agents</h3>
-                </div>
-                <p className="text-sm text-zinc-600">Manage your AI workforce. Monitor status, track performance, and configure agent capabilities.</p>
-              </div>
-              <AgentsScreen />
-            </motion.div>
-
-            {/* Assignments */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Assignments</h3>
-                </div>
-                <p className="text-sm text-zinc-600">Track all tasks across your AI team. See progress, priorities, and completion status at a glance.</p>
-              </div>
-              <AssignmentsScreen />
-            </motion.div>
-
-            {/* Workflow Builder */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-            >
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <Workflow className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Automations</h3>
-                </div>
-                <p className="text-sm text-zinc-600">Build powerful workflows visually. Connect triggers, agents, conditions, and actions with drag-and-drop.</p>
-              </div>
-              <WorkflowBuilderScreen />
-            </motion.div>
-          </div>
-
-          {/* Safety Card */}
+          {/* Value Props */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-            className="mt-8"
+            className="mt-16 grid md:grid-cols-3 gap-8"
           >
-            <BentoCard className="lg:col-span-2">
-              <div className="grid lg:grid-cols-2">
-                <div className="p-8">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-amber-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-zinc-900">Built-in Safety</h3>
-                  </div>
-                  <p className="text-zinc-600 mb-6">
-                    Control who can do what, keep a full history, and require approval before big changes.
-                  </p>
-                  <Link 
-                    href="/security"
-                    className="inline-flex items-center gap-2 text-sm text-amber-600 hover:text-amber-700 transition-colors font-medium"
-                  >
-                    Learn about security
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
+            {[
+              { 
+                icon: Zap, 
+                title: "10x faster execution", 
+                desc: "AI agents work 24/7, completing tasks in seconds that would take hours manually",
+                color: "emerald"
+              },
+              { 
+                icon: Shield, 
+                title: "Full control", 
+                desc: "Human-in-the-loop approvals, audit trails, and role-based access keep you in charge",
+                color: "blue"
+              },
+              { 
+                icon: BarChart3, 
+                title: "Measurable ROI", 
+                desc: "Track time saved, tasks completed, and productivity gains with built-in analytics",
+                color: "purple"
+              },
+            ].map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center"
+              >
+                <div className={`h-14 w-14 mx-auto rounded-2xl flex items-center justify-center mb-4 ${
+                  item.color === 'emerald' ? 'bg-emerald-100' :
+                  item.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
+                }`}>
+                  <item.icon className={`h-7 w-7 ${
+                    item.color === 'emerald' ? 'text-emerald-600' :
+                    item.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
+                  }`} />
                 </div>
-                <FeatureVisual type="governance" />
-              </div>
-            </BentoCard>
+                <h3 className="text-lg font-semibold text-zinc-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-zinc-600">{item.desc}</p>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
