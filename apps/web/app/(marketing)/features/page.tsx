@@ -1212,13 +1212,13 @@ export default function FeaturesPage() {
                   <Shield className="h-3.5 w-3.5 text-rose-600" />
                   <span className="text-xs font-medium text-rose-700">Enterprise Security</span>
                 </div>
-                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Security built for enterprise</h3>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Security you can trust</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
-                  SOC 2 Type II certified with role-based access control, complete audit trails, 
-                  and human-in-the-loop approvals for sensitive actions.
+                  Built with security-first principles including role-based access control, complete audit trails, 
+                  encrypted data, and human-in-the-loop approvals for sensitive actions.
                 </p>
                 <ul className="space-y-3">
-                  {['SOC 2 Type II certified', 'Role-based access control', 'Complete audit trails', 'SSO integration'].map((item) => (
+                  {['Role-based access control', 'Complete audit trails', 'End-to-end encryption', 'Human-in-the-loop approvals'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-rose-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-rose-600" />
@@ -1245,8 +1245,8 @@ export default function FeaturesPage() {
                     {[
                       { icon: Lock, label: "Role-based access control", status: "Enabled" },
                       { icon: FileText, label: "Complete audit trail", status: "Active" },
-                      { icon: Shield, label: "SOC 2 Type II", status: "Certified" },
-                      { icon: Users, label: "SSO Integration", status: "Configured" },
+                      { icon: Shield, label: "End-to-end encryption", status: "Active" },
+                      { icon: Users, label: "Human-in-the-loop", status: "Enabled" },
                     ].map((item, i) => (
                       <motion.div
                         key={item.label}
