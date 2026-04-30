@@ -87,6 +87,7 @@ from app.workflows.repository import (
 from app.connectors.repository import get_connector
 from app.operators.repository import get_operator
 from app.rag.ingest import get_source
+from app.services.goal_service import GoalService, get_goal_service
 from app.workflows.schema import (
     WorkflowValidationError,
     compute_run_hash,
@@ -152,6 +153,15 @@ class WorkflowCreateRequest(BaseModel):
     description: str | None = None
     goal: str | None = None
     environment_id: str | None = Field(default=None, alias="environmentId")
+
+
+class GoalWorkflowRequest(BaseModel):
+    goal: str = Field(..., min_length=5)
+    department: str | None = None
+    connectors: list[str] | None = None
+    success_metric: str | None = Field(default=None, alias="successMetric")
+    approval_required: bool = Field(default=True, alias="approvalRequired")
+    org_context: str | None = Field(default=None, alias="orgContext")
 
 
 class WorkflowUpdateRequest(BaseModel):
@@ -2654,6 +2664,70 @@ async def list_workflows_route(
             for w in workflows
         ],
     }
+
+
+@router.post("/from-goal", status_code=status.HTTP_201_CREATED)
+async def create_workflow_from_goal(
+    request: GoalWorkflowRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    goal_service: GoalService = Depends(get_goal_service),
+) -> dict:
+    _user, org_id = _admin
+    generated = await goal_service.generate_workflow(
+        goal=request.goal,
+        department=request.department,
+        connectors=request.connectors,
+        success_metric=request.success_metric,
+        approval_required=request.approval_required,
+        org_context=request.org_context,
+        org_id=org_id,
+    )
+    client = get_supabase_client(settings)
+    definition = {
+        "schema_version": SCHEMA_VERSION,
+        "steps": [
+            {
+                "id": node.id,
+                "name": node.name,
+                "type": node.type,
+                "config": node.config,
+                "metadata": {
+                    "description": node.description,
+                    "position": node.position,
+                },
+            }
+            for node in generated.nodes
+        ],
+        "edges": [edge.model_dump() for edge in generated.edges],
+    }
+    row = {
+        "org_id": org_id,
+        "name": generated.name,
+        "goal": generated.goal,
+        "description": generated.description,
+        "definition": definition,
+        "schema_version": SCHEMA_VERSION,
+        "status": "draft",
+        "stage": "build",
+        "version": "v1.0.0",
+        "created_by": _user.get("user_id"),
+    }
+    created = client.table("workflow_defs").insert(row).execute()
+    if not created.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow create failed")
+    workflow_id = str(created.data[0]["id"])
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action="workflow.created.from_goal",
+        resource_type="workflow",
+        resource_id=workflow_id,
+        metadata={"environment": environment_name, "department": generated.department},
+    )
+    return {"id": workflow_id, "workflow": generated.model_dump()}
 
 
 @router.get("/{workflow_id}")

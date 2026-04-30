@@ -13,17 +13,22 @@ from app.core.logging import get_logger, request_id_ctx
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
+    agent_council,
     auth,
     audit,
     billing,
     connectors,
+    decisions,
+    execution,
     entitlements,
     metrics,
     notifications,
     onboarding,
+    optimization,
     org,
     lite,
     rag,
+    rag_enhanced,
     rag_admin,
     search,
     sso,
@@ -191,6 +196,11 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(stripe_webhooks.router)
+app.include_router(decisions.router)
+app.include_router(agent_council.router)
+app.include_router(execution.router)
+app.include_router(rag_enhanced.router)
+app.include_router(optimization.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

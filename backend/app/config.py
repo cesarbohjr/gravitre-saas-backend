@@ -39,8 +39,16 @@ class Settings(BaseSettings):
 
     # BE-10: Embedding provider (OpenAI); single model per deployment
     openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    google_api_key: str = ""
+    default_fast_model: str = "gpt-4o-mini"
+    default_reasoning_model: str = "claude-3-5-sonnet-20241022"
+    default_embedding_model: str = "text-embedding-3-small"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimension: int = 1536
+    rag_chunk_size: int = 1000
+    rag_chunk_overlap: int = 200
+    rag_top_k: int = 8
 
     # IN-00: Fernet key for connector_secrets (generate: from cryptography.fernet import Fernet; Fernet.generate_key())
     connector_secrets_encryption_key: str = ""
