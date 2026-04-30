@@ -21,7 +21,9 @@ import {
   Bell,
   FileText,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Plug,
+  Send
 } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
@@ -852,7 +854,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Benefits - Chatbase style alternating sections */}
+      {/* 5 Key Features - Light Theme Screens */}
       <section className="relative py-32 border-t border-zinc-200 bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <motion.div
@@ -861,14 +863,14 @@ export default function FeaturesPage() {
             viewport={{ once: true }}
             className="mx-auto max-w-2xl text-center mb-20"
           >
-            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">Benefits</span>
+            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">Platform Features</span>
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-zinc-900">
-              AI agents that work like your best employees
+              Everything you need to automate intelligently
             </h2>
           </motion.div>
 
-          <div className="space-y-24">
-            {/* Benefit 1: Personalized Experience */}
+          <div className="space-y-32">
+            {/* Feature 1: AI Operator */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -876,13 +878,17 @@ export default function FeaturesPage() {
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div>
-                <h3 className="text-2xl font-bold text-zinc-900 mb-4">Personalized team experience</h3>
-                <p className="text-zinc-600 mb-6 leading-relaxed">
-                  Your agents know your business context and can retrieve relevant information for resolution-focused, 
-                  24/7 automated support. They learn from interactions and improve over time.
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 mb-4">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-xs font-medium text-emerald-700">AI Operator</span>
+                </div>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Natural language command center</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
+                  Talk to your AI workforce like you would a colleague. Ask questions, request analysis, 
+                  trigger workflows, and get instant responses - all through natural conversation.
                 </p>
                 <ul className="space-y-3">
-                  {['Context-aware responses', 'Continuous learning', 'Team-specific configurations'].map((item) => (
+                  {['Conversational AI interface', 'Context-aware responses', 'Multi-agent orchestration', 'Real-time task execution'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-emerald-600" />
@@ -893,13 +899,25 @@ export default function FeaturesPage() {
                 </ul>
               </div>
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/50 to-blue-100/50 rounded-3xl blur-2xl" />
-                <div className="relative bg-zinc-900 rounded-xl p-6 shadow-2xl">
-                  <div className="space-y-4">
+                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/60 to-teal-100/60 rounded-3xl blur-2xl" />
+                <div className="relative rounded-xl border border-zinc-200 bg-white shadow-2xl overflow-hidden">
+                  {/* Browser chrome */}
+                  <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-400" />
+                      <div className="h-3 w-3 rounded-full bg-amber-400" />
+                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">AI Operator</div>
+                    </div>
+                  </div>
+                  {/* Chat interface */}
+                  <div className="p-5 space-y-4 bg-zinc-50/50 min-h-[280px]">
                     <div className="flex gap-3 items-start">
-                      <div className="h-8 w-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-300 shrink-0">JD</div>
-                      <div className="bg-zinc-800 rounded-xl rounded-tl-sm p-3 text-sm text-zinc-300">
-                        What were our Q4 results?
+                      <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center text-xs font-medium text-zinc-600 shrink-0">JD</div>
+                      <div className="bg-white border border-zinc-200 rounded-2xl rounded-tl-sm p-3 shadow-sm">
+                        <p className="text-sm text-zinc-700">Analyze our Q4 sales data and find the top trends</p>
                       </div>
                     </div>
                     <motion.div 
@@ -909,23 +927,30 @@ export default function FeaturesPage() {
                       transition={{ delay: 0.3 }}
                       className="flex gap-3 items-start justify-end"
                     >
-                      <div className="bg-emerald-600 rounded-xl rounded-tr-sm p-3 text-sm text-white">
-                        <div className="flex items-center gap-2 mb-1 text-emerald-200 text-[10px]">
-                          <Sparkles className="h-3 w-3" />
-                          Context: John from Sales
+                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl rounded-tr-sm p-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Sparkles className="h-3 w-3 text-emerald-600" />
+                          <span className="text-[10px] font-medium text-emerald-700">via Data Analyst</span>
                         </div>
-                        Based on your team&apos;s data, Q4 revenue was $2.4M with 23% growth...
+                        <p className="text-sm text-emerald-800">Found 3 key trends: 23% increase in enterprise deals, APAC outperformed by 15%, new product line contributed 40% of growth.</p>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
                         <Sparkles className="h-4 w-4 text-white" />
                       </div>
                     </motion.div>
+                    <div className="flex gap-2">
+                      {['Show details', 'Export report', 'Compare to Q3'].map((action) => (
+                        <span key={action} className="px-3 py-1.5 rounded-full border border-zinc-200 bg-white text-xs text-zinc-600 hover:border-emerald-300 transition-colors cursor-pointer">
+                          {action}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* Benefit 2: Instant Actions */}
+            {/* Feature 2: Smart Agents */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -933,13 +958,17 @@ export default function FeaturesPage() {
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div className="lg:order-2">
-                <h3 className="text-2xl font-bold text-zinc-900 mb-4">Instant actions and workflow automation</h3>
-                <p className="text-zinc-600 mb-6 leading-relaxed">
-                  Agents can take real actions within your systems - updating records, sending notifications, 
-                  creating documents, and more. No more manual data entry.
+                <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 mb-4">
+                  <Bot className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-700">Smart Agents</span>
+                </div>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Your AI team, configured your way</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
+                  Deploy specialized AI agents for different roles - data analysis, content writing, 
+                  research, and more. Each agent learns your business context and improves over time.
                 </p>
                 <ul className="space-y-3">
-                  {['Real-time system updates', 'Cross-platform actions', 'Approval workflows'].map((item) => (
+                  {['Pre-built agent templates', 'Custom capability configuration', 'Continuous learning', 'Role-based permissions'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-blue-600" />
@@ -950,43 +979,48 @@ export default function FeaturesPage() {
                 </ul>
               </div>
               <div className="lg:order-1 relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
-                <div className="relative bg-zinc-900 rounded-xl p-6 shadow-2xl">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Zap className="h-5 w-5 text-amber-400" />
-                    <span className="text-sm text-zinc-400">Workflow executing...</span>
+                <div className="absolute -inset-4 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-3xl blur-2xl" />
+                <div className="relative rounded-xl border border-zinc-200 bg-white shadow-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-400" />
+                      <div className="h-3 w-3 rounded-full bg-amber-400" />
+                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">Agents</div>
+                    </div>
                   </div>
-                  <div className="space-y-3">
+                  <div className="p-5 space-y-3 bg-zinc-50/50 min-h-[280px]">
                     {[
-                      { action: "Updated CRM record", system: "Salesforce", status: "done" },
-                      { action: "Sent notification", system: "Slack", status: "done" },
-                      { action: "Created report", system: "Google Docs", status: "running" },
-                    ].map((item, i) => (
-                      <motion.div 
-                        key={item.action}
+                      { name: "Data Analyst", status: "Active", tasks: "1,247", color: "emerald" },
+                      { name: "Content Writer", status: "Active", tasks: "892", color: "blue" },
+                      { name: "Research Agent", status: "Active", tasks: "634", color: "purple" },
+                    ].map((agent, i) => (
+                      <motion.div
+                        key={agent.name}
                         initial={{ opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: i * 0.2 }}
-                        className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-800"
+                        transition={{ delay: i * 0.1 }}
+                        className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 bg-white shadow-sm"
                       >
                         <div className="flex items-center gap-3">
-                          {item.status === 'done' ? (
-                            <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                              <Check className="h-3 w-3 text-emerald-400" />
-                            </div>
-                          ) : (
-                            <motion.div 
-                              className="h-6 w-6 rounded-full border-2 border-blue-400 border-t-transparent"
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            />
-                          )}
+                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                            agent.color === 'emerald' ? 'bg-emerald-100' :
+                            agent.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
+                          }`}>
+                            <Bot className={`h-5 w-5 ${
+                              agent.color === 'emerald' ? 'text-emerald-600' :
+                              agent.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
+                            }`} />
+                          </div>
                           <div>
-                            <div className="text-sm text-zinc-200">{item.action}</div>
-                            <div className="text-[10px] text-zinc-500">{item.system}</div>
+                            <div className="text-sm font-medium text-zinc-900">{agent.name}</div>
+                            <div className="text-[10px] text-zinc-500">{agent.tasks} tasks completed</div>
                           </div>
                         </div>
+                        <span className="px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] text-emerald-700">{agent.status}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -994,7 +1028,7 @@ export default function FeaturesPage() {
               </div>
             </motion.div>
 
-            {/* Benefit 3: Observability */}
+            {/* Feature 3: Visual Workflow Builder */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1002,13 +1036,17 @@ export default function FeaturesPage() {
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div>
-                <h3 className="text-2xl font-bold text-zinc-900 mb-4">Complete observability</h3>
-                <p className="text-zinc-600 mb-6 leading-relaxed">
-                  See exactly what your AI agents are doing. Full audit trails, reasoning transparency, 
-                  and real-time monitoring give you complete confidence.
+                <div className="inline-flex items-center gap-2 rounded-full bg-purple-50 border border-purple-200 px-3 py-1 mb-4">
+                  <Workflow className="h-3.5 w-3.5 text-purple-600" />
+                  <span className="text-xs font-medium text-purple-700">Workflow Builder</span>
+                </div>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Visual automation, zero code</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
+                  Build sophisticated automation workflows with our drag-and-drop builder. 
+                  Connect triggers, conditions, and actions without writing a single line of code.
                 </p>
                 <ul className="space-y-3">
-                  {['Full audit logs', 'Reasoning traces', 'Real-time dashboards'].map((item) => (
+                  {['Drag-and-drop interface', 'Conditional branching', 'Human-in-the-loop approvals', 'Version control'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-purple-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-purple-600" />
@@ -1019,40 +1057,219 @@ export default function FeaturesPage() {
                 </ul>
               </div>
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-purple-100/50 to-amber-100/50 rounded-3xl blur-2xl" />
-                <div className="relative bg-zinc-900 rounded-xl p-6 shadow-2xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm text-zinc-400">Activity Log</span>
-                    <div className="flex items-center gap-2">
-                      <motion.div 
-                        className="h-2 w-2 rounded-full bg-emerald-500"
-                        animate={{ opacity: [1, 0.5, 1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      />
-                      <span className="text-[10px] text-emerald-400">Live</span>
+                <div className="absolute -inset-4 bg-gradient-to-r from-purple-100/60 to-pink-100/60 rounded-3xl blur-2xl" />
+                <div className="relative rounded-xl border border-zinc-200 bg-white shadow-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-400" />
+                      <div className="h-3 w-3 rounded-full bg-amber-400" />
+                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">Workflow Builder</div>
                     </div>
                   </div>
-                  <div className="space-y-2 font-mono text-xs">
+                  <div className="p-5 bg-zinc-50/50 min-h-[280px]">
+                    <div className="flex items-center justify-center gap-3">
+                      {[
+                        { icon: Zap, label: "Trigger", color: "amber" },
+                        { icon: Bot, label: "AI Agent", color: "blue" },
+                        { icon: GitBranch, label: "Condition", color: "purple" },
+                        { icon: Send, label: "Action", color: "emerald" },
+                      ].map((node, i) => (
+                        <motion.div
+                          key={node.label}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.1 }}
+                          className="flex flex-col items-center"
+                        >
+                          <div className="flex items-center">
+                            <div className={`h-14 w-14 rounded-xl flex items-center justify-center border-2 bg-white shadow-sm ${
+                              node.color === 'amber' ? 'border-amber-300' :
+                              node.color === 'blue' ? 'border-blue-300' :
+                              node.color === 'purple' ? 'border-purple-300' : 'border-emerald-300'
+                            }`}>
+                              <node.icon className={`h-6 w-6 ${
+                                node.color === 'amber' ? 'text-amber-500' :
+                                node.color === 'blue' ? 'text-blue-500' :
+                                node.color === 'purple' ? 'text-purple-500' : 'text-emerald-500'
+                              }`} />
+                            </div>
+                            {i < 3 && <div className="w-4 h-0.5 bg-zinc-300" />}
+                          </div>
+                          <span className="text-[10px] text-zinc-500 mt-2">{node.label}</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.5 }}
+                      className="mt-6 p-3 rounded-lg border border-emerald-200 bg-emerald-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-emerald-600" />
+                        <span className="text-xs text-emerald-700">Workflow saved and ready to deploy</span>
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Feature 4: Connected Integrations */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              <div className="lg:order-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 mb-4">
+                  <Plug className="h-3.5 w-3.5 text-amber-600" />
+                  <span className="text-xs font-medium text-amber-700">Integrations</span>
+                </div>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Connect to 100+ apps instantly</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
+                  One-click integrations with Salesforce, HubSpot, Slack, Google Workspace, and more. 
+                  Your AI agents can read, write, and take actions across all your tools.
+                </p>
+                <ul className="space-y-3">
+                  {['Pre-built connectors', 'OAuth authentication', 'Real-time sync', 'Custom API support'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
+                      <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-amber-600" />
+                      </div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="lg:order-1 relative">
+                <div className="absolute -inset-4 bg-gradient-to-r from-amber-100/60 to-orange-100/60 rounded-3xl blur-2xl" />
+                <div className="relative rounded-xl border border-zinc-200 bg-white shadow-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-400" />
+                      <div className="h-3 w-3 rounded-full bg-amber-400" />
+                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">Connectors</div>
+                    </div>
+                  </div>
+                  <div className="p-5 bg-zinc-50/50 min-h-[280px]">
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { name: "Salesforce", status: "connected" },
+                        { name: "Slack", status: "connected" },
+                        { name: "HubSpot", status: "connected" },
+                        { name: "Google", status: "connected" },
+                        { name: "Notion", status: "connected" },
+                        { name: "Jira", status: "available" },
+                      ].map((app, i) => (
+                        <motion.div
+                          key={app.name}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.05 }}
+                          className={`p-3 rounded-xl border text-center ${
+                            app.status === 'connected' 
+                              ? 'border-emerald-200 bg-emerald-50' 
+                              : 'border-zinc-200 bg-white'
+                          }`}
+                        >
+                          <div className={`h-8 w-8 rounded-lg mx-auto mb-2 flex items-center justify-center ${
+                            app.status === 'connected' ? 'bg-emerald-100' : 'bg-zinc-100'
+                          }`}>
+                            <Plug className={`h-4 w-4 ${
+                              app.status === 'connected' ? 'text-emerald-600' : 'text-zinc-400'
+                            }`} />
+                          </div>
+                          <div className="text-[10px] font-medium text-zinc-700">{app.name}</div>
+                          <div className={`text-[8px] mt-0.5 ${
+                            app.status === 'connected' ? 'text-emerald-600' : 'text-zinc-400'
+                          }`}>
+                            {app.status === 'connected' ? 'Connected' : 'Available'}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Feature 5: Enterprise Security */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 mb-4">
+                  <Shield className="h-3.5 w-3.5 text-rose-600" />
+                  <span className="text-xs font-medium text-rose-700">Enterprise Security</span>
+                </div>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Security built for enterprise</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
+                  SOC 2 Type II certified with role-based access control, complete audit trails, 
+                  and human-in-the-loop approvals for sensitive actions.
+                </p>
+                <ul className="space-y-3">
+                  {['SOC 2 Type II certified', 'Role-based access control', 'Complete audit trails', 'SSO integration'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
+                      <div className="h-5 w-5 rounded-full bg-rose-100 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-rose-600" />
+                      </div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="relative">
+                <div className="absolute -inset-4 bg-gradient-to-r from-rose-100/60 to-red-100/60 rounded-3xl blur-2xl" />
+                <div className="relative rounded-xl border border-zinc-200 bg-white shadow-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-zinc-50 border-b border-zinc-200">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-400" />
+                      <div className="h-3 w-3 rounded-full bg-amber-400" />
+                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">Security</div>
+                    </div>
+                  </div>
+                  <div className="p-5 space-y-3 bg-zinc-50/50 min-h-[280px]">
                     {[
-                      { time: "14:32:01", event: "Agent started: Data Analyst", type: "info" },
-                      { time: "14:32:02", event: "Querying Salesforce API...", type: "debug" },
-                      { time: "14:32:04", event: "Retrieved 1,247 records", type: "success" },
-                      { time: "14:32:05", event: "Running analysis...", type: "info" },
-                      { time: "14:32:08", event: "Task completed successfully", type: "success" },
-                    ].map((log, i) => (
-                      <motion.div 
-                        key={i}
-                        initial={{ opacity: 0, x: -10 }}
+                      { icon: Lock, label: "Role-based access control", status: "Enabled" },
+                      { icon: FileText, label: "Complete audit trail", status: "Active" },
+                      { icon: Shield, label: "SOC 2 Type II", status: "Certified" },
+                      { icon: Users, label: "SSO Integration", status: "Configured" },
+                    ].map((item, i) => (
+                      <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.1 }}
-                        className="flex items-start gap-3"
+                        className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 bg-white shadow-sm"
                       >
-                        <span className="text-zinc-600">{log.time}</span>
-                        <span className={`${
-                          log.type === 'success' ? 'text-emerald-400' :
-                          log.type === 'debug' ? 'text-zinc-500' : 'text-zinc-300'
-                        }`}>{log.event}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-rose-50 flex items-center justify-center">
+                            <item.icon className="h-4 w-4 text-rose-500" />
+                          </div>
+                          <span className="text-sm text-zinc-700">{item.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] text-emerald-600">{item.status}</span>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
