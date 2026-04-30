@@ -24,7 +24,6 @@ import {
   ChevronRight,
   Send,
   Blocks,
-  Cpu,
   Layers,
   Play
 } from "lucide-react"
