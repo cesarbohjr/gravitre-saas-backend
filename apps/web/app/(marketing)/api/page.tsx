@@ -24,51 +24,63 @@ import { useState } from "react"
 const endpoints = [
   {
     method: "POST",
-    path: "/v1/agents/{id}/run",
-    description: "Execute an agent with natural language instructions",
+    path: "/api/workflows/{id}/execute",
+    description: "Execute a workflow with optional parameters",
     badge: "Core",
   },
   {
     method: "GET",
-    path: "/v1/runs",
-    description: "List all runs with filtering and pagination",
+    path: "/api/workflows",
+    description: "List all workflows with filtering and pagination",
     badge: null,
   },
   {
     method: "GET",
-    path: "/v1/runs/{id}",
-    description: "Get detailed status and outputs for a specific run",
+    path: "/api/workflows/{id}/builder",
+    description: "Get workflow graph with nodes and edges for the visual builder",
     badge: null,
   },
   {
     method: "POST",
-    path: "/v1/workflows/{id}/trigger",
-    description: "Trigger a workflow execution programmatically",
+    path: "/api/workflows/{id}/dry-run",
+    description: "Preview workflow execution without committing changes",
     badge: "Core",
   },
   {
     method: "GET",
-    path: "/v1/agents",
-    description: "List all agents in your workspace",
+    path: "/api/runs/{id}",
+    description: "Get detailed status, steps, and outputs for a run",
     badge: null,
   },
   {
     method: "POST",
-    path: "/v1/agents",
-    description: "Create a new agent with configuration",
+    path: "/api/runs/{id}/approve",
+    description: "Approve a pending workflow run (human-in-the-loop)",
     badge: null,
   },
   {
     method: "GET",
-    path: "/v1/webhooks",
-    description: "List configured webhook endpoints",
+    path: "/api/connectors",
+    description: "List all connected integrations (Salesforce, HubSpot, etc.)",
     badge: null,
   },
   {
     method: "POST",
-    path: "/v1/webhooks",
-    description: "Register a new webhook for event notifications",
+    path: "/api/connectors/{id}/sync",
+    description: "Trigger a manual sync for an integration",
     badge: null,
+  },
+  {
+    method: "GET",
+    path: "/api/metrics/overview",
+    description: "Get dashboard metrics (workflows, success rate, runs)",
+    badge: null,
+  },
+  {
+    method: "POST",
+    path: "/api/operator/action-plan",
+    description: "Generate an AI action plan from natural language",
+    badge: "AI",
   },
 ]
 
@@ -119,23 +131,25 @@ const features = [
 const codeExample = `import { Gravitre } from '@gravitre/sdk';
 
 const client = new Gravitre({
-  apiKey: process.env.GRAVITRE_API_KEY
+  apiKey: process.env.GRAVITRE_API_KEY,
+  orgId: process.env.GRAVITRE_ORG_ID
 });
 
-// Execute an agent
-const run = await client.agents.run('agent_abc123', {
-  instruction: 'Analyze Q4 sales data and create a summary report',
-  context: {
-    dataSource: 'salesforce',
-    dateRange: '2025-Q4'
+// Execute a workflow
+const run = await client.workflows.execute('wf_lead_sync', {
+  parameters: {
+    source: 'salesforce',
+    destination: 'hubspot',
+    syncMode: 'incremental'
   }
 });
 
-// Wait for completion
-const result = await run.wait();
+// Poll for completion or use webhooks
+const result = await run.waitForCompletion();
 
-console.log(result.outputs);
-// { report: "Q4 Sales Summary...", metrics: {...} }`
+console.log(result.status); // 'completed'
+console.log(result.steps);  // Array of step outputs
+// [{ name: 'Fetch Data', status: 'completed', output: {...} }, ...]`
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
