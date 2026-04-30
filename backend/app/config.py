@@ -37,6 +37,19 @@ class Settings(BaseSettings):
     def jwt_audience(self) -> str:
         return (self.supabase_jwt_audience or "authenticated").strip() or "authenticated"
 
+    @property
+    def embedding_model(self) -> str:
+        """Single embedding model source of truth.
+
+        Prefer DEFAULT_EMBEDDING_MODEL while keeping backward compatibility with
+        OPENAI_EMBEDDING_MODEL for existing deployments.
+        """
+        return (
+            (self.default_embedding_model or "").strip()
+            or (self.openai_embedding_model or "").strip()
+            or "text-embedding-3-small"
+        )
+
     # BE-10: Embedding provider (OpenAI); single model per deployment
     openai_api_key: str = ""
     anthropic_api_key: str = ""

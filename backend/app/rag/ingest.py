@@ -269,7 +269,7 @@ def replace_chunks_and_embeddings(
             "chunk_id": chunk_id,
             "org_id": org_id,
             "embedding": embedding,
-            "model_version": settings.openai_embedding_model,
+            "model_version": settings.embedding_model,
             "environment": environment_name,
         }).execute()
         if heartbeat_cb and idx > 0 and (idx % 10 == 0):

@@ -116,7 +116,7 @@ async def retrieve(
         ai_meta = build_ai_usage_metadata(
             input_texts=[body.query],
             output_texts=[],
-            model_name=settings.openai_embedding_model,
+            model_name=settings.embedding_model,
             source="rag.query",
             source_id=query_id,
         )

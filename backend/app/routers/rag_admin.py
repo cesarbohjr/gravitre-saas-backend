@@ -254,7 +254,7 @@ async def ingest_route(
         "source_id": str(body.source_id),
         "external_id": body.external_id,
         "chunk_count": 0,
-        "embedding_model": settings.openai_embedding_model,
+        "embedding_model": settings.embedding_model,
         "embedding_dimension": settings.openai_embedding_dimension,
         "status": "queued",
     }

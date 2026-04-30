@@ -10,7 +10,7 @@ def get_embedding(text: str, settings: Settings) -> list[float]:
         raise ValueError("OPENAI_API_KEY not configured")
     client = OpenAI(api_key=settings.openai_api_key)
     resp = client.embeddings.create(
-        model=settings.openai_embedding_model,
+        model=settings.embedding_model,
         input=text,
     )
     return resp.data[0].embedding
