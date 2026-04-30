@@ -908,7 +908,7 @@ export default function FeaturesPage() {
                         transition={{ delay: 0.7 + i * 0.05 }}
                         className="h-11 w-11 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shadow-sm"
                       >
-                        <VendorLogo vendor={tool} size="xs" />
+                        <VendorLogo vendor={tool} size="sm" />
                       </motion.div>
                     ))}
                   </div>
