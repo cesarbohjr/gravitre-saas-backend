@@ -7,12 +7,25 @@ const PUBLIC_ROUTES = [
   "/login",
   "/get-started",
   "/forgot-password",
-  "/pricing",
+  // Product
   "/features",
-  "/contact",
+  "/pricing",
+  "/changelog",
+  "/roadmap",
+  // Company
   "/about",
+  "/blog",
+  "/careers",
+  "/contact",
+  // Help
+  "/docs",
+  "/api",
+  "/guides",
+  "/support",
+  // Legal
   "/privacy",
   "/terms",
+  "/security",
 ]
 
 // Static asset patterns to ignore

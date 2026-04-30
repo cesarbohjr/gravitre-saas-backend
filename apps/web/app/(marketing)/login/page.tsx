@@ -141,7 +141,7 @@ function LoginPageContent() {
             <div className="mt-12 flex items-center gap-6 text-zinc-400">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
-                <span className="text-sm">SOC 2 Certified</span>
+                <span className="text-sm">Secure by Design</span>
               </div>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />

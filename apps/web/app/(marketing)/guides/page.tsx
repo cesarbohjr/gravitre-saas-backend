@@ -165,9 +165,9 @@ const guides = [
 ]
 
 const difficultyColors: Record<string, string> = {
-  Beginner: "text-emerald-400 bg-emerald-500/10",
-  Intermediate: "text-amber-400 bg-amber-500/10",
-  Advanced: "text-purple-400 bg-purple-500/10",
+  Beginner: "text-emerald-700 bg-emerald-100",
+  Intermediate: "text-amber-700 bg-amber-100",
+  Advanced: "text-purple-700 bg-purple-100",
 }
 
 export default function GuidesPage() {
@@ -180,11 +180,11 @@ export default function GuidesPage() {
   const featuredGuides = guides.filter(g => g.featured)
 
   return (
-    <div className="bg-black">
+    <div className="bg-white">
       {/* Hero */}
       <section className="relative overflow-hidden px-6 py-24 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 to-transparent" />
-        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
+        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-emerald-100/50 rounded-full blur-3xl" />
         
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div
@@ -192,18 +192,16 @@ export default function GuidesPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 mb-6">
-              <BookOpen className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-300">Learning Resources</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 mb-6">
+              <BookOpen className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700">Learning Resources</span>
             </div>
             
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              <span className="bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">
-                Guides & Tutorials
-              </span>
+            <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+              Guides & Tutorials
             </h1>
             
-            <p className="mt-6 text-lg text-zinc-400 max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
               Step-by-step tutorials to help you master Gravitre. From your first agent 
               to advanced automation patterns.
             </p>
@@ -220,7 +218,7 @@ export default function GuidesPage() {
             viewport={{ once: true }}
             className="mb-8"
           >
-            <h2 className="text-2xl font-bold text-white">Featured Guides</h2>
+            <h2 className="text-2xl font-bold text-zinc-900">Featured Guides</h2>
           </motion.div>
           
           <div className="grid gap-6 md:grid-cols-3">
@@ -232,11 +230,11 @@ export default function GuidesPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/80 to-zinc-900/40 transition-all hover:border-emerald-500/50"
+                className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white transition-all hover:border-emerald-300 hover:shadow-lg"
               >
-                <div className="aspect-video bg-gradient-to-br from-emerald-500/10 via-transparent to-purple-500/10 p-6 flex items-center justify-center">
-                  <div className="h-16 w-16 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Play className="h-8 w-8 text-white" />
+                <div className="aspect-video bg-gradient-to-br from-emerald-50 via-white to-zinc-50 p-6 flex items-center justify-center">
+                  <div className="h-16 w-16 rounded-2xl bg-zinc-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Play className="h-8 w-8 text-zinc-600" />
                   </div>
                 </div>
                 <div className="p-6">
@@ -249,7 +247,7 @@ export default function GuidesPage() {
                       {guide.time}
                     </span>
                   </div>
-                  <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors mb-2">
+                  <h3 className="text-lg font-semibold text-zinc-900 group-hover:text-emerald-600 transition-colors mb-2">
                     {guide.title}
                   </h3>
                   <p className="text-sm text-zinc-500 line-clamp-2">{guide.description}</p>
@@ -261,7 +259,7 @@ export default function GuidesPage() {
       </section>
 
       {/* All Guides */}
-      <section className="px-6 py-16 border-t border-white/10">
+      <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-6xl">
           {/* Category Filter */}
           <motion.div
@@ -279,8 +277,8 @@ export default function GuidesPage() {
                   className={`
                     inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all
                     ${activeCategory === cat.id 
-                      ? 'bg-emerald-500 text-white' 
-                      : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white border border-white/10'
+                      ? 'bg-emerald-600 text-white' 
+                      : 'bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200'
                     }
                   `}
                 >
@@ -301,7 +299,7 @@ export default function GuidesPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="group p-5 rounded-xl border border-white/10 bg-zinc-900/50 hover:border-emerald-500/30 hover:bg-zinc-900 transition-all"
+                className="group p-5 rounded-xl border border-zinc-200 bg-white hover:border-emerald-300 hover:shadow-md transition-all"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${difficultyColors[guide.difficulty]}`}>
@@ -312,7 +310,7 @@ export default function GuidesPage() {
                     {guide.time}
                   </span>
                 </div>
-                <h3 className="font-semibold text-white group-hover:text-emerald-400 transition-colors mb-2">
+                <h3 className="font-semibold text-zinc-900 group-hover:text-emerald-600 transition-colors mb-2">
                   {guide.title}
                 </h3>
                 <p className="text-sm text-zinc-500 line-clamp-2">{guide.description}</p>
@@ -323,7 +321,7 @@ export default function GuidesPage() {
       </section>
 
       {/* Learning Path */}
-      <section className="px-6 py-20 border-t border-white/10">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -331,13 +329,13 @@ export default function GuidesPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-white mb-4">Recommended Learning Path</h2>
-            <p className="text-zinc-400">Follow this path to master Gravitre step by step</p>
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">Recommended Learning Path</h2>
+            <p className="text-zinc-600">Follow this path to master Gravitre step by step</p>
           </motion.div>
           
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-6 top-8 bottom-8 w-px bg-gradient-to-b from-emerald-500 via-emerald-500/50 to-transparent hidden sm:block" />
+            <div className="absolute left-6 top-8 bottom-8 w-px bg-gradient-to-b from-emerald-500 via-emerald-300 to-transparent hidden sm:block" />
             
             <div className="space-y-6">
               {[
@@ -355,15 +353,15 @@ export default function GuidesPage() {
                   transition={{ delay: i * 0.1 }}
                   className="flex items-start gap-6"
                 >
-                  <div className="h-12 w-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400 font-bold">
+                  <div className="h-12 w-12 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 font-bold">
                     {item.step}
                   </div>
-                  <div className="flex-1 p-5 rounded-xl border border-white/10 bg-zinc-900/50">
+                  <div className="flex-1 p-5 rounded-xl border border-zinc-200 bg-white shadow-sm">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-white">{item.title}</h3>
+                      <h3 className="font-semibold text-zinc-900">{item.title}</h3>
                       <span className="text-xs text-zinc-500">{item.time}</span>
                     </div>
-                    <p className="text-sm text-zinc-400">{item.desc}</p>
+                    <p className="text-sm text-zinc-600">{item.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -373,24 +371,24 @@ export default function GuidesPage() {
       </section>
 
       {/* Video Tutorials */}
-      <section className="px-6 py-20 border-t border-white/10">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 p-8 lg:p-12"
+            className="rounded-2xl border border-zinc-200 bg-zinc-50 p-8 lg:p-12"
           >
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-14 w-14 rounded-xl bg-red-500/10 flex items-center justify-center">
-                <Play className="h-7 w-7 text-red-400" />
+              <div className="h-14 w-14 rounded-xl bg-red-100 flex items-center justify-center">
+                <Play className="h-7 w-7 text-red-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">Video Tutorials</h2>
-                <p className="text-zinc-400">Watch and learn from our YouTube channel</p>
+                <h2 className="text-2xl font-bold text-zinc-900">Video Tutorials</h2>
+                <p className="text-zinc-600">Watch and learn from our YouTube channel</p>
               </div>
             </div>
-            <p className="text-zinc-400 mb-6">
+            <p className="text-zinc-600 mb-6">
               Prefer video content? Our YouTube channel has dozens of tutorials, 
               walkthroughs, and tips from the Gravitre team and community.
             </p>
@@ -398,7 +396,7 @@ export default function GuidesPage() {
               href="https://youtube.com/@gravitre"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-medium text-white hover:bg-red-400 transition-colors"
+              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white hover:bg-red-500 transition-colors"
             >
               Visit YouTube Channel
               <ArrowRight className="h-4 w-4" />
@@ -408,28 +406,28 @@ export default function GuidesPage() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-20 border-t border-white/10">
+      <section className="px-6 py-20 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to get started?</h2>
-            <p className="text-zinc-400 mb-8">
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">Ready to get started?</h2>
+            <p className="text-zinc-600 mb-8">
               Create your free account and start building with AI agents today.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-8 py-3 text-sm font-medium text-white hover:bg-emerald-400 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-8 py-3 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
               >
                 Start Free Trial
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3 text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-8 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
               >
                 <BookOpen className="h-4 w-4" />
                 Documentation

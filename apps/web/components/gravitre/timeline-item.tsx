@@ -2,9 +2,10 @@
 
 import { cn } from "@/lib/utils"
 import { EnvironmentBadge } from "./environment-badge"
-import { Play, Workflow, Plug, Database, MoreHorizontal, Eye, RefreshCw, Trash2 } from "lucide-react"
+import { Play, Workflow, Plug, Database, MoreHorizontal, Eye, RefreshCw, Trash2, CheckCircle, AlertCircle, Clock, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { timing, easing } from "@/lib/animations"
 
 type ContextEntity = "run" | "workflow" | "connector" | "source"
 type Status = "success" | "failed" | "running" | "pending"
@@ -32,30 +33,45 @@ const entityIcons: Record<ContextEntity, typeof Play> = {
   source: Database,
 }
 
-const statusConfig: Record<Status, { color: string; bgColor: string; pulseColor: string; label: string }> = {
+const statusConfig: Record<Status, { 
+  color: string
+  bgColor: string
+  pulseColor: string
+  label: string
+  icon: typeof CheckCircle
+  glowColor: string
+}> = {
   success: {
     color: "bg-emerald-500",
     bgColor: "bg-emerald-500/10",
     pulseColor: "bg-emerald-500/30",
     label: "Completed",
+    icon: CheckCircle,
+    glowColor: "shadow-emerald-500/20",
   },
   failed: {
     color: "bg-red-500",
     bgColor: "bg-red-500/10",
     pulseColor: "bg-red-500/30",
     label: "Failed",
+    icon: AlertCircle,
+    glowColor: "shadow-red-500/20",
   },
   running: {
     color: "bg-blue-500",
     bgColor: "bg-blue-500/10",
     pulseColor: "bg-blue-500/30",
     label: "Running",
+    icon: Loader2,
+    glowColor: "shadow-blue-500/20",
   },
   pending: {
     color: "bg-amber-500",
     bgColor: "bg-amber-500/10",
     pulseColor: "bg-amber-500/30",
     label: "Pending",
+    icon: Clock,
+    glowColor: "shadow-amber-500/20",
   },
 }
 
@@ -78,49 +94,89 @@ export function TimelineItem({
   const statusStyle = statusConfig[status]
 
   return (
-    <div 
+    <motion.div 
       className="relative flex gap-3"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: timing.ui, ease: easing.smooth as number[] }}
     >
       {/* Timeline Line & Node */}
       <div className="flex flex-col items-center">
         {/* Node */}
-        <div className="relative z-10">
-          <div
+        <motion.div 
+          className="relative z-10"
+          animate={isActive ? { scale: 1.1 } : { scale: 1 }}
+          transition={{ duration: timing.micro }}
+        >
+          <motion.div
             className={cn(
-              "flex h-3 w-3 items-center justify-center rounded-full transition-all duration-200",
+              "flex h-3.5 w-3.5 items-center justify-center rounded-full transition-all duration-200",
               statusStyle.color,
-              isActive && "ring-4 ring-offset-2 ring-offset-background",
-              isActive && status === "success" && "ring-emerald-500/20",
-              isActive && status === "failed" && "ring-red-500/20",
-              isActive && status === "running" && "ring-blue-500/20",
-              isActive && status === "pending" && "ring-amber-500/20"
+              isActive && "ring-4 ring-offset-2 ring-offset-background shadow-lg",
+              isActive && statusStyle.glowColor,
+              isActive && status === "success" && "ring-emerald-500/30",
+              isActive && status === "failed" && "ring-red-500/30",
+              isActive && status === "running" && "ring-blue-500/30",
+              isActive && status === "pending" && "ring-amber-500/30"
             )}
+            whileHover={{ scale: 1.2 }}
+            transition={{ duration: timing.micro }}
           >
             {/* Pulse animation for running status */}
             {status === "running" && (
-              <div className={cn("absolute inset-0 rounded-full animate-ping", statusStyle.pulseColor)} />
+              <>
+                <motion.div 
+                  className={cn("absolute inset-0 rounded-full", statusStyle.pulseColor)}
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                />
+                <motion.div 
+                  className={cn("absolute inset-0 rounded-full", statusStyle.pulseColor)}
+                  animate={{ scale: [1, 2.2, 1], opacity: [0.4, 0, 0.4] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.3 }}
+                />
+              </>
             )}
-          </div>
-        </div>
+            {/* Subtle pulse for failed status */}
+            {status === "failed" && (
+              <motion.div 
+                className={cn("absolute inset-0 rounded-full", statusStyle.pulseColor)}
+                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
+          </motion.div>
+        </motion.div>
         
         {/* Connecting Line */}
         {!isLast && (
-          <div className="w-px flex-1 bg-border/60 mt-1" />
+          <motion.div 
+            className="w-px flex-1 mt-1"
+            initial={{ scaleY: 0, originY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: timing.ui, delay: 0.1 }}
+          >
+            <div className={cn(
+              "w-full h-full",
+              isActive ? "bg-gradient-to-b from-border to-border/30" : "bg-border/60"
+            )} />
+          </motion.div>
         )}
       </div>
 
       {/* Content Card */}
       <motion.button
         onClick={onClick}
-        whileHover={{ x: 2 }}
-        transition={{ duration: 0.15 }}
+        whileHover={{ x: 4, scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        transition={{ duration: timing.micro }}
         className={cn(
           "flex-1 mb-3 rounded-lg border text-left transition-all duration-200",
           isActive
-            ? "border-border bg-secondary/80 shadow-sm"
-            : "border-transparent hover:border-border/50 hover:bg-secondary/40"
+            ? "border-border bg-secondary/80 shadow-md"
+            : "border-transparent hover:border-border/50 hover:bg-secondary/40 hover:shadow-sm"
         )}
       >
         <div className="p-3">

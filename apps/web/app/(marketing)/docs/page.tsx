@@ -164,20 +164,23 @@ export default function DocsPage() {
             {quickLinks.map((link, i) => {
               const Icon = link.icon
               return (
-                <motion.a
+                <motion.div
                   key={link.title}
-                  href={link.href}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  className="group rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
                 >
-                  <Icon className={`h-6 w-6 ${link.color} mb-3`} />
-                  <h3 className="font-medium text-zinc-900 group-hover:text-emerald-700 transition-colors">
-                    {link.title}
-                  </h3>
-                  <p className="text-sm text-zinc-500 mt-1">{link.description}</p>
-                </motion.a>
+                  <Link
+                    href={link.href}
+                    className="group block rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
+                  >
+                    <Icon className={`h-6 w-6 ${link.color} mb-3`} />
+                    <h3 className="font-medium text-zinc-900 group-hover:text-emerald-700 transition-colors">
+                      {link.title}
+                    </h3>
+                    <p className="text-sm text-zinc-500 mt-1">{link.description}</p>
+                  </Link>
+                </motion.div>
               )
             })}
           </div>
@@ -201,23 +204,26 @@ export default function DocsPage() {
           </motion.div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {guides.map((guide, i) => (
-              <motion.a
+              <motion.div
                 key={guide.title}
-                href={`/docs/guides/${guide.title.toLowerCase().replace(/\s+/g, '-')}`}
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="group flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-4 transition-all hover:border-emerald-300 hover:shadow-sm"
               >
-                <div>
-                  <span className="text-xs text-emerald-600">{guide.category}</span>
-                  <h3 className="text-sm font-medium text-zinc-900 group-hover:text-emerald-700 transition-colors mt-0.5">
-                    {guide.title}
-                  </h3>
-                </div>
-                <span className="text-xs text-zinc-400">{guide.time}</span>
-              </motion.a>
+                <Link
+                  href="/guides"
+                  className="group flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-4 transition-all hover:border-emerald-300 hover:shadow-sm"
+                >
+                  <div>
+                    <span className="text-xs text-emerald-600">{guide.category}</span>
+                    <h3 className="text-sm font-medium text-zinc-900 group-hover:text-emerald-700 transition-colors mt-0.5">
+                      {guide.title}
+                    </h3>
+                  </div>
+                  <span className="text-xs text-zinc-400">{guide.time}</span>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -254,12 +260,12 @@ export default function DocsPage() {
                   <ul className="space-y-2">
                     {section.links.map((link) => (
                       <li key={link.title}>
-                        <a
+                        <Link
                           href={link.href}
                           className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors"
                         >
                           {link.title}
-                        </a>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -287,19 +293,19 @@ export default function DocsPage() {
               Build custom integrations with our REST API or use official SDKs for your preferred language.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a href="/docs/api" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 hover:bg-zinc-100 transition-colors">
+              <Link href="/api" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 hover:bg-zinc-100 transition-colors">
                 API Reference
                 <ExternalLink className="h-3 w-3" />
-              </a>
-              <a href="/docs/sdk/node" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">
+              </Link>
+              <Link href="/docs/quickstart" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">
                 Node.js SDK
-              </a>
-              <a href="/docs/sdk/python" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">
+              </Link>
+              <Link href="/docs/quickstart" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">
                 Python SDK
-              </a>
-              <a href="/docs/sdk/go" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">
+              </Link>
+              <Link href="/docs/quickstart" className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">
                 Go SDK
-              </a>
+              </Link>
             </div>
           </motion.div>
         </div>

@@ -165,12 +165,18 @@ function AssignmentCard({ assignment, onClick }: { assignment: Assignment; onCli
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -4 }}
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      whileHover={{ 
+        y: -6, 
+        scale: 1.01,
+        transition: { duration: 0.15, ease: [0.2, 0, 0, 1] }
+      }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       onClick={onClick}
-      className="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-4 sm:p-5 cursor-pointer transition-all hover:border-muted-foreground/30 hover:shadow-lg hover:shadow-black/5"
+      className="group relative overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-4 sm:p-5 cursor-pointer transition-all hover:border-muted-foreground/30 hover:shadow-xl hover:shadow-black/10"
     >
       {/* Status indicator line */}
       <div className={cn(

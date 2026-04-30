@@ -1,0 +1,5 @@
+export { AgentDemo } from "./agent-demo"
+export { WorkflowDemo } from "./workflow-demo"
+export { ConnectorDemo } from "./connector-demo"
+export { OperatorDemo } from "./operator-demo"
+export { MetricsDemo } from "./metrics-demo"
