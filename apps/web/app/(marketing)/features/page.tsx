@@ -24,6 +24,7 @@ import {
   ChevronRight
 } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
+import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
 
 // Bento card component - Light theme
 function BentoCard({ 
@@ -851,6 +852,217 @@ export default function FeaturesPage() {
         </div>
       </section>
 
+      {/* Benefits - Chatbase style alternating sections */}
+      <section className="relative py-32 border-t border-zinc-200 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto max-w-2xl text-center mb-20"
+          >
+            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">Benefits</span>
+            <h2 className="mt-4 text-4xl font-bold tracking-tight text-zinc-900">
+              AI agents that work like your best employees
+            </h2>
+          </motion.div>
+
+          <div className="space-y-24">
+            {/* Benefit 1: Personalized Experience */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              <div>
+                <h3 className="text-2xl font-bold text-zinc-900 mb-4">Personalized team experience</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed">
+                  Your agents know your business context and can retrieve relevant information for resolution-focused, 
+                  24/7 automated support. They learn from interactions and improve over time.
+                </p>
+                <ul className="space-y-3">
+                  {['Context-aware responses', 'Continuous learning', 'Team-specific configurations'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
+                      <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-emerald-600" />
+                      </div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="relative">
+                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/50 to-blue-100/50 rounded-3xl blur-2xl" />
+                <div className="relative bg-zinc-900 rounded-xl p-6 shadow-2xl">
+                  <div className="space-y-4">
+                    <div className="flex gap-3 items-start">
+                      <div className="h-8 w-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-300 shrink-0">JD</div>
+                      <div className="bg-zinc-800 rounded-xl rounded-tl-sm p-3 text-sm text-zinc-300">
+                        What were our Q4 results?
+                      </div>
+                    </div>
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.3 }}
+                      className="flex gap-3 items-start justify-end"
+                    >
+                      <div className="bg-emerald-600 rounded-xl rounded-tr-sm p-3 text-sm text-white">
+                        <div className="flex items-center gap-2 mb-1 text-emerald-200 text-[10px]">
+                          <Sparkles className="h-3 w-3" />
+                          Context: John from Sales
+                        </div>
+                        Based on your team&apos;s data, Q4 revenue was $2.4M with 23% growth...
+                      </div>
+                      <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                        <Sparkles className="h-4 w-4 text-white" />
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Benefit 2: Instant Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              <div className="lg:order-2">
+                <h3 className="text-2xl font-bold text-zinc-900 mb-4">Instant actions and workflow automation</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed">
+                  Agents can take real actions within your systems - updating records, sending notifications, 
+                  creating documents, and more. No more manual data entry.
+                </p>
+                <ul className="space-y-3">
+                  {['Real-time system updates', 'Cross-platform actions', 'Approval workflows'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
+                      <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-blue-600" />
+                      </div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="lg:order-1 relative">
+                <div className="absolute -inset-4 bg-gradient-to-r from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+                <div className="relative bg-zinc-900 rounded-xl p-6 shadow-2xl">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Zap className="h-5 w-5 text-amber-400" />
+                    <span className="text-sm text-zinc-400">Workflow executing...</span>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { action: "Updated CRM record", system: "Salesforce", status: "done" },
+                      { action: "Sent notification", system: "Slack", status: "done" },
+                      { action: "Created report", system: "Google Docs", status: "running" },
+                    ].map((item, i) => (
+                      <motion.div 
+                        key={item.action}
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.2 }}
+                        className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-800"
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.status === 'done' ? (
+                            <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                              <Check className="h-3 w-3 text-emerald-400" />
+                            </div>
+                          ) : (
+                            <motion.div 
+                              className="h-6 w-6 rounded-full border-2 border-blue-400 border-t-transparent"
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            />
+                          )}
+                          <div>
+                            <div className="text-sm text-zinc-200">{item.action}</div>
+                            <div className="text-[10px] text-zinc-500">{item.system}</div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Benefit 3: Observability */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              <div>
+                <h3 className="text-2xl font-bold text-zinc-900 mb-4">Complete observability</h3>
+                <p className="text-zinc-600 mb-6 leading-relaxed">
+                  See exactly what your AI agents are doing. Full audit trails, reasoning transparency, 
+                  and real-time monitoring give you complete confidence.
+                </p>
+                <ul className="space-y-3">
+                  {['Full audit logs', 'Reasoning traces', 'Real-time dashboards'].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
+                      <div className="h-5 w-5 rounded-full bg-purple-100 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-purple-600" />
+                      </div>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="relative">
+                <div className="absolute -inset-4 bg-gradient-to-r from-purple-100/50 to-amber-100/50 rounded-3xl blur-2xl" />
+                <div className="relative bg-zinc-900 rounded-xl p-6 shadow-2xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-zinc-400">Activity Log</span>
+                    <div className="flex items-center gap-2">
+                      <motion.div 
+                        className="h-2 w-2 rounded-full bg-emerald-500"
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+                      <span className="text-[10px] text-emerald-400">Live</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 font-mono text-xs">
+                    {[
+                      { time: "14:32:01", event: "Agent started: Data Analyst", type: "info" },
+                      { time: "14:32:02", event: "Querying Salesforce API...", type: "debug" },
+                      { time: "14:32:04", event: "Retrieved 1,247 records", type: "success" },
+                      { time: "14:32:05", event: "Running analysis...", type: "info" },
+                      { time: "14:32:08", event: "Task completed successfully", type: "success" },
+                    ].map((log, i) => (
+                      <motion.div 
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.1 }}
+                        className="flex items-start gap-3"
+                      >
+                        <span className="text-zinc-600">{log.time}</span>
+                        <span className={`${
+                          log.type === 'success' ? 'text-emerald-400' :
+                          log.type === 'debug' ? 'text-zinc-500' : 'text-zinc-300'
+                        }`}>{log.event}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* Detailed Features */}
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-7xl px-6">
@@ -919,8 +1131,35 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Testimonials */}
       <section className="relative py-32 border-t border-zinc-200 bg-zinc-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto max-w-2xl text-center mb-16"
+          >
+            <span className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">Testimonials</span>
+            <h2 className="mt-4 text-4xl font-bold tracking-tight text-zinc-900">
+              What our customers say
+            </h2>
+            <p className="mt-4 text-zinc-600">
+              Join thousands of teams who have transformed their operations with Gravitre
+            </p>
+          </motion.div>
+
+          <div className="max-w-4xl mx-auto">
+            <TestimonialsCarouselFull />
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Stats */}
+      <SocialProofBanner />
+
+      {/* CTA */}
+      <section className="relative py-32 bg-white">
         <div className="absolute inset-0 bg-gradient-to-t from-emerald-50 via-transparent to-transparent" />
         <div className="relative mx-auto max-w-7xl px-6">
           <motion.div
