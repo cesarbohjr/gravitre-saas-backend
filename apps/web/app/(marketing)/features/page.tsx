@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { 
   ArrowRight, 
@@ -624,6 +625,49 @@ export default function FeaturesPage() {
                 </motion.span>
               ))}
             </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Dashboard Preview */}
+      <section className="relative pb-24 -mt-8">
+        <div className="mx-auto max-w-6xl px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative"
+          >
+            {/* Glow effect behind image */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 rounded-3xl blur-2xl opacity-60" />
+            
+            {/* Dashboard image container */}
+            <div className="relative rounded-2xl border border-zinc-200 bg-zinc-900 shadow-2xl overflow-hidden">
+              {/* Browser chrome */}
+              <div className="flex items-center gap-2 px-4 py-3 bg-zinc-800 border-b border-zinc-700">
+                <div className="flex gap-1.5">
+                  <div className="h-3 w-3 rounded-full bg-red-500" />
+                  <div className="h-3 w-3 rounded-full bg-amber-500" />
+                  <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                </div>
+                <div className="flex-1 flex justify-center">
+                  <div className="px-4 py-1 rounded-md bg-zinc-700/50 text-xs text-zinc-400">
+                    app.gravitre.com
+                  </div>
+                </div>
+              </div>
+              
+              {/* Dashboard screenshot */}
+              <Image 
+                src="/images/gravitre-dashboard.jpg" 
+                alt="Gravitre AI Dashboard - Command center for managing your AI workforce"
+                width={1200}
+                height={800}
+                className="w-full h-auto"
+                priority
+              />
+            </div>
           </motion.div>
         </div>
       </section>
