@@ -48,153 +48,390 @@ function BentoCard({
   )
 }
 
-// Feature visual component - Light theme
-function FeatureVisual({ type }: { type: string }) {
-  if (type === "operator") {
-    return (
-      <div className="relative h-full min-h-[300px] p-6 flex flex-col bg-zinc-50/50">
-        <div className="flex-1 space-y-4">
-          {/* Chat interface */}
-          <motion.div 
-            className="flex items-start gap-3"
+// Interactive App Screen Components
+function AgentsScreen() {
+  const agents = [
+    { name: "Data Analyst", icon: BarChart3, color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
+    { name: "Content Writer", icon: FileText, color: "blue", status: "active", tasks: 8, accuracy: "95%" },
+    { name: "Research Agent", icon: Eye, color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
+    { name: "Code Reviewer", icon: GitBranch, color: "amber", status: "active", tasks: 5, accuracy: "99%" },
+  ]
+  
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden">
+      {/* App Header */}
+      <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-red-400" />
+            <div className="h-3 w-3 rounded-full bg-amber-400" />
+            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+          </div>
+          <span className="text-xs font-medium text-zinc-500 ml-2">Agents</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-6 px-2 rounded bg-emerald-100 text-emerald-700 text-[10px] font-medium flex items-center">
+            + New Agent
+          </div>
+        </div>
+      </div>
+      
+      {/* Agent List */}
+      <div className="p-4 space-y-3">
+        {agents.map((agent, i) => (
+          <motion.div
+            key={agent.name}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: i * 0.1 }}
+            className="flex items-center gap-4 p-3 rounded-lg border border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50 transition-colors cursor-pointer"
           >
-            <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center shrink-0">
-              <div className="h-4 w-4 rounded-full bg-zinc-400" />
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center relative ${
+              agent.color === 'emerald' ? 'bg-emerald-100' :
+              agent.color === 'blue' ? 'bg-blue-100' :
+              agent.color === 'purple' ? 'bg-purple-100' : 'bg-amber-100'
+            }`}>
+              <agent.icon className={`h-5 w-5 ${
+                agent.color === 'emerald' ? 'text-emerald-600' :
+                agent.color === 'blue' ? 'text-blue-600' :
+                agent.color === 'purple' ? 'text-purple-600' : 'text-amber-600'
+              }`} />
+              {agent.status === "active" && (
+                <motion.div
+                  className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+              )}
             </div>
-            <div className="flex-1 rounded-2xl rounded-tl-sm bg-zinc-100 p-4">
-              <p className="text-sm text-zinc-600">Show me all failed workflows from the past week</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-zinc-900">{agent.name}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                  agent.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-500'
+                }`}>
+                  {agent.status}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] text-zinc-500">{agent.tasks} tasks</span>
+                <span className="text-[10px] text-zinc-500">{agent.accuracy} accuracy</span>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-zinc-400" />
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AssignmentsScreen() {
+  const assignments = [
+    { title: "Q4 Sales Report", agent: "Data Analyst", status: "in_progress", progress: 65, priority: "high" },
+    { title: "Blog Post Draft", agent: "Content Writer", status: "completed", progress: 100, priority: "medium" },
+    { title: "Code PR Review", agent: "Code Reviewer", status: "pending", progress: 0, priority: "high" },
+    { title: "Market Research", agent: "Research Agent", status: "in_progress", progress: 30, priority: "low" },
+  ]
+  
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden">
+      {/* App Header */}
+      <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-red-400" />
+            <div className="h-3 w-3 rounded-full bg-amber-400" />
+            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+          </div>
+          <span className="text-xs font-medium text-zinc-500 ml-2">Assignments</span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px]">
+          <span className="text-zinc-500">4 active</span>
+        </div>
+      </div>
+      
+      {/* Assignment List */}
+      <div className="p-4 space-y-3">
+        {assignments.map((task, i) => (
+          <motion.div
+            key={task.title}
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.1 }}
+            className="p-3 rounded-lg border border-zinc-100 hover:border-zinc-200 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-zinc-900">{task.title}</span>
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    task.priority === 'high' ? 'bg-red-500' :
+                    task.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
+                  }`} />
+                </div>
+                <span className="text-[10px] text-zinc-500">Assigned to {task.agent}</span>
+              </div>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-zinc-100 text-zinc-600'
+              }`}>
+                {task.status === 'in_progress' ? 'In Progress' : task.status === 'completed' ? 'Completed' : 'Pending'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                <motion.div 
+                  className={`h-full rounded-full ${
+                    task.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'
+                  }`}
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${task.progress}%` }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 + 0.2 }}
+                />
+              </div>
+              <span className="text-[10px] text-zinc-500 w-8">{task.progress}%</span>
             </div>
           </motion.div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function WorkflowBuilderScreen() {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden">
+      {/* App Header */}
+      <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-red-400" />
+            <div className="h-3 w-3 rounded-full bg-amber-400" />
+            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+          </div>
+          <span className="text-xs font-medium text-zinc-500 ml-2">Create Workflow</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-6 px-2 rounded bg-emerald-600 text-white text-[10px] font-medium flex items-center">
+            Save
+          </div>
+        </div>
+      </div>
+      
+      {/* Workflow Canvas */}
+      <div className="p-6 bg-zinc-50/50 min-h-[280px] relative">
+        {/* Grid pattern */}
+        <div className="absolute inset-0 opacity-30" style={{
+          backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
+        }} />
+        
+        {/* Workflow nodes */}
+        <div className="relative flex items-center justify-center gap-4">
+          {/* Trigger */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="flex flex-col items-center"
+          >
+            <div className="h-14 w-14 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 flex items-center justify-center shadow-sm">
+              <Zap className="h-6 w-6 text-emerald-600" />
+            </div>
+            <span className="text-[10px] text-zinc-600 mt-1.5 font-medium">Trigger</span>
+          </motion.div>
           
-          <motion.div 
-            className="flex items-start gap-3 justify-end"
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
+          {/* Connector */}
+          <motion.div
+            initial={{ width: 0 }}
+            whileInView={{ width: 40 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="h-0.5 bg-gradient-to-r from-emerald-400 to-blue-400"
+          />
+          
+          {/* Process */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col items-center"
+          >
+            <div className="h-14 w-14 rounded-xl border border-blue-200 bg-blue-50 flex items-center justify-center shadow-sm">
+              <Bot className="h-6 w-6 text-blue-600" />
+            </div>
+            <span className="text-[10px] text-zinc-600 mt-1.5 font-medium">AI Agent</span>
+          </motion.div>
+          
+          {/* Connector */}
+          <motion.div
+            initial={{ width: 0 }}
+            whileInView={{ width: 40 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
+            className="h-0.5 bg-gradient-to-r from-blue-400 to-purple-400"
+          />
+          
+          {/* Condition */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-col items-center"
           >
-            <div className="flex-1 rounded-2xl rounded-tr-sm bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 p-4">
-              <p className="text-sm text-emerald-800">Found 3 failed workflows. The main issue appears to be API rate limiting on the Salesforce connector...</p>
+            <div className="h-14 w-14 rounded-xl border border-purple-200 bg-purple-50 flex items-center justify-center shadow-sm rotate-45">
+              <GitBranch className="h-5 w-5 text-purple-600 -rotate-45" />
             </div>
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
-              <Sparkles className="h-4 w-4 text-white" />
+            <span className="text-[10px] text-zinc-600 mt-1.5 font-medium">Condition</span>
+          </motion.div>
+          
+          {/* Connector */}
+          <motion.div
+            initial={{ width: 0 }}
+            whileInView={{ width: 40 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.6 }}
+            className="h-0.5 bg-gradient-to-r from-purple-400 to-amber-400"
+          />
+          
+          {/* Action */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.7 }}
+            className="flex flex-col items-center"
+          >
+            <div className="h-14 w-14 rounded-xl border border-amber-200 bg-amber-50 flex items-center justify-center shadow-sm">
+              <Bell className="h-6 w-6 text-amber-600" />
             </div>
+            <span className="text-[10px] text-zinc-600 mt-1.5 font-medium">Notify</span>
           </motion.div>
         </div>
         
+        {/* Side panel hint */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          whileInView={{ opacity: 0.8, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.8 }}
+          className="absolute right-4 top-4 w-28 p-2 rounded-lg border border-zinc-200 bg-white shadow-sm"
+        >
+          <span className="text-[9px] font-medium text-zinc-500 block mb-1.5">Add Node</span>
+          <div className="space-y-1">
+            {['Agent', 'Condition', 'Action'].map((item) => (
+              <div key={item} className="text-[9px] text-zinc-400 flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+function AIOperatorScreen() {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden">
+      {/* App Header */}
+      <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-3 w-3 rounded-full bg-red-400" />
+            <div className="h-3 w-3 rounded-full bg-amber-400" />
+            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+          </div>
+          <span className="text-xs font-medium text-zinc-500 ml-2">AI Operator</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <motion.div
+            className="h-2 w-2 rounded-full bg-emerald-500"
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+          <span className="text-[10px] text-emerald-600">Online</span>
+        </div>
+      </div>
+      
+      {/* Chat */}
+      <div className="p-4 space-y-4 min-h-[280px] bg-zinc-50/30">
+        {/* User message */}
+        <motion.div 
+          className="flex items-start gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <div className="h-8 w-8 rounded-full bg-zinc-200 flex items-center justify-center shrink-0 text-xs font-medium text-zinc-600">
+            JD
+          </div>
+          <div className="flex-1 rounded-2xl rounded-tl-sm bg-white border border-zinc-200 p-3 shadow-sm">
+            <p className="text-sm text-zinc-700">Analyze our Q4 sales data and find trends</p>
+          </div>
+        </motion.div>
+        
+        {/* AI response */}
+        <motion.div 
+          className="flex items-start gap-3 justify-end"
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="flex-1 rounded-2xl rounded-tr-sm bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-3 w-3 text-emerald-600" />
+              <span className="text-[10px] font-medium text-emerald-700">Processing with Data Analyst</span>
+            </div>
+            <p className="text-sm text-emerald-800">I found 3 key trends: 1) 23% increase in enterprise deals, 2) APAC region outperformed by 15%, 3) New product line contributed 40% of growth.</p>
+          </div>
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+        </motion.div>
+        
+        {/* Quick actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-wrap gap-2"
+        >
+          {['Show details', 'Export report', 'Compare to Q3'].map((action) => (
+            <span key={action} className="px-2.5 py-1 rounded-full border border-zinc-200 bg-white text-[10px] text-zinc-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors cursor-pointer">
+              {action}
+            </span>
+          ))}
+        </motion.div>
+        
         {/* Input */}
-        <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-3 flex items-center gap-3 shadow-sm">
-          <div className="flex-1">
-            <div className="h-4 w-32 rounded bg-zinc-100" />
+        <div className="rounded-xl border border-zinc-200 bg-white p-2.5 flex items-center gap-2 shadow-sm">
+          <input
+            type="text"
+            placeholder="Ask anything..."
+            className="flex-1 text-sm text-zinc-700 placeholder-zinc-400 bg-transparent outline-none"
+            readOnly
+          />
+          <div className="h-7 w-7 rounded-lg bg-emerald-500 flex items-center justify-center cursor-pointer hover:bg-emerald-600 transition-colors">
+            <ArrowRight className="h-3.5 w-3.5 text-white" />
           </div>
-          <div className="h-8 w-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-            <ArrowRight className="h-4 w-4 text-white" />
-          </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  if (type === "agents") {
-    return (
-      <div className="relative h-full min-h-[300px] p-6 bg-zinc-50/50">
-        <div className="grid grid-cols-2 gap-4 h-full">
-          {[
-            { name: "Data Analyst", color: "emerald", icon: BarChart3, status: "active" },
-            { name: "Content Writer", color: "blue", icon: FileText, status: "active" },
-            { name: "Research Agent", color: "purple", icon: Eye, status: "idle" },
-            { name: "Code Reviewer", color: "amber", icon: GitBranch, status: "active" },
-          ].map((agent, i) => (
-            <motion.div
-              key={agent.name}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="rounded-xl border border-zinc-200 bg-white p-4 flex flex-col items-center justify-center text-center shadow-sm"
-            >
-              <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 relative ${
-                agent.color === 'emerald' ? 'bg-emerald-100' :
-                agent.color === 'blue' ? 'bg-blue-100' :
-                agent.color === 'purple' ? 'bg-purple-100' : 'bg-amber-100'
-              }`}>
-                <agent.icon className={`h-6 w-6 ${
-                  agent.color === 'emerald' ? 'text-emerald-600' :
-                  agent.color === 'blue' ? 'text-blue-600' :
-                  agent.color === 'purple' ? 'text-purple-600' : 'text-amber-600'
-                }`} />
-                {agent.status === "active" && (
-                  <motion.div
-                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${
-                      agent.color === 'emerald' ? 'bg-emerald-500' :
-                      agent.color === 'blue' ? 'bg-blue-500' :
-                      agent.color === 'purple' ? 'bg-purple-500' : 'bg-amber-500'
-                    }`}
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  />
-                )}
-              </div>
-              <span className="text-xs font-medium text-zinc-900">{agent.name}</span>
-              <span className={`text-[10px] ${agent.status === "active" ? "text-emerald-600" : "text-zinc-400"}`}>
-                {agent.status}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "workflows") {
-    return (
-      <div className="relative h-full min-h-[300px] p-6 flex items-center justify-center bg-zinc-50/50">
-        <div className="flex items-center gap-3">
-          {[
-            { icon: Database, color: "blue" },
-            { icon: Bot, color: "emerald" },
-            { icon: Users, color: "purple" },
-            { icon: BarChart3, color: "amber" },
-          ].map((node, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.15, type: "spring" }}
-              className="flex items-center"
-            >
-              <div className={`h-14 w-14 rounded-xl border shadow-sm flex items-center justify-center ${
-                node.color === 'blue' ? 'border-blue-200 bg-blue-50' :
-                node.color === 'emerald' ? 'border-emerald-200 bg-emerald-50' :
-                node.color === 'purple' ? 'border-purple-200 bg-purple-50' : 'border-amber-200 bg-amber-50'
-              }`}>
-                <node.icon className={`h-6 w-6 ${
-                  node.color === 'blue' ? 'text-blue-600' :
-                  node.color === 'emerald' ? 'text-emerald-600' :
-                  node.color === 'purple' ? 'text-purple-600' : 'text-amber-600'
-                }`} />
-              </div>
-              {i < 3 && (
-                <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: 32 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.15 + 0.2 }}
-                  className="h-0.5 bg-gradient-to-r from-zinc-300 to-zinc-200"
-                />
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
+// Feature visual component - Light theme
+function FeatureVisual({ type }: { type: string }) {
   if (type === "governance") {
     return (
       <div className="relative h-full min-h-[300px] p-6 space-y-3 bg-zinc-50/50">
@@ -391,59 +628,127 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Bento Grid */}
+      {/* Interactive Product Screens */}
       <section className="relative pb-32">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* AI Assistant - Large card */}
-            <BentoCard className="lg:col-span-2 lg:row-span-2" delay={0}>
-              <div className="p-8">
-                <div className="flex items-center gap-4 mb-4">
+          {/* Section header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">See it in action</h2>
+            <p className="text-zinc-600 max-w-2xl mx-auto">
+              Explore the key screens that power your AI workforce
+            </p>
+          </motion.div>
+
+          {/* AI Operator - Full width featured */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-8"
+          >
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
+              <div className="lg:pr-8">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 ring-1 ring-emerald-200 flex items-center justify-center">
                     <Bot className="h-6 w-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-zinc-900">AI Assistant</h3>
-                    <p className="text-sm text-emerald-600">Your control center</p>
+                    <h3 className="text-2xl font-semibold text-zinc-900">AI Operator</h3>
+                    <p className="text-sm text-emerald-600">Your command center</p>
                   </div>
                 </div>
-                <p className="text-zinc-600 max-w-lg">
-                  Talk to your AI team in plain English. Ask questions, start tasks, and get instant answers.
+                <p className="text-zinc-600 mb-6">
+                  Talk to your AI team in plain English. Ask questions, start tasks, and get instant answers. 
+                  The AI Operator understands context, routes requests to the right agents, and provides 
+                  actionable insights.
                 </p>
+                <ul className="space-y-2">
+                  {['Natural language commands', 'Real-time task execution', 'Smart agent routing'].map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-zinc-600">
+                      <Check className="h-4 w-4 text-emerald-600" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <FeatureVisual type="operator" />
-            </BentoCard>
+              <AIOperatorScreen />
+            </div>
+          </motion.div>
 
-            {/* Agents - Medium card */}
-            <BentoCard delay={0.1}>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
+          {/* Three column grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Agents */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
                     <Users className="h-5 w-5 text-blue-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Smart Agents</h3>
+                  <h3 className="text-lg font-semibold text-zinc-900">Agents</h3>
                 </div>
-                <p className="text-sm text-zinc-600">Ready-made AI helpers for every part of your business.</p>
+                <p className="text-sm text-zinc-600">Manage your AI workforce. Monitor status, track performance, and configure agent capabilities.</p>
               </div>
-              <FeatureVisual type="agents" />
-            </BentoCard>
+              <AgentsScreen />
+            </motion.div>
 
-            {/* Automations - Medium card */}
-            <BentoCard delay={0.2}>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
+            {/* Assignments */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-rose-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-900">Assignments</h3>
+                </div>
+                <p className="text-sm text-zinc-600">Track all tasks across your AI team. See progress, priorities, and completion status at a glance.</p>
+              </div>
+              <AssignmentsScreen />
+            </motion.div>
+
+            {/* Workflow Builder */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+            >
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
                     <Workflow className="h-5 w-5 text-purple-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Easy Automations</h3>
+                  <h3 className="text-lg font-semibold text-zinc-900">Automations</h3>
                 </div>
-                <p className="text-sm text-zinc-600">Build powerful automations by dragging and dropping.</p>
+                <p className="text-sm text-zinc-600">Build powerful workflows visually. Connect triggers, agents, conditions, and actions with drag-and-drop.</p>
               </div>
-              <FeatureVisual type="workflows" />
-            </BentoCard>
+              <WorkflowBuilderScreen />
+            </motion.div>
+          </div>
 
-            {/* Safety - Wide card */}
-            <BentoCard className="lg:col-span-2" delay={0.3}>
+          {/* Safety Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="mt-8"
+          >
+            <BentoCard className="lg:col-span-2">
               <div className="grid lg:grid-cols-2">
                 <div className="p-8">
                   <div className="flex items-center gap-3 mb-4">
@@ -466,30 +771,7 @@ export default function FeaturesPage() {
                 <FeatureVisual type="governance" />
               </div>
             </BentoCard>
-
-            {/* Live View - Small card */}
-            <BentoCard delay={0.4}>
-              <div className="p-6 h-full flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                    <Zap className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Live View</h3>
-                </div>
-                <p className="text-sm text-zinc-600 flex-1">
-                  Watch your automations run in real-time. Pause, fix issues, and undo changes easily.
-                </p>
-                <div className="mt-6 flex items-center gap-2">
-                  <motion.div
-                    className="h-2 w-2 rounded-full bg-emerald-500"
-                    animate={{ opacity: [1, 0.5, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  />
-                  <span className="text-xs text-emerald-600 font-medium">Live monitoring</span>
-                </div>
-              </div>
-            </BentoCard>
-          </div>
+          </motion.div>
         </div>
       </section>
 
