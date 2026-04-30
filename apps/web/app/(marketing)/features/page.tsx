@@ -906,9 +906,9 @@ export default function FeaturesPage() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.7 + i * 0.05 }}
-                        className="h-11 w-11 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shadow-sm"
+                        className="flex items-center justify-center"
                       >
-                        <VendorLogo vendor={tool} size="sm" />
+                        <VendorLogo vendor={tool} size="md" variant="light" />
                       </motion.div>
                     ))}
                   </div>
@@ -1334,7 +1334,7 @@ export default function FeaturesPage() {
                           }`}
                         >
                           <div className="mx-auto mb-2">
-                            <VendorLogo vendor={app.name} size="sm" />
+                            <VendorLogo vendor={app.name} size="sm" variant="light" />
                           </div>
                           <div className="text-[10px] font-medium text-zinc-700">{app.name}</div>
                           <div className={`text-[8px] mt-0.5 ${

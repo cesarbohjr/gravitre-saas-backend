@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 interface VendorLogoProps {
   vendor: string
   size?: "sm" | "md" | "lg"
+  variant?: "default" | "light"
   className?: string
 }
 
@@ -20,9 +21,10 @@ const iconSizes = {
   lg: "h-8 w-8",
 }
 
-export function VendorLogo({ vendor, size = "md", className }: VendorLogoProps) {
+export function VendorLogo({ vendor, size = "md", variant = "default", className }: VendorLogoProps) {
   const containerSize = containerSizes[size]
   const iconSize = iconSizes[size]
+  const bgClass = variant === "light" ? "bg-white border border-zinc-200" : "bg-secondary"
   
   const logos: Record<string, React.ReactNode> = {
     salesforce: (
@@ -143,7 +145,8 @@ export function VendorLogo({ vendor, size = "md", className }: VendorLogoProps) 
   if (!logo) {
     return (
       <div className={cn(
-        "flex items-center justify-center rounded-lg bg-secondary text-xs font-semibold text-foreground",
+        "flex items-center justify-center rounded-lg text-xs font-semibold text-foreground",
+        bgClass,
         containerSize,
         className
       )}>
@@ -153,7 +156,7 @@ export function VendorLogo({ vendor, size = "md", className }: VendorLogoProps) 
   }
 
   return (
-    <div className={cn("flex items-center justify-center rounded-lg bg-secondary", containerSize, className)}>
+    <div className={cn("flex items-center justify-center rounded-lg", bgClass, containerSize, className)}>
       {logo}
     </div>
   )
