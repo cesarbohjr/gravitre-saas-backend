@@ -19,8 +19,10 @@ import {
   Sparkles,
   Rocket
 } from "lucide-react"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
+import { beginOAuthSignIn } from "@/lib/oauth"
 
 const plans = [
   {
@@ -89,26 +91,41 @@ export default function GetStartedPage() {
     }
   }, [user, authLoading, router])
 
+  useEffect(() => {
+    const resetAuthLoading = () => {
+      setIsLoading(false)
+      setLoadingProvider(null)
+    }
+
+    const onPageShow = () => {
+      resetAuthLoading()
+    }
+
+    window.addEventListener("pageshow", onPageShow)
+    return () => {
+      window.removeEventListener("pageshow", onPageShow)
+    }
+  }, [])
+
   const handleOAuth = async (provider: string) => {
     setAuthError(null)
     setLoadingProvider(provider)
 
     const selectedProvider =
       provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
-    
-    // Use canonical app URL to avoid redirect issues with preview deployments
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gravitre-saas-backend.vercel.app"
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: selectedProvider,
-      options: {
-        redirectTo: `${appUrl}/operator`,
-      },
-    })
-
-    if (error) {
-      setAuthError(error.message)
+    const resetTimer = setTimeout(() => {
       setLoadingProvider(null)
+      setAuthError("Sign-in timed out. Please try again.")
+    }, 20000)
+
+    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    if (!result.ok) {
+      clearTimeout(resetTimer)
+      setAuthError(result.error)
+      setLoadingProvider(null)
+      return
     }
+    clearTimeout(resetTimer)
   }
 
   const handleEmailSignup = async (e: React.FormEvent) => {
@@ -116,13 +133,11 @@ export default function GetStartedPage() {
     setAuthError(null)
     setIsLoading(true)
 
-    // Use canonical app URL to avoid redirect issues with preview deployments
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gravitre-saas-backend.vercel.app"
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${appUrl}/operator`,
+        emailRedirectTo: getAuthRedirectUrl("/operator"),
       },
     })
 

@@ -9,6 +9,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.workers.queue import enqueue_training_job
 
 router = APIRouter(prefix="/api/training", tags=["training"])
 
@@ -285,7 +286,11 @@ async def create_job(
     )
     if response.error:
         raise HTTPException(status_code=500, detail=str(response.error))
-    return dict((response.data or [{}])[0])
+    job = dict((response.data or [{}])[0])
+    job_id = str(job.get("id") or "")
+    if job_id:
+        await enqueue_training_job(job_id)
+    return job
 
 
 @router.post("/jobs/{job_id}/cancel")
