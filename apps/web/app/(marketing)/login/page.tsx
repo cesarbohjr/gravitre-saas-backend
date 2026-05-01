@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "lucide-react"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
-import { getAuthRedirectUrl } from "@/lib/auth-redirect"
+import { beginOAuthSignIn } from "@/lib/oauth"
 
 const features = [
   "Deploy AI agents in minutes",
@@ -39,6 +39,22 @@ function LoginPageContent() {
       setActiveFeature((prev) => (prev + 1) % features.length)
     }, 3000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const resetAuthLoading = () => {
+      setIsLoading(false)
+      setLoadingProvider(null)
+    }
+
+    const onPageShow = () => {
+      resetAuthLoading()
+    }
+
+    window.addEventListener("pageshow", onPageShow)
+    return () => {
+      window.removeEventListener("pageshow", onPageShow)
+    }
   }, [])
 
   // Redirect to operator if already logged in
@@ -75,17 +91,20 @@ function LoginPageContent() {
 
     const selectedProvider =
       provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: selectedProvider,
-      options: {
-        redirectTo: getAuthRedirectUrl("/operator"),
-      },
-    })
 
-    if (error) {
-      setAuthError(error.message)
+    const resetTimer = setTimeout(() => {
       setLoadingProvider(null)
+      setAuthError("Sign-in timed out. Please try again.")
+    }, 20000)
+
+    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    if (!result.ok) {
+      clearTimeout(resetTimer)
+      setAuthError(result.error)
+      setLoadingProvider(null)
+      return
     }
+    clearTimeout(resetTimer)
   }
 
   // Don't block render - show form immediately, redirect happens via useEffect if logged in
