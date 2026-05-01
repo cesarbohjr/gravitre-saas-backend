@@ -163,12 +163,12 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button 
       onClick={copy}
-      className="p-2 rounded-lg hover:bg-zinc-700 transition-colors"
+      className="p-2 rounded-lg hover:bg-zinc-200 transition-colors"
     >
       {copied ? (
-        <Check className="h-4 w-4 text-emerald-400" />
+        <Check className="h-4 w-4 text-emerald-600" />
       ) : (
-        <Copy className="h-4 w-4 text-zinc-400" />
+        <Copy className="h-4 w-4 text-zinc-500" />
       )}
     </button>
   )
@@ -269,40 +269,40 @@ export default function APIPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="relative rounded-2xl border border-zinc-200 bg-zinc-900 overflow-hidden"
+            className="relative rounded-2xl border border-zinc-200 bg-zinc-50 overflow-hidden shadow-lg"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 bg-white">
               <div className="flex items-center gap-2">
                 <div className="flex gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-red-500/80" />
-                  <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-                  <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
+                  <div className="h-3 w-3 rounded-full bg-red-400" />
+                  <div className="h-3 w-3 rounded-full bg-amber-400" />
+                  <div className="h-3 w-3 rounded-full bg-emerald-400" />
                 </div>
-                <span className="text-xs text-zinc-400 ml-2">example.ts</span>
+                <span className="text-xs text-zinc-500 ml-2">example.ts</span>
               </div>
               <CopyButton text={codeExample} />
             </div>
-            <pre className="p-6 overflow-x-auto text-sm">
-              <code className="text-zinc-300 font-mono">
+            <pre className="p-6 overflow-x-auto text-sm bg-zinc-50">
+              <code className="text-zinc-700 font-mono">
                 {codeExample.split('\n').map((line, i) => (
                   <div key={i} className="leading-relaxed">
-                    {line.includes('import') && <span className="text-purple-400">{line}</span>}
+                    {line.includes('import') && <span className="text-purple-600">{line}</span>}
                     {line.includes('const') && !line.includes('import') && (
                       <span>
-                        <span className="text-purple-400">const </span>
-                        <span className="text-white">{line.replace('const ', '')}</span>
+                        <span className="text-purple-600">const </span>
+                        <span className="text-zinc-800">{line.replace('const ', '')}</span>
                       </span>
                     )}
                     {line.includes('await') && (
                       <span>
-                        <span className="text-purple-400">await </span>
-                        <span className="text-white">{line.replace(/.*await /, '')}</span>
+                        <span className="text-purple-600">await </span>
+                        <span className="text-zinc-800">{line.replace(/.*await /, '')}</span>
                       </span>
                     )}
-                    {line.includes('//') && <span className="text-zinc-500">{line}</span>}
-                    {line.includes('console') && <span className="text-cyan-400">{line}</span>}
+                    {line.includes('//') && <span className="text-zinc-400">{line}</span>}
+                    {line.includes('console') && <span className="text-cyan-600">{line}</span>}
                     {!line.includes('import') && !line.includes('const') && !line.includes('await') && !line.includes('//') && !line.includes('console') && (
-                      <span className="text-zinc-300">{line}</span>
+                      <span className="text-zinc-700">{line}</span>
                     )}
                   </div>
                 ))}
@@ -384,8 +384,8 @@ export default function APIPage() {
                 className="p-6 rounded-xl border border-border bg-muted/50"
               >
                 <h3 className={`text-lg font-semibold ${sdk.color.replace('400', '600')} mb-3`}>{sdk.name}</h3>
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-zinc-900 border border-zinc-800 mb-4">
-                  <code className="text-xs text-zinc-400 font-mono flex-1 truncate">{sdk.install}</code>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-zinc-100 border border-zinc-200 mb-4">
+                  <code className="text-xs text-zinc-600 font-mono flex-1 truncate">{sdk.install}</code>
                   <CopyButton text={sdk.install} />
                 </div>
                 <Link
