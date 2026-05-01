@@ -96,10 +96,12 @@ export default function GetStartedPage() {
     const selectedProvider =
       provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
     
+    // Use canonical app URL to avoid redirect issues with preview deployments
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gravitre-saas-backend.vercel.app"
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: selectedProvider,
       options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+        redirectTo: `${appUrl}/operator`,
       },
     })
 
@@ -114,11 +116,13 @@ export default function GetStartedPage() {
     setAuthError(null)
     setIsLoading(true)
 
+    // Use canonical app URL to avoid redirect issues with preview deployments
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gravitre-saas-backend.vercel.app"
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+        emailRedirectTo: `${appUrl}/operator`,
       },
     })
 

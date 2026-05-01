@@ -74,10 +74,13 @@ function LoginPageContent() {
 
     const selectedProvider =
       provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
+    
+    // Use canonical app URL to avoid redirect issues with preview deployments
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gravitre-saas-backend.vercel.app"
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: selectedProvider,
       options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/operator` : undefined,
+        redirectTo: `${appUrl}/operator`,
       },
     })
 
