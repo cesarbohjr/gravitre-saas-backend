@@ -45,6 +45,7 @@ function LoginPageContent() {
     const resetAuthLoading = () => {
       setIsLoading(false)
       setLoadingProvider(null)
+      window.sessionStorage.removeItem("gravitre_auth_redirecting")
     }
 
     const onPageShow = () => {

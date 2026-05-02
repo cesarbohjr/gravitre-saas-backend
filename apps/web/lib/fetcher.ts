@@ -32,9 +32,16 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     cache: init?.cache ?? "no-store",
   })
   
-  // Handle 401 by redirecting to login
+  // Handle 401 by redirecting to login once.
   if (response.status === 401 && typeof window !== "undefined") {
-    window.location.assign("/login?session_expired=true")
+    const currentPath = window.location.pathname
+    if (!currentPath.startsWith("/login")) {
+      const alreadyRedirecting = window.sessionStorage.getItem("gravitre_auth_redirecting") === "1"
+      if (!alreadyRedirecting) {
+        window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
+        window.location.assign("/login?session_expired=true")
+      }
+    }
     throw new Error("Session expired")
   }
   

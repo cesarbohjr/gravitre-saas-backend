@@ -74,20 +74,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for Supabase auth cookie (sb-*-auth-token pattern)
-  const cookies = request.cookies.getAll()
-  const hasAuthCookie = cookies.some((cookie) => 
-    cookie.name.includes("-auth-token") || 
-    cookie.name.startsWith("sb-") && cookie.name.includes("auth")
-  )
-
-  // If no auth cookie and trying to access protected route, redirect to login
-  if (!hasAuthCookie) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
   return NextResponse.next()
 }
 
