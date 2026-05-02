@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
+import { Suspense, useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -26,6 +26,8 @@ function LoginPageContent() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [activeFeature, setActiveFeature] = useState(0)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [showSignupCta, setShowSignupCta] = useState(false)
+  const oauthLoginCheckRef = useRef(false)
 
   // Show session expired message if redirected from middleware
   useEffect(() => {
@@ -60,10 +62,61 @@ function LoginPageContent() {
 
   // Redirect to operator if already logged in
   useEffect(() => {
-    if (!authLoading && user) {
+    if (authLoading) return
+    if (!user) {
+      oauthLoginCheckRef.current = false
+      return
+    }
+
+    const intent = searchParams.get("intent")
+    if (intent !== "login") {
       const redirect = searchParams.get("redirect") || "/operator"
       router.replace(redirect)
+      return
     }
+
+    if (oauthLoginCheckRef.current) return
+    oauthLoginCheckRef.current = true
+
+    const verifyExistingAccount = async () => {
+      try {
+        const { data } = await supabaseClient.auth.getSession()
+        const token = data.session?.access_token
+        if (!token) {
+          throw new Error("No active session found")
+        }
+
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            accept: "application/json",
+          },
+          cache: "no-store",
+        })
+
+        if (!response.ok) {
+          throw new Error("Unable to verify account")
+        }
+
+        const payload = await response.json()
+        const hasExistingAccount = Boolean(payload?.user?.created_at)
+        if (!hasExistingAccount) {
+          await supabaseClient.auth.signOut()
+          setShowSignupCta(true)
+          setAuthError("Your account doesn't exist yet. Sign up to continue.")
+          return
+        }
+
+        const redirect = searchParams.get("redirect") || "/operator"
+        router.replace(redirect)
+      } catch {
+        await supabaseClient.auth.signOut()
+        setShowSignupCta(true)
+        setAuthError("We couldn't verify your account. Sign up to continue.")
+      }
+    }
+
+    void verifyExistingAccount()
   }, [user, authLoading, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +141,7 @@ function LoginPageContent() {
 
   const handleOAuth = async (provider: string) => {
     setAuthError(null)
+    setShowSignupCta(false)
     setLoadingProvider(provider)
 
     const selectedProvider =
@@ -98,7 +152,7 @@ function LoginPageContent() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    const result = await beginOAuthSignIn(selectedProvider, "/login?oauth=1&intent=login")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
@@ -198,7 +252,17 @@ function LoginPageContent() {
                   Access your AI command center
                 </p>
                 {authError && (
-                  <p className="mt-3 text-sm text-red-600">{authError}</p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm text-red-600">{authError}</p>
+                    {showSignupCta && (
+                      <Link
+                        href="/get-started"
+                        className="inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                      >
+                        Sign up here
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
 

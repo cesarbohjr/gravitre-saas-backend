@@ -87,6 +87,14 @@ export default function GetStartedPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user) {
+      const intent =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("intent")
+          : null
+      if (intent === "signup") {
+        setStep((current) => (current < 2 ? 2 : current))
+        return
+      }
       router.replace("/operator")
     }
   }, [user, authLoading, router])
@@ -119,7 +127,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    const result = await beginOAuthSignIn(selectedProvider, "/get-started?oauth=1&intent=signup")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
