@@ -793,6 +793,9 @@ function AddConnectorModal({
       toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
       await onCreated()
       handleClose()
+      if (typeof window !== "undefined") {
+        window.location.assign("/integrations")
+      }
     } catch (err) {
       console.error("[v0] Failed to create connector:", err)
       toast.error("Failed to create connector")

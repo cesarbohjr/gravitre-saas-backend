@@ -23,6 +23,7 @@ import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
+import { billingApi } from "@/lib/api"
 
 const plans = [
   {
@@ -83,19 +84,50 @@ export default function GetStartedPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [isCheckingBilling, setIsCheckingBilling] = useState(false)
 
-  // Redirect if already logged in
+  // Redirect only after paid checkout is active
   useEffect(() => {
-    if (!authLoading && user) {
-      const intent =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("intent")
-          : null
-      if (intent === "signup") {
-        setStep((current) => (current < 2 ? 2 : current))
-        return
+    if (authLoading || !user) return
+
+    const intent =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("intent")
+        : null
+
+    if (intent === "signup") {
+      setStep((current) => (current < 2 ? 2 : current))
+      return
+    }
+
+    let cancelled = false
+    const checkBilling = async () => {
+      setIsCheckingBilling(true)
+      try {
+        const status = await billingApi.status()
+        if (cancelled) return
+        if (status.billingStatus === "active") {
+          router.replace("/operator")
+          return
+        }
+        setStep((current) => (current < 3 ? 3 : current))
+        setBillingError("Complete checkout to continue to your operator dashboard.")
+      } catch {
+        if (!cancelled) {
+          setStep((current) => (current < 3 ? 3 : current))
+          setBillingError("We could not verify billing yet. Please complete checkout and try again.")
+        }
+      } finally {
+        if (!cancelled) {
+          setIsCheckingBilling(false)
+        }
       }
-      router.replace("/operator")
+    }
+
+    void checkBilling()
+    return () => {
+      cancelled = true
     }
   }, [user, authLoading, router])
 
@@ -169,13 +201,59 @@ export default function GetStartedPage() {
   }
 
   const handlePlanSelect = () => {
-    setStep(4)
+    setBillingError(null)
+    setIsCheckingBilling(true)
+    void (async () => {
+      try {
+        const response = await billingApi.createCheckoutForPlan(selectedPlan)
+        if (response.checkout_url) {
+          window.location.assign(response.checkout_url)
+          return
+        }
+        setBillingError("Unable to start checkout. Please try again.")
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to start checkout."
+        setBillingError(message)
+      } finally {
+        setIsCheckingBilling(false)
+      }
+    })()
   }
 
   const handleComplete = async () => {
+    setBillingError(null)
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    router.push("/operator")
+    try {
+      const status = await billingApi.status()
+      if (status.billingStatus !== "active") {
+        setBillingError("Payment is still pending. Finish checkout, then try again.")
+        setStep(3)
+        return
+      }
+      router.push("/operator")
+    } catch {
+      setBillingError("We could not verify billing yet. Please try again in a moment.")
+      setStep(3)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleVerifyPayment = async () => {
+    setBillingError(null)
+    setIsCheckingBilling(true)
+    try {
+      const status = await billingApi.status()
+      if (status.billingStatus !== "active") {
+        setBillingError("Payment not confirmed yet. Complete checkout and click verify again.")
+        return
+      }
+      setStep(4)
+    } catch {
+      setBillingError("We could not verify billing yet. Please try again.")
+    } finally {
+      setIsCheckingBilling(false)
+    }
   }
 
   const toggleUseCase = (id: string) => {
@@ -505,6 +583,9 @@ export default function GetStartedPage() {
                   <p className="mt-2 text-sm text-zinc-500 mb-6">
                     Start with a 7-day free trial. Cancel anytime.
                   </p>
+                  {billingError && (
+                    <p className="mb-4 text-sm text-red-600">{billingError}</p>
+                  )}
 
                   <div className="space-y-3">
                     {plans.map((plan) => (
@@ -548,13 +629,28 @@ export default function GetStartedPage() {
 
                   <motion.button
                     onClick={handlePlanSelect}
+                    disabled={isCheckingBilling}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    className="w-full mt-6 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800"
+                    className="w-full mt-6 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
                   >
-                    <span>Continue</span>
-                    <ArrowRight className="h-4 w-4" />
+                    {isCheckingBilling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Continue to Payment</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
                   </motion.button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyPayment}
+                    disabled={isCheckingBilling}
+                    className="w-full mt-3 rounded-xl border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    I&apos;ve completed payment
+                  </button>
                 </motion.div>
               )}
 
@@ -621,7 +717,7 @@ export default function GetStartedPage() {
 
                   <motion.button
                     onClick={handleComplete}
-                    disabled={isLoading}
+                    disabled={isLoading || isCheckingBilling}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     initial={{ opacity: 0, y: 10 }}
@@ -629,7 +725,7 @@ export default function GetStartedPage() {
                     transition={{ delay: 0.5 }}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25"
                   >
-                    {isLoading ? (
+                    {isLoading || isCheckingBilling ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
                       <>

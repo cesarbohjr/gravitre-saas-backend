@@ -360,10 +360,20 @@ export const auditApi = {
 // ============ Billing ============
 export const billingApi = {
   overview: () => fetcher<BillingOverview>(apiUrl("/api/billing")),
+  status: () =>
+    fetcher<{
+      billingStatus: string
+      currentPeriodEnd?: string | null
+      cancelAtPeriodEnd?: boolean
+    }>(apiUrl("/api/billing/status")),
   createCheckoutSession: (priceId: string, quantity?: number) =>
     postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {
       price_id: priceId,
       quantity,
+    }),
+  createCheckoutForPlan: (planCode: string) =>
+    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {
+      plan_code: planCode,
     }),
   createPortalSession: () =>
     postJson<{ portal_url: string }>(apiUrl("/api/billing/portal"), {}),
