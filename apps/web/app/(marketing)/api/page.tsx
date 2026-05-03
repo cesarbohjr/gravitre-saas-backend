@@ -176,7 +176,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function APIPage() {
   return (
-    <div className="bg-background">
+    <div className="bg-white">
       {/* Hero */}
       <section className="relative overflow-hidden px-6 py-24 lg:py-32">
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-50 to-transparent" />
@@ -193,15 +193,15 @@ export default function APIPage() {
               <span className="text-sm font-medium text-emerald-700">REST API v1</span>
             </div>
             
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              <span className="text-foreground">
+            <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl">
+              <span className="text-zinc-900">
                 Build with the
               </span>
               <br />
               <span className="text-emerald-600">Gravitre API</span>
             </h1>
             
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">
               Programmatically execute AI agents, trigger workflows, and integrate Gravitre 
               into your applications with our RESTful API.
             </p>
@@ -209,14 +209,14 @@ export default function APIPage() {
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/docs/api/quickstart"
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background hover:bg-foreground/90 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
               >
                 Get Started
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/docs/api/reference"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 transition-colors"
               >
                 <BookOpen className="h-4 w-4" />
                 API Reference
@@ -227,7 +227,7 @@ export default function APIPage() {
       </section>
 
       {/* Features */}
-      <section className="px-6 py-16 border-t border-border">
+      <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, i) => (
@@ -237,14 +237,14 @@ export default function APIPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex items-start gap-4 p-5 rounded-xl border border-border bg-muted/50"
+                className="flex items-start gap-4 p-5 rounded-xl border border-zinc-200 bg-zinc-50"
               >
                 <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                   <feature.icon className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-foreground">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{feature.description}</p>
+                  <h3 className="font-medium text-zinc-900">{feature.title}</h3>
+                  <p className="text-sm text-zinc-600 mt-1">{feature.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -261,8 +261,8 @@ export default function APIPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-foreground mb-4">Simple, powerful integration</h2>
-            <p className="text-muted-foreground">Execute AI agents with just a few lines of code</p>
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">Simple, powerful integration</h2>
+            <p className="text-zinc-600">Execute AI agents with just a few lines of code</p>
           </motion.div>
           
           <motion.div
@@ -313,7 +313,7 @@ export default function APIPage() {
       </section>
 
       {/* Endpoints */}
-      <section className="px-6 py-20 border-t border-border">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -321,7 +321,7 @@ export default function APIPage() {
             viewport={{ once: true }}
             className="flex items-center justify-between mb-8"
           >
-            <h2 className="text-2xl font-bold text-foreground">API Endpoints</h2>
+            <h2 className="text-2xl font-bold text-zinc-900">API Endpoints</h2>
             <Link 
               href="/docs/api/reference"
               className="text-sm text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
@@ -339,7 +339,7 @@ export default function APIPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/50 hover:border-emerald-500/50 transition-colors cursor-pointer"
+                className="group flex items-center gap-4 p-4 rounded-xl border border-zinc-200 bg-zinc-50 hover:border-emerald-500/50 transition-colors cursor-pointer"
               >
                 <span className={`
                   px-2 py-1 rounded text-xs font-mono font-semibold shrink-0
@@ -347,13 +347,13 @@ export default function APIPage() {
                 `}>
                   {endpoint.method}
                 </span>
-                <code className="text-sm text-foreground font-mono">{endpoint.path}</code>
+                <code className="text-sm text-zinc-900 font-mono">{endpoint.path}</code>
                 {endpoint.badge && (
                   <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
                     {endpoint.badge}
                   </span>
                 )}
-                <span className="text-sm text-muted-foreground ml-auto hidden sm:block">{endpoint.description}</span>
+                <span className="text-sm text-zinc-600 ml-auto hidden sm:block">{endpoint.description}</span>
               </motion.div>
             ))}
           </div>
@@ -361,7 +361,7 @@ export default function APIPage() {
       </section>
 
       {/* SDKs */}
-      <section className="px-6 py-20 border-t border-border">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -369,8 +369,8 @@ export default function APIPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-foreground mb-4">Official SDKs</h2>
-            <p className="text-muted-foreground">Type-safe clients for your favorite languages</p>
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">Official SDKs</h2>
+            <p className="text-zinc-600">Type-safe clients for your favorite languages</p>
           </motion.div>
           
           <div className="grid gap-4 sm:grid-cols-3">
@@ -381,7 +381,7 @@ export default function APIPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="p-6 rounded-xl border border-border bg-muted/50"
+                className="p-6 rounded-xl border border-zinc-200 bg-zinc-50"
               >
                 <h3 className={`text-lg font-semibold ${sdk.color.replace('400', '600')} mb-3`}>{sdk.name}</h3>
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-zinc-900 border border-zinc-800 mb-4">
@@ -402,20 +402,20 @@ export default function APIPage() {
       </section>
 
       {/* Webhooks & Events */}
-      <section className="px-6 py-20 border-t border-border">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-8 lg:grid-cols-2">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="p-8 rounded-2xl border border-border bg-gradient-to-br from-purple-50 to-background"
+              className="p-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-purple-50 to-white"
             >
               <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center mb-6">
                 <Webhook className="h-6 w-6 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">Webhooks</h3>
-              <p className="text-muted-foreground mb-6">
+              <h3 className="text-xl font-bold text-zinc-900 mb-3">Webhooks</h3>
+              <p className="text-zinc-600 mb-6">
                 Receive real-time notifications when runs complete, workflows trigger, or errors occur. 
                 All webhooks are signed for security.
               </p>
@@ -432,13 +432,13 @@ export default function APIPage() {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="p-8 rounded-2xl border border-border bg-gradient-to-br from-amber-50 to-background"
+              className="p-8 rounded-2xl border border-zinc-200 bg-gradient-to-br from-amber-50 to-white"
             >
               <div className="h-12 w-12 rounded-xl bg-amber-100 flex items-center justify-center mb-6">
                 <Key className="h-6 w-6 text-amber-600" />
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">Authentication</h3>
-              <p className="text-muted-foreground mb-6">
+              <h3 className="text-xl font-bold text-zinc-900 mb-3">Authentication</h3>
+              <p className="text-zinc-600 mb-6">
                 Secure API access with scoped API keys or OAuth 2.0. 
                 Fine-grained permissions let you control exactly what each integration can access.
               </p>
@@ -455,21 +455,21 @@ export default function APIPage() {
       </section>
 
       {/* Rate Limits */}
-      <section className="px-6 py-20 border-t border-border">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="p-8 rounded-2xl border border-border bg-muted/50"
+            className="p-8 rounded-2xl border border-zinc-200 bg-zinc-50"
           >
             <div className="flex items-start gap-4 mb-6">
               <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                 <BarChart3 className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-foreground mb-2">Rate Limits</h3>
-                <p className="text-muted-foreground">Generous limits designed for production workloads</p>
+                <h3 className="text-xl font-bold text-zinc-900 mb-2">Rate Limits</h3>
+                <p className="text-zinc-600">Generous limits designed for production workloads</p>
               </div>
             </div>
             
@@ -479,10 +479,10 @@ export default function APIPage() {
                 { plan: "Growth", limit: "1,000 req/min", burst: "2,000 req/min" },
                 { plan: "Enterprise", limit: "Custom", burst: "Unlimited" },
               ].map((tier) => (
-                <div key={tier.plan} className="p-4 rounded-xl bg-background border border-border">
-                  <div className="text-sm text-muted-foreground mb-1">{tier.plan}</div>
-                  <div className="text-lg font-semibold text-foreground">{tier.limit}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Burst: {tier.burst}</div>
+                <div key={tier.plan} className="p-4 rounded-xl bg-white border border-zinc-200">
+                  <div className="text-sm text-zinc-500 mb-1">{tier.plan}</div>
+                  <div className="text-lg font-semibold text-zinc-900">{tier.limit}</div>
+                  <div className="text-xs text-zinc-500 mt-1">Burst: {tier.burst}</div>
                 </div>
               ))}
             </div>
@@ -491,15 +491,15 @@ export default function APIPage() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-20 border-t border-border">
+      <section className="px-6 py-20 border-t border-zinc-200">
         <div className="mx-auto max-w-4xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-bold text-foreground mb-4">Ready to build?</h2>
-            <p className="text-muted-foreground mb-8">
+            <h2 className="text-3xl font-bold text-zinc-900 mb-4">Ready to build?</h2>
+            <p className="text-zinc-600 mb-8">
               Get your API key and start integrating Gravitre in minutes.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -512,7 +512,7 @@ export default function APIPage() {
               </Link>
               <Link
                 href="/docs/api/quickstart"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-8 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-8 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 transition-colors"
               >
                 <Play className="h-4 w-4" />
                 Quickstart Guide

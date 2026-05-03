@@ -398,7 +398,7 @@ function PricingCard({ tier, isAnnual, index }: { tier: typeof tiers[0]; isAnnua
           <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
         </Link>
 
-        <p className="mt-3 text-center text-xs text-zinc-500">No credit card required</p>
+
       </div>
     </motion.div>
   )

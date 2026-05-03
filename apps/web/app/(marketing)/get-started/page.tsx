@@ -346,7 +346,7 @@ export default function GetStartedPage() {
                     </motion.div>
                     <h1 className="text-2xl font-bold text-zinc-900">Start your journey</h1>
                     <p className="mt-2 text-sm text-zinc-500">
-                      7-day free trial. No credit card needed.
+                      7-day free trial to explore all features.
                     </p>
                     {authError && (
                       <p className="mt-3 text-sm text-red-600">{authError}</p>
