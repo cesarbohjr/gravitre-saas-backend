@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { Sidebar } from "./sidebar"
 import { TopBar } from "./top-bar"
 import { NotificationProvider } from "./notification-center"
@@ -8,6 +9,7 @@ import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { Loader2 } from "lucide-react"
 
 interface AppShellProps {
@@ -20,9 +22,16 @@ export function AppShell({ children, title }: AppShellProps) {
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const router = useRouter()
   const { user, loading } = useAuth()
+  const { data: billingStatusData, isLoading: billingLoading } = useSWR<{
+    billingStatus?: string
+  }>(user ? "/api/billing/status" : null, apiFetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 30000,
+  })
+  const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
 
-  // Show loading while checking auth
-  if (loading) {
+  // Show loading while checking auth and plan entitlement.
+  if (loading || (user && billingLoading)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -34,6 +43,18 @@ export function AppShell({ children, title }: AppShellProps) {
   if (!user) {
     if (typeof window !== "undefined") {
       router.replace("/login")
+    }
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Enforce paid/active subscription before app access.
+  if (billingStatus !== "active") {
+    if (typeof window !== "undefined") {
+      router.replace("/get-started?intent=signup")
     }
     return (
       <div className="flex h-screen items-center justify-center bg-background">
