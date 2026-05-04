@@ -23,7 +23,7 @@ const team = [
     name: "Marcus Rodriguez",
     role: "CTO",
     bio: "Ex-Google DeepMind. PhD in Machine Learning from MIT.",
-    image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop&crop=face",
+    image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400&h=400&fit=crop&crop=face",
   },
   {
     name: "Emily Watson",
