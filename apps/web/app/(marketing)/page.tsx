@@ -7,28 +7,6 @@ import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Pla
 import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
-import lottie from "lottie-web"
-
-// Lottie Logo Animation Component
-function LottieLogo({ className }: { className?: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    if (!containerRef.current) return
-    
-    const anim = lottie.loadAnimation({
-      container: containerRef.current,
-      renderer: 'svg',
-      loop: false,
-      autoplay: true,
-      path: '/animations/gravitre-logo-animation.json',
-    })
-    
-    return () => anim.destroy()
-  }, [])
-  
-  return <div ref={containerRef} className={className} />
-}
 
 // Interactive particle field
 function ParticleField() {
@@ -137,7 +115,7 @@ function LiveMetrics() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 1.2 }}
-      className="flex items-center justify-center gap-8 mt-16"
+      className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 lg:gap-8 mt-10 sm:mt-16 px-4"
     >
       {[
         { icon: Activity, label: "Tasks/day", value: metrics.tasks.toLocaleString(), color: "emerald" },
@@ -149,20 +127,20 @@ function LiveMetrics() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.3 + i * 0.1 }}
-          className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-zinc-200 shadow-sm"
+          className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-zinc-200 shadow-sm"
         >
-          <div className={`p-1.5 rounded-full ${
+          <div className={`p-1 sm:p-1.5 rounded-full ${
             metric.color === 'emerald' ? 'bg-emerald-100' :
             metric.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
           }`}>
-            <metric.icon className={`h-3.5 w-3.5 ${
+            <metric.icon className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${
               metric.color === 'emerald' ? 'text-emerald-600' :
               metric.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
             }`} />
           </div>
           <div className="text-left">
-            <div className="text-sm font-semibold text-zinc-900">{metric.value}</div>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wide">{metric.label}</div>
+            <div className="text-xs sm:text-sm font-semibold text-zinc-900">{metric.value}</div>
+            <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase tracking-wide">{metric.label}</div>
           </div>
         </motion.div>
       ))}
@@ -170,10 +148,42 @@ function LiveMetrics() {
   )
 }
 
-// Animated grid background - Light theme
+// Animated grid background - Light theme with enhanced effects
 function GridBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
+      {/* Gradient mesh background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 via-white to-blue-50/50" />
+      
+      {/* Animated gradient orbs */}
+      <motion.div
+        className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-emerald-200/40 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, 100, 0],
+          y: [0, 50, 0],
+          scale: [1, 1.1, 1]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-200/30 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, -80, 0],
+          y: [0, -60, 0],
+          scale: [1, 1.2, 1]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+      <motion.div
+        className="absolute top-1/3 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-br from-purple-100/30 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, -50, 0],
+          y: [0, 100, 0],
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+      />
+      
+      {/* Grid pattern */}
       <div 
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -184,19 +194,61 @@ function GridBackground() {
           backgroundSize: '64px 64px',
         }}
       />
+      
       <NeuralLines />
-      {/* Animated scan line */}
+      
+      {/* Multiple scan lines */}
       <motion.div
-        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"
-        animate={{ y: [0, 800] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
+        animate={{ y: [0, 1000] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       />
-      {/* Radial pulse */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-emerald-500/10"
-        animate={{ scale: [1, 2], opacity: [0.3, 0] }}
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"
+        animate={{ y: [0, 1000] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 4 }}
+      />
+      
+      {/* Multiple radial pulses */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-emerald-500/10"
+        animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeOut" }}
       />
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-emerald-500/10"
+        animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeOut", delay: 2 }}
+      />
+      
+      {/* Floating particles - fixed positions to avoid hydration issues */}
+      {[
+        { left: '10%', top: '20%', dur: 5 }, { left: '25%', top: '15%', dur: 6 },
+        { left: '40%', top: '30%', dur: 4 }, { left: '60%', top: '10%', dur: 7 },
+        { left: '75%', top: '25%', dur: 5 }, { left: '85%', top: '35%', dur: 6 },
+        { left: '15%', top: '50%', dur: 4 }, { left: '30%', top: '60%', dur: 5 },
+        { left: '50%', top: '45%', dur: 6 }, { left: '70%', top: '55%', dur: 4 },
+        { left: '90%', top: '50%', dur: 7 }, { left: '5%', top: '70%', dur: 5 },
+        { left: '20%', top: '80%', dur: 6 }, { left: '45%', top: '75%', dur: 4 },
+        { left: '65%', top: '85%', dur: 5 }, { left: '80%', top: '70%', dur: 6 },
+      ].map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1.5 h-1.5 bg-emerald-400/50 rounded-full"
+          style={{ left: p.left, top: p.top }}
+          animate={{
+            y: [0, -25, 0],
+            opacity: [0.3, 0.7, 0.3],
+            scale: [1, 1.3, 1],
+          }}
+          transition={{
+            duration: p.dur,
+            repeat: Infinity,
+            delay: i * 0.3,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
     </div>
   )
 }
@@ -376,28 +428,12 @@ export default function HomePage() {
       {/* Hero Section */}
       <section ref={heroRef} className="relative min-h-screen flex items-center justify-center">
         <GridBackground />
-        <ParticleField />
-        
-        {/* Floating orbs - Light theme */}
-        <FloatingOrb className="w-[600px] h-[600px] bg-emerald-200 -top-48 -left-48" />
-        <FloatingOrb className="w-[400px] h-[400px] bg-blue-100 top-1/3 -right-24" delay={2} />
-        <FloatingOrb className="w-[300px] h-[300px] bg-purple-100 bottom-24 left-1/4" delay={4} />
         
         <motion.div 
           style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
           className="relative mx-auto max-w-7xl px-6 py-32 sm:py-40"
         >
           <div className="mx-auto max-w-4xl text-center">
-            {/* Animated Logo */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="mb-8 flex justify-center"
-            >
-              <LottieLogo className="w-24 h-24 sm:w-32 sm:h-32" />
-            </motion.div>
-            
             {/* Badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -902,7 +938,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-6 text-sm text-zinc-500">
-              No credit card required. 14-day free trial.
+              Start your 7-day free trial today.
             </p>
           </motion.div>
         </div>

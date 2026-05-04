@@ -280,14 +280,14 @@ export default function GetStartedPage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-emerald-100/60 to-teal-100/40 rounded-full blur-3xl pointer-events-none" />
 
       {/* Step indicator */}
-      <div className="relative z-10 flex items-center justify-center py-8">
-        <div className="flex items-center gap-0">
+      <div className="relative z-10 py-6 sm:py-8 overflow-x-auto">
+        <div className="flex items-center justify-start sm:justify-center gap-0 px-4 min-w-max mx-auto">
           {stepTitles.map((s, i) => (
             <div key={i} className="flex items-center">
               <button
                 onClick={() => i + 1 < step && setStep(i + 1)}
                 disabled={i + 1 > step}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                   i + 1 === step 
                     ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
                     : i + 1 < step 
@@ -296,18 +296,19 @@ export default function GetStartedPage() {
                 }`}
               >
                 {i + 1 < step ? (
-                  <Check className="h-4 w-4" />
+                  <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 ) : (
-                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                  <span className={`h-4 w-4 sm:h-5 sm:w-5 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold ${
                     i + 1 === step ? "bg-white/20" : "bg-current/10"
                   }`}>
                     {s.num}
                   </span>
                 )}
-                <span>{s.title}</span>
+                <span className="hidden sm:inline">{s.title}</span>
+                <span className="sm:hidden">{s.num}</span>
               </button>
               {i < stepTitles.length - 1 && (
-                <div className={`w-8 h-0.5 mx-1 ${i + 1 < step ? "bg-emerald-300" : "bg-zinc-200"}`} />
+                <div className={`w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1 ${i + 1 < step ? "bg-emerald-300" : "bg-zinc-200"}`} />
               )}
             </div>
           ))}
@@ -346,7 +347,7 @@ export default function GetStartedPage() {
                     </motion.div>
                     <h1 className="text-2xl font-bold text-zinc-900">Start your journey</h1>
                     <p className="mt-2 text-sm text-zinc-500">
-                      7-day free trial. No credit card needed.
+                      7-day free trial to explore all features.
                     </p>
                     {authError && (
                       <p className="mt-3 text-sm text-red-600">{authError}</p>

@@ -239,12 +239,13 @@ function LoginPageContent() {
               <div className="text-center mb-8">
                 {/* Mobile logo */}
                 <div className="lg:hidden mb-6">
-                  <Link href="/">
+                  <Link href="/" className="inline-flex items-center gap-2">
                     <img 
-                      src="/images/gravitre-logo.png" 
-                      alt="Gravitre" 
-                      className="h-7 mx-auto"
+                      src="/images/gravitre-icon.png" 
+                      alt="" 
+                      className="h-8 w-8"
                     />
+                    <span className="text-xl font-bold text-zinc-900">Gravitre</span>
                   </Link>
                 </div>
                 <h1 className="text-2xl font-bold text-zinc-900">Sign in</h1>

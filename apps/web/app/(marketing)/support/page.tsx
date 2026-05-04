@@ -77,7 +77,7 @@ const faqs = [
   },
   {
     question: "How do I get started?",
-    answer: "Sign up for a free 14-day trial, complete the onboarding wizard, and you'll be guided through creating your first agent and workflow.",
+    answer: "Sign up for a free 7-day trial, complete the onboarding wizard, and you'll be guided through creating your first agent and workflow.",
   },
   {
     question: "What integrations are supported?",

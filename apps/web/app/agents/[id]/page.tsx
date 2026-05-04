@@ -61,7 +61,7 @@ const mockAgent: Agent = {
   systems: [
     { name: "HubSpot", status: "connected", icon: "database" },
     { name: "Salesforce", status: "connected", icon: "database" },
-    { name: "Outlook", status: "connected", icon: "email" },
+    { name: "Outlook", status: "connected", icon: "mail" },
     { name: "Slack", status: "warning", icon: "chat" },
     { name: "Google Ads", status: "connected", icon: "chart" },
   ],

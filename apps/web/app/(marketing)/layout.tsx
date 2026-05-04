@@ -45,28 +45,28 @@ export default function MarketingLayout({
   }, [pathname])
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900">
+    <div className="min-h-screen bg-white text-zinc-900" data-theme="light">
       {/* Navigation */}
-      <motion.header 
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      <header 
+        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
           scrolled 
             ? "border-b border-zinc-200 bg-white/95 backdrop-blur-xl shadow-sm" 
-            : "bg-white"
+            : "bg-white/95 backdrop-blur-sm"
         }`}
+        style={{ position: 'fixed' }}
       >
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-8">
-            {/* Logo - Using new primary logo */}
-            <Link href="/" className="flex items-center group">
-              <motion.img
-                src="/images/gravitre-logo.png"
-                alt="Gravitre"
-                style={{ width: '160px', height: 'auto' }}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 400 }}
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-2 group">
+              <img
+                src="/images/gravitre-icon.png"
+                alt=""
+                className="h-8 w-8"
               />
+              <span className="text-xl font-bold text-zinc-900 tracking-tight">
+                Gravitre
+              </span>
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
@@ -207,7 +207,7 @@ export default function MarketingLayout({
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.header>
+      </header>
 
       {/* Click outside handler for dropdown */}
       {companyDropdownOpen && (
@@ -227,16 +227,19 @@ export default function MarketingLayout({
         {/* Gradient accent */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
         
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
+          <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-5">
             <div className="col-span-2 md:col-span-1">
               {/* Footer Logo */}
-              <Link href="/" className="inline-block">
+              <Link href="/" className="flex items-center gap-2">
                 <img
-                  src="/images/gravitre-logo.png"
-                  alt="Gravitre"
-                  style={{ width: '140px', height: 'auto' }}
+                  src="/images/gravitre-icon.png"
+                  alt=""
+                  className="h-7 w-7"
                 />
+                <span className="text-lg font-bold text-zinc-900 tracking-tight">
+                  Gravitre
+                </span>
               </Link>
               <p className="mt-4 text-sm text-zinc-500 leading-relaxed">
                 Your AI team, managed simply.
