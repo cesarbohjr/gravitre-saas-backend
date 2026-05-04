@@ -9,8 +9,9 @@ const team = [
     name: "Cesar Bohorquez Jr",
     role: "CEO & Founder",
     bio: "Serial entrepreneur and technologist building the future of AI-powered automation.",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+    image: "/images/team/cesar-bohorquez.jpg",
     linkedin: "https://www.linkedin.com/in/cesarbohorquezjr/",
+    imageStyle: { objectPosition: "center 15%" },
   },
   {
     name: "Sarah Chen",
@@ -22,7 +23,7 @@ const team = [
     name: "Marcus Rodriguez",
     role: "CTO",
     bio: "Ex-Google DeepMind. PhD in Machine Learning from MIT.",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
+    image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400&h=400&fit=crop&crop=face",
   },
   {
     name: "Emily Watson",
@@ -340,11 +341,12 @@ export default function AboutPage() {
                 transition={{ delay: i * 0.1 }}
                 className="group relative rounded-2xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md"
               >
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="h-20 w-20 rounded-full object-cover mb-4"
-                />
+  <img
+  src={member.image}
+  alt={member.name}
+  className="h-20 w-20 rounded-full object-cover mb-4"
+  style={(member as { imageStyle?: React.CSSProperties }).imageStyle}
+  />
                 <h3 className="text-lg font-medium text-zinc-900">{member.name}</h3>
                 <p className="text-sm text-emerald-600">{member.role}</p>
                 <p className="text-sm text-zinc-500 mt-2">{member.bio}</p>
