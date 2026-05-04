@@ -8,38 +8,6 @@ import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
 
-// Hero Logo - just the icon with animated glow (wordmark is in header)
-function HeroLogo() {
-  return (
-    <motion.div 
-      className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto"
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-    >
-      {/* Glow effect */}
-      <motion.div
-        className="absolute inset-0 rounded-full bg-emerald-500/30 blur-xl"
-        animate={{ 
-          scale: [1, 1.3, 1],
-          opacity: [0.4, 0.7, 0.4]
-        }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-      />
-      {/* Icon only */}
-      <motion.img
-        src="/images/gravitre-icon.png"
-        alt="Gravitre"
-        className="relative w-full h-full object-contain"
-        animate={{ 
-          rotate: [0, 2, -2, 0],
-        }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-      />
-    </motion.div>
-  )
-}
-
 // Interactive particle field
 function ParticleField() {
   return (
@@ -466,11 +434,6 @@ export default function HomePage() {
           className="relative mx-auto max-w-7xl px-6 py-32 sm:py-40"
         >
           <div className="mx-auto max-w-4xl text-center">
-            {/* Animated Icon */}
-            <div className="mb-8">
-              <HeroLogo />
-            </div>
-            
             {/* Badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}

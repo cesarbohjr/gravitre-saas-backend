@@ -56,15 +56,16 @@ export default function MarketingLayout({
       >
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-8">
-            {/* Logo - Using new primary logo */}
-            <Link href="/" className="flex items-center group">
-              <motion.img
-                src="/images/gravitre-logo.png"
-                alt="Gravitre"
-                style={{ width: '160px', height: 'auto' }}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 400 }}
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-2 group">
+              <img
+                src="/images/gravitre-icon.png"
+                alt=""
+                className="h-8 w-8"
               />
+              <span className="text-xl font-bold text-zinc-900 tracking-tight">
+                Gravitre
+              </span>
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
@@ -229,12 +230,15 @@ export default function MarketingLayout({
           <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
             <div className="col-span-2 md:col-span-1">
               {/* Footer Logo */}
-              <Link href="/" className="inline-block">
+              <Link href="/" className="flex items-center gap-2">
                 <img
-                  src="/images/gravitre-logo.png"
-                  alt="Gravitre"
-                  style={{ width: '140px', height: 'auto' }}
+                  src="/images/gravitre-icon.png"
+                  alt=""
+                  className="h-7 w-7"
                 />
+                <span className="text-lg font-bold text-zinc-900 tracking-tight">
+                  Gravitre
+                </span>
               </Link>
               <p className="mt-4 text-sm text-zinc-500 leading-relaxed">
                 Your AI team, managed simply.
