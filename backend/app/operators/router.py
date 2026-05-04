@@ -1820,6 +1820,50 @@ async def submit_session_task(
             "tokenCount": max(token_count, 0),
         }
     ]
+    plan_reasoning = [
+        {
+            "id": f"summary-{task_id[:8]}",
+            "type": "summary",
+            "title": "What Happened",
+            "content": ai_summary,
+        },
+        {
+            "id": f"finding-{task_id[:8]}",
+            "type": "insight",
+            "title": "Primary finding",
+            "content": findings_description,
+        },
+    ]
+    plan_steps = [
+        {
+            "step": 1,
+            "title": "Analyze context",
+            "description": "Review the execution context and identify likely failure factors.",
+            "status": "completed",
+        },
+        {
+            "step": 2,
+            "title": "Prepare remediation",
+            "description": action_description,
+            "status": "current",
+        },
+    ]
+    plan_proposals = [
+        {
+            "id": action["id"],
+            "title": action["title"],
+            "description": action["description"],
+            "icon": "Zap",
+            "environment": environment,
+            "trustBadges": {
+                "confidenceScore": int(action.get("confidence") or 75),
+                "guardrailStatus": "pass" if action.get("guardrailStatus") == "passed" else "warn",
+                "tokenCount": int(action.get("tokenCount") or 0),
+                "approvalRequired": bool(action.get("requiresApproval")),
+            },
+        }
+        for action in suggested_actions
+    ]
     response = {
         "task": {
             "id": task_id,
@@ -1828,6 +1872,11 @@ async def submit_session_task(
         },
         "analysis": analysis,
         "suggestedActions": suggested_actions,
+        "plan": {
+            "reasoning": plan_reasoning,
+            "steps": plan_steps,
+            "proposals": plan_proposals,
+        },
         "nextSteps": {
             "canExecute": True,
             "requiresApproval": False,
