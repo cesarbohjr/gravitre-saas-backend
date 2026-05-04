@@ -45,7 +45,7 @@ export default function MarketingLayout({
   }, [pathname])
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900">
+    <div className="min-h-screen bg-white text-zinc-900" data-theme="light">
       {/* Navigation */}
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
