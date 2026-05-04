@@ -1660,7 +1660,7 @@ export default function FeaturesPage() {
               Ready to get started?
             </h2>
             <p className="mt-4 text-zinc-600">
-              Start your free trial today. No credit card required.
+              Start your free trial today.
             </p>
             <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
               <Link

@@ -148,7 +148,7 @@ const faqs = [
   },
   {
     question: "How does the free trial work?",
-    answer: "You get 7 days of full access to your chosen plan. No credit card required to start. If you don't subscribe, your workspace pauses—nothing gets deleted.",
+    answer: "You get 7 days of full access to your chosen plan. If you don't subscribe, your workspace pauses—nothing gets deleted.",
   },
   {
     question: "What happens after I hit my limit?",
@@ -1293,7 +1293,7 @@ export default function PricingPage() {
           <div className="grid sm:grid-cols-4 gap-6">
             {[
               { icon: Shield, title: "Enterprise-grade security", description: "End-to-end encryption" },
-              { icon: Clock, title: "7-day free trial", description: "No credit card required" },
+              { icon: Clock, title: "7-day free trial", description: "Full access to all features" },
               { icon: RefreshCcw, title: "Cancel anytime", description: "No long-term contracts" },
               { icon: BadgeCheck, title: "Money-back guarantee", description: "30-day refund policy" },
             ].map((badge, i) => (
@@ -1400,7 +1400,7 @@ export default function PricingPage() {
               </Link>
             </div>
             <p className="mt-4 text-sm text-zinc-500">
-              No credit card required. Full access for 7 days.
+              Full access for 7 days. Cancel anytime.
             </p>
           </motion.div>
         </div>

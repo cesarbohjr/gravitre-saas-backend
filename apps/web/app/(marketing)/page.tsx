@@ -8,31 +8,33 @@ import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
 
-// Animated Logo with glow effect
-function AnimatedLogo({ className }: { className?: string }) {
+// Hero Logo - just the icon with animated glow (wordmark is in header)
+function HeroLogo() {
   return (
     <motion.div 
-      className={`relative ${className}`}
+      className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto"
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
     >
       {/* Glow effect */}
       <motion.div
-        className="absolute inset-0 rounded-full bg-emerald-500/20 blur-2xl"
+        className="absolute inset-0 rounded-full bg-emerald-500/30 blur-xl"
         animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3]
+          scale: [1, 1.3, 1],
+          opacity: [0.4, 0.7, 0.4]
         }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* Logo image */}
+      {/* Icon only */}
       <motion.img
-        src="/images/gravitre-logo.png"
+        src="/images/gravitre-icon.png"
         alt="Gravitre"
-        className="relative w-full h-auto"
-        whileHover={{ scale: 1.05 }}
-        transition={{ type: "spring", stiffness: 400 }}
+        className="relative w-full h-full object-contain"
+        animate={{ 
+          rotate: [0, 2, -2, 0],
+        }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
     </motion.div>
   )
@@ -251,24 +253,30 @@ function GridBackground() {
         transition={{ duration: 4, repeat: Infinity, ease: "easeOut", delay: 2 }}
       />
       
-      {/* Floating particles */}
-      {Array.from({ length: 20 }).map((_, i) => (
+      {/* Floating particles - fixed positions to avoid hydration issues */}
+      {[
+        { left: '10%', top: '20%', dur: 5 }, { left: '25%', top: '15%', dur: 6 },
+        { left: '40%', top: '30%', dur: 4 }, { left: '60%', top: '10%', dur: 7 },
+        { left: '75%', top: '25%', dur: 5 }, { left: '85%', top: '35%', dur: 6 },
+        { left: '15%', top: '50%', dur: 4 }, { left: '30%', top: '60%', dur: 5 },
+        { left: '50%', top: '45%', dur: 6 }, { left: '70%', top: '55%', dur: 4 },
+        { left: '90%', top: '50%', dur: 7 }, { left: '5%', top: '70%', dur: 5 },
+        { left: '20%', top: '80%', dur: 6 }, { left: '45%', top: '75%', dur: 4 },
+        { left: '65%', top: '85%', dur: 5 }, { left: '80%', top: '70%', dur: 6 },
+      ].map((p, i) => (
         <motion.div
           key={i}
-          className="absolute w-1.5 h-1.5 bg-emerald-400/40 rounded-full"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-          }}
+          className="absolute w-1.5 h-1.5 bg-emerald-400/50 rounded-full"
+          style={{ left: p.left, top: p.top }}
           animate={{
-            y: [0, -30, 0],
-            opacity: [0.2, 0.6, 0.2],
-            scale: [1, 1.2, 1],
+            y: [0, -25, 0],
+            opacity: [0.3, 0.7, 0.3],
+            scale: [1, 1.3, 1],
           }}
           transition={{
-            duration: 4 + Math.random() * 4,
+            duration: p.dur,
             repeat: Infinity,
-            delay: Math.random() * 4,
+            delay: i * 0.3,
             ease: "easeInOut",
           }}
         />
@@ -458,9 +466,9 @@ export default function HomePage() {
           className="relative mx-auto max-w-7xl px-6 py-32 sm:py-40"
         >
           <div className="mx-auto max-w-4xl text-center">
-            {/* Animated Logo - properly sized */}
-            <div className="mb-10 flex justify-center">
-              <AnimatedLogo className="w-48 sm:w-56 md:w-64" />
+            {/* Animated Icon */}
+            <div className="mb-8">
+              <HeroLogo />
             </div>
             
             {/* Badge */}
@@ -967,7 +975,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-6 text-sm text-zinc-500">
-              No credit card required. 14-day free trial.
+              Start your 14-day free trial today.
             </p>
           </motion.div>
         </div>
