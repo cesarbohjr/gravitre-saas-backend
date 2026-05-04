@@ -7,27 +7,35 @@ import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Pla
 import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
-import lottie from "lottie-web"
 
-// Lottie Logo Animation Component
-function LottieLogo({ className }: { className?: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    if (!containerRef.current) return
-    
-    const anim = lottie.loadAnimation({
-      container: containerRef.current,
-      renderer: 'svg',
-      loop: false,
-      autoplay: true,
-      path: '/animations/gravitre-logo-animation.json',
-    })
-    
-    return () => anim.destroy()
-  }, [])
-  
-  return <div ref={containerRef} className={className} />
+// Animated Logo with glow effect
+function AnimatedLogo({ className }: { className?: string }) {
+  return (
+    <motion.div 
+      className={`relative ${className}`}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    >
+      {/* Glow effect */}
+      <motion.div
+        className="absolute inset-0 rounded-full bg-emerald-500/20 blur-2xl"
+        animate={{ 
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3]
+        }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      />
+      {/* Logo image */}
+      <motion.img
+        src="/images/gravitre-logo.png"
+        alt="Gravitre"
+        className="relative w-full h-auto"
+        whileHover={{ scale: 1.05 }}
+        transition={{ type: "spring", stiffness: 400 }}
+      />
+    </motion.div>
+  )
 }
 
 // Interactive particle field
@@ -170,10 +178,42 @@ function LiveMetrics() {
   )
 }
 
-// Animated grid background - Light theme
+// Animated grid background - Light theme with enhanced effects
 function GridBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
+      {/* Gradient mesh background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 via-white to-blue-50/50" />
+      
+      {/* Animated gradient orbs */}
+      <motion.div
+        className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-emerald-200/40 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, 100, 0],
+          y: [0, 50, 0],
+          scale: [1, 1.1, 1]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-200/30 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, -80, 0],
+          y: [0, -60, 0],
+          scale: [1, 1.2, 1]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+      <motion.div
+        className="absolute top-1/3 right-0 w-[400px] h-[400px] rounded-full bg-gradient-to-br from-purple-100/30 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, -50, 0],
+          y: [0, 100, 0],
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+      />
+      
+      {/* Grid pattern */}
       <div 
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -184,19 +224,55 @@ function GridBackground() {
           backgroundSize: '64px 64px',
         }}
       />
+      
       <NeuralLines />
-      {/* Animated scan line */}
+      
+      {/* Multiple scan lines */}
       <motion.div
-        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"
-        animate={{ y: [0, 800] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
+        animate={{ y: [0, 1000] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       />
-      {/* Radial pulse */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-emerald-500/10"
-        animate={{ scale: [1, 2], opacity: [0.3, 0] }}
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"
+        animate={{ y: [0, 1000] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 4 }}
+      />
+      
+      {/* Multiple radial pulses */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-emerald-500/10"
+        animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeOut" }}
       />
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-emerald-500/10"
+        animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeOut", delay: 2 }}
+      />
+      
+      {/* Floating particles */}
+      {Array.from({ length: 20 }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1.5 h-1.5 bg-emerald-400/40 rounded-full"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+          }}
+          animate={{
+            y: [0, -30, 0],
+            opacity: [0.2, 0.6, 0.2],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 4 + Math.random() * 4,
+            repeat: Infinity,
+            delay: Math.random() * 4,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
     </div>
   )
 }
@@ -376,27 +452,16 @@ export default function HomePage() {
       {/* Hero Section */}
       <section ref={heroRef} className="relative min-h-screen flex items-center justify-center">
         <GridBackground />
-        <ParticleField />
-        
-        {/* Floating orbs - Light theme */}
-        <FloatingOrb className="w-[600px] h-[600px] bg-emerald-200 -top-48 -left-48" />
-        <FloatingOrb className="w-[400px] h-[400px] bg-blue-100 top-1/3 -right-24" delay={2} />
-        <FloatingOrb className="w-[300px] h-[300px] bg-purple-100 bottom-24 left-1/4" delay={4} />
         
         <motion.div 
           style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
           className="relative mx-auto max-w-7xl px-6 py-32 sm:py-40"
         >
           <div className="mx-auto max-w-4xl text-center">
-            {/* Animated Logo */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="mb-8 flex justify-center"
-            >
-              <LottieLogo className="w-24 h-24 sm:w-32 sm:h-32" />
-            </motion.div>
+            {/* Animated Logo - properly sized */}
+            <div className="mb-10 flex justify-center">
+              <AnimatedLogo className="w-48 sm:w-56 md:w-64" />
+            </div>
             
             {/* Badge */}
             <motion.div
