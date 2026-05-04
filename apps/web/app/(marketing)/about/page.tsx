@@ -9,7 +9,7 @@ const team = [
     name: "Cesar Bohorquez Jr",
     role: "CEO & Founder",
     bio: "Serial entrepreneur and technologist building the future of AI-powered automation.",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+    image: "/images/team/cesar-bohorquez.jpg",
     linkedin: "https://www.linkedin.com/in/cesarbohorquezjr/",
   },
   {
