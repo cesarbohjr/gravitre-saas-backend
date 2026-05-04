@@ -39,14 +39,29 @@ class OptimizationService:
 
     async def analyze_workflow(self, org_id: str, workflow_id: str, days: int = 30) -> list[Recommendation]:
         client = get_supabase_client(self.settings)
-        runs_resp = (
-            client.table("workflow_runs")
-            .select("id,status,error,last_error,duration_ms,created_at")
-            .eq("org_id", org_id)
-            .eq("workflow_id", workflow_id)
-            .limit(500)
-            .execute()
-        )
+        try:
+            runs_resp = (
+                client.table("workflow_runs")
+                .select("id,status,error,last_error,duration_ms,created_at")
+                .eq("org_id", org_id)
+                .eq("workflow_id", workflow_id)
+                .limit(500)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("optimization data unavailable org_id=%s workflow_id=%s error=%s", org_id, workflow_id, str(exc))
+            return [
+                Recommendation(
+                    id=f"{workflow_id}:fallback",
+                    type=RecommendationType.SIMPLIFY,
+                    title="Data source temporarily unavailable",
+                    issue="Workflow telemetry could not be loaded for analysis.",
+                    suggested_change="Verify backend database connectivity, then rerun optimization analysis.",
+                    estimated_impact="Restores optimization insights once telemetry is reachable.",
+                    confidence=0.45,
+                    risk="low",
+                )
+            ]
         runs = runs_resp.data or []
         if not runs:
             return []

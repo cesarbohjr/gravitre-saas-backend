@@ -9,8 +9,10 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
 
 router = APIRouter(prefix="/api/search", tags=["search"])
+logger = get_logger(__name__)
 
 
 class SearchFilters(BaseModel):
@@ -26,7 +28,12 @@ class SearchRequest(BaseModel):
 def _is_missing_table_error(error: Exception | None) -> bool:
     if error is None:
         return False
-    return "does not exist" in str(error).lower()
+    message = str(error).lower()
+    return (
+        "does not exist" in message
+        or "relation" in message and "does not exist" in message
+        or "undefined_table" in message
+    )
 
 
 def _compute_score(query: str, title: str, description: str) -> float:
@@ -102,148 +109,157 @@ async def search_route(
             }
         )
 
-    workflows_resp = (
-        client.table("workflow_defs")
-        .select("id, name, description, status")
-        .eq("org_id", org_id)
-        .or_(f"name.ilike.{pattern},description.ilike.{pattern}")
-        .limit(12)
-        .execute()
-    )
-    if workflows_resp.error and not _is_missing_table_error(workflows_resp.error):
-        raise HTTPException(status_code=500, detail=str(workflows_resp.error))
-    for workflow in workflows_resp.data or []:
-        add_result(
-            item_id=str(workflow.get("id") or ""),
-            entity_type="workflow",
-            title=str(workflow.get("name") or "Workflow"),
-            description=str(workflow.get("description") or ""),
-            url=f"/workflows/{workflow.get('id')}",
-            metadata={"status": workflow.get("status")},
+    try:
+        workflows_resp = (
+            client.table("workflow_defs")
+            .select("id, name, description, status")
+            .eq("org_id", org_id)
+            .or_(f"name.ilike.{pattern},description.ilike.{pattern}")
+            .limit(12)
+            .execute()
         )
+        if workflows_resp.error and not _is_missing_table_error(workflows_resp.error):
+            raise HTTPException(status_code=500, detail=str(workflows_resp.error))
+        for workflow in workflows_resp.data or []:
+            add_result(
+                item_id=str(workflow.get("id") or ""),
+                entity_type="workflow",
+                title=str(workflow.get("name") or "Workflow"),
+                description=str(workflow.get("description") or ""),
+                url=f"/workflows/{workflow.get('id')}",
+                metadata={"status": workflow.get("status")},
+            )
 
-    agents_resp = (
-        client.table("operators")
-        .select("id, name, description, role, status")
-        .eq("org_id", org_id)
-        .or_(f"name.ilike.{pattern},description.ilike.{pattern},role.ilike.{pattern}")
-        .limit(12)
-        .execute()
-    )
-    if agents_resp.error and not _is_missing_table_error(agents_resp.error):
-        raise HTTPException(status_code=500, detail=str(agents_resp.error))
-    for agent in agents_resp.data or []:
-        add_result(
-            item_id=str(agent.get("id") or ""),
-            entity_type="agent",
-            title=str(agent.get("name") or "Agent"),
-            description=str(agent.get("description") or ""),
-            highlight=str(agent.get("role") or ""),
-            url=f"/agents/{agent.get('id')}",
-            metadata={"status": agent.get("status")},
+        agents_resp = (
+            client.table("operators")
+            .select("id, name, description, role, status")
+            .eq("org_id", org_id)
+            .or_(f"name.ilike.{pattern},description.ilike.{pattern},role.ilike.{pattern}")
+            .limit(12)
+            .execute()
         )
+        if agents_resp.error and not _is_missing_table_error(agents_resp.error):
+            raise HTTPException(status_code=500, detail=str(agents_resp.error))
+        for agent in agents_resp.data or []:
+            add_result(
+                item_id=str(agent.get("id") or ""),
+                entity_type="agent",
+                title=str(agent.get("name") or "Agent"),
+                description=str(agent.get("description") or ""),
+                highlight=str(agent.get("role") or ""),
+                url=f"/agents/{agent.get('id')}",
+                metadata={"status": agent.get("status")},
+            )
 
-    connectors_resp = (
-        client.table("connectors")
-        .select("id, name, description, vendor, status")
-        .eq("org_id", org_id)
-        .or_(f"name.ilike.{pattern},description.ilike.{pattern},vendor.ilike.{pattern}")
-        .limit(12)
-        .execute()
-    )
-    if connectors_resp.error and not _is_missing_table_error(connectors_resp.error):
-        raise HTTPException(status_code=500, detail=str(connectors_resp.error))
-    for connector in connectors_resp.data or []:
-        add_result(
-            item_id=str(connector.get("id") or ""),
-            entity_type="connector",
-            title=str(connector.get("name") or "Connector"),
-            description=str(connector.get("description") or ""),
-            highlight=str(connector.get("vendor") or ""),
-            url=f"/connectors/{connector.get('id')}",
-            metadata={"status": connector.get("status")},
+        connectors_resp = (
+            client.table("connectors")
+            .select("id, name, description, vendor, status")
+            .eq("org_id", org_id)
+            .or_(f"name.ilike.{pattern},description.ilike.{pattern},vendor.ilike.{pattern}")
+            .limit(12)
+            .execute()
         )
+        if connectors_resp.error and not _is_missing_table_error(connectors_resp.error):
+            raise HTTPException(status_code=500, detail=str(connectors_resp.error))
+        for connector in connectors_resp.data or []:
+            add_result(
+                item_id=str(connector.get("id") or ""),
+                entity_type="connector",
+                title=str(connector.get("name") or "Connector"),
+                description=str(connector.get("description") or ""),
+                highlight=str(connector.get("vendor") or ""),
+                url=f"/connectors/{connector.get('id')}",
+                metadata={"status": connector.get("status")},
+            )
 
-    sources_resp = (
-        client.table("rag_sources")
-        .select("id, title, type, metadata")
-        .eq("org_id", org_id)
-        .or_(f"title.ilike.{pattern},type.ilike.{pattern}")
-        .limit(12)
-        .execute()
-    )
-    if sources_resp.error and not _is_missing_table_error(sources_resp.error):
-        raise HTTPException(status_code=500, detail=str(sources_resp.error))
-    for source in sources_resp.data or []:
-        add_result(
-            item_id=str(source.get("id") or ""),
-            entity_type="source",
-            title=str(source.get("title") or "Source"),
-            highlight=str(source.get("type") or ""),
-            description="RAG source",
-            url=f"/sources/{source.get('id')}",
-            metadata={"type": source.get("type")},
+        sources_resp = (
+            client.table("rag_sources")
+            .select("id, title, type, metadata")
+            .eq("org_id", org_id)
+            .or_(f"title.ilike.{pattern},type.ilike.{pattern}")
+            .limit(12)
+            .execute()
         )
+        if sources_resp.error and not _is_missing_table_error(sources_resp.error):
+            raise HTTPException(status_code=500, detail=str(sources_resp.error))
+        for source in sources_resp.data or []:
+            add_result(
+                item_id=str(source.get("id") or ""),
+                entity_type="source",
+                title=str(source.get("title") or "Source"),
+                highlight=str(source.get("type") or ""),
+                description="RAG source",
+                url=f"/sources/{source.get('id')}",
+                metadata={"type": source.get("type")},
+            )
 
-    runs_resp = (
-        client.table("workflow_runs")
-        .select("id, status, workflow_id, error")
-        .eq("org_id", org_id)
-        .or_(f"id.ilike.{pattern},status.ilike.{pattern},error.ilike.{pattern}")
-        .limit(12)
-        .execute()
-    )
-    if runs_resp.error and not _is_missing_table_error(runs_resp.error):
-        raise HTTPException(status_code=500, detail=str(runs_resp.error))
-    for run in runs_resp.data or []:
-        add_result(
-            item_id=str(run.get("id") or ""),
-            entity_type="run",
-            title=f"Run {run.get('id')}",
-            description=f"Status: {run.get('status') or 'unknown'}",
-            highlight=str(run.get("error") or ""),
-            url=f"/runs/{run.get('id')}",
-            metadata={"workflow_id": run.get("workflow_id")},
+        runs_resp = (
+            client.table("workflow_runs")
+            .select("id, status, workflow_id, error")
+            .eq("org_id", org_id)
+            .or_(f"id.ilike.{pattern},status.ilike.{pattern},error.ilike.{pattern}")
+            .limit(12)
+            .execute()
         )
+        if runs_resp.error and not _is_missing_table_error(runs_resp.error):
+            raise HTTPException(status_code=500, detail=str(runs_resp.error))
+        for run in runs_resp.data or []:
+            add_result(
+                item_id=str(run.get("id") or ""),
+                entity_type="run",
+                title=f"Run {run.get('id')}",
+                description=f"Status: {run.get('status') or 'unknown'}",
+                highlight=str(run.get("error") or ""),
+                url=f"/runs/{run.get('id')}",
+                metadata={"workflow_id": run.get("workflow_id")},
+            )
 
-    docs_resp = (
-        client.table("rag_documents")
-        .select("id, title, metadata, source_id")
-        .eq("org_id", org_id)
-        .ilike("title", pattern)
-        .limit(12)
-        .execute()
-    )
-    if docs_resp.error and not _is_missing_table_error(docs_resp.error):
-        raise HTTPException(status_code=500, detail=str(docs_resp.error))
-    for doc in docs_resp.data or []:
-        add_result(
-            item_id=str(doc.get("id") or ""),
-            entity_type="document",
-            title=str(doc.get("title") or "Document"),
-            description="Indexed document",
-            url=f"/lite/deliverables?documentId={doc.get('id')}",
-            metadata={"source_id": doc.get("source_id")},
+        docs_resp = (
+            client.table("rag_documents")
+            .select("id, title, metadata, source_id")
+            .eq("org_id", org_id)
+            .ilike("title", pattern)
+            .limit(12)
+            .execute()
         )
+        if docs_resp.error and not _is_missing_table_error(docs_resp.error):
+            raise HTTPException(status_code=500, detail=str(docs_resp.error))
+        for doc in docs_resp.data or []:
+            add_result(
+                item_id=str(doc.get("id") or ""),
+                entity_type="document",
+                title=str(doc.get("title") or "Document"),
+                description="Indexed document",
+                url=f"/lite/deliverables?documentId={doc.get('id')}",
+                metadata={"source_id": doc.get("source_id")},
+            )
 
-    results.sort(key=lambda item: float(item.get("score") or 0), reverse=True)
-    limited_results = results[:50]
-    suggestions = [item["title"] for item in limited_results[:5] if item.get("title")]
+        results.sort(key=lambda item: float(item.get("score") or 0), reverse=True)
+        limited_results = results[:50]
+        suggestions = [item["title"] for item in limited_results[:5] if item.get("title")]
 
-    history_insert = (
-        client.table("search_history")
-        .insert(
-            {
-                "org_id": org_id,
-                "user_id": user["user_id"],
-                "query": query,
-                "results_count": len(limited_results),
-            }
+        history_insert = (
+            client.table("search_history")
+            .insert(
+                {
+                    "org_id": org_id,
+                    "user_id": user["user_id"],
+                    "query": query,
+                    "results_count": len(limited_results),
+                }
+            )
+            .execute()
         )
-        .execute()
-    )
-    if history_insert.error and not _is_missing_table_error(history_insert.error):
-        raise HTTPException(status_code=500, detail=str(history_insert.error))
+        if history_insert.error and not _is_missing_table_error(history_insert.error):
+            raise HTTPException(status_code=500, detail=str(history_insert.error))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("search fallback org_id=%s error=%s", org_id, str(exc))
+        return {
+            "results": [],
+            "suggestions": [],
+            "totalCount": 0,
+            "fallback": True,
+        }
 
     return {
         "results": limited_results,

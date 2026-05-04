@@ -8,11 +8,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.errors import http_exception_handler, validation_exception_handler
+from app.config import SettingsNotConfiguredError
+from app.core.errors import (
+    http_exception_handler,
+    settings_not_configured_handler,
+    validation_exception_handler,
+)
 from app.core.logging import get_logger, request_id_ctx
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
+    ai_system,
     agent_council,
     auth,
     audit,
@@ -74,6 +80,7 @@ def health() -> dict:
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(SettingsNotConfiguredError, settings_not_configured_handler)
 
 # Dev-safe CORS: single-origin proxy preferred (see docs). Bearer token model: credentials=false.
 app.add_middleware(
@@ -207,6 +214,7 @@ app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)
 app.include_router(scim.router)
 app.include_router(ml_models.router)
+app.include_router(ai_system.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

@@ -7,6 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
+from app.config import SettingsNotConfiguredError
+
 ERROR_CODE_BY_STATUS = {
     status.HTTP_400_BAD_REQUEST: "VALIDATION_ERROR",
     status.HTTP_401_UNAUTHORIZED: "UNAUTHORIZED",
@@ -57,3 +59,13 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError) 
         "details": {"errors": exc.errors()},
     }
     return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
+
+
+async def settings_not_configured_handler(_: Request, exc: SettingsNotConfiguredError) -> JSONResponse:
+    payload = {
+        "success": False,
+        "error": "Backend configuration is incomplete",
+        "code": "CONFIGURATION_ERROR",
+        "details": {"missing": exc.missing_fields},
+    }
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)

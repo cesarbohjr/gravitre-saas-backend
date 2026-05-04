@@ -7,8 +7,6 @@ import time
 from enum import StrEnum
 from typing import Any
 
-import httpx
-from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
@@ -32,23 +30,21 @@ class TaskType(StrEnum):
 
 
 DEFAULT_ROUTES: dict[TaskType, str] = {
-    TaskType.CLASSIFICATION: "gpt-4o-mini",
-    TaskType.INTENT_DETECTION: "gpt-4o-mini",
-    TaskType.WORKFLOW_PLANNING: "claude-3-5-sonnet",
-    TaskType.DECISION_REASONING: "claude-3-5-sonnet",
-    TaskType.AGENT_DEBATE: "claude-3-opus",
-    TaskType.SUMMARIZATION: "gpt-4o-mini",
-    TaskType.CONTENT_GENERATION: "gpt-4o",
-    TaskType.RAG_ANSWERING: "gpt-4o",
-    TaskType.OPTIMIZATION_ANALYSIS: "gpt-4o",
+    TaskType.CLASSIFICATION: "gpt-4.1",
+    TaskType.INTENT_DETECTION: "gpt-4.1",
+    TaskType.WORKFLOW_PLANNING: "gpt-4.1",
+    TaskType.DECISION_REASONING: "gpt-4.1",
+    TaskType.AGENT_DEBATE: "gpt-4.1",
+    TaskType.SUMMARIZATION: "gpt-4.1",
+    TaskType.CONTENT_GENERATION: "gpt-4.1",
+    TaskType.RAG_ANSWERING: "gpt-4.1",
+    TaskType.OPTIMIZATION_ANALYSIS: "gpt-4.1",
 }
 
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
+    "gpt-4.1": (0.002, 0.008),
     "gpt-4o-mini": (0.00015, 0.0006),
     "gpt-4o": (0.005, 0.015),
-    "claude-3-5-sonnet": (0.003, 0.015),
-    "claude-3-opus": (0.015, 0.075),
-    "gemini-1.5-pro": (0.0035, 0.0105),
 }
 
 
@@ -68,9 +64,6 @@ class ModelRouter:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
         self._openai = AsyncOpenAI(api_key=self.settings.openai_api_key) if self.settings.openai_api_key else None
-        self._anthropic = (
-            AsyncAnthropic(api_key=self.settings.anthropic_api_key) if self.settings.anthropic_api_key else None
-        )
         self._cache: dict[str, ModelResponse] = {}
 
     async def complete(
@@ -86,7 +79,7 @@ class ModelRouter:
         org_id: str | None = None,
     ) -> ModelResponse:
         model = self._resolve_model(task_type)
-        provider = self._provider_for_model(model)
+        provider = "openai"
         cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
 
         if use_cache and cache_key in self._cache:
@@ -95,15 +88,40 @@ class ModelRouter:
             return cached
 
         start = time.perf_counter()
-        response_text = await self._retry_complete(
-            provider=provider,
-            model=model,
-            prompt=prompt,
-            system_prompt=system_prompt,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            context=context,
+        logger.info(
+            "MODEL_CALL_START task_type=%s model=%s provider=%s",
+            task_type.value,
+            model,
+            provider,
+            extra={"task_type": task_type.value, "model": model, "provider": provider},
         )
+        try:
+            response_text = await self._retry_complete(
+                model=model,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                context=context,
+            )
+        except Exception as exc:  # noqa: BLE001
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.error(
+                "MODEL_CALL_FAILURE task_type=%s model=%s provider=%s duration_ms=%s error=%s",
+                task_type.value,
+                model,
+                provider,
+                latency_ms,
+                str(exc),
+                extra={
+                    "task_type": task_type.value,
+                    "model": model,
+                    "provider": provider,
+                    "duration_ms": latency_ms,
+                    "status": "failure",
+                },
+            )
+            raise
         latency_ms = int((time.perf_counter() - start) * 1000)
         input_tokens = self._estimate_tokens(prompt + (system_prompt or ""))
         output_tokens = self._estimate_tokens(response_text)
@@ -127,23 +145,26 @@ class ModelRouter:
         )
         if use_cache:
             self._cache[cache_key] = final
+        logger.info(
+            "MODEL_CALL_SUCCESS task_type=%s model=%s provider=%s duration_ms=%s",
+            task_type.value,
+            model,
+            provider,
+            latency_ms,
+            extra={
+                "task_type": task_type.value,
+                "model": model,
+                "provider": provider,
+                "duration_ms": latency_ms,
+                "status": "success",
+            },
+        )
         await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
         return final
 
     def _resolve_model(self, task_type: TaskType) -> str:
-        if task_type in {TaskType.CLASSIFICATION, TaskType.INTENT_DETECTION, TaskType.SUMMARIZATION}:
-            return self.settings.default_fast_model or DEFAULT_ROUTES[task_type]
-        if task_type in {TaskType.WORKFLOW_PLANNING, TaskType.DECISION_REASONING, TaskType.AGENT_DEBATE}:
-            return self.settings.default_reasoning_model or DEFAULT_ROUTES[task_type]
-        return DEFAULT_ROUTES[task_type]
-
-    def _provider_for_model(self, model: str) -> str:
-        normalized = model.lower()
-        if normalized.startswith("claude"):
-            return "anthropic"
-        if normalized.startswith("gemini"):
-            return "google"
-        return "openai"
+        # Stabilized routing: use one reliable production model until broader routing is reintroduced.
+        return DEFAULT_ROUTES.get(task_type, "gpt-4.1")
 
     def _cache_key(
         self,
@@ -172,7 +193,6 @@ class ModelRouter:
 
     async def _retry_complete(
         self,
-        provider: str,
         model: str,
         prompt: str,
         system_prompt: str | None,
@@ -183,15 +203,16 @@ class ModelRouter:
         delay = 0.4
         for attempt in range(3):
             try:
-                if provider == "openai":
-                    return await self._openai_complete(model, prompt, system_prompt, temperature, max_tokens, context)
-                if provider == "anthropic":
-                    return await self._anthropic_complete(model, prompt, system_prompt, temperature, max_tokens, context)
-                return await self._google_complete(model, prompt, system_prompt, temperature, max_tokens, context)
+                return await self._openai_complete(model, prompt, system_prompt, temperature, max_tokens, context)
             except Exception as exc:  # noqa: BLE001
                 if attempt == 2:
                     raise
-                logger.warning("Model completion retrying: %s", str(exc))
+                logger.warning(
+                    "Model completion retrying model=%s attempt=%s error=%s",
+                    model,
+                    attempt + 1,
+                    str(exc),
+                )
                 await asyncio.sleep(delay)
                 delay *= 2
         raise RuntimeError("unreachable")
@@ -216,60 +237,10 @@ class ModelRouter:
             temperature=temperature if temperature is not None else 0.2,
             max_tokens=max_tokens,
         )
-        return resp.choices[0].message.content or ""
-
-    async def _anthropic_complete(
-        self,
-        model: str,
-        prompt: str,
-        system_prompt: str | None,
-        temperature: float | None,
-        max_tokens: int | None,
-        context: list[dict] | None,
-    ) -> str:
-        if not self._anthropic:
-            raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-        messages = list(context or [])
-        messages.append({"role": "user", "content": prompt})
-        resp = await self._anthropic.messages.create(
-            model=model,
-            system=system_prompt or "",
-            max_tokens=max_tokens or 1000,
-            temperature=temperature if temperature is not None else 0.2,
-            messages=messages,
-        )
-        return "".join(block.text for block in resp.content if getattr(block, "type", "") == "text")
-
-    async def _google_complete(
-        self,
-        model: str,
-        prompt: str,
-        system_prompt: str | None,
-        temperature: float | None,
-        max_tokens: int | None,
-        _context: list[dict] | None,
-    ) -> str:
-        if not self.settings.google_api_key:
-            raise RuntimeError("GOOGLE_API_KEY is not configured")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        body = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.2 if temperature is None else temperature,
-                "maxOutputTokens": max_tokens or 1000,
-            },
-        }
-        if system_prompt:
-            body["systemInstruction"] = {"parts": [{"text": system_prompt}]}
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, params={"key": self.settings.google_api_key}, json=body)
-            resp.raise_for_status()
-            data = resp.json()
-        candidates = data.get("candidates") or []
-        if not candidates:
-            return ""
-        parts = (candidates[0].get("content") or {}).get("parts") or []
-        return " ".join(str(part.get("text") or "") for part in parts).strip()
+        content = resp.choices[0].message.content or ""
+        if not content.strip():
+            raise RuntimeError("Model returned empty response")
+        return content
 
     def _parse_structured(self, text: str, schema: type[BaseModel]) -> dict[str, Any]:
         normalized = text.strip()

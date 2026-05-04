@@ -1,4 +1,7 @@
 """BE-00: Config and environment wiring. Loads from .env; no secrets in code."""
+from functools import lru_cache
+
+from pydantic import ValidationError
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -114,5 +117,30 @@ class Settings(BaseSettings):
         return self
 
 
+class SettingsNotConfiguredError(RuntimeError):
+    def __init__(self, missing_fields: list[str]):
+        self.missing_fields = missing_fields
+        super().__init__(f"Missing required settings: {', '.join(missing_fields)}")
+
+
+def _extract_missing_fields(exc: ValidationError) -> list[str]:
+    missing: list[str] = []
+    for err in exc.errors():
+        if err.get("type") != "missing":
+            continue
+        loc = err.get("loc") or []
+        if not loc:
+            continue
+        field = str(loc[0])
+        if field not in missing:
+            missing.append(field)
+    return missing
+
+
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    try:
+        return Settings()
+    except ValidationError as exc:
+        missing_fields = _extract_missing_fields(exc)
+        raise SettingsNotConfiguredError(missing_fields=missing_fields) from exc

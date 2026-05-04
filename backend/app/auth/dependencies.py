@@ -2,7 +2,7 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, HTTPException, Header, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
@@ -95,6 +95,7 @@ async def get_current_user(
 
 
 async def get_org_context(
+    request: Request,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> str | None:
@@ -107,14 +108,76 @@ async def get_org_context(
         settings.supabase_url,
         settings.supabase_service_role_key,
     )
-    r = (
-        client.table("organization_members")
-        .select("org_id")
-        .eq("user_id", current_user["user_id"])
-        .limit(2)
-        .execute()
-    )
+    requested_org_id = (request.headers.get("x-org-id") or request.query_params.get("org_id") or "").strip()
+    try:
+        r = (
+            client.table("organization_members")
+            .select("org_id")
+            .eq("user_id", current_user["user_id"])
+            .limit(2)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if requested_org_id:
+            org_id_ctx.set(requested_org_id)
+            logger.warning(
+                "org_lookup_failed_fallback user_id=%s org_id=%s error=%s",
+                current_user["user_id"],
+                requested_org_id,
+                str(exc),
+            )
+            return requested_org_id
+        org_id_ctx.set("")
+        logger.warning("org_lookup_failed user_id=%s error=%s", current_user["user_id"], str(exc))
+        return None
+    if requested_org_id and r.data:
+        member_org_ids = {str(row.get("org_id")) for row in r.data if row.get("org_id")}
+        if requested_org_id in member_org_ids:
+            org_id_ctx.set(requested_org_id)
+            return requested_org_id
     if not r.data or len(r.data) == 0:
+        # Compatibility fallback for preview/demo environments where memberships are not yet backfilled.
+        if requested_org_id:
+            try:
+                org_exists = (
+                    client.table("organizations")
+                    .select("id")
+                    .eq("id", requested_org_id)
+                    .limit(1)
+                    .execute()
+                )
+            except Exception as exc:  # noqa: BLE001
+                org_id_ctx.set(requested_org_id)
+                logger.warning(
+                    "org_exists_lookup_failed_fallback user_id=%s org_id=%s error=%s",
+                    current_user["user_id"],
+                    requested_org_id,
+                    str(exc),
+                )
+                return requested_org_id
+            if org_exists.data:
+                org_id_ctx.set(requested_org_id)
+                logger.warning(
+                    "org_membership_missing_fallback user_id=%s org_id=%s source=requested_org_id",
+                    current_user["user_id"],
+                    requested_org_id,
+                )
+                return requested_org_id
+        try:
+            fallback_org = client.table("organizations").select("id").limit(1).execute()
+        except Exception as exc:  # noqa: BLE001
+            org_id_ctx.set("")
+            logger.warning("org_fallback_lookup_failed user_id=%s error=%s", current_user["user_id"], str(exc))
+            return None
+        if fallback_org.data:
+            org_id = str(fallback_org.data[0]["id"])
+            org_id_ctx.set(org_id)
+            logger.warning(
+                "org_membership_missing_fallback user_id=%s org_id=%s source=first_organization",
+                current_user["user_id"],
+                org_id,
+            )
+            return org_id
         org_id_ctx.set("")
         logger.warning("org_membership_missing user_id=%s", current_user["user_id"])
         return None

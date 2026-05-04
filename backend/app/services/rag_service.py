@@ -86,7 +86,21 @@ class RAGService:
         _ = scope
         environment = str((filters or {}).get("environment") or "default")
         top_k = top_k or self.settings.rag_top_k or 8
-        query_embedding = get_embedding(query, self.settings)
+        try:
+            query_embedding = get_embedding(query, self.settings)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("rag embedding unavailable org_id=%s error=%s", org_id, str(exc))
+            return RAGResponse(
+                answer="RAG is temporarily unavailable because embeddings are not configured.",
+                chunks=[],
+                metrics={
+                    "top_k": top_k,
+                    "semantic_candidates": 0,
+                    "keyword_candidates": 0,
+                    "reranked": 0,
+                    "fallback": "embedding_unavailable",
+                },
+            )
         semantic_rows = search_chunks(
             settings=self.settings,
             org_id=org_id,
@@ -107,12 +121,17 @@ class RAGService:
             f"Question: {query}\n"
             f"Context: {context_snippets}"
         )
-        answer_resp = await self.model_router.complete(
-            task_type=TaskType.RAG_ANSWERING,
-            prompt=prompt,
-            system_prompt="Cite factual points from context. Do not fabricate sources.",
-            org_id=org_id,
-        )
+        try:
+            answer_resp = await self.model_router.complete(
+                task_type=TaskType.RAG_ANSWERING,
+                prompt=prompt,
+                system_prompt="Cite factual points from context. Do not fabricate sources.",
+                org_id=org_id,
+            )
+            answer_text = answer_resp.content
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("rag answer fallback org_id=%s error=%s", org_id, str(exc))
+            answer_text = "I could not generate a model answer right now. Retrieved context is returned for review."
         chunks = [
             Chunk(
                 id=str(row.get("id")),
@@ -123,7 +142,7 @@ class RAGService:
             for row in reranked
         ]
         return RAGResponse(
-            answer=answer_resp.content,
+            answer=answer_text,
             chunks=chunks,
             metrics={
                 "top_k": top_k,
