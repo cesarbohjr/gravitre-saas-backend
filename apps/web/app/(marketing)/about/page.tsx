@@ -103,24 +103,27 @@ export default function AboutPage() {
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
         
-        {/* Particle dots */}
+        {/* Particle dots - fixed positions */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {Array.from({ length: 20 }).map((_, i) => (
+          {[
+            { left: '10%', top: '20%', dur: 5 }, { left: '25%', top: '15%', dur: 6 },
+            { left: '40%', top: '30%', dur: 4 }, { left: '60%', top: '10%', dur: 7 },
+            { left: '75%', top: '25%', dur: 5 }, { left: '85%', top: '35%', dur: 6 },
+            { left: '15%', top: '50%', dur: 4 }, { left: '30%', top: '60%', dur: 5 },
+            { left: '50%', top: '45%', dur: 6 }, { left: '70%', top: '55%', dur: 4 },
+          ].map((p, i) => (
             <motion.div
               key={i}
               className="absolute w-1.5 h-1.5 bg-emerald-500/20 rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
+              style={{ left: p.left, top: p.top }}
               animate={{
                 y: [0, -20, 0],
                 opacity: [0.2, 0.5, 0.2],
               }}
               transition={{
-                duration: 4 + Math.random() * 4,
+                duration: p.dur,
                 repeat: Infinity,
-                delay: Math.random() * 2,
+                delay: i * 0.2,
               }}
             />
           ))}

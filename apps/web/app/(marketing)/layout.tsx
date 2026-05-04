@@ -226,8 +226,8 @@ export default function MarketingLayout({
         {/* Gradient accent */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
         
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
+          <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-5">
             <div className="col-span-2 md:col-span-1">
               {/* Footer Logo */}
               <Link href="/" className="flex items-center gap-2">

@@ -115,7 +115,7 @@ function LiveMetrics() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 1.2 }}
-      className="flex items-center justify-center gap-8 mt-16"
+      className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 lg:gap-8 mt-10 sm:mt-16 px-4"
     >
       {[
         { icon: Activity, label: "Tasks/day", value: metrics.tasks.toLocaleString(), color: "emerald" },
@@ -127,20 +127,20 @@ function LiveMetrics() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.3 + i * 0.1 }}
-          className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-zinc-200 shadow-sm"
+          className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-zinc-200 shadow-sm"
         >
-          <div className={`p-1.5 rounded-full ${
+          <div className={`p-1 sm:p-1.5 rounded-full ${
             metric.color === 'emerald' ? 'bg-emerald-100' :
             metric.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
           }`}>
-            <metric.icon className={`h-3.5 w-3.5 ${
+            <metric.icon className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${
               metric.color === 'emerald' ? 'text-emerald-600' :
               metric.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
             }`} />
           </div>
           <div className="text-left">
-            <div className="text-sm font-semibold text-zinc-900">{metric.value}</div>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-wide">{metric.label}</div>
+            <div className="text-xs sm:text-sm font-semibold text-zinc-900">{metric.value}</div>
+            <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase tracking-wide">{metric.label}</div>
           </div>
         </motion.div>
       ))}
