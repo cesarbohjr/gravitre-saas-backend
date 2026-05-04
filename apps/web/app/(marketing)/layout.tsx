@@ -123,7 +123,7 @@ export default function MarketingLayout({
           </div>
           <div className="flex items-center gap-3">
             <Link
-              href="/login"
+              href="/login?intent=login"
               className="hidden sm:inline-flex text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 px-4 py-2"
             >
               Log in
@@ -190,7 +190,7 @@ export default function MarketingLayout({
                 ))}
                 <div className="mt-4 flex flex-col gap-3 border-t border-zinc-200 pt-4">
                   <Link
-                    href="/login"
+                    href="/login?intent=login"
                     className="block rounded-xl px-4 py-3 text-center text-base text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
                   >
                     Log in

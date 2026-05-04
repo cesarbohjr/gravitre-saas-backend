@@ -69,9 +69,10 @@ function LoginPageContent() {
     }
 
     const intent = searchParams.get("intent")
+    // Preserve direct `/login` navigation (e.g. header Log in click) instead of
+    // auto-bouncing to app routes, which can cascade to `/get-started`.
+    // Only run post-auth redirect logic for explicit login intent flows.
     if (intent !== "login") {
-      const redirect = searchParams.get("redirect") || "/operator"
-      router.replace(redirect)
       return
     }
 
