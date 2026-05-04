@@ -938,7 +938,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-6 text-sm text-zinc-500">
-              Start your 14-day free trial today.
+              Start your 7-day free trial today.
             </p>
           </motion.div>
         </div>
