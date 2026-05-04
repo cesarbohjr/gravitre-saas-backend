@@ -6,16 +6,23 @@ import { ArrowRight, Linkedin, Twitter } from "lucide-react"
 
 const team = [
   {
+    name: "Cesar Bohorquez Jr",
+    role: "CEO & Founder",
+    bio: "Serial entrepreneur and technologist building the future of AI-powered automation.",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+    linkedin: "https://www.linkedin.com/in/cesarbohorquezjr/",
+  },
+  {
     name: "Sarah Chen",
-    role: "CEO & Co-founder",
+    role: "COO",
     bio: "Previously VP Engineering at Stripe. Stanford CS.",
     image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
   },
   {
     name: "Marcus Rodriguez",
-    role: "CTO & Co-founder",
+    role: "CTO",
     bio: "Ex-Google DeepMind. PhD in Machine Learning from MIT.",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
   },
   {
     name: "Emily Watson",
@@ -43,12 +50,7 @@ const team = [
   },
 ]
 
-const investors = [
-  { name: "Sequoia Capital", logo: "Sequoia" },
-  { name: "Andreessen Horowitz", logo: "a16z" },
-  { name: "Accel", logo: "Accel" },
-  { name: "Index Ventures", logo: "Index" },
-]
+const investors: { name: string; logo: string }[] = []
 
 const values = [
   {
@@ -70,11 +72,9 @@ const values = [
 ]
 
 const timeline = [
-  { year: "2022", event: "Founded in San Francisco by Sarah & Marcus" },
-  { year: "2023", event: "Raised $25M Series A led by Sequoia" },
-  { year: "2024", event: "Launched AI Operator, reached 100 customers" },
-  { year: "2025", event: "Raised $80M Series B, expanded to 500+ customers" },
-  { year: "2026", event: "10M+ tasks automated monthly, global expansion" },
+  { year: "2024", event: "Founded by Cesar Bohorquez Jr" },
+  { year: "2025", event: "Launched AI Operator platform, first customers" },
+  { year: "2026", event: "Expanding team and customer base" },
 ]
 
 export default function AboutPage() {
@@ -352,7 +352,7 @@ export default function AboutPage() {
                   <a href={`https://twitter.com/${member.name.toLowerCase().replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 transition-colors">
                     <Twitter className="h-4 w-4" />
                   </a>
-                  <a href={`https://linkedin.com/in/${member.name.toLowerCase().replace(/\s+/g, '-')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 transition-colors">
+                  <a href={(member as { linkedin?: string }).linkedin || `https://linkedin.com/in/${member.name.toLowerCase().replace(/\s+/g, '-')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 transition-colors">
                     <Linkedin className="h-4 w-4" />
                   </a>
                 </div>
@@ -362,25 +362,27 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Investors */}
-      <section className="px-6 py-24 border-t border-zinc-200">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-2xl font-semibold text-zinc-900 mb-8">Backed by the best</h2>
-            <div className="flex flex-wrap items-center justify-center gap-12">
-              {investors.map((investor) => (
-                <div key={investor.name} className="text-xl font-medium text-zinc-400">
-                  {investor.logo}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      {/* Investors - only show if we have investors */}
+      {investors.length > 0 && (
+        <section className="px-6 py-24 border-t border-zinc-200">
+          <div className="mx-auto max-w-4xl text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-2xl font-semibold text-zinc-900 mb-8">Backed by the best</h2>
+              <div className="flex flex-wrap items-center justify-center gap-12">
+                {investors.map((investor) => (
+                  <div key={investor.name} className="text-xl font-medium text-zinc-400">
+                    {investor.logo}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">

@@ -48,11 +48,12 @@ export default function MarketingLayout({
     <div className="min-h-screen bg-white text-zinc-900" data-theme="light">
       {/* Navigation */}
       <header 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
           scrolled 
             ? "border-b border-zinc-200 bg-white/95 backdrop-blur-xl shadow-sm" 
-            : "bg-white"
+            : "bg-white/95 backdrop-blur-sm"
         }`}
+        style={{ position: 'fixed' }}
       >
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-8">
