@@ -58,15 +58,12 @@ export default function MarketingLayout({
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-8">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/" className="flex items-center group">
               <img
-                src="/images/gravitre-icon.png"
-                alt=""
-                className="h-8 w-8"
+                src="/images/gravitre-logo-black.png"
+                alt="Gravitre"
+                className="h-10 w-auto"
               />
-              <span className="text-xl font-bold text-zinc-900 tracking-tight">
-                Gravitre
-              </span>
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
@@ -231,15 +228,12 @@ export default function MarketingLayout({
           <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-5">
             <div className="col-span-2 md:col-span-1">
               {/* Footer Logo */}
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center">
                 <img
-                  src="/images/gravitre-icon.png"
-                  alt=""
-                  className="h-7 w-7"
+                  src="/images/gravitre-logo-black.png"
+                  alt="Gravitre"
+                  className="h-8 w-auto"
                 />
-                <span className="text-lg font-bold text-zinc-900 tracking-tight">
-                  Gravitre
-                </span>
               </Link>
               <p className="mt-4 text-sm text-zinc-500 leading-relaxed">
                 Your AI team, managed simply.

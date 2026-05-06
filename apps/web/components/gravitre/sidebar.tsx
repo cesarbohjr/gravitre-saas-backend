@@ -177,31 +177,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex h-16 xl:h-20 items-center justify-between border-b border-sidebar-border px-3 xl:px-4">
           <Link href="/" className="flex items-center" onClick={onClose}>
             {/* Icon only - tablet collapsed mode */}
-            <div className="hidden md:flex xl:hidden h-12 w-12 items-center justify-center">
+            <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
               <img
-                src="/images/gravitre-icon.png"
+                src="/images/gravitre-icon-black.png"
                 alt="Gravitre"
-                className="h-12 w-12 object-contain dark:hidden"
+                className="h-16 w-16 object-contain dark:hidden"
               />
               <img
                 src="/images/gravitre-icon-white.png"
                 alt="Gravitre"
-                className="h-12 w-12 object-contain hidden dark:block"
+                className="h-16 w-16 object-contain hidden dark:block"
               />
             </div>
             {/* Full logo on mobile drawer and desktop */}
             <div className="md:hidden xl:block">
               <img
-                src="/images/gravitre-logo.png"
+                src="/images/gravitre-logo-black.png"
                 alt="Gravitre"
                 className="dark:hidden"
-                style={{ width: '180px', height: 'auto' }}
+                style={{ height: '40px', width: 'auto' }}
               />
               <img
-                src="/images/gravitre-icon-white.png"
+                src="/images/gravitre-logo-white.png"
                 alt="Gravitre"
                 className="hidden dark:block"
-                style={{ width: '48px', height: 'auto' }}
+                style={{ height: '40px', width: 'auto' }}
               />
             </div>
           </Link>
