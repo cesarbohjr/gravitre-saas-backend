@@ -27,30 +27,27 @@ import { billingApi } from "@/lib/api"
 
 const plans = [
   {
-    id: "starter",
-    name: "Starter",
-    price: "$79",
-    period: "/month",
-    description: "Perfect for small teams getting started",
-    features: ["5 AI agents", "1,000 runs/month", "Email support", "Basic analytics"],
+    id: "node",
+    name: "Node",
+    price: { monthly: 49, annual: 41 },
+    description: "Focused execution for small teams",
+    features: ["1 Agent", "1 Core User", "2 Lite Users", "Up to 10 outputs/month", "3 app integrations"],
     popular: false,
   },
   {
-    id: "growth",
-    name: "Growth",
-    price: "$299",
-    period: "/month",
-    description: "For growing teams that need more power",
-    features: ["25 AI agents", "10,000 runs/month", "Priority support", "Advanced analytics", "Custom integrations"],
+    id: "control",
+    name: "Control",
+    price: { monthly: 129, annual: 107 },
+    description: "Coordinate work across your systems",
+    features: ["2-3 Agents", "2 Core Users", "5 Lite Users", "Up to 40 outputs/month", "10 Mesons/month", "Priority support"],
     popular: true,
   },
   {
-    id: "scale",
-    name: "Scale",
-    price: "$999",
-    period: "/month",
-    description: "Enterprise-grade for large organizations",
-    features: ["Unlimited agents", "Unlimited runs", "Dedicated CSM", "SSO & SAML", "SLA guarantee"],
+    id: "command",
+    name: "Command",
+    price: { monthly: 299, annual: 249 },
+    description: "Run AI agents across your entire team",
+    features: ["5-8 Agents", "5 Core Users", "Unlimited Lite Users", "Up to 120 outputs/month", "40 Mesons/month", "Dedicated support"],
     popular: false,
   },
 ]
@@ -77,7 +74,8 @@ export default function GetStartedPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [companyName, setCompanyName] = useState("")
-  const [selectedPlan, setSelectedPlan] = useState("growth")
+  const [selectedPlan, setSelectedPlan] = useState("control")
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly")
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([])
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -581,9 +579,35 @@ export default function GetStartedPage() {
                   </button>
 
                   <h1 className="text-2xl font-bold text-zinc-900">Choose your plan</h1>
-                  <p className="mt-2 text-sm text-zinc-500 mb-6">
+                  <p className="mt-2 text-sm text-zinc-500 mb-4">
                     Start with a 7-day free trial. Cancel anytime.
                   </p>
+                  
+                  {/* Billing Period Toggle */}
+                  <div className="flex items-center justify-center gap-3 mb-6 p-1 bg-zinc-100 rounded-full w-fit mx-auto">
+                    <button
+                      onClick={() => setBillingPeriod("monthly")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                        billingPeriod === "monthly"
+                          ? "bg-white text-zinc-900 shadow-sm"
+                          : "text-zinc-500 hover:text-zinc-700"
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      onClick={() => setBillingPeriod("annual")}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        billingPeriod === "annual"
+                          ? "bg-white text-zinc-900 shadow-sm"
+                          : "text-zinc-500 hover:text-zinc-700"
+                      }`}
+                    >
+                      Annual
+                      <span className="text-xs text-emerald-600 font-semibold">Save 17%</span>
+                    </button>
+                  </div>
+                  
                   {billingError && (
                     <p className="mb-4 text-sm text-red-600">{billingError}</p>
                   )}
@@ -612,8 +636,10 @@ export default function GetStartedPage() {
                             <p className="text-sm text-zinc-500 mt-1">{plan.description}</p>
                           </div>
                           <div className="text-right">
-                            <span className="text-xl font-bold text-zinc-900">{plan.price}</span>
-                            <span className="text-sm text-zinc-500">{plan.period}</span>
+                            <span className="text-xl font-bold text-zinc-900">
+                              ${billingPeriod === "monthly" ? plan.price.monthly : plan.price.annual}
+                            </span>
+                            <span className="text-sm text-zinc-500">/month</span>
                           </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">

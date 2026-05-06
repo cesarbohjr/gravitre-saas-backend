@@ -31,8 +31,8 @@ export const metadata: Metadata = {
   description: 'Enterprise AI operator console for managing workflows, runs, approvals, and AI-assisted operations',
   generator: 'v0.app',
   icons: {
-    icon: '/images/gravitre-icon.png',
-    apple: '/images/gravitre-icon.png',
+    icon: '/images/gravitre-icon-black.png',
+    apple: '/images/gravitre-icon-black.png',
   },
 }
 

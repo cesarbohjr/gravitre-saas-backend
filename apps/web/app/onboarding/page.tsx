@@ -280,8 +280,8 @@ export default function OnboardingPage() {
       {/* Header */}
       <header className="flex h-16 items-center justify-between border-b border-border px-6">
         <div className="flex items-center gap-3">
-          <img src="/images/gravitre-logo.png" alt="Gravitre" className="h-10 w-auto dark:hidden" />
-          <img src="/images/gravitre-icon-white.png" alt="Gravitre" className="h-10 w-auto hidden dark:block" />
+          <img src="/images/gravitre-logo-black.png" alt="Gravitre" className="h-12 w-auto dark:hidden" />
+          <img src="/images/gravitre-logo-white.png" alt="Gravitre" className="h-12 w-auto hidden dark:block" />
         </div>
         <div className="flex items-center gap-2">
           {STEPS.map((step, i) => (
