@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "luci
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
   "Deploy AI agents in minutes",
@@ -26,7 +27,10 @@ function LoginPageContent() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [activeFeature, setActiveFeature] = useState(0)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [authInfo, setAuthInfo] = useState<string | null>(null)
   const [showSignupCta, setShowSignupCta] = useState(false)
+  const [canResendVerification, setCanResendVerification] = useState(false)
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
   const oauthLoginCheckRef = useRef(false)
 
   // Show session expired message if redirected from middleware
@@ -123,6 +127,8 @@ function LoginPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setAuthError(null)
+    setAuthInfo(null)
+    setCanResendVerification(false)
     setIsLoading(true)
 
     const { error } = await supabaseClient.auth.signInWithPassword({
@@ -133,11 +139,41 @@ function LoginPageContent() {
     setIsLoading(false)
     if (error) {
       setAuthError(error.message)
+      if ((error.message || "").toLowerCase().includes("email not confirmed")) {
+        setCanResendVerification(true)
+      }
       return
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
     router.push(redirect)
+  }
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      setAuthError("Enter your email first so we can resend verification.")
+      return
+    }
+    setAuthError(null)
+    setAuthInfo(null)
+    setIsResendingVerification(true)
+    try {
+      const { error } = await supabaseClient.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl("/login?intent=login"),
+        },
+      })
+      if (error) {
+        setAuthError(error.message)
+        return
+      }
+      setAuthInfo("Verification email sent. Open the link, then sign in.")
+      setCanResendVerification(false)
+    } finally {
+      setIsResendingVerification(false)
+    }
   }
 
   const handleOAuth = async (provider: string) => {
@@ -255,6 +291,16 @@ function LoginPageContent() {
                 {authError && (
                   <div className="mt-3 space-y-2">
                     <p className="text-sm text-red-600">{authError}</p>
+                    {canResendVerification && (
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        disabled={isResendingVerification}
+                        className="inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        {isResendingVerification ? "Sending..." : "Resend verification email"}
+                      </button>
+                    )}
                     {showSignupCta && (
                       <Link
                         href="/get-started"
@@ -265,6 +311,7 @@ function LoginPageContent() {
                     )}
                   </div>
                 )}
+                {authInfo && <p className="mt-3 text-sm text-emerald-700">{authInfo}</p>}
               </div>
 
               {/* OAuth buttons */}

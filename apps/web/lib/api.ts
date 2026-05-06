@@ -371,9 +371,10 @@ export const billingApi = {
       price_id: priceId,
       quantity,
     }),
-  createCheckoutForPlan: (planCode: string) =>
+  createCheckoutForPlan: (planCode: string, billingInterval: "monthly" | "annual" = "monthly") =>
     postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {
       plan_code: planCode,
+      billing_interval: billingInterval,
     }),
   createPortalSession: () =>
     postJson<{ portal_url: string }>(apiUrl("/api/billing/portal"), {}),

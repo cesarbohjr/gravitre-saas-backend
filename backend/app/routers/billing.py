@@ -105,6 +105,7 @@ async def list_billing_plans(
 
 class CheckoutRequest(BaseModel):
     plan_code: str | None = Field(default=None, alias="planCode")
+    billing_interval: str | None = Field(default=None, alias="billingInterval")
     price_id: str | None = Field(default=None, alias="price_id")
     quantity: int | None = Field(default=1, ge=1)
 
@@ -296,9 +297,10 @@ async def create_checkout(
 ) -> dict:
     current_user, org_id = _admin
     plan_code = (body.plan_code or "").strip().lower() or None
+    billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None
     if not price_id and plan_code:
-        price_id = price_id_for_plan(settings, plan_code)
+        price_id = price_id_for_plan(settings, plan_code, billing_interval=billing_interval)
     if not plan_code and price_id:
         mapped = plan_code_for_price(settings, price_id)
         plan_code = mapped or "free"
@@ -335,7 +337,7 @@ async def create_checkout(
         price_id=price_id,
         success_url=success_url,
         cancel_url=cancel_url,
-        metadata={"org_id": org_id, "plan_code": plan_code},
+        metadata={"org_id": org_id, "plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
     )
     write_audit_event(
         client,
@@ -344,7 +346,7 @@ async def create_checkout(
         action="billing.checkout.created",
         resource_type="org_billing",
         resource_id=str(org_id),
-        metadata={"plan_code": plan_code},
+        metadata={"plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
     )
     return {"url": session.url, "checkout_url": session.url}
 

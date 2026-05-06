@@ -10,13 +10,20 @@ from supabase import Client, create_client
 from app.config import Settings
 from app.core.errors import error_detail
 
-DEFAULT_PLAN_CODE = "starter"
+DEFAULT_PLAN_CODE = "node"
+
+PLAN_CODE_ALIASES: dict[str, str] = {
+    "starter": "node",
+    "growth": "control",
+    "scale": "command",
+    "enterprise": "command",
+}
 
 DEFAULT_PLANS: dict[str, dict[str, Any]] = {
-    "starter": {
-        "code": "starter",
-        "name": "Starter",
-        "price_usd": 79,
+    "node": {
+        "code": "node",
+        "name": "Node",
+        "price_usd": 49,
         "agents_limit": 3,
         "workflows_limit": 10,
         "environments_limit": 1,
@@ -30,10 +37,10 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         },
         "overage_rates": {"ai_credit": 0.02, "workflow_runs_per_1000": 10},
     },
-    "growth": {
-        "code": "growth",
-        "name": "Growth",
-        "price_usd": 299,
+    "control": {
+        "code": "control",
+        "name": "Control",
+        "price_usd": 129,
         "agents_limit": 15,
         "workflows_limit": 50,
         "environments_limit": 2,
@@ -47,10 +54,10 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         },
         "overage_rates": {"ai_credit": 0.015, "workflow_runs_per_1000": 8},
     },
-    "scale": {
-        "code": "scale",
-        "name": "Scale",
-        "price_usd": 999,
+    "command": {
+        "code": "command",
+        "name": "Command",
+        "price_usd": 299,
         "agents_limit": 50,
         "workflows_limit": None,
         "environments_limit": 5,
@@ -115,6 +122,23 @@ def get_billing_plans(client: Client) -> dict[str, dict[str, Any]]:
     if not plans:
         return DEFAULT_PLANS
     return plans
+
+
+def normalize_plan_code(plan_code: str | None) -> str:
+    code = (plan_code or DEFAULT_PLAN_CODE).strip().lower()
+    return PLAN_CODE_ALIASES.get(code, code)
+
+
+def _resolve_plan(plans: dict[str, dict[str, Any]], plan_code: str) -> dict[str, Any] | None:
+    if plan_code in plans:
+        return plans[plan_code]
+    if plan_code == "node":
+        return plans.get("starter")
+    if plan_code == "control":
+        return plans.get("growth")
+    if plan_code == "command":
+        return plans.get("scale") or plans.get("enterprise")
+    return None
 
 
 def get_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
@@ -195,10 +219,12 @@ def apply_overrides(plan: dict[str, Any], overrides: dict | None) -> dict[str, A
 def get_base_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
     plans = get_billing_plans(client)
     billing = get_org_billing(client, org_id)
-    plan_code = billing.get("plan_code") if billing else None
-    if not plan_code:
-        plan_code = DEFAULT_PLAN_CODE
-    return plans.get(plan_code, DEFAULT_PLANS[DEFAULT_PLAN_CODE])
+    plan_code = normalize_plan_code(billing.get("plan_code") if billing else DEFAULT_PLAN_CODE)
+    resolved = _resolve_plan(plans, plan_code)
+    if resolved:
+        return resolved
+    fallback = _resolve_plan(DEFAULT_PLANS, DEFAULT_PLAN_CODE)
+    return fallback or next(iter(DEFAULT_PLANS.values()))
 
 
 def get_or_create_org_billing(client: Client, org_id: str) -> dict:

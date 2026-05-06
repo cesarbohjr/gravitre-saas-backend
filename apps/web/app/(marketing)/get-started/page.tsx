@@ -23,31 +23,35 @@ import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
-import { billingApi } from "@/lib/api"
+import { billingApi, organizationsApi } from "@/lib/api"
+import { setSelectedOrgInStorage } from "@/lib/org-context"
 
 const plans = [
   {
     id: "node",
     name: "Node",
-    price: { monthly: 49, annual: 41 },
+    monthlyPrice: 49,
+    annualPrice: 41,
     description: "Focused execution for small teams",
-    features: ["1 Agent", "1 Core User", "2 Lite Users", "Up to 10 outputs/month", "3 app integrations"],
+    features: ["1 Agent", "10 outputs/month", "3 app integrations", "Community support"],
     popular: false,
   },
   {
     id: "control",
     name: "Control",
-    price: { monthly: 129, annual: 107 },
+    monthlyPrice: 129,
+    annualPrice: 107,
     description: "Coordinate work across your systems",
-    features: ["2-3 Agents", "2 Core Users", "5 Lite Users", "Up to 40 outputs/month", "10 Mesons/month", "Priority support"],
+    features: ["2-3 Agents", "40 outputs/month", "10 Mesons/month", "Priority support"],
     popular: true,
   },
   {
     id: "command",
     name: "Command",
-    price: { monthly: 299, annual: 249 },
+    monthlyPrice: 299,
+    annualPrice: 249,
     description: "Run AI agents across your entire team",
-    features: ["5-8 Agents", "5 Core Users", "Unlimited Lite Users", "Up to 120 outputs/month", "40 Mesons/month", "Dedicated support"],
+    features: ["5-8 Agents", "120 outputs/month", "40 Mesons/month", "Dedicated support"],
     popular: false,
   },
 ]
@@ -75,15 +79,17 @@ export default function GetStartedPage() {
   const [password, setPassword] = useState("")
   const [companyName, setCompanyName] = useState("")
   const [selectedPlan, setSelectedPlan] = useState("control")
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly")
+  const [isAnnualBilling, setIsAnnualBilling] = useState(true)
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([])
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [authInfo, setAuthInfo] = useState<string | null>(null)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [isCheckingBilling, setIsCheckingBilling] = useState(false)
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
 
   // Redirect only after paid checkout is active
   useEffect(() => {
@@ -170,9 +176,10 @@ export default function GetStartedPage() {
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setAuthError(null)
+    setAuthInfo(null)
     setIsLoading(true)
 
-    const { error } = await supabaseClient.auth.signUp({
+    const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
@@ -187,23 +194,65 @@ export default function GetStartedPage() {
       return
     }
 
+    if (!data.session) {
+      setAuthError("Please verify your email before continuing.")
+      setAuthInfo("Check your inbox for the verification link. You can resend it below.")
+      return
+    }
+
     setStep(2)
   }
 
   const handleCompanySetup = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user) {
+      setAuthError("Please sign in to continue setup.")
+      router.push("/login?intent=login")
+      return
+    }
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 800))
-    setStep(3)
-    setIsLoading(false)
+    setBillingError(null)
+    try {
+      const existing = await organizationsApi.list()
+      let targetOrg = existing.organizations?.[0]
+      if (!targetOrg) {
+        targetOrg = await organizationsApi.create({
+          name: companyName.trim(),
+          slug: companyName
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") || undefined,
+        })
+      }
+      if (targetOrg?.id && targetOrg?.name) {
+        setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
+      }
+      setStep(3)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
+      if (message === "Session expired") {
+        setAuthError("Your session expired. Please sign in again to continue.")
+        router.push("/login?session_expired=true&intent=login")
+        return
+      }
+      setBillingError(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handlePlanSelect = () => {
+    if (!user) {
+      setBillingError("Please sign in before starting checkout.")
+      router.push("/login?intent=login")
+      return
+    }
     setBillingError(null)
     setIsCheckingBilling(true)
     void (async () => {
       try {
-        const response = await billingApi.createCheckoutForPlan(selectedPlan)
+        const response = await billingApi.createCheckoutForPlan(selectedPlan, isAnnualBilling ? "annual" : "monthly")
         if (response.checkout_url) {
           window.location.assign(response.checkout_url)
           return
@@ -216,6 +265,34 @@ export default function GetStartedPage() {
         setIsCheckingBilling(false)
       }
     })()
+  }
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      setAuthError("Enter your email first so we can resend verification.")
+      return
+    }
+    setAuthError(null)
+    setAuthInfo(null)
+    setIsResendingVerification(true)
+    try {
+      const { error } = await supabaseClient.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl("/login?intent=login"),
+        },
+      })
+      if (error) {
+        setAuthError(error.message)
+        return
+      }
+      setAuthInfo("Verification email sent. Open the link, then sign in to continue setup.")
+    } catch {
+      setAuthError("Unable to resend verification email right now. Please try again.")
+    } finally {
+      setIsResendingVerification(false)
+    }
   }
 
   const handleComplete = async () => {
@@ -348,7 +425,22 @@ export default function GetStartedPage() {
                       7-day free trial to explore all features.
                     </p>
                     {authError && (
-                      <p className="mt-3 text-sm text-red-600">{authError}</p>
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm text-red-600">{authError}</p>
+                        {email.trim() && (
+                          <button
+                            type="button"
+                            onClick={handleResendVerification}
+                            disabled={isResendingVerification}
+                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+                          >
+                            {isResendingVerification ? "Sending..." : "Resend verification email"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {authInfo && (
+                      <p className="mt-3 text-sm text-emerald-700">{authInfo}</p>
                     )}
                   </div>
 
@@ -579,35 +671,34 @@ export default function GetStartedPage() {
                   </button>
 
                   <h1 className="text-2xl font-bold text-zinc-900">Choose your plan</h1>
-                  <p className="mt-2 text-sm text-zinc-500 mb-4">
+                  <p className="mt-2 text-sm text-zinc-500 mb-6">
                     Start with a 7-day free trial. Cancel anytime.
                   </p>
-                  
-                  {/* Billing Period Toggle */}
-                  <div className="flex items-center justify-center gap-3 mb-6 p-1 bg-zinc-100 rounded-full w-fit mx-auto">
+                  <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 p-1">
                     <button
-                      onClick={() => setBillingPeriod("monthly")}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                        billingPeriod === "monthly"
-                          ? "bg-white text-zinc-900 shadow-sm"
-                          : "text-zinc-500 hover:text-zinc-700"
+                      type="button"
+                      onClick={() => setIsAnnualBilling(false)}
+                      className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
+                        !isAnnualBilling ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900"
                       }`}
                     >
                       Monthly
                     </button>
                     <button
-                      onClick={() => setBillingPeriod("annual")}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
-                        billingPeriod === "annual"
-                          ? "bg-white text-zinc-900 shadow-sm"
-                          : "text-zinc-500 hover:text-zinc-700"
+                      type="button"
+                      onClick={() => setIsAnnualBilling(true)}
+                      className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
+                        isAnnualBilling ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900"
                       }`}
                     >
                       Annual
-                      <span className="text-xs text-emerald-600 font-semibold">Save 17%</span>
                     </button>
+                    {isAnnualBilling && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                        Save 17%
+                      </span>
+                    )}
                   </div>
-                  
                   {billingError && (
                     <p className="mb-4 text-sm text-red-600">{billingError}</p>
                   )}
@@ -637,7 +728,7 @@ export default function GetStartedPage() {
                           </div>
                           <div className="text-right">
                             <span className="text-xl font-bold text-zinc-900">
-                              ${billingPeriod === "monthly" ? plan.price.monthly : plan.price.annual}
+                              ${isAnnualBilling ? plan.annualPrice : plan.monthlyPrice}
                             </span>
                             <span className="text-sm text-zinc-500">/month</span>
                           </div>
