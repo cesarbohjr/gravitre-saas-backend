@@ -10,6 +10,12 @@ function normalizeStatus(input: unknown): "active" | "inactive" | "cancelled_pen
   return "inactive"
 }
 
+function isMissingOrganizationsTableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "")
+  const lower = message.toLowerCase()
+  return lower.includes("public.organizations") && (lower.includes("does not exist") || lower.includes("schema cache"))
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseRouteClient(request)
@@ -18,7 +24,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
 
-    await ensureDemoDataForOrg(supabase, orgId)
+    try {
+      await ensureDemoDataForOrg(supabase, orgId)
+    } catch (error) {
+      // Some prod environments may not have the legacy organizations table.
+      // In that case, fall back to a safe inactive billing status response.
+      if (isMissingOrganizationsTableError(error)) {
+        return NextResponse.json({
+          billingStatus: "inactive",
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+        })
+      }
+      throw error
+    }
 
     const { data: orgData, error } = await supabase
       .from("organizations")
@@ -27,6 +46,13 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (error) {
+      if (isMissingOrganizationsTableError(error)) {
+        return NextResponse.json({
+          billingStatus: "inactive",
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+        })
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
