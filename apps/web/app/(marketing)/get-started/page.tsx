@@ -163,7 +163,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/get-started?oauth=1&intent=signup")
+    const result = await beginOAuthSignIn(selectedProvider, "/onboarding")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
@@ -183,7 +183,7 @@ export default function GetStartedPage() {
       email,
       password,
       options: {
-        emailRedirectTo: getAuthRedirectUrl("/operator"),
+        emailRedirectTo: getAuthRedirectUrl("/onboarding"),
       },
     })
 
@@ -280,7 +280,7 @@ export default function GetStartedPage() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl("/login?intent=login"),
+          emailRedirectTo: getAuthRedirectUrl("/onboarding"),
         },
       })
       if (error) {
