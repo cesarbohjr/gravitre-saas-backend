@@ -9,6 +9,7 @@ const PUBLIC_ROUTES = [
   "/login",
   "/get-started",
   "/forgot-password",
+  "/auth/callback",
   // Product
   "/features",
   "/pricing",
