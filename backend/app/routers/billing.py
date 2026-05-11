@@ -522,17 +522,14 @@ async def handle_webhook(
     if event_type == "checkout.session.completed":
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
-        metadata = data.get("metadata") or {}
-        plan_code = (metadata.get("plan_code") or "").strip().lower() or None
-        update_row = {
-            "org_id": org_id,
-            "stripe_customer_id": customer_id,
-            "stripe_subscription_id": subscription_id,
-            "billing_status": "active",
-        }
-        if plan_code:
-            update_row["plan_code"] = plan_code
-        client.table("org_billing").upsert(update_row).execute()
+        client.table("org_billing").upsert(
+            {
+                "org_id": org_id,
+                "stripe_customer_id": customer_id,
+                "stripe_subscription_id": subscription_id,
+                "billing_status": "active",
+            }
+        ).execute()
         if org_id:
             write_audit_event(
                 client,
