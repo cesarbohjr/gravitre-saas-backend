@@ -49,6 +49,15 @@ def _plan_from_price(settings: Settings, price_id: str | None) -> str:
     return _normalize_tier(plan)
 
 
+def _billing_plan_code(raw_code: str | None, price_id: str | None, settings: Settings) -> str:
+    normalized = (raw_code or "").strip().lower()
+    if normalized in {"starter", "growth", "scale"}:
+        return normalized
+    mapped_tier = _plan_from_price(settings, price_id)
+    tier_to_code = {"node": "starter", "control": "growth", "command": "scale"}
+    return tier_to_code.get(mapped_tier, "starter")
+
+
 def _write_event(client, org_id: str | None, event_type: str, payload: dict[str, Any], status_value: str = "success") -> None:
     if not org_id:
         return
@@ -71,6 +80,7 @@ def _upsert_subscription_from_event(client, settings: Settings, org_id: str | No
     price_id = (primary_item.get("price") or {}).get("id")
     quantity = int(primary_item.get("quantity") or data.get("quantity") or 1)
     plan_tier = _plan_from_price(settings, price_id)
+    plan_code = _billing_plan_code(None, price_id, settings)
     payload = {
         "org_id": org_id,
         "stripe_customer_id": data.get("customer"),
@@ -83,6 +93,19 @@ def _upsert_subscription_from_event(client, settings: Settings, org_id: str | No
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     client.table("subscriptions").upsert(payload, on_conflict="org_id").execute()
+    client.table("org_billing").upsert(
+        {
+            "org_id": org_id,
+            "stripe_customer_id": data.get("customer"),
+            "stripe_subscription_id": data.get("id"),
+            "stripe_price_id": price_id,
+            "plan_code": plan_code,
+            "billing_status": data.get("status") or "active",
+            "current_period_end": _to_iso(data.get("current_period_end")),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="org_id",
+    ).execute()
 
 
 @router.post("/stripe")
@@ -110,6 +133,11 @@ async def stripe_webhook(
     if event_type == "checkout.session.completed":
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
+        plan_code = _billing_plan_code(
+            (metadata or {}).get("plan_code"),
+            None,
+            settings,
+        )
         if org_id and subscription_id:
             client.table("subscriptions").upsert(
                 {
@@ -126,6 +154,7 @@ async def stripe_webhook(
                     "org_id": org_id,
                     "stripe_customer_id": customer_id,
                     "stripe_subscription_id": subscription_id,
+                    "plan_code": plan_code,
                     "billing_status": "active",
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 },
@@ -134,18 +163,6 @@ async def stripe_webhook(
 
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
         _upsert_subscription_from_event(client, settings, org_id, data)
-        if org_id:
-            client.table("org_billing").upsert(
-                {
-                    "org_id": org_id,
-                    "stripe_customer_id": data.get("customer"),
-                    "stripe_subscription_id": data.get("id"),
-                    "billing_status": data.get("status") or "active",
-                    "current_period_end": _to_iso(data.get("current_period_end")),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
-                on_conflict="org_id",
-            ).execute()
 
     if event_type == "customer.subscription.deleted":
         subscription_id = data.get("id")
