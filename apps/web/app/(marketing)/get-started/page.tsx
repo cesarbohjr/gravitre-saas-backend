@@ -90,25 +90,6 @@ export default function GetStartedPage() {
   const [billingError, setBillingError] = useState<string | null>(null)
   const [isCheckingBilling, setIsCheckingBilling] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
-  const [deferVerificationMessage, setDeferVerificationMessage] = useState<string | null>(null)
-
-  const ensureOrganizationForCheckout = async (): Promise<void> => {
-    const existing = await organizationsApi.list()
-    let targetOrg = existing.organizations?.[0]
-    if (!targetOrg) {
-      targetOrg = await organizationsApi.create({
-        name: companyName.trim(),
-        slug: companyName
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "") || undefined,
-      })
-    }
-    if (targetOrg?.id && targetOrg?.name) {
-      setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
-    }
-  }
 
   // Redirect only after paid checkout is active
   useEffect(() => {
@@ -182,7 +163,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/get-started?intent=signup")
+    const result = await beginOAuthSignIn(selectedProvider, "/onboarding")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
@@ -202,9 +183,7 @@ export default function GetStartedPage() {
       email,
       password,
       options: {
-        emailRedirectTo: getAuthRedirectUrl(
-          `/auth/callback?next=${encodeURIComponent("/get-started?intent=signup")}&type=signup`,
-        ),
+        emailRedirectTo: getAuthRedirectUrl("/onboarding"),
       },
     })
 
@@ -216,10 +195,8 @@ export default function GetStartedPage() {
     }
 
     if (!data.session) {
-      setDeferVerificationMessage(
-        "Email verification will be requested after payment. Continue setup and verify before first operator login.",
-      )
-      setStep(2)
+      setAuthError("Please verify your email before continuing.")
+      setAuthInfo("Check your inbox for the verification link. You can resend it below.")
       return
     }
 
@@ -229,16 +206,28 @@ export default function GetStartedPage() {
   const handleCompanySetup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
-      setDeferVerificationMessage(
-        "Continue selecting your plan. We will ask you to sign in again before checkout completion.",
-      )
-      setStep(3)
+      setAuthError("Please sign in to continue setup.")
+      router.push("/login?intent=login")
       return
     }
     setIsLoading(true)
     setBillingError(null)
     try {
-      await ensureOrganizationForCheckout()
+      const existing = await organizationsApi.list()
+      let targetOrg = existing.organizations?.[0]
+      if (!targetOrg) {
+        targetOrg = await organizationsApi.create({
+          name: companyName.trim(),
+          slug: companyName
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") || undefined,
+        })
+      }
+      if (targetOrg?.id && targetOrg?.name) {
+        setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
+      }
       setStep(3)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
@@ -256,14 +245,13 @@ export default function GetStartedPage() {
   const handlePlanSelect = () => {
     if (!user) {
       setBillingError("Please sign in before starting checkout.")
-      router.push("/login?intent=login&redirect=/get-started?intent=signup")
+      router.push("/login?intent=login")
       return
     }
     setBillingError(null)
     setIsCheckingBilling(true)
     void (async () => {
       try {
-        await ensureOrganizationForCheckout()
         const response = await billingApi.createCheckoutForPlan(selectedPlan, isAnnualBilling ? "annual" : "monthly")
         if (response.checkout_url) {
           window.location.assign(response.checkout_url)
@@ -292,9 +280,7 @@ export default function GetStartedPage() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl(
-            `/auth/callback?next=${encodeURIComponent("/get-started?intent=signup")}&type=signup`,
-          ),
+          emailRedirectTo: getAuthRedirectUrl("/onboarding"),
         },
       })
       if (error) {
@@ -455,9 +441,6 @@ export default function GetStartedPage() {
                     )}
                     {authInfo && (
                       <p className="mt-3 text-sm text-emerald-700">{authInfo}</p>
-                    )}
-                    {deferVerificationMessage && (
-                      <p className="mt-3 text-sm text-emerald-700">{deferVerificationMessage}</p>
                     )}
                   </div>
 

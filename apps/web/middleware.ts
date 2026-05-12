@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-const AUTH_ENTRY_ROUTES = ["/login", "/get-started", "/forgot-password", "/auth/callback"]
-const CANONICAL_AUTH_ORIGIN = "https://gravitre.app"
+const AUTH_ENTRY_ROUTES = ["/login", "/get-started", "/forgot-password"]
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -50,18 +49,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  const canonicalAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
   if (
+    canonicalAppUrl &&
     AUTH_ENTRY_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`),
     )
   ) {
-    const isLocalhost = request.nextUrl.hostname === "localhost" || request.nextUrl.hostname === "127.0.0.1"
-    if (!isLocalhost) {
-      const canonicalUrl = new URL(CANONICAL_AUTH_ORIGIN)
+    try {
+      const canonicalUrl = new URL(canonicalAppUrl)
       if (request.nextUrl.host !== canonicalUrl.host) {
-        const redirectUrl = new URL(`${pathname}${request.nextUrl.search}`, canonicalUrl)
+        const redirectUrl = new URL(
+          `${pathname}${request.nextUrl.search}`,
+          canonicalUrl,
+        )
         return NextResponse.redirect(redirectUrl)
       }
+    } catch {
+      // Ignore malformed NEXT_PUBLIC_APP_URL and continue request handling.
     }
   }
 

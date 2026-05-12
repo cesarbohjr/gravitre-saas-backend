@@ -19,9 +19,7 @@ export async function beginOAuthSignIn(
   provider: Provider,
   redirectPath: string = "/operator",
 ): Promise<OAuthResult> {
-  const normalizedRedirectPath = redirectPath.startsWith("/") ? redirectPath : "/operator"
-  const callbackPath = `/auth/callback?next=${encodeURIComponent(normalizedRedirectPath)}`
-  const redirectTo = getAuthRedirectUrl(callbackPath)
+  const redirectTo = getAuthRedirectUrl(redirectPath)
   if (!redirectTo) {
     return {
       ok: false,
