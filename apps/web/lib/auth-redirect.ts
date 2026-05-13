@@ -4,7 +4,7 @@
  * 
  * @param finalDestination - Where to redirect after successful auth (default: /dashboard)
  */
-export function getAuthRedirectUrl(finalDestination: string = "/dashboard"): string | undefined {
+export function getAuthRedirectUrl(finalDestination: string = "/operator"): string | undefined {
   const normalizedDest = finalDestination.startsWith("/") ? finalDestination : `/${finalDestination}`
   const configuredBase = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
 

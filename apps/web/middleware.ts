@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-const AUTH_ENTRY_ROUTES = ["/login", "/get-started", "/forgot-password"]
+// Routes that should ALWAYS redirect to canonical domain (gravitre.app)
+// to prevent users from seeing backend deployment URLs
+const CANONICAL_REDIRECT_ROUTES = [
+  "/login",
+  "/get-started",
+  "/forgot-password",
+  "/auth/callback",
+  "/operator",
+  "/onboarding",
+]
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -52,7 +61,7 @@ export async function middleware(request: NextRequest) {
   const canonicalAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
   if (
     canonicalAppUrl &&
-    AUTH_ENTRY_ROUTES.some(
+    CANONICAL_REDIRECT_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`),
     )
   ) {
