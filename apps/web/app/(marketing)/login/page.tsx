@@ -162,7 +162,7 @@ function LoginPageContent() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl("/dashboard"),
+          emailRedirectTo: getAuthRedirectUrl("/operator"),
         },
       })
       if (error) {
@@ -189,7 +189,7 @@ function LoginPageContent() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/dashboard")
+    const result = await beginOAuthSignIn(selectedProvider, "/operator")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)

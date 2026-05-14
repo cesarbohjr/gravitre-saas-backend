@@ -163,7 +163,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/onboarding")
+    const result = await beginOAuthSignIn(selectedProvider, "/operator")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
@@ -173,85 +173,143 @@ export default function GetStartedPage() {
     clearTimeout(resetTimer)
   }
 
+  // For deferred account creation - just validate and move to next step
+  // Account will be created AFTER payment completes
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setAuthError(null)
     setAuthInfo(null)
-    setIsLoading(true)
-
-    const { data, error } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl("/onboarding"),
-      },
-    })
-
-    setIsLoading(false)
     
-    if (error) {
-      setAuthError(error.message)
+    // Basic validation
+    if (!email.trim() || !password.trim()) {
+      setAuthError("Please enter both email and password.")
+      return
+    }
+    
+    if (password.length < 8) {
+      setAuthError("Password must be at least 8 characters.")
+      return
+    }
+    
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setAuthError("Please enter a valid email address.")
       return
     }
 
-    if (!data.session) {
-      setAuthError("Please verify your email before continuing.")
-      setAuthInfo("Check your inbox for the verification link. You can resend it below.")
-      return
-    }
-
+    // Store credentials locally and proceed to next step
+    // Account creation is deferred until after payment
     setStep(2)
   }
 
+  // For deferred account creation - just validate company name and proceed
+  // Organization will be created AFTER payment when account is created
   const handleCompanySetup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) {
-      setAuthError("Please sign in to continue setup.")
-      router.push("/login?intent=login")
+    setBillingError(null)
+    
+    if (!companyName.trim()) {
+      setBillingError("Please enter your company name.")
       return
     }
-    setIsLoading(true)
-    setBillingError(null)
-    try {
-      const existing = await organizationsApi.list()
-      let targetOrg = existing.organizations?.[0]
-      if (!targetOrg) {
-        targetOrg = await organizationsApi.create({
-          name: companyName.trim(),
-          slug: companyName
-            .trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, "") || undefined,
-        })
-      }
-      if (targetOrg?.id && targetOrg?.name) {
-        setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
-      }
-      setStep(3)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
-      if (message === "Session expired") {
-        setAuthError("Your session expired. Please sign in again to continue.")
-        router.push("/login?session_expired=true&intent=login")
+    
+    // If user is already authenticated (OAuth flow), create org now
+    if (user) {
+      setIsLoading(true)
+      try {
+        const existing = await organizationsApi.list()
+        let targetOrg = existing.organizations?.[0]
+        if (!targetOrg) {
+          targetOrg = await organizationsApi.create({
+            name: companyName.trim(),
+            slug: companyName
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "") || undefined,
+          })
+        }
+        if (targetOrg?.id && targetOrg?.name) {
+          setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
+        if (message === "Session expired") {
+          setAuthError("Your session expired. Please sign in again to continue.")
+          router.push("/login?session_expired=true&intent=login")
+          return
+        }
+        setBillingError(message)
         return
+      } finally {
+        setIsLoading(false)
       }
-      setBillingError(message)
-    } finally {
-      setIsLoading(false)
     }
+    
+    // For email signup flow (no user yet), just store company name and proceed
+    setStep(3)
   }
 
   const handlePlanSelect = () => {
-    if (!user) {
-      setBillingError("Please sign in before starting checkout.")
-      router.push("/login?intent=login")
-      return
-    }
     setBillingError(null)
     setIsCheckingBilling(true)
+    
     void (async () => {
       try {
+        // If no user yet (email signup flow), create account now
+        if (!user && email && password) {
+          const { data, error: signupError } = await supabaseClient.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              emailRedirectTo: getAuthRedirectUrl("/operator"),
+            },
+          })
+          
+          if (signupError) {
+            setBillingError(signupError.message)
+            setIsCheckingBilling(false)
+            return
+          }
+          
+          // For email signup, we may not have a session yet (email not verified)
+          // But we can still proceed to checkout - user will verify after payment
+          // The billing API will handle guest checkout or wait for verification
+          
+          // If we got a session (auto-confirm enabled), create org
+          if (data.session && companyName.trim()) {
+            try {
+              const existing = await organizationsApi.list()
+              let targetOrg = existing.organizations?.[0]
+              if (!targetOrg) {
+                targetOrg = await organizationsApi.create({
+                  name: companyName.trim(),
+                  slug: companyName
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-|-$/g, "") || undefined,
+                })
+              }
+              if (targetOrg?.id && targetOrg?.name) {
+                setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
+              }
+            } catch {
+              // Continue to checkout anyway - org can be created later
+            }
+          }
+          
+          // If no session (email verification required), show message
+          if (!data.session) {
+            setBillingError("Please check your email and verify your account to continue to checkout.")
+            setAuthInfo("A verification email has been sent. Click the link to verify, then return here to complete checkout.")
+            setIsCheckingBilling(false)
+            return
+          }
+        }
+        
+        // User exists (OAuth or verified email) - proceed to checkout
         const response = await billingApi.createCheckoutForPlan(selectedPlan, isAnnualBilling ? "annual" : "monthly")
         if (response.checkout_url) {
           window.location.assign(response.checkout_url)
@@ -280,7 +338,7 @@ export default function GetStartedPage() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl("/onboarding"),
+        emailRedirectTo: getAuthRedirectUrl("/operator"),
         },
       })
       if (error) {
@@ -425,22 +483,7 @@ export default function GetStartedPage() {
                       7-day free trial to explore all features.
                     </p>
                     {authError && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-sm text-red-600">{authError}</p>
-                        {email.trim() && (
-                          <button
-                            type="button"
-                            onClick={handleResendVerification}
-                            disabled={isResendingVerification}
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
-                          >
-                            {isResendingVerification ? "Sending..." : "Resend verification email"}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {authInfo && (
-                      <p className="mt-3 text-sm text-emerald-700">{authInfo}</p>
+                      <p className="mt-3 text-sm text-red-600">{authError}</p>
                     )}
                   </div>
 
@@ -700,7 +743,22 @@ export default function GetStartedPage() {
                     )}
                   </div>
                   {billingError && (
-                    <p className="mb-4 text-sm text-red-600">{billingError}</p>
+                    <div className="mb-4 space-y-2">
+                      <p className="text-sm text-red-600">{billingError}</p>
+                      {authInfo && (
+                        <p className="text-sm text-emerald-700">{authInfo}</p>
+                      )}
+                      {email.trim() && authInfo && (
+                        <button
+                          type="button"
+                          onClick={handleResendVerification}
+                          disabled={isResendingVerification}
+                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+                        >
+                          {isResendingVerification ? "Sending..." : "Resend verification email"}
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   <div className="space-y-3">

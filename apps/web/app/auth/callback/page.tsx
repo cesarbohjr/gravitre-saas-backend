@@ -19,8 +19,11 @@ function AuthCallbackContent() {
 
   const callbackContext = useMemo(() => {
     const type = searchParams.get("type")
-    const fallbackDestination = type === "signup" ? "/get-started?intent=signup" : "/login?intent=login"
-    const nextPath = normalizeNextPath(searchParams.get("next"), fallbackDestination)
+    // Default destination after successful auth - go to operator dashboard
+    const defaultDestination = "/operator"
+    // Fallback for errors - go to login without session_expired to avoid confusion
+    const fallbackDestination = type === "signup" ? "/get-started" : "/login"
+    const nextPath = normalizeNextPath(searchParams.get("next"), defaultDestination)
     return { type, fallbackDestination, nextPath }
   }, [searchParams])
 
