@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// Routes that should ALWAYS redirect to canonical domain (gravitre.app)
-// to prevent users from seeing backend deployment URLs
 const CANONICAL_REDIRECT_ROUTES = [
   "/login",
   "/get-started",
@@ -11,6 +9,7 @@ const CANONICAL_REDIRECT_ROUTES = [
   "/operator",
   "/onboarding",
 ]
+const CANONICAL_AUTH_ORIGIN = "https://gravitre.app"
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -58,15 +57,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const canonicalAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
   if (
-    canonicalAppUrl &&
     CANONICAL_REDIRECT_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`),
     )
   ) {
-    try {
-      const canonicalUrl = new URL(canonicalAppUrl)
+    const isLocalhost = request.nextUrl.hostname === "localhost" || request.nextUrl.hostname === "127.0.0.1"
+    if (!isLocalhost) {
+      const canonicalUrl = new URL(CANONICAL_AUTH_ORIGIN)
       if (request.nextUrl.host !== canonicalUrl.host) {
         const redirectUrl = new URL(
           `${pathname}${request.nextUrl.search}`,
@@ -74,8 +72,6 @@ export async function middleware(request: NextRequest) {
         )
         return NextResponse.redirect(redirectUrl)
       }
-    } catch {
-      // Ignore malformed NEXT_PUBLIC_APP_URL and continue request handling.
     }
   }
 

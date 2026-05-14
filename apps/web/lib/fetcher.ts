@@ -35,7 +35,10 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   // Handle 401 by redirecting to login once.
   if (response.status === 401 && typeof window !== "undefined") {
     const currentPath = window.location.pathname
-    if (!currentPath.startsWith("/login")) {
+    const shouldSkipRedirect = ["/login", "/get-started", "/forgot-password", "/auth/callback"].some((path) =>
+      currentPath.startsWith(path),
+    )
+    if (!shouldSkipRedirect) {
       const alreadyRedirecting = window.sessionStorage.getItem("gravitre_auth_redirecting") === "1"
       if (!alreadyRedirecting) {
         window.sessionStorage.setItem("gravitre_auth_redirecting", "1")

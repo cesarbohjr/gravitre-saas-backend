@@ -91,6 +91,24 @@ export default function GetStartedPage() {
   const [isCheckingBilling, setIsCheckingBilling] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
 
+  const ensureOrganizationForCheckout = async (): Promise<void> => {
+    const existing = await organizationsApi.list()
+    let targetOrg = existing.organizations?.[0]
+    if (!targetOrg && companyName.trim()) {
+      targetOrg = await organizationsApi.create({
+        name: companyName.trim(),
+        slug: companyName
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") || undefined,
+      })
+    }
+    if (targetOrg?.id && targetOrg?.name) {
+      setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
+    }
+  }
+
   // Redirect only after paid checkout is active
   useEffect(() => {
     if (authLoading || !user) return
@@ -163,7 +181,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    const result = await beginOAuthSignIn(selectedProvider, "/get-started?intent=signup")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
@@ -218,21 +236,7 @@ export default function GetStartedPage() {
     if (user) {
       setIsLoading(true)
       try {
-        const existing = await organizationsApi.list()
-        let targetOrg = existing.organizations?.[0]
-        if (!targetOrg) {
-          targetOrg = await organizationsApi.create({
-            name: companyName.trim(),
-            slug: companyName
-              .trim()
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/^-|-$/g, "") || undefined,
-          })
-        }
-        if (targetOrg?.id && targetOrg?.name) {
-          setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
-        }
+        await ensureOrganizationForCheckout()
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
         if (message === "Session expired") {
@@ -263,11 +267,19 @@ export default function GetStartedPage() {
             email: email.trim(),
             password,
             options: {
-              emailRedirectTo: getAuthRedirectUrl("/operator"),
+              emailRedirectTo: getAuthRedirectUrl(
+                `/auth/callback?next=${encodeURIComponent("/get-started?intent=signup")}&type=signup`,
+              ),
             },
           })
           
           if (signupError) {
+            if ((signupError.message || "").toLowerCase().includes("already registered")) {
+              setBillingError("This email already has an account. Please sign in to continue checkout.")
+              router.push("/login?intent=login&redirect=/get-started?intent=signup")
+              setIsCheckingBilling(false)
+              return
+            }
             setBillingError(signupError.message)
             setIsCheckingBilling(false)
             return
@@ -308,7 +320,7 @@ export default function GetStartedPage() {
             return
           }
         }
-        
+        await ensureOrganizationForCheckout()
         // User exists (OAuth or verified email) - proceed to checkout
         const response = await billingApi.createCheckoutForPlan(selectedPlan, isAnnualBilling ? "annual" : "monthly")
         if (response.checkout_url) {
@@ -338,7 +350,9 @@ export default function GetStartedPage() {
         type: "signup",
         email: email.trim(),
         options: {
-        emailRedirectTo: getAuthRedirectUrl("/operator"),
+          emailRedirectTo: getAuthRedirectUrl(
+            `/auth/callback?next=${encodeURIComponent("/get-started?intent=signup")}&type=signup`,
+          ),
         },
       })
       if (error) {

@@ -104,7 +104,7 @@ function LoginPageContent() {
         }
 
         const payload = await response.json()
-        const hasExistingAccount = Boolean(payload?.user?.created_at)
+        const hasExistingAccount = Boolean(payload?.user_id || payload?.user?.id)
         if (!hasExistingAccount) {
           await supabaseClient.auth.signOut()
           setShowSignupCta(true)
@@ -162,7 +162,9 @@ function LoginPageContent() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl("/operator"),
+          emailRedirectTo: getAuthRedirectUrl(
+            `/auth/callback?next=${encodeURIComponent("/login?intent=login")}&type=signup`,
+          ),
         },
       })
       if (error) {
@@ -189,7 +191,7 @@ function LoginPageContent() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    const result = await beginOAuthSignIn(selectedProvider, "/login?intent=login")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
