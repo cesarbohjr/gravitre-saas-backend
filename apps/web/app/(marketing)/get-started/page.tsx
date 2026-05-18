@@ -239,11 +239,6 @@ export default function GetStartedPage() {
         await ensureOrganizationForCheckout()
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
-        if (message === "Session expired") {
-          setAuthError("Your session expired. Please sign in again to continue.")
-          router.push("/login?session_expired=true&intent=login")
-          return
-        }
         setBillingError(message)
         return
       } finally {
