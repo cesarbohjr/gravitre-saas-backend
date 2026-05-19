@@ -1,26 +1,54 @@
-/**
- * Generates the OAuth redirect URL that points to the auth callback route.
- * The callback route will handle token exchange and then redirect to the final destination.
- * 
- * @param finalDestination - Where to redirect after successful auth (default: /operator)
- * @param isSignup - Whether this is a signup flow (affects error fallback destination)
- */
-export function getAuthRedirectUrl(finalDestination: string = "/operator", isSignup: boolean = false): string | undefined {
-  const normalizedDest = finalDestination.startsWith("/") ? finalDestination : `/${finalDestination}`
-  const configuredBase = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
+const CANONICAL_HOST = "gravitre.app"
+const CANONICAL_ORIGIN = `https://${CANONICAL_HOST}`
 
-  // Always redirect to /auth/callback, passing the final destination as a query param
-  // Include type=signup for signup flows so error fallback goes to /get-started not /login
-  const typeParam = isSignup ? "&type=signup" : ""
-  const callbackPath = `/auth/callback?next=${encodeURIComponent(normalizedDest)}${typeParam}`
-
-  if (configuredBase) {
-    return `${configuredBase.replace(/\/+$/, "")}${callbackPath}`
+function safeHost(value: string): string | null {
+  try {
+    return new URL(value).host.toLowerCase()
+  } catch {
+    return null
   }
+}
+
+function resolveBaseOrigin(configuredBase: string): string {
+  const configuredHost = configuredBase ? safeHost(configuredBase) : null
 
   if (typeof window !== "undefined") {
-    return `${window.location.origin}${callbackPath}`
+    const currentOrigin = window.location.origin
+    const currentHost = window.location.host.toLowerCase()
+
+    if (currentHost.endsWith(CANONICAL_HOST) || currentHost.startsWith("localhost")) {
+      return currentOrigin
+    }
+    if (configuredHost?.endsWith(CANONICAL_HOST)) {
+      return configuredBase.replace(/\/+$/, "")
+    }
+    return CANONICAL_ORIGIN
   }
 
-  return undefined
+  if (configuredHost?.endsWith(CANONICAL_HOST)) {
+    return configuredBase.replace(/\/+$/, "")
+  }
+  return CANONICAL_ORIGIN
+}
+
+/**
+ * Generates the OAuth/email redirect URL to the auth callback route.
+ * The callback route will complete auth and then route to finalDestination.
+ */
+export function getAuthRedirectUrl(
+  finalDestination: string = "/operator",
+  isSignup: boolean = false,
+): string {
+  const normalizedDest = finalDestination.startsWith("/") ? finalDestination : `/${finalDestination}`
+  const configuredBase = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
+  const callbackPath = normalizedDest.startsWith("/auth/callback")
+    ? normalizedDest
+    : `/auth/callback?next=${encodeURIComponent(normalizedDest)}`
+
+  if (!isSignup || callbackPath.includes("type=signup")) {
+    return `${resolveBaseOrigin(configuredBase)}${callbackPath}`
+  }
+
+  const separator = callbackPath.includes("?") ? "&" : "?"
+  return `${resolveBaseOrigin(configuredBase)}${callbackPath}${separator}type=signup`
 }

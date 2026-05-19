@@ -163,7 +163,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/operator", true)
+    const result = await beginOAuthSignIn(selectedProvider, "/get-started?intent=signup", true)
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
