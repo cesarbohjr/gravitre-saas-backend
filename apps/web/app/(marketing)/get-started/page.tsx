@@ -91,24 +91,6 @@ export default function GetStartedPage() {
   const [isCheckingBilling, setIsCheckingBilling] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
 
-  const ensureOrganizationForCheckout = async (): Promise<void> => {
-    const existing = await organizationsApi.list()
-    let targetOrg = existing.organizations?.[0]
-    if (!targetOrg && companyName.trim()) {
-      targetOrg = await organizationsApi.create({
-        name: companyName.trim(),
-        slug: companyName
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "") || undefined,
-      })
-    }
-    if (targetOrg?.id && targetOrg?.name) {
-      setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
-    }
-  }
-
   // Redirect only after paid checkout is active
   useEffect(() => {
     if (authLoading || !user) return
@@ -181,7 +163,7 @@ export default function GetStartedPage() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/get-started?intent=signup")
+    const result = await beginOAuthSignIn(selectedProvider, "/operator", true)
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
@@ -236,9 +218,24 @@ export default function GetStartedPage() {
     if (user) {
       setIsLoading(true)
       try {
-        await ensureOrganizationForCheckout()
+        const existing = await organizationsApi.list()
+        let targetOrg = existing.organizations?.[0]
+        if (!targetOrg) {
+          targetOrg = await organizationsApi.create({
+            name: companyName.trim(),
+            slug: companyName
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "") || undefined,
+          })
+        }
+        if (targetOrg?.id && targetOrg?.name) {
+          setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to prepare your workspace."
+        // Don't redirect for session errors - let user retry or use OAuth
         setBillingError(message)
         return
       } finally {
@@ -256,25 +253,22 @@ export default function GetStartedPage() {
     
     void (async () => {
       try {
+        console.log("[v0] handlePlanSelect called, user:", user?.id, "email:", email, "hasPassword:", !!password)
+        
         // If no user yet (email signup flow), create account now
         if (!user && email && password) {
+          console.log("[v0] Creating Supabase account for email signup")
           const { data, error: signupError } = await supabaseClient.auth.signUp({
             email: email.trim(),
             password,
             options: {
-              emailRedirectTo: getAuthRedirectUrl(
-                `/auth/callback?next=${encodeURIComponent("/get-started?intent=signup")}&type=signup`,
-              ),
+              emailRedirectTo: getAuthRedirectUrl("/operator", true),
             },
           })
           
+          console.log("[v0] signUp result - session:", !!data?.session, "user:", data?.user?.id, "error:", signupError?.message)
+          
           if (signupError) {
-            if ((signupError.message || "").toLowerCase().includes("already registered")) {
-              setBillingError("This email already has an account. Please sign in to continue checkout.")
-              router.push("/login?intent=login&redirect=/get-started?intent=signup")
-              setIsCheckingBilling(false)
-              return
-            }
             setBillingError(signupError.message)
             setIsCheckingBilling(false)
             return
@@ -315,7 +309,7 @@ export default function GetStartedPage() {
             return
           }
         }
-        await ensureOrganizationForCheckout()
+        
         // User exists (OAuth or verified email) - proceed to checkout
         const response = await billingApi.createCheckoutForPlan(selectedPlan, isAnnualBilling ? "annual" : "monthly")
         if (response.checkout_url) {
@@ -345,9 +339,7 @@ export default function GetStartedPage() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl(
-            `/auth/callback?next=${encodeURIComponent("/get-started?intent=signup")}&type=signup`,
-          ),
+        emailRedirectTo: getAuthRedirectUrl("/operator", true),
         },
       })
       if (error) {
