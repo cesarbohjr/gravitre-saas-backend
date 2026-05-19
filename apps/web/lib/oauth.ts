@@ -18,10 +18,9 @@ function safeDecode(value: string): string {
 export async function beginOAuthSignIn(
   provider: Provider,
   redirectPath: string = "/operator",
+  isSignup: boolean = false,
 ): Promise<OAuthResult> {
-  const normalizedRedirectPath = redirectPath.startsWith("/") ? redirectPath : "/operator"
-  const callbackPath = `/auth/callback?next=${encodeURIComponent(normalizedRedirectPath)}`
-  const redirectTo = getAuthRedirectUrl(callbackPath)
+  const redirectTo = getAuthRedirectUrl(redirectPath, isSignup)
   if (!redirectTo) {
     return {
       ok: false,
