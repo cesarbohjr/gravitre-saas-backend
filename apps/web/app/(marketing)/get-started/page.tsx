@@ -253,11 +253,8 @@ export default function GetStartedPage() {
     
     void (async () => {
       try {
-        console.log("[v0] handlePlanSelect called, user:", user?.id, "email:", email, "hasPassword:", !!password)
-        
         // If no user yet (email signup flow), create account now
         if (!user && email && password) {
-          console.log("[v0] Creating Supabase account for email signup")
           const { data, error: signupError } = await supabaseClient.auth.signUp({
             email: email.trim(),
             password,
@@ -266,17 +263,20 @@ export default function GetStartedPage() {
             },
           })
           
-          console.log("[v0] signUp result - session:", !!data?.session, "user:", data?.user?.id, "error:", signupError?.message)
-          
           if (signupError) {
             setBillingError(signupError.message)
             setIsCheckingBilling(false)
             return
           }
           
-          // For email signup, we may not have a session yet (email not verified)
-          // But we can still proceed to checkout - user will verify after payment
-          // The billing API will handle guest checkout or wait for verification
+          // Supabase returns a user with empty identities array if email already exists
+          // This is a security feature to prevent email enumeration
+          if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+            setBillingError("An account with this email already exists. Please sign in instead.")
+            setAuthInfo(null)
+            setIsCheckingBilling(false)
+            return
+          }
           
           // If we got a session (auto-confirm enabled), create org
           if (data.session && companyName.trim()) {
