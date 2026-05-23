@@ -86,10 +86,8 @@ export default function GetStartedPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
-  const [authInfo, setAuthInfo] = useState<string | null>(null)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [isCheckingBilling, setIsCheckingBilling] = useState(false)
-  const [isResendingVerification, setIsResendingVerification] = useState(false)
 
   // Redirect only after paid checkout is active
   useEffect(() => {
@@ -178,7 +176,6 @@ export default function GetStartedPage() {
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setAuthError(null)
-    setAuthInfo(null)
     
     // Basic validation
     if (!email.trim() || !password.trim()) {
@@ -259,7 +256,7 @@ export default function GetStartedPage() {
             email: email.trim(),
             password,
             options: {
-              emailRedirectTo: getAuthRedirectUrl("/operator", true),
+              emailRedirectTo: getAuthRedirectUrl("/get-started?intent=signup", true),
             },
           })
           
@@ -272,10 +269,17 @@ export default function GetStartedPage() {
           // Supabase returns a user with empty identities array if email already exists
           // This is a security feature to prevent email enumeration
           if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
-            setBillingError("An account with this email already exists. Please sign in instead.")
-            setAuthInfo(null)
-            setIsCheckingBilling(false)
-            return
+            const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+              email: email.trim(),
+              password,
+            })
+
+            if (signInError) {
+              setBillingError("This email is already registered. Sign in with your password to continue checkout.")
+              setIsCheckingBilling(false)
+              router.push("/login?intent=login&redirect=/get-started?intent=signup")
+              return
+            }
           }
           
           // If we got a session (auto-confirm enabled), create org
@@ -301,11 +305,11 @@ export default function GetStartedPage() {
             }
           }
           
-          // If no session (email verification required), show message
+          // If there is still no session, continue by sending the user to login.
           if (!data.session) {
-            setBillingError("Please check your email and verify your account to continue to checkout.")
-            setAuthInfo("A verification email has been sent. Click the link to verify, then return here to complete checkout.")
+            setBillingError("Please sign in to continue checkout.")
             setIsCheckingBilling(false)
+            router.push("/login?intent=login&redirect=/get-started?intent=signup")
             return
           }
         }
@@ -324,34 +328,6 @@ export default function GetStartedPage() {
         setIsCheckingBilling(false)
       }
     })()
-  }
-
-  const handleResendVerification = async () => {
-    if (!email.trim()) {
-      setAuthError("Enter your email first so we can resend verification.")
-      return
-    }
-    setAuthError(null)
-    setAuthInfo(null)
-    setIsResendingVerification(true)
-    try {
-      const { error } = await supabaseClient.auth.resend({
-        type: "signup",
-        email: email.trim(),
-        options: {
-        emailRedirectTo: getAuthRedirectUrl("/operator", true),
-        },
-      })
-      if (error) {
-        setAuthError(error.message)
-        return
-      }
-      setAuthInfo("Verification email sent. Open the link, then sign in to continue setup.")
-    } catch {
-      setAuthError("Unable to resend verification email right now. Please try again.")
-    } finally {
-      setIsResendingVerification(false)
-    }
   }
 
   const handleComplete = async () => {
@@ -746,19 +722,6 @@ export default function GetStartedPage() {
                   {billingError && (
                     <div className="mb-4 space-y-2">
                       <p className="text-sm text-red-600">{billingError}</p>
-                      {authInfo && (
-                        <p className="text-sm text-emerald-700">{authInfo}</p>
-                      )}
-                      {email.trim() && authInfo && (
-                        <button
-                          type="button"
-                          onClick={handleResendVerification}
-                          disabled={isResendingVerification}
-                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
-                        >
-                          {isResendingVerification ? "Sending..." : "Resend verification email"}
-                        </button>
-                      )}
                     </div>
                   )}
 
