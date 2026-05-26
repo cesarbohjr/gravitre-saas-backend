@@ -19,8 +19,6 @@ import {
   Sparkles,
   Rocket
 } from "lucide-react"
-import { getAuthRedirectUrl } from "@/lib/auth-redirect"
-import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
 import { billingApi, organizationsApi } from "@/lib/api"
@@ -250,68 +248,20 @@ export default function GetStartedPage() {
     
     void (async () => {
       try {
-        // If no user yet (email signup flow), create account now
+        // Keep account creation deferred: collect payment first for email flow.
         if (!user && email && password) {
-          const { data, error: signupError } = await supabaseClient.auth.signUp({
-            email: email.trim(),
-            password,
-            options: {
-              emailRedirectTo: getAuthRedirectUrl("/get-started?intent=signup", true),
-            },
-          })
-          
-          if (signupError) {
-            setBillingError(signupError.message)
-            setIsCheckingBilling(false)
+          const publicCheckout = await billingApi.createPublicCheckoutForPlan(
+            selectedPlan,
+            isAnnualBilling ? "annual" : "monthly",
+            email.trim(),
+            companyName.trim() || undefined,
+          )
+          if (publicCheckout.checkout_url) {
+            window.location.assign(publicCheckout.checkout_url)
             return
           }
-          
-          // Supabase returns a user with empty identities array if email already exists
-          // This is a security feature to prevent email enumeration
-          if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
-            const { error: signInError } = await supabaseClient.auth.signInWithPassword({
-              email: email.trim(),
-              password,
-            })
-
-            if (signInError) {
-              setBillingError("This email is already registered. Sign in with your password to continue checkout.")
-              setIsCheckingBilling(false)
-              router.push("/login?intent=login&redirect=/get-started?intent=signup")
-              return
-            }
-          }
-          
-          // If we got a session (auto-confirm enabled), create org
-          if (data.session && companyName.trim()) {
-            try {
-              const existing = await organizationsApi.list()
-              let targetOrg = existing.organizations?.[0]
-              if (!targetOrg) {
-                targetOrg = await organizationsApi.create({
-                  name: companyName.trim(),
-                  slug: companyName
-                    .trim()
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/^-|-$/g, "") || undefined,
-                })
-              }
-              if (targetOrg?.id && targetOrg?.name) {
-                setSelectedOrgInStorage({ id: targetOrg.id, name: targetOrg.name })
-              }
-            } catch {
-              // Continue to checkout anyway - org can be created later
-            }
-          }
-          
-          // If there is still no session, continue by sending the user to login.
-          if (!data.session) {
-            setBillingError("Please sign in to continue checkout.")
-            setIsCheckingBilling(false)
-            router.push("/login?intent=login&redirect=/get-started?intent=signup")
-            return
-          }
+          setBillingError("Unable to start checkout. Please try again.")
+          return
         }
         
         // User exists (OAuth or verified email) - proceed to checkout
