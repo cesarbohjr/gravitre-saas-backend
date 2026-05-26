@@ -376,18 +376,6 @@ export const billingApi = {
       plan_code: planCode,
       billing_interval: billingInterval,
     }),
-  createPublicCheckoutForPlan: (
-    planCode: string,
-    billingInterval: "monthly" | "annual" = "monthly",
-    email: string,
-    companyName?: string,
-  ) =>
-    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout/public"), {
-      plan_code: planCode,
-      billing_interval: billingInterval,
-      email,
-      company_name: companyName,
-    }),
   createPortalSession: () =>
     postJson<{ portal_url: string }>(apiUrl("/api/billing/portal"), {}),
   updateSeats: (quantity: number) =>

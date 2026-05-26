@@ -189,7 +189,7 @@ function LoginPageContent() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/login?intent=login")
+    const result = await beginOAuthSignIn(selectedProvider, "/operator")
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)
