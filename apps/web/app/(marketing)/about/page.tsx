@@ -66,14 +66,14 @@ const timeline = [
 
 export default function AboutPage() {
   return (
-    <div className="bg-zinc-950 text-white">
-      {/* Hero - Dark with gradient accent */}
+    <div className="bg-white text-zinc-900">
+      {/* Hero - Light with gradient accent */}
       <section className="relative overflow-hidden px-6 py-32 lg:py-48">
         {/* Gradient orb */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-emerald-500/30 via-teal-500/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-emerald-200/60 via-teal-100/40 to-transparent rounded-full blur-3xl" />
         
         {/* Grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
         
         <div className="relative mx-auto max-w-5xl">
           {/* Badge */}
@@ -82,7 +82,7 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-center mb-8"
           >
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/5 backdrop-blur-sm px-4 py-2 text-sm font-medium text-emerald-400 ring-1 ring-white/10">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
               <Sparkles className="h-4 w-4" />
               Our Story
             </span>
@@ -96,13 +96,13 @@ export default function AboutPage() {
             className="text-center"
           >
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
-              <span className="text-white">We&apos;re building </span>
+              <span className="text-zinc-900">We&apos;re building </span>
               <br className="hidden sm:block" />
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 the AI command center
               </span>
               <br className="hidden sm:block" />
-              <span className="text-white">for operations teams</span>
+              <span className="text-zinc-900">for operations teams</span>
             </h1>
           </motion.div>
           
@@ -110,7 +110,7 @@ export default function AboutPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="mt-8 text-lg sm:text-xl text-zinc-400 max-w-3xl mx-auto text-center leading-relaxed"
+            className="mt-8 text-lg sm:text-xl text-zinc-600 max-w-3xl mx-auto text-center leading-relaxed"
           >
             Gravitre empowers organizations to automate complex workflows, deploy intelligent agents, 
             and transform how work gets done. Our mission is simple: let AI handle the repetitive 
@@ -126,14 +126,14 @@ export default function AboutPage() {
           >
             <Link
               href="/get-started"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-zinc-900 transition-all hover:bg-zinc-100"
+              className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800"
             >
               Get started free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-white/5 px-6 py-3.5 text-sm font-semibold text-white ring-1 ring-white/10 transition-all hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-6 py-3.5 text-sm font-semibold text-zinc-900 transition-all hover:bg-zinc-200"
             >
               Contact sales
             </Link>
@@ -152,11 +152,11 @@ export default function AboutPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.6 + i * 0.1 }}
-                className="relative group rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 p-6 transition-all hover:bg-white/10 hover:border-emerald-500/30"
+                className="relative group rounded-2xl bg-zinc-50 border border-zinc-200 p-6 transition-all hover:bg-white hover:border-emerald-300 hover:shadow-lg"
               >
-                <div className="text-lg font-semibold text-white mb-1">{cap.label}</div>
+                <div className="text-lg font-semibold text-zinc-900 mb-1">{cap.label}</div>
                 <div className="text-sm text-zinc-500">{cap.description}</div>
-                <ChevronRight className="absolute top-6 right-6 h-4 w-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="absolute top-6 right-6 h-4 w-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
             ))}
           </motion.div>
@@ -164,7 +164,7 @@ export default function AboutPage() {
       </section>
 
       {/* Mission - Split layout */}
-      <section className="relative px-6 py-32 bg-zinc-900/50">
+      <section className="relative px-6 py-32 bg-zinc-50">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-16 lg:grid-cols-2 lg:gap-24 items-center">
             <motion.div
@@ -173,11 +173,11 @@ export default function AboutPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <span className="text-emerald-400 text-sm font-semibold uppercase tracking-wider">Our Mission</span>
-              <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-white leading-tight">
+              <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Mission</span>
+              <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900 leading-tight">
                 Eliminating the busywork that holds teams back
               </h2>
-              <div className="mt-8 space-y-6 text-zinc-400 text-lg leading-relaxed">
+              <div className="mt-8 space-y-6 text-zinc-600 text-lg leading-relaxed">
                 <p>
                   Every day, millions of hours are lost to repetitive, manual tasks that drain teams and slow down businesses. 
                   We founded Gravitre to change that reality.
@@ -186,14 +186,14 @@ export default function AboutPage() {
                   Our platform enables businesses to deploy AI agents that work alongside human teams, handling everything from 
                   data synchronization to complex multi-step workflows with complete transparency.
                 </p>
-                <p className="text-white font-medium">
+                <p className="text-zinc-900 font-medium">
                   We believe AI should be a force multiplier for human creativity, not a black box.
                 </p>
               </div>
               <div className="mt-10">
                 <Link
                   href="/platform"
-                  className="group inline-flex items-center gap-2 text-emerald-400 font-semibold hover:text-emerald-300 transition-colors"
+                  className="group inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
                 >
                   Explore our platform
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -210,14 +210,14 @@ export default function AboutPage() {
             >
               {/* Decorative card stack */}
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-3xl blur-2xl" />
-                <div className="relative rounded-3xl bg-zinc-800/50 border border-white/10 p-8 backdrop-blur-sm">
+                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/80 to-teal-100/80 rounded-3xl blur-2xl" />
+                <div className="relative rounded-3xl bg-white border border-zinc-200 p-8 shadow-xl">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
                       <Zap className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <div className="text-white font-semibold">AI-First Architecture</div>
+                      <div className="text-zinc-900 font-semibold">AI-First Architecture</div>
                       <div className="text-sm text-zinc-500">Built for the future of work</div>
                     </div>
                   </div>
@@ -229,10 +229,10 @@ export default function AboutPage() {
                     ].map((metric) => (
                       <div key={metric.label}>
                         <div className="flex justify-between text-sm mb-2">
-                          <span className="text-zinc-400">{metric.label}</span>
-                          <span className="text-white font-medium">{metric.value}</span>
+                          <span className="text-zinc-500">{metric.label}</span>
+                          <span className="text-zinc-900 font-medium">{metric.value}</span>
                         </div>
-                        <div className="h-2 rounded-full bg-zinc-700 overflow-hidden">
+                        <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             whileInView={{ width: metric.value }}
@@ -260,11 +260,11 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="text-emerald-400 text-sm font-semibold uppercase tracking-wider">Our Values</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-white">
+            <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Values</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
               Principles that guide us
             </h2>
-            <p className="mt-4 text-zinc-400 max-w-2xl mx-auto text-lg">
+            <p className="mt-4 text-zinc-600 max-w-2xl mx-auto text-lg">
               These aren&apos;t just words on a wall. They shape every decision we make, every feature we build, 
               and every interaction with our customers.
             </p>
@@ -278,17 +278,17 @@ export default function AboutPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group relative rounded-3xl bg-zinc-900 border border-white/5 p-8 transition-all hover:border-emerald-500/30 overflow-hidden"
+                className="group relative rounded-3xl bg-zinc-50 border border-zinc-200 p-8 transition-all hover:bg-white hover:border-emerald-300 hover:shadow-lg overflow-hidden"
               >
                 {/* Gradient hover effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 
                 <div className="relative">
-                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/20 flex items-center justify-center mb-6">
-                    <value.icon className="h-6 w-6 text-emerald-400" />
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 border border-emerald-200 flex items-center justify-center mb-6">
+                    <value.icon className="h-6 w-6 text-emerald-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-3">{value.title}</h3>
-                  <p className="text-zinc-400 leading-relaxed">{value.description}</p>
+                  <h3 className="text-xl font-semibold text-zinc-900 mb-3">{value.title}</h3>
+                  <p className="text-zinc-600 leading-relaxed">{value.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -297,7 +297,7 @@ export default function AboutPage() {
       </section>
 
       {/* Timeline - Horizontal on desktop */}
-      <section className="px-6 py-32 bg-zinc-900/50">
+      <section className="px-6 py-32 bg-zinc-50">
         <div className="mx-auto max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -305,15 +305,15 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="text-emerald-400 text-sm font-semibold uppercase tracking-wider">Our Journey</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-white">
+            <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Journey</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
               From vision to reality
             </h2>
           </motion.div>
           
           <div className="relative">
             {/* Timeline line */}
-            <div className="hidden lg:block absolute top-12 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
+            <div className="hidden lg:block absolute top-12 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-300 to-transparent" />
             
             <div className="grid gap-8 lg:grid-cols-3">
               {timeline.map((item, i) => (
@@ -326,7 +326,7 @@ export default function AboutPage() {
                   className="relative"
                 >
                   {/* Timeline dot */}
-                  <div className="hidden lg:flex absolute -top-0.5 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-zinc-900 border-2 border-zinc-700 items-center justify-center">
+                  <div className="hidden lg:flex absolute -top-0.5 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-white border-2 border-zinc-300 items-center justify-center shadow-sm">
                     {item.current && (
                       <motion.div 
                         className="h-2 w-2 rounded-full bg-emerald-500"
@@ -339,12 +339,12 @@ export default function AboutPage() {
                     )}
                   </div>
                   
-                  <div className={`lg:mt-12 p-6 rounded-2xl ${item.current ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20' : 'bg-zinc-800/50 border border-white/5'}`}>
-                    <div className={`text-sm font-semibold mb-2 ${item.current ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  <div className={`lg:mt-12 p-6 rounded-2xl ${item.current ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 shadow-md' : 'bg-white border border-zinc-200'}`}>
+                    <div className={`text-sm font-semibold mb-2 ${item.current ? 'text-emerald-600' : 'text-zinc-400'}`}>
                       {item.year}
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                    <p className="text-zinc-400 text-sm leading-relaxed">{item.event}</p>
+                    <h3 className="text-lg font-semibold text-zinc-900 mb-2">{item.title}</h3>
+                    <p className="text-zinc-600 text-sm leading-relaxed">{item.event}</p>
                   </div>
                 </motion.div>
               ))}
@@ -362,8 +362,8 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="text-emerald-400 text-sm font-semibold uppercase tracking-wider">Leadership</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-white">
+            <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Leadership</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
               Meet the founder
             </h2>
           </motion.div>
@@ -374,8 +374,8 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 rounded-3xl blur-2xl" />
-            <div className="relative rounded-3xl bg-zinc-900 border border-white/10 overflow-hidden">
+            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/60 via-teal-100/60 to-cyan-100/60 rounded-3xl blur-2xl" />
+            <div className="relative rounded-3xl bg-white border border-zinc-200 overflow-hidden shadow-xl">
               <div className="grid md:grid-cols-5">
                 {/* Image */}
                 <div className="md:col-span-2 relative">
@@ -386,15 +386,15 @@ export default function AboutPage() {
                       className="h-full w-full object-cover"
                       style={founder.imageStyle}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-zinc-900 via-zinc-900/50 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-white via-white/50 to-transparent" />
                   </div>
                 </div>
                 
                 {/* Content */}
                 <div className="md:col-span-3 p-8 md:p-12 flex flex-col justify-center">
-                  <div className="text-emerald-400 text-sm font-semibold mb-2">{founder.role}</div>
-                  <h3 className="text-3xl sm:text-4xl font-bold text-white mb-6">{founder.name}</h3>
-                  <p className="text-zinc-400 text-lg leading-relaxed mb-8">
+                  <div className="text-emerald-600 text-sm font-semibold mb-2">{founder.role}</div>
+                  <h3 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-6">{founder.name}</h3>
+                  <p className="text-zinc-600 text-lg leading-relaxed mb-8">
                     {founder.bio}
                   </p>
                   <div className="flex items-center gap-4">
@@ -402,7 +402,7 @@ export default function AboutPage() {
                       href={founder.twitter} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-zinc-400 hover:text-white hover:border-white/20 transition-all"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border border-zinc-200 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all"
                     >
                       <Twitter className="h-4 w-4" />
                       Twitter
@@ -411,7 +411,7 @@ export default function AboutPage() {
                       href={founder.linkedin} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-zinc-400 hover:text-white hover:border-white/20 transition-all"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border border-zinc-200 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all"
                     >
                       <Linkedin className="h-4 w-4" />
                       LinkedIn
@@ -425,30 +425,33 @@ export default function AboutPage() {
       </section>
 
       {/* Join the Team - Prominent CTA */}
-      <section className="px-6 py-32 bg-zinc-900/50">
+      <section className="px-6 py-32 bg-zinc-50">
         <div className="mx-auto max-w-4xl">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="relative text-center"
+            className="relative"
           >
-            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 rounded-3xl blur-3xl" />
-            <div className="relative rounded-3xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 p-12 md:p-16">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-400 ring-1 ring-emerald-500/20 mb-6">
-                <Users className="h-4 w-4" />
+            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-200/50 to-teal-200/50 rounded-3xl blur-2xl" />
+            <div className="relative rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 p-12 text-center">
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700 mb-6">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                </span>
                 Now hiring
               </div>
-              <h3 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Help us build the future
+              <h3 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-4">
+                We&apos;re building the team
               </h3>
-              <p className="text-zinc-400 max-w-xl mx-auto mb-8 text-lg">
-                We&apos;re looking for exceptional engineers, designers, and operators who want to 
-                shape the future of AI-powered automation. Remote-first, mission-driven.
+              <p className="text-zinc-600 max-w-xl mx-auto mb-8 text-lg">
+                Gravitre is growing. We&apos;re looking for passionate engineers, designers, and operators 
+                who want to shape the future of AI automation.
               </p>
               <Link
                 href="/careers"
-                className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-semibold text-zinc-900 transition-all hover:bg-zinc-100"
+                className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-zinc-800"
               >
                 View open positions
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -466,26 +469,25 @@ export default function AboutPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+            <h2 className="text-4xl sm:text-5xl font-bold text-zinc-900 mb-6">
               Ready to transform your operations?
             </h2>
-            <p className="text-zinc-400 mb-10 max-w-2xl mx-auto text-lg">
-              Join forward-thinking teams using Gravitre to automate workflows, 
-              deploy AI agents, and focus on what truly matters.
+            <p className="text-zinc-600 text-lg mb-10 max-w-xl mx-auto">
+              See how Gravitre can automate your workflows and free your team to do their best work.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-4 text-base font-semibold text-white transition-all hover:from-emerald-600 hover:to-teal-600"
+                className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-4 text-sm font-semibold text-white transition-all hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-500/25"
               >
                 Start free trial
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
-                href="/demo"
-                className="inline-flex items-center gap-2 rounded-full bg-white/5 px-8 py-4 text-base font-semibold text-white ring-1 ring-white/10 transition-all hover:bg-white/10"
+                href="/contact"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-8 py-4 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-100"
               >
-                Request a demo
+                Contact us
               </Link>
             </div>
           </motion.div>
