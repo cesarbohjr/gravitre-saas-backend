@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-const CANONICAL_HOST = "gravitre.app"
-const CANONICAL_ORIGIN = `https://${CANONICAL_HOST}`
+// Routes that should ALWAYS redirect to canonical domain (gravitre.app)
+// to prevent users from seeing backend deployment URLs
+const CANONICAL_REDIRECT_ROUTES = [
+  "/login",
+  "/get-started",
+  "/forgot-password",
+  "/auth/callback",
+  "/operator",
+  "/onboarding",
+]
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -50,14 +58,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const hostname = request.nextUrl.hostname.toLowerCase()
-  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1"
-  const isCanonicalHost = hostname === CANONICAL_HOST || hostname.endsWith(`.${CANONICAL_HOST}`)
-
-  // Enforce canonical host for all browser routes so users never see Vercel URLs.
-  if (!isLocalhost && !isCanonicalHost) {
-    const redirectUrl = new URL(`${pathname}${request.nextUrl.search}`, CANONICAL_ORIGIN)
-    return NextResponse.redirect(redirectUrl)
+  const canonicalAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
+  if (
+    canonicalAppUrl &&
+    CANONICAL_REDIRECT_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    )
+  ) {
+    try {
+      const canonicalUrl = new URL(canonicalAppUrl)
+      if (request.nextUrl.host !== canonicalUrl.host) {
+        const redirectUrl = new URL(
+          `${pathname}${request.nextUrl.search}`,
+          canonicalUrl,
+        )
+        return NextResponse.redirect(redirectUrl)
+      }
+    } catch {
+      // Ignore malformed NEXT_PUBLIC_APP_URL and continue request handling.
+    }
   }
 
   // Allow public routes

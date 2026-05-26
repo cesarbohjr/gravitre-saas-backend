@@ -4,52 +4,15 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight, Linkedin, Twitter } from "lucide-react"
 
-const team = [
-  {
-    name: "Cesar Bohorquez Jr",
-    role: "CEO & Founder",
-    bio: "Serial entrepreneur and technologist building the future of AI-powered automation.",
-    image: "/images/team/cesar-bohorquez.jpg",
-    linkedin: "https://www.linkedin.com/in/cesarbohorquezjr/",
-    imageStyle: { objectPosition: "center 15%" },
-  },
-  {
-    name: "Sarah Chen",
-    role: "COO",
-    bio: "Previously VP Engineering at Stripe. Stanford CS.",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    name: "Marcus Rodriguez",
-    role: "CTO",
-    bio: "Ex-Google DeepMind. PhD in Machine Learning from MIT.",
-    image: "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    name: "Emily Watson",
-    role: "VP Product",
-    bio: "Previously Product Lead at Notion. Loves solving complex UX.",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    name: "David Kim",
-    role: "VP Engineering",
-    bio: "Built infra at Scale AI. Obsessed with reliability.",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    name: "Priya Patel",
-    role: "VP Design",
-    bio: "Ex-Figma design systems. Crafting intuitive AI experiences.",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    name: "Alex Thompson",
-    role: "VP Sales",
-    bio: "Scaled enterprise teams at Databricks and Snowflake.",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face",
-  },
-]
+const founder = {
+  name: "Cesar Bohorquez Jr",
+  role: "Founder & CEO",
+  bio: "Serial entrepreneur and technologist with a passion for building products that empower businesses through intelligent automation. Previously founded and scaled multiple technology ventures. Now focused on democratizing AI operations for enterprises of all sizes.",
+  image: "/images/team/cesar-bohorquez.jpg",
+  linkedin: "https://www.linkedin.com/in/cesarbohorquezjr/",
+  twitter: "https://twitter.com/cesarbohorquezjr",
+  imageStyle: { objectPosition: "center 15%" },
+}
 
 const investors: { name: string; logo: string }[] = []
 
@@ -73,9 +36,9 @@ const values = [
 ]
 
 const timeline = [
-  { year: "2024", event: "Founded by Cesar Bohorquez Jr" },
-  { year: "2025", event: "Launched AI Operator platform, first customers" },
-  { year: "2026", event: "Expanding team and customer base" },
+  { year: "2024", event: "Founded by Cesar Bohorquez Jr with a vision to democratize AI operations" },
+  { year: "2025", event: "Launched Gravitre AI Operator platform in private beta" },
+  { year: "2026", event: "Public launch and growing customer base" },
 ]
 
 export default function AboutPage() {
@@ -188,9 +151,9 @@ export default function AboutPage() {
             className="mt-12 flex flex-wrap items-center justify-center gap-8"
           >
             {[
-              { value: "2022", label: "Founded" },
-              { value: "500+", label: "Customers" },
-              { value: "10M+", label: "Tasks/month" },
+              { value: "2024", label: "Founded" },
+              { value: "100%", label: "Founder-led" },
+              { value: "Enterprise", label: "Ready" },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -241,8 +204,8 @@ export default function AboutPage() {
             >
               <div className="aspect-video rounded-2xl bg-gradient-to-br from-emerald-100 to-zinc-100 border border-zinc-200 flex items-center justify-center shadow-lg">
                 <div className="text-center p-8">
-                  <div className="text-5xl font-bold text-zinc-900 mb-2">10M+</div>
-                  <div className="text-sm text-zinc-500">Tasks automated monthly</div>
+                  <div className="text-4xl font-bold text-zinc-900 mb-2">AI-First</div>
+                  <div className="text-sm text-zinc-500">Built for the future of work</div>
                 </div>
               </div>
             </motion.div>
@@ -317,50 +280,86 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team */}
+      {/* Founder */}
       <section className="px-6 py-24 border-t border-zinc-200 bg-zinc-50">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Leadership Team</h2>
+            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Meet the Founder</h2>
             <p className="text-zinc-600 max-w-2xl mx-auto">
-              Veterans from the world&apos;s best technology companies, united by a shared vision.
+              Building the future of AI-powered operations, one automation at a time.
             </p>
           </motion.div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {team.map((member, i) => (
-              <motion.div
-                key={member.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group relative rounded-2xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md"
-              >
-  <img
-  src={member.image}
-  alt={member.name}
-  className="h-20 w-20 rounded-full object-cover mb-4"
-  style={(member as { imageStyle?: React.CSSProperties }).imageStyle}
-  />
-                <h3 className="text-lg font-medium text-zinc-900">{member.name}</h3>
-                <p className="text-sm text-emerald-600">{member.role}</p>
-                <p className="text-sm text-zinc-500 mt-2">{member.bio}</p>
-                <div className="flex gap-3 mt-4">
-                  <a href={`https://twitter.com/${member.name.toLowerCase().replace(/\s+/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 transition-colors">
-                    <Twitter className="h-4 w-4" />
-                  </a>
-                  <a href={(member as { linkedin?: string }).linkedin || `https://linkedin.com/in/${member.name.toLowerCase().replace(/\s+/g, '-')}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 transition-colors">
-                    <Linkedin className="h-4 w-4" />
-                  </a>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center gap-8 md:gap-12"
+          >
+            <div className="flex-shrink-0">
+              <img
+                src={founder.image}
+                alt={founder.name}
+                className="h-48 w-48 rounded-2xl object-cover shadow-lg border border-zinc-200"
+                style={founder.imageStyle}
+              />
+            </div>
+            <div className="text-center md:text-left">
+              <h3 className="text-2xl font-semibold text-zinc-900">{founder.name}</h3>
+              <p className="text-emerald-600 font-medium mt-1">{founder.role}</p>
+              <p className="text-zinc-600 mt-4 leading-relaxed">{founder.bio}</p>
+              <div className="flex items-center justify-center md:justify-start gap-4 mt-6">
+                <a 
+                  href={founder.twitter} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+                >
+                  <Twitter className="h-4 w-4" />
+                  Twitter
+                </a>
+                <a 
+                  href={founder.linkedin} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+                >
+                  <Linkedin className="h-4 w-4" />
+                  LinkedIn
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Hiring CTA */}
+      <section className="px-6 py-16 border-t border-zinc-200">
+        <div className="mx-auto max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 p-8 md:p-12 text-center"
+          >
+            <h3 className="text-2xl font-semibold text-zinc-900 mb-3">We&apos;re Building the Team</h3>
+            <p className="text-zinc-600 max-w-xl mx-auto mb-6">
+              Gravitre is growing. We&apos;re looking for passionate engineers, designers, and operators 
+              who want to shape the future of AI automation.
+            </p>
+            <Link
+              href="/careers"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-emerald-700"
+            >
+              View Open Positions
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </motion.div>
         </div>
       </section>
 
@@ -394,23 +393,23 @@ export default function AboutPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Join us</h2>
+            <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Ready to get started?</h2>
             <p className="text-zinc-600 mb-8 max-w-xl mx-auto">
-              We&apos;re building the future of AI operations. Come help us shape it.
+              See how Gravitre can transform your operations with AI-powered automation.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href="/careers"
+                href="/get-started"
                 className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800"
               >
-                View open roles
+                Start free trial
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/contact"
                 className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-100"
               >
-                Get in touch
+                Contact us
               </Link>
             </div>
           </motion.div>
