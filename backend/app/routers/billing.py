@@ -44,6 +44,70 @@ def _raise_stripe_http_error(exc: stripe.error.StripeError) -> None:
     ) from exc
 
 
+# Health check endpoint to verify Stripe configuration
+@router.get("/health")
+async def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
+    """Check if Stripe is properly configured."""
+    issues = []
+    
+    # Check Stripe secret key
+    if not settings.stripe_secret_key:
+        issues.append("STRIPE_SECRET_KEY is not set")
+    elif not settings.stripe_secret_key.startswith(("sk_test_", "sk_live_")):
+        issues.append("STRIPE_SECRET_KEY has invalid format")
+    
+    # Check webhook secret
+    if not settings.stripe_webhook_secret:
+        issues.append("STRIPE_WEBHOOK_SECRET is not set")
+    
+    # Check price IDs
+    price_checks = [
+        ("STRIPE_PRICE_ID_NODE_MONTHLY", settings.stripe_price_id_node_monthly),
+        ("STRIPE_PRICE_ID_NODE_ANNUAL", settings.stripe_price_id_node_annual),
+        ("STRIPE_PRICE_ID_CONTROL_MONTHLY", settings.stripe_price_id_control_monthly),
+        ("STRIPE_PRICE_ID_CONTROL_ANNUAL", settings.stripe_price_id_control_annual),
+        ("STRIPE_PRICE_ID_COMMAND_MONTHLY", settings.stripe_price_id_command_monthly),
+        ("STRIPE_PRICE_ID_COMMAND_ANNUAL", settings.stripe_price_id_command_annual),
+    ]
+    
+    for name, value in price_checks:
+        if not value:
+            issues.append(f"{name} is not set")
+        elif not value.startswith("price_"):
+            issues.append(f"{name} has invalid format (should start with 'price_')")
+    
+    # Test Stripe API connectivity
+    stripe_connected = False
+    if settings.stripe_secret_key and settings.stripe_secret_key.startswith(("sk_test_", "sk_live_")):
+        try:
+            stripe.api_key = settings.stripe_secret_key
+            stripe.Account.retrieve()
+            stripe_connected = True
+        except stripe.AuthenticationError:
+            issues.append("STRIPE_SECRET_KEY is invalid (authentication failed)")
+        except Exception as e:
+            issues.append(f"Stripe API error: {str(e)}")
+    
+    mode = "test" if settings.stripe_secret_key and "test" in settings.stripe_secret_key else "live"
+    
+    return {
+        "status": "healthy" if not issues else "unhealthy",
+        "stripe_connected": stripe_connected,
+        "mode": mode,
+        "issues": issues,
+        "config": {
+            "secret_key_set": bool(settings.stripe_secret_key),
+            "webhook_secret_set": bool(settings.stripe_webhook_secret),
+            "node_monthly_set": bool(settings.stripe_price_id_node_monthly),
+            "node_annual_set": bool(settings.stripe_price_id_node_annual),
+            "control_monthly_set": bool(settings.stripe_price_id_control_monthly),
+            "control_annual_set": bool(settings.stripe_price_id_control_annual),
+            "command_monthly_set": bool(settings.stripe_price_id_command_monthly),
+            "command_annual_set": bool(settings.stripe_price_id_command_annual),
+        }
+    }
+
+
 def _default_subscription(org_id: str) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     return {
