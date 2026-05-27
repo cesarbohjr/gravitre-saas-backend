@@ -5,7 +5,7 @@ from typing import Annotated
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
@@ -108,6 +108,14 @@ class CheckoutRequest(BaseModel):
     billing_interval: str | None = Field(default=None, alias="billingInterval")
     price_id: str | None = Field(default=None, alias="price_id")
     quantity: int | None = Field(default=1, ge=1)
+
+
+class PublicCheckoutRequest(BaseModel):
+    plan_code: str | None = Field(default=None, alias="planCode")
+    billing_interval: str | None = Field(default=None, alias="billingInterval")
+    price_id: str | None = Field(default=None, alias="price_id")
+    email: EmailStr
+    company_name: str | None = Field(default=None, alias="companyName")
 
 
 class SeatsRequest(BaseModel):
@@ -347,6 +355,60 @@ async def create_checkout(
         resource_type="org_billing",
         resource_id=str(org_id),
         metadata={"plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
+    )
+    return {"url": session.url, "checkout_url": session.url}
+
+
+@router.post("/checkout/public")
+async def create_public_checkout(
+    body: PublicCheckoutRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    plan_code = (body.plan_code or "").strip().lower() or None
+    billing_interval = (body.billing_interval or "").strip().lower() or None
+    price_id = (body.price_id or "").strip() or None
+    if not price_id and plan_code:
+        price_id = price_id_for_plan(settings, plan_code, billing_interval=billing_interval)
+    if not plan_code and price_id:
+        mapped = plan_code_for_price(settings, price_id)
+        plan_code = mapped or "free"
+    if not price_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_detail("Invalid plan", "VALIDATION_ERROR"))
+    if not settings.stripe_secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Stripe is not configured", "INVALID_CONFIG"),
+        )
+
+    app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
+    success_url = f"{app_url}/get-started?checkout=success"
+    cancel_url = f"{app_url}/get-started?checkout=cancelled"
+
+    from stripe import Customer
+
+    Customer.api_key = settings.stripe_secret_key
+    customer = Customer.create(
+        email=str(body.email).strip().lower(),
+        metadata={
+            "signup_flow": "public_checkout",
+            "plan_code": plan_code or "free",
+            "billing_interval": billing_interval or "monthly",
+            "company_name": (body.company_name or "").strip(),
+        },
+    )
+    session = create_checkout_session(
+        settings=settings,
+        customer_id=customer["id"],
+        price_id=price_id,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "signup_flow": "public_checkout",
+            "plan_code": plan_code or "free",
+            "billing_interval": billing_interval or "monthly",
+            "checkout_email": str(body.email).strip().lower(),
+            "company_name": (body.company_name or "").strip(),
+        },
     )
     return {"url": session.url, "checkout_url": session.url}
 
