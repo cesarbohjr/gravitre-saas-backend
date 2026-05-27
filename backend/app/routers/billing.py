@@ -5,7 +5,7 @@ from typing import Annotated
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
@@ -34,6 +34,14 @@ from app.core.errors import error_detail
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
+
+
+def _raise_stripe_http_error(exc: stripe.error.StripeError) -> None:
+    message = (getattr(exc, "user_message", None) or str(exc) or "Stripe request failed").strip()
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=error_detail(message, "STRIPE_ERROR"),
+    ) from exc
 
 
 # Health check endpoint to verify Stripe configuration
@@ -168,6 +176,7 @@ async def list_billing_plans(
 
 
 class CheckoutRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     plan_code: str | None = Field(default=None, alias="planCode")
     billing_interval: str | None = Field(default=None, alias="billingInterval")
     price_id: str | None = Field(default=None, alias="price_id")
@@ -175,6 +184,7 @@ class CheckoutRequest(BaseModel):
 
 
 class PublicCheckoutRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     plan_code: str | None = Field(default=None, alias="planCode")
     billing_interval: str | None = Field(default=None, alias="billingInterval")
     price_id: str | None = Field(default=None, alias="price_id")
@@ -393,8 +403,11 @@ async def create_checkout(
         from stripe import Customer
 
         Customer.api_key = settings.stripe_secret_key
-        customer = Customer.create(metadata={"org_id": org_id, "created_by": current_user["user_id"]})
-        customer_id = customer["id"]
+        try:
+            customer = Customer.create(metadata={"org_id": org_id, "created_by": current_user["user_id"]})
+            customer_id = customer["id"]
+        except stripe.error.StripeError as exc:
+            _raise_stripe_http_error(exc)
         client.table("org_billing").upsert(
             {
                 "org_id": org_id,
@@ -403,14 +416,17 @@ async def create_checkout(
                 "billing_status": "trialing",
             }
         ).execute()
-    session = create_checkout_session(
-        settings=settings,
-        customer_id=customer_id,
-        price_id=price_id,
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={"org_id": org_id, "plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
-    )
+    try:
+        session = create_checkout_session(
+            settings=settings,
+            customer_id=customer_id,
+            price_id=price_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={"org_id": org_id, "plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
+        )
+    except stripe.error.StripeError as exc:
+        _raise_stripe_http_error(exc)
     write_audit_event(
         client,
         org_id=org_id,
@@ -451,29 +467,32 @@ async def create_public_checkout(
     from stripe import Customer
 
     Customer.api_key = settings.stripe_secret_key
-    customer = Customer.create(
-        email=str(body.email).strip().lower(),
-        metadata={
-            "signup_flow": "public_checkout",
-            "plan_code": plan_code or "free",
-            "billing_interval": billing_interval or "monthly",
-            "company_name": (body.company_name or "").strip(),
-        },
-    )
-    session = create_checkout_session(
-        settings=settings,
-        customer_id=customer["id"],
-        price_id=price_id,
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
-            "signup_flow": "public_checkout",
-            "plan_code": plan_code or "free",
-            "billing_interval": billing_interval or "monthly",
-            "checkout_email": str(body.email).strip().lower(),
-            "company_name": (body.company_name or "").strip(),
-        },
-    )
+    try:
+        customer = Customer.create(
+            email=str(body.email).strip().lower(),
+            metadata={
+                "signup_flow": "public_checkout",
+                "plan_code": plan_code or "free",
+                "billing_interval": billing_interval or "monthly",
+                "company_name": (body.company_name or "").strip(),
+            },
+        )
+        session = create_checkout_session(
+            settings=settings,
+            customer_id=customer["id"],
+            price_id=price_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "signup_flow": "public_checkout",
+                "plan_code": plan_code or "free",
+                "billing_interval": billing_interval or "monthly",
+                "checkout_email": str(body.email).strip().lower(),
+                "company_name": (body.company_name or "").strip(),
+            },
+        )
+    except stripe.error.StripeError as exc:
+        _raise_stripe_http_error(exc)
     return {"url": session.url, "checkout_url": session.url}
 
 
