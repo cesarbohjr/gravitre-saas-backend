@@ -1,5 +1,5 @@
 -- Optional dev seed data
--- Billing plans (MVP)
+-- Billing plans (aligned with pricing page: Node, Control, Command)
 INSERT INTO public.billing_plans (
   code,
   name,
@@ -13,40 +13,40 @@ INSERT INTO public.billing_plans (
   overage_rates
 ) VALUES
   (
-    'starter',
-    'Starter',
-    79,
-    3,
+    'node',
+    'Node',
+    49,
+    1,
     10,
     1,
-    2000,
     1000,
-    '{"approvals": false, "audit_logs": false, "versioning": false, "advanced_connectors": false}'::jsonb,
-    '{"ai_credit": 0.02, "workflow_runs_per_1000": 10}'::jsonb
+    500,
+    '{"outputs_per_month": 10, "core_users": 1, "lite_users": 2, "meson": false, "email_delivery": true, "basic_campaigns": true, "integrations": 3, "support": "community"}'::jsonb,
+    '{"output": 2.50, "meson": null}'::jsonb
   ),
   (
-    'growth',
-    'Growth',
-    299,
-    15,
-    50,
+    'control',
+    'Control',
+    129,
+    3,
+    40,
     2,
+    5000,
+    2500,
+    '{"outputs_per_month": 40, "core_users": 2, "lite_users": 5, "meson": 10, "crm_integration": true, "outlook_integration": true, "multi_step_execution": true, "full_campaigns": true, "slack_delivery": true, "support": "priority"}'::jsonb,
+    '{"output": 2.00, "meson": 3.00}'::jsonb
+  ),
+  (
+    'command',
+    'Command',
+    299,
+    8,
+    120,
+    5,
     15000,
     10000,
-    '{"approvals": true, "audit_logs": "basic", "versioning": true, "advanced_connectors": false}'::jsonb,
-    '{"ai_credit": 0.015, "workflow_runs_per_1000": 8}'::jsonb
-  ),
-  (
-    'scale',
-    'Scale',
-    999,
-    50,
-    NULL,
-    5,
-    75000,
-    50000,
-    '{"approvals": "advanced", "audit_logs": "full", "versioning": "full", "advanced_connectors": true, "rbac": true}'::jsonb,
-    '{"ai_credit": 0.012, "workflow_runs_per_1000": 5}'::jsonb
+    '{"outputs_per_month": 120, "core_users": 5, "lite_users": -1, "meson": 40, "approvals": true, "advanced_integrations": true, "team_workspace": true, "cross_department_agents": true, "custom_agent_training": true, "support": "dedicated"}'::jsonb,
+    '{"output": 1.50, "meson": 2.00}'::jsonb
   ),
   (
     'enterprise',
@@ -57,7 +57,7 @@ INSERT INTO public.billing_plans (
     NULL,
     0,
     0,
-    '{"approvals": "custom", "audit_logs": "custom", "versioning": "custom", "advanced_connectors": true, "rbac": true}'::jsonb,
+    '{"outputs_per_month": -1, "core_users": -1, "lite_users": -1, "meson": -1, "custom": true, "sla": true, "dedicated_support": true, "sso": true, "audit_logs": true}'::jsonb,
     '{}'::jsonb
   )
 ON CONFLICT (code) DO UPDATE SET
