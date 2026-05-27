@@ -2,17 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Linkedin, Twitter, Zap, Shield, Users, Globe, ChevronRight, Sparkles } from "lucide-react"
-
-const founder = {
-  name: "Cesar Bohorquez Jr",
-  role: "Founder & CEO",
-  bio: "Serial entrepreneur and technologist with a passion for building products that empower businesses through intelligent automation. Previously founded and scaled multiple technology ventures. Now focused on democratizing AI operations for enterprises of all sizes.",
-  image: "/images/team/cesar-bohorquez.jpg",
-  linkedin: "https://www.linkedin.com/in/cesarbohorquezjr/",
-  twitter: "https://twitter.com/cesarbohorquezjr",
-  imageStyle: { objectPosition: "center 15%" },
-}
+import { ArrowRight, Zap, Shield, Users, Globe, ChevronRight, Sparkles } from "lucide-react"
 
 const values = [
   {
@@ -48,7 +38,7 @@ const timeline = [
   { 
     year: "2024", 
     title: "The Beginning",
-    event: "Founded by Cesar Bohorquez Jr with a clear vision: make enterprise AI accessible to every organization.",
+    event: "Gravitre was founded with a clear vision: make enterprise AI accessible to every organization.",
     highlight: true,
   },
   { 
@@ -350,77 +340,6 @@ export default function AboutPage() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Founder - Large format */}
-      <section className="px-6 py-32">
-        <div className="mx-auto max-w-5xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Leadership</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
-              Meet the founder
-            </h2>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/60 via-teal-100/60 to-cyan-100/60 rounded-3xl blur-2xl" />
-            <div className="relative rounded-3xl bg-white border border-zinc-200 overflow-hidden shadow-xl">
-              <div className="grid md:grid-cols-5">
-                {/* Image */}
-                <div className="md:col-span-2 relative">
-                  <div className="aspect-square md:aspect-auto md:h-full">
-                    <img
-                      src={founder.image}
-                      alt={founder.name}
-                      className="h-full w-full object-cover"
-                      style={founder.imageStyle}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-white via-white/50 to-transparent" />
-                  </div>
-                </div>
-                
-                {/* Content */}
-                <div className="md:col-span-3 p-8 md:p-12 flex flex-col justify-center">
-                  <div className="text-emerald-600 text-sm font-semibold mb-2">{founder.role}</div>
-                  <h3 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-6">{founder.name}</h3>
-                  <p className="text-zinc-600 text-lg leading-relaxed mb-8">
-                    {founder.bio}
-                  </p>
-                  <div className="flex items-center gap-4">
-                    <a 
-                      href={founder.twitter} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border border-zinc-200 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all"
-                    >
-                      <Twitter className="h-4 w-4" />
-                      Twitter
-                    </a>
-                    <a 
-                      href={founder.linkedin} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border border-zinc-200 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-all"
-                    >
-                      <Linkedin className="h-4 w-4" />
-                      LinkedIn
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </section>
 
