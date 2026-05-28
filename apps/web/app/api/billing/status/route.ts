@@ -24,26 +24,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
 
-    try {
-      await ensureDemoDataForOrg(supabase, orgId)
-    } catch (error) {
-      // Some prod environments may not have the legacy organizations table.
-      // In that case, fall back to a safe inactive billing status response.
-      if (isMissingOrganizationsTableError(error)) {
-        return NextResponse.json({
-          billingStatus: "inactive",
-          currentPeriodEnd: null,
-          cancelAtPeriodEnd: false,
-        })
-      }
-      throw error
-    }
-
-    const { data: orgData, error } = await supabase
+    let { data: orgData, error } = await supabase
       .from("organizations")
       .select("settings")
       .eq("id", orgId)
       .maybeSingle()
+
+    // Only bootstrap demo rows when the org is missing.
+    // This avoids clobbering existing organization settings (including billing state).
+    if (!error && !orgData) {
+      await ensureDemoDataForOrg(supabase, orgId)
+      const retry = await supabase
+        .from("organizations")
+        .select("settings")
+        .eq("id", orgId)
+        .maybeSingle()
+      orgData = retry.data
+      error = retry.error
+    }
 
     if (error) {
       if (isMissingOrganizationsTableError(error)) {
