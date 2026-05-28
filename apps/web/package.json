@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.66",
     "@ai-sdk/react": "^3.0.170",
     "@hookform/resolvers": "^3.9.1",
     "@lottiefiles/dotlottie-react": "^0.19.0",
@@ -69,10 +70,13 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "3.3.5",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
     "postcss": "^8.5",
     "shadcn": "^4.0.0",
     "tailwindcss": "^4.2.0",

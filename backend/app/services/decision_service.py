@@ -108,7 +108,7 @@ class DecisionService:
         input_data: dict,
         paths: list[DecisionPath],
         rag_context: str | None,
-    ) -> DecisionAIReasoning:
+    ) -> DecisionAIReasoning | None:
         path_map = [{"id": p.id, "label": p.label, "description": p.description} for p in paths]
         prompt = (
             "You are a decision engine. Select the best path.\n"
@@ -116,17 +116,45 @@ class DecisionService:
             f"Input data: {input_data}\n"
             f"Available paths: {path_map}\n"
             f"Additional context: {rag_context or 'none'}\n"
-            "Return strict JSON following the schema."
+            "Return ONLY strict JSON matching this schema (no markdown):\n"
+            '{"selected_path_id": "<one of the available path ids>", '
+            '"confidence": <number 0.0-1.0>, '
+            '"reasoning_summary": "<short explanation>", '
+            '"key_factors": ["..."], '
+            '"risks_identified": ["..."], '
+            '"alternatives_rejected": [{"path_id": "...", "reason": "..."}]}'
         )
-        response = await self.model_router.complete(
-            task_type=TaskType.DECISION_REASONING,
-            prompt=prompt,
-            system_prompt="Be concise and auditable.",
-            response_format=DecisionAIReasoning,
-            org_id=org_id,
-        )
-        payload = response.parsed or {}
-        return DecisionAIReasoning.model_validate(payload)
+        try:
+            response = await self.model_router.complete(
+                task_type=TaskType.DECISION_REASONING,
+                prompt=prompt,
+                system_prompt="Be concise and auditable.",
+                response_format=DecisionAIReasoning,
+                org_id=org_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("decision AI reasoning unavailable org_id=%s error=%s", org_id, str(exc))
+            return None
+
+        payload = response.parsed
+        if not payload:
+            logger.warning("decision AI reasoning returned no structured payload org_id=%s", org_id)
+            return None
+        try:
+            reasoning = DecisionAIReasoning.model_validate(payload)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("decision AI reasoning validation failed org_id=%s error=%s", org_id, str(exc))
+            return None
+        # Guard against the model selecting a path that doesn't exist.
+        valid_ids = {p.id for p in paths}
+        if reasoning.selected_path_id not in valid_ids:
+            logger.warning(
+                "decision AI selected unknown path org_id=%s selected=%s",
+                org_id,
+                reasoning.selected_path_id,
+            )
+            return None
+        return reasoning
 
     def _combine_decision(
         self,

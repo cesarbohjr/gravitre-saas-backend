@@ -55,10 +55,13 @@ class Settings(BaseSettings):
 
     # BE-10: Embedding provider (OpenAI); single model per deployment
     openai_api_key: str = ""
+    # RESERVED: Anthropic/Google are not yet wired into ModelRouter (OpenAI-only
+    # today). These keys + default_reasoning_model exist for planned multi-provider
+    # routing; they are read by config/tests but no runtime code calls them.
     anthropic_api_key: str = ""
     google_api_key: str = ""
     default_fast_model: str = "gpt-4o-mini"
-    default_reasoning_model: str = "claude-3-5-sonnet-20241022"
+    default_reasoning_model: str = "claude-3-7-sonnet-latest"  # reserved (see note above)
     default_embedding_model: str = "text-embedding-3-small"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimension: int = 1536

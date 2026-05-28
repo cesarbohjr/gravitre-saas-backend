@@ -5,12 +5,18 @@ import {
   UIMessage,
   tool,
 } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
 import { NextRequest } from "next/server"
 import { z } from 'zod'
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
 
 export const maxDuration = 30
+
+// Use the direct OpenAI provider so the chat assistant depends only on
+// OPENAI_API_KEY (already configured for the backend) rather than requiring
+// Vercel AI Gateway credentials.
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // System prompt for the Gravitre AI Assistant
 const SYSTEM_PROMPT = `You are a helpful AI assistant for Gravitre, an enterprise automation platform. You help users manage their:
@@ -186,30 +192,62 @@ function createChatTools(req: NextRequest, orgId: string) {
   }
 }
 
+function jsonError(message: string, status: number, detail?: string) {
+  return new Response(JSON.stringify({ error: message, ...(detail ? { detail } : {}) }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
 export async function POST(req: NextRequest) {
-  const { messages }: { messages: UIMessage[] } = await req.json()
+  if (!process.env.OPENAI_API_KEY) {
+    return jsonError("AI assistant is not configured", 503, "OPENAI_API_KEY is not set")
+  }
+
+  let messages: UIMessage[]
+  try {
+    const body = (await req.json()) as { messages?: UIMessage[] }
+    if (!Array.isArray(body?.messages)) {
+      return jsonError("Invalid request body", 400, "Expected a 'messages' array")
+    }
+    messages = body.messages
+  } catch {
+    return jsonError("Invalid JSON body", 400)
+  }
+
   const supabase = createSupabaseRouteClient(req)
   const orgId = await resolveOrgId(supabase, req)
   if (!orgId) {
-    return new Response(JSON.stringify({ error: "Organization context required" }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
-    })
+    return jsonError("Organization context required", 403)
   }
 
-  await ensureDemoDataForOrg(supabase, orgId)
-  const tools = createChatTools(req, orgId)
+  try {
+    await ensureDemoDataForOrg(supabase, orgId)
+    const tools = createChatTools(req, orgId)
+    const modelMessages = await convertToModelMessages(messages)
 
-  const result = streamText({
-    model: 'openai/gpt-4o-mini',
-    system: SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages),
-    tools,
-    abortSignal: req.signal,
-  })
+    const result = streamText({
+      model: openai('gpt-4o-mini'),
+      system: SYSTEM_PROMPT,
+      messages: modelMessages,
+      tools,
+      abortSignal: req.signal,
+    })
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    consumeSseStream: consumeStream,
-  })
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages,
+      consumeSseStream: consumeStream,
+      onError: (error) => {
+        console.error("[chat] stream error:", error)
+        return error instanceof Error ? error.message : "The assistant hit an unexpected error."
+      },
+    })
+  } catch (error) {
+    console.error("[chat] request failed:", error)
+    return jsonError(
+      "Failed to start AI assistant",
+      500,
+      error instanceof Error ? error.message : undefined,
+    )
+  }
 }

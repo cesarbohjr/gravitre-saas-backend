@@ -3,6 +3,9 @@
 .env.*
 .env.local
 .env.*.local
+# ...but DO track example templates (no real secrets)
+!.env.example
+!**/.env.example
 
 # Supabase
 supabase/.branches

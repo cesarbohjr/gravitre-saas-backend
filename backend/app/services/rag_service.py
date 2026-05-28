@@ -59,9 +59,9 @@ class RAGService:
         )
         chunks = chunk_text(
             document.content,
-            min_chars=self.settings.rag_chunk_overlap or CHUNK_OVERLAP,
+            min_chars=self.settings.rag_chunk_size or CHUNK_SIZE,
             max_chars=self.settings.rag_chunk_size or CHUNK_SIZE,
-            overlap=self.settings.rag_chunk_overlap or CHUNK_OVERLAP,
+            overlap_chars=self.settings.rag_chunk_overlap or CHUNK_OVERLAP,
         )
         replace_chunks_and_embeddings(
             client=client,
@@ -115,11 +115,19 @@ class RAGService:
         merged = self._rrf_merge(semantic_rows, keyword_rows, top_k=top_k)
         reranked = self._rerank(query, merged, top_k=top_k)
 
-        context_snippets = [row.get("content") or "" for row in reranked]
+        context_snippets = [str(row.get("content") or "").strip() for row in reranked]
+        context_snippets = [snippet for snippet in context_snippets if snippet]
+        if context_snippets:
+            context_block = "\n\n".join(
+                f"[{idx}] {snippet}" for idx, snippet in enumerate(context_snippets, start=1)
+            )
+        else:
+            context_block = "(no context retrieved)"
         prompt = (
-            "Answer using the provided context. If context is insufficient, say so.\n"
-            f"Question: {query}\n"
-            f"Context: {context_snippets}"
+            "Answer the question using ONLY the provided context. "
+            "If the context is insufficient, say so explicitly.\n\n"
+            f"Question:\n{query}\n\n"
+            f"Context:\n{context_block}"
         )
         try:
             answer_resp = await self.model_router.complete(

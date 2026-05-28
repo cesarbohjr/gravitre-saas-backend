@@ -98,7 +98,14 @@ class GoalService:
             f"Available connectors: {connectors or []}\n"
             f"Success metric: {success_metric or 'none'}\n"
             f"Context: {org_context or 'none'}\n"
-            "Return strict JSON."
+            "Return ONLY strict JSON matching this schema (no markdown, no prose):\n"
+            '{"intent": "<concise restatement of the goal>", '
+            '"department": "<owning department, e.g. sales, marketing, operations, finance, support>", '
+            '"key_entities": ["..."], '
+            '"required_systems": ["<connector names needed, drawn from Available connectors>"], '
+            '"complexity": "<one of: simple, moderate, complex>", '
+            '"risk_factors": ["..."], '
+            '"success_metrics": ["..."]}'
         )
         try:
             response = await self.model_router.complete(

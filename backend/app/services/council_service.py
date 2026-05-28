@@ -115,7 +115,14 @@ class AgentCouncilService:
             f"Options: {options}\n"
             f"Evidence: {evidence or {}}\n"
             f"Round: {round_index + 1}\n"
-            "Return strict JSON."
+            "Return ONLY strict JSON matching this schema (no markdown, no prose):\n"
+            '{"agent_name": "<your name>", '
+            '"agent_role": "<one of: strategist, analyst, compliance, validator, advocate, skeptic>", '
+            '"position": "<the option you support, taken from Options>", '
+            '"confidence": <number 0.0-1.0>, '
+            '"reasoning": "<short justification>", '
+            '"key_points": ["..."], '
+            '"concerns": ["..."]}'
         )
         fallback = AgentOpinion(
             agent_name=str(agent.get("name") or "agent"),

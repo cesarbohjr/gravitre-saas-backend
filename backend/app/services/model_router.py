@@ -7,7 +7,7 @@ import time
 from enum import StrEnum
 from typing import Any
 
-from openai import AsyncOpenAI
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError
 from pydantic import BaseModel
 
 from app.config import Settings, get_settings
@@ -15,6 +15,10 @@ from app.core.logging import get_logger
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
+
+# Per-request timeout (seconds) for OpenAI calls; we manage retries ourselves.
+OPENAI_REQUEST_TIMEOUT_S = 30.0
+MAX_ATTEMPTS = 3
 
 
 class TaskType(StrEnum):
@@ -63,7 +67,15 @@ class ModelResponse(BaseModel):
 class ModelRouter:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
-        self._openai = AsyncOpenAI(api_key=self.settings.openai_api_key) if self.settings.openai_api_key else None
+        self._openai = (
+            AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=OPENAI_REQUEST_TIMEOUT_S,
+                max_retries=0,  # retries handled by _retry_complete with backoff
+            )
+            if self.settings.openai_api_key
+            else None
+        )
         self._cache: dict[str, ModelResponse] = {}
 
     async def complete(
@@ -201,21 +213,45 @@ class ModelRouter:
         context: list[dict] | None,
     ) -> str:
         delay = 0.4
-        for attempt in range(3):
+        for attempt in range(MAX_ATTEMPTS):
             try:
                 return await self._openai_complete(model, prompt, system_prompt, temperature, max_tokens, context)
             except Exception as exc:  # noqa: BLE001
-                if attempt == 2:
+                if attempt == MAX_ATTEMPTS - 1:
                     raise
+                # Rate limits / timeouts / transient connection errors get a
+                # longer, retry-after-aware backoff; other errors back off normally.
+                sleep_for = delay
+                if isinstance(exc, RateLimitError):
+                    sleep_for = max(delay, self._retry_after_seconds(exc, default=2.0))
+                elif isinstance(exc, (APITimeoutError, APIConnectionError)):
+                    sleep_for = delay
                 logger.warning(
-                    "Model completion retrying model=%s attempt=%s error=%s",
+                    "Model completion retrying model=%s attempt=%s error_type=%s error=%s sleep_s=%.2f",
                     model,
                     attempt + 1,
+                    type(exc).__name__,
                     str(exc),
+                    sleep_for,
                 )
-                await asyncio.sleep(delay)
+                await asyncio.sleep(sleep_for)
                 delay *= 2
         raise RuntimeError("unreachable")
+
+    @staticmethod
+    def _retry_after_seconds(exc: Exception, default: float) -> float:
+        """Best-effort parse of a Retry-After header from an OpenAI error."""
+        response = getattr(exc, "response", None)
+        headers = getattr(response, "headers", None)
+        if not headers:
+            return default
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+        if not raw:
+            return default
+        try:
+            return max(default, float(raw))
+        except (TypeError, ValueError):
+            return default
 
     async def _openai_complete(
         self,
@@ -248,7 +284,18 @@ class ModelRouter:
             normalized = normalized.replace("```json", "").replace("```", "").strip()
         if not normalized:
             raise ValueError("Model returned empty response for structured output")
-        payload = json.loads(normalized)
+        # Models can wrap JSON in prose; extract the first JSON object if needed.
+        try:
+            payload = json.loads(normalized)
+        except json.JSONDecodeError:
+            start = normalized.find("{")
+            end = normalized.rfind("}")
+            if start == -1 or end == -1 or end <= start:
+                raise ValueError("Model did not return valid JSON for structured output")
+            try:
+                payload = json.loads(normalized[start : end + 1])
+            except json.JSONDecodeError as exc:
+                raise ValueError("Model did not return valid JSON for structured output") from exc
         return schema.model_validate(payload).model_dump()
 
     def _estimate_tokens(self, text: str) -> int:
