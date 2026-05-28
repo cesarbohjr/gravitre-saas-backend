@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 // Types
@@ -253,7 +253,7 @@ function SystemBadge({ system, index }: { system: Agent["systems"][0]; index: nu
       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 border border-border"
     >
       <div className="h-6 w-6 rounded-md bg-card flex items-center justify-center">
-        <Icon name={system.icon as any} size="xs" className="text-muted-foreground" />
+        <Icon name={system.icon as IconName} size="xs" className="text-muted-foreground" />
       </div>
       <span className="text-sm font-medium text-foreground">{system.name}</span>
       <div className={cn("h-2 w-2 rounded-full ml-auto", statusColors[system.status])} />
@@ -383,7 +383,7 @@ export default function AgentProfilePage({
                           stat.color === "rose" && "bg-rose-500/10",
                         )}>
                           <Icon 
-                            name={stat.icon as any} 
+                            name={stat.icon as IconName}
                             size="sm" 
                             className={cn(
                               stat.color === "emerald" && "text-emerald-400",
@@ -453,7 +453,7 @@ export default function AgentProfilePage({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon name={tab.icon as any} size="sm" />
+                <Icon name={tab.icon as IconName} size="sm" />
                 {tab.label}
               </button>
             ))}

@@ -741,7 +741,7 @@ function AddConnectorModal({
   const [showApiKey, setShowApiKey] = useState(false)
   
   // Webhook URL for webhook-based connectors
-  const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/${Date.now()}`
+  const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
 
   const filteredModalConnectors = availableConnectors.filter((c) => {
     const matchesSearch = c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||

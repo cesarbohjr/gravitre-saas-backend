@@ -33,11 +33,10 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(hasSupabasePublicEnv)
 
   useEffect(() => {
     if (!hasSupabasePublicEnv) {
-      setLoading(false)
       return
     }
 

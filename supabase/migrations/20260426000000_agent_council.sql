@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.council_sessions (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   workflow_run_id uuid REFERENCES public.runs(id) ON DELETE SET NULL,
   objective text NOT NULL,
@@ -55,7 +55,7 @@ END;
 $$;
 
 CREATE TABLE IF NOT EXISTS public.council_contributions (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   session_id uuid REFERENCES public.council_sessions(id) ON DELETE CASCADE,
   agent_id uuid REFERENCES public.agents(id) ON DELETE SET NULL,

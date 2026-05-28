@@ -577,7 +577,7 @@ export function TestimonialsCarousel({ testimonials }: { testimonials: Testimoni
           className="bg-white rounded-2xl border border-zinc-200 p-8 shadow-lg"
         >
           <blockquote className="text-xl text-zinc-700 leading-relaxed mb-6">
-            "{testimonials[activeIndex].quote}"
+            &ldquo;{testimonials[activeIndex].quote}&rdquo;
           </blockquote>
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold">

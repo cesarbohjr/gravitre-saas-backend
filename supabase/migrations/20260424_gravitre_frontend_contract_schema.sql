@@ -21,7 +21,7 @@ $$;
 -- 1) organizations
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.organizations (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   slug text UNIQUE,
   settings jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -59,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_organizations_created_at ON public.organizations(
 -- 2) users
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   auth_user_id uuid UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   email text NOT NULL,
@@ -109,7 +109,7 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON public.users(created_at DESC)
 -- 3) organization_members
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.organization_members (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role text NOT NULL DEFAULT 'member',
@@ -165,7 +165,7 @@ CREATE POLICY "organization_members_self_update"
 -- 4) agents
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.agents (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   purpose text,
@@ -211,7 +211,7 @@ CREATE INDEX IF NOT EXISTS idx_agents_created_at ON public.agents(created_at DES
 -- 4) workflows
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.workflows (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   description text,
@@ -254,7 +254,7 @@ CREATE INDEX IF NOT EXISTS idx_workflows_created_at ON public.workflows(created_
 -- 5) runs
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.runs (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   workflow_id uuid REFERENCES public.workflows(id) ON DELETE SET NULL,
   workflow_name text,
@@ -309,7 +309,7 @@ CREATE INDEX IF NOT EXISTS idx_runs_created_at ON public.runs(created_at DESC);
 -- 6) run_steps
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.run_steps (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   run_id uuid NOT NULL REFERENCES public.runs(id) ON DELETE CASCADE,
   name text NOT NULL,
@@ -347,7 +347,7 @@ CREATE INDEX IF NOT EXISTS idx_run_steps_created_at ON public.run_steps(created_
 -- 7) approvals
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.approvals (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   run_id uuid REFERENCES public.runs(id) ON DELETE SET NULL,
   title text NOT NULL,
@@ -407,7 +407,7 @@ CREATE INDEX IF NOT EXISTS idx_approvals_requested_at ON public.approvals(reques
 -- 8) connected_systems
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.connected_systems (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   system_key text NOT NULL,
   name text NOT NULL,
@@ -443,7 +443,7 @@ CREATE INDEX IF NOT EXISTS idx_connected_systems_created_at ON public.connected_
 -- 9) api_keys
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.api_keys (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   key_prefix text NOT NULL,
@@ -478,7 +478,7 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_created_at ON public.api_keys(created_at
 -- 10) webhooks
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.webhooks (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   url text NOT NULL,
   events text[] NOT NULL DEFAULT '{}',
@@ -512,7 +512,7 @@ CREATE INDEX IF NOT EXISTS idx_webhooks_created_at ON public.webhooks(created_at
 -- 11) audit_logs
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.audit_logs (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   action text NOT NULL,
   actor_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -550,7 +550,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs(action);
 -- 12) model_settings
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.model_settings (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   workspace_model text NOT NULL DEFAULT 'auto',
   operator_model text NOT NULL DEFAULT 'auto',

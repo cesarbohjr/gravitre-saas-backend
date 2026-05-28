@@ -54,14 +54,12 @@ export default function ExecutingPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [showEmailPreview, setShowEmailPreview] = useState(false)
+  const mounted = true
 
   useEffect(() => {
-    setMounted(true)
-    
     let stepIndex = 0
-    let totalDuration = executionSteps.reduce((acc, s) => acc + s.duration, 0)
+    const totalDuration = executionSteps.reduce((acc, s) => acc + s.duration, 0)
     let elapsed = 0
     
     const interval = setInterval(() => {

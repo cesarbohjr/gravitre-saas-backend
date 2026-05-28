@@ -72,7 +72,11 @@ const stepTitles = [
 export default function GetStartedPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(() => {
+    if (typeof window === "undefined") return 1
+    const intent = new URLSearchParams(window.location.search).get("intent")
+    return intent === "signup" ? 2 : 1
+  })
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [companyName, setCompanyName] = useState("")
@@ -96,10 +100,7 @@ export default function GetStartedPage() {
         ? new URLSearchParams(window.location.search).get("intent")
         : null
 
-    if (intent === "signup") {
-      setStep((current) => (current < 2 ? 2 : current))
-      return
-    }
+    if (intent === "signup") return
 
     let cancelled = false
     const checkBilling = async () => {

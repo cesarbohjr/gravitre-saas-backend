@@ -461,7 +461,8 @@ export default function RunsPage() {
 
   useEffect(() => {
     if (data) {
-      setLastRefreshedAt(new Date())
+      const timer = setTimeout(() => setLastRefreshedAt(new Date()), 0)
+      return () => clearTimeout(timer)
     }
   }, [data])
 

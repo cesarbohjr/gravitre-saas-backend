@@ -19,6 +19,11 @@ interface Particle {
   hue: number
 }
 
+function seededUnit(seed: number) {
+  const value = Math.sin(seed * 12.9898) * 43758.5453
+  return value - Math.floor(value)
+}
+
 export function ParticleField({
   count = 50,
   color = "emerald",
@@ -31,7 +36,6 @@ export function ParticleField({
   className?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [particles, setParticles] = useState<Particle[]>([])
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
   const smoothX = useSpring(mouseX, { stiffness: 50, damping: 20 })
@@ -45,19 +49,20 @@ export function ParticleField({
     cyan: { h: 186, s: 94, l: 50 },
   }
 
-  useEffect(() => {
-    const newParticles: Particle[] = Array.from({ length: count }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      opacity: Math.random() * 0.5 + 0.2,
-      speedX: (Math.random() - 0.5) * 0.02,
-      speedY: (Math.random() - 0.5) * 0.02,
-      hue: colorMap[color].h + (Math.random() - 0.5) * 20,
-    }))
-    setParticles(newParticles)
-  }, [count, color])
+  const particles = useMemo<Particle[]>(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        id: i,
+        x: seededUnit(i + 1) * 100,
+        y: seededUnit(i + 101) * 100,
+        size: seededUnit(i + 201) * 3 + 1,
+        opacity: seededUnit(i + 301) * 0.5 + 0.2,
+        speedX: (seededUnit(i + 401) - 0.5) * 0.02,
+        speedY: (seededUnit(i + 501) - 0.5) * 0.02,
+        hue: colorMap[color].h + (seededUnit(i + 601) - 0.5) * 20,
+      })),
+    [count, color]
+  )
 
   useEffect(() => {
     if (!interactive) return
@@ -89,12 +94,12 @@ export function ParticleField({
             boxShadow: `0 0 ${particle.size * 2}px hsla(${particle.hue}, ${colorMap[color].s}%, ${colorMap[color].l}%, ${particle.opacity * 0.5})`,
           }}
           animate={{
-            x: [0, Math.random() * 20 - 10, 0],
-            y: [0, Math.random() * 20 - 10, 0],
+            x: [0, seededUnit(particle.id + 701) * 20 - 10, 0],
+            y: [0, seededUnit(particle.id + 801) * 20 - 10, 0],
             scale: [1, 1.2, 1],
           }}
           transition={{
-            duration: 5 + Math.random() * 5,
+            duration: 5 + seededUnit(particle.id + 901) * 5,
             repeat: Infinity,
             ease: "easeInOut",
           }}
@@ -224,8 +229,8 @@ export function NeuralNetwork({
   const nodes = useMemo<Node[]>(() => {
     const generated: Node[] = Array.from({ length: nodeCount }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
+      x: seededUnit(i + 1001) * 100,
+      y: seededUnit(i + 1101) * 100,
       connections: [],
     }))
 
@@ -269,7 +274,7 @@ export function NeuralNetwork({
                 strokeWidth={1}
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 2, delay: Math.random() * 2 }}
+                transition={{ duration: 2, delay: seededUnit(node.id * 100 + targetIndex + 1201) * 2 }}
               />
             )
           })
@@ -285,7 +290,7 @@ export function NeuralNetwork({
           transition={{
             duration: 3,
             repeat: Infinity,
-            delay: Math.random() * 2,
+            delay: seededUnit(node.id + 1301) * 2,
           }}
         />
       ))}
@@ -311,11 +316,11 @@ export function DataStream({
   const streams = useMemo(() => 
     Array.from({ length: 8 }, (_, i) => ({
       id: i,
-      offset: Math.random() * 100,
-      duration: (2 + Math.random() * 2) / speed,
-      delay: Math.random() * 2,
-      width: Math.random() * 2 + 0.5,
-      opacity: Math.random() * 0.5 + 0.3,
+      offset: seededUnit(i + 1401) * 100,
+      duration: (2 + seededUnit(i + 1501) * 2) / speed,
+      delay: seededUnit(i + 1601) * 2,
+      width: seededUnit(i + 1701) * 2 + 0.5,
+      opacity: seededUnit(i + 1801) * 0.5 + 0.3,
     })),
     [speed]
   )

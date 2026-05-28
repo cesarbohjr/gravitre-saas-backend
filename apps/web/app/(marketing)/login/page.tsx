@@ -33,12 +33,11 @@ function LoginPageContent() {
   const [isResendingVerification, setIsResendingVerification] = useState(false)
   const oauthLoginCheckRef = useRef(false)
 
-  // Show session expired message if redirected from middleware
-  useEffect(() => {
-    if (searchParams.get("session_expired") === "true") {
-      setAuthError("Your session has expired. Please sign in again.")
-    }
-  }, [searchParams])
+  const sessionExpiredMessage =
+    searchParams.get("session_expired") === "true"
+      ? "Your session has expired. Please sign in again."
+      : null
+  const displayedAuthError = authError ?? sessionExpiredMessage
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -288,9 +287,9 @@ function LoginPageContent() {
                 <p className="mt-2 text-sm text-zinc-500">
                   Access your AI command center
                 </p>
-                {authError && (
+                {displayedAuthError && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-sm text-red-600">{authError}</p>
+                    <p className="text-sm text-red-600">{displayedAuthError}</p>
                     {canResendVerification && (
                       <button
                         type="button"

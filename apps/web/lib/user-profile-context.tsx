@@ -41,29 +41,24 @@ const UserProfileContext = createContext<UserProfileContextType | undefined>(und
 const STORAGE_KEY = "gravitre-user-profile"
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile>(defaultProfile)
-  const [isHydrated, setIsHydrated] = useState(false)
-
-  // Load profile from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        setProfile({ ...defaultProfile, ...parsed })
-      } catch {
-        // Invalid JSON, use default
-      }
+  const [profile, setProfile] = useState<UserProfile>(() => {
+    if (typeof window === "undefined") {
+      return defaultProfile
     }
-    setIsHydrated(true)
-  }, [])
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (!stored) return defaultProfile
+    try {
+      const parsed = JSON.parse(stored)
+      return { ...defaultProfile, ...parsed }
+    } catch {
+      return defaultProfile
+    }
+  })
 
   // Save profile to localStorage when it changes
   useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
-    }
-  }, [profile, isHydrated])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+  }, [profile])
 
   const updateProfile = (updates: Partial<UserProfile>) => {
     setProfile(prev => ({ ...prev, ...updates }))

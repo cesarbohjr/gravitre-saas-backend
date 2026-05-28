@@ -364,18 +364,22 @@ export default function OperatorPage() {
 
   useEffect(() => {
     const normalized = normalizeTasksResponse(tasksData)
-    if (normalized.length > 0) {
-      setLocalTasks(normalized)
-      return
-    }
-    setLocalTasks(fallbackTasks)
+    const timer = setTimeout(() => {
+      if (normalized.length > 0) {
+        setLocalTasks(normalized)
+        return
+      }
+      setLocalTasks(fallbackTasks)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [tasksData])
 
   const tasks = localTasks
   useEffect(() => {
     if (!tasks.length) return
     if (!tasks.some((task) => task.id === activeTask)) {
-      setActiveTask(tasks[0].id)
+      const timer = setTimeout(() => setActiveTask(tasks[0].id), 0)
+      return () => clearTimeout(timer)
     }
   }, [tasks, activeTask])
   const insightSections = generatedPlan?.findings ?? fallbackInsightSections

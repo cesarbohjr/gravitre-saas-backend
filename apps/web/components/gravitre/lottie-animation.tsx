@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
+function seededUnit(seed: number) {
+  const value = Math.sin(seed * 12.9898) * 43758.5453
+  return value - Math.floor(value)
+}
+
 // DotLottie component for .lottie files from LottieFiles
 interface DotLottieAnimationProps {
   src: string
@@ -59,7 +64,13 @@ export function LottieAnimation({
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    let animation: any
+    let animation:
+      | {
+          destroy: () => void
+          setSpeed: (value: number) => void
+          addEventListener: (event: string, callback: () => void) => void
+        }
+      | null = null
 
     const loadLottie = async () => {
       try {
@@ -196,16 +207,16 @@ export function FloatingParticles({
           key={i}
           className="absolute w-1 h-1 bg-emerald-400/30 rounded-full"
           initial={{
-            x: `${Math.random() * 100}%`,
-            y: `${Math.random() * 100}%`,
+            x: `${seededUnit(i + 1) * 100}%`,
+            y: `${seededUnit(i + 101) * 100}%`,
           }}
           animate={{
             y: [null, "-100%"],
             opacity: [0, 1, 0],
           }}
           transition={{
-            duration: 4 + Math.random() * 4,
-            delay: Math.random() * 4,
+            duration: 4 + seededUnit(i + 201) * 4,
+            delay: seededUnit(i + 301) * 4,
             repeat: Infinity,
             ease: "linear",
           }}

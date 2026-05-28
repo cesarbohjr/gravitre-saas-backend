@@ -65,6 +65,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+
+let generatedNodeIdCounter = 0
+function nextGeneratedNodeId() {
+  generatedNodeIdCounter += 1
+  return `node-generated-${generatedNodeIdCounter}`
+}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1563,7 +1569,7 @@ function DebateViewDialog({
   const contributions = debate?.contributions || agents.map((agent, idx) => ({
     agentId: agent.id,
     position: idx === 0 ? "Approve" : idx === 1 ? "Request more data" : "Approve with conditions",
-    confidence: 70 + Math.random() * 25,
+    confidence: 70 + ((idx * 13 + 7) % 25),
     reasoning: `Based on the available evidence, I recommend this action because...`,
     evidenceUsed: ["CRM data", "Previous node outputs"],
     timestamp: new Date(),
@@ -1824,7 +1830,8 @@ function ConfigPanel({
   
   useEffect(() => {
     // Reset form values when node changes
-    setFormValues({})
+    const timer = setTimeout(() => setFormValues({}), 0)
+    return () => clearTimeout(timer)
   }, [node?.id])
   
   if (!node) return null
@@ -2847,7 +2854,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         text: "Add Slack notification step?",
         action: () => {
           const newNode: WorkflowNode = {
-            id: `node-${Date.now()}`,
+            id: nextGeneratedNodeId(),
             type: "connector",
             name: "Slack Notification",
             description: "Send completion notification",
@@ -2871,7 +2878,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   text: "Add data validation step?",
   action: () => {
     const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
+      id: nextGeneratedNodeId(),
       type: "agent",
       name: "Data Validator",
       description: "Validate and clean data",
@@ -2895,7 +2902,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   text: "Add decision node for dynamic routing?",
   action: () => {
     const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
+      id: nextGeneratedNodeId(),
       type: "decision",
       name: "Route Decision",
       description: "AI-powered routing based on data",
@@ -2930,7 +2937,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   text: "Add lead quality routing?",
   action: () => {
     const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
+      id: nextGeneratedNodeId(),
       type: "decision",
       name: "Evaluate Lead Quality",
       description: "Route leads based on quality score",

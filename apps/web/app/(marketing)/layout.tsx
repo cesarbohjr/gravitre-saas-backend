@@ -26,10 +26,12 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false)
+  const [mobileMenuOpenPath, setMobileMenuOpenPath] = useState<string | null>(null)
+  const [companyDropdownOpenPath, setCompanyDropdownOpenPath] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
+  const mobileMenuOpen = mobileMenuOpenPath === pathname
+  const companyDropdownOpen = companyDropdownOpenPath === pathname
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,11 +40,6 @@ export default function MarketingLayout({
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
-
-  useEffect(() => {
-    setMobileMenuOpen(false)
-    setCompanyDropdownOpen(false)
-  }, [pathname])
 
   return (
     <div className="min-h-screen bg-white text-zinc-900" data-theme="light">
@@ -70,7 +67,11 @@ export default function MarketingLayout({
                 link.children ? (
                   <div key={link.label} className="relative">
                     <button
-                      onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
+                      onClick={() =>
+                        setCompanyDropdownOpenPath((current) =>
+                          current === pathname ? null : pathname,
+                        )
+                      }
                       className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-all ${
                         companyDropdownOpen 
                           ? "text-zinc-900 bg-zinc-100" 
@@ -133,7 +134,9 @@ export default function MarketingLayout({
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() =>
+                setMobileMenuOpenPath((current) => (current === pathname ? null : pathname))
+              }
               className="inline-flex h-11 w-11 items-center justify-center rounded-full text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors md:hidden"
             >
               {mobileMenuOpen ? (
@@ -210,7 +213,7 @@ export default function MarketingLayout({
       {companyDropdownOpen && (
         <div 
           className="fixed inset-0 z-40" 
-          onClick={() => setCompanyDropdownOpen(false)}
+          onClick={() => setCompanyDropdownOpenPath(null)}
         />
       )}
 

@@ -76,6 +76,30 @@ function apiUrl(path: string): string {
   return `${API_BASE}${path}`
 }
 
+function extractErrorMessage(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null
+  const data = payload as Record<string, unknown>
+
+  const detail = data.detail
+  if (typeof detail === "string" && detail.trim()) return detail
+  if (detail && typeof detail === "object") {
+    const detailObj = detail as Record<string, unknown>
+    const detailMessage = detailObj.message
+    if (typeof detailMessage === "string" && detailMessage.trim()) return detailMessage
+  }
+  if (Array.isArray(detail)) {
+    const first = detail[0]
+    if (first && typeof first === "object") {
+      const msg = (first as Record<string, unknown>).msg
+      if (typeof msg === "string" && msg.trim()) return msg
+    }
+  }
+
+  const error = data.error
+  if (typeof error === "string" && error.trim()) return error
+  return null
+}
+
 function unwrapAgent(payload: unknown): Agent {
   if (payload && typeof payload === "object" && "agent" in payload) {
     return (payload as { agent: Agent }).agent
@@ -91,7 +115,7 @@ async function postJson<T>(url: string, data: unknown): Promise<T> {
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(error.detail || `Request failed: ${response.status}`)
+    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
   }
   return response.json()
 }
@@ -104,7 +128,7 @@ async function patchJson<T>(url: string, data: unknown): Promise<T> {
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(error.detail || `Request failed: ${response.status}`)
+    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
   }
   return response.json()
 }
@@ -113,7 +137,7 @@ async function deleteRequest(url: string): Promise<void> {
   const response = await apiFetch(url, { method: "DELETE" })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(error.detail || `Request failed: ${response.status}`)
+    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
   }
 }
 

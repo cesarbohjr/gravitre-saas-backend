@@ -109,6 +109,19 @@ export function GlobalCommandBar() {
   }, [])
 
   // Handle navigation within list
+  const handleSelect = (item: CommandItem) => {
+    if (item.href) {
+      router.push(item.href)
+    } else if (item.action) {
+      item.action()
+    } else if (item.type === "ai") {
+      // Navigate to operator with the query
+      router.push(`/operator?prompt=${encodeURIComponent(item.title)}`)
+    }
+    setIsOpen(false)
+    setQuery("")
+  }
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -130,24 +143,6 @@ export function GlobalCommandBar() {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isOpen, selectedIndex, allItems])
-
-  // Reset selection when query changes
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
-
-  const handleSelect = (item: CommandItem) => {
-    if (item.href) {
-      router.push(item.href)
-    } else if (item.action) {
-      item.action()
-    } else if (item.type === "ai") {
-      // Navigate to operator with the query
-      router.push(`/operator?prompt=${encodeURIComponent(item.title)}`)
-    }
-    setIsOpen(false)
-    setQuery("")
-  }
 
   const getItemIndex = (item: CommandItem) => {
     return allItems.findIndex(i => i.id === item.id)
@@ -231,7 +226,10 @@ export function GlobalCommandBar() {
                   <input
                     type="text"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                      setQuery(e.target.value)
+                      setSelectedIndex(0)
+                    }}
                     placeholder="Search commands, navigate, or ask AI..."
                     autoFocus
                     className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-medium"

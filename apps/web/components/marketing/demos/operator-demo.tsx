@@ -55,6 +55,7 @@ export function OperatorDemo() {
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messageIdRef = useRef(0)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -64,11 +65,16 @@ export function OperatorDemo() {
     scrollToBottom()
   }, [messages])
 
+  const nextMessageId = (prefix: string) => {
+    messageIdRef.current += 1
+    return `${prefix}-${messageIdRef.current}`
+  }
+
   const simulateTyping = (text: string, actions?: { label: string; type: string }[]) => {
     setIsTyping(true)
     
     // Add typing indicator
-    const typingId = `typing-${Date.now()}`
+    const typingId = nextMessageId("typing")
     setMessages((prev) => [
       ...prev,
       { id: typingId, role: "assistant", content: "", isTyping: true },
@@ -92,7 +98,7 @@ export function OperatorDemo() {
     if (!text.trim()) return
 
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: nextMessageId("user"),
       role: "user",
       content: text,
     }
@@ -112,7 +118,7 @@ export function OperatorDemo() {
 
   const handleActionClick = (action: { label: string; type: string }) => {
     const actionMessage: Message = {
-      id: `action-${Date.now()}`,
+      id: nextMessageId("action"),
       role: "user",
       content: `[Action: ${action.label}]`,
     }

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 // Types
@@ -406,7 +406,7 @@ function NewAssignmentPageContent() {
                             selectedSources.includes(source.id) ? "bg-blue-500/10" : "bg-secondary"
                           )}>
                             <Icon 
-                              name={source.icon as any} 
+                              name={source.icon as IconName}
                               size="sm" 
                               className={selectedSources.includes(source.id) ? "text-blue-400" : "text-muted-foreground"} 
                             />
@@ -456,7 +456,7 @@ function NewAssignmentPageContent() {
                           selectedOutputs.includes(output.id) ? "bg-violet-500/10" : "bg-secondary"
                         )}>
                           <Icon 
-                            name={output.icon as any} 
+                            name={output.icon as IconName}
                             size="lg" 
                             className={selectedOutputs.includes(output.id) ? "text-violet-400" : "text-muted-foreground"} 
                           />
@@ -505,7 +505,7 @@ function NewAssignmentPageContent() {
                           selectedDestinations.includes(dest.id) ? "bg-amber-500/10" : "bg-secondary"
                         )}>
                           <Icon 
-                            name={dest.icon as any} 
+                            name={dest.icon as IconName}
                             size="sm" 
                             className={selectedDestinations.includes(dest.id) ? "text-amber-400" : "text-muted-foreground"} 
                           />

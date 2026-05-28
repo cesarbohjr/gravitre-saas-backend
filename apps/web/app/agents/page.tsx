@@ -1,7 +1,7 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { useState, useEffect, useMemo } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
@@ -681,12 +681,7 @@ export default function AgentsPage() {
     }
   }
   
-  // Set selected agent when agents load
-  useEffect(() => {
-    if (agents.length > 0 && !selectedAgent) {
-      setSelectedAgent(agents[0])
-    }
-  }, [agents, selectedAgent])
+  const selectedAgentOrDefault = selectedAgent ?? agents[0] ?? null
   
   const filteredAgents = agents.filter((a) =>
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -797,7 +792,7 @@ export default function AgentsPage() {
                     key={agent.id}
                     agent={agent}
                     index={index}
-                    isSelected={selectedAgent?.id === agent.id}
+                    isSelected={selectedAgentOrDefault?.id === agent.id}
                     onClick={() => setSelectedAgent(agent)}
                   />
                 ))}
@@ -849,13 +844,13 @@ export default function AgentsPage() {
           {/* Gradient accent */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
           <AnimatePresence mode="wait">
-            {selectedAgent && (
+            {selectedAgentOrDefault && (
               <AgentDetailPanel
-                key={selectedAgent.id}
-                agent={selectedAgent}
+                key={selectedAgentOrDefault.id}
+                agent={selectedAgentOrDefault}
                 onStart={handleStartAgent}
                 onStop={handleStopAgent}
-                isMutating={isMutatingAgent === selectedAgent.id}
+                isMutating={isMutatingAgent === selectedAgentOrDefault.id}
               />
             )}
           </AnimatePresence>

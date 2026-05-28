@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { 
   Megaphone, 
@@ -316,7 +316,7 @@ function StatCard({ stat, index }: { stat: { label: string; value: number; icon:
             stat.color === "violet" && "bg-violet-500/10",
           )}>
             <Icon 
-              name={stat.icon as any} 
+              name={stat.icon as IconName}
               size="sm" 
               className={cn(
                 stat.color === "blue" && "text-blue-400",

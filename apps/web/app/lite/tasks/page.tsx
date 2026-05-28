@@ -5,7 +5,7 @@ import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Icon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { liteApi } from "@/lib/api"
@@ -109,7 +109,7 @@ export default function LiteTasksPage() {
                       task.status === "failed" && "bg-red-500/10"
                     )}>
                       <Icon 
-                        name={status.icon as any} 
+                        name={status.icon as IconName}
                         size="lg" 
                         className={cn(
                           task.status === "processing" && "text-blue-500",

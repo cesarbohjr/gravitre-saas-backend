@@ -9,6 +9,11 @@ import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
 
 // Interactive particle field
+function seededUnit(seed: number) {
+  const value = Math.sin(seed * 12.9898) * 43758.5453
+  return value - Math.floor(value)
+}
+
 function ParticleField() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -17,17 +22,17 @@ function ParticleField() {
           key={i}
           className="absolute w-1 h-1 bg-emerald-500/30 rounded-full"
           initial={{
-            x: `${Math.random() * 100}%`,
-            y: `${Math.random() * 100}%`,
-            scale: Math.random() * 0.5 + 0.5,
+            x: `${seededUnit(i + 1) * 100}%`,
+            y: `${seededUnit(i + 101) * 100}%`,
+            scale: seededUnit(i + 201) * 0.5 + 0.5,
           }}
           animate={{
-            y: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
-            x: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
+            y: [`${seededUnit(i + 301) * 100}%`, `${seededUnit(i + 401) * 100}%`],
+            x: [`${seededUnit(i + 501) * 100}%`, `${seededUnit(i + 601) * 100}%`],
             opacity: [0.2, 0.6, 0.2],
           }}
           transition={{
-            duration: Math.random() * 20 + 10,
+            duration: seededUnit(i + 701) * 20 + 10,
             repeat: Infinity,
             ease: "linear",
           }}

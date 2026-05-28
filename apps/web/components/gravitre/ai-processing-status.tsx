@@ -85,13 +85,26 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
 
   useEffect(() => {
     if (!isProcessing) {
+      const resetTimer = window.setTimeout(() => {
+        setCurrentStepIndex(0)
+        setCompletedSteps([])
+        setIsComplete(false)
+      }, 0)
+      return () => {
+        window.clearTimeout(resetTimer)
+      }
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let cancelled = false
+
+    // Ensure we start from a clean state whenever processing begins.
+    const resetTimer = setTimeout(() => {
+      if (cancelled) return
       setCurrentStepIndex(0)
       setCompletedSteps([])
       setIsComplete(false)
-      return
-    }
-
-    let timeoutId: NodeJS.Timeout
+    }, 0)
 
     const processNextStep = (index: number) => {
       if (index >= processingSteps.length) {
@@ -109,9 +122,21 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
       }, step.duration)
     }
 
-    processNextStep(0)
+    timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        processNextStep(0)
+      }
+    }, 0)
 
-    return () => clearTimeout(timeoutId)
+    return () => {
+      cancelled = true
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+      if (resetTimer) {
+        clearTimeout(resetTimer)
+      }
+    }
   }, [isProcessing, onComplete])
 
   if (!isProcessing && completedSteps.length === 0) return null

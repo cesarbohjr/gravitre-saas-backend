@@ -5,7 +5,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 // Types
@@ -156,7 +156,7 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
         color === "amber" && "bg-amber-500/10",
       )}>
         <Icon 
-          name={icon as any} 
+          name={icon as IconName}
           size="sm" 
           className={cn(
             color === "emerald" && "text-emerald-400",
@@ -222,7 +222,7 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
           "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
           colors.bg, colors.text
         )}>
-          <Icon name={category.icon as any} size="xs" />
+          <Icon name={category.icon as IconName} size="xs" />
           {category.label}
         </div>
         
@@ -412,7 +412,7 @@ export default function AgentMemoryPage({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {cat.icon && <Icon name={cat.icon as any} size="sm" />}
+                  {cat.icon && <Icon name={cat.icon as IconName} size="sm" />}
                   {cat.label}
                   <span className={cn(
                     "px-1.5 py-0.5 rounded-md text-xs",

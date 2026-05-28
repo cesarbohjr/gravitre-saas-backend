@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.workflow_health_snapshots (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   workflow_id uuid REFERENCES public.workflows(id) ON DELETE CASCADE,
   score integer NOT NULL,
@@ -17,7 +17,7 @@ ALTER TABLE public.workflow_health_snapshots
   ADD COLUMN IF NOT EXISTS recorded_at timestamptz NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS public.optimization_recommendations (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   workflow_id uuid REFERENCES public.workflows(id) ON DELETE CASCADE,
   issue text NOT NULL,
@@ -60,7 +60,7 @@ END;
 $$;
 
 CREATE TABLE IF NOT EXISTS public.workflow_ab_tests (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   workflow_id uuid REFERENCES public.workflows(id) ON DELETE CASCADE,
   version_a integer NOT NULL,

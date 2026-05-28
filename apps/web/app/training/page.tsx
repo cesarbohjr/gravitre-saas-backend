@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "sonner"
@@ -77,11 +77,7 @@ export default function TrainingPage() {
   const instructions = instructionsData?.instructions ?? []
   const agents = agentsData?.agents ?? []
 
-  useEffect(() => {
-    if (!selectedAgentId && agents.length > 0) {
-      setSelectedAgentId(agents[0].id)
-    }
-  }, [agents, selectedAgentId])
+  const effectiveSelectedAgentId = selectedAgentId || agents[0]?.id || ""
 
   const stats = useMemo(() => {
     const readyDatasets = datasets.filter((d) => d.status === "ready").length
@@ -189,7 +185,7 @@ export default function TrainingPage() {
       await trainingApi.createInstruction({
         name: instructionName.trim(),
         content: instructionContent.trim(),
-        agent_id: selectedAgentId || undefined,
+        agent_id: effectiveSelectedAgentId || undefined,
       })
       toast.success("Instruction created")
       setInstructionName("")
@@ -471,7 +467,7 @@ export default function TrainingPage() {
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             />
             <select
-              value={selectedAgentId}
+              value={effectiveSelectedAgentId}
               onChange={(event) => setSelectedAgentId(event.target.value)}
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >

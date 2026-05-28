@@ -33,10 +33,15 @@ CREATE TABLE IF NOT EXISTS public.connectors (
 );
 
 ALTER TABLE public.connectors
+  ADD COLUMN IF NOT EXISTS category text,
+  ADD COLUMN IF NOT EXISTS auth_type text,
   ADD COLUMN IF NOT EXISTS environment text NOT NULL DEFAULT 'production',
+  ADD COLUMN IF NOT EXISTS health integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS description text,
   ADD COLUMN IF NOT EXISTS data_flow_rate text,
   ADD COLUMN IF NOT EXISTS requests_today integer NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS latency integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS config jsonb NOT NULL DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS used_by_workflows integer NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS triggered_by_agents integer NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();

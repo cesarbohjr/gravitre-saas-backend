@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -109,10 +109,6 @@ export default function AuditPage() {
   const actions = Object.keys(summaryData?.byAction ?? {}).sort()
   const entityTypes = Object.keys(summaryData?.byEntityType ?? {}).sort()
 
-  useEffect(() => {
-    setOffset(0)
-  }, [selectedAction, selectedEntityType, selectedDateRange])
-
   async function handleExport(format: "csv" | "json") {
     try {
       const response = await auditApi.export(format, fromDate)
@@ -173,7 +169,13 @@ export default function AuditPage() {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
+              <Select
+                value={selectedDateRange}
+                onValueChange={(value) => {
+                  setSelectedDateRange(value)
+                  setOffset(0)
+                }}
+              >
                 <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
                   <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
                   <SelectValue />
@@ -185,7 +187,13 @@ export default function AuditPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedAction} onValueChange={setSelectedAction}>
+              <Select
+                value={selectedAction}
+                onValueChange={(value) => {
+                  setSelectedAction(value)
+                  setOffset(0)
+                }}
+              >
                 <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
                   <SelectValue placeholder="Action" />
                 </SelectTrigger>
@@ -199,7 +207,13 @@ export default function AuditPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedEntityType} onValueChange={setSelectedEntityType}>
+              <Select
+                value={selectedEntityType}
+                onValueChange={(value) => {
+                  setSelectedEntityType(value)
+                  setOffset(0)
+                }}
+              >
                 <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
                   <SelectValue placeholder="Entity Type" />
                 </SelectTrigger>

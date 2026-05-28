@@ -51,7 +51,7 @@ export default function ProfilePage() {
   const { profile, updateProfile, setAvatarImage: setContextAvatarImage, getInitials } = useUserProfile()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const mounted = true
   const [activeField, setActiveField] = useState<string | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
@@ -65,10 +65,6 @@ export default function ProfilePage() {
     user ? "/api/auth/sessions" : null,
     apiFetcher
   )
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     if (!user) return

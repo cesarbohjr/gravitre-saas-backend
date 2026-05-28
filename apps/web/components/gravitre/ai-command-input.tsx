@@ -98,6 +98,7 @@ export function AICommandInput({
 
   // Handle slash command detection
   useEffect(() => {
+    let frameId: number | null = null
     if (value.startsWith("/")) {
       const query = value.slice(1).toLowerCase()
       const filtered = slashCommands.filter(
@@ -105,11 +106,20 @@ export function AICommandInput({
           cmd.command.slice(1).toLowerCase().includes(query) ||
           cmd.label.toLowerCase().includes(query)
       )
-      setFilteredCommands(filtered)
-      setShowCommands(filtered.length > 0)
-      setSelectedCommandIndex(0)
+      frameId = window.requestAnimationFrame(() => {
+        setFilteredCommands(filtered)
+        setShowCommands(filtered.length > 0)
+        setSelectedCommandIndex(0)
+      })
     } else {
-      setShowCommands(false)
+      frameId = window.requestAnimationFrame(() => {
+        setShowCommands(false)
+      })
+    }
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId)
+      }
     }
   }, [value])
 

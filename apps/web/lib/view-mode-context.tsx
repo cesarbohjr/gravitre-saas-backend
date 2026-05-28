@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
 
 type ViewMode = "admin" | "lite"
 
@@ -14,14 +14,11 @@ interface ViewModeContextType {
 const ViewModeContext = createContext<ViewModeContextType | undefined>(undefined)
 
 export function ViewModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ViewMode>("admin")
-
-  useEffect(() => {
-    const stored = localStorage.getItem("gravitre-view-mode") as ViewMode | null
-    if (stored === "admin" || stored === "lite") {
-      setModeState(stored)
-    }
-  }, [])
+  const [mode, setModeState] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "admin"
+    const stored = window.localStorage.getItem("gravitre-view-mode")
+    return stored === "lite" ? "lite" : "admin"
+  })
 
   const setMode = (newMode: ViewMode) => {
     setModeState(newMode)

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -36,7 +37,7 @@ interface TopBarProps {
 
 export function TopBar({ title, onMenuClick }: TopBarProps) {
   const [environment, setEnvironment] = useState<"production" | "staging">("production")
-  const [org, setOrg] = useState("Acme Corp")
+  const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
 
@@ -48,10 +49,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
     userEmail.split("@")[0]
 
   useEffect(() => {
-    const selectedOrg = getSelectedOrgFromStorage()
-    if (selectedOrg) {
-      setOrg(selectedOrg.name)
-    } else {
+    if (!getSelectedOrgFromStorage()) {
       setSelectedOrgInStorage({ id: DEFAULT_DEMO_ORG_ID, name: "Acme Corp" })
     }
   }, [])
@@ -126,10 +124,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>
-                <a href="/settings/organizations">
+                <Link href="/settings/organizations">
                   <Icon name="settings" size="sm" />
                   Manage organizations
-                </a>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -275,7 +273,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               
               <div className="p-1.5">
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
-                  <a href="/settings/profile">
+                  <Link href="/settings/profile">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
                       <Icon name="user" size="sm" className="text-blue-500" />
                     </div>
@@ -283,10 +281,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                       <p className="text-sm font-medium">Edit Profile</p>
                       <p className="text-[10px] text-muted-foreground">Manage your personal info</p>
                     </div>
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
-                  <a href="/settings">
+                  <Link href="/settings">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary">
                       <Icon name="settings" size="sm" className="text-muted-foreground" />
                     </div>
@@ -294,10 +292,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                       <p className="text-sm font-medium">Settings</p>
                       <p className="text-[10px] text-muted-foreground">Account & preferences</p>
                     </div>
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
-                  <a href="/settings?section=team">
+                  <Link href="/settings?section=team">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary">
                       <Icon name="team" size="sm" className="text-muted-foreground" />
                     </div>
@@ -305,10 +303,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                       <p className="text-sm font-medium">Team</p>
                       <p className="text-[10px] text-muted-foreground">8 members</p>
                     </div>
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2.5 transition-colors" asChild>
-                  <a href="/settings/billing">
+                  <Link href="/settings/billing">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
                       <Icon name="billing" size="sm" className="text-emerald-500" />
                     </div>
@@ -317,7 +315,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
                       <p className="text-[10px] text-muted-foreground">Business Plan</p>
                     </div>
                     <span className="text-xs font-medium text-emerald-500">$499/mo</span>
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
               </div>
               
@@ -325,10 +323,10 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               
               <div className="p-1.5">
                 <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg px-3 py-2" asChild>
-                  <a href="/docs">
+                  <Link href="/docs">
                     <Icon name="help" size="sm" className="text-muted-foreground" />
                     <span className="text-sm">Help & Documentation</span>
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="gap-3 cursor-pointer rounded-lg px-3 py-2 text-destructive focus:text-destructive focus:bg-destructive/10"

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/lib/icons"
+import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 
 // Types
@@ -276,7 +276,7 @@ function DeliverableCard({
 
       <div className="flex items-start justify-between mb-3">
         <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center", config.bg)}>
-          <Icon name={config.icon as any} size="sm" className={config.color} />
+          <Icon name={config.icon as IconName} size="sm" className={config.color} />
         </div>
         
         {/* Confidence ring */}
@@ -364,7 +364,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush }: {
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", config.bg)}>
-              <Icon name={config.icon as any} size="sm" className={config.color} />
+              <Icon name={config.icon as IconName} size="sm" className={config.color} />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">{deliverable.title}</h3>

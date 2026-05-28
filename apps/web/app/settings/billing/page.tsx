@@ -200,7 +200,7 @@ const weeklyData = [
 
 export default function BillingPage() {
   const { user } = useAuth()
-  const [mounted, setMounted] = useState(false)
+  const mounted = true
   const [animatedValues, setAnimatedValues] = useState<Record<string, number>>({})
   
   // Modal states
@@ -225,7 +225,6 @@ export default function BillingPage() {
   })
 
   useEffect(() => {
-    setMounted(true)
     // Animate usage values
     const timer = setTimeout(() => {
       const values: Record<string, number> = {}

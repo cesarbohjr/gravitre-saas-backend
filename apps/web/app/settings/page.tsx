@@ -87,9 +87,12 @@ function OrganizationSettings({
 
   useEffect(() => {
     if (!orgData) return
-    setName(String(orgData.name ?? ""))
-    setSlug(String(orgData.slug ?? ""))
-    setDomain(String(orgData.primaryDomain ?? orgData.primary_domain ?? ""))
+    const timer = setTimeout(() => {
+      setName(String(orgData.name ?? ""))
+      setSlug(String(orgData.slug ?? ""))
+      setDomain(String(orgData.primaryDomain ?? orgData.primary_domain ?? ""))
+    }, 0)
+    return () => clearTimeout(timer)
   }, [orgData])
 
   const handleSave = async () => {
@@ -231,11 +234,14 @@ function SecuritySettings() {
 
   useEffect(() => {
     if (!ssoConfig) return
-    setProviderType(ssoConfig.provider_type)
-    setEntityId(ssoConfig.saml_entity_id || "")
-    setSsoUrl(ssoConfig.saml_sso_url || "")
-    setOidcIssuer(ssoConfig.oidc_issuer || "")
-    setOidcClientId(ssoConfig.oidc_client_id || "")
+    const timer = setTimeout(() => {
+      setProviderType(ssoConfig.provider_type)
+      setEntityId(ssoConfig.saml_entity_id || "")
+      setSsoUrl(ssoConfig.saml_sso_url || "")
+      setOidcIssuer(ssoConfig.oidc_issuer || "")
+      setOidcClientId(ssoConfig.oidc_client_id || "")
+    }, 0)
+    return () => clearTimeout(timer)
   }, [ssoConfig])
 
   const handleEnableTwoFa = async () => {

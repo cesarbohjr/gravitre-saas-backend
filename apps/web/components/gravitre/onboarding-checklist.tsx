@@ -134,31 +134,40 @@ export function useOnboarding() {
 
 // Provider
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<OnboardingState>({
-    items: defaultItems,
-    dismissed: false,
-    completedAt: null,
-  })
-
-  // Load from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        // Reconstruct items with proper icon components (icons can't be serialized)
-        const reconstructedItems = reconstructItemsWithIcons(
-          parsed.items?.map((item: ChecklistItem) => ({ id: item.id, completed: item.completed })) || []
-        )
-        setState({
-          ...parsed,
-          items: reconstructedItems,
-        })
-      } catch {
-        // Invalid data, use defaults
+  const [state, setState] = useState<OnboardingState>(() => {
+    if (typeof window === "undefined") {
+      return {
+        items: defaultItems,
+        dismissed: false,
+        completedAt: null,
       }
     }
-  }, [])
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (!stored) {
+      return {
+        items: defaultItems,
+        dismissed: false,
+        completedAt: null,
+      }
+    }
+    try {
+      const parsed = JSON.parse(stored)
+      const reconstructedItems = reconstructItemsWithIcons(
+        parsed.items?.map((item: ChecklistItem) => ({ id: item.id, completed: item.completed })) || []
+      )
+      return {
+        dismissed: Boolean(parsed.dismissed),
+        completedAt: typeof parsed.completedAt === "string" ? parsed.completedAt : null,
+        items: reconstructedItems,
+      }
+    } catch {
+      return {
+        items: defaultItems,
+        dismissed: false,
+        completedAt: null,
+      }
+    }
+  })
 
   // Save to localStorage (only save serializable data, not icon components)
   useEffect(() => {
@@ -270,9 +279,12 @@ export function OnboardingChecklist() {
   // Show celebration when complete
   useEffect(() => {
     if (isComplete && !showCelebration) {
-      setShowCelebration(true)
+      const showTimer = setTimeout(() => setShowCelebration(true), 0)
       const timer = setTimeout(() => setShowCelebration(false), 5000)
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(showTimer)
+        clearTimeout(timer)
+      }
     }
   }, [isComplete, showCelebration])
 

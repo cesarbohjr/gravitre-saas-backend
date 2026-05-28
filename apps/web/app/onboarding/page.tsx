@@ -159,7 +159,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!progress) return
     const safeIndex = Math.max(0, Math.min(progress.current_step, STEPS.length - 1))
-    setCurrentStep(safeIndex)
+    const syncTimer = setTimeout(() => setCurrentStep(safeIndex), 0)
+    return () => clearTimeout(syncTimer)
   }, [progress])
 
   const handleNext = async () => {

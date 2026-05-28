@@ -17,7 +17,7 @@ END;
 $$;
 
 CREATE TABLE IF NOT EXISTS public.billing_events (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   action text,
   event_type text,

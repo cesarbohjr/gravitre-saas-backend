@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -94,13 +94,9 @@ function formatRelativeTime(timestamp: string): string {
 
 export default function NotificationsPage() {
   const { user } = useAuth()
-  const [mounted, setMounted] = useState(false)
+  const mounted = true
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
   const [typeFilter, setTypeFilter] = useState<NotificationType | null>(null)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const { data, isLoading, mutate } = useSWR(
     user ? ["notifications:list", filter] : null,

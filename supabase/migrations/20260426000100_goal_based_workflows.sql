@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.goals (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   objective text NOT NULL,
   category text,
@@ -44,7 +44,7 @@ END;
 $$;
 
 CREATE TABLE IF NOT EXISTS public.goal_plans (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   goal_id uuid REFERENCES public.goals(id) ON DELETE CASCADE,
   proposed_steps jsonb NOT NULL DEFAULT '[]'::jsonb,
