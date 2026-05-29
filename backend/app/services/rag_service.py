@@ -88,7 +88,7 @@ class RAGService:
         top_k = top_k or self.settings.rag_top_k or 8
         embedding_method = "none"
         try:
-            query_embedding, embedding_method = embed_with_failover(query, self.settings)
+            query_embedding, embedding_method = embed_with_failover(query, self.settings, org_id=org_id)
             logger.info("rag embedding org_id=%s method=%s", org_id, embedding_method)
         except Exception as exc:  # noqa: BLE001
             logger.warning("rag embedding unavailable org_id=%s error=%s", org_id, str(exc))

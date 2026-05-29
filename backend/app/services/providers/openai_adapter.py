@@ -77,12 +77,13 @@ class OpenAIAdapter(ProviderAdapter):
                 if not content.strip():
                     raise RuntimeError("Model returned empty response")
                 latency_ms = (time.perf_counter() - start) * 1000
-                pt, ct = self._usage(resp)
+                pt, ct, cached = self._usage(resp)
                 return ProviderResponse(
                     content=content,
                     prompt_tokens=pt,
                     completion_tokens=ct,
                     total_tokens=pt + ct,
+                    cached_tokens=cached,
                     model_used=model,
                     provider_used=self.provider_name,
                     latency_ms=latency_ms,
@@ -127,11 +128,15 @@ class OpenAIAdapter(ProviderAdapter):
             raise ProviderUnavailableError("openai", str(exc)) from exc
 
     @staticmethod
-    def _usage(resp: Any) -> tuple[int, int]:
+    def _usage(resp: Any) -> tuple[int, int, int]:
         raw = getattr(resp, "usage", None)
         if raw is None:
-            return 0, 0
-        return int(getattr(raw, "prompt_tokens", 0) or 0), int(getattr(raw, "completion_tokens", 0) or 0)
+            return 0, 0, 0
+        prompt = int(getattr(raw, "prompt_tokens", 0) or 0)
+        completion = int(getattr(raw, "completion_tokens", 0) or 0)
+        details = getattr(raw, "prompt_tokens_details", None)
+        cached = int(getattr(details, "cached_tokens", 0) or 0) if details is not None else 0
+        return prompt, completion, cached
 
     @staticmethod
     def _retry_after(exc: Exception, default: float) -> float:

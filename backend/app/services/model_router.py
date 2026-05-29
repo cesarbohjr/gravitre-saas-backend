@@ -50,17 +50,19 @@ class TaskType(StrEnum):
     OPTIMIZATION_ANALYSIS = "optimization"
 
 
-# Per-1K token pricing (input, output). Comment shows the per-1M equivalent.
+# Per-1K token pricing (input, cached_input, output). Comment shows per-1M.
+# cached_input applies to prompt tokens served from the provider's prompt cache
+# (defaults to the normal input rate when the provider has no separate cache rate).
 # Verified May 2026.
-_MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
-    "gpt-4.1": (0.002, 0.008),                      # $2.00 in / $8.00 out per 1M
-    "gpt-5.5": (0.005, 0.030),                      # $5.00 in / $30.00 out per 1M
-    "gpt-5.4-mini": (0.00075, 0.0045),              # $0.75 in / $4.50 out per 1M
-    "text-embedding-3-small": (0.00002, 0.0),       # $0.02 / 1M input (embeddings)
-    "claude-sonnet-4-6": (0.003, 0.015),            # $3.00 in / $15.00 out per 1M
-    "claude-haiku-4-5-20251001": (0.0008, 0.004),   # $0.80 in / $4.00 out per 1M
-    "gemini-2.5-pro": (0.00125, 0.010),             # $1.25 in / $10.00 out per 1M
-    "gemini-2.5-flash": (0.0000875, 0.00035),       # $0.0875 in / $0.35 out per 1M (non-thinking)
+_MODEL_PRICING_PER_1K: dict[str, tuple[float, float, float]] = {
+    "gpt-4.1": (0.002, 0.002, 0.008),                      # $2.00 in / $8.00 out per 1M
+    "gpt-5.5": (0.005, 0.0005, 0.030),                     # $5.00 in / $0.50 cached / $30.00 out per 1M
+    "gpt-5.4-mini": (0.00075, 0.00075, 0.0045),            # $0.75 in / $4.50 out per 1M
+    "text-embedding-3-small": (0.00002, 0.00002, 0.0),     # $0.02 / 1M input (embeddings)
+    "claude-sonnet-4-6": (0.003, 0.003, 0.015),            # $3.00 in / $15.00 out per 1M
+    "claude-haiku-4-5-20251001": (0.0008, 0.0008, 0.004),  # $0.80 in / $4.00 out per 1M
+    "gemini-2.5-pro": (0.00125, 0.00125, 0.010),           # $1.25 in / $10.00 out per 1M
+    "gemini-2.5-flash": (0.0000875, 0.0000875, 0.00035),   # $0.0875 in / $0.35 out per 1M (non-thinking)
 }
 
 
@@ -187,14 +189,16 @@ class ModelRouter:
         resp = result.response
         latency_ms = int((time.perf_counter() - start) * 1000)
 
+        cached_tokens = 0
         if resp.prompt_tokens or resp.completion_tokens:
             input_tokens = resp.prompt_tokens
             output_tokens = resp.completion_tokens
+            cached_tokens = resp.cached_tokens
         else:
             input_tokens = self._estimate_tokens(prompt + (system_prompt or ""))
             output_tokens = self._estimate_tokens(resp.content)
 
-        cost = self._estimate_cost(resp.model_used, input_tokens, output_tokens)
+        cost = self._estimate_cost(resp.model_used, input_tokens, output_tokens, cached_tokens)
 
         response_text = resp.content
         parsed_payload: dict[str, Any] | None = None
@@ -314,9 +318,23 @@ class ModelRouter:
             return 0
         return max(1, len(text) // 4)
 
-    def _estimate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
-        in_cost, out_cost = _MODEL_PRICING_PER_1K.get(model, (0.002, 0.008))
-        return round((input_tokens / 1000 * in_cost) + (output_tokens / 1000 * out_cost), 6)
+    def _estimate_cost(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        cached_tokens: int = 0,
+    ) -> float:
+        in_cost, cached_cost, out_cost = _MODEL_PRICING_PER_1K.get(model, (0.002, 0.002, 0.008))
+        # cached_tokens is a subset of input_tokens; bill it at the cache rate.
+        cached = max(0, min(cached_tokens, input_tokens))
+        uncached_input = input_tokens - cached
+        return round(
+            (uncached_input / 1000 * in_cost)
+            + (cached / 1000 * cached_cost)
+            + (output_tokens / 1000 * out_cost),
+            6,
+        )
 
     async def _log_model_call(self, org_id: str | None, task_type: TaskType, response: ModelResponse) -> None:
         if not org_id:

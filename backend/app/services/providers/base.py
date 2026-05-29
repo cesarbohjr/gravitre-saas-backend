@@ -36,6 +36,9 @@ class ProviderResponse:
     model_used: str
     provider_used: str
     latency_ms: float
+    # Subset of prompt_tokens served from the provider's prompt cache (when the
+    # API reports it, e.g. OpenAI usage.prompt_tokens_details.cached_tokens).
+    cached_tokens: int = 0
     raw_response: Any = field(default=None, repr=False)
 
 

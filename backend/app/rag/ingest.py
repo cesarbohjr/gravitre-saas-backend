@@ -8,7 +8,7 @@ from typing import Any, Callable
 from supabase import Client
 
 from app.config import Settings
-from app.rag.embedding import get_embedding
+from app.rag.embedding import _estimate_tokens, get_embedding, record_embedding_cost
 
 # Size limits
 MAX_TEXT_BYTES = 2 * 1024 * 1024  # 2 MiB
@@ -264,6 +264,8 @@ def replace_chunks_and_embeddings(
     if heartbeat_cb:
         heartbeat_cb()
     for idx, (chunk_id, content) in enumerate(zip(chunk_ids, chunks)):
+        # org_id intentionally not passed here: cost is recorded once per document
+        # below (aggregate) to avoid one model_calls insert per chunk.
         embedding = get_embedding(content, settings)
         client.table("rag_embeddings").insert({
             "chunk_id": chunk_id,
@@ -274,6 +276,9 @@ def replace_chunks_and_embeddings(
         }).execute()
         if heartbeat_cb and idx > 0 and (idx % 10 == 0):
             heartbeat_cb()
+    # Aggregate embedding cost for the whole document in a single ai-spend row.
+    total_tokens = sum(_estimate_tokens(c) for c in chunks)
+    record_embedding_cost(settings, org_id, "openai", settings.embedding_model, total_tokens)
     return len(chunks)
 
 
