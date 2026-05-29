@@ -219,7 +219,7 @@ export function ModelSelector({
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15 }}
             className={cn(
-              "absolute z-50 mt-2 w-72 rounded-xl border border-border bg-card shadow-xl shadow-black/20",
+              "absolute right-0 z-[100] mt-2 w-72 rounded-xl border border-border bg-card shadow-xl shadow-black/20",
               "overflow-hidden"
             )}
           >

@@ -74,7 +74,7 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <header className="flex h-12 sm:h-14 items-center justify-between border-b border-border bg-background px-3 sm:px-4">
+      <header className="flex h-12 sm:h-14 items-center justify-between border-b border-border bg-background px-3 sm:px-4 relative z-30">
         {/* Left side - Menu + Org + Environment + Page title */}
         <div className="flex items-center gap-3">
           {/* Mobile Menu Button - Only show on mobile, sidebar visible on tablet+ */}

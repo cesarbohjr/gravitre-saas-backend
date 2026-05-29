@@ -764,36 +764,20 @@ export default function OperatorPage() {
         {/* Main Content - Single Column Layout */}
         <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
           {/* Clean Header with Stats */}
-          <div className="shrink-0 border-b border-border px-6 py-5 bg-card/50 backdrop-blur-sm">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <AIPresence 
-                  isProcessing={isProcessing} 
-                  isListening={Boolean(taskInput.trim())}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {user?.email ? `Signed in as ${user.email}` : "Signed in"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Model Selector - Premium, minimal */}
-                <ModelSelector
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  inheritedFrom="workspace"
-                  onResetToDefault={() => setSelectedModel("auto")}
-                  showAdvanced
-                  size="sm"
-                />
-                <div className="h-4 w-px bg-border" />
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <StatusBeacon status="active" size="sm" />
-                  <span className="text-xs font-medium text-emerald-500">12 systems</span>
+          <div className="shrink-0 border-b border-border px-4 md:px-6 py-4 md:py-5 bg-card/50 backdrop-blur-sm relative z-20">
+            <div className="flex flex-col gap-4">
+              {/* Top row: AI presence and user info */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <AIPresence 
+                    isProcessing={isProcessing} 
+                    isListening={Boolean(taskInput.trim())}
+                  />
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {user?.email ? `Signed in as ${user.email}` : "Signed in"}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                  <Activity className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-xs font-medium text-blue-500">{tasks.length} active</span>
-                </div>
+                {/* New Task button - visible on all sizes */}
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -801,21 +785,45 @@ export default function OperatorPage() {
                   onClick={handleOpenNewTaskDialog}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  New Task
+                  <span className="hidden sm:inline">New Task</span>
                 </Button>
+              </div>
+              
+              {/* Bottom row: Controls - scrollable on mobile */}
+              <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-1 scrollbar-hidden">
+                {/* Model Selector - Premium, minimal */}
+                <div className="relative flex-shrink-0">
+                  <ModelSelector
+                    value={selectedModel}
+                    onChange={setSelectedModel}
+                    inheritedFrom="workspace"
+                    onResetToDefault={() => setSelectedModel("auto")}
+                    showAdvanced
+                    size="sm"
+                  />
+                </div>
+                <div className="h-4 w-px bg-border flex-shrink-0 hidden sm:block" />
+                <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex-shrink-0">
+                  <StatusBeacon status="active" size="sm" />
+                  <span className="text-xs font-medium text-emerald-500 whitespace-nowrap">12 systems</span>
+                </div>
+                <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 flex-shrink-0">
+                  <Activity className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-xs font-medium text-blue-500 whitespace-nowrap">{tasks.length} active</span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Two Column Layout - Tasks + AI Workspace */}
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
             {/* Left: Task List (hidden on mobile, shown on desktop) */}
-            <div className="hidden md:flex w-72 shrink-0 border-r border-border bg-card/30 flex-col">
-              <div className="p-4 border-b border-border">
+            <div className="hidden md:flex w-56 lg:w-72 shrink-0 border-r border-border bg-card/30 flex-col overflow-hidden">
+              <div className="p-3 lg:p-4 border-b border-border shrink-0">
                 <h2 className="text-sm font-semibold text-foreground mb-1">Tasks</h2>
                 <p className="text-xs text-muted-foreground">Select a task to analyze</p>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 scrollbar-on-hover">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 lg:p-3 scrollbar-on-hover">
                 <Timeline>
                   {tasks.map((task, index) => (
                     <TimelineItem
@@ -862,7 +870,7 @@ export default function OperatorPage() {
             </div>
 
             {/* Right: AI Workspace */}
-            <div className="flex-1 overflow-y-auto scrollbar-on-hover min-h-0">
+            <div className="flex-1 overflow-y-auto scrollbar-on-hover min-h-0 relative z-0">
               <div className="p-4 md:p-6 max-w-3xl mx-auto">
               {/* 1. COMMAND INPUT (AI) - Premium */}
               <motion.section 

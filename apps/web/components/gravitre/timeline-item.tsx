@@ -169,27 +169,27 @@ export function TimelineItem({
       {/* Content Card */}
       <motion.button
         onClick={onClick}
-        whileHover={{ x: 4, scale: 1.01 }}
+        whileHover={{ x: 2, scale: 1.005 }}
         whileTap={{ scale: 0.99 }}
         transition={{ duration: timing.micro }}
         className={cn(
-          "flex-1 mb-3 rounded-lg border text-left transition-all duration-200",
+          "flex-1 min-w-0 mb-3 rounded-lg border text-left transition-all duration-200",
           isActive
             ? "border-border bg-secondary/80 shadow-md"
             : "border-transparent hover:border-border/50 hover:bg-secondary/40 hover:shadow-sm"
         )}
       >
-        <div className="p-3">
+        <div className="p-2 lg:p-3">
           {/* Header Row */}
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className={cn(
-              "text-sm font-medium line-clamp-1 transition-colors",
+              "text-xs lg:text-sm font-medium truncate transition-colors min-w-0 flex-1",
               isActive ? "text-foreground" : "text-foreground/90"
             )}>
               {title}
             </h3>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[10px] text-muted-foreground">{timestamp}</span>
+            <div className="flex items-center gap-1 lg:gap-2 shrink-0">
+              <span className="text-[9px] lg:text-[10px] text-muted-foreground whitespace-nowrap">{timestamp}</span>
               
               {/* Quick Actions - appear on hover */}
               <AnimatePresence>
@@ -235,12 +235,12 @@ export function TimelineItem({
           </div>
 
           {/* Meta Row */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 lg:gap-2 flex-wrap">
             <EnvironmentBadge environment={environment} />
             
             {/* Status Badge */}
             <div className={cn(
-              "flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium",
+              "flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] lg:text-[9px] font-medium",
               statusStyle.bgColor
             )}>
               <div className={cn("h-1 w-1 rounded-full", statusStyle.color)} />
@@ -254,10 +254,10 @@ export function TimelineItem({
               </span>
             </div>
 
-            {/* Context */}
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Icon className="h-3 w-3" />
-              <span className="line-clamp-1">{contextName}</span>
+            {/* Context - hidden on smaller sidebars */}
+            <div className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground min-w-0">
+              <Icon className="h-3 w-3 shrink-0" />
+              <span className="truncate">{contextName}</span>
             </div>
           </div>
         </div>
