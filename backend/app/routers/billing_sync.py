@@ -53,6 +53,29 @@ class BudgetEnforcementRequest(BaseModel):
     enabled: bool | None
 
 
+class InternalBudgetEnforcementRequest(BaseModel):
+    # Platform/cron endpoint can target any org, so org_id is required.
+    org_id: str
+    enabled: bool | None
+
+
+def _set_hard_budget_override(settings: Settings, org_id: str, enabled: bool | None) -> dict[str, Any]:
+    """Upsert org_billing.hard_budget_enabled. Upsert (not get_or_create) avoids
+    the billing_plans FK path; on insert plan_code stays null + billing_status
+    uses its default."""
+    client = get_supabase_client(settings)
+    client.table("org_billing").upsert(
+        {
+            "org_id": org_id,
+            "hard_budget_enabled": enabled,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="org_id",
+    ).execute()
+    logger.info("budget enforcement override org_id=%s enabled=%s", org_id, enabled)
+    return {"org_id": org_id, "hard_budget_enabled": enabled}
+
+
 @internal_router.post("/sync-usage")
 async def sync_usage_cron(
     settings: Annotated[Settings, Depends(get_settings)],
@@ -78,9 +101,14 @@ async def sync_usage_admin(
     """Manual trigger for a single org. dry_run=True (default) calculates without
     calling Stripe."""
     _user, admin_org_id = admin
-    org_id = (body.org_id or admin_org_id).strip()
+    org_id = (body.org_id or admin_org_id or "").strip()
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id is required")
+    if org_id != admin_org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only sync usage for your own organization",
+        )
     period_start, period_end = get_current_period()
     return report_usage_to_stripe(
         org_id, period_start, period_end, settings, dry_run=body.dry_run
@@ -108,16 +136,18 @@ async def set_budget_enforcement(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only manage budget enforcement for your own organization",
         )
-    client = get_supabase_client(settings)
-    # Upsert avoids the billing_plans FK path of get_or_create_org_billing; on
-    # insert, plan_code stays null and billing_status uses its default.
-    client.table("org_billing").upsert(
-        {
-            "org_id": org_id,
-            "hard_budget_enabled": body.enabled,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        },
-        on_conflict="org_id",
-    ).execute()
-    logger.info("budget enforcement override org_id=%s enabled=%s", org_id, body.enabled)
-    return {"org_id": org_id, "hard_budget_enabled": body.enabled}
+    return _set_hard_budget_override(settings, org_id, body.enabled)
+
+
+@internal_router.post("/budget-enforcement")
+async def set_budget_enforcement_internal(
+    body: InternalBudgetEnforcementRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    _: Annotated[None, Depends(require_internal_secret)],
+) -> dict[str, Any]:
+    """Platform-wide per-org budget override for ops/cron (any org). Protected by
+    INTERNAL_API_SECRET, not a user JWT."""
+    org_id = (body.org_id or "").strip()
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id is required")
+    return _set_hard_budget_override(settings, org_id, body.enabled)

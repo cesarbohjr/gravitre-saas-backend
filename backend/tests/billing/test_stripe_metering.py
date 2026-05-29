@@ -221,6 +221,59 @@ async def test_budget_enforcement_rejects_other_org(async_client):
     assert resp.status_code == 403
 
 
+async def test_admin_sync_rejects_other_org(async_client):
+    from app.auth.dependencies import require_admin
+
+    app.dependency_overrides[require_admin] = lambda: ({"user_id": "u1"}, "org-1")
+    resp = await async_client.post(
+        "/api/admin/billing/sync-usage",
+        json={"org_id": "org-2", "dry_run": True},
+    )
+    assert resp.status_code == 403
+
+
+async def test_internal_budget_enforcement_requires_secret(async_client):
+    # No INTERNAL_API_SECRET configured in test env -> 503.
+    resp = await async_client.post(
+        "/api/internal/billing/budget-enforcement",
+        json={"org_id": "org-1", "enabled": True},
+    )
+    assert resp.status_code == 503
+
+
+async def test_internal_budget_enforcement_sets_override(async_client, monkeypatch):
+    import app.routers.billing_sync as billing_sync
+
+    app.dependency_overrides[get_settings] = lambda: _settings(internal_api_secret="right-secret")
+
+    captured: dict = {}
+
+    class _FakeTbl:
+        def upsert(self, payload, on_conflict=None):
+            captured["payload"] = payload
+            return self
+
+        def execute(self):
+            return MagicMock(data=[captured["payload"]])
+
+    class _FakeClient:
+        def table(self, name):
+            captured["table"] = name
+            return _FakeTbl()
+
+    monkeypatch.setattr(billing_sync, "get_supabase_client", lambda s: _FakeClient())
+
+    resp = await async_client.post(
+        "/api/internal/billing/budget-enforcement",
+        headers={"X-Internal-Secret": "right-secret"},
+        json={"org_id": "org-9", "enabled": True},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["org_id"] == "org-9"
+    assert captured["table"] == "org_billing"
+    assert captured["payload"]["hard_budget_enabled"] is True
+
+
 async def test_internal_sync_accepts_valid_secret(async_client, monkeypatch):
     app.dependency_overrides[get_settings] = lambda: _settings(internal_api_secret="right-secret")
     monkeypatch.setattr(
