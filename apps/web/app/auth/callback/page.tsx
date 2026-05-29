@@ -57,6 +57,8 @@ function AuthCallbackContent() {
             }
             return
           }
+          // Clear the redirect flag on successful auth
+          window.sessionStorage.removeItem("gravitre_auth_redirecting")
           if (!cancelled) {
             router.replace(callbackContext.nextPath)
           }
@@ -72,6 +74,8 @@ function AuthCallbackContent() {
           }
           return
         }
+        // Clear the redirect flag on successful auth
+        window.sessionStorage.removeItem("gravitre_auth_redirecting")
         if (!cancelled) {
           router.replace(callbackContext.nextPath)
         }
@@ -94,6 +98,8 @@ function AuthCallbackContent() {
           }
           return
         }
+        // Clear the redirect flag on successful auth
+        window.sessionStorage.removeItem("gravitre_auth_redirecting")
         if (!cancelled) {
           router.replace(callbackContext.nextPath)
         }
