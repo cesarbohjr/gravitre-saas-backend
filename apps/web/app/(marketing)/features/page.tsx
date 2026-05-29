@@ -14,25 +14,25 @@ import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { VendorLogo } from "@/components/gravitre/vendor-logo"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
 
-// Create Nucleo icons for features page - using variety of different icons
-const NucleoAgentIcon = createNucleoIcon("77550")      // Robot/agent
-const NucleoWorkflowIcon = createNucleoIcon("77800")   // Workflow
-const NucleoSecurityIcon = createNucleoIcon("78300")   // Lock/security
-const NucleoTeamIcon = createNucleoIcon("77510")       // Users/team
-const NucleoChatIcon = createNucleoIcon("78450")       // Message/chat
-const NucleoDataIcon = createNucleoIcon("78100")       // Database/data
-const NucleoPerformanceIcon = createNucleoIcon("77750") // Lightning/performance
-const NucleoInsightsIcon = createNucleoIcon("77830")   // Eye/insights
-const NucleoProtectionIcon = createNucleoIcon("78250") // Shield/protection
-const NucleoAnalyticsIcon = createNucleoIcon("78150")  // Graph/analytics
-const NucleoScheduleIcon = createNucleoIcon("77590")   // Clock/schedule
-const NucleoVersionIcon = createNucleoIcon("77570")    // Git/version
-const NucleoAlertIcon = createNucleoIcon("78500")      // Bell/notification
-const NucleoDocIcon = createNucleoIcon("77640")        // Document
-const NucleoSparkleIcon = createNucleoIcon("77650")    // Sparkles/magic
-const NucleoSendIcon = createNucleoIcon("77490")       // Send
-const NucleoBlocksIcon = createNucleoIcon("77850")     // Blocks/modules
-const NucleoLayersIcon = createNucleoIcon("77900")     // Layers
+// Create Nucleo icons for features page - VERIFIED ICONS
+const NucleoAgentIcon = createNucleoIcon("77840")      // Edit/compose - AI agents create
+const NucleoWorkflowIcon = createNucleoIcon("77900")   // Bezier - workflow connections
+const NucleoSecurityIcon = createNucleoIcon("77860")   // Checkmark circle - verified/secure
+const NucleoTeamIcon = createNucleoIcon("77920")       // Store/business - team
+const NucleoChatIcon = createNucleoIcon("77840")       // Edit/compose - chat/writing
+const NucleoDataIcon = createNucleoIcon("77980")       // Dashboard - data/metrics
+const NucleoPerformanceIcon = createNucleoIcon("77980") // Dashboard - performance
+const NucleoInsightsIcon = createNucleoIcon("77760")   // Magnifying glass - insights
+const NucleoProtectionIcon = createNucleoIcon("77860") // Checkmark circle - protection
+const NucleoAnalyticsIcon = createNucleoIcon("77980")  // Dashboard - analytics
+const NucleoScheduleIcon = createNucleoIcon("77800")   // Phone - communication
+const NucleoVersionIcon = createNucleoIcon("77900")    // Bezier - version/flow
+const NucleoAlertIcon = createNucleoIcon("77720")      // Arrow up circle - alert/notify
+const NucleoDocIcon = createNucleoIcon("77820")        // Image - document
+const NucleoSparkleIcon = createNucleoIcon("77720")    // Arrow up circle - growth/magic
+const NucleoSendIcon = createNucleoIcon("77720")       // Arrow up - send
+const NucleoBlocksIcon = createNucleoIcon("77900")     // Bezier - blocks/modules
+const NucleoLayersIcon = createNucleoIcon("77900")     // Bezier - layers
 
 // Bento card component - Light theme
 function BentoCard({ 
@@ -61,10 +61,10 @@ function BentoCard({
 // Interactive App Screen Components
 function AgentsScreen() {
   const agents = [
-    { name: "Data Analyst", iconId: "78150", color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
-    { name: "Content Writer", iconId: "77640", color: "blue", status: "active", tasks: 8, accuracy: "95%" },
-    { name: "Research Agent", iconId: "77830", color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
-    { name: "Code Reviewer", iconId: "77570", color: "amber", status: "active", tasks: 5, accuracy: "99%" },
+    { name: "Data Analyst", iconId: "77980", color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
+    { name: "Content Writer", iconId: "77840", color: "blue", status: "active", tasks: 8, accuracy: "95%" },
+    { name: "Research Agent", iconId: "77760", color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
+    { name: "Code Reviewer", iconId: "77860", color: "amber", status: "active", tasks: 5, accuracy: "99%" },
   ]
   
   return (

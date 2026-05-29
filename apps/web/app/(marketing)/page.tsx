@@ -9,14 +9,14 @@ import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
 
-// Create Nucleo icon components for features
-const NucleoRobotIcon = createNucleoIcon("77550")
-const NucleoUsersIcon = createNucleoIcon("77510")
-const NucleoWorkflowIcon = createNucleoIcon("77800")
-const NucleoShieldIcon = createNucleoIcon("78300")
-const NucleoLightningIcon = createNucleoIcon("77750")
-const NucleoChartIcon = createNucleoIcon("78150")
-const NucleoSparklesIcon = createNucleoIcon("77650")
+// Create Nucleo icon components for features - VERIFIED ICONS
+const NucleoRobotIcon = createNucleoIcon("77840")    // Edit/compose icon - AI writing
+const NucleoUsersIcon = createNucleoIcon("77920")    // Store/business icon - agents
+const NucleoWorkflowIcon = createNucleoIcon("77900") // Bezier/connections - workflow
+const NucleoShieldIcon = createNucleoIcon("77860")   // Checkmark circle - safety/verified
+const NucleoLightningIcon = createNucleoIcon("77980") // Dashboard/gauge - real-time
+const NucleoChartIcon = createNucleoIcon("77760")    // Magnifying glass - insights
+const NucleoSparklesIcon = createNucleoIcon("77720") // Arrow up circle - growth
 
 // Interactive particle field
 function seededUnit(seed: number) {

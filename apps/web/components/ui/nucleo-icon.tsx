@@ -63,111 +63,96 @@ export function createNucleoIcon(iconId: string) {
 
 /**
  * Semantic icon ID mappings for common use cases
- * These are curated based on the uploaded Nucleo icon set
+ * These are curated and visually verified from the uploaded Nucleo icon set
  */
 export const NucleoIcons = {
-  // AI & Automation (estimated based on icon ranges)
-  robot: "77550",        // Robot/user icon
-  brain: "77600",        // Intelligence  
-  sparkles: "77650",     // Magic/AI
-  wand: "77700",         // Magic wand/cross
-  lightning: "77750",    // Activity/pulse chart
+  // AI & Communication - VERIFIED
+  edit: "77840",          // Edit/compose with pencil - great for AI writing
+  checkCircle: "77860",   // Checkmark in circle - verified/success
+  bezier: "77900",        // Bezier curve/connections - workflow/automation  
+  store: "77920",         // Store/shop - business
+  menu: "77940",          // Hamburger menu - navigation
+  globe: "77960",         // Globe on stand - global/worldwide
+  dashboard: "77980",     // Speedometer/gauge - performance/insights
   
-  // Workflow & Process
-  workflow: "77800",     // Workflow/funnel
-  blocks: "77850",       // Cloud/blocks
-  layers: "77900",       // Layers/sliders
-  flow: "77950",         // Flow/nodes
-  cogs: "78000",         // Tree/hierarchy
+  // Navigation & Actions - VERIFIED
+  close: "77700",         // X close icon
+  arrowUp: "77720",       // Arrow up in circle - growth/upload
+  battery: "77740",       // Battery indicator
+  search: "77760",        // Magnifying glass - search/discovery
+  minus: "77780",         // Minus in square
+  phone: "77800",         // Telephone - contact
+  image: "77820",         // Image/photo
+  inbox: "77880",         // Inbox/tray
+
+  // Language & Translation - VERIFIED  
+  translate: "78480",     // Translation icon (Chinese + A)
   
-  // Data & Analytics
-  chart: "78050",        // Cart/data
-  database: "78100",     // Layers/database
-  graph: "78150",        // Grid/graph
-  dashboard: "78200",    // Document/dashboard
+  // Solid Style Icons (78000+ range) - use for emphasis
+  solidBezier: "78000",   // Solid bezier/tech
+  solidDashboard: "78050", // Solid dashboard
+  solidData: "78100",     // Solid data blocks
+  solidGrid: "78150",     // Solid grid
+  solidLayers: "78200",   // Solid layers
+  solidShield: "78250",   // Solid shield
+  solidLock: "78300",     // Solid lock
+  solidCode: "78350",     // Solid code brackets
+  solidBadge: "78400",    // Solid badge/check
+  solidMessage: "78450",  // Solid message bubble
   
-  // Security & Trust
-  shield: "78250",       // Download/secure
-  lock: "78300",         // Lock/security
-  key: "78350",          // Code/key
-  checkmark: "78400",    // Badge/check
-  
-  // Communication
-  message: "78450",      // Message
-  bell: "78500",         // Bell/notification
-  email: "77487",        // Email/photo
-  send: "77490",         // Nature/send
-  
-  // Users & Teams  
-  user: "77500",         // User/circle
-  users: "77510",        // Multiple users
-  building: "77520",     // Building
-  globe: "77530",        // Globe
-  
-  // Development
-  code: "77540",         // Code
-  terminal: "77560",     // Terminal
-  git: "77570",          // Git
-  api: "77580",          // API
-  
-  // Time & Status
-  clock: "77590",        // Clock
-  calendar: "77610",     // Calendar
-  refresh: "77620",      // Refresh
-  play: "77630",         // Play
-  
-  // Objects
-  document: "77640",     // Document
-  folder: "77660",       // Folder
-  cloud: "77670",        // Cloud
-  server: "77680",       // Server
-  
-  // Navigation
-  arrow: "77690",        // Arrow
-  expand: "77710",       // Expand
-  target: "77720",       // Target
-  compass: "77730",      // Compass
-  
-  // Additional variety icons
-  rocket: "77740",       // Rocket/launch
-  star: "77760",         // Star/favorite
-  heart: "77770",        // Heart/like
-  flag: "77780",         // Flag/milestone
-  award: "77790",        // Award/trophy
-  puzzle: "77810",       // Puzzle/integration
-  tools: "77820",        // Tools/settings
-  eye: "77830",          // Eye/visibility
-  search: "77840",       // Search
-  filter: "77860",       // Filter
-  sort: "77870",         // Sort
-  download: "77880",     // Download
-  upload: "77890",       // Upload
-  link: "77910",         // Link
-  share: "77920",        // Share
-  bookmark: "77930",     // Bookmark
-  tag: "77940",          // Tag
-  pin: "77960",          // Pin/location
-  map: "77970",          // Map
-  home: "77980",         // Home
-  settings: "77990",     // Settings
+  // Legacy mappings for backwards compatibility
+  robot: "77840",         // Using edit as proxy for AI
+  brain: "77980",         // Using dashboard as proxy for intelligence
+  sparkles: "77860",      // Using checkmark as proxy for magic
+  workflow: "77900",      // Bezier - workflow connections
+  shield: "78250",        // Solid shield
+  lock: "78300",          // Solid lock  
+  chart: "77980",         // Dashboard/speedometer
+  users: "77800",         // Phone (placeholder)
+  lightning: "77720",     // Arrow up as proxy for energy
+  code: "78350",          // Solid code brackets
+  rocket: "77720",        // Arrow up as proxy for launch
+  target: "77860",        // Checkmark as proxy for target
+  puzzle: "77900",        // Bezier as proxy for connections
+  tools: "77840",         // Edit/pencil as proxy for tools  
+  eye: "77760",           // Search/magnify as proxy for visibility
 } as const
 
 export type NucleoIconName = keyof typeof NucleoIcons
 
-// Pre-created icon components for common use
-export const NucleoRobotIcon = createNucleoIcon(NucleoIcons.robot)
-export const NucleoBrainIcon = createNucleoIcon(NucleoIcons.brain)
-export const NucleoSparklesIcon = createNucleoIcon(NucleoIcons.sparkles)
-export const NucleoWorkflowIcon = createNucleoIcon(NucleoIcons.workflow)
-export const NucleoShieldIcon = createNucleoIcon(NucleoIcons.shield)
-export const NucleoLockIcon = createNucleoIcon(NucleoIcons.lock)
-export const NucleoChartIcon = createNucleoIcon(NucleoIcons.chart)
-export const NucleoUsersIcon = createNucleoIcon(NucleoIcons.users)
-export const NucleoLightningIcon = createNucleoIcon(NucleoIcons.lightning)
+// Pre-created icon components for common use - VERIFIED ICONS
+export const NucleoEditIcon = createNucleoIcon(NucleoIcons.edit)
+export const NucleoCheckCircleIcon = createNucleoIcon(NucleoIcons.checkCircle)
+export const NucleoBezierIcon = createNucleoIcon(NucleoIcons.bezier)
+export const NucleoStoreIcon = createNucleoIcon(NucleoIcons.store)
 export const NucleoGlobeIcon = createNucleoIcon(NucleoIcons.globe)
-export const NucleoCodeIcon = createNucleoIcon(NucleoIcons.code)
-export const NucleoRocketIcon = createNucleoIcon(NucleoIcons.rocket)
-export const NucleoTargetIcon = createNucleoIcon(NucleoIcons.target)
-export const NucleoPuzzleIcon = createNucleoIcon(NucleoIcons.puzzle)
-export const NucleoToolsIcon = createNucleoIcon(NucleoIcons.tools)
-export const NucleoEyeIcon = createNucleoIcon(NucleoIcons.eye)
+export const NucleoDashboardIcon = createNucleoIcon(NucleoIcons.dashboard)
+export const NucleoSearchIcon = createNucleoIcon(NucleoIcons.search)
+export const NucleoArrowUpIcon = createNucleoIcon(NucleoIcons.arrowUp)
+export const NucleoPhoneIcon = createNucleoIcon(NucleoIcons.phone)
+export const NucleoImageIcon = createNucleoIcon(NucleoIcons.image)
+export const NucleoInboxIcon = createNucleoIcon(NucleoIcons.inbox)
+
+// Solid style icon components
+export const NucleoSolidShieldIcon = createNucleoIcon(NucleoIcons.solidShield)
+export const NucleoSolidLockIcon = createNucleoIcon(NucleoIcons.solidLock)
+export const NucleoSolidCodeIcon = createNucleoIcon(NucleoIcons.solidCode)
+export const NucleoSolidBadgeIcon = createNucleoIcon(NucleoIcons.solidBadge)
+export const NucleoSolidMessageIcon = createNucleoIcon(NucleoIcons.solidMessage)
+
+// Legacy exports for backwards compatibility
+export const NucleoRobotIcon = NucleoEditIcon
+export const NucleoBrainIcon = NucleoDashboardIcon
+export const NucleoSparklesIcon = NucleoCheckCircleIcon
+export const NucleoWorkflowIcon = NucleoBezierIcon
+export const NucleoShieldIcon = NucleoSolidShieldIcon
+export const NucleoLockIcon = NucleoSolidLockIcon
+export const NucleoChartIcon = NucleoDashboardIcon
+export const NucleoUsersIcon = NucleoPhoneIcon
+export const NucleoLightningIcon = NucleoArrowUpIcon
+export const NucleoCodeIcon = NucleoSolidCodeIcon
+export const NucleoRocketIcon = NucleoArrowUpIcon
+export const NucleoTargetIcon = NucleoCheckCircleIcon
+export const NucleoPuzzleIcon = NucleoBezierIcon
+export const NucleoToolsIcon = NucleoEditIcon
+export const NucleoEyeIcon = NucleoSearchIcon
