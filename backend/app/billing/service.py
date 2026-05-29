@@ -165,6 +165,30 @@ def get_org_billing(client: Client, org_id: str) -> dict | None:
     return dict(row[0])
 
 
+def get_org_hard_budget_override(client: Client, org_id: str) -> bool | None:
+    """Per-org hard-budget override from org_billing.hard_budget_enabled.
+
+    Returns True/False to force the gate on/off for this org, or None to inherit
+    the global AI_HARD_BUDGET_ENABLED flag. Returns None on any error (e.g. the
+    column not yet migrated) so behavior safely falls back to the global flag.
+    """
+    try:
+        rows = (
+            client.table("org_billing")
+            .select("hard_budget_enabled")
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if rows and rows[0].get("hard_budget_enabled") is not None:
+            return bool(rows[0]["hard_budget_enabled"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("hard_budget override lookup failed org_id=%s error=%s", org_id, str(exc))
+    return None
+
+
 def get_org_billing_overrides(client: Client, org_id: str) -> dict | None:
     row = (
         client.table("org_billing_overrides")

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.services.ai_guardrails import (
+    AIBudgetExceededError,
     AIRateLimitError,
     AIServiceDisabledError,
     SlidingWindowRateLimiter,
+    enforce_budget,
     enforce_rate_limit,
     fence_untrusted,
     harden_system_prompt,
@@ -90,6 +93,38 @@ class TestRateLimiter:
         # 0 disables — never raises regardless of volume.
         for _ in range(50):
             enforce_rate_limit("org-x", settings)
+
+
+class TestBudgetGate:
+    def _patch_billing(self, monkeypatch, *, override, included, used):
+        import app.billing.service as bs
+
+        monkeypatch.setattr(bs, "get_supabase_client", lambda s: object())
+        monkeypatch.setattr(bs, "get_org_hard_budget_override", lambda c, o: override)
+        monkeypatch.setattr(bs, "get_plan_for_org", lambda c, o: {"ai_credits_included": included})
+        monkeypatch.setattr(bs, "get_current_period", lambda: (date(2026, 5, 1), date(2026, 5, 31)))
+        monkeypatch.setattr(bs, "_sum_usage", lambda c, o, m, ps, pe: used)
+
+    def test_per_org_override_enables_when_global_off(self, mock_settings, monkeypatch):
+        # global off, but this org is force-enabled -> blocks over cap (100*2=200).
+        settings = mock_settings.model_copy(
+            update={"ai_hard_budget_enabled": False, "ai_budget_overage_multiplier": 2.0}
+        )
+        self._patch_billing(monkeypatch, override=True, included=100, used=500)
+        with pytest.raises(AIBudgetExceededError):
+            enforce_budget("org-1", settings)
+
+    def test_per_org_override_disables_when_global_on(self, mock_settings, monkeypatch):
+        # global on, but this org is force-disabled -> never blocks.
+        settings = mock_settings.model_copy(update={"ai_hard_budget_enabled": True})
+        self._patch_billing(monkeypatch, override=False, included=100, used=999999)
+        enforce_budget("org-1", settings)  # must not raise
+
+    def test_inherits_global_when_no_override(self, mock_settings, monkeypatch):
+        # no per-org override -> inherit global off -> never blocks.
+        settings = mock_settings.model_copy(update={"ai_hard_budget_enabled": False})
+        self._patch_billing(monkeypatch, override=None, included=100, used=999999)
+        enforce_budget("org-1", settings)  # must not raise
 
 
 class TestModelRouterGuardrails:

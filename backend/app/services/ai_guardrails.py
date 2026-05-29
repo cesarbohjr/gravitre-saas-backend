@@ -169,25 +169,33 @@ def enforce_rate_limit(org_id: str | None, settings: Settings) -> None:
 def enforce_budget(org_id: str | None, settings: Settings) -> None:
     """Block when an org's period ai_credits usage has reached the configured cap.
 
+    Effective enablement = per-org override (org_billing.hard_budget_enabled) when
+    set, else the global AI_HARD_BUDGET_ENABLED flag. This lets enforcement be
+    staged per-tenant while the global flag stays off.
+
     Cap = ai_credits_included * ai_budget_overage_multiplier. Plans with no
     included credits (e.g. enterprise/unlimited) are skipped. Best-effort: if the
     usage lookup fails, we do NOT block (fail-open) to avoid taking AI down on a
     transient DB error — the rate limiter remains the hard circuit breaker.
     """
-    if not getattr(settings, "ai_hard_budget_enabled", False):
-        return
     if not org_id:
         return
+    global_enabled = bool(getattr(settings, "ai_hard_budget_enabled", False))
     try:
         # Lazy import avoids any import cycle and keeps billing optional.
         from app.billing.service import (
             _sum_usage,
             get_current_period,
+            get_org_hard_budget_override,
             get_plan_for_org,
             get_supabase_client,
         )
 
         client = get_supabase_client(settings)
+        override = get_org_hard_budget_override(client, org_id)
+        effective_enabled = override if override is not None else global_enabled
+        if not effective_enabled:
+            return
         plan = get_plan_for_org(client, org_id)
         included = int(plan.get("ai_credits_included") or 0)
         if included <= 0:
