@@ -1,4 +1,19 @@
-"""OpenAI fine-tuning integration."""
+"""OpenAI fine-tuning integration.
+
+=============================================================================
+IMPORTANT — OpenAI fine-tuning constraints (verified May 2026)
+=============================================================================
+1. The GPT-5.4 / GPT-5.5 family is NOT available for fine-tuning. Do not set
+   base_model to gpt-5.4-mini / gpt-5.5 — those jobs will be rejected.
+2. OpenAI's fine-tuning platform is winding down and is CLOSED TO NEW USERS as
+   of May 2026. New fine-tuning jobs may fail unless the org already has access.
+3. Existing fine-tuned models (e.g. trained on gpt-4.1-mini) REMAIN AVAILABLE
+   FOR INFERENCE until their base model is deprecated.
+4. The only models currently fine-tunable on OpenAI are: gpt-4.1 and
+   gpt-4.1-mini (SFT/DPO) and o4-mini (RFT). When OpenAI re-opens fine-tuning
+   or adds GPT-5 family support, update `FineTuningConfig.base_model` here.
+=============================================================================
+"""
 from __future__ import annotations
 
 import json
@@ -25,9 +40,9 @@ class FineTuningExample(BaseModel):
 class FineTuningConfig(BaseModel):
     """Configuration for fine-tuning job."""
 
-    # TODO: confirm the correct GPT-5 fine-tuning base snapshot in the OpenAI
-    # fine-tuning docs (https://platform.openai.com/docs/guides/fine-tuning).
-    base_model: str = "gpt-5.4-mini"
+    # gpt-4.1-mini is the current fine-tunable base (GPT-5 family is NOT
+    # fine-tunable as of May 2026 — see module docstring).
+    base_model: str = "gpt-4.1-mini"
     n_epochs: int | str = "auto"
     batch_size: int | str = "auto"
     learning_rate_multiplier: float | str = "auto"

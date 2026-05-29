@@ -21,7 +21,7 @@ async def test_fine_tuning_train_and_status_with_mocked_client():
                         status="succeeded",
                         created_at=1,
                         finished_at=2,
-                        fine_tuned_model="ft:gpt-5.4-mini:test",
+                        fine_tuned_model="ft:gpt-4.1-mini:test",
                         trained_tokens=123,
                         error=None,
                     )
@@ -43,7 +43,7 @@ async def test_fine_tuning_train_and_status_with_mocked_client():
     )
     model.client = client  # bypass real OpenAI
     model.openai_job_id = "ftjob_1"
-    model.fine_tuned_model_id = "ft:gpt-5.4-mini:test"
+    model.fine_tuned_model_id = "ft:gpt-4.1-mini:test"
 
     outputs, _ = await model.predict([{"messages": [{"role": "user", "content": "hi"}]}])
     assert outputs == ["ok"]
