@@ -55,10 +55,10 @@ _MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
     "gpt-4.1": (0.002, 0.008),
     "gpt-4o-mini": (0.00015, 0.0006),
     "gpt-4o": (0.005, 0.015),
-    "claude-haiku-3": (0.0008, 0.004),
-    "claude-sonnet-4": (0.003, 0.015),
-    "gemini-2.0-flash": (0.0001, 0.0004),
-    "gemini-2.0-pro": (0.00125, 0.005),
+    "claude-haiku-4-5-20251001": (0.0008, 0.004),
+    "claude-sonnet-4-6": (0.003, 0.015),
+    "gemini-2.5-flash": (0.0001, 0.0004),
+    "gemini-2.5-pro": (0.00125, 0.005),
 }
 
 

@@ -50,9 +50,9 @@ class StubAdapter(ProviderAdapter):
 class TestBuildPriority:
     def test_auto_high_prefers_anthropic(self):
         assert build_priority("auto", "high") == [
-            ("anthropic", "claude-sonnet-4"),
+            ("anthropic", "claude-sonnet-4-6"),
             ("openai", "gpt-4o"),
-            ("gemini", "gemini-2.0-pro"),
+            ("gemini", "gemini-2.5-pro"),
         ]
 
     def test_auto_low_prefers_openai(self):
@@ -60,7 +60,7 @@ class TestBuildPriority:
 
     def test_preferred_anthropic_first(self):
         priority = build_priority("anthropic", "medium")
-        assert priority[0] == ("anthropic", "claude-sonnet-4")
+        assert priority[0] == ("anthropic", "claude-sonnet-4-6")
         assert [p for p, _ in priority] == ["anthropic", "openai", "gemini"]
 
     def test_preferred_gemini_first(self):

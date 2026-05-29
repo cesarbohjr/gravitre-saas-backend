@@ -33,7 +33,7 @@ def _try_import(name: str) -> Any | None:
 
 class GeminiAdapter(ProviderAdapter):
     provider_name = "gemini"
-    supported_models = ["gemini-2.0-flash", "gemini-2.0-pro"]
+    supported_models = ["gemini-2.5-flash", "gemini-2.5-pro"]
 
     def __init__(self, api_key_getter: Callable[[], str]) -> None:
         self._api_key_getter = api_key_getter

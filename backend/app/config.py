@@ -157,18 +157,18 @@ class Settings(BaseSettings):
 MODEL_TIERS: dict[str, dict[str, str]] = {
     "low": {
         "openai": "gpt-4o-mini",
-        "anthropic": "claude-haiku-3",
-        "gemini": "gemini-2.0-flash",
+        "anthropic": "claude-haiku-4-5-20251001",
+        "gemini": "gemini-2.5-flash",
     },
     "medium": {
         "openai": "gpt-4o",
-        "anthropic": "claude-sonnet-4",
-        "gemini": "gemini-2.0-pro",
+        "anthropic": "claude-sonnet-4-6",
+        "gemini": "gemini-2.5-pro",
     },
     "high": {
         "openai": "gpt-4o",
-        "anthropic": "claude-sonnet-4",
-        "gemini": "gemini-2.0-pro",
+        "anthropic": "claude-sonnet-4-6",
+        "gemini": "gemini-2.5-pro",
     },
 }
 

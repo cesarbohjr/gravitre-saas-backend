@@ -101,7 +101,7 @@ class TestAnthropicAdapter:
             {"role": "system", "content": "SYS"},
             {"role": "user", "content": "hello"},
         ]
-        r = await adapter.complete(messages, "claude-sonnet-4", CompletionOptions())
+        r = await adapter.complete(messages, "claude-sonnet-4-6", CompletionOptions())
         assert r.content == "hi there"
         assert (r.prompt_tokens, r.completion_tokens) == (7, 3)
         assert r.provider_used == "anthropic"

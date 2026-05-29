@@ -36,7 +36,7 @@ def _try_import(name: str) -> Any | None:
 
 class AnthropicAdapter(ProviderAdapter):
     provider_name = "anthropic"
-    supported_models = ["claude-haiku-3", "claude-sonnet-4"]
+    supported_models = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
 
     def __init__(
         self,
