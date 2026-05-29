@@ -24,6 +24,7 @@ class _Query:
         self._payload = None
         self._filters: list[tuple] = []
         self._order = None
+        self._desc = False
         self._limit = None
 
     def insert(self, row):
@@ -42,8 +43,9 @@ class _Query:
         self._filters.append((col, val))
         return self
 
-    def order(self, col):
+    def order(self, col, desc=False):
         self._order = col
+        self._desc = desc
         return self
 
     def limit(self, n):
@@ -65,7 +67,7 @@ class _Query:
         if self._op == "select":
             res = [r for r in rows if self._match(r)]
             if self._order:
-                res = sorted(res, key=lambda r: r.get(self._order) or "")
+                res = sorted(res, key=lambda r: r.get(self._order) or "", reverse=self._desc)
             if self._limit:
                 res = res[: self._limit]
             return _Resp([dict(r) for r in res])
@@ -119,6 +121,20 @@ def test_fail_requeue_then_fail():
     assert jobs.get_job(c, "org-1", j["id"])["status"] == "failed"
 
 
+def test_list_jobs_scoped_and_filtered():
+    c = FakeSupabase()
+    a = jobs.create_job(c, "org-1", payload={"task": "a"})
+    jobs.create_job(c, "org-1", payload={"task": "b"})
+    jobs.create_job(c, "org-2", payload={"task": "c"})  # other org
+    org1 = jobs.list_jobs(c, "org-1", limit=10)
+    assert len(org1) == 2
+    assert all(j["org_id"] == "org-1" for j in org1)
+    # status filter
+    jobs.complete_job(c, a["id"], {"ok": True})
+    completed = jobs.list_jobs(c, "org-1", status="completed")
+    assert len(completed) == 1 and completed[0]["id"] == a["id"]
+
+
 def test_cancel_and_retry():
     c = FakeSupabase()
     j = jobs.create_job(c, "org-1", payload={"task": "x"})
@@ -152,6 +168,17 @@ async def test_enqueue_returns_202(async_client, monkeypatch):
     assert resp.status_code == 202
     body = resp.json()
     assert body["status"] == "queued" and body["jobId"]
+
+
+async def test_list_endpoint(async_client, monkeypatch):
+    _auth()
+    fake = FakeSupabase()
+    monkeypatch.setattr(jobs_router, "create_client", lambda *a, **k: fake)
+    await async_client.post("/api/agent-jobs", headers={"Authorization": "Bearer t"}, json={"task": "a"})
+    await async_client.post("/api/agent-jobs", headers={"Authorization": "Bearer t"}, json={"task": "b"})
+    resp = await async_client.get("/api/agent-jobs", headers={"Authorization": "Bearer t"})
+    assert resp.status_code == 200
+    assert len(resp.json()["jobs"]) == 2
 
 
 async def test_get_missing_returns_404(async_client, monkeypatch):

@@ -72,6 +72,14 @@ def get_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def list_jobs(client: Any, org_id: str, *, limit: int = 20, status: str | None = None) -> list[dict[str, Any]]:
+    """Most-recent jobs for an org (optionally filtered by status)."""
+    q = client.table("agent_jobs").select("*").eq("org_id", org_id)
+    if status:
+        q = q.eq("status", status)
+    return q.order("created_at", desc=True).limit(limit).execute().data or []
+
+
 def claim_next_job(client: Any) -> dict[str, Any] | None:
     """Claim the oldest queued job (queued -> running). Returns it or None."""
     rows = (

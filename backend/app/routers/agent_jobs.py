@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from supabase import create_client
 
@@ -69,6 +69,20 @@ async def enqueue_job(
         created_by=current_user.get("user_id"),
     )
     return _public(job)
+
+
+@router.get("")
+async def list_jobs_endpoint(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    rows = jobs.list_jobs(_client(settings), org_id, limit=limit, status=status_filter)
+    return {"jobs": [_public(r) for r in rows]}
 
 
 @router.get("/{job_id}")
