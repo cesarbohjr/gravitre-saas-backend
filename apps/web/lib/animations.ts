@@ -3,6 +3,9 @@
 
 import type { Variants, Transition } from "framer-motion"
 
+// Cubic-bezier easing tuple type accepted by framer-motion's `ease`.
+type Bezier = [number, number, number, number]
+
 // ============================================
 // TIMING CONSTANTS
 // ============================================
@@ -18,16 +21,16 @@ export const timing = {
 // ============================================
 export const easing = {
   // Smooth for most transitions
-  smooth: [0.4, 0, 0.2, 1],
+  smooth: [0.4, 0, 0.2, 1] as Bezier,
   // Snappy for quick interactions
-  snappy: [0.2, 0, 0, 1],
+  snappy: [0.2, 0, 0, 1] as Bezier,
   // Bounce for playful feedback
-  bounce: [0.34, 1.56, 0.64, 1],
+  bounce: [0.34, 1.56, 0.64, 1] as Bezier,
   // Gentle for subtle animations
-  gentle: [0.25, 0.1, 0.25, 1],
+  gentle: [0.25, 0.1, 0.25, 1] as Bezier,
   // Spring-like
-  spring: { type: "spring", stiffness: 300, damping: 25 },
-} as const
+  spring: { type: "spring" as const, stiffness: 300, damping: 25 },
+}
 
 // ============================================
 // CARD INTERACTIONS

@@ -423,7 +423,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function DocsSlugPage() {
   const params = useParams()
-  const slug = Array.isArray(params.slug) ? params.slug.join('/') : params.slug
+  const slug = (Array.isArray(params.slug) ? params.slug.join('/') : params.slug) ?? ''
   const content = docsContent[slug] || defaultContent
   
   return (
@@ -468,7 +468,7 @@ export default function DocsSlugPage() {
       <section className="px-6 py-12">
         <div className="mx-auto max-w-4xl">
           <div className="space-y-12">
-            {content.sections.map((section, i) => (
+            {content.sections.map((section: { title: string; content: string; code?: string }, i: number) => (
               <motion.div
                 key={section.title}
                 initial={{ opacity: 0, y: 20 }}
@@ -479,7 +479,7 @@ export default function DocsSlugPage() {
                   {section.title}
                 </h2>
                 <div className="prose prose-zinc max-w-none">
-                  {section.content.split('\n\n').map((paragraph, j) => (
+                  {section.content.split('\n\n').map((paragraph: string, j: number) => (
                     <p key={j} className="text-zinc-600 whitespace-pre-line mb-4">
                       {paragraph}
                     </p>

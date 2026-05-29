@@ -86,8 +86,7 @@ function AuthCallbackContent() {
             | "invite"
             | "recovery"
             | "email"
-            | "email_change"
-            | "phone_change",
+            | "email_change",
         })
         if (error) {
           if (!cancelled) {

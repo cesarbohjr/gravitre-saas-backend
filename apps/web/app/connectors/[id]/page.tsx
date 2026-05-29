@@ -142,7 +142,9 @@ const statusConfig = {
 export default function ConnectorDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [connector, setConnector] = useState<typeof mockConnector>(mockConnector)
+  const [connector, setConnector] = useState<
+    Omit<typeof mockConnector, "status" | "environment"> & { status: string; environment: string }
+  >(mockConnector)
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)

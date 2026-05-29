@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // Type errors now fail the build (tsc is clean). Keep it that way via CI + typecheck.
   images: {
     unoptimized: true,
   },

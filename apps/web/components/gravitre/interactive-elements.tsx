@@ -80,7 +80,7 @@ export function ThinkingSteps({ steps, className }: ThinkingStepsProps) {
               transition: { 
                 delay: index * 0.15,
                 duration: timing.ui,
-                ease: easing.smooth as number[]
+                ease: easing.smooth
               }
             }}
             exit={{ opacity: 0, y: -10, height: 0 }}
@@ -159,7 +159,11 @@ export function Skeleton({ className, variant = "rectangular", width, height }: 
 // ============================================
 // INTERACTIVE BUTTON (with press feedback)
 // ============================================
-interface InteractiveButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface InteractiveButtonProps
+  extends Omit<
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd"
+  > {
   variant?: "default" | "primary" | "ghost"
   isLoading?: boolean
   loadingText?: string
@@ -288,7 +292,7 @@ export function AnimatedList({ children, className, staggerDelay = 0.05 }: Anima
             transition: {
               delay: index * staggerDelay,
               duration: timing.ui,
-              ease: easing.smooth as number[]
+              ease: easing.smooth
             }
           }}
           exit={{ opacity: 0, x: 20 }}
@@ -388,7 +392,7 @@ export function ProgressRing({
         strokeLinecap="round"
         initial={{ strokeDasharray: circumference, strokeDashoffset: circumference }}
         animate={{ strokeDashoffset: offset }}
-        transition={{ duration: timing.major, ease: easing.smooth as number[] }}
+        transition={{ duration: timing.major, ease: easing.smooth }}
       />
     </svg>
   )
@@ -423,7 +427,7 @@ export function FadeIn({ children, delay = 0, className, direction = "up" }: Fad
         transition: {
           delay,
           duration: timing.ui,
-          ease: easing.smooth as number[]
+          ease: easing.smooth
         }
       }}
       className={className}
@@ -515,7 +519,7 @@ export function AnimatedEmptyState({ icon, title, description, action, className
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: timing.ui, ease: easing.smooth as number[] }}
+      transition={{ duration: timing.ui, ease: easing.smooth }}
       className={cn("flex flex-col items-center justify-center py-12 text-center", className)}
     >
       {icon && (

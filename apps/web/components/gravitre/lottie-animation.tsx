@@ -64,13 +64,7 @@ export function LottieAnimation({
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    let animation:
-      | {
-          destroy: () => void
-          setSpeed: (value: number) => void
-          addEventListener: (event: string, callback: () => void) => void
-        }
-      | null = null
+    let animation: import("lottie-web").AnimationItem | null = null
 
     const loadLottie = async () => {
       try {

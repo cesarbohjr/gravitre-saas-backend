@@ -100,7 +100,7 @@ export function TimelineItem({
       onMouseLeave={() => setIsHovered(false)}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: timing.ui, ease: easing.smooth as number[] }}
+      transition={{ duration: timing.ui, ease: easing.smooth }}
     >
       {/* Timeline Line & Node */}
       <div className="flex flex-col items-center">
