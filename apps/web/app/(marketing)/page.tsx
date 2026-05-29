@@ -3,10 +3,20 @@
 import Link from "next/link"
 import { motion, useScroll, useTransform, useMotionValue, useSpring, AnimatePresence } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
-import { ArrowRight, Bot, Workflow, Shield, Zap, Users, BarChart3, Sparkles, Play, ChevronRight, Activity, Cpu, Globe } from "lucide-react"
+import { ArrowRight, Play, ChevronRight, Activity, Cpu, Globe, Bot, Users, Zap, BarChart3, Sparkles } from "lucide-react"
+import { createNucleoIcon } from "@/components/ui/nucleo-icon"
 import { AppShowcase } from "@/components/gravitre/app-showcase"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { ProductShowcase, HowItWorks, TestimonialsCarousel, AnimatedStats } from "@/components/marketing/product-showcase"
+
+// Create Nucleo icon components for features
+const NucleoRobotIcon = createNucleoIcon("77550")
+const NucleoUsersIcon = createNucleoIcon("77510")
+const NucleoWorkflowIcon = createNucleoIcon("77800")
+const NucleoShieldIcon = createNucleoIcon("78300")
+const NucleoLightningIcon = createNucleoIcon("77750")
+const NucleoChartIcon = createNucleoIcon("78150")
+const NucleoSparklesIcon = createNucleoIcon("77650")
 
 // Interactive particle field
 function seededUnit(seed: number) {
@@ -374,7 +384,7 @@ function ProductPreview() {
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     >
-                      <Sparkles className="h-5 w-5 text-white" />
+                      <NucleoSparklesIcon className="h-5 w-5" />
                     </motion.div>
                     <div className="flex-1">
                       <div className="h-2 w-32 rounded bg-zinc-300" />
@@ -616,32 +626,32 @@ export default function HomePage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                icon: Bot,
+                icon: NucleoRobotIcon,
                 title: "AI Assistant",
                 description: "Talk to your AI team in plain English. Ask questions, start tasks, and get answers instantly."
               },
               {
-                icon: Users,
+                icon: NucleoUsersIcon,
                 title: "Smart Agents",
                 description: "Pre-built AI helpers for marketing, sales, finance, and operations. Each one knows its job and stays safe."
               },
               {
-                icon: Workflow,
+                icon: NucleoWorkflowIcon,
                 title: "Easy Automations",
                 description: "Build powerful automations by dragging and dropping. Connect your apps, data, and approval steps."
               },
               {
-                icon: Shield,
+                icon: NucleoShieldIcon,
                 title: "Built-in Safety",
                 description: "Get approval before big changes, keep a full history, and control who can do what. Stay safe and in control."
               },
               {
-                icon: Zap,
+                icon: NucleoLightningIcon,
                 title: "See It Happen Live",
                 description: "Watch your automations run in real-time. Pause, fix issues, and undo changes with confidence."
               },
               {
-                icon: BarChart3,
+                icon: NucleoChartIcon,
                 title: "Clear Insights",
                 description: "See what's working, find problems fast, and make your AI work better with simple reports."
               },
