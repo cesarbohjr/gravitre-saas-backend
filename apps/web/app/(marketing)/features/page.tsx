@@ -5,31 +5,34 @@ import { motion, AnimatePresence } from "framer-motion"
 import React from "react"
 import { 
   ArrowRight, 
-  Bot, 
-  Workflow, 
-  Shield, 
-  Users,
-  MessageSquare,
-  Database,
-  Zap,
-  Eye,
-  Lock,
-  BarChart3,
-  Clock,
-  Check,
-  GitBranch,
-  Bell,
-  FileText,
-  Sparkles,
   ChevronRight,
-  Send,
-  Blocks,
-  Layers,
+  Check,
   Play
 } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { VendorLogo } from "@/components/gravitre/vendor-logo"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
+
+// Create Nucleo icons for features page - using variety of different icons
+const NucleoAgentIcon = createNucleoIcon("77550")      // Robot/agent
+const NucleoWorkflowIcon = createNucleoIcon("77800")   // Workflow
+const NucleoSecurityIcon = createNucleoIcon("78300")   // Lock/security
+const NucleoTeamIcon = createNucleoIcon("77510")       // Users/team
+const NucleoChatIcon = createNucleoIcon("78450")       // Message/chat
+const NucleoDataIcon = createNucleoIcon("78100")       // Database/data
+const NucleoPerformanceIcon = createNucleoIcon("77750") // Lightning/performance
+const NucleoInsightsIcon = createNucleoIcon("77830")   // Eye/insights
+const NucleoProtectionIcon = createNucleoIcon("78250") // Shield/protection
+const NucleoAnalyticsIcon = createNucleoIcon("78150")  // Graph/analytics
+const NucleoScheduleIcon = createNucleoIcon("77590")   // Clock/schedule
+const NucleoVersionIcon = createNucleoIcon("77570")    // Git/version
+const NucleoAlertIcon = createNucleoIcon("78500")      // Bell/notification
+const NucleoDocIcon = createNucleoIcon("77640")        // Document
+const NucleoSparkleIcon = createNucleoIcon("77650")    // Sparkles/magic
+const NucleoSendIcon = createNucleoIcon("77490")       // Send
+const NucleoBlocksIcon = createNucleoIcon("77850")     // Blocks/modules
+const NucleoLayersIcon = createNucleoIcon("77900")     // Layers
 
 // Bento card component - Light theme
 function BentoCard({ 
@@ -58,10 +61,10 @@ function BentoCard({
 // Interactive App Screen Components
 function AgentsScreen() {
   const agents = [
-    { name: "Data Analyst", icon: BarChart3, color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
-    { name: "Content Writer", icon: FileText, color: "blue", status: "active", tasks: 8, accuracy: "95%" },
-    { name: "Research Agent", icon: Eye, color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
-    { name: "Code Reviewer", icon: GitBranch, color: "amber", status: "active", tasks: 5, accuracy: "99%" },
+    { name: "Data Analyst", iconId: "78150", color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
+    { name: "Content Writer", iconId: "77640", color: "blue", status: "active", tasks: 8, accuracy: "95%" },
+    { name: "Research Agent", iconId: "77830", color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
+    { name: "Code Reviewer", iconId: "77570", color: "amber", status: "active", tasks: 5, accuracy: "99%" },
   ]
   
   return (
@@ -99,11 +102,12 @@ function AgentsScreen() {
               agent.color === 'blue' ? 'bg-blue-100' :
               agent.color === 'purple' ? 'bg-purple-100' : 'bg-amber-100'
             }`}>
-              <agent.icon className={`h-5 w-5 ${
-                agent.color === 'emerald' ? 'text-emerald-600' :
-                agent.color === 'blue' ? 'text-blue-600' :
-                agent.color === 'purple' ? 'text-purple-600' : 'text-amber-600'
-              }`} />
+              <NucleoIcon id={agent.iconId} size={20} className={
+                agent.color === 'emerald' ? '[filter:invert(48%)_sepia(79%)_saturate(2476%)_hue-rotate(115deg)_brightness(92%)_contrast(101%)]' :
+                agent.color === 'blue' ? '[filter:invert(37%)_sepia(78%)_saturate(2476%)_hue-rotate(199deg)_brightness(92%)_contrast(98%)]' :
+                agent.color === 'purple' ? '[filter:invert(32%)_sepia(98%)_saturate(2476%)_hue-rotate(253deg)_brightness(84%)_contrast(92%)]' : 
+                '[filter:invert(66%)_sepia(60%)_saturate(2000%)_hue-rotate(20deg)_brightness(95%)_contrast(88%)]'
+              } />
               {agent.status === "active" && (
                 <motion.div
                   className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
