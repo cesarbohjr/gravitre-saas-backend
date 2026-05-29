@@ -20,6 +20,7 @@ from app.operators import router as operators_router
 from app.routers import (
     ai_system,
     agent_council,
+    assistant,
     auth,
     audit,
     billing,
@@ -215,6 +216,7 @@ app.include_router(optimization.router)
 app.include_router(scim.router)
 app.include_router(ml_models.router)
 app.include_router(ai_system.router)
+app.include_router(assistant.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

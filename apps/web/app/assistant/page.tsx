@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useChat } from "@ai-sdk/react"
-import type { UIMessage } from "ai"
+import { DefaultChatTransport, type UIMessage } from "ai"
+import { getSelectedOrgFromStorage, DEFAULT_DEMO_ORG_ID } from "@/lib/org-context"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
@@ -19,7 +20,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -381,7 +382,33 @@ export default function AssistantPage() {
     return []
   }, [])
 
+  // Transport forwards the Supabase JWT + selected org so the backend can
+  // authenticate, enforce tenant isolation, and apply the governance layer.
+  // All AI logic lives in the backend; /api/chat is a thin proxy.
+  const [transport] = useState(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        headers: async () => {
+          const token = await getAccessToken()
+          const org = getSelectedOrgFromStorage()
+          return {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "x-org-id": org?.id ?? DEFAULT_DEMO_ORG_ID,
+          }
+        },
+        body: () => {
+          const org = getSelectedOrgFromStorage()
+          return {
+            org_id: org?.id ?? DEFAULT_DEMO_ORG_ID,
+            tools: ["knowledge_base", "agent_status", "connector_status"],
+          }
+        },
+      }),
+  )
+
   const { messages, sendMessage, status, setMessages } = useChat({
+    transport,
     messages: getInitialMessages(),
     onError: (error) => {
       console.error("[v0] Chat error:", error)

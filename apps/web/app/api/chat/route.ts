@@ -1,284 +1,77 @@
-import {
-  consumeStream,
-  convertToModelMessages,
-  embed,
-  streamText,
-  UIMessage,
-  tool,
-} from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
 import { NextRequest } from "next/server"
-import { z } from 'zod'
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
-import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
+
+// Thin proxy: the assistant's AI logic lives entirely in the backend governance
+// layer (backend/app/routers/assistant.py via model_router). This route only
+// forwards the request (with the caller's JWT + org) and streams the backend's
+// AI SDK UI message stream back to the browser. No AI SDK, no OpenAI, no tools,
+// no prompts here.
 
 export const maxDuration = 30
 
-// Use the direct OpenAI provider so the chat assistant depends only on
-// OPENAI_API_KEY (already configured for the backend) rather than requiring
-// Vercel AI Gateway credentials.
-const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-// System prompt for the Gravitre AI Assistant
-const SYSTEM_PROMPT = `You are a helpful AI assistant for Gravitre, an enterprise automation platform. You help users manage their:
-
-- **Agents**: AI agents that automate tasks (Marketing, Sales, Operations, Finance, Support)
-- **Workflows**: Automated processes that connect different systems
-- **Connectors**: Integrations with external services (Salesforce, Stripe, Slack, HubSpot, etc.)
-- **Data Sources**: Knowledge bases and documents for RAG-powered search
-
-You can help users:
-1. Understand how their systems work together
-2. Troubleshoot issues with connectors or workflows
-3. Suggest optimizations for their automation setup
-4. Answer questions about their data and analytics
-5. Guide them through creating new agents or workflows
-
-Be concise but helpful. Use bullet points when listing items. If you don't know something specific about their setup, acknowledge it and suggest how they might find the information.`
-
-function createChatTools(req: NextRequest, orgId: string) {
-  const supabase = createSupabaseRouteClient(req)
-  const demoRows = getDemoRowsForOrg(orgId)
-
-  return {
-    searchKnowledgeBase: tool({
-      description: 'Search the knowledge base for relevant documents and information',
-      inputSchema: z.object({
-        query: z.string().describe('The search query'),
-        limit: z.number().default(5).describe('Number of results to return'),
-      }),
-      execute: async ({ query, limit }) => {
-        const safeLimit = Math.max(1, Math.min(limit, 10))
-
-        // Primary path: semantic (pgvector) retrieval over embedded chunks.
-        try {
-          const { embedding } = await embed({
-            model: openai.textEmbeddingModel('text-embedding-3-small'),
-            value: query,
-          })
-          const vector = `[${embedding.join(',')}]`
-          const { data, error } = await supabase.rpc('rag_search', {
-            p_org_id: orgId,
-            p_query_embedding: vector,
-            p_top_k: safeLimit,
-          })
-          if (!error && Array.isArray(data) && data.length > 0) {
-            const results = (data as Record<string, unknown>[]).map((row) => ({
-              title: String(row.document_title ?? row.source_title ?? 'Knowledge Source'),
-              snippet: String(row.content ?? '').slice(0, 280),
-              relevance: Math.round(Number(row.score ?? 0) * 100) / 100,
-            }))
-            return { results, totalResults: results.length, method: 'semantic' as const }
-          }
-        } catch (err) {
-          console.error('[chat] semantic search failed, falling back to keyword:', err)
-        }
-
-        // Fallback: keyword (ilike) search so the tool still works without embeddings.
-        const likeTerm = `%${query}%`
-        const { data, error } = await supabase
-          .from("rag_chunks")
-          .select("id, content, source_id, source_name, source:rag_sources(name)")
-          .eq("org_id", orgId)
-          .ilike("content", likeTerm)
-          .limit(safeLimit)
-
-        if (error) {
-          return {
-            results: [],
-            totalResults: 0,
-            error: error.message,
-          }
-        }
-
-        const results = (data ?? []).map((row) => {
-          const content = String(row.content ?? "")
-          const sourceObj = row.source as { name?: string } | null
-          return {
-            title: String(sourceObj?.name ?? row.source_name ?? "Knowledge Source"),
-            snippet: content.slice(0, 220),
-            relevance: Math.max(0.5, Math.min(0.99, query.length > 0 ? content.toLowerCase().includes(query.toLowerCase()) ? 0.92 : 0.71 : 0.7)),
-          }
-        })
-
-        return {
-          results,
-          totalResults: results.length,
-          method: 'keyword' as const,
-        }
-      },
-    }),
-
-    getAgentStatus: tool({
-      description: 'Get the current status and metrics for agents',
-      inputSchema: z.object({
-        agentId: z.string().optional().describe('Specific agent ID, or omit for all agents'),
-      }),
-      execute: async ({ agentId }) => {
-        const { data, error } = await supabase
-          .from("agents")
-          .select("id, name, status, stats")
-          .eq("org_id", orgId)
-          .order("created_at", { ascending: false })
-
-        if (error) {
-          return {
-            agents: [],
-            error: error.message,
-          }
-        }
-
-        const normalized = (data ?? []).map((row) => {
-          const stats = row.stats && typeof row.stats === "object" ? (row.stats as Record<string, unknown>) : {}
-          return {
-            id: String(row.id),
-            name: String(row.name ?? "Agent"),
-            status: String(row.status ?? "idle"),
-            tasksToday: Number(stats.tasksToday ?? 0),
-            successRate: Number(stats.successRate ?? 100),
-          }
-        })
-
-        const fallback = (demoRows?.agents ?? []).map((row) => ({
-          id: String(row.id),
-          name: String(row.name ?? "Agent"),
-          status: String(row.status ?? "idle"),
-          tasksToday: Number((row.stats as Record<string, unknown> | undefined)?.tasksToday ?? 0),
-          successRate: Number((row.stats as Record<string, unknown> | undefined)?.successRate ?? 100),
-        }))
-
-        const agents = normalized.length > 0 ? normalized : fallback
-        const needle = agentId?.toLowerCase()
-        return {
-          agents: needle
-            ? agents.filter((a) => a.id.toLowerCase() === needle || a.name.toLowerCase() === needle)
-            : agents,
-        }
-      },
-    }),
-
-    getConnectorStatus: tool({
-      description: 'Get the status of connected integrations',
-      inputSchema: z.object({
-        connectorType: z.string().optional().describe('Specific connector type, or omit for all'),
-      }),
-      execute: async ({ connectorType }) => {
-        const { data, error } = await supabase
-          .from("connectors")
-          .select("id, name, type, status, health")
-          .eq("org_id", orgId)
-          .order("created_at", { ascending: false })
-
-        if (error) {
-          const isMissingConnectorsTable = String(error.message).toLowerCase().includes("does not exist")
-          if (!isMissingConnectorsTable) {
-            return { connectors: [], error: error.message }
-          }
-
-          const { data: fallbackSystems, error: fallbackError } = await supabase
-            .from("connected_systems")
-            .select("id, name, system_key, type, status, config")
-            .eq("org_id", orgId)
-            .order("created_at", { ascending: false })
-
-          if (fallbackError) {
-            return { connectors: [], error: fallbackError.message }
-          }
-
-          const connectors = (fallbackSystems ?? []).map((row) => {
-            const config = row.config && typeof row.config === "object" ? (row.config as Record<string, unknown>) : {}
-            return {
-              id: String(row.id),
-              name: String(row.system_key ?? row.name ?? "connector"),
-              type: String(row.name ?? row.type ?? "Custom"),
-              status: String(row.status ?? "disconnected"),
-              health: Number(config.health ?? (row.status === "connected" ? 100 : 0)),
-            }
-          })
-
-          const needle = connectorType?.toLowerCase()
-          return {
-            connectors: needle ? connectors.filter((c) => c.type.toLowerCase() === needle) : connectors,
-          }
-        }
-
-        const connectors = (data ?? []).map((row) => ({
-          id: String(row.id),
-          name: String(row.name ?? "connector"),
-          type: String(row.type ?? "Custom"),
-          status: String(row.status ?? "disconnected"),
-          health: Number(row.health ?? 0),
-        }))
-
-        const needle = connectorType?.toLowerCase()
-        return {
-          connectors: needle ? connectors.filter((c) => c.type.toLowerCase() === needle) : connectors,
-        }
-      },
-    }),
-  }
+function getBackendBaseUrl(): string | null {
+  const value = process.env.FASTAPI_BASE_URL?.trim()
+  return value ? value.replace(/\/+$/, "") : null
 }
 
 function jsonError(message: string, status: number, detail?: string) {
   return new Response(JSON.stringify({ error: message, ...(detail ? { detail } : {}) }), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
   })
 }
 
 export async function POST(req: NextRequest) {
-  // Killswitch: disable the assistant without a redeploy (env flag).
-  if (process.env.DISABLE_AI === "true") {
-    return jsonError("AI assistant is temporarily disabled", 503, "DISABLE_AI is set")
-  }
-  if (!process.env.OPENAI_API_KEY) {
-    return jsonError("AI assistant is not configured", 503, "OPENAI_API_KEY is not set")
+  const baseUrl = getBackendBaseUrl()
+  if (!baseUrl) {
+    return jsonError("AI assistant is not configured", 503, "FASTAPI_BASE_URL is not set")
   }
 
-  let messages: UIMessage[]
+  const body = await req.text()
+  const auth = req.headers.get("authorization")
+  const orgId = req.headers.get("x-org-id")
+
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    accept: "text/event-stream",
+  }
+  if (auth) headers.authorization = auth
+  if (orgId) headers["x-org-id"] = orgId
+
+  let upstream: Response
   try {
-    const body = (await req.json()) as { messages?: UIMessage[] }
-    if (!Array.isArray(body?.messages)) {
-      return jsonError("Invalid request body", 400, "Expected a 'messages' array")
-    }
-    messages = body.messages
-  } catch {
-    return jsonError("Invalid JSON body", 400)
-  }
-
-  const supabase = createSupabaseRouteClient(req)
-  const orgId = await resolveOrgId(supabase, req)
-  if (!orgId) {
-    return jsonError("Organization context required", 403)
-  }
-
-  try {
-    await ensureDemoDataForOrg(supabase, orgId)
-    const tools = createChatTools(req, orgId)
-    const modelMessages = await convertToModelMessages(messages)
-
-    const result = streamText({
-      model: openai('gpt-5.4-mini'),
-      system: SYSTEM_PROMPT,
-      messages: modelMessages,
-      tools,
-      abortSignal: req.signal,
-    })
-
-    return result.toUIMessageStreamResponse({
-      originalMessages: messages,
-      consumeSseStream: consumeStream,
-      onError: (error) => {
-        console.error("[chat] stream error:", error)
-        return error instanceof Error ? error.message : "The assistant hit an unexpected error."
-      },
+    upstream = await fetch(`${baseUrl}/api/assistant/chat`, {
+      method: "POST",
+      headers,
+      body,
+      cache: "no-store",
     })
   } catch (error) {
-    console.error("[chat] request failed:", error)
     return jsonError(
-      "Failed to start AI assistant",
-      500,
-      error instanceof Error ? error.message : undefined,
+      "AI assistant backend is unreachable",
+      502,
+      error instanceof Error ? error.message : "proxy error",
     )
   }
+
+  // Non-streaming error from the backend (auth, killswitch, rate limit, etc.):
+  // forward status + body so the client can surface the message.
+  if (!upstream.ok || !upstream.body) {
+    const text = await upstream.text().catch(() => "")
+    return new Response(text || JSON.stringify({ error: "AI assistant request failed" }), {
+      status: upstream.status || 502,
+      headers: { "content-type": upstream.headers.get("content-type") ?? "application/json" },
+    })
+  }
+
+  // Stream the backend's UI message stream straight through to the browser.
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+      connection: "keep-alive",
+      "x-vercel-ai-ui-message-stream": "v1",
+      "x-accel-buffering": "no",
+    },
+  })
 }
