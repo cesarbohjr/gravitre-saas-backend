@@ -106,6 +106,9 @@ class Settings(BaseSettings):
     stripe_metered_price_id_command: str = ""
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
+    # In-process usage-sync scheduler interval (seconds). 0 disables it (e.g. if
+    # you use the GitHub Action / a Railway cron service instead).
+    usage_sync_interval_seconds: int = 3600
 
     # Phase 6: kill switches (default off)
     disable_execute: bool = False

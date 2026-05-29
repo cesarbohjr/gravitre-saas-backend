@@ -2,6 +2,7 @@
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -63,10 +64,24 @@ allowed_origins = [
 if public_app_url:
     allowed_origins.append(public_app_url.rstrip("/"))
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the in-process hourly usage-sync scheduler (idempotent; reports
+    # metered AI usage to Stripe). Disabled when USAGE_SYNC_INTERVAL_SECONDS<=0.
+    from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
+
+    app.state.usage_sync_task = start_usage_sync_scheduler()
+    try:
+        yield
+    finally:
+        await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
+
+
 app = FastAPI(
     title="Gravitre API",
     description="BE-00 — Foundation & Auth Baseline",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 

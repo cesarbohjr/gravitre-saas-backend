@@ -1,12 +1,15 @@
 name: Usage Sync
 
-# Hourly Stripe usage reporting: calls the backend's internal sync endpoint,
+# Manual Stripe usage-sync trigger: calls the backend's internal sync endpoint,
 # which reports unreported ai_credits usage for all active orgs to the Stripe
-# meter. Reporting is idempotent (only unreported rows are sent), so occasional
-# GitHub-cron delays/skips are harmless.
+# meter. Reporting is idempotent (only unreported rows are sent).
+#
+# NOTE: hourly syncing is handled in-process by the backend
+# (USAGE_SYNC_INTERVAL_SECONDS, default 3600s), so this workflow is manual-only
+# to avoid duplicate scheduled runs. Re-enable the `schedule:` trigger only if
+# you set USAGE_SYNC_INTERVAL_SECONDS=0 and want GitHub to drive the cron
+# (requires the INTERNAL_API_SECRET repo secret).
 on:
-  schedule:
-    - cron: "0 * * * *" # top of every hour (UTC)
   workflow_dispatch: {} # manual trigger from the Actions tab
 
 concurrency:
