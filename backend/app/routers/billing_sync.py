@@ -9,13 +9,14 @@
 from __future__ import annotations
 
 import hmac
+from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth.dependencies import require_admin
-from app.billing.service import get_current_period
+from app.billing.service import get_current_period, get_supabase_client
 from app.billing.stripe_metering import report_usage_for_active_orgs, report_usage_to_stripe
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
@@ -43,6 +44,13 @@ async def require_internal_secret(
 class AdminSyncRequest(BaseModel):
     org_id: str | None = None
     dry_run: bool = True
+
+
+class BudgetEnforcementRequest(BaseModel):
+    # org_id defaults to the admin's own org; if provided it must match it.
+    org_id: str | None = None
+    # required: true = force gate on, false = force off, null = clear (inherit global).
+    enabled: bool | None
 
 
 @internal_router.post("/sync-usage")
@@ -77,3 +85,39 @@ async def sync_usage_admin(
     return report_usage_to_stripe(
         org_id, period_start, period_end, settings, dry_run=body.dry_run
     )
+
+
+@admin_router.post("/budget-enforcement")
+async def set_budget_enforcement(
+    body: BudgetEnforcementRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Set the per-org hard-budget override (org_billing.hard_budget_enabled).
+
+    enabled=true forces the budget gate on for this org even when the global
+    flag is off; false forces it off; null clears the override (inherit global).
+    Scoped to the admin's own org for tenant isolation.
+    """
+    _user, admin_org_id = admin
+    org_id = (body.org_id or admin_org_id or "").strip()
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org_id is required")
+    if org_id != admin_org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only manage budget enforcement for your own organization",
+        )
+    client = get_supabase_client(settings)
+    # Upsert avoids the billing_plans FK path of get_or_create_org_billing; on
+    # insert, plan_code stays null and billing_status uses its default.
+    client.table("org_billing").upsert(
+        {
+            "org_id": org_id,
+            "hard_budget_enabled": body.enabled,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="org_id",
+    ).execute()
+    logger.info("budget enforcement override org_id=%s enabled=%s", org_id, body.enabled)
+    return {"org_id": org_id, "hard_budget_enabled": body.enabled}

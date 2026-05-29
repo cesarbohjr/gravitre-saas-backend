@@ -175,6 +175,52 @@ async def test_internal_sync_rejects_bad_secret(async_client):
     assert resp.status_code == 401
 
 
+async def test_budget_enforcement_sets_override(async_client, monkeypatch):
+    from app.auth.dependencies import require_admin
+    import app.routers.billing_sync as billing_sync
+
+    app.dependency_overrides[require_admin] = lambda: ({"user_id": "u1"}, "org-1")
+
+    captured: dict = {}
+
+    class _FakeTbl:
+        def upsert(self, payload, on_conflict=None):
+            captured["payload"] = payload
+            captured["on_conflict"] = on_conflict
+            return self
+
+        def execute(self):
+            return MagicMock(data=[captured["payload"]])
+
+    class _FakeClient:
+        def table(self, name):
+            captured["table"] = name
+            return _FakeTbl()
+
+    monkeypatch.setattr(billing_sync, "get_supabase_client", lambda s: _FakeClient())
+
+    resp = await async_client.post(
+        "/api/admin/billing/budget-enforcement",
+        json={"org_id": "org-1", "enabled": True},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["hard_budget_enabled"] is True
+    assert captured["table"] == "org_billing"
+    assert captured["payload"]["hard_budget_enabled"] is True
+    assert captured["on_conflict"] == "org_id"
+
+
+async def test_budget_enforcement_rejects_other_org(async_client):
+    from app.auth.dependencies import require_admin
+
+    app.dependency_overrides[require_admin] = lambda: ({"user_id": "u1"}, "org-1")
+    resp = await async_client.post(
+        "/api/admin/billing/budget-enforcement",
+        json={"org_id": "org-2", "enabled": True},
+    )
+    assert resp.status_code == 403
+
+
 async def test_internal_sync_accepts_valid_secret(async_client, monkeypatch):
     app.dependency_overrides[get_settings] = lambda: _settings(internal_api_secret="right-secret")
     monkeypatch.setattr(
