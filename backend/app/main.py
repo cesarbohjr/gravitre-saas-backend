@@ -21,6 +21,7 @@ from app.operators import router as operators_router
 from app.routers import (
     ai_system,
     agent_council,
+    agent_jobs,
     assistant,
     auth,
     audit,
@@ -66,15 +67,18 @@ if public_app_url:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start the in-process hourly usage-sync scheduler (idempotent; reports
-    # metered AI usage to Stripe). Disabled when USAGE_SYNC_INTERVAL_SECONDS<=0.
+    # Background loops: hourly usage-sync (idempotent Stripe metering) + the
+    # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
+    from app.operators.agent_jobs import start_agent_job_worker, stop_agent_job_worker
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
+    app.state.agent_job_task = start_agent_job_worker()
     try:
         yield
     finally:
         await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
+        await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
 
 
 app = FastAPI(
@@ -235,6 +239,7 @@ app.include_router(scim.router)
 app.include_router(ml_models.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
+app.include_router(agent_jobs.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

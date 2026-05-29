@@ -109,6 +109,9 @@ class Settings(BaseSettings):
     # In-process usage-sync scheduler interval (seconds). 0 disables it (e.g. if
     # you use the GitHub Action / a Railway cron service instead).
     usage_sync_interval_seconds: int = 3600
+    # In-process async agent-job worker (durable operator/agent execution).
+    agent_job_worker_enabled: bool = True
+    agent_job_poll_seconds: int = 5
 
     # Phase 6: kill switches (default off)
     disable_execute: bool = False
