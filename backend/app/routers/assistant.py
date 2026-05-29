@@ -219,7 +219,14 @@ def _sse(chunk: dict[str, Any]) -> str:
 
 
 def _build_stream(tool_results: list[dict[str, Any]], answer: str):
-    """Yield the AI SDK UI message stream (text/event-stream) for the response."""
+    """Yield the AI SDK UI message stream (text/event-stream) for the response.
+
+    NOTE: streaming here is cosmetic — the governed completion is produced in
+    full first (so guardrail failures surface as HTTP errors before the stream
+    opens), then chunked out. See the FUTURE note on ModelRouter.complete() and
+    STA-5 (https://linear.app/staqbot/issue/STA-5) for the two-phase real-time
+    provider-streaming design.
+    """
 
     async def generator():
         yield _sse({"type": "start"})
