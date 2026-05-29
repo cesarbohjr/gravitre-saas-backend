@@ -455,6 +455,12 @@ export default function OperatorPage() {
 
       if (response.ok) {
         const data = await response.json()
+        // Surface AI degradation instead of silently showing a canned plan.
+        if (data.aiStatus === "degraded") {
+          toast.warning("AI is temporarily degraded", {
+            description: "Showing a basic plan. Try regenerating in a moment.",
+          })
+        }
         if (data.plan) {
           setGeneratedPlan({
             findings: data.plan.reasoning ?? fallbackInsightSections,
@@ -470,9 +476,21 @@ export default function OperatorPage() {
           })
           setCurrentFlowStep("plan")
         }
+      } else {
+        toast.error("Couldn't generate a plan", {
+          description: "The operator service returned an error. Please try again.",
+        })
+        setGeneratedPlan({
+          findings: fallbackInsightSections,
+          steps: fallbackActionPlanSteps,
+          suggestedActions: fallbackSuggestedActions,
+        })
+        setCurrentFlowStep("plan")
       }
     } catch {
-      // Fall back to default data on error
+      toast.error("Couldn't reach the operator service", {
+        description: "Check your connection and try again.",
+      })
       setCurrentFlowStep("plan")
     } finally {
       setIsGenerating(false)

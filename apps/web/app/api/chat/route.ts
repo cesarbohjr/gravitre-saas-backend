@@ -1,6 +1,7 @@
 import {
   consumeStream,
   convertToModelMessages,
+  embed,
   streamText,
   UIMessage,
   tool,
@@ -48,8 +49,33 @@ function createChatTools(req: NextRequest, orgId: string) {
       }),
       execute: async ({ query, limit }) => {
         const safeLimit = Math.max(1, Math.min(limit, 10))
-        const likeTerm = `%${query}%`
 
+        // Primary path: semantic (pgvector) retrieval over embedded chunks.
+        try {
+          const { embedding } = await embed({
+            model: openai.textEmbeddingModel('text-embedding-3-small'),
+            value: query,
+          })
+          const vector = `[${embedding.join(',')}]`
+          const { data, error } = await supabase.rpc('rag_search', {
+            p_org_id: orgId,
+            p_query_embedding: vector,
+            p_top_k: safeLimit,
+          })
+          if (!error && Array.isArray(data) && data.length > 0) {
+            const results = (data as Record<string, unknown>[]).map((row) => ({
+              title: String(row.document_title ?? row.source_title ?? 'Knowledge Source'),
+              snippet: String(row.content ?? '').slice(0, 280),
+              relevance: Math.round(Number(row.score ?? 0) * 100) / 100,
+            }))
+            return { results, totalResults: results.length, method: 'semantic' as const }
+          }
+        } catch (err) {
+          console.error('[chat] semantic search failed, falling back to keyword:', err)
+        }
+
+        // Fallback: keyword (ilike) search so the tool still works without embeddings.
+        const likeTerm = `%${query}%`
         const { data, error } = await supabase
           .from("rag_chunks")
           .select("id, content, source_id, source_name, source:rag_sources(name)")
@@ -78,6 +104,7 @@ function createChatTools(req: NextRequest, orgId: string) {
         return {
           results,
           totalResults: results.length,
+          method: 'keyword' as const,
         }
       },
     }),

@@ -1763,6 +1763,8 @@ async def submit_session_task(
     action_description = "Execute the recommended workflow steps."
     token_count = 420
     confidence = 86
+    ai_degraded = False
+    ai_degraded_reason: str | None = None
     try:
         ai_prompt = (
             "You are Gravitre AI Operator. Generate a concise operator task plan in JSON with keys "
@@ -1793,7 +1795,11 @@ async def submit_session_task(
         confidence = int(parsed.get("confidence") or confidence)
         token_count = int(parsed.get("token_count") or token_count)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("operator task AI fallback session_id=%s error=%s", session_id, str(exc))
+        # AI is unavailable/disabled/rate-limited/over-budget: serve a basic plan
+        # but signal degradation so the UI can surface it instead of pretending.
+        ai_degraded = True
+        ai_degraded_reason = getattr(exc, "code", None) or "ai_unavailable"
+        logger.warning("operator task AI fallback session_id=%s reason=%s error=%s", session_id, ai_degraded_reason, str(exc))
 
     analysis = {
         "summary": ai_summary,
@@ -1870,6 +1876,8 @@ async def submit_session_task(
             "description": summary,
             "status": "planning",
         },
+        "aiStatus": "degraded" if ai_degraded else "ok",
+        "aiDegradedReason": ai_degraded_reason,
         "analysis": analysis,
         "suggestedActions": suggested_actions,
         "plan": {

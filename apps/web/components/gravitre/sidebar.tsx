@@ -66,7 +66,8 @@ const adminNavigation: NavGroup[] = [
   {
     group: "WORK",
     items: [
-      { name: "AI Assistant", href: "/operator", icon: "ai", badge: "AI", emphasis: true },
+      { name: "AI Operator", href: "/operator", icon: "ai", badge: "AI", emphasis: true },
+      { name: "Assistant", href: "/assistant", icon: "assistant", badge: "Chat" },
       { name: "Search", href: "/chat", icon: "search" },
       { name: "Agents", href: "/agents", icon: "agents" },
       { name: "Assignments", href: "/assignments", icon: "tasks" },
