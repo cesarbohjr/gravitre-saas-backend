@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { 
   Eye, Play, Search, FileCode, RefreshCw,
   CheckCircle, Sparkles, Loader2, ArrowRight,
-  Activity, X, Trash2
+  Activity, X, Trash2, AlertCircle, RotateCcw
 } from "lucide-react"
 import {
   Dialog,
@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { useAsyncJob, type AgentJob, type AgentJobResult } from "@/hooks/use-async-job"
 
 interface Task {
   id: string
@@ -354,6 +355,83 @@ export default function OperatorPage() {
     steps: ActionPlanStep[]
     suggestedActions: SuggestedActionData[]
   } | null>(null)
+  const [pendingTaskText, setPendingTaskText] = useState<string>("")
+
+  // Async job hook for durable job queue
+  const {
+    job: asyncJob,
+    isWorking: isAsyncWorking,
+    error: asyncError,
+    submitJob,
+    cancelJob,
+    retryJob,
+    reset: resetAsyncJob,
+  } = useAsyncJob({
+    onCompleted: useCallback((job: AgentJob) => {
+      if (job.result) {
+        const result = job.result
+        // Transform async job result into the existing plan format
+        setGeneratedPlan({
+          findings: [
+            {
+              id: "summary",
+              type: "summary" as const,
+              title: "Analysis Summary",
+              content: result.analysis_summary || "Analysis complete.",
+            },
+            {
+              id: "finding",
+              type: "root-cause" as const,
+              title: "Finding",
+              content: result.finding_description || "No specific findings.",
+            },
+          ],
+          steps: [
+            {
+              step: 1,
+              title: "Analyze context",
+              description: "Review task and gather information",
+              status: "completed" as const,
+            },
+            {
+              step: 2,
+              title: result.action_title || "Suggested Action",
+              description: result.action_description || "Execute recommended action",
+              status: "current" as const,
+            },
+          ],
+          suggestedActions: [
+            {
+              id: `action-${job.jobId}`,
+              title: result.action_title || "Execute Recommended Action",
+              description: result.action_description || "Apply the suggested fix",
+              icon: "RefreshCw",
+              environment: "production",
+              trustBadges: {
+                confidenceScore: Math.round((result.confidence || 0.75) * 100),
+                guardrailStatus: result.requires_approval ? "warn" as const : "pass" as const,
+                tokenCount: 0,
+                approvalRequired: result.requires_approval || false,
+              },
+            },
+          ],
+        })
+        setCurrentFlowStep("plan")
+        setPendingTaskText("")
+        toast.success("Analysis complete", {
+          description: `Model: ${result.model || "auto"} via ${result.provider || "Gravitre"}`,
+        })
+      }
+    }, []),
+    onFailed: useCallback((job: AgentJob) => {
+      toast.error("Job failed", {
+        description: job.error || "An error occurred during processing",
+      })
+    }, []),
+    onCancelled: useCallback(() => {
+      toast.info("Job cancelled")
+    }, []),
+  })
 
   // Fetch tasks (formerly sessions)
   const { data: tasksData } = useSWR<OperatorSessionsResponse>(
@@ -438,7 +516,52 @@ export default function OperatorPage() {
   const activeContextLabel = getActiveContextLabel()
   const canCreateTask = activeTask && activeContext && taskInput.trim().length > 0
 
+  // Combined working state (sync or async)
+  const isProcessing = isGenerating || isAsyncWorking
+
   const handleGeneratePlan = async () => {
+    if (!canCreateTask) return
+    
+    // Store the task text for display during async processing
+    setPendingTaskText(taskInput)
+    setTaskInput("")
+    setCurrentFlowStep("analysis")
+
+    // Use async job queue
+    try {
+      await submitJob(
+        taskInput,
+        activeTask,
+        { entityType: activeContext.split("-")[0], entityId: activeContext }
+      )
+    } catch {
+      // Error is handled by the hook and displayed via toast
+      setCurrentFlowStep("task")
+      setPendingTaskText("")
+    }
+  }
+
+  const handleCancelJob = async () => {
+    try {
+      await cancelJob()
+      setCurrentFlowStep("task")
+      setPendingTaskText("")
+    } catch {
+      // Error toast is shown by the hook
+    }
+  }
+
+  const handleRetryJob = async () => {
+    try {
+      await retryJob()
+      setCurrentFlowStep("analysis")
+    } catch {
+      // Error toast is shown by the hook
+    }
+  }
+
+  // Legacy sync flow (kept for fallback/feature flag if needed)
+  const handleGeneratePlanSync = async () => {
     if (!canCreateTask) return
     setIsGenerating(true)
     setCurrentFlowStep("analysis")
@@ -645,7 +768,7 @@ export default function OperatorPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <AIPresence 
-                  isProcessing={isGenerating} 
+                  isProcessing={isProcessing} 
                   isListening={Boolean(taskInput.trim())}
                 />
                 <span className="text-xs text-muted-foreground">
@@ -760,17 +883,145 @@ export default function OperatorPage() {
                       value={taskInput}
                       onChange={setTaskInput}
                       onSubmit={handleGeneratePlan}
-                      isProcessing={isGenerating}
-                      disabled={!activeTask || !activeContext}
+                      isProcessing={isProcessing}
+                      disabled={!activeTask || !activeContext || isProcessing}
                       contextLabel={activeContextLabel || undefined}
                     />
                   </div>
                 </div>
               </motion.section>
 
-              {/* 2. LIVE AI PROCESSING STATE */}
+              {/* 2. ASYNC JOB WORKING STATE */}
               <AnimatePresence mode="wait">
-                {isGenerating && (
+                {isAsyncWorking && (
+                  <motion.section 
+                    className="mb-10"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    role="status"
+                    aria-live="polite"
+                    aria-label="Processing task"
+                  >
+                    <div className="relative rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm overflow-hidden shadow-xl shadow-black/5 p-6">
+                      <ParticleField count={40} color="violet" className="opacity-40" />
+                      
+                      {/* Working state header */}
+                      <div className="relative flex items-start gap-4">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-violet-500/20 flex items-center justify-center">
+                          <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-foreground">Working on your task...</h3>
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {pendingTaskText || "Processing..."}
+                          </p>
+                          {asyncJob && (
+                            <div className="flex items-center gap-3 mt-3">
+                              <span className={cn(
+                                "text-xs font-medium px-2 py-0.5 rounded-full",
+                                asyncJob.status === "queued" && "bg-amber-500/20 text-amber-500",
+                                asyncJob.status === "running" && "bg-blue-500/20 text-blue-500",
+                              )}>
+                                {asyncJob.status === "queued" ? "Queued" : "Running"}
+                              </span>
+                              {asyncJob.attempts > 1 && (
+                                <span className="text-xs text-muted-foreground">
+                                  Attempt {asyncJob.attempts}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Cancel button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelJob}
+                          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Cancel
+                        </Button>
+                      </div>
+                      
+                      {/* Progress indicator */}
+                      <div className="mt-4 h-1 bg-secondary rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-violet-500 to-blue-500"
+                          initial={{ width: "0%" }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: 60, ease: "linear" }}
+                        />
+                      </div>
+                    </div>
+                  </motion.section>
+                )}
+              </AnimatePresence>
+
+              {/* 2b. ASYNC JOB FAILED/CANCELLED STATE */}
+              <AnimatePresence mode="wait">
+                {asyncJob && (asyncJob.status === "failed" || asyncJob.status === "cancelled") && !isAsyncWorking && (
+                  <motion.section 
+                    className="mb-10"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    role="alert"
+                    aria-live="assertive"
+                  >
+                    <div className={cn(
+                      "relative rounded-2xl border bg-gradient-to-br backdrop-blur-sm overflow-hidden shadow-xl shadow-black/5 p-6",
+                      asyncJob.status === "failed" 
+                        ? "border-destructive/50 from-destructive/10 to-card/40" 
+                        : "border-amber-500/50 from-amber-500/10 to-card/40"
+                    )}>
+                      <div className="flex items-start gap-4">
+                        <div className={cn(
+                          "flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center",
+                          asyncJob.status === "failed" ? "bg-destructive/20" : "bg-amber-500/20"
+                        )}>
+                          <AlertCircle className={cn(
+                            "h-5 w-5",
+                            asyncJob.status === "failed" ? "text-destructive" : "text-amber-500"
+                          )} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-foreground">
+                            {asyncJob.status === "failed" ? "Task failed" : "Task cancelled"}
+                          </h3>
+                          {asyncJob.error && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {asyncJob.error}
+                            </p>
+                          )}
+                          {pendingTaskText && (
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-1">
+                              Task: {pendingTaskText}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Retry button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRetryJob}
+                          className="flex-shrink-0"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.section>
+                )}
+              </AnimatePresence>
+
+              {/* 2c. LEGACY SYNC PROCESSING STATE (fallback) */}
+              <AnimatePresence mode="wait">
+                {isGenerating && !isAsyncWorking && (
                   <motion.section 
                     className="mb-10"
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -790,7 +1041,7 @@ export default function OperatorPage() {
 
               {/* 3. INSIGHT OUTPUT (PRIMARY) */}
               <AnimatePresence mode="wait">
-                {!isGenerating && (
+                {!isProcessing && !asyncError && !(asyncJob && (asyncJob.status === "failed" || asyncJob.status === "cancelled")) && (
                   <motion.section 
                     className="mb-10"
                     initial={{ opacity: 0, y: 30 }}
@@ -803,7 +1054,7 @@ export default function OperatorPage() {
                       severity="high"
                       lastUpdated="2 minutes ago"
                       sections={insightSections}
-                      isGenerating={isGenerating}
+                      isGenerating={isProcessing}
                     />
                   </motion.section>
                 )}
@@ -811,7 +1062,7 @@ export default function OperatorPage() {
 
               {/* 4. SUGGESTED ACTIONS (SECONDARY) */}
               <AnimatePresence>
-                {!isGenerating && (
+                {!isProcessing && !asyncError && !(asyncJob && (asyncJob.status === "failed" || asyncJob.status === "cancelled")) && (
                   <motion.section 
                     className="mb-10"
                     initial={{ opacity: 0, y: 20 }}
@@ -831,7 +1082,7 @@ export default function OperatorPage() {
 
               {/* Next Steps Section - Premium */}
               <AnimatePresence>
-                {!isGenerating && (
+                {!isProcessing && !asyncError && !(asyncJob && (asyncJob.status === "failed" || asyncJob.status === "cancelled")) && (
                   <motion.section 
                     className="mb-10"
                     initial={{ opacity: 0, y: 20 }}
