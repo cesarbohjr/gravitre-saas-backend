@@ -79,7 +79,7 @@ def mock_openai_response() -> dict[str, Any]:
         "id": "chatcmpl-test",
         "object": "chat.completion",
         "created": 1234567890,
-        "model": "gpt-4o-mini",
+        "model": "gpt-5.4-mini",
         "choices": [{"index": 0, "message": {"role": "assistant", "content": '{"result":"test"}'}, "finish_reason": "stop"}],
         "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
     }

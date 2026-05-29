@@ -27,9 +27,9 @@ class TestModelRouter:
         return ModelRouter(settings=mock_settings)
 
     def test_task_model_resolution(self, router: ModelRouter):
-        # Tiered routing (OpenAI tier): low -> gpt-4o-mini, high -> gpt-4o.
-        assert router._resolve_model(TaskType.CLASSIFICATION) == "gpt-4o-mini"  # noqa: SLF001
-        assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == "gpt-4o"  # noqa: SLF001
+        # Tiered routing (OpenAI tier): low -> gpt-5.4-mini, high -> gpt-5.5.
+        assert router._resolve_model(TaskType.CLASSIFICATION) == "gpt-5.4-mini"  # noqa: SLF001
+        assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == "gpt-5.5"  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_complete_openai(self, router: ModelRouter):
@@ -38,7 +38,7 @@ class TestModelRouter:
         with patch.object(router, "_log_model_call", AsyncMock()):
             response = await router.complete(task_type=TaskType.WORKFLOW_PLANNING, prompt="Plan this")
         assert response.provider == "openai"
-        assert response.model == "gpt-4o"
+        assert response.model == "gpt-5.5"
         assert response.content == "hello"
         assert response.cache_hit is False
 
@@ -86,8 +86,8 @@ class TestModelRouter:
             openai_api_key="sk-test",
             anthropic_api_key="",
             google_api_key="",
-            default_fast_model="gpt-4o-mini",
-            default_reasoning_model="gpt-4o",
+            default_fast_model="gpt-5.4-mini",
+            default_reasoning_model="gpt-5.5",
         )
         with patch("app.services.model_router.get_settings", return_value=fake_settings):
             router1 = get_model_router()

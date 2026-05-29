@@ -103,7 +103,7 @@ USAGE_DEFAULTS = {
 
 TOKENS_PER_CREDIT = 1000
 MODEL_MULTIPLIERS: list[tuple[str, float]] = [
-    ("gpt-4o", 2.0),
+    ("gpt-5.5", 2.0),
     ("gpt-4", 2.5),
     ("gpt-3.5", 1.0),
     ("text-embedding", 0.2),

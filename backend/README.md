@@ -26,7 +26,7 @@ AI services layer also expects:
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
 - `GOOGLE_API_KEY`
-- `DEFAULT_FAST_MODEL` (default: `gpt-4o-mini`)
+- `DEFAULT_FAST_MODEL` (default: `gpt-5.4-mini`)
 - `DEFAULT_REASONING_MODEL` (default: `claude-3-5-sonnet-20241022`)
 - `DEFAULT_EMBEDDING_MODEL` (default: `text-embedding-3-small`)
 - `RAG_CHUNK_SIZE` (default: `1000`)

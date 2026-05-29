@@ -51,12 +51,12 @@ class TestBuildPriority:
     def test_auto_high_prefers_anthropic(self):
         assert build_priority("auto", "high") == [
             ("anthropic", "claude-sonnet-4-6"),
-            ("openai", "gpt-4o"),
+            ("openai", "gpt-5.5"),
             ("gemini", "gemini-2.5-pro"),
         ]
 
     def test_auto_low_prefers_openai(self):
-        assert build_priority("auto", "low")[0] == ("openai", "gpt-4o-mini")
+        assert build_priority("auto", "low")[0] == ("openai", "gpt-5.4-mini")
 
     def test_preferred_anthropic_first(self):
         priority = build_priority("anthropic", "medium")

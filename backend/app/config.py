@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     # routing; they are read by config/tests but no runtime code calls them.
     anthropic_api_key: str = ""
     google_api_key: str = ""
-    default_fast_model: str = "gpt-4o-mini"
+    default_fast_model: str = "gpt-5.4-mini"
     default_reasoning_model: str = "claude-3-7-sonnet-latest"  # reserved (see note above)
     default_embedding_model: str = "text-embedding-3-small"
     openai_embedding_model: str = "text-embedding-3-small"
@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     ai_moderation_model: str = "omni-moderation-latest"
     # Resilience: if the primary task model fails all retries, try this model
     # once before giving up. Empty disables the fallback.
-    ai_fallback_model: str = "gpt-4o-mini"
+    ai_fallback_model: str = "gpt-5.4-mini"
 
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
@@ -156,17 +156,17 @@ class Settings(BaseSettings):
 # complexity tier -> provider -> model id
 MODEL_TIERS: dict[str, dict[str, str]] = {
     "low": {
-        "openai": "gpt-4o-mini",
+        "openai": "gpt-5.4-mini",
         "anthropic": "claude-haiku-4-5-20251001",
         "gemini": "gemini-2.5-flash",
     },
     "medium": {
-        "openai": "gpt-4o",
+        "openai": "gpt-5.5",
         "anthropic": "claude-sonnet-4-6",
         "gemini": "gemini-2.5-pro",
     },
     "high": {
-        "openai": "gpt-4o",
+        "openai": "gpt-5.5",
         "anthropic": "claude-sonnet-4-6",
         "gemini": "gemini-2.5-pro",
     },

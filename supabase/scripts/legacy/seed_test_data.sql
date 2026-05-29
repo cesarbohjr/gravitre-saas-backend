@@ -106,7 +106,7 @@ VALUES
   'Sentinel',
   'Monitor data quality and validation guardrails.',
   'Data Quality Agent',
-  'gpt-4o-mini',
+  'gpt-5.4-mini',
   '["schema-validation","dedupe-checks","drift-detection"]'::jsonb,
   '["mongodb","s3"]'::jsonb,
   '["strict-validation","block-on-critical-errors"]'::jsonb,

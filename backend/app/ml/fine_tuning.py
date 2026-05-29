@@ -25,7 +25,9 @@ class FineTuningExample(BaseModel):
 class FineTuningConfig(BaseModel):
     """Configuration for fine-tuning job."""
 
-    base_model: str = "gpt-4o-mini-2024-07-18"
+    # TODO: confirm the correct GPT-5 fine-tuning base snapshot in the OpenAI
+    # fine-tuning docs (https://platform.openai.com/docs/guides/fine-tuning).
+    base_model: str = "gpt-5.4-mini"
     n_epochs: int | str = "auto"
     batch_size: int | str = "auto"
     learning_rate_multiplier: float | str = "auto"

@@ -45,12 +45,12 @@ class TestOpenAIAdapter:
         client = AsyncMock()
         client.chat.completions.create = AsyncMock(return_value=_openai_resp("hello", 10, 5))
         adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
-        r = await adapter.complete([{"role": "user", "content": "hi"}], "gpt-4o", CompletionOptions())
+        r = await adapter.complete([{"role": "user", "content": "hi"}], "gpt-5.5", CompletionOptions())
         assert isinstance(r, ProviderResponse)
         assert r.content == "hello"
         assert (r.prompt_tokens, r.completion_tokens, r.total_tokens) == (10, 5, 15)
         assert r.provider_used == "openai"
-        assert r.model_used == "gpt-4o"
+        assert r.model_used == "gpt-5.5"
 
     @pytest.mark.asyncio
     async def test_generic_error_maps_to_unavailable_after_retries(self):
@@ -58,7 +58,7 @@ class TestOpenAIAdapter:
         client.chat.completions.create = AsyncMock(side_effect=RuntimeError("boom"))
         adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
         with pytest.raises(ProviderUnavailableError):
-            await adapter.complete([{"role": "user", "content": "hi"}], "gpt-4o", CompletionOptions())
+            await adapter.complete([{"role": "user", "content": "hi"}], "gpt-5.5", CompletionOptions())
         assert client.chat.completions.create.call_count == 3  # retried
 
     @pytest.mark.asyncio
@@ -72,7 +72,7 @@ class TestOpenAIAdapter:
         client.chat.completions.create = AsyncMock(side_effect=err)
         adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
         with pytest.raises(ProviderInvalidResponseError):
-            await adapter.complete([{"role": "user", "content": "hi"}], "gpt-4o", CompletionOptions())
+            await adapter.complete([{"role": "user", "content": "hi"}], "gpt-5.5", CompletionOptions())
         assert client.chat.completions.create.call_count == 1  # no failover/retry on invalid
 
     @pytest.mark.asyncio
@@ -80,7 +80,7 @@ class TestOpenAIAdapter:
         adapter = OpenAIAdapter(client_getter=lambda: None, api_key_getter=lambda: "")
         assert adapter.is_available() is False
         with pytest.raises(ProviderUnavailableError):
-            await adapter.complete([{"role": "user", "content": "hi"}], "gpt-4o", CompletionOptions())
+            await adapter.complete([{"role": "user", "content": "hi"}], "gpt-5.5", CompletionOptions())
 
 
 class TestAnthropicAdapter:

@@ -136,7 +136,7 @@ VALUES
   'Lifecycle Marketing Agent',
   'Builds segmented lifecycle messaging and campaign summaries.',
   'Marketing',
-  'gpt-4o',
+  'gpt-5.5',
   '["campaign-segmentation","copy-optimization","reporting"]'::jsonb,
   '["hubspot","gmail","notion"]'::jsonb,
   '["approval-before-send"]'::jsonb,

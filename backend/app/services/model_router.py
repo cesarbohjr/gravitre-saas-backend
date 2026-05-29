@@ -51,10 +51,12 @@ class TaskType(StrEnum):
 
 
 # Approximate per-1k token pricing (input, output) for cost estimation.
+# TODO: verify all figures against https://openai.com/api/pricing (and provider docs).
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
     "gpt-4.1": (0.002, 0.008),
-    "gpt-4o-mini": (0.00015, 0.0006),
-    "gpt-4o": (0.005, 0.015),
+    # TODO: confirm GPT-5 family pricing — https://openai.com/api/pricing
+    "gpt-5.5": (0.01, 0.03),       # premium flagship (placeholder)
+    "gpt-5.4-mini": (0.0002, 0.0008),  # cost-optimized (placeholder)
     "claude-haiku-4-5-20251001": (0.0008, 0.004),
     "claude-sonnet-4-6": (0.003, 0.015),
     "gemini-2.5-flash": (0.0001, 0.0004),

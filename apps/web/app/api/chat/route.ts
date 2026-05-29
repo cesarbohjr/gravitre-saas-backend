@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
     const modelMessages = await convertToModelMessages(messages)
 
     const result = streamText({
-      model: openai('gpt-4o-mini'),
+      model: openai('gpt-5.4-mini'),
       system: SYSTEM_PROMPT,
       messages: modelMessages,
       tools,
