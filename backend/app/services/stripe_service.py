@@ -4,6 +4,7 @@ from typing import Any
 
 import stripe
 
+from app.billing.stripe import metered_price_id_for_plan, plan_code_for_price
 from app.config import Settings
 
 
@@ -29,9 +30,13 @@ def create_subscription(
     settings: Settings,
 ) -> dict[str, Any]:
     _init_stripe(settings)
+    items: list[dict[str, Any]] = [{"price": price_id, "quantity": max(quantity, 1)}]
+    metered = metered_price_id_for_plan(settings, plan_code_for_price(settings, price_id))
+    if metered and metered != price_id:
+        items.append({"price": metered})  # usage-based: no quantity
     subscription = stripe.Subscription.create(
         customer=customer_id,
-        items=[{"price": price_id, "quantity": max(quantity, 1)}],
+        items=items,
         payment_behavior="default_incomplete",
         payment_settings={"save_default_payment_method": "on_subscription"},
         expand=["latest_invoice.payment_intent"],

@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"
+    # Per-plan metered (usage-based) price IDs tied to the AI-credits meter. When
+    # set, they are added as an extra subscription/checkout line item so usage is
+    # actually billed. Empty = flat-rate only (no usage billing).
+    stripe_metered_price_id_node: str = ""
+    stripe_metered_price_id_control: str = ""
+    stripe_metered_price_id_command: str = ""
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
 

@@ -94,6 +94,17 @@ def plan_code_for_price(settings: Settings, price_id: str | None) -> str | None:
     return None
 
 
+def metered_price_id_for_plan(settings: Settings, plan_code: str | None) -> str | None:
+    """Per-plan usage-based (metered) price id, if configured. Empty -> None."""
+    code = _normalize_plan_code(plan_code)
+    mapping = {
+        "node": settings.stripe_metered_price_id_node,
+        "control": settings.stripe_metered_price_id_control,
+        "command": settings.stripe_metered_price_id_command,
+    }
+    return (mapping.get(code or "") or "").strip() or None
+
+
 def create_checkout_session(
     settings: Settings,
     customer_id: str,
@@ -103,10 +114,16 @@ def create_checkout_session(
     metadata: dict[str, Any],
 ) -> stripe.checkout.Session:
     init_stripe(settings)
+    # Flat plan price + (when configured) the plan's metered usage price so AI
+    # overage is actually billed. Metered line items carry no quantity.
+    line_items: list[dict[str, Any]] = [{"price": price_id, "quantity": 1}]
+    metered = metered_price_id_for_plan(settings, plan_code_for_price(settings, price_id))
+    if metered and metered != price_id:
+        line_items.append({"price": metered})
     return stripe.checkout.Session.create(
         mode="subscription",
         customer=customer_id,
-        line_items=[{"price": price_id, "quantity": 1}],
+        line_items=line_items,
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata,
