@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import time
 from enum import StrEnum
 from typing import Any
 
-from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from app.config import Settings, get_settings
+from app.config import MODEL_TIERS, TASK_COMPLEXITY, Settings, get_settings
 from app.core.logging import get_logger
 from app.services.ai_guardrails import (
     AIServiceDisabledError,
@@ -20,13 +19,23 @@ from app.services.ai_guardrails import (
     harden_system_prompt,
     moderate_input,
 )
+from app.services.providers.anthropic_adapter import AnthropicAdapter
+from app.services.providers.base import (
+    AllProvidersFailedError,
+    CircuitBreaker,
+    CompletionOptions,
+    Message,
+    ProviderAdapter,
+    ProviderInvalidResponseError,
+)
+from app.services.providers.failover import build_priority, run_failover
+from app.services.providers.gemini_adapter import GeminiAdapter
+from app.services.providers.openai_adapter import OpenAIAdapter
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
-# Per-request timeout (seconds) for OpenAI calls; we manage retries ourselves.
 OPENAI_REQUEST_TIMEOUT_S = 30.0
-MAX_ATTEMPTS = 3
 
 
 class TaskType(StrEnum):
@@ -41,29 +50,15 @@ class TaskType(StrEnum):
     OPTIMIZATION_ANALYSIS = "optimization"
 
 
-# Tiered routing: cheap/fast model for lightweight tasks, the stronger
-# reasoning model for planning/decision/generation. Tune per cost vs capability.
-_CHEAP_MODEL = "gpt-4o-mini"
-_REASONING_MODEL = "gpt-4.1"
-
-DEFAULT_ROUTES: dict[TaskType, str] = {
-    # Lightweight, high-volume, low-stakes -> cheap model
-    TaskType.CLASSIFICATION: _CHEAP_MODEL,
-    TaskType.INTENT_DETECTION: _CHEAP_MODEL,
-    TaskType.SUMMARIZATION: _CHEAP_MODEL,
-    # Reasoning / generation / user-facing planning -> stronger model
-    TaskType.WORKFLOW_PLANNING: _REASONING_MODEL,
-    TaskType.DECISION_REASONING: _REASONING_MODEL,
-    TaskType.AGENT_DEBATE: _REASONING_MODEL,
-    TaskType.CONTENT_GENERATION: _REASONING_MODEL,
-    TaskType.RAG_ANSWERING: _REASONING_MODEL,
-    TaskType.OPTIMIZATION_ANALYSIS: _REASONING_MODEL,
-}
-
+# Approximate per-1k token pricing (input, output) for cost estimation.
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
     "gpt-4.1": (0.002, 0.008),
     "gpt-4o-mini": (0.00015, 0.0006),
     "gpt-4o": (0.005, 0.015),
+    "claude-haiku-3": (0.0008, 0.004),
+    "claude-sonnet-4": (0.003, 0.015),
+    "gemini-2.0-flash": (0.0001, 0.0004),
+    "gemini-2.0-pro": (0.00125, 0.005),
 }
 
 
@@ -86,11 +81,34 @@ class ModelRouter:
             AsyncOpenAI(
                 api_key=self.settings.openai_api_key,
                 timeout=OPENAI_REQUEST_TIMEOUT_S,
-                max_retries=0,  # retries handled by _retry_complete with backoff
+                max_retries=0,  # retries handled inside the adapter
             )
             if self.settings.openai_api_key
             else None
         )
+        # Provider adapters. The OpenAI adapter reads the live client via a getter
+        # so tests that swap `router._openai` continue to work.
+        self._adapters: dict[str, ProviderAdapter] = {
+            "openai": OpenAIAdapter(
+                client_getter=lambda: self._openai,
+                api_key_getter=lambda: (self.settings.openai_api_key or ""),
+                timeout_s=OPENAI_REQUEST_TIMEOUT_S,
+            ),
+            "anthropic": AnthropicAdapter(
+                api_key_getter=lambda: (self.settings.anthropic_api_key or "").strip(),
+                voyage_key_getter=lambda: (getattr(self.settings, "voyage_api_key", "") or "").strip(),
+                timeout_s=OPENAI_REQUEST_TIMEOUT_S,
+            ),
+            "gemini": GeminiAdapter(
+                api_key_getter=lambda: (
+                    getattr(self.settings, "gemini_key", "")
+                    or getattr(self.settings, "gemini_api_key", "")
+                    or getattr(self.settings, "google_api_key", "")
+                    or ""
+                ).strip(),
+            ),
+        }
+        self._breaker = CircuitBreaker(failure_threshold=3, cooldown_s=60.0)
         self._cache: dict[str, ModelResponse] = {}
 
     async def complete(
@@ -105,94 +123,86 @@ class ModelRouter:
         context: list[dict] | None = None,
         org_id: str | None = None,
     ) -> ModelResponse:
-        model = self._resolve_model(task_type)
-        provider = "openai"
+        complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
+        model = self._resolve_model(task_type)  # primary (openai) model, for cache key
 
         # --- Governance guardrails (chokepoint) ---------------------------------
-        # 1) Global killswitch
         if getattr(self.settings, "disable_ai", False):
             logger.warning("AI_DISABLED task_type=%s org_id=%s", task_type.value, org_id)
             raise AIServiceDisabledError()
-        # 2) Per-org rate limit (runaway-spend circuit breaker)
         enforce_rate_limit(org_id, self.settings)
-        # 3) Hard spend gate (period ai_credits budget)
         enforce_budget(org_id, self.settings)
-        # 4) Input moderation (system + user content)
         await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
 
         cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
-
         if use_cache and cache_key in self._cache:
             cached = self._cache[cache_key].model_copy(update={"cache_hit": True})
             await self._log_model_call(org_id=org_id, task_type=task_type, response=cached)
             return cached
 
+        # Canonical messages with safety hardening + untrusted-input fencing.
+        messages: list[Message] = []
+        hardened_system = harden_system_prompt(system_prompt)
+        if hardened_system:
+            messages.append({"role": "system", "content": hardened_system})
+        for c in context or []:
+            role = c.get("role")
+            content = c.get("content")
+            if role in ("system", "user", "assistant") and content is not None:
+                messages.append({"role": role, "content": str(content)})
+        messages.append({"role": "user", "content": fence_untrusted(prompt)})
+
+        # Build the failover priority chain.
+        if getattr(self.settings, "ai_failover_enabled", True):
+            priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+        else:
+            priority = [("openai", MODEL_TIERS[complexity]["openai"])]
+
+        options = CompletionOptions(
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout_s=OPENAI_REQUEST_TIMEOUT_S,
+        )
+
         start = time.perf_counter()
         logger.info(
-            "MODEL_CALL_START task_type=%s model=%s provider=%s",
+            "MODEL_CALL_START task_type=%s complexity=%s priority=%s",
             task_type.value,
-            model,
-            provider,
-            extra={"task_type": task_type.value, "model": model, "provider": provider},
+            complexity,
+            [name for name, _ in priority],
         )
-        fenced_prompt = fence_untrusted(prompt)
-        hardened_system = harden_system_prompt(system_prompt)
-        used_model = model
         try:
-            response_text, usage = await self._retry_complete(
-                model=model,
-                prompt=fenced_prompt,
-                system_prompt=hardened_system,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                context=context,
-            )
-        except Exception as exc:  # noqa: BLE001
-            # Resilience: try the configured fallback model once before failing.
-            fallback_model = (getattr(self.settings, "ai_fallback_model", "") or "").strip()
-            if fallback_model and fallback_model != model:
-                logger.warning(
-                    "MODEL_CALL_FALLBACK task_type=%s primary=%s fallback=%s error=%s",
-                    task_type.value,
-                    model,
-                    fallback_model,
-                    str(exc),
-                )
-                try:
-                    response_text, usage = await self._retry_complete(
-                        model=fallback_model,
-                        prompt=fenced_prompt,
-                        system_prompt=hardened_system,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        context=context,
-                    )
-                    used_model = fallback_model
-                except Exception as fallback_exc:  # noqa: BLE001
-                    self._log_call_failure(task_type, fallback_model, provider, start, fallback_exc)
-                    raise
-            else:
-                self._log_call_failure(task_type, model, provider, start, exc)
-                raise
-        model = used_model
+            result = await run_failover(self._adapters, priority, messages, options, self._breaker)
+        except ProviderInvalidResponseError as exc:
+            self._log_call_failure(task_type, model, "varied", start, exc)
+            await self._log_guardrail_event(org_id, task_type, "ai_failover_invalid", [], str(exc))
+            raise
+        except AllProvidersFailedError as exc:
+            self._log_call_failure(task_type, model, "varied", start, exc)
+            await self._log_guardrail_event(org_id, task_type, "ai_failover_exhausted", [], str(exc))
+            raise
+
+        resp = result.response
         latency_ms = int((time.perf_counter() - start) * 1000)
-        # Prefer actual token usage reported by the API; fall back to estimation.
-        if usage:
-            input_tokens = int(usage.get("prompt_tokens") or 0)
-            output_tokens = int(usage.get("completion_tokens") or 0)
+
+        if resp.prompt_tokens or resp.completion_tokens:
+            input_tokens = resp.prompt_tokens
+            output_tokens = resp.completion_tokens
         else:
             input_tokens = self._estimate_tokens(prompt + (system_prompt or ""))
-            output_tokens = self._estimate_tokens(response_text)
-        cost = self._estimate_cost(model, input_tokens, output_tokens)
+            output_tokens = self._estimate_tokens(resp.content)
 
+        cost = self._estimate_cost(resp.model_used, input_tokens, output_tokens)
+
+        response_text = resp.content
         parsed_payload: dict[str, Any] | None = None
         if response_format:
             parsed_payload = self._parse_structured(response_text, response_format)
             response_text = json.dumps(parsed_payload, separators=(",", ":"))
 
         final = ModelResponse(
-            provider=provider,
-            model=model,
+            provider=resp.provider_used,
+            model=resp.model_used,
             content=response_text,
             parsed=parsed_payload,
             input_tokens=input_tokens,
@@ -203,21 +213,24 @@ class ModelRouter:
         )
         if use_cache:
             self._cache[cache_key] = final
+
         logger.info(
-            "MODEL_CALL_SUCCESS task_type=%s model=%s provider=%s duration_ms=%s",
+            "MODEL_CALL_SUCCESS task_type=%s provider=%s model=%s duration_ms=%s attempts=%s",
             task_type.value,
-            model,
-            provider,
+            resp.provider_used,
+            resp.model_used,
             latency_ms,
-            extra={
-                "task_type": task_type.value,
-                "model": model,
-                "provider": provider,
-                "duration_ms": latency_ms,
-                "status": "success",
-            },
+            result.attempts,
         )
         await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
+        await self._log_guardrail_event(
+            org_id,
+            task_type,
+            "ai_failover",
+            result.attempts,
+            f"final={resp.provider_used}/{resp.model_used}",
+            latency_ms=latency_ms,
+        )
         return final
 
     def _log_call_failure(
@@ -246,7 +259,9 @@ class ModelRouter:
         )
 
     def _resolve_model(self, task_type: TaskType) -> str:
-        return DEFAULT_ROUTES.get(task_type, _REASONING_MODEL)
+        """Primary (OpenAI) model for the task's complexity tier."""
+        complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
+        return MODEL_TIERS[complexity]["openai"]
 
     def _cache_key(
         self,
@@ -273,104 +288,12 @@ class ModelRouter:
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
-    async def _retry_complete(
-        self,
-        model: str,
-        prompt: str,
-        system_prompt: str | None,
-        temperature: float | None,
-        max_tokens: int | None,
-        context: list[dict] | None,
-    ) -> tuple[str, dict[str, int] | None]:
-        delay = 0.4
-        for attempt in range(MAX_ATTEMPTS):
-            try:
-                return await self._openai_complete(model, prompt, system_prompt, temperature, max_tokens, context)
-            except Exception as exc:  # noqa: BLE001
-                if attempt == MAX_ATTEMPTS - 1:
-                    raise
-                # Rate limits / timeouts / transient connection errors get a
-                # longer, retry-after-aware backoff; other errors back off normally.
-                sleep_for = delay
-                if isinstance(exc, RateLimitError):
-                    sleep_for = max(delay, self._retry_after_seconds(exc, default=2.0))
-                elif isinstance(exc, (APITimeoutError, APIConnectionError)):
-                    sleep_for = delay
-                logger.warning(
-                    "Model completion retrying model=%s attempt=%s error_type=%s error=%s sleep_s=%.2f",
-                    model,
-                    attempt + 1,
-                    type(exc).__name__,
-                    str(exc),
-                    sleep_for,
-                )
-                await asyncio.sleep(sleep_for)
-                delay *= 2
-        raise RuntimeError("unreachable")
-
-    @staticmethod
-    def _retry_after_seconds(exc: Exception, default: float) -> float:
-        """Best-effort parse of a Retry-After header from an OpenAI error."""
-        response = getattr(exc, "response", None)
-        headers = getattr(response, "headers", None)
-        if not headers:
-            return default
-        raw = headers.get("retry-after") or headers.get("Retry-After")
-        if not raw:
-            return default
-        try:
-            return max(default, float(raw))
-        except (TypeError, ValueError):
-            return default
-
-    async def _openai_complete(
-        self,
-        model: str,
-        prompt: str,
-        system_prompt: str | None,
-        temperature: float | None,
-        max_tokens: int | None,
-        context: list[dict] | None,
-    ) -> tuple[str, dict[str, int] | None]:
-        if not self._openai:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
-        messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
-        messages.extend(context or [])
-        messages.append({"role": "user", "content": prompt})
-        resp = await self._openai.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature if temperature is not None else 0.2,
-            max_tokens=max_tokens,
-        )
-        content = resp.choices[0].message.content or ""
-        if not content.strip():
-            raise RuntimeError("Model returned empty response")
-        usage = self._extract_usage(resp)
-        return content, usage
-
-    @staticmethod
-    def _extract_usage(resp: Any) -> dict[str, int] | None:
-        """Pull actual token usage from an OpenAI chat completion response."""
-        raw = getattr(resp, "usage", None)
-        if raw is None:
-            return None
-        prompt_tokens = getattr(raw, "prompt_tokens", None)
-        completion_tokens = getattr(raw, "completion_tokens", None)
-        if prompt_tokens is None and completion_tokens is None:
-            return None
-        return {
-            "prompt_tokens": int(prompt_tokens or 0),
-            "completion_tokens": int(completion_tokens or 0),
-        }
-
     def _parse_structured(self, text: str, schema: type[BaseModel]) -> dict[str, Any]:
         normalized = text.strip()
         if normalized.startswith("```"):
             normalized = normalized.replace("```json", "").replace("```", "").strip()
         if not normalized:
             raise ValueError("Model returned empty response for structured output")
-        # Models can wrap JSON in prose; extract the first JSON object if needed.
         try:
             payload = json.loads(normalized)
         except json.JSONDecodeError:
@@ -412,6 +335,46 @@ class ModelRouter:
             client.table("model_calls").insert(row).execute()
         except Exception as exc:  # noqa: BLE001
             logger.warning("model_calls insert failed: %s", str(exc))
+
+    async def _log_guardrail_event(
+        self,
+        org_id: str | None,
+        task_type: TaskType,
+        event_type: str,
+        attempts: list[tuple[str, str]],
+        summary: str,
+        latency_ms: int | None = None,
+    ) -> None:
+        """Log a failover attempt to guardrail_events (best-effort) + structured log."""
+        final_provider = next((name for name, outcome in attempts if outcome == "success"), None)
+        logger.warning(
+            "AI_FAILOVER event=%s task_type=%s attempts=%s final=%s latency_ms=%s summary=%s",
+            event_type,
+            task_type.value,
+            attempts,
+            final_provider,
+            latency_ms,
+            summary,
+        )
+        if not org_id:
+            return
+        try:
+            client = get_supabase_client(self.settings)
+            client.table("guardrail_events").insert(
+                {
+                    "org_id": org_id,
+                    "event_type": event_type,
+                    "detail": {
+                        "task_type": task_type.value,
+                        "attempts": [{"provider": n, "outcome": o} for n, o in attempts],
+                        "final_provider": final_provider,
+                        "latency_ms": latency_ms,
+                        "summary": summary,
+                    },
+                }
+            ).execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("guardrail_events insert failed: %s", str(exc))
 
 
 _model_router_singleton: ModelRouter | None = None

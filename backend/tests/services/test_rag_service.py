@@ -46,7 +46,7 @@ async def test_query_pipeline(service: RAGService):
         {"id": "b", "content": "Clouds scatter light", "score": 0.7, "title": "Science"},
     ]
     keyword_rows = [{"id": "b", "content": "Clouds scatter light", "score": 0.4, "title": "Science"}]
-    with patch("app.services.rag_service.get_embedding", return_value=[0.1] * 1536):
+    with patch("app.services.rag_service.embed_with_failover", return_value=([0.1] * 1536, "openai")):
         with patch("app.services.rag_service.search_chunks", return_value=semantic_rows):
             with patch.object(service, "_keyword_search", return_value=keyword_rows):
                 with patch.object(

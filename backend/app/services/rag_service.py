@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.core.logging import get_logger
-from app.rag.embedding import get_embedding
+from app.rag.embedding import embed_with_failover
 from app.rag.ingest import chunk_text, replace_chunks_and_embeddings, upsert_document
 from app.rag.retrieval import search_chunks
 from app.services.model_router import TaskType, get_model_router
@@ -86,8 +86,10 @@ class RAGService:
         _ = scope
         environment = str((filters or {}).get("environment") or "default")
         top_k = top_k or self.settings.rag_top_k or 8
+        embedding_method = "none"
         try:
-            query_embedding = get_embedding(query, self.settings)
+            query_embedding, embedding_method = embed_with_failover(query, self.settings)
+            logger.info("rag embedding org_id=%s method=%s", org_id, embedding_method)
         except Exception as exc:  # noqa: BLE001
             logger.warning("rag embedding unavailable org_id=%s error=%s", org_id, str(exc))
             return RAGResponse(
@@ -98,6 +100,7 @@ class RAGService:
                     "semantic_candidates": 0,
                     "keyword_candidates": 0,
                     "reranked": 0,
+                    "embedding_method": "keyword_fallback",
                     "fallback": "embedding_unavailable",
                 },
             )
@@ -157,6 +160,7 @@ class RAGService:
                 "semantic_candidates": len(semantic_rows),
                 "keyword_candidates": len(keyword_rows),
                 "reranked": len(reranked),
+                "embedding_method": embedding_method,
             },
         )
 

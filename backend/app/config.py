@@ -117,6 +117,20 @@ class Settings(BaseSettings):
     # once before giving up. Empty disables the fallback.
     ai_fallback_model: str = "gpt-4o-mini"
 
+    # Multi-provider failover
+    gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
+    voyage_api_key: str = ""          # Voyage AI embeddings fallback (VOYAGE_API_KEY)
+    # Provider preference for the failover chain: openai | anthropic | gemini | auto
+    preferred_ai_provider: str = "openai"
+    # When false, only the preferred/OpenAI provider is used (no cross-provider failover).
+    ai_failover_enabled: bool = True
+    ai_failover_log_level: str = "warning"
+
+    @property
+    def gemini_key(self) -> str:
+        """Gemini key, preferring GEMINI_API_KEY then GOOGLE_API_KEY."""
+        return (self.gemini_api_key or self.google_api_key or "").strip()
+
     # Phase 7: policy engine defaults (0/empty = disabled)
     policy_max_steps: int = 0
     policy_max_runtime_seconds: int = 0
@@ -134,6 +148,42 @@ class Settings(BaseSettings):
             if missing:
                 raise ValueError(f"Missing required settings for {env}: {', '.join(missing)}")
         return self
+
+
+# ---------------------------------------------------------------------------
+# Multi-provider model tiering (typed; consumed by the router/failover layer)
+# ---------------------------------------------------------------------------
+# complexity tier -> provider -> model id
+MODEL_TIERS: dict[str, dict[str, str]] = {
+    "low": {
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-haiku-3",
+        "gemini": "gemini-2.0-flash",
+    },
+    "medium": {
+        "openai": "gpt-4o",
+        "anthropic": "claude-sonnet-4",
+        "gemini": "gemini-2.0-pro",
+    },
+    "high": {
+        "openai": "gpt-4o",
+        "anthropic": "claude-sonnet-4",
+        "gemini": "gemini-2.0-pro",
+    },
+}
+
+# task-type string (TaskType value) -> complexity tier
+TASK_COMPLEXITY: dict[str, str] = {
+    "classification": "low",
+    "intent_detection": "low",
+    "summarization": "low",
+    "content_generation": "medium",
+    "rag_answering": "medium",
+    "optimization": "medium",
+    "workflow_planning": "high",
+    "decision_reasoning": "high",
+    "agent_debate": "high",
+}
 
 
 class SettingsNotConfiguredError(RuntimeError):
