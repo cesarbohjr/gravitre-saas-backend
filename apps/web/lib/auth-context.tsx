@@ -107,6 +107,30 @@ export function useAuth() {
 // Helper to get access token for API requests
 export async function getAccessToken(): Promise<string | null> {
   if (!hasSupabasePublicEnv) return null
-  const { data: { session } } = await supabaseClient.auth.getSession()
-  return session?.access_token ?? null
+  
+  try {
+    const { data: { session }, error } = await supabaseClient.auth.getSession()
+    
+    if (error) {
+      console.warn("[v0] getAccessToken error:", error.message)
+      return null
+    }
+    
+    if (!session) {
+      // Try to refresh the session
+      const { data: { session: refreshedSession }, error: refreshError } = await supabaseClient.auth.refreshSession()
+      
+      if (refreshError) {
+        console.warn("[v0] Session refresh failed:", refreshError.message)
+        return null
+      }
+      
+      return refreshedSession?.access_token ?? null
+    }
+    
+    return session.access_token
+  } catch (err) {
+    console.warn("[v0] getAccessToken exception:", err)
+    return null
+  }
 }
