@@ -51,6 +51,9 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
   const pollStartTimeRef = useRef<number>(0)
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  // Holds the latest pollJob so the recursive setTimeout doesn't reference the
+  // callback before it's declared (avoids react-hooks/immutability error).
+  const pollJobRef = useRef<((jobId: string) => void) | null>(null)
 
   const stopPolling = useCallback(() => {
     if (pollTimeoutRef.current) {
@@ -116,15 +119,20 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
         ? Math.min(POLL_INTERVAL_BASE * 2, POLL_INTERVAL_MAX)
         : POLL_INTERVAL_BASE
 
-      pollTimeoutRef.current = setTimeout(() => pollJob(jobId), interval)
+      pollTimeoutRef.current = setTimeout(() => pollJobRef.current?.(jobId), interval)
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return // Polling was cancelled
       }
       // On network error, retry after a delay
-      pollTimeoutRef.current = setTimeout(() => pollJob(jobId), POLL_INTERVAL_MAX)
+      pollTimeoutRef.current = setTimeout(() => pollJobRef.current?.(jobId), POLL_INTERVAL_MAX)
     }
   }, [stopPolling, options])
+
+  // Keep the ref pointed at the latest pollJob for the recursive setTimeout.
+  useEffect(() => {
+    pollJobRef.current = pollJob
+  }, [pollJob])
 
   const startPolling = useCallback((jobId: string) => {
     stopPolling()
