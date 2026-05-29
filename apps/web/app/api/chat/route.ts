@@ -200,6 +200,10 @@ function jsonError(message: string, status: number, detail?: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Killswitch: disable the assistant without a redeploy (env flag).
+  if (process.env.DISABLE_AI === "true") {
+    return jsonError("AI assistant is temporarily disabled", 503, "DISABLE_AI is set")
+  }
   if (!process.env.OPENAI_API_KEY) {
     return jsonError("AI assistant is not configured", 503, "OPENAI_API_KEY is not set")
   }

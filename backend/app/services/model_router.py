@@ -12,6 +12,14 @@ from pydantic import BaseModel
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.ai_guardrails import (
+    AIServiceDisabledError,
+    enforce_budget,
+    enforce_rate_limit,
+    fence_untrusted,
+    harden_system_prompt,
+    moderate_input,
+)
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -92,6 +100,19 @@ class ModelRouter:
     ) -> ModelResponse:
         model = self._resolve_model(task_type)
         provider = "openai"
+
+        # --- Governance guardrails (chokepoint) ---------------------------------
+        # 1) Global killswitch
+        if getattr(self.settings, "disable_ai", False):
+            logger.warning("AI_DISABLED task_type=%s org_id=%s", task_type.value, org_id)
+            raise AIServiceDisabledError()
+        # 2) Per-org rate limit (runaway-spend circuit breaker)
+        enforce_rate_limit(org_id, self.settings)
+        # 3) Hard spend gate (period ai_credits budget)
+        enforce_budget(org_id, self.settings)
+        # 4) Input moderation (system + user content)
+        await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
+
         cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
 
         if use_cache and cache_key in self._cache:
@@ -108,10 +129,10 @@ class ModelRouter:
             extra={"task_type": task_type.value, "model": model, "provider": provider},
         )
         try:
-            response_text = await self._retry_complete(
+            response_text, usage = await self._retry_complete(
                 model=model,
-                prompt=prompt,
-                system_prompt=system_prompt,
+                prompt=fence_untrusted(prompt),
+                system_prompt=harden_system_prompt(system_prompt),
                 temperature=temperature,
                 max_tokens=max_tokens,
                 context=context,
@@ -135,8 +156,13 @@ class ModelRouter:
             )
             raise
         latency_ms = int((time.perf_counter() - start) * 1000)
-        input_tokens = self._estimate_tokens(prompt + (system_prompt or ""))
-        output_tokens = self._estimate_tokens(response_text)
+        # Prefer actual token usage reported by the API; fall back to estimation.
+        if usage:
+            input_tokens = int(usage.get("prompt_tokens") or 0)
+            output_tokens = int(usage.get("completion_tokens") or 0)
+        else:
+            input_tokens = self._estimate_tokens(prompt + (system_prompt or ""))
+            output_tokens = self._estimate_tokens(response_text)
         cost = self._estimate_cost(model, input_tokens, output_tokens)
 
         parsed_payload: dict[str, Any] | None = None
@@ -211,7 +237,7 @@ class ModelRouter:
         temperature: float | None,
         max_tokens: int | None,
         context: list[dict] | None,
-    ) -> str:
+    ) -> tuple[str, dict[str, int] | None]:
         delay = 0.4
         for attempt in range(MAX_ATTEMPTS):
             try:
@@ -261,7 +287,7 @@ class ModelRouter:
         temperature: float | None,
         max_tokens: int | None,
         context: list[dict] | None,
-    ) -> str:
+    ) -> tuple[str, dict[str, int] | None]:
         if not self._openai:
             raise RuntimeError("OPENAI_API_KEY is not configured")
         messages = [{"role": "system", "content": system_prompt}] if system_prompt else []
@@ -276,7 +302,23 @@ class ModelRouter:
         content = resp.choices[0].message.content or ""
         if not content.strip():
             raise RuntimeError("Model returned empty response")
-        return content
+        usage = self._extract_usage(resp)
+        return content, usage
+
+    @staticmethod
+    def _extract_usage(resp: Any) -> dict[str, int] | None:
+        """Pull actual token usage from an OpenAI chat completion response."""
+        raw = getattr(resp, "usage", None)
+        if raw is None:
+            return None
+        prompt_tokens = getattr(raw, "prompt_tokens", None)
+        completion_tokens = getattr(raw, "completion_tokens", None)
+        if prompt_tokens is None and completion_tokens is None:
+            return None
+        return {
+            "prompt_tokens": int(prompt_tokens or 0),
+            "completion_tokens": int(completion_tokens or 0),
+        }
 
     def _parse_structured(self, text: str, schema: type[BaseModel]) -> dict[str, Any]:
         normalized = text.strip()

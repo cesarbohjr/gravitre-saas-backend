@@ -101,6 +101,19 @@ class Settings(BaseSettings):
     disable_connectors: bool = False
     disable_ingestion: bool = False
 
+    # AI governance / safety (chokepoint-enforced in ModelRouter)
+    # Global LLM killswitch — when true, all model_router completions are refused.
+    disable_ai: bool = False
+    # Per-org sliding-window rate limit for LLM calls; 0 disables the limiter.
+    ai_rate_limit_per_min: int = 0
+    # Hard spend gate: when enabled, block LLM calls once an org's period
+    # ai_credits usage reaches ai_credits_included * ai_budget_overage_multiplier.
+    ai_hard_budget_enabled: bool = False
+    ai_budget_overage_multiplier: float = 2.0
+    # Input moderation via OpenAI moderation endpoint before completion.
+    ai_moderation_enabled: bool = False
+    ai_moderation_model: str = "omni-moderation-latest"
+
     # Phase 7: policy engine defaults (0/empty = disabled)
     policy_max_steps: int = 0
     policy_max_runtime_seconds: int = 0
