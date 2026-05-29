@@ -24,6 +24,7 @@ from app.routers import (
     auth,
     audit,
     billing,
+    billing_sync,
     connectors,
     decisions,
     execution,
@@ -188,6 +189,8 @@ app.include_router(sso.router)
 app.include_router(org.router)
 app.include_router(org.organizations_router)
 app.include_router(billing.router)
+app.include_router(billing_sync.internal_router)
+app.include_router(billing_sync.admin_router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(rag.router)

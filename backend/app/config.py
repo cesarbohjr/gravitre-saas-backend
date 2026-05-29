@@ -95,6 +95,11 @@ class Settings(BaseSettings):
     stripe_price_id_command_monthly: str = ""
     stripe_price_id_command_annual: str = ""
     public_app_url: str = Field(default="", alias="NEXT_PUBLIC_APP_URL")
+    # Stripe usage-based (metered) billing: meter event name configured on the
+    # Stripe Billing Meter that the metered price is attached to.
+    stripe_meter_event_name: str = "ai_credits_used"
+    # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
+    internal_api_secret: str = ""
 
     # Phase 6: kill switches (default off)
     disable_execute: bool = False
