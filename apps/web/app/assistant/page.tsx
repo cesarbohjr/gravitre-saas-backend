@@ -1,0 +1,604 @@
+"use client"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useChat, type Message } from "@ai-sdk/react"
+import { motion, AnimatePresence } from "framer-motion"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { 
+  Send, 
+  Loader2, 
+  Sparkles, 
+  Check, 
+  ChevronDown, 
+  Copy, 
+  MessageSquarePlus,
+  Database,
+  Bot,
+  Plug
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import rehypeHighlight from "rehype-highlight"
+
+// localStorage key for message persistence
+const STORAGE_KEY = "gravitre_assistant_messages"
+const MAX_STORED_MESSAGES = 50
+
+// Gravitre-specific sample prompts
+const samplePrompts = [
+  { icon: Bot, label: "What agents are currently running?" },
+  { icon: Database, label: "Show me failed workflows from today" },
+  { icon: Sparkles, label: "How do I set up a new automation?" },
+  { icon: Plug, label: "Which connectors have sync errors?" },
+]
+
+// Tool icons mapping
+const toolIcons: Record<string, typeof Database> = {
+  searchKnowledgeBase: Database,
+  getAgentStatus: Bot,
+  getConnectorStatus: Plug,
+}
+
+interface ToolInvocation {
+  toolCallId: string
+  toolName: string
+  args: Record<string, unknown>
+  state: "partial-call" | "call" | "result"
+  result?: unknown
+}
+
+interface SourceCitation {
+  title: string
+  snippet: string
+  relevance: number
+}
+
+// Copy button for code blocks
+function CopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="absolute top-2 right-2 p-1.5 rounded bg-zinc-700/80 hover:bg-zinc-600 transition-colors"
+      title="Copy code"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-emerald-400" />
+      ) : (
+        <Copy className="h-3.5 w-3.5 text-zinc-400" />
+      )}
+    </button>
+  )
+}
+
+// Code block component with copy button
+function CodeBlock({ children, className }: { children: React.ReactNode; className?: string }) {
+  const codeRef = useRef<HTMLElement>(null)
+  const language = className?.replace("language-", "") || ""
+
+  return (
+    <div className="relative group my-3">
+      {language && (
+        <div className="absolute top-0 left-0 px-2 py-0.5 text-[10px] text-zinc-500 bg-zinc-800 rounded-br">
+          {language}
+        </div>
+      )}
+      <pre className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 pt-6 overflow-x-auto">
+        <code ref={codeRef} className={className}>
+          {children}
+        </code>
+      </pre>
+      <CopyButton code={codeRef.current?.textContent || ""} />
+    </div>
+  )
+}
+
+// Tool activity chip component
+function ToolChip({ invocation }: { invocation: ToolInvocation }) {
+  const [expanded, setExpanded] = useState(false)
+  const isComplete = invocation.state === "result"
+  const Icon = toolIcons[invocation.toolName] || Database
+
+  const getToolLabel = (name: string) => {
+    switch (name) {
+      case "searchKnowledgeBase":
+        return "Searched knowledge base"
+      case "getAgentStatus":
+        return "Checked agent status"
+      case "getConnectorStatus":
+        return "Checked connector status"
+      default:
+        return name
+    }
+  }
+
+  const formatResult = (result: unknown): string => {
+    if (!result) return "No results"
+    if (typeof result === "string") return result
+    try {
+      return JSON.stringify(result, null, 2)
+    } catch {
+      return String(result)
+    }
+  }
+
+  return (
+    <div className="my-2">
+      <button
+        onClick={() => isComplete && setExpanded(!expanded)}
+        disabled={!isComplete}
+        className={cn(
+          "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+          isComplete
+            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer"
+            : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+        )}
+      >
+        {isComplete ? (
+          <Check className="h-3 w-3" />
+        ) : (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        )}
+        <Icon className="h-3 w-3" />
+        <span>{getToolLabel(invocation.toolName)}</span>
+        {isComplete && (
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 transition-transform",
+              expanded && "rotate-180"
+            )}
+          />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {expanded && invocation.result && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 text-xs">
+              <pre className="text-zinc-400 overflow-x-auto whitespace-pre-wrap">
+                {formatResult(invocation.result)}
+              </pre>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// Source citations component
+function SourceCitations({ sources }: { sources: SourceCitation[] }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (!sources || sources.length === 0) return null
+
+  return (
+    <div className="mt-3 pt-3 border-t border-zinc-800">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+      >
+        <Database className="h-3 w-3" />
+        <span>{sources.length} source{sources.length !== 1 ? "s" : ""} used</span>
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 transition-transform",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 space-y-2">
+              {sources.map((source, i) => (
+                <div
+                  key={i}
+                  className="p-2 rounded-lg bg-zinc-900/50 border border-zinc-800"
+                >
+                  <p className="text-xs font-medium text-zinc-300">{source.title}</p>
+                  <p className="text-[11px] text-zinc-500 mt-1 line-clamp-2">
+                    {source.snippet.slice(0, 100)}...
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// Message component with markdown rendering
+function ChatMessage({ message, isUser }: { message: Message; isUser: boolean }) {
+  // Extract sources from tool results if available
+  const sources: SourceCitation[] = []
+  if (!isUser && message.parts) {
+    for (const part of message.parts) {
+      if (
+        part.type === "tool-invocation" &&
+        part.toolInvocation.toolName === "searchKnowledgeBase" &&
+        part.toolInvocation.state === "result" &&
+        part.toolInvocation.result
+      ) {
+        const result = part.toolInvocation.result as { results?: SourceCitation[] }
+        if (result.results) {
+          sources.push(...result.results)
+        }
+      }
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "flex gap-3",
+        isUser ? "justify-end" : "justify-start"
+      )}
+    >
+      {!isUser && (
+        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center ring-1 ring-emerald-500/20">
+          <Sparkles className="h-4 w-4 text-emerald-400" />
+        </div>
+      )}
+
+      <div
+        className={cn(
+          "max-w-[80%] rounded-2xl px-4 py-3",
+          isUser
+            ? "bg-blue-600 text-white"
+            : "bg-zinc-800/80 text-zinc-100 border border-zinc-700/50"
+        )}
+      >
+        {/* Tool invocations */}
+        {!isUser && message.parts && (
+          <div className="space-y-1">
+            {message.parts
+              .filter((part): part is { type: "tool-invocation"; toolInvocation: ToolInvocation } =>
+                part.type === "tool-invocation"
+              )
+              .map((part) => (
+                <ToolChip key={part.toolInvocation.toolCallId} invocation={part.toolInvocation} />
+              ))}
+          </div>
+        )}
+
+        {/* Message content */}
+        {isUser ? (
+          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        ) : (
+          <div className="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-code:text-emerald-400 prose-code:bg-zinc-900/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                pre: ({ children }) => <>{children}</>,
+                code: ({ className, children, ...props }) => {
+                  const isInline = !className
+                  if (isInline) {
+                    return (
+                      <code className="text-emerald-400 bg-zinc-900/50 px-1 py-0.5 rounded" {...props}>
+                        {children}
+                      </code>
+                    )
+                  }
+                  return <CodeBlock className={className}>{children}</CodeBlock>
+                },
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {/* Source citations */}
+        {!isUser && sources.length > 0 && <SourceCitations sources={sources} />}
+      </div>
+
+      {isUser && (
+        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+          <span className="text-xs font-medium text-white">You</span>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+export default function AssistantPage() {
+  const { user } = useAuth()
+  const [hasSentMessage, setHasSentMessage] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Load initial messages from localStorage
+  const getInitialMessages = useCallback((): Message[] => {
+    if (typeof window === "undefined") return []
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as Message[]
+        return parsed.slice(-MAX_STORED_MESSAGES)
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    return []
+  }, [])
+
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    setMessages,
+  } = useChat({
+    api: "/api/chat",
+    initialMessages: getInitialMessages(),
+    onError: (error) => {
+      console.error("[v0] Chat error:", error)
+      toast.error("Failed to send message")
+    },
+  })
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      try {
+        const toStore = messages.slice(-MAX_STORED_MESSAGES)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore))
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [messages])
+
+  // Track if user has sent a message
+  useEffect(() => {
+    if (messages.some((m) => m.role === "user")) {
+      setHasSentMessage(true)
+    }
+  }, [messages])
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
+  // Handle new conversation
+  const handleNewConversation = () => {
+    setMessages([])
+    setHasSentMessage(false)
+    localStorage.removeItem(STORAGE_KEY)
+    inputRef.current?.focus()
+  }
+
+  // Handle sample prompt click
+  const handleSamplePrompt = (prompt: string) => {
+    const syntheticEvent = {
+      preventDefault: () => {},
+    } as React.FormEvent
+    
+    // Set the input and submit
+    const textarea = inputRef.current
+    if (textarea) {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value"
+      )?.set
+      nativeInputValueSetter?.call(textarea, prompt)
+      textarea.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+    
+    // Small delay to let the input update
+    setTimeout(() => {
+      handleSubmit(syntheticEvent)
+    }, 50)
+  }
+
+  // Handle form submit
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+    handleSubmit(e)
+  }
+
+  // Handle enter key (submit on Enter, newline on Shift+Enter)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      onSubmit(e)
+    }
+  }
+
+  return (
+    <AppShell title="Assistant">
+      <div className="flex h-full flex-col bg-[#0B0F14]">
+        {/* Header */}
+        <div className="border-b border-zinc-800 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-zinc-900 to-zinc-900/50">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/20 shrink-0">
+                <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-base md:text-lg font-semibold text-zinc-100">Gravitre Assistant</h1>
+                <p className="text-xs md:text-sm text-zinc-500 truncate">
+                  AI-powered help for your automation platform
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNewConversation}
+              className="gap-2 bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              <span className="hidden sm:inline">New chat</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {!user ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
+              >
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center mb-6">
+                  <Sparkles className="h-8 w-8 text-emerald-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-zinc-100 mb-2">Sign in required</h2>
+                <p className="text-sm text-zinc-500 max-w-md">
+                  Sign in to use the Gravitre AI Assistant.
+                </p>
+              </motion.div>
+            ) : messages.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
+              >
+                <div className="relative mb-6">
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+                    <Sparkles className="h-8 w-8 text-emerald-400" />
+                  </div>
+                  <motion.div
+                    className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                  />
+                </div>
+                <h2 className="text-lg font-semibold text-zinc-100 mb-2">
+                  How can I help you today?
+                </h2>
+                <p className="text-sm text-zinc-500 mb-8 max-w-md">
+                  I can help you manage agents, troubleshoot workflows, check connector status, and more.
+                </p>
+
+                {/* Sample prompts */}
+                {!hasSentMessage && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+                    {samplePrompts.map((prompt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSamplePrompt(prompt.label)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-left"
+                      >
+                        <prompt.icon className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                        <span>{prompt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            ) : (
+              <>
+                {messages.map((message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    isUser={message.role === "user"}
+                  />
+                ))}
+                
+                {isLoading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex gap-3"
+                  >
+                    <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center ring-1 ring-emerald-500/20">
+                      <Sparkles className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
+                        <span className="text-sm text-zinc-400">Thinking...</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Input area */}
+        <div className="border-t border-zinc-800 p-4 bg-zinc-900/50">
+          <form onSubmit={onSubmit} className="max-w-4xl mx-auto">
+            <div
+              className={cn(
+                "flex items-end gap-3 rounded-xl border bg-zinc-900 p-3 transition-all",
+                "border-zinc-800 hover:border-zinc-700 focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
+              )}
+            >
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder={user ? "Ask me anything about your automation setup..." : "Sign in to chat"}
+                disabled={!user || isLoading}
+                rows={1}
+                className="flex-1 bg-transparent text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
+                style={{ height: "24px" }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = "24px"
+                  target.style.height = Math.min(target.scrollHeight, 120) + "px"
+                }}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!user || !input.trim() || isLoading}
+                className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-[11px] text-zinc-600 text-center mt-2">
+              Assistant can make mistakes. Check important information.
+            </p>
+          </form>
+        </div>
+      </div>
+    </AppShell>
+  )
+}
