@@ -41,16 +41,23 @@ class TaskType(StrEnum):
     OPTIMIZATION_ANALYSIS = "optimization"
 
 
+# Tiered routing: cheap/fast model for lightweight tasks, the stronger
+# reasoning model for planning/decision/generation. Tune per cost vs capability.
+_CHEAP_MODEL = "gpt-4o-mini"
+_REASONING_MODEL = "gpt-4.1"
+
 DEFAULT_ROUTES: dict[TaskType, str] = {
-    TaskType.CLASSIFICATION: "gpt-4.1",
-    TaskType.INTENT_DETECTION: "gpt-4.1",
-    TaskType.WORKFLOW_PLANNING: "gpt-4.1",
-    TaskType.DECISION_REASONING: "gpt-4.1",
-    TaskType.AGENT_DEBATE: "gpt-4.1",
-    TaskType.SUMMARIZATION: "gpt-4.1",
-    TaskType.CONTENT_GENERATION: "gpt-4.1",
-    TaskType.RAG_ANSWERING: "gpt-4.1",
-    TaskType.OPTIMIZATION_ANALYSIS: "gpt-4.1",
+    # Lightweight, high-volume, low-stakes -> cheap model
+    TaskType.CLASSIFICATION: _CHEAP_MODEL,
+    TaskType.INTENT_DETECTION: _CHEAP_MODEL,
+    TaskType.SUMMARIZATION: _CHEAP_MODEL,
+    # Reasoning / generation / user-facing planning -> stronger model
+    TaskType.WORKFLOW_PLANNING: _REASONING_MODEL,
+    TaskType.DECISION_REASONING: _REASONING_MODEL,
+    TaskType.AGENT_DEBATE: _REASONING_MODEL,
+    TaskType.CONTENT_GENERATION: _REASONING_MODEL,
+    TaskType.RAG_ANSWERING: _REASONING_MODEL,
+    TaskType.OPTIMIZATION_ANALYSIS: _REASONING_MODEL,
 }
 
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
@@ -128,33 +135,46 @@ class ModelRouter:
             provider,
             extra={"task_type": task_type.value, "model": model, "provider": provider},
         )
+        fenced_prompt = fence_untrusted(prompt)
+        hardened_system = harden_system_prompt(system_prompt)
+        used_model = model
         try:
             response_text, usage = await self._retry_complete(
                 model=model,
-                prompt=fence_untrusted(prompt),
-                system_prompt=harden_system_prompt(system_prompt),
+                prompt=fenced_prompt,
+                system_prompt=hardened_system,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 context=context,
             )
         except Exception as exc:  # noqa: BLE001
-            latency_ms = int((time.perf_counter() - start) * 1000)
-            logger.error(
-                "MODEL_CALL_FAILURE task_type=%s model=%s provider=%s duration_ms=%s error=%s",
-                task_type.value,
-                model,
-                provider,
-                latency_ms,
-                str(exc),
-                extra={
-                    "task_type": task_type.value,
-                    "model": model,
-                    "provider": provider,
-                    "duration_ms": latency_ms,
-                    "status": "failure",
-                },
-            )
-            raise
+            # Resilience: try the configured fallback model once before failing.
+            fallback_model = (getattr(self.settings, "ai_fallback_model", "") or "").strip()
+            if fallback_model and fallback_model != model:
+                logger.warning(
+                    "MODEL_CALL_FALLBACK task_type=%s primary=%s fallback=%s error=%s",
+                    task_type.value,
+                    model,
+                    fallback_model,
+                    str(exc),
+                )
+                try:
+                    response_text, usage = await self._retry_complete(
+                        model=fallback_model,
+                        prompt=fenced_prompt,
+                        system_prompt=hardened_system,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        context=context,
+                    )
+                    used_model = fallback_model
+                except Exception as fallback_exc:  # noqa: BLE001
+                    self._log_call_failure(task_type, fallback_model, provider, start, fallback_exc)
+                    raise
+            else:
+                self._log_call_failure(task_type, model, provider, start, exc)
+                raise
+        model = used_model
         latency_ms = int((time.perf_counter() - start) * 1000)
         # Prefer actual token usage reported by the API; fall back to estimation.
         if usage:
@@ -200,9 +220,33 @@ class ModelRouter:
         await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
         return final
 
+    def _log_call_failure(
+        self,
+        task_type: TaskType,
+        model: str,
+        provider: str,
+        start: float,
+        exc: Exception,
+    ) -> None:
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        logger.error(
+            "MODEL_CALL_FAILURE task_type=%s model=%s provider=%s duration_ms=%s error=%s",
+            task_type.value,
+            model,
+            provider,
+            latency_ms,
+            str(exc),
+            extra={
+                "task_type": task_type.value,
+                "model": model,
+                "provider": provider,
+                "duration_ms": latency_ms,
+                "status": "failure",
+            },
+        )
+
     def _resolve_model(self, task_type: TaskType) -> str:
-        # Stabilized routing: use one reliable production model until broader routing is reintroduced.
-        return DEFAULT_ROUTES.get(task_type, "gpt-4.1")
+        return DEFAULT_ROUTES.get(task_type, _REASONING_MODEL)
 
     def _cache_key(
         self,

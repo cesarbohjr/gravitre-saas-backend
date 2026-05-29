@@ -87,6 +87,18 @@ class SessionTaskRequest(BaseModel):
     context: dict | None = None
 
 
+class OperatorTaskPlan(BaseModel):
+    """Structured operator task plan returned by the model (validated, not parsed by hand)."""
+
+    analysis_summary: str
+    finding_description: str
+    action_title: str
+    action_description: str
+    confidence: int = Field(ge=0, le=100, default=75)
+    token_count: int = Field(ge=0, default=0)
+    requires_approval: bool = False
+
+
 class SessionExecuteRequest(BaseModel):
     action_ids: list[str] = Field(default_factory=list, alias="actionIds")
 
@@ -1765,28 +1777,29 @@ async def submit_session_task(
     confidence = 86
     ai_degraded = False
     ai_degraded_reason: str | None = None
+    requires_approval = False
     try:
         ai_prompt = (
-            "You are Gravitre AI Operator. Generate a concise operator task plan in JSON with keys "
-            "analysis_summary, finding_description, action_title, action_description, confidence (0-100), token_count.\n"
-            f"Task: {summary}\n"
-            f"Context: {body.context or {}}\n"
-            "Return valid JSON only."
+            "Generate an operator task plan for the task below.\n"
+            f"<task>{summary}</task>\n"
+            f"<context>{body.context or {}}</context>"
         )
         ai_result = await model_router.complete(
             task_type=TaskType.WORKFLOW_PLANNING,
             prompt=ai_prompt,
-            system_prompt="Be concise, execution-focused, and safe.",
+            system_prompt=(
+                "You are the Gravitre AI Operator, an enterprise automation planner. "
+                "Convert the task into a safe, concrete plan proposal that touches only the "
+                "user's connected systems. Never auto-execute; plans require human approval. "
+                "If the task is empty, ambiguous, or out of scope, state what is missing in "
+                "analysis_summary and use a low confidence value."
+            ),
+            response_format=OperatorTaskPlan,
             org_id=org_id,
         )
-        parsed: dict = {}
-        try:
-            import json
-
-            parsed = json.loads(ai_result.content)
-        except Exception:
-            parsed = {}
-        ai_summary = str(parsed.get("analysis_summary") or ai_result.content[:220] or ai_summary).strip() or ai_summary
+        # response_format guarantees a validated dict in `parsed`.
+        parsed: dict = ai_result.parsed or {}
+        ai_summary = str(parsed.get("analysis_summary") or ai_summary).strip() or ai_summary
         findings_description = (
             str(parsed.get("finding_description") or findings_description).strip() or findings_description
         )
@@ -1794,6 +1807,7 @@ async def submit_session_task(
         action_description = str(parsed.get("action_description") or action_description).strip() or action_description
         confidence = int(parsed.get("confidence") or confidence)
         token_count = int(parsed.get("token_count") or token_count)
+        requires_approval = bool(parsed.get("requires_approval") or False)
     except Exception as exc:  # noqa: BLE001
         # AI is unavailable/disabled/rate-limited/over-budget: serve a basic plan
         # but signal degradation so the UI can surface it instead of pretending.
@@ -1821,7 +1835,7 @@ async def submit_session_task(
             "type": "primary",
             "confidence": max(0, min(confidence, 100)),
             "guardrailStatus": "passed",
-            "requiresApproval": False,
+            "requiresApproval": requires_approval,
             "estimatedDuration": "2m",
             "tokenCount": max(token_count, 0),
         }
@@ -1886,10 +1900,10 @@ async def submit_session_task(
             "proposals": plan_proposals,
         },
         "nextSteps": {
-            "canExecute": True,
-            "requiresApproval": False,
-            "approvalReason": None,
-            "executeLabel": "Execute now",
+            "canExecute": not requires_approval,
+            "requiresApproval": requires_approval,
+            "approvalReason": "Operator flagged this action for human approval." if requires_approval else None,
+            "executeLabel": "Request approval" if requires_approval else "Execute now",
         },
         "context": {
             "execution": {"label": "Execution", "description": "How the automation will run", "items": []},

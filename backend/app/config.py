@@ -113,6 +113,9 @@ class Settings(BaseSettings):
     # Input moderation via OpenAI moderation endpoint before completion.
     ai_moderation_enabled: bool = False
     ai_moderation_model: str = "omni-moderation-latest"
+    # Resilience: if the primary task model fails all retries, try this model
+    # once before giving up. Empty disables the fallback.
+    ai_fallback_model: str = "gpt-4o-mini"
 
     # Phase 7: policy engine defaults (0/empty = disabled)
     policy_max_steps: int = 0

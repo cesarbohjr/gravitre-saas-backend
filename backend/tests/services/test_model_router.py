@@ -27,8 +27,9 @@ class TestModelRouter:
         return ModelRouter(settings=mock_settings)
 
     def test_task_model_resolution(self, router: ModelRouter):
-        # Routing is currently stabilized on a single production model for all task types.
-        assert router._resolve_model(TaskType.CLASSIFICATION) == "gpt-4.1"  # noqa: SLF001
+        # Tiered routing: lightweight tasks use the cheap model, reasoning tasks
+        # use the stronger model.
+        assert router._resolve_model(TaskType.CLASSIFICATION) == "gpt-4o-mini"  # noqa: SLF001
         assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == "gpt-4.1"  # noqa: SLF001
 
     @pytest.mark.asyncio
@@ -36,11 +37,30 @@ class TestModelRouter:
         router._openai = AsyncMock()  # noqa: SLF001
         router._openai.chat.completions.create = AsyncMock(return_value=_mock_openai_content("hello"))  # noqa: SLF001
         with patch.object(router, "_log_model_call", AsyncMock()):
-            response = await router.complete(task_type=TaskType.CLASSIFICATION, prompt="Classify me")
+            response = await router.complete(task_type=TaskType.WORKFLOW_PLANNING, prompt="Plan this")
         assert response.provider == "openai"
         assert response.model == "gpt-4.1"
         assert response.content == "hello"
         assert response.cache_hit is False
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_secondary_model(self, mock_settings):
+        settings = mock_settings.model_copy(update={"ai_fallback_model": "gpt-4o-mini"})
+        router = ModelRouter(settings=settings)
+        router._openai = AsyncMock()  # noqa: SLF001
+        # Primary model fails all retries, fallback model succeeds.
+        router._openai.chat.completions.create = AsyncMock(  # noqa: SLF001
+            side_effect=[
+                RuntimeError("primary down"),
+                RuntimeError("primary down"),
+                RuntimeError("primary down"),
+                _mock_openai_content("fallback ok"),
+            ]
+        )
+        with patch.object(router, "_log_model_call", AsyncMock()):
+            response = await router.complete(task_type=TaskType.WORKFLOW_PLANNING, prompt="Plan this")
+        assert response.content == "fallback ok"
+        assert response.model == "gpt-4o-mini"
 
     @pytest.mark.asyncio
     async def test_complete_cache_hit(self, router: ModelRouter):
