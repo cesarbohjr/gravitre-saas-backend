@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 import math
+import uuid
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -9,6 +10,9 @@ from supabase import Client, create_client
 
 from app.config import Settings
 from app.core.errors import error_detail
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 DEFAULT_PLAN_CODE = "node"
 
@@ -288,6 +292,63 @@ def get_usage_totals(
     return totals
 
 
+def derive_idempotency_key(
+    org_id: str,
+    metric_type: str,
+    period_start: date,
+    metadata: dict[str, Any] | None = None,
+    suffix: str = "",
+) -> str:
+    """Build a stable idempotency key for a usage record.
+
+    Uses metadata.source + metadata.source_id when available (e.g.
+    "model_call" + the model_calls row id), so re-running the metering for the
+    same underlying event is a no-op. Falls back to a random uuid when no
+    source_id is present, which preserves the previous always-insert behavior
+    for callers that have no stable anchor.
+    """
+    meta = metadata or {}
+    source = str(meta.get("source") or metric_type)
+    source_id = meta.get("source_id")
+    anchor = str(source_id) if source_id else uuid.uuid4().hex
+    key = f"{org_id}:{source}:{anchor}:{period_start.isoformat()}"
+    return f"{key}:{suffix}" if suffix else key
+
+
+def _idempotent_insert(
+    client: Client,
+    table: str,
+    org_id: str,
+    payload: dict[str, Any],
+    idempotency_key: str,
+) -> bool:
+    """INSERT ... ON CONFLICT (org_id, idempotency_key) DO NOTHING.
+
+    Returns True if a row was inserted, False if it was a duplicate. Falls back
+    to a plain insert (still records usage, without dedupe) if the idempotency
+    column/index is not present yet — so billing keeps working if the migration
+    has not been applied. Returns True for the fallback insert.
+    """
+    try:
+        resp = (
+            client.table(table)
+            .upsert(
+                {**payload, "idempotency_key": idempotency_key},
+                on_conflict="org_id,idempotency_key",
+                ignore_duplicates=True,
+            )
+            .execute()
+        )
+        # With ignore-duplicates, a conflicting row is skipped and not returned.
+        return bool(resp.data)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "idempotent insert fallback table=%s org_id=%s error=%s", table, org_id, str(exc)
+        )
+        client.table(table).insert(payload).execute()
+        return True
+
+
 def record_usage(
     client: Client,
     org_id: str,
@@ -297,9 +358,12 @@ def record_usage(
     period_start: date,
     period_end: date,
     metadata: dict[str, Any] | None = None,
-) -> None:
+    idempotency_key: str | None = None,
+) -> bool:
+    """Record a usage row idempotently. Returns True if inserted, False if it
+    was a duplicate (so callers can avoid double-counting downstream)."""
     if quantity == 0:
-        return
+        return False
     payload: dict[str, Any] = {
         "org_id": org_id,
         "environment": environment,
@@ -315,7 +379,8 @@ def record_usage(
         payload["credits"] = metadata.get("credits")
         payload["source"] = metadata.get("source")
         payload["source_id"] = metadata.get("source_id")
-    client.table("usage_tracking").insert(payload).execute()
+    key = idempotency_key or derive_idempotency_key(org_id, metric_type, period_start, metadata)
+    return _idempotent_insert(client, "usage_tracking", org_id, payload, key)
 
 
 def record_overage(
@@ -326,19 +391,20 @@ def record_overage(
     quantity: int,
     period_start: date,
     period_end: date,
-) -> None:
+    idempotency_key: str | None = None,
+) -> bool:
     if quantity <= 0:
-        return
-    client.table("overage_usage").insert(
-        {
-            "org_id": org_id,
-            "environment": environment,
-            "metric_type": metric_type,
-            "quantity": quantity,
-            "period_start": period_start.isoformat(),
-            "period_end": period_end.isoformat(),
-        }
-    ).execute()
+        return False
+    payload = {
+        "org_id": org_id,
+        "environment": environment,
+        "metric_type": metric_type,
+        "quantity": quantity,
+        "period_start": period_start.isoformat(),
+        "period_end": period_end.isoformat(),
+    }
+    key = idempotency_key or derive_idempotency_key(org_id, metric_type, period_start, suffix="overage")
+    return _idempotent_insert(client, "overage_usage", org_id, payload, key)
 
 
 def apply_usage_with_overage(
@@ -354,8 +420,17 @@ def apply_usage_with_overage(
 ) -> None:
     if quantity <= 0:
         return
+    # Shared idempotency anchor so usage + its overage dedupe together. On a
+    # duplicate (retry / re-processed event), record_usage is a no-op and we
+    # skip the overage entirely to avoid double-counting.
+    base_key = derive_idempotency_key(org_id, metric_type, period_start, metadata)
     total_before = _sum_usage(client, org_id, metric_type, period_start, period_end, environment)
-    record_usage(client, org_id, environment, metric_type, quantity, period_start, period_end, metadata=metadata)
+    inserted = record_usage(
+        client, org_id, environment, metric_type, quantity, period_start, period_end,
+        metadata=metadata, idempotency_key=base_key,
+    )
+    if not inserted:
+        return
     total_after = total_before + quantity
     included = 0
     if metric_type == "ai_credits":
@@ -364,10 +439,17 @@ def apply_usage_with_overage(
         included = int(plan.get("workflow_runs_included") or 0)
     if included <= 0:
         return
+    overage_key = f"{base_key}:overage"
     if total_before >= included:
-        record_overage(client, org_id, environment, metric_type, quantity, period_start, period_end)
+        record_overage(
+            client, org_id, environment, metric_type, quantity, period_start, period_end,
+            idempotency_key=overage_key,
+        )
     elif total_after > included:
-        record_overage(client, org_id, environment, metric_type, total_after - included, period_start, period_end)
+        record_overage(
+            client, org_id, environment, metric_type, total_after - included, period_start, period_end,
+            idempotency_key=overage_key,
+        )
 
 
 def require_feature(plan: dict[str, Any], feature: str) -> None:

@@ -76,6 +76,9 @@ class ModelResponse(BaseModel):
     latency_ms: int
     cost_usd: float
     cache_hit: bool = False
+    # id of the model_calls row written for this call (used as the billing
+    # idempotency anchor); None if logging was skipped or failed.
+    model_call_id: str | None = None
 
 
 class ModelRouter:
@@ -152,7 +155,7 @@ class ModelRouter:
         cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
         if use_cache and cache_key in self._cache:
             cached = self._cache[cache_key].model_copy(update={"cache_hit": True})
-            await self._log_model_call(org_id=org_id, task_type=task_type, response=cached)
+            cached.model_call_id = await self._log_model_call(org_id=org_id, task_type=task_type, response=cached)
             return cached
 
         # Canonical messages with safety hardening + untrusted-input fencing.
@@ -239,7 +242,7 @@ class ModelRouter:
             latency_ms,
             result.attempts,
         )
-        await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
+        final.model_call_id = await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
         await self._log_guardrail_event(
             org_id,
             task_type,
@@ -347,9 +350,10 @@ class ModelRouter:
             6,
         )
 
-    async def _log_model_call(self, org_id: str | None, task_type: TaskType, response: ModelResponse) -> None:
+    async def _log_model_call(self, org_id: str | None, task_type: TaskType, response: ModelResponse) -> str | None:
+        """Write the model_calls row and return its id (billing idempotency anchor)."""
         if not org_id:
-            return
+            return None
         try:
             client = get_supabase_client(self.settings)
             row = {
@@ -363,9 +367,13 @@ class ModelRouter:
                 "cost_usd": response.cost_usd,
                 "cache_hit": response.cache_hit,
             }
-            client.table("model_calls").insert(row).execute()
+            resp = client.table("model_calls").insert(row).execute()
+            if resp.data:
+                return str(resp.data[0].get("id"))
+            return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("model_calls insert failed: %s", str(exc))
+            return None
 
     async def _log_guardrail_event(
         self,

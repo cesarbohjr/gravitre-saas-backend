@@ -1778,6 +1778,7 @@ async def submit_session_task(
     ai_degraded = False
     ai_degraded_reason: str | None = None
     requires_approval = False
+    model_call_id: str | None = None
     try:
         ai_prompt = (
             "Generate an operator task plan for the task below.\n"
@@ -1808,6 +1809,7 @@ async def submit_session_task(
         confidence = int(parsed.get("confidence") or confidence)
         token_count = int(parsed.get("token_count") or token_count)
         requires_approval = bool(parsed.get("requires_approval") or False)
+        model_call_id = ai_result.model_call_id
     except Exception as exc:  # noqa: BLE001
         # AI is unavailable/disabled/rate-limited/over-budget: serve a basic plan
         # but signal degradation so the UI can surface it instead of pretending.
@@ -1932,8 +1934,10 @@ async def submit_session_task(
             input_texts=[body.task or summary],
             output_texts=output_texts,
             model_name=None,
-            source="operator.task",
-            source_id=str(session_id),
+            source="model_call",
+            # Anchor billing idempotency to the model_calls row id so a retry of
+            # this task does not double-count AI credits for the same model call.
+            source_id=model_call_id or task_id,
         )
         apply_usage_with_overage(
             client=client,
