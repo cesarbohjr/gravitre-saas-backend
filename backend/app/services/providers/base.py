@@ -88,17 +88,41 @@ class CircuitBreaker:
     """Trips after `failure_threshold` failures; stays open for `cooldown_s`.
 
     A tripped (open) breaker counts as unavailable in the failover chain and is
-    skipped immediately with no call attempt. In-process / per-worker.
+    skipped immediately with no call attempt.
+
+    When `redis_getter` returns a Redis client, failure counts + open state are
+    shared across all instances (keys auto-expire after cooldown). Any Redis
+    error falls back to the per-process state, so behavior degrades gracefully.
     """
 
-    def __init__(self, failure_threshold: int = 3, cooldown_s: float = 60.0) -> None:
+    def __init__(
+        self,
+        failure_threshold: int = 3,
+        cooldown_s: float = 60.0,
+        redis_getter: Any = None,
+    ) -> None:
         self.failure_threshold = failure_threshold
         self.cooldown_s = cooldown_s
         self._failures: dict[str, int] = {}
         self._opened_at: dict[str, float] = {}
         self._lock = threading.Lock()
+        self._redis_getter = redis_getter
+
+    def _redis(self):
+        if self._redis_getter is None:
+            return None
+        try:
+            return self._redis_getter()
+        except Exception:  # noqa: BLE001
+            return None
 
     def is_open(self, provider: str) -> bool:
+        client = self._redis()
+        if client is not None:
+            try:
+                return bool(client.exists(f"cb:open:{provider}"))
+            except Exception:  # noqa: BLE001
+                pass
         with self._lock:
             opened = self._opened_at.get(provider)
             if opened is None:
@@ -111,11 +135,29 @@ class CircuitBreaker:
             return True
 
     def record_success(self, provider: str) -> None:
+        client = self._redis()
+        if client is not None:
+            try:
+                client.delete(f"cb:fail:{provider}", f"cb:open:{provider}")
+                return
+            except Exception:  # noqa: BLE001
+                pass
         with self._lock:
             self._failures[provider] = 0
             self._opened_at.pop(provider, None)
 
     def record_failure(self, provider: str) -> None:
+        client = self._redis()
+        if client is not None:
+            try:
+                fail_key = f"cb:fail:{provider}"
+                count = int(client.incr(fail_key))
+                client.expire(fail_key, int(self.cooldown_s))
+                if count >= self.failure_threshold:
+                    client.set(f"cb:open:{provider}", "1", ex=int(self.cooldown_s))
+                return
+            except Exception:  # noqa: BLE001
+                pass
         with self._lock:
             count = self._failures.get(provider, 0) + 1
             self._failures[provider] = count

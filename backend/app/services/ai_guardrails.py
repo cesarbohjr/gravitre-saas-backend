@@ -152,12 +152,40 @@ class SlidingWindowRateLimiter:
 # Module-level limiter shared across the process.
 _rate_limiter = SlidingWindowRateLimiter()
 
+_RATE_WINDOW_S = 60
+
+
+def _redis_rate_check(client, key: str, limit: int) -> None:
+    """Fixed-window counter in Redis (shared across instances). Raises
+    AIRateLimitError if over the limit for the current window."""
+    bucket = int(time.time() // _RATE_WINDOW_S)
+    redis_key = f"airl:{key}:{bucket}"
+    count = int(client.incr(redis_key))
+    if count == 1:
+        client.expire(redis_key, _RATE_WINDOW_S + 1)
+    if count > limit:
+        raise AIRateLimitError(f"AI request rate limit exceeded ({limit}/min)")
+
 
 def enforce_rate_limit(org_id: str | None, settings: Settings) -> None:
     limit = int(getattr(settings, "ai_rate_limit_per_min", 0) or 0)
     if limit <= 0:
         return
     key = org_id or "_global"
+    # Prefer a Redis-backed counter so the limit is enforced across all
+    # instances; fall back to the per-process sliding window if Redis is
+    # unavailable (still an effective runaway-spend guard per worker).
+    from app.core.redis_client import get_sync_redis
+
+    client = get_sync_redis(settings)
+    if client is not None:
+        try:
+            _redis_rate_check(client, key, limit)
+            return
+        except AIRateLimitError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("redis rate limit fallback (in-process): %s", str(exc))
     _rate_limiter.check(key, limit)
 
 

@@ -117,7 +117,15 @@ class ModelRouter:
                 ).strip(),
             ),
         }
-        self._breaker = CircuitBreaker(failure_threshold=3, cooldown_s=60.0)
+        # Redis-backed breaker state (shared across instances) when REDIS_URL is
+        # configured; falls back to per-process state otherwise.
+        from app.core.redis_client import get_sync_redis
+
+        self._breaker = CircuitBreaker(
+            failure_threshold=3,
+            cooldown_s=60.0,
+            redis_getter=lambda: get_sync_redis(self.settings),
+        )
         self._cache: dict[str, ModelResponse] = {}
 
     # FUTURE (STA-5): Add a streaming path to the router (e.g. complete_stream()).

@@ -95,6 +95,41 @@ class TestRateLimiter:
             enforce_rate_limit("org-x", settings)
 
 
+class _FakeRedis:
+    def __init__(self):
+        self.kv: dict = {}
+
+    def incr(self, key):
+        self.kv[key] = int(self.kv.get(key, 0)) + 1
+        return self.kv[key]
+
+    def expire(self, key, ttl):
+        return True
+
+
+class TestRedisRateLimit:
+    def test_redis_counter_blocks_over_limit(self, mock_settings, monkeypatch):
+        settings = mock_settings.model_copy(update={"ai_rate_limit_per_min": 2})
+        import app.core.redis_client as rc
+
+        # Share one fake client across calls so the counter accumulates.
+        shared = _FakeRedis()
+        monkeypatch.setattr(rc, "get_sync_redis", lambda s: shared)
+        enforce_rate_limit("org-r", settings)
+        enforce_rate_limit("org-r", settings)
+        with pytest.raises(AIRateLimitError):
+            enforce_rate_limit("org-r", settings)
+
+    def test_falls_back_to_in_process_when_no_redis(self, mock_settings, monkeypatch):
+        settings = mock_settings.model_copy(update={"ai_rate_limit_per_min": 1})
+        import app.core.redis_client as rc
+
+        monkeypatch.setattr(rc, "get_sync_redis", lambda s: None)
+        enforce_rate_limit("org-fallback-unique-xyz", settings)
+        with pytest.raises(AIRateLimitError):
+            enforce_rate_limit("org-fallback-unique-xyz", settings)
+
+
 class TestBudgetGate:
     def _patch_billing(self, monkeypatch, *, override, included, used):
         import app.billing.service as bs
