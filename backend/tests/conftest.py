@@ -92,7 +92,7 @@ def mock_anthropic_response() -> dict[str, Any]:
         "type": "message",
         "role": "assistant",
         "content": [{"type": "text", "text": '{"result":"test"}'}],
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-sonnet-4-6",
         "stop_reason": "end_turn",
         "usage": {"input_tokens": 100, "output_tokens": 50},
     }

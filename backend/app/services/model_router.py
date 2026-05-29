@@ -12,12 +12,14 @@ from pydantic import BaseModel
 from app.config import MODEL_TIERS, TASK_COMPLEXITY, Settings, get_settings
 from app.core.logging import get_logger
 from app.services.ai_guardrails import (
+    AIGuardrailError,
     AIServiceDisabledError,
     enforce_budget,
     enforce_rate_limit,
     fence_untrusted,
     harden_system_prompt,
     moderate_input,
+    redact_pii,
 )
 from app.services.providers.anthropic_adapter import AnthropicAdapter
 from app.services.providers.base import (
@@ -145,12 +147,21 @@ class ModelRouter:
         model = self._resolve_model(task_type)  # primary (openai) model, for cache key
 
         # --- Governance guardrails (chokepoint) ---------------------------------
-        if getattr(self.settings, "disable_ai", False):
-            logger.warning("AI_DISABLED task_type=%s org_id=%s", task_type.value, org_id)
-            raise AIServiceDisabledError()
-        enforce_rate_limit(org_id, self.settings)
-        enforce_budget(org_id, self.settings)
-        await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
+        # Any guardrail refusal is persisted to guardrail_events (auditable),
+        # then re-raised so the caller can surface it.
+        try:
+            if getattr(self.settings, "disable_ai", False):
+                raise AIServiceDisabledError()
+            enforce_rate_limit(org_id, self.settings)
+            enforce_budget(org_id, self.settings)
+            await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
+        except AIGuardrailError as exc:
+            code = getattr(exc, "code", "AI_GUARDRAIL")
+            logger.warning(
+                "AI_GUARDRAIL_BLOCK task_type=%s org_id=%s code=%s", task_type.value, org_id, code
+            )
+            await self._log_guardrail_event(org_id, task_type, code, [], str(exc))
+            raise
 
         cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
         if use_cache and cache_key in self._cache:
@@ -159,6 +170,9 @@ class ModelRouter:
             return cached
 
         # Canonical messages with safety hardening + untrusted-input fencing.
+        # PII is redacted from user/retrieved content before it leaves the
+        # platform (system prompt is developer-authored, left intact).
+        redact = getattr(self.settings, "ai_pii_redaction_enabled", True)
         messages: list[Message] = []
         hardened_system = harden_system_prompt(system_prompt)
         if hardened_system:
@@ -167,8 +181,12 @@ class ModelRouter:
             role = c.get("role")
             content = c.get("content")
             if role in ("system", "user", "assistant") and content is not None:
-                messages.append({"role": role, "content": str(content)})
-        messages.append({"role": "user", "content": fence_untrusted(prompt)})
+                text = str(content)
+                if redact and role != "system":
+                    text = redact_pii(text)
+                messages.append({"role": role, "content": text})
+        user_prompt = redact_pii(prompt) if redact else prompt
+        messages.append({"role": "user", "content": fence_untrusted(user_prompt)})
 
         # Build the failover priority chain.
         if getattr(self.settings, "ai_failover_enabled", True):

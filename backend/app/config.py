@@ -55,13 +55,13 @@ class Settings(BaseSettings):
 
     # BE-10: Embedding provider (OpenAI); single model per deployment
     openai_api_key: str = ""
-    # RESERVED: Anthropic/Google are not yet wired into ModelRouter (OpenAI-only
-    # today). These keys + default_reasoning_model exist for planned multi-provider
-    # routing; they are read by config/tests but no runtime code calls them.
+    # Anthropic/Google ARE wired into the ModelRouter multi-provider failover
+    # (see MODEL_TIERS + providers/). These keys enable those providers.
     anthropic_api_key: str = ""
     google_api_key: str = ""
     default_fast_model: str = "gpt-5.4-mini"
-    default_reasoning_model: str = "claude-3-7-sonnet-latest"  # reserved (see note above)
+    # Reserved hint for a reasoning-tier model (routing uses MODEL_TIERS).
+    default_reasoning_model: str = "claude-sonnet-4-6"
     default_embedding_model: str = "text-embedding-3-small"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimension: int = 1536
@@ -111,13 +111,18 @@ class Settings(BaseSettings):
     disable_ai: bool = False
     # Per-org sliding-window rate limit for LLM calls; 0 disables the limiter.
     ai_rate_limit_per_min: int = 0
-    # Hard spend gate: when enabled, block LLM calls once an org's period
+    # Hard spend gate (default ON): block LLM calls once an org's period
     # ai_credits usage reaches ai_credits_included * ai_budget_overage_multiplier.
-    ai_hard_budget_enabled: bool = False
+    # Fail-open on a transient billing-lookup error (availability > strict
+    # enforcement on a DB blip); the per-org rate limiter remains the hard cap.
+    ai_hard_budget_enabled: bool = True
     ai_budget_overage_multiplier: float = 2.0
     # Input moderation via OpenAI moderation endpoint before completion.
     ai_moderation_enabled: bool = False
     ai_moderation_model: str = "omni-moderation-latest"
+    # Redact PII (email/SSN/card/phone) from user + retrieved content before it
+    # is sent to an external AI provider.
+    ai_pii_redaction_enabled: bool = True
     # Resilience: if the primary task model fails all retries, try this model
     # once before giving up. Empty disables the fallback.
     ai_fallback_model: str = "gpt-5.4-mini"

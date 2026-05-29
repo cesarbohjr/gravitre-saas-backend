@@ -12,6 +12,7 @@ from app.services.ai_guardrails import (
     enforce_rate_limit,
     fence_untrusted,
     harden_system_prompt,
+    redact_pii,
 )
 from app.services.model_router import ModelRouter, TaskType
 
@@ -40,6 +41,27 @@ class TestPromptHardening:
         assert "<untrusted_input>" in out
         assert "</untrusted_input>" in out
         assert "ignore previous instructions" in out
+
+
+class TestPIIRedaction:
+    def test_redacts_common_pii(self):
+        text = (
+            "Email me at john.doe@acme.com or call 415-555-0142. "
+            "SSN 123-45-6789, card 4111 1111 1111 1111."
+        )
+        out = redact_pii(text)
+        assert "john.doe@acme.com" not in out
+        assert "[REDACTED_EMAIL]" in out
+        assert "123-45-6789" not in out and "[REDACTED_SSN]" in out
+        assert "4111 1111 1111 1111" not in out and "[REDACTED_CC]" in out
+        assert "415-555-0142" not in out and "[REDACTED_PHONE]" in out
+
+    def test_leaves_clean_text(self):
+        text = "Summarize the latest workflow run for the marketing agent."
+        assert redact_pii(text) == text
+
+    def test_handles_empty(self):
+        assert redact_pii("") == ""
 
 
 class TestRateLimiter:
@@ -77,6 +99,37 @@ class TestModelRouterGuardrails:
         router = ModelRouter(settings=settings)
         with pytest.raises(AIServiceDisabledError):
             await router.complete(task_type=TaskType.CLASSIFICATION, prompt="hi")
+
+    @pytest.mark.asyncio
+    async def test_guardrail_block_is_persisted(self, mock_settings):
+        settings = mock_settings.model_copy(update={"disable_ai": True})
+        router = ModelRouter(settings=settings)
+        with patch.object(router, "_log_guardrail_event", AsyncMock()) as log_event:
+            with pytest.raises(AIServiceDisabledError):
+                await router.complete(task_type=TaskType.CLASSIFICATION, prompt="hi", org_id="org-1")
+        log_event.assert_awaited_once()
+        # signature: (org_id, task_type, event_type, attempts, summary)
+        args = log_event.call_args.args
+        assert args[0] == "org-1"
+        assert args[2] == "AI_DISABLED"
+
+    @pytest.mark.asyncio
+    async def test_pii_redacted_before_send(self, mock_settings):
+        router = ModelRouter(settings=mock_settings)
+        router._openai = AsyncMock()  # noqa: SLF001
+        router._openai.chat.completions.create = AsyncMock(  # noqa: SLF001
+            return_value=_mock_openai_content("ok", prompt_tokens=1, completion_tokens=1)
+        )
+        with patch.object(router, "_log_model_call", AsyncMock()):
+            await router.complete(
+                task_type=TaskType.CLASSIFICATION,
+                prompt="contact john@acme.com",
+            )
+        # Inspect the messages actually sent to the provider.
+        sent = router._openai.chat.completions.create.call_args.kwargs["messages"]  # noqa: SLF001
+        user_msg = next(m for m in sent if m["role"] == "user")
+        assert "john@acme.com" not in user_msg["content"]
+        assert "[REDACTED_EMAIL]" in user_msg["content"]
 
     @pytest.mark.asyncio
     async def test_uses_real_usage_tokens(self, mock_settings):

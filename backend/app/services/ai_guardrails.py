@@ -12,6 +12,7 @@ Notes:
 """
 from __future__ import annotations
 
+import re
 import threading
 import time
 from collections import deque
@@ -90,6 +91,32 @@ def fence_untrusted(prompt: str) -> str:
         f"{body}\n"
         "</untrusted_input>"
     )
+
+
+# ---------------------------------------------------------------------------
+# PII sanitization (redact before content leaves the platform to a provider)
+# ---------------------------------------------------------------------------
+
+# Order matters: email/SSN before the broader card/phone digit patterns.
+_PII_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
+    ("[REDACTED_EMAIL]", re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")),
+    ("[REDACTED_SSN]", re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
+    # 16-digit card in 4-group form, then any contiguous 13–16 digit run.
+    ("[REDACTED_CC]", re.compile(r"\b\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{4}\b")),
+    ("[REDACTED_CC]", re.compile(r"\b\d{13,16}\b")),
+    ("[REDACTED_PHONE]", re.compile(r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b")),
+]
+
+
+def redact_pii(text: str) -> str:
+    """Redact common PII (email, SSN, credit card, phone) from text before it is
+    sent to an external AI provider. Best-effort, heuristic; never raises."""
+    if not text:
+        return text
+    out = text
+    for replacement, pattern in _PII_PATTERNS:
+        out = pattern.sub(replacement, out)
+    return out
 
 
 # ---------------------------------------------------------------------------

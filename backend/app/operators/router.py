@@ -64,6 +64,7 @@ from app.operators.repository import (
 from app.billing.service import (
     apply_usage_with_overage,
     build_ai_usage_metadata,
+    build_ai_usage_metadata_from_tokens,
     get_current_period,
     get_default_usage_quantity,
     get_plan_for_org,
@@ -1779,6 +1780,9 @@ async def submit_session_task(
     ai_degraded_reason: str | None = None
     requires_approval = False
     model_call_id: str | None = None
+    ai_input_tokens: int | None = None
+    ai_output_tokens: int | None = None
+    ai_model_name: str | None = None
     try:
         ai_prompt = (
             "Generate an operator task plan for the task below.\n"
@@ -1810,6 +1814,9 @@ async def submit_session_task(
         token_count = int(parsed.get("token_count") or token_count)
         requires_approval = bool(parsed.get("requires_approval") or False)
         model_call_id = ai_result.model_call_id
+        ai_input_tokens = ai_result.input_tokens
+        ai_output_tokens = ai_result.output_tokens
+        ai_model_name = ai_result.model
     except Exception as exc:  # noqa: BLE001
         # AI is unavailable/disabled/rate-limited/over-budget: serve a basic plan
         # but signal degradation so the UI can surface it instead of pretending.
@@ -1930,15 +1937,28 @@ async def submit_session_task(
         period_start, period_end = get_current_period()
         output_texts = [analysis.get("summary") or ""]
         output_texts.extend([a.get("title") or "" for a in suggested_actions])
-        ai_meta = build_ai_usage_metadata(
-            input_texts=[body.task or summary],
-            output_texts=output_texts,
-            model_name=None,
-            source="model_call",
-            # Anchor billing idempotency to the model_calls row id so a retry of
-            # this task does not double-count AI credits for the same model call.
-            source_id=model_call_id or task_id,
-        )
+        # Anchor billing idempotency to the model_calls row id so a retry of this
+        # task does not double-count AI credits for the same model call.
+        usage_source_id = model_call_id or task_id
+        if ai_model_name is not None:
+            # Real token counts + model from the AI response -> billed credits
+            # match what's logged in model_calls.
+            ai_meta = build_ai_usage_metadata_from_tokens(
+                input_tokens=ai_input_tokens or 0,
+                output_tokens=ai_output_tokens or 0,
+                model_name=ai_model_name,
+                source="model_call",
+                source_id=usage_source_id,
+            )
+        else:
+            # AI degraded/unavailable: fall back to a char estimate.
+            ai_meta = build_ai_usage_metadata(
+                input_texts=[body.task or summary],
+                output_texts=output_texts,
+                model_name=None,
+                source="model_call",
+                source_id=usage_source_id,
+            )
         apply_usage_with_overage(
             client=client,
             org_id=org_id,

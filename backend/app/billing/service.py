@@ -533,3 +533,27 @@ def build_ai_usage_metadata(
         "source": source,
         "source_id": source_id,
     }
+
+
+def build_ai_usage_metadata_from_tokens(
+    input_tokens: int,
+    output_tokens: int,
+    model_name: str | None,
+    source: str,
+    source_id: str | None,
+) -> dict[str, Any]:
+    """Build usage metadata from REAL token counts (from the model response),
+    rather than char-estimating, so billed credits match model_calls."""
+    input_tokens = max(int(input_tokens or 0), 0)
+    output_tokens = max(int(output_tokens or 0), 0)
+    credits = compute_ai_credits(input_tokens, output_tokens, model_name)
+    if credits <= 0:
+        credits = get_default_usage_quantity("ai_credits")
+    return {
+        "model_name": model_name,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "credits": credits,
+        "source": source,
+        "source_id": source_id,
+    }
