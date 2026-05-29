@@ -6,11 +6,12 @@ internal errors below. They must never leak provider SDK types to callers.
 """
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Literal, TypedDict
+from typing import Any, Awaitable, Callable, Literal, TypedDict
 
 
 class Message(TypedDict):
@@ -190,6 +191,34 @@ class ProviderAdapter(ABC):
     @abstractmethod
     def is_available(self) -> bool:
         """True when the provider is configured and its SDK is importable."""
+
+
+async def retry_provider_call(
+    attempt: Callable[[], Awaitable["ProviderResponse"]],
+    *,
+    max_attempts: int = 3,
+    base_delay: float = 0.4,
+) -> "ProviderResponse":
+    """Run an adapter attempt with exponential backoff.
+
+    Retries on transient errors (ProviderUnavailableError / ProviderRateLimitedError)
+    but NOT on ProviderInvalidResponseError (input/prompt problem — raised at once).
+    """
+    delay = base_delay
+    last_exc: Exception | None = None
+    for i in range(max_attempts):
+        try:
+            return await attempt()
+        except ProviderInvalidResponseError:
+            raise
+        except (ProviderUnavailableError, ProviderRateLimitedError) as exc:
+            last_exc = exc
+            if i == max_attempts - 1:
+                break
+            await asyncio.sleep(delay)
+            delay *= 2
+    assert last_exc is not None
+    raise last_exc
 
 
 def extract_system(messages: list[Message]) -> tuple[str | None, list[Message]]:

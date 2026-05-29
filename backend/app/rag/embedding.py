@@ -95,9 +95,18 @@ def embed_with_failover(
             errors.append(f"openai: {exc}")
             logger.warning("embedding openai failed, trying voyage: %s", str(exc))
 
-    # 2) Voyage (fallback, Anthropic ecosystem)
+    # 2) Voyage (fallback, Anthropic ecosystem). Only safe when the corpus is
+    # Voyage-dimensioned (voyage-3 = 1024 dims); a 1024-dim vector against a
+    # 1536-dim OpenAI-indexed pgvector column would fail the search, so skip it
+    # and let the caller fall back to keyword search instead.
     voyage_key = (getattr(settings, "voyage_api_key", "") or "").strip()
-    if voyage_key:
+    corpus_dim = int(getattr(settings, "openai_embedding_dimension", 1536) or 1536)
+    if voyage_key and corpus_dim != 1024:
+        logger.warning(
+            "voyage fallback skipped: corpus dim=%s != voyage 1024 (would be incompatible)", corpus_dim
+        )
+        errors.append("voyage: skipped (dimension mismatch)")
+    elif voyage_key:
         try:
             adapter = AnthropicAdapter(
                 api_key_getter=lambda: "",

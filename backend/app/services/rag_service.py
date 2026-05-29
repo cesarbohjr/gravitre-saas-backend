@@ -136,7 +136,12 @@ class RAGService:
             answer_resp = await self.model_router.complete(
                 task_type=TaskType.RAG_ANSWERING,
                 prompt=prompt,
-                system_prompt="Cite factual points from context. Do not fabricate sources.",
+                system_prompt=(
+                    "Answer only from the provided context and cite factual points "
+                    "from it. Never fabricate sources or facts. If the context is "
+                    "empty or insufficient to answer, say so explicitly and do not "
+                    "guess."
+                ),
                 org_id=org_id,
             )
             answer_text = answer_resp.content

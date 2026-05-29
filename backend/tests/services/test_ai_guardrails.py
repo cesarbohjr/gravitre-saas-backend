@@ -8,6 +8,7 @@ import pytest
 
 from app.services.ai_guardrails import (
     AIBudgetExceededError,
+    AIContentFlaggedError,
     AIRateLimitError,
     AIServiceDisabledError,
     SlidingWindowRateLimiter,
@@ -15,6 +16,7 @@ from app.services.ai_guardrails import (
     enforce_rate_limit,
     fence_untrusted,
     harden_system_prompt,
+    moderate_output,
     redact_pii,
 )
 from app.services.model_router import ModelRouter, TaskType
@@ -128,6 +130,22 @@ class TestRedisRateLimit:
         enforce_rate_limit("org-fallback-unique-xyz", settings)
         with pytest.raises(AIRateLimitError):
             enforce_rate_limit("org-fallback-unique-xyz", settings)
+
+
+class TestOutputModeration:
+    async def test_flags_output_when_enabled(self, mock_settings):
+        settings = mock_settings.model_copy(update={"ai_moderation_enabled": True})
+        client = AsyncMock()
+        client.moderations.create = AsyncMock(
+            return_value=SimpleNamespace(results=[SimpleNamespace(flagged=True)])
+        )
+        with pytest.raises(AIContentFlaggedError):
+            await moderate_output("bad output", settings, client)
+
+    async def test_noop_when_disabled(self, mock_settings):
+        client = AsyncMock()
+        await moderate_output("anything", mock_settings, client)  # disabled by default
+        client.moderations.create.assert_not_called()
 
 
 class TestBudgetGate:

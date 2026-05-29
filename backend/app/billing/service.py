@@ -106,10 +106,16 @@ USAGE_DEFAULTS = {
 }
 
 TOKENS_PER_CREDIT = 1000
+# Credit multiplier by model-name substring (first match wins). Keep current
+# provider families only; flagship reasoning models cost more credits per token.
 MODEL_MULTIPLIERS: list[tuple[str, float]] = [
     ("gpt-5.5", 2.0),
-    ("gpt-4", 2.5),
-    ("gpt-3.5", 1.0),
+    ("gpt-5.4-mini", 1.0),
+    ("gpt-4.1", 1.5),
+    ("claude-sonnet", 2.0),
+    ("claude-haiku", 1.0),
+    ("gemini-2.5-pro", 1.5),
+    ("gemini-2.5-flash", 0.5),
     ("text-embedding", 0.2),
 ]
 

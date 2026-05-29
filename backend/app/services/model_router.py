@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from app.config import MODEL_TIERS, TASK_COMPLEXITY, Settings, get_settings
 from app.core.logging import get_logger
 from app.services.ai_guardrails import (
+    AIContentFlaggedError,
     AIGuardrailError,
     AIServiceDisabledError,
     enforce_budget,
@@ -19,6 +20,7 @@ from app.services.ai_guardrails import (
     fence_untrusted,
     harden_system_prompt,
     moderate_input,
+    moderate_output,
     redact_pii,
 )
 from app.services.providers.anthropic_adapter import AnthropicAdapter
@@ -33,7 +35,7 @@ from app.services.providers.base import (
 from app.services.providers.failover import build_priority, run_failover
 from app.services.providers.gemini_adapter import GeminiAdapter
 from app.services.providers.openai_adapter import OpenAIAdapter
-from app.workflows.repository import get_supabase_client
+from app.core.db import get_supabase_client
 
 logger = get_logger(__name__)
 
@@ -269,6 +271,13 @@ class ModelRouter:
             result.attempts,
         )
         final.model_call_id = await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
+        # Output moderation (after cost is logged so spend is still accounted).
+        try:
+            await moderate_output(resp.content, self.settings, self._openai)
+        except AIContentFlaggedError as exc:
+            logger.warning("AI_OUTPUT_FLAGGED task_type=%s org_id=%s", task_type.value, org_id)
+            await self._log_guardrail_event(org_id, task_type, "ai_output_flagged", [], str(exc))
+            raise
         await self._log_guardrail_event(
             org_id,
             task_type,

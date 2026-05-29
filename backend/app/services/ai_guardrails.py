@@ -249,7 +249,7 @@ def enforce_budget(org_id: str | None, settings: Settings) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def moderate_input(text: str, settings: Settings, client) -> None:
+async def _moderate(text: str, settings: Settings, client, *, message: str) -> None:
     """Raise AIContentFlaggedError if `text` is flagged. No-op when disabled or
     when the moderation call fails (fail-open for availability).
 
@@ -262,10 +262,18 @@ async def moderate_input(text: str, settings: Settings, client) -> None:
         model = getattr(settings, "ai_moderation_model", "omni-moderation-latest")
         result = await client.moderations.create(model=model, input=text)
         flagged = bool(result.results and result.results[0].flagged)
-    except AIContentFlaggedError:
-        raise
     except Exception as exc:  # noqa: BLE001
         logger.warning("moderation check skipped error=%s", str(exc))
         return
     if flagged:
-        raise AIContentFlaggedError()
+        raise AIContentFlaggedError(message)
+
+
+async def moderate_input(text: str, settings: Settings, client) -> None:
+    """Moderate user/prompt input before the model call."""
+    await _moderate(text, settings, client, message="Input was flagged by content moderation")
+
+
+async def moderate_output(text: str, settings: Settings, client) -> None:
+    """Moderate the model's output before returning it to the caller."""
+    await _moderate(text, settings, client, message="Model output was flagged by content moderation")

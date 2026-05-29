@@ -19,6 +19,7 @@ from app.services.providers.base import (
     ProviderResponse,
     ProviderUnavailableError,
     extract_system,
+    retry_provider_call,
 )
 
 logger = get_logger(__name__)
@@ -76,32 +77,34 @@ class GeminiAdapter(ProviderAdapter):
         if options.max_tokens is not None:
             gen_config["max_output_tokens"] = options.max_tokens
 
-        start = time.perf_counter()
-        try:
-            genai.configure(api_key=api_key)
-            gen_model = genai.GenerativeModel(model)
-            resp = await gen_model.generate_content_async(
-                contents,
-                generation_config=gen_config or None,
+        async def _attempt() -> ProviderResponse:
+            start = time.perf_counter()
+            try:
+                genai.configure(api_key=api_key)
+                gen_model = genai.GenerativeModel(model)
+                resp = await gen_model.generate_content_async(
+                    contents,
+                    generation_config=gen_config or None,
+                )
+            except Exception as exc:  # noqa: BLE001
+                raise self._map_error(exc) from exc
+            content = getattr(resp, "text", "") or ""
+            if not content.strip():
+                raise ProviderUnavailableError("gemini", "Model returned empty response")
+            latency_ms = (time.perf_counter() - start) * 1000
+            pt, ct = self._usage(resp)
+            return ProviderResponse(
+                content=content,
+                prompt_tokens=pt,
+                completion_tokens=ct,
+                total_tokens=pt + ct,
+                model_used=model,
+                provider_used=self.provider_name,
+                latency_ms=latency_ms,
+                raw_response=resp,
             )
-        except Exception as exc:  # noqa: BLE001
-            raise self._map_error(exc) from exc
 
-        content = getattr(resp, "text", "") or ""
-        if not content.strip():
-            raise ProviderUnavailableError("gemini", "Model returned empty response")
-        latency_ms = (time.perf_counter() - start) * 1000
-        pt, ct = self._usage(resp)
-        return ProviderResponse(
-            content=content,
-            prompt_tokens=pt,
-            completion_tokens=ct,
-            total_tokens=pt + ct,
-            model_used=model,
-            provider_used=self.provider_name,
-            latency_ms=latency_ms,
-            raw_response=resp,
-        )
+        return await retry_provider_call(_attempt)
 
     def embed(self, text: str, model: str = "models/text-embedding-004") -> list[float]:
         api_key = self._api_key_getter()

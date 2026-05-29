@@ -128,7 +128,13 @@ class DecisionService:
             response = await self.model_router.complete(
                 task_type=TaskType.DECISION_REASONING,
                 prompt=prompt,
-                system_prompt="Be concise and auditable.",
+                system_prompt=(
+                    "You are an auditable decision engine. Choose exactly one path "
+                    "from the provided available path ids — never invent an id. If no "
+                    "path clearly fits, pick the lowest-risk option and say so in "
+                    "reasoning_summary. Be concise; every choice must be justified by "
+                    "the given objective, input data, and context."
+                ),
                 response_format=DecisionAIReasoning,
                 org_id=org_id,
             )

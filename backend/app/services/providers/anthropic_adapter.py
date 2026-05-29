@@ -20,6 +20,7 @@ from app.services.providers.base import (
     ProviderResponse,
     ProviderUnavailableError,
     extract_system,
+    retry_provider_call,
 )
 
 logger = get_logger(__name__)
@@ -70,37 +71,40 @@ class AnthropicAdapter(ProviderAdapter):
             native = [{"role": "user", "content": system_text or ""}]
             system_text = None
 
-        start = time.perf_counter()
-        try:
-            client = anthropic.AsyncAnthropic(api_key=api_key, timeout=self._timeout_s, max_retries=0)
-            kwargs: dict[str, Any] = {
-                "model": model,
-                "messages": native,
-                "max_tokens": options.max_tokens or _DEFAULT_MAX_TOKENS,
-            }
-            if system_text:
-                kwargs["system"] = system_text
-            if options.temperature is not None:
-                kwargs["temperature"] = options.temperature
-            resp = await client.messages.create(**kwargs)
-        except Exception as exc:  # noqa: BLE001
-            raise self._map_error(anthropic, exc) from exc
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": native,
+            "max_tokens": options.max_tokens or _DEFAULT_MAX_TOKENS,
+        }
+        if system_text:
+            kwargs["system"] = system_text
+        if options.temperature is not None:
+            kwargs["temperature"] = options.temperature
 
-        content = self._extract_text(resp)
-        if not content.strip():
-            raise ProviderUnavailableError("anthropic", "Model returned empty response")
-        latency_ms = (time.perf_counter() - start) * 1000
-        pt, ct = self._usage(resp)
-        return ProviderResponse(
-            content=content,
-            prompt_tokens=pt,
-            completion_tokens=ct,
-            total_tokens=pt + ct,
-            model_used=model,
-            provider_used=self.provider_name,
-            latency_ms=latency_ms,
-            raw_response=resp,
-        )
+        async def _attempt() -> ProviderResponse:
+            start = time.perf_counter()
+            try:
+                client = anthropic.AsyncAnthropic(api_key=api_key, timeout=self._timeout_s, max_retries=0)
+                resp = await client.messages.create(**kwargs)
+            except Exception as exc:  # noqa: BLE001
+                raise self._map_error(anthropic, exc) from exc
+            content = self._extract_text(resp)
+            if not content.strip():
+                raise ProviderUnavailableError("anthropic", "Model returned empty response")
+            latency_ms = (time.perf_counter() - start) * 1000
+            pt, ct = self._usage(resp)
+            return ProviderResponse(
+                content=content,
+                prompt_tokens=pt,
+                completion_tokens=ct,
+                total_tokens=pt + ct,
+                model_used=model,
+                provider_used=self.provider_name,
+                latency_ms=latency_ms,
+                raw_response=resp,
+            )
+
+        return await retry_provider_call(_attempt)
 
     def embed(self, text: str, model: str = "voyage-3") -> list[float]:
         voyage_key = self._voyage_key_getter()

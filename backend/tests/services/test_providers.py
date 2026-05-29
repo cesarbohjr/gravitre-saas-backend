@@ -114,6 +114,21 @@ class TestAnthropicAdapter:
         with pytest.raises(ProviderUnavailableError):
             adapter.embed("hello")
 
+    @pytest.mark.asyncio
+    async def test_retries_transient_failure(self, monkeypatch):
+        import anthropic
+
+        import app.services.providers.base as base
+
+        monkeypatch.setattr(base.asyncio, "sleep", AsyncMock())  # no real backoff delay
+        fake_client = AsyncMock()
+        fake_client.messages.create = AsyncMock(side_effect=RuntimeError("boom"))
+        monkeypatch.setattr(anthropic, "AsyncAnthropic", lambda **kwargs: fake_client)
+        adapter = AnthropicAdapter(api_key_getter=lambda: "k", voyage_key_getter=lambda: "")
+        with pytest.raises(ProviderUnavailableError):
+            await adapter.complete([{"role": "user", "content": "hi"}], "claude-sonnet-4-6", CompletionOptions())
+        assert fake_client.messages.create.call_count == 3  # retried with backoff
+
 
 class TestGeminiAdapter:
     def test_role_mapping_and_system_prepend(self):
@@ -147,10 +162,21 @@ class TestEmbeddingFailover:
             OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
         )
         monkeypatch.setattr(AnthropicAdapter, "embed", lambda self, text, model="voyage-3": [0.9])
-        settings = mock_settings.model_copy(update={"voyage_api_key": "vk"})
+        # Voyage is only used when the corpus is Voyage-dimensioned (1024).
+        settings = mock_settings.model_copy(update={"voyage_api_key": "vk", "openai_embedding_dimension": 1024})
         vec, method = embed_with_failover("query", settings)
         assert method == "voyage"
         assert vec == [0.9]
+
+    def test_voyage_skipped_on_dimension_mismatch(self, monkeypatch, mock_settings):
+        monkeypatch.setattr(
+            OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
+        )
+        monkeypatch.setattr(AnthropicAdapter, "embed", lambda self, text, model="voyage-3": [0.9])
+        # Default 1536-dim corpus -> Voyage (1024) is incompatible, so it's skipped.
+        settings = mock_settings.model_copy(update={"voyage_api_key": "vk", "openai_embedding_dimension": 1536})
+        with pytest.raises(ValueError):
+            embed_with_failover("query", settings)
 
     def test_all_fail_raises(self, mock_settings):
         settings = mock_settings.model_copy(update={"openai_api_key": "", "voyage_api_key": ""})
