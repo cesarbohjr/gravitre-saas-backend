@@ -50,17 +50,17 @@ class TaskType(StrEnum):
     OPTIMIZATION_ANALYSIS = "optimization"
 
 
-# Approximate per-1k token pricing (input, output) for cost estimation.
-# TODO: verify all figures against https://openai.com/api/pricing (and provider docs).
+# Per-1K token pricing (input, output). Comment shows the per-1M equivalent.
+# Verified May 2026.
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float]] = {
-    "gpt-4.1": (0.002, 0.008),
-    # TODO: confirm GPT-5 family pricing — https://openai.com/api/pricing
-    "gpt-5.5": (0.01, 0.03),       # premium flagship (placeholder)
-    "gpt-5.4-mini": (0.0002, 0.0008),  # cost-optimized (placeholder)
-    "claude-haiku-4-5-20251001": (0.0008, 0.004),
-    "claude-sonnet-4-6": (0.003, 0.015),
-    "gemini-2.5-flash": (0.0001, 0.0004),
-    "gemini-2.5-pro": (0.00125, 0.005),
+    "gpt-4.1": (0.002, 0.008),                      # $2.00 in / $8.00 out per 1M
+    "gpt-5.5": (0.005, 0.030),                      # $5.00 in / $30.00 out per 1M
+    "gpt-5.4-mini": (0.00075, 0.0045),              # $0.75 in / $4.50 out per 1M
+    "text-embedding-3-small": (0.00002, 0.0),       # $0.02 / 1M input (embeddings)
+    "claude-sonnet-4-6": (0.003, 0.015),            # $3.00 in / $15.00 out per 1M
+    "claude-haiku-4-5-20251001": (0.0008, 0.004),   # $0.80 in / $4.00 out per 1M
+    "gemini-2.5-pro": (0.00125, 0.010),             # $1.25 in / $10.00 out per 1M
+    "gemini-2.5-flash": (0.0000875, 0.00035),       # $0.0875 in / $0.35 out per 1M (non-thinking)
 }
 
 
