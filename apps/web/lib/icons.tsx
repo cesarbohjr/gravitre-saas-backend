@@ -96,7 +96,7 @@ import {
   Handshake,
   Trophy,
   Medal,
-TrendingUp,
+  TrendingUp,
   TrendingDown,
   PieChart,
   Table,
@@ -125,6 +125,98 @@ TrendingUp,
   Workflow,
   Hexagon,
   Shield,
+  // Additional icons for more variety
+  Wand2,
+  MousePointer2,
+  Fingerprint,
+  ScanFace,
+  Compass,
+  Route,
+  Waypoints,
+  Orbit,
+  Radar,
+  Radio,
+  Satellite,
+  Scan,
+  QrCode,
+  Binary,
+  Braces,
+  Variable,
+  FileCode,
+  FileJson,
+  FileText,
+  FilePlus,
+  FolderOpen,
+  FolderTree,
+  Archive,
+  Boxes,
+  Component,
+  Puzzle,
+  Shapes,
+  Blocks,
+  LayoutDashboard,
+  LayoutList,
+  LayoutTemplate,
+  PanelLeft,
+  PanelRight,
+  Sidebar,
+  GalleryHorizontal,
+  GalleryVertical,
+  Laptop,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Watch,
+  Printer,
+  Server,
+  Database as DatabaseIcon,
+  Cloud,
+  CloudCog,
+  CloudOff,
+  Webhook,
+  Cable,
+  PlugZap,
+  Unplug,
+  Link2,
+  Link2Off,
+  Share,
+  ExternalLink,
+  Copy as CopyIcon,
+  Clipboard,
+  ClipboardCheck,
+  ClipboardList,
+  Scissors,
+  Crop,
+  Move,
+  Hand,
+  Grab,
+  PenTool,
+  Highlighter,
+  Eraser,
+  Type,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  List,
+  ListOrdered,
+  ListTodo,
+  ListTree,
+  Indent,
+  Outdent,
+  Heading1,
+  Heading2,
+  Heading3,
+  Quote,
+  TextCursor,
+  Hash,
+  AtSign,
+  DollarSign,
+  Percent,
+  Calculator,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -140,6 +232,9 @@ export const iconSizes = {
 } as const
 
 export type IconSize = keyof typeof iconSizes
+
+// Stroke width to match Nucleo icon thickness (thinner than Lucide default of 2)
+export const ICON_STROKE_WIDTH = 1.5
 
 // Semantic icon map using Lucide icons
 export const iconMap = {
@@ -353,6 +448,113 @@ export const iconMap = {
   // Environment
   production: Rocket,
   staging: FlaskConical,
+  
+  // Additional variety - AI & Magic
+  wand: Wand2,
+  cursor: MousePointer2,
+  fingerprint: Fingerprint,
+  faceScan: ScanFace,
+  
+  // Navigation & Routes
+  compass: Compass,
+  route: Route,
+  waypoints: Waypoints,
+  orbit: Orbit,
+  radar: Radar,
+  radio: Radio,
+  satellite: Satellite,
+  scan: Scan,
+  qrCode: QrCode,
+  
+  // Code & Development
+  binary: Binary,
+  braces: Braces,
+  variable: Variable,
+  fileCode: FileCode,
+  fileJson: FileJson,
+  fileText: FileText,
+  filePlus: FilePlus,
+  folderOpen: FolderOpen,
+  folderTree: FolderTree,
+  archive: Archive,
+  
+  // Layout & Structure
+  boxes: Boxes,
+  component: Component,
+  puzzle: Puzzle,
+  shapes: Shapes,
+  blocks: Blocks,
+  layoutDashboard: LayoutDashboard,
+  layoutList: LayoutList,
+  layoutTemplate: LayoutTemplate,
+  panelLeft: PanelLeft,
+  panelRight: PanelRight,
+  sidebar: Sidebar,
+  galleryH: GalleryHorizontal,
+  galleryV: GalleryVertical,
+  
+  // Devices
+  laptop: Laptop,
+  monitor: Monitor,
+  smartphone: Smartphone,
+  tablet: Tablet,
+  watch: Watch,
+  printer: Printer,
+  server: Server,
+  
+  // Cloud & Infrastructure
+  cloudMain: Cloud,
+  cloudCog: CloudCog,
+  cloudOff: CloudOff,
+  webhook: Webhook,
+  cable: Cable,
+  plugZap: PlugZap,
+  unplug: Unplug,
+  link2: Link2,
+  link2Off: Link2Off,
+  shareAlt: Share,
+  external: ExternalLink,
+  
+  // Clipboard & Edit
+  clipboard: Clipboard,
+  clipboardCheck: ClipboardCheck,
+  clipboardList: ClipboardList,
+  scissors: Scissors,
+  crop: Crop,
+  move: Move,
+  hand: Hand,
+  grab: Grab,
+  penTool: PenTool,
+  highlighter: Highlighter,
+  eraser: Eraser,
+  
+  // Typography
+  type: Type,
+  bold: Bold,
+  italic: Italic,
+  underline: Underline,
+  alignLeft: AlignLeft,
+  alignCenter: AlignCenter,
+  alignRight: AlignRight,
+  alignJustify: AlignJustify,
+  list: List,
+  listOrdered: ListOrdered,
+  listTodo: ListTodo,
+  listTree: ListTree,
+  indent: Indent,
+  outdent: Outdent,
+  heading1: Heading1,
+  heading2: Heading2,
+  heading3: Heading3,
+  quote: Quote,
+  textCursor: TextCursor,
+  
+  // Symbols
+  hash: Hash,
+  atSign: AtSign,
+  dollar: DollarSign,
+  percent: Percent,
+  calculator: Calculator,
 } as const
 
 export type IconName = keyof typeof iconMap
@@ -378,9 +580,9 @@ export function Icon({ name, size = "md", className, emphasis = false }: IconPro
   return (
     <IconComponent 
       size={sizeValue}
+      strokeWidth={emphasis ? 2.5 : ICON_STROKE_WIDTH}
       className={cn(
         "shrink-0",
-        emphasis && "stroke-[2.5]",
         className
       )}
     />
@@ -487,3 +689,42 @@ export function getStatusIcon(status: string): { icon: LucideIcon; color: string
 
 // Export raw icons for cases where direct imports are needed
 export { iconMap as Icons }
+
+/**
+ * ThinIcon - A wrapper component for Lucide icons that applies thinner stroke width
+ * to match the Nucleo icon aesthetic. Use this when you need to render a Lucide icon
+ * directly (not from the iconMap) with consistent thin stroke styling.
+ * 
+ * Usage:
+ * import { Zap } from "lucide-react"
+ * <ThinIcon icon={Zap} size={20} className="text-emerald-500" />
+ */
+interface ThinIconProps {
+  icon: LucideIcon
+  size?: number
+  className?: string
+  strokeWidth?: number
+}
+
+export function ThinIcon({ 
+  icon: IconComponent, 
+  size = 18, 
+  className,
+  strokeWidth = ICON_STROKE_WIDTH 
+}: ThinIconProps) {
+  return (
+    <IconComponent 
+      size={size}
+      strokeWidth={strokeWidth}
+      className={cn("shrink-0", className)}
+    />
+  )
+}
+
+/**
+ * Re-export the stroke width constant for use in direct Lucide icon usage
+ * Apply this to any Lucide icon to match the thin Nucleo aesthetic:
+ * 
+ * <Zap strokeWidth={ICON_STROKE_WIDTH} className="h-5 w-5" />
+ */
+export { ICON_STROKE_WIDTH }

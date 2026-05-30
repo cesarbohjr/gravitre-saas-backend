@@ -141,6 +141,20 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* 
+   * Lucide Icon Thin Stroke
+   * Makes all Lucide React icons thinner (1.5px) to match Nucleo icon aesthetic.
+   * Lucide icons have class "lucide" on the SVG element.
+   */
+  svg.lucide {
+    stroke-width: 1.5;
+  }
+  
+  /* Optional: For emphasized icons that need bolder strokes */
+  svg.lucide.stroke-bold {
+    stroke-width: 2.5;
+  }
 
   /* 
    Modern Auto-Hide Overlay Scrollbar
@@ -234,5 +248,16 @@
   
   .animate-glow-pulse {
     animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  /* Gradient text animation */
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  .animate-gradient {
+    animation: gradient 6s ease infinite;
   }
 }

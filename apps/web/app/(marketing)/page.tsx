@@ -138,7 +138,7 @@ function LiveMetrics() {
             metric.color === 'emerald' ? 'bg-emerald-100' :
             metric.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
           }`}>
-            <metric.icon className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${
+            <metric.icon strokeWidth={1.5} className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${
               metric.color === 'emerald' ? 'text-emerald-600' :
               metric.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
             }`} />
@@ -306,13 +306,13 @@ function FeatureCard({
       <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-emerald-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="relative h-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all group-hover:border-zinc-300 group-hover:shadow-lg">
         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 ring-1 ring-emerald-200 group-hover:ring-emerald-300 transition-all">
-          <Icon className="h-6 w-6 text-emerald-600" />
+          <Icon className="h-6 w-6 text-emerald-600" strokeWidth={1.5} />
         </div>
         <h3 className="text-lg font-semibold text-zinc-900 group-hover:text-emerald-900 transition-colors">{title}</h3>
         <p className="mt-2 text-sm text-zinc-600 leading-relaxed">{description}</p>
         <div className="mt-4 flex items-center text-sm text-emerald-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
           <span>Learn more</span>
-          <ChevronRight className="ml-1 h-4 w-4" />
+          <ChevronRight strokeWidth={1.5} className="ml-1 h-4 w-4" />
         </div>
       </div>
     </motion.div>
@@ -374,7 +374,7 @@ function ProductPreview() {
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     >
-                      <Sparkles className="h-5 w-5 text-white" />
+                      <Sparkles strokeWidth={1.5} className="h-5 w-5 text-white" />
                     </motion.div>
                     <div className="flex-1">
                       <div className="h-2 w-32 rounded bg-zinc-300" />
@@ -452,7 +452,7 @@ export default function HomePage() {
                 transition={{ duration: 1.5, repeat: Infinity }}
               />
               <span className="text-sm font-medium text-emerald-700">AI-powered automation platform</span>
-              <ChevronRight className="h-4 w-4 text-emerald-500" />
+              <ChevronRight strokeWidth={1.5} className="h-4 w-4 text-emerald-500" />
             </motion.div>
             
             {/* Headline with staggered reveal */}
@@ -504,19 +504,19 @@ export default function HomePage() {
                 className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>Get Started Free</span>
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight strokeWidth={1.5} className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
-                href="/demo"
+                href="/features"
                 className="group inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/80 backdrop-blur-sm px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-all hover:bg-white hover:border-zinc-400 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <Play className="h-5 w-5 fill-zinc-900" />
+                  <Play strokeWidth={1.5} className="h-5 w-5 fill-zinc-900" />
                 </motion.div>
-                <span>Watch Demo</span>
+                <span>See How It Works</span>
               </Link>
             </motion.div>
             
@@ -685,7 +685,7 @@ export default function HomePage() {
             className="mx-auto max-w-2xl text-center mb-16"
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 mb-6">
-              <Play className="h-4 w-4 text-emerald-600" />
+              <Play strokeWidth={1.5} className="h-4 w-4 text-emerald-600" />
               <span className="text-sm font-medium text-emerald-700">Discover the platform</span>
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">
@@ -775,13 +775,13 @@ export default function HomePage() {
                     <div className="flex gap-3 justify-end">
                       <div className="flex-1 rounded-xl bg-emerald-600 p-3 text-sm text-white">
                         <div className="flex items-center gap-2 mb-1 text-emerald-200">
-                          <Sparkles className="h-3 w-3" />
+                          <Sparkles strokeWidth={1.5} className="h-3 w-3" />
                           <span className="text-[10px]">via Data Analyst</span>
                         </div>
                         Sales increased 23% with enterprise deals leading growth...
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 text-white" />
+            <div className="h-8 w-8 rounded-full bg-emerald-500 flex items-center justify-center">
+              <Sparkles strokeWidth={1.5} className="h-4 w-4 text-white" />
                       </div>
                     </div>
                   </div>
@@ -929,7 +929,7 @@ export default function HomePage() {
                 className="group relative inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800"
               >
                 <span>Start Free Trial</span>
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight strokeWidth={1.5} className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
                 href="/contact"

@@ -266,7 +266,7 @@ export default function SecurityPage() {
                 <ArrowRight className="h-4 w-4" />
               </a>
               <Link
-                href="/security/bug-bounty"
+                href="/contact?subject=bug-bounty"
                 className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-100"
               >
                 Bug bounty program

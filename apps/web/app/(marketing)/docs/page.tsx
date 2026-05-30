@@ -197,7 +197,7 @@ export default function DocsPage() {
             className="flex items-center justify-between mb-8"
           >
             <h2 className="text-2xl font-semibold text-zinc-900">Popular Guides</h2>
-            <Link href="/docs/guides" className="text-sm text-emerald-600 hover:text-emerald-500 flex items-center gap-1">
+            <Link href="/guides" className="text-sm text-emerald-600 hover:text-emerald-500 flex items-center gap-1">
               View all
               <ArrowRight className="h-4 w-4" />
             </Link>
