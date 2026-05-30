@@ -7,7 +7,22 @@ import {
   ArrowRight, 
   ChevronRight,
   Check,
-  Play
+  Play,
+  Sparkles,
+  Lock,
+  FileText,
+  Shield,
+  Users,
+  Bot,
+  Zap,
+  Workflow,
+  MessageSquare,
+  Clock,
+  Database,
+  GitBranch,
+  Bell,
+  Blocks,
+  BarChart3
 } from "lucide-react"
 import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
@@ -27,6 +42,7 @@ const NucleoProtectionIcon = createNucleoIcon("77860") // Checkmark circle - pro
 const NucleoAnalyticsIcon = createNucleoIcon("77980")  // Dashboard - analytics
 const NucleoScheduleIcon = createNucleoIcon("77800")   // Phone - communication
 const NucleoVersionIcon = createNucleoIcon("77900")    // Bezier - version/flow
+const NucleoUsersIcon = createNucleoIcon("77920")      // Store - users/team
 const NucleoAlertIcon = createNucleoIcon("77720")      // Arrow up circle - alert/notify
 const NucleoDocIcon = createNucleoIcon("77820")        // Image - document
 const NucleoSparkleIcon = createNucleoIcon("77720")    // Arrow up circle - growth/magic

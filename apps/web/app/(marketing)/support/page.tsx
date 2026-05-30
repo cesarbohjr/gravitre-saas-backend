@@ -2,58 +2,57 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  Search, 
-  BookOpen, 
-  MessageSquare, 
-  Mail, 
-  ArrowRight,
-  HelpCircle,
-  Zap,
-  Shield,
-  Database,
-  Users,
-  CreditCard
-} from "lucide-react"
+import { Search, ArrowRight, Mail } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
+
+// Verified Nucleo icons for support categories
+const NucleoZapIcon = createNucleoIcon("77720")       // Arrow up - getting started
+const NucleoUsersIcon = createNucleoIcon("77920")     // Store - account/billing
+const NucleoDatabaseIcon = createNucleoIcon("77980")  // Dashboard - integrations
+const NucleoShieldIcon = createNucleoIcon("77860")    // Checkmark - security
+const NucleoHelpIcon = createNucleoIcon("77760")      // Magnifying glass - troubleshooting
+const NucleoCodeIcon = createNucleoIcon("77840")      // Edit - API/developers
+const NucleoBookIcon = createNucleoIcon("77820")      // Image - knowledge base
+const NucleoMessageIcon = createNucleoIcon("77800")   // Phone - chat support
 
 const categories = [
   {
-    icon: Zap,
+    icon: NucleoZapIcon,
     title: "Getting Started",
     description: "Setup guides and quickstarts",
     articles: 12,
     href: "/support/getting-started",
   },
   {
-    icon: Users,
+    icon: NucleoUsersIcon,
     title: "Account & Billing",
     description: "Manage your subscription and team",
     articles: 8,
     href: "/support/account",
   },
   {
-    icon: Database,
+    icon: NucleoDatabaseIcon,
     title: "Integrations",
     description: "Connect your tools and data",
     articles: 24,
     href: "/support/integrations",
   },
   {
-    icon: Shield,
+    icon: NucleoShieldIcon,
     title: "Security & Compliance",
     description: "Privacy, security, and compliance",
     articles: 10,
     href: "/support/security",
   },
   {
-    icon: HelpCircle,
+    icon: NucleoHelpIcon,
     title: "Troubleshooting",
     description: "Common issues and solutions",
     articles: 18,
     href: "/support/troubleshooting",
   },
   {
-    icon: CreditCard,
+    icon: NucleoCodeIcon,
     title: "API & Developers",
     description: "Technical documentation",
     articles: 15,

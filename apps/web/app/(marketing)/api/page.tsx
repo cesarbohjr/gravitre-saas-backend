@@ -4,22 +4,24 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { 
   ArrowRight, 
-  Code, 
-  Terminal, 
-  Zap, 
-  Lock,
-  Clock,
-  Globe,
   Copy,
   Check,
-  Play,
-  BookOpen,
-  Webhook,
-  Key,
-  BarChart3,
   AlertCircle
 } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { useState } from "react"
+
+// Nucleo icons for API features - verified
+const NucleoCodeIcon = createNucleoIcon("77840")      // Edit - code/development
+const NucleoTerminalIcon = createNucleoIcon("77840")  // Edit - terminal
+const NucleoPerformanceIcon = createNucleoIcon("77720") // Arrow up - performance
+const NucleoSecurityIcon = createNucleoIcon("77860")  // Checkmark - security
+const NucleoClockIcon = createNucleoIcon("77980")     // Dashboard - real-time
+const NucleoGlobeIcon = createNucleoIcon("77960")     // Globe - REST
+const NucleoDocsIcon = createNucleoIcon("77820")      // Image - documentation
+const NucleoWebhookIcon = createNucleoIcon("77900")   // Bezier - webhooks
+const NucleoKeyIcon = createNucleoIcon("77860")       // Checkmark - authentication
+const NucleoChartIcon = createNucleoIcon("77980")     // Dashboard - analytics
 
 const endpoints = [
   {
@@ -107,22 +109,22 @@ const sdks = [
 
 const features = [
   {
-    icon: Zap,
+    icon: NucleoPerformanceIcon,
     title: "High Performance",
     description: "Sub-100ms response times with global edge distribution",
   },
   {
-    icon: Lock,
+    icon: NucleoSecurityIcon,
     title: "Secure by Default",
     description: "OAuth 2.0, API keys, and signed webhooks",
   },
   {
-    icon: Clock,
+    icon: NucleoClockIcon,
     title: "Rate Limiting",
     description: "Generous limits with burst capacity for spikes",
   },
   {
-    icon: Globe,
+    icon: NucleoGlobeIcon,
     title: "Global Infrastructure",
     description: "Multi-region deployment for low latency",
   },
@@ -240,7 +242,7 @@ export default function APIPage() {
                 className="flex items-start gap-4 p-5 rounded-xl border border-zinc-200 bg-zinc-50"
               >
                 <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                  <feature.icon className="h-5 w-5 text-emerald-600" />
+                  <feature.icon size={20} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
                 </div>
                 <div>
                   <h3 className="font-medium text-zinc-900">{feature.title}</h3>

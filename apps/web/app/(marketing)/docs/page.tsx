@@ -2,48 +2,47 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  ArrowRight, 
-  BookOpen, 
-  Code, 
-  Zap, 
-  Bot, 
-  Workflow,
-  Database,
-  Shield,
-  Terminal,
-  Search,
-  ExternalLink
-} from "lucide-react"
+import { ArrowRight, Search, ExternalLink } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
+
+// Verified Nucleo icons for docs
+const NucleoZapIcon = createNucleoIcon("77720")       // Arrow up - quickstart/speed
+const NucleoBotIcon = createNucleoIcon("77840")       // Edit - AI/agents
+const NucleoWorkflowIcon = createNucleoIcon("77900")  // Bezier - workflows
+const NucleoDatabaseIcon = createNucleoIcon("77980")  // Dashboard - data/connectors
+const NucleoBookIcon = createNucleoIcon("77820")      // Image - book/docs
+const NucleoCodeIcon = createNucleoIcon("77840")      // Edit - code
+const NucleoShieldIcon = createNucleoIcon("77860")    // Checkmark - security
+const NucleoTerminalIcon = createNucleoIcon("77840")  // Edit - terminal
 
 const quickLinks = [
   {
-    icon: Zap,
+    icon: NucleoZapIcon,
     title: "Quickstart",
     description: "Get up and running in under 5 minutes",
     href: "/docs/quickstart",
-    color: "text-emerald-600",
+    color: "[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]",
   },
   {
-    icon: Bot,
+    icon: NucleoBotIcon,
     title: "AI Operator",
     description: "Learn how to use natural language automation",
     href: "/docs/ai-operator",
-    color: "text-cyan-600",
+    color: "[filter:invert(50%)_sepia(89%)_saturate(800%)_hue-rotate(170deg)_brightness(94%)_contrast(88%)]",
   },
   {
-    icon: Workflow,
+    icon: NucleoWorkflowIcon,
     title: "Workflows",
     description: "Build and manage automated workflows",
     href: "/docs/workflows",
-    color: "text-purple-600",
+    color: "[filter:invert(32%)_sepia(98%)_saturate(2476%)_hue-rotate(253deg)_brightness(84%)_contrast(92%)]",
   },
   {
-    icon: Database,
+    icon: NucleoDatabaseIcon,
     title: "Connectors",
     description: "Connect your data sources and tools",
     href: "/docs/connectors",
-    color: "text-amber-600",
+    color: "[filter:invert(66%)_sepia(60%)_saturate(2000%)_hue-rotate(20deg)_brightness(95%)_contrast(88%)]",
   },
 ]
 
@@ -59,7 +58,7 @@ const guides = [
 const sections = [
   {
     title: "Core Concepts",
-    icon: BookOpen,
+    icon: NucleoBookIcon,
     links: [
       { title: "Introduction", href: "/docs/introduction" },
       { title: "Architecture Overview", href: "/docs/architecture" },
@@ -69,7 +68,7 @@ const sections = [
   },
   {
     title: "Agents",
-    icon: Bot,
+    icon: NucleoBotIcon,
     links: [
       { title: "Creating Agents", href: "/docs/agents/creating" },
       { title: "Agent Capabilities", href: "/docs/agents/capabilities" },
@@ -79,7 +78,7 @@ const sections = [
   },
   {
     title: "Workflows",
-    icon: Workflow,
+    icon: NucleoWorkflowIcon,
     links: [
       { title: "Workflow Builder", href: "/docs/workflows/builder" },
       { title: "Triggers & Schedules", href: "/docs/workflows/triggers" },
@@ -89,7 +88,7 @@ const sections = [
   },
   {
     title: "API Reference",
-    icon: Code,
+    icon: NucleoCodeIcon,
     links: [
       { title: "REST API", href: "/docs/api/rest" },
       { title: "Authentication", href: "/docs/api/auth" },
@@ -99,7 +98,7 @@ const sections = [
   },
   {
     title: "Security",
-    icon: Shield,
+    icon: NucleoShieldIcon,
     links: [
       { title: "Data Encryption", href: "/docs/security/encryption" },
       { title: "Access Control", href: "/docs/security/access" },
@@ -109,7 +108,7 @@ const sections = [
   },
   {
     title: "Integrations",
-    icon: Database,
+    icon: NucleoDatabaseIcon,
     links: [
       { title: "Salesforce", href: "/docs/integrations/salesforce" },
       { title: "HubSpot", href: "/docs/integrations/hubspot" },
@@ -174,7 +173,7 @@ export default function DocsPage() {
                     href={link.href}
                     className="group block rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
                   >
-                    <Icon className={`h-6 w-6 ${link.color} mb-3`} />
+                    <Icon size={24} className={`${link.color} mb-3`} />
                     <h3 className="font-medium text-zinc-900 group-hover:text-emerald-700 transition-colors">
                       {link.title}
                     </h3>
@@ -253,7 +252,7 @@ export default function DocsPage() {
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-zinc-200 shadow-sm">
-                      <Icon className="h-4 w-4 text-zinc-600" />
+                      <Icon size={16} className="opacity-70" />
                     </div>
                     <h3 className="font-medium text-zinc-900">{section.title}</h3>
                   </div>

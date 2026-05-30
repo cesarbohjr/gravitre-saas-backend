@@ -2,15 +2,24 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, MapPin, Clock, Users, Zap, Heart, Globe } from "lucide-react"
+import { ArrowRight } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
+
+// Nucleo icons for benefits - verified
+const NucleoHealthIcon = createNucleoIcon("77860")    // Checkmark - health
+const NucleoEquityIcon = createNucleoIcon("77720")    // Arrow up - growth/equity
+const NucleoRemoteIcon = createNucleoIcon("77960")    // Globe - remote
+const NucleoLearningIcon = createNucleoIcon("77920")  // Store - learning
+const NucleoPTOIcon = createNucleoIcon("77980")       // Dashboard - time
+const NucleoOffsiteIcon = createNucleoIcon("77800")   // Phone - connection
 
 const benefits = [
-  { icon: Heart, title: "Health & Wellness", description: "Comprehensive health, dental, and vision insurance for you and your family" },
-  { icon: Zap, title: "Equity", description: "Competitive equity packages so you share in our success" },
-  { icon: Globe, title: "Remote-first", description: "Work from anywhere with flexible hours and async communication" },
-  { icon: Users, title: "Learning & Growth", description: "$2,500 annual learning budget for courses, conferences, and books" },
-  { icon: Clock, title: "Unlimited PTO", description: "Take the time you need to recharge and do your best work" },
-  { icon: MapPin, title: "Offsites", description: "Regular team retreats to connect in person and have fun together" },
+  { icon: NucleoHealthIcon, title: "Health & Wellness", description: "Comprehensive health, dental, and vision insurance for you and your family" },
+  { icon: NucleoEquityIcon, title: "Equity", description: "Competitive equity packages so you share in our success" },
+  { icon: NucleoRemoteIcon, title: "Remote-first", description: "Work from anywhere with flexible hours and async communication" },
+  { icon: NucleoLearningIcon, title: "Learning & Growth", description: "$2,500 annual learning budget for courses, conferences, and books" },
+  { icon: NucleoPTOIcon, title: "Unlimited PTO", description: "Take the time you need to recharge and do your best work" },
+  { icon: NucleoOffsiteIcon, title: "Offsites", description: "Regular team retreats to connect in person and have fun together" },
 ]
 
 const departments = ["Engineering", "Product", "Design", "Sales", "Marketing", "Operations"]
@@ -85,7 +94,7 @@ export default function CareersPage() {
               return (
                 <motion.div key={benefit.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
-                    <Icon className="h-5 w-5 text-emerald-600" />
+                    <Icon size={20} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
                   </div>
                   <h3 className="text-lg font-medium text-zinc-900 mb-2">{benefit.title}</h3>
                   <p className="text-sm text-zinc-600">{benefit.description}</p>
