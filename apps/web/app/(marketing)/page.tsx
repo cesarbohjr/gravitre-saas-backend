@@ -507,7 +507,7 @@ export default function HomePage() {
                 <ArrowRight strokeWidth={1.5} className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
-                href="/demo"
+                href="/features"
                 className="group inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/80 backdrop-blur-sm px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-all hover:bg-white hover:border-zinc-400 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <motion.div
@@ -516,7 +516,7 @@ export default function HomePage() {
                 >
                   <Play strokeWidth={1.5} className="h-5 w-5 fill-zinc-900" />
                 </motion.div>
-                <span>Watch Demo</span>
+                <span>See How It Works</span>
               </Link>
             </motion.div>
             

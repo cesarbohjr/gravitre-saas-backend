@@ -185,7 +185,7 @@ export default function AboutPage() {
               </div>
               <div className="mt-10">
                 <Link
-                  href="/platform"
+                  href="/features"
                   className="group inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
                 >
                   Explore our platform
