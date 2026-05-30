@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, ArrowRight, HelpCircle, Play, Mail, FileText, Send, ChevronRight, X, Star, Minus } from "lucide-react"
+import { Check, ArrowRight, HelpCircle, Play, Mail, FileText, Send, ChevronRight, X, Star, Minus, Info, Cpu, Monitor, Smartphone, Crown, Blocks, Sparkles, Users, Zap } from "lucide-react"
 import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import {
   Tooltip,
