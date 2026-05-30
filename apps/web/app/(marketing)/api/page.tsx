@@ -6,7 +6,8 @@ import {
   ArrowRight, 
   Copy,
   Check,
-  AlertCircle
+  AlertCircle,
+  BookOpen
 } from "lucide-react"
 import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { useState } from "react"

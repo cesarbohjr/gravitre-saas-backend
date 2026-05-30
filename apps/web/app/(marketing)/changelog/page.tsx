@@ -2,7 +2,14 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Sparkles, Wrench, Shield, Zap } from "lucide-react"
+import { ArrowRight } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
+
+// Verified Nucleo icons for changelog types
+const NucleoFeatureIcon = createNucleoIcon("77720")    // Arrow up - new features
+const NucleoImprovementIcon = createNucleoIcon("77900") // Bezier - improvements
+const NucleoSecurityIcon = createNucleoIcon("77860")   // Checkmark - security
+const NucleoWrenchIcon = createNucleoIcon("77840")     // Edit - fixes
 
 const releases = [
   { version: "2.4.0", date: "April 5, 2026", title: "Multi-Agent Collaboration", description: "Agents can now work together on complex tasks, passing context and sharing results in real-time.", type: "feature", highlights: ["Agent-to-agent communication protocol", "Shared memory between collaborating agents", "Visual collaboration graph in workflow builder", "Performance improvements for parallel execution"] },
@@ -16,11 +23,11 @@ const releases = [
 
 const getTypeIcon = (type: string) => {
   switch (type) {
-    case "feature": return <Sparkles className="h-4 w-4" />
-    case "improvement": return <Zap className="h-4 w-4" />
-    case "security": return <Shield className="h-4 w-4" />
-    case "major": return <Sparkles className="h-4 w-4" />
-    default: return <Wrench className="h-4 w-4" />
+    case "feature": return <NucleoIcon id="77720" size={16} />
+    case "improvement": return <NucleoIcon id="77900" size={16} />
+    case "security": return <NucleoIcon id="77860" size={16} />
+    case "major": return <NucleoIcon id="77720" size={16} />
+    default: return <NucleoIcon id="77840" size={16} />
   }
 }
 

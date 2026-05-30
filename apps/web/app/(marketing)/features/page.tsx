@@ -22,7 +22,11 @@ import {
   GitBranch,
   Bell,
   Blocks,
-  BarChart3
+  BarChart3,
+  Send,
+  Layers,
+  Eye,
+  Globe
 } from "lucide-react"
 import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"

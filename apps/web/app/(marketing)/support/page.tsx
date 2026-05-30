@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Search, ArrowRight, Mail } from "lucide-react"
+import { Search, ArrowRight, Mail, MessageSquare, BookOpen } from "lucide-react"
 import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 
 // Verified Nucleo icons for support categories
@@ -142,7 +142,7 @@ export default function SupportPage() {
                   className="group rounded-xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
-                    <Icon className="h-5 w-5 text-emerald-600" />
+                    <Icon size={20} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
                   </div>
                   <h3 className="font-medium text-zinc-900 group-hover:text-emerald-600 transition-colors">
                     {category.title}

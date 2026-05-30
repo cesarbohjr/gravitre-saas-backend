@@ -2,32 +2,25 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  ArrowRight, 
-  Clock, 
-  BookOpen,
-  Zap,
-  Bot,
-  Workflow,
-  Database,
-  Shield,
-  Code,
-  Users,
-  Lightbulb,
-  TrendingUp,
-  Settings,
-  Play,
-  Filter
-} from "lucide-react"
+import { ArrowRight, Clock, Play, Filter, BookOpen } from "lucide-react"
+import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { useState } from "react"
 
+// Verified Nucleo icons for guide categories
+const NucleoBookIcon = createNucleoIcon("77820")      // Image - all guides
+const NucleoZapIcon = createNucleoIcon("77720")       // Arrow up - getting started
+const NucleoBotIcon = createNucleoIcon("77840")       // Edit - AI agents
+const NucleoWorkflowIcon = createNucleoIcon("77900")  // Bezier - workflows
+const NucleoDatabaseIcon = createNucleoIcon("77980")  // Dashboard - integrations
+const NucleoLightbulbIcon = createNucleoIcon("77860") // Checkmark - best practices
+
 const categories = [
-  { id: "all", label: "All Guides", icon: BookOpen },
-  { id: "getting-started", label: "Getting Started", icon: Zap },
-  { id: "agents", label: "AI Agents", icon: Bot },
-  { id: "workflows", label: "Workflows", icon: Workflow },
-  { id: "integrations", label: "Integrations", icon: Database },
-  { id: "best-practices", label: "Best Practices", icon: Lightbulb },
+  { id: "all", label: "All Guides", icon: NucleoBookIcon },
+  { id: "getting-started", label: "Getting Started", icon: NucleoZapIcon },
+  { id: "agents", label: "AI Agents", icon: NucleoBotIcon },
+  { id: "workflows", label: "Workflows", icon: NucleoWorkflowIcon },
+  { id: "integrations", label: "Integrations", icon: NucleoDatabaseIcon },
+  { id: "best-practices", label: "Best Practices", icon: NucleoLightbulbIcon },
 ]
 
 const guides = [
@@ -282,7 +275,7 @@ export default function GuidesPage() {
                     }
                   `}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon size={16} className={activeCategory === cat.id ? '[filter:brightness(0)_invert(1)]' : ''} />
                   {cat.label}
                 </button>
               )

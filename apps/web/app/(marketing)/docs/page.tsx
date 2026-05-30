@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Search, ExternalLink } from "lucide-react"
+import { ArrowRight, Search, ExternalLink, Terminal } from "lucide-react"
 import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 
 // Verified Nucleo icons for docs
