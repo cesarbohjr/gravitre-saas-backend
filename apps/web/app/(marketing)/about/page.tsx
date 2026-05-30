@@ -158,7 +158,7 @@ export default function AboutPage() {
       </section>
 
       {/* Principles - Numbered list */}
-      <section className="py-32 px-6 bg-zinc-950 text-white">
+      <section className="py-32 px-6 bg-zinc-50">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -166,8 +166,8 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="mb-20"
           >
-            <span className="text-emerald-400 text-sm font-medium uppercase tracking-wider">How we think</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight">Our principles</h2>
+            <span className="text-emerald-600 text-sm font-medium uppercase tracking-wider">How we think</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight text-zinc-900">Our principles</h2>
           </motion.div>
           
           <div className="space-y-0">
@@ -178,18 +178,18 @@ export default function AboutPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group border-t border-zinc-800 py-12 flex flex-col md:flex-row md:items-center gap-6 md:gap-16"
+                className="group border-t border-zinc-200 py-12 flex flex-col md:flex-row md:items-center gap-6 md:gap-16"
               >
-                <span className="text-zinc-600 text-sm font-mono">{principle.number}</span>
-                <h3 className="text-2xl sm:text-3xl font-semibold text-white flex-1 group-hover:text-emerald-400 transition-colors">
+                <span className="text-emerald-600 text-sm font-mono">{principle.number}</span>
+                <h3 className="text-2xl sm:text-3xl font-semibold text-zinc-900 flex-1 group-hover:text-emerald-600 transition-colors">
                   {principle.title}
                 </h3>
-                <p className="text-zinc-400 md:text-right md:max-w-xs">
+                <p className="text-zinc-500 md:text-right md:max-w-xs">
                   {principle.description}
                 </p>
               </motion.div>
             ))}
-            <div className="border-t border-zinc-800" />
+            <div className="border-t border-zinc-200" />
           </div>
         </div>
       </section>
@@ -270,9 +270,9 @@ export default function AboutPage() {
       </section>
 
       {/* Final CTA - Full bleed */}
-      <section className="relative py-32 lg:py-48 px-6 bg-zinc-900 overflow-hidden">
+      <section className="relative py-32 lg:py-48 px-6 bg-gradient-to-b from-white to-emerald-50 overflow-hidden">
         {/* Gradient accent */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-emerald-500/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-emerald-100/50 to-transparent rounded-full blur-3xl" />
         
         <div className="relative max-w-4xl mx-auto text-center">
           <motion.div
@@ -280,7 +280,7 @@ export default function AboutPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-zinc-900 tracking-tight leading-[1.1]">
               Ready to reclaim
               <br />
               your team&apos;s time?
@@ -288,14 +288,14 @@ export default function AboutPage() {
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="group inline-flex items-center gap-2 bg-white text-zinc-900 px-8 py-4 rounded-full text-sm font-medium transition-all hover:bg-zinc-100"
+                className="group inline-flex items-center gap-2 bg-zinc-900 text-white px-8 py-4 rounded-full text-sm font-medium transition-all hover:bg-zinc-800"
               >
                 Start free trial
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 text-zinc-400 hover:text-white px-8 py-4 text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-900 px-8 py-4 text-sm font-medium transition-colors"
               >
                 Contact sales
               </Link>
