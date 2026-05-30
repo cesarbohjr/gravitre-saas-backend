@@ -29,7 +29,7 @@
 - [ ] RLS enabled on all tenant tables
 
 ### After Deploy
-- [ ] Run: `bash scripts/test-integration.sh`
+- [ ] Run: `bash scripts/test-integration.sh` (or on Windows: `$env:BACKEND_URL="https://your-backend.up.railway.app"; .\scripts\test-integration.ps1`)
 - [ ] Open `/assistant` and send a test message
 - [ ] Open `/operator` and verify command input renders
 - [ ] Check Railway logs for any startup errors

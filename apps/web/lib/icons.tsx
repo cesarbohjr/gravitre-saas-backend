@@ -722,9 +722,6 @@ export function ThinIcon({
 }
 
 /**
- * Re-export the stroke width constant for use in direct Lucide icon usage
- * Apply this to any Lucide icon to match the thin Nucleo aesthetic:
- * 
+ * ICON_STROKE_WIDTH is exported above for direct Lucide icon usage:
  * <Zap strokeWidth={ICON_STROKE_WIDTH} className="h-5 w-5" />
  */
-export { ICON_STROKE_WIDTH }
