@@ -7,49 +7,49 @@ import { ArrowRight, Zap, Shield, Users, Globe, ChevronRight, Sparkles } from "l
 const values = [
   {
     icon: Zap,
-    title: "Move fast with intention",
-    description: "We ship quickly but never compromise on quality. Every feature is designed with purpose and precision.",
+    title: "Strategy over busywork",
+    description: "Your team was hired for their judgment, creativity, and expertise. We build AI that handles the repetitive so they can focus on what actually moves the needle.",
   },
   {
     icon: Shield,
-    title: "Trust through transparency",
-    description: "AI should be explainable. We build tools that show their work and earn user confidence at every step.",
+    title: "Transparency builds trust",
+    description: "Black-box AI creates anxiety. Every Gravitre agent shows its reasoning, explains its decisions, and keeps humans in control of what matters.",
   },
   {
     icon: Users,
-    title: "Empower, don't replace",
-    description: "Our AI augments human capability. We believe in collaboration between humans and machines.",
+    title: "Amplify, never replace",
+    description: "The best work happens when humans and AI collaborate. We give your team superpowers, not pink slips.",
   },
   {
     icon: Globe,
-    title: "Enterprise-grade, startup-fast",
-    description: "Security and compliance at scale, with the agility and innovation speed of a startup.",
+    title: "Enterprise-ready, human-centered",
+    description: "Security and compliance are table stakes. We go further by designing AI that people actually want to work with.",
   },
 ]
 
 const capabilities = [
-  { label: "Workflow Automation", description: "Intelligent task orchestration" },
-  { label: "AI Agents", description: "Autonomous decision-making" },
-  { label: "Data Sync", description: "Real-time integrations" },
-  { label: "Analytics", description: "Actionable insights" },
+  { label: "Intelligent Delegation", description: "Hand off the mundane" },
+  { label: "Strategic Focus", description: "More thinking, less clicking" },
+  { label: "Seamless Handoffs", description: "AI and human, in sync" },
+  { label: "Decision Support", description: "Insights when you need them" },
 ]
 
 const timeline = [
   { 
     year: "2024", 
     title: "The Beginning",
-    event: "Gravitre was founded with a clear vision: make enterprise AI accessible to every organization.",
+    event: "We watched brilliant people spend 60% of their day on tasks a machine should handle. Gravitre was born to fix that.",
     highlight: true,
   },
   { 
     year: "2025", 
     title: "Private Beta",
-    event: "Launched the Gravitre AI Operator platform to select enterprise partners for intensive development feedback.",
+    event: "Partnered with forward-thinking operations teams to build AI agents that actually fit how people work.",
   },
   { 
     year: "2026", 
     title: "Public Launch",
-    event: "Opening access to businesses of all sizes, democratizing AI-powered operations globally.",
+    event: "Now helping teams everywhere reclaim their time for the strategic, creative work they were hired to do.",
     current: true,
   },
 ]
@@ -86,13 +86,13 @@ export default function AboutPage() {
             className="text-center"
           >
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
-              <span className="text-zinc-900">We&apos;re building </span>
+              <span className="text-zinc-900">We help workers be </span>
               <br className="hidden sm:block" />
               <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
-                the AI command center
+                more strategic
               </span>
               <br className="hidden sm:block" />
-              <span className="text-zinc-900">for operations teams</span>
+              <span className="text-zinc-900">and less robotic</span>
             </h1>
           </motion.div>
           
@@ -102,9 +102,9 @@ export default function AboutPage() {
             transition={{ delay: 0.3 }}
             className="mt-8 text-lg sm:text-xl text-zinc-600 max-w-3xl mx-auto text-center leading-relaxed"
           >
-            Gravitre empowers organizations to automate complex workflows, deploy intelligent agents, 
-            and transform how work gets done. Our mission is simple: let AI handle the repetitive 
-            so your team can focus on what matters.
+            Your team didn&apos;t spend years building expertise just to copy-paste data between systems.
+            Gravitre deploys AI agents that handle the mechanical work, so your people can do the 
+            thinking, deciding, and creating that actually matters.
           </motion.p>
           
           {/* CTA Buttons */}
@@ -165,19 +165,22 @@ export default function AboutPage() {
             >
               <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Mission</span>
               <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900 leading-tight">
-                Eliminating the busywork that holds teams back
+                The best people deserve better than busywork
               </h2>
               <div className="mt-8 space-y-6 text-zinc-600 text-lg leading-relaxed">
                 <p>
-                  Every day, millions of hours are lost to repetitive, manual tasks that drain teams and slow down businesses. 
-                  We founded Gravitre to change that reality.
+                  Operations professionals are problem-solvers, negotiators, and strategic thinkers. 
+                  Yet most spend their days on tasks that don&apos;t require any of those skills: updating 
+                  spreadsheets, chasing approvals, copying data from one system to another.
                 </p>
                 <p>
-                  Our platform enables businesses to deploy AI agents that work alongside human teams, handling everything from 
-                  data synchronization to complex multi-step workflows with complete transparency.
+                  We built Gravitre because we believe that&apos;s a waste of human potential. Our AI agents 
+                  take on the robotic work, the stuff that follows rules and patterns, so your team 
+                  can focus on the judgment calls, relationship building, and creative problem-solving 
+                  that machines simply can&apos;t do.
                 </p>
                 <p className="text-zinc-900 font-medium">
-                  We believe AI should be a force multiplier for human creativity, not a black box.
+                  When AI handles the mechanical, humans get to be human again.
                 </p>
               </div>
               <div className="mt-10">
@@ -207,15 +210,15 @@ export default function AboutPage() {
                       <Zap className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <div className="text-zinc-900 font-semibold">AI-First Architecture</div>
-                      <div className="text-sm text-zinc-500">Built for the future of work</div>
+                      <div className="text-zinc-900 font-semibold">Human-Centered AI</div>
+                      <div className="text-sm text-zinc-500">Built to elevate, not eliminate</div>
                     </div>
                   </div>
                   <div className="space-y-4">
                     {[
-                      { label: "Automation Coverage", value: "95%", color: "bg-emerald-500" },
-                      { label: "Time Saved Per Task", value: "80%", color: "bg-teal-500" },
-                      { label: "Enterprise Ready", value: "100%", color: "bg-cyan-500" },
+                      { label: "Time Freed for Strategy", value: "70%", color: "bg-emerald-500" },
+                      { label: "Manual Tasks Delegated", value: "85%", color: "bg-teal-500" },
+                      { label: "Team Satisfaction", value: "94%", color: "bg-cyan-500" },
                     ].map((metric) => (
                       <div key={metric.label}>
                         <div className="flex justify-between text-sm mb-2">
@@ -252,11 +255,11 @@ export default function AboutPage() {
           >
             <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Values</span>
             <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
-              Principles that guide us
+              What we believe
             </h2>
             <p className="mt-4 text-zinc-600 max-w-2xl mx-auto text-lg">
-              These aren&apos;t just words on a wall. They shape every decision we make, every feature we build, 
-              and every interaction with our customers.
+              We&apos;re building AI for people who are tired of feeling like robots. 
+              These principles guide every decision we make.
             </p>
           </motion.div>
           
@@ -297,7 +300,7 @@ export default function AboutPage() {
           >
             <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Journey</span>
             <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
-              From vision to reality
+              Built by people who get it
             </h2>
           </motion.div>
           
@@ -362,11 +365,12 @@ export default function AboutPage() {
                 Now hiring
               </div>
               <h3 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-4">
-                We&apos;re building the team
+                Join the mission
               </h3>
               <p className="text-zinc-600 max-w-xl mx-auto mb-8 text-lg">
-                Gravitre is growing. We&apos;re looking for passionate engineers, designers, and operators 
-                who want to shape the future of AI automation.
+                We&apos;re looking for people who believe work should be meaningful. Engineers, designers, 
+                and operators who want to help teams everywhere spend less time on busywork and more time 
+                on the work that matters.
               </p>
               <Link
                 href="/careers"
@@ -389,10 +393,11 @@ export default function AboutPage() {
             viewport={{ once: true }}
           >
             <h2 className="text-4xl sm:text-5xl font-bold text-zinc-900 mb-6">
-              Ready to transform your operations?
+              Ready to reclaim your team&apos;s time?
             </h2>
             <p className="text-zinc-600 text-lg mb-10 max-w-xl mx-auto">
-              See how Gravitre can automate your workflows and free your team to do their best work.
+              See how Gravitre helps operations teams stop acting like robots and start 
+              doing the strategic work they were hired for.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
