@@ -2,286 +2,132 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Zap, Shield, Users, Globe, ChevronRight, Sparkles } from "lucide-react"
+import { ArrowRight, ArrowUpRight } from "lucide-react"
 
-const values = [
+const stats = [
+  { value: "70%", label: "Time freed for strategy" },
+  { value: "10x", label: "Faster workflows" },
+  { value: "94%", label: "Team satisfaction" },
+]
+
+const principles = [
   {
-    icon: Zap,
+    number: "01",
     title: "Strategy over busywork",
-    description: "Your team was hired for their judgment, creativity, and expertise. We build AI that handles the repetitive so they can focus on what actually moves the needle.",
+    description: "AI handles the repetitive. Humans do the thinking.",
   },
   {
-    icon: Shield,
-    title: "Transparency builds trust",
-    description: "Black-box AI creates anxiety. Every Gravitre agent shows its reasoning, explains its decisions, and keeps humans in control of what matters.",
-  },
-  {
-    icon: Users,
+    number: "02", 
     title: "Amplify, never replace",
-    description: "The best work happens when humans and AI collaborate. We give your team superpowers, not pink slips.",
+    description: "We give your team superpowers, not pink slips.",
   },
   {
-    icon: Globe,
-    title: "Enterprise-ready, human-centered",
-    description: "Security and compliance are table stakes. We go further by designing AI that people actually want to work with.",
+    number: "03",
+    title: "Transparency builds trust",
+    description: "Every agent shows its reasoning. No black boxes.",
   },
 ]
 
-const capabilities = [
-  { label: "Intelligent Delegation", description: "Hand off the mundane" },
-  { label: "Strategic Focus", description: "More thinking, less clicking" },
-  { label: "Seamless Handoffs", description: "AI and human, in sync" },
-  { label: "Decision Support", description: "Insights when you need them" },
-]
-
-const timeline = [
-  { 
-    year: "2024", 
-    title: "The Beginning",
-    event: "We watched brilliant people spend 60% of their day on tasks a machine should handle. Gravitre was born to fix that.",
-    highlight: true,
-  },
-  { 
-    year: "2025", 
-    title: "Private Beta",
-    event: "Partnered with forward-thinking operations teams to build AI agents that actually fit how people work.",
-  },
-  { 
-    year: "2026", 
-    title: "Public Launch",
-    event: "Now helping teams everywhere reclaim their time for the strategic, creative work they were hired to do.",
-    current: true,
-  },
+const milestones = [
+  { year: "2024", text: "Founded to fix how work gets done" },
+  { year: "2025", text: "Private beta with enterprise partners" },
+  { year: "2026", text: "Public launch", current: true },
 ]
 
 export default function AboutPage() {
   return (
-    <div className="bg-white text-zinc-900">
-      {/* Hero - Light with gradient accent */}
-      <section className="relative overflow-hidden px-6 py-32 lg:py-48">
-        {/* Gradient orb */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-emerald-200/60 via-teal-100/40 to-transparent rounded-full blur-3xl" />
+    <div className="bg-white">
+      {/* Hero - Bold statement */}
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-white to-white" />
         
         {/* Grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:72px_72px]" />
         
-        <div className="relative mx-auto max-w-5xl">
-          {/* Badge */}
+        <div className="relative px-6 py-32 max-w-6xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex justify-center mb-8"
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
-              <Sparkles className="h-4 w-4" />
-              Our Story
-            </span>
-          </motion.div>
-          
-          {/* Main headline */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
-              <span className="text-zinc-900">We help workers be </span>
-              <br className="hidden sm:block" />
-              <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
-                more strategic
+            <h1 className="text-[clamp(2.5rem,8vw,6rem)] font-bold tracking-tight leading-[0.95] text-zinc-900">
+              Humans should
+              <br />
+              <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
+                think
               </span>
-              <br className="hidden sm:block" />
-              <span className="text-zinc-900">and less robotic</span>
+              <br />
+              not click
             </h1>
           </motion.div>
           
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-8 text-lg sm:text-xl text-zinc-600 max-w-3xl mx-auto text-center leading-relaxed"
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="mt-8 text-xl sm:text-2xl text-zinc-500 max-w-2xl mx-auto font-light"
           >
-            Your team didn&apos;t spend years building expertise just to copy-paste data between systems.
-            Gravitre deploys AI agents that handle the mechanical work, so your people can do the 
-            thinking, deciding, and creating that actually matters.
+            We build AI agents that handle the mechanical work,
+            so your team can do what they were actually hired for.
           </motion.p>
           
-          {/* CTA Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="mt-12 flex items-center justify-center gap-6"
           >
             <Link
               href="/get-started"
-              className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800"
+              className="group inline-flex items-center gap-2 bg-zinc-900 text-white px-8 py-4 rounded-full text-sm font-medium transition-all hover:bg-zinc-800 hover:scale-[1.02]"
             >
-              Get started free
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              Get started
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
             </Link>
             <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-6 py-3.5 text-sm font-semibold text-zinc-900 transition-all hover:bg-zinc-200"
+              href="/features"
+              className="group inline-flex items-center gap-2 text-zinc-600 hover:text-zinc-900 text-sm font-medium transition-colors"
             >
-              Contact sales
+              See how it works
+              <ArrowUpRight className="h-4 w-4" strokeWidth={1.5} />
             </Link>
           </motion.div>
-          
-          {/* Stats row */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-4"
-          >
-            {capabilities.map((cap, i) => (
-              <motion.div
-                key={cap.label}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.6 + i * 0.1 }}
-                className="relative group rounded-2xl bg-zinc-50 border border-zinc-200 p-6 transition-all hover:bg-white hover:border-emerald-300 hover:shadow-lg"
-              >
-                <div className="text-lg font-semibold text-zinc-900 mb-1">{cap.label}</div>
-                <div className="text-sm text-zinc-500">{cap.description}</div>
-                <ChevronRight className="absolute top-6 right-6 h-4 w-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </motion.div>
-            ))}
-          </motion.div>
         </div>
+        
+        {/* Scroll indicator */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="absolute bottom-12 left-1/2 -translate-x-1/2"
+        >
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className="w-px h-16 bg-gradient-to-b from-zinc-300 to-transparent"
+          />
+        </motion.div>
       </section>
 
-      {/* Mission - Split layout */}
-      <section className="relative px-6 py-32 bg-zinc-50">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-16 lg:grid-cols-2 lg:gap-24 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Mission</span>
-              <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900 leading-tight">
-                The best people deserve better than busywork
-              </h2>
-              <div className="mt-8 space-y-6 text-zinc-600 text-lg leading-relaxed">
-                <p>
-                  Operations professionals are problem-solvers, negotiators, and strategic thinkers. 
-                  Yet most spend their days on tasks that don&apos;t require any of those skills: updating 
-                  spreadsheets, chasing approvals, copying data from one system to another.
-                </p>
-                <p>
-                  We built Gravitre because we believe that&apos;s a waste of human potential. Our AI agents 
-                  take on the robotic work, the stuff that follows rules and patterns, so your team 
-                  can focus on the judgment calls, relationship building, and creative problem-solving 
-                  that machines simply can&apos;t do.
-                </p>
-                <p className="text-zinc-900 font-medium">
-                  When AI handles the mechanical, humans get to be human again.
-                </p>
-              </div>
-              <div className="mt-10">
-                <Link
-                  href="/features"
-                  className="group inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
-                >
-                  Explore our platform
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative"
-            >
-              {/* Decorative card stack */}
-              <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/80 to-teal-100/80 rounded-3xl blur-2xl" />
-                <div className="relative rounded-3xl bg-white border border-zinc-200 p-8 shadow-xl">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                      <Zap className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-zinc-900 font-semibold">Human-Centered AI</div>
-                      <div className="text-sm text-zinc-500">Built to elevate, not eliminate</div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {[
-                      { label: "Time Freed for Strategy", value: "70%", color: "bg-emerald-500" },
-                      { label: "Manual Tasks Delegated", value: "85%", color: "bg-teal-500" },
-                      { label: "Team Satisfaction", value: "94%", color: "bg-cyan-500" },
-                    ].map((metric) => (
-                      <div key={metric.label}>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-zinc-500">{metric.label}</span>
-                          <span className="text-zinc-900 font-medium">{metric.value}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            whileInView={{ width: metric.value }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 1, delay: 0.3 }}
-                            className={`h-full rounded-full ${metric.color}`}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Values - Full width cards */}
-      <section className="px-6 py-32">
-        <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Values</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
-              What we believe
-            </h2>
-            <p className="mt-4 text-zinc-600 max-w-2xl mx-auto text-lg">
-              We&apos;re building AI for people who are tired of feeling like robots. 
-              These principles guide every decision we make.
-            </p>
-          </motion.div>
-          
-          <div className="grid gap-6 md:grid-cols-2">
-            {values.map((value, i) => (
+      {/* Stats - Clean horizontal layout */}
+      <section className="border-y border-zinc-100">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
+            {stats.map((stat, i) => (
               <motion.div
-                key={value.title}
+                key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group relative rounded-3xl bg-zinc-50 border border-zinc-200 p-8 transition-all hover:bg-white hover:border-emerald-300 hover:shadow-lg overflow-hidden"
+                className="py-16 md:px-12 first:md:pl-0 last:md:pr-0 text-center md:text-left"
               >
-                {/* Gradient hover effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                
-                <div className="relative">
-                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 border border-emerald-200 flex items-center justify-center mb-6">
-                    <value.icon className="h-6 w-6 text-emerald-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-zinc-900 mb-3">{value.title}</h3>
-                  <p className="text-zinc-600 leading-relaxed">{value.description}</p>
+                <div className="text-5xl sm:text-6xl font-bold text-zinc-900 tracking-tight">
+                  {stat.value}
+                </div>
+                <div className="mt-2 text-zinc-500 text-sm uppercase tracking-wider">
+                  {stat.label}
                 </div>
               </motion.div>
             ))}
@@ -289,129 +135,169 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Timeline - Horizontal on desktop */}
-      <section className="px-6 py-32 bg-zinc-50">
-        <div className="mx-auto max-w-5xl">
+      {/* Mission - Large text block */}
+      <section className="py-32 lg:py-48 px-6">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <span className="text-emerald-600 text-sm font-medium uppercase tracking-wider">Our belief</span>
+            <h2 className="mt-6 text-3xl sm:text-4xl lg:text-5xl font-medium text-zinc-900 leading-[1.2]">
+              Operations professionals are problem-solvers, negotiators, and strategic thinkers. 
+              <span className="text-zinc-400"> Yet most spend their days updating spreadsheets and chasing approvals.</span>
+            </h2>
+            <p className="mt-8 text-xl text-zinc-500 leading-relaxed">
+              We built Gravitre because that&apos;s a waste of human potential. When AI handles the mechanical, 
+              humans get to be human again.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Principles - Numbered list */}
+      <section className="py-32 px-6 bg-zinc-950 text-white">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="mb-20"
           >
-            <span className="text-emerald-600 text-sm font-semibold uppercase tracking-wider">Our Journey</span>
-            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900">
-              Built by people who get it
-            </h2>
+            <span className="text-emerald-400 text-sm font-medium uppercase tracking-wider">How we think</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tight">Our principles</h2>
           </motion.div>
           
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="hidden lg:block absolute top-12 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-300 to-transparent" />
-            
-            <div className="grid gap-8 lg:grid-cols-3">
-              {timeline.map((item, i) => (
-                <motion.div
-                  key={item.year}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.15 }}
-                  className="relative"
-                >
-                  {/* Timeline dot */}
-                  <div className="hidden lg:flex absolute -top-0.5 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-white border-2 border-zinc-300 items-center justify-center shadow-sm">
-                    {item.current && (
-                      <motion.div 
-                        className="h-2 w-2 rounded-full bg-emerald-500"
-                        animate={{ scale: [1, 1.5, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
-                    )}
-                    {item.highlight && (
-                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                    )}
-                  </div>
-                  
-                  <div className={`lg:mt-12 p-6 rounded-2xl ${item.current ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 shadow-md' : 'bg-white border border-zinc-200'}`}>
-                    <div className={`text-sm font-semibold mb-2 ${item.current ? 'text-emerald-600' : 'text-zinc-400'}`}>
-                      {item.year}
-                    </div>
-                    <h3 className="text-lg font-semibold text-zinc-900 mb-2">{item.title}</h3>
-                    <p className="text-zinc-600 text-sm leading-relaxed">{item.event}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          <div className="space-y-0">
+            {principles.map((principle, i) => (
+              <motion.div
+                key={principle.number}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="group border-t border-zinc-800 py-12 flex flex-col md:flex-row md:items-center gap-6 md:gap-16"
+              >
+                <span className="text-zinc-600 text-sm font-mono">{principle.number}</span>
+                <h3 className="text-2xl sm:text-3xl font-semibold text-white flex-1 group-hover:text-emerald-400 transition-colors">
+                  {principle.title}
+                </h3>
+                <p className="text-zinc-400 md:text-right md:max-w-xs">
+                  {principle.description}
+                </p>
+              </motion.div>
+            ))}
+            <div className="border-t border-zinc-800" />
           </div>
         </div>
       </section>
 
-      {/* Join the Team - Prominent CTA */}
-      <section className="px-6 py-32 bg-zinc-50">
-        <div className="mx-auto max-w-4xl">
+      {/* Timeline - Minimal */}
+      <section className="py-32 px-6">
+        <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="relative"
+            className="mb-16"
           >
-            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-200/50 to-teal-200/50 rounded-3xl blur-2xl" />
-            <div className="relative rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 p-12 text-center">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700 mb-6">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-                </span>
-                Now hiring
-              </div>
-              <h3 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-4">
-                Join the mission
-              </h3>
-              <p className="text-zinc-600 max-w-xl mx-auto mb-8 text-lg">
-                We&apos;re looking for people who believe work should be meaningful. Engineers, designers, 
-                and operators who want to help teams everywhere spend less time on busywork and more time 
-                on the work that matters.
-              </p>
-              <Link
-                href="/careers"
-                className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-zinc-800"
+            <span className="text-emerald-600 text-sm font-medium uppercase tracking-wider">Our journey</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-bold text-zinc-900 tracking-tight">Built fast, built right</h2>
+          </motion.div>
+          
+          <div className="space-y-8">
+            {milestones.map((milestone, i) => (
+              <motion.div
+                key={milestone.year}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="flex items-center gap-8"
               >
-                View open positions
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
+                <span className={`text-sm font-mono w-16 ${milestone.current ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                  {milestone.year}
+                </span>
+                <div className="flex items-center gap-4 flex-1">
+                  <div className={`h-2 w-2 rounded-full ${milestone.current ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+                  <span className={`text-lg ${milestone.current ? 'text-zinc-900 font-medium' : 'text-zinc-500'}`}>
+                    {milestone.text}
+                  </span>
+                  {milestone.current && (
+                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                      Now
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Careers CTA */}
+      <section className="py-32 px-6 bg-zinc-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="inline-flex items-center gap-2 text-sm text-emerald-600 font-medium mb-6">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
+              </span>
+              We&apos;re hiring
             </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-zinc-900 tracking-tight">
+              Join the mission
+            </h2>
+            <p className="mt-6 text-xl text-zinc-500 max-w-xl mx-auto">
+              Help us give every team their time back.
+            </p>
+            <Link
+              href="/careers"
+              className="mt-10 group inline-flex items-center gap-2 bg-zinc-900 text-white px-8 py-4 rounded-full text-sm font-medium transition-all hover:bg-zinc-800"
+            >
+              View open roles
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
+            </Link>
           </motion.div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="px-6 py-32">
-        <div className="mx-auto max-w-4xl text-center">
+      {/* Final CTA - Full bleed */}
+      <section className="relative py-32 lg:py-48 px-6 bg-zinc-900 overflow-hidden">
+        {/* Gradient accent */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-emerald-500/20 to-transparent rounded-full blur-3xl" />
+        
+        <div className="relative max-w-4xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl sm:text-5xl font-bold text-zinc-900 mb-6">
-              Ready to reclaim your team&apos;s time?
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+              Ready to reclaim
+              <br />
+              your team&apos;s time?
             </h2>
-            <p className="text-zinc-600 text-lg mb-10 max-w-xl mx-auto">
-              See how Gravitre helps operations teams stop acting like robots and start 
-              doing the strategic work they were hired for.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-4 text-sm font-semibold text-white transition-all hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-500/25"
+                className="group inline-flex items-center gap-2 bg-white text-zinc-900 px-8 py-4 rounded-full text-sm font-medium transition-all hover:bg-zinc-100"
               >
                 Start free trial
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-8 py-4 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-100"
+                className="inline-flex items-center gap-2 text-zinc-400 hover:text-white px-8 py-4 text-sm font-medium transition-colors"
               >
-                Contact us
+                Contact sales
               </Link>
             </div>
           </motion.div>
