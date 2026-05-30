@@ -217,13 +217,6 @@ import {
   DollarSign,
   Percent,
   Calculator,
-  Sigma,
-  Infinity,
-  Equal,
-  NotEqual,
-  LessThan,
-  GreaterThan,
-  Parentheses,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -562,13 +555,6 @@ export const iconMap = {
   dollar: DollarSign,
   percent: Percent,
   calculator: Calculator,
-  sigma: Sigma,
-  infinitySymbol: Infinity,
-  equals: Equal,
-  notEqual: NotEqual,
-  lessThan: LessThan,
-  greaterThan: GreaterThan,
-  parentheses: Parentheses,
 } as const
 
 export type IconName = keyof typeof iconMap
