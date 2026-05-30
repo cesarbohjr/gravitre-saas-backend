@@ -5,54 +5,31 @@ import { motion, AnimatePresence } from "framer-motion"
 import React from "react"
 import { 
   ArrowRight, 
-  ChevronRight,
-  Check,
-  Play,
-  Sparkles,
-  Lock,
-  FileText,
-  Shield,
+  Bot, 
+  Workflow, 
+  Shield, 
   Users,
-  Bot,
-  Zap,
-  Workflow,
   MessageSquare,
-  Clock,
   Database,
+  Zap,
+  Eye,
+  Lock,
+  BarChart3,
+  Clock,
+  Check,
   GitBranch,
   Bell,
-  Blocks,
-  BarChart3,
+  FileText,
+  Sparkles,
+  ChevronRight,
   Send,
+  Blocks,
   Layers,
-  Eye,
-  Globe
+  Play
 } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
 import { VendorLogo } from "@/components/gravitre/vendor-logo"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
-
-// Create Nucleo icons for features page - VERIFIED ICONS
-const NucleoAgentIcon = createNucleoIcon("77840")      // Edit/compose - AI agents create
-const NucleoWorkflowIcon = createNucleoIcon("77900")   // Bezier - workflow connections
-const NucleoSecurityIcon = createNucleoIcon("77860")   // Checkmark circle - verified/secure
-const NucleoTeamIcon = createNucleoIcon("77920")       // Store/business - team
-const NucleoChatIcon = createNucleoIcon("77840")       // Edit/compose - chat/writing
-const NucleoDataIcon = createNucleoIcon("77980")       // Dashboard - data/metrics
-const NucleoPerformanceIcon = createNucleoIcon("77980") // Dashboard - performance
-const NucleoInsightsIcon = createNucleoIcon("77760")   // Magnifying glass - insights
-const NucleoProtectionIcon = createNucleoIcon("77860") // Checkmark circle - protection
-const NucleoAnalyticsIcon = createNucleoIcon("77980")  // Dashboard - analytics
-const NucleoScheduleIcon = createNucleoIcon("77800")   // Phone - communication
-const NucleoVersionIcon = createNucleoIcon("77900")    // Bezier - version/flow
-const NucleoUsersIcon = createNucleoIcon("77920")      // Store - users/team
-const NucleoAlertIcon = createNucleoIcon("77720")      // Arrow up circle - alert/notify
-const NucleoDocIcon = createNucleoIcon("77820")        // Image - document
-const NucleoSparkleIcon = createNucleoIcon("77720")    // Arrow up circle - growth/magic
-const NucleoSendIcon = createNucleoIcon("77720")       // Arrow up - send
-const NucleoBlocksIcon = createNucleoIcon("77900")     // Bezier - blocks/modules
-const NucleoLayersIcon = createNucleoIcon("77900")     // Bezier - layers
 
 // Bento card component - Light theme
 function BentoCard({ 
@@ -81,10 +58,10 @@ function BentoCard({
 // Interactive App Screen Components
 function AgentsScreen() {
   const agents = [
-    { name: "Data Analyst", iconId: "77980", color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
-    { name: "Content Writer", iconId: "77840", color: "blue", status: "active", tasks: 8, accuracy: "95%" },
-    { name: "Research Agent", iconId: "77760", color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
-    { name: "Code Reviewer", iconId: "77860", color: "amber", status: "active", tasks: 5, accuracy: "99%" },
+    { name: "Data Analyst", icon: BarChart3, color: "emerald", status: "active", tasks: 12, accuracy: "98%" },
+    { name: "Content Writer", icon: FileText, color: "blue", status: "active", tasks: 8, accuracy: "95%" },
+    { name: "Research Agent", icon: Eye, color: "purple", status: "idle", tasks: 0, accuracy: "97%" },
+    { name: "Code Reviewer", icon: GitBranch, color: "amber", status: "active", tasks: 5, accuracy: "99%" },
   ]
   
   return (
@@ -122,12 +99,11 @@ function AgentsScreen() {
               agent.color === 'blue' ? 'bg-blue-100' :
               agent.color === 'purple' ? 'bg-purple-100' : 'bg-amber-100'
             }`}>
-              <NucleoIcon id={agent.iconId} size={20} className={
-                agent.color === 'emerald' ? '[filter:invert(48%)_sepia(79%)_saturate(2476%)_hue-rotate(115deg)_brightness(92%)_contrast(101%)]' :
-                agent.color === 'blue' ? '[filter:invert(37%)_sepia(78%)_saturate(2476%)_hue-rotate(199deg)_brightness(92%)_contrast(98%)]' :
-                agent.color === 'purple' ? '[filter:invert(32%)_sepia(98%)_saturate(2476%)_hue-rotate(253deg)_brightness(84%)_contrast(92%)]' : 
-                '[filter:invert(66%)_sepia(60%)_saturate(2000%)_hue-rotate(20deg)_brightness(95%)_contrast(88%)]'
-              } />
+              <agent.icon className={`h-5 w-5 ${
+                agent.color === 'emerald' ? 'text-emerald-600' :
+                agent.color === 'blue' ? 'text-blue-600' :
+                agent.color === 'purple' ? 'text-purple-600' : 'text-amber-600'
+              }`} />
               {agent.status === "active" && (
                 <motion.div
                   className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"

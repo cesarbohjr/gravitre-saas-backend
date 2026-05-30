@@ -3,18 +3,12 @@
 import { useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Check, Loader2 } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
-
-// Nucleo icons for contact options - verified
-const NucleoSupportIcon = createNucleoIcon("77800")   // Phone - support
-const NucleoSalesIcon = createNucleoIcon("77920")     // Store - sales/business
-const NucleoPartnersIcon = createNucleoIcon("77900")  // Bezier - partnerships/connections
+import { ArrowRight, Mail, MapPin, MessageSquare, Phone, Check, Loader2, Building2, Headphones, Users } from "lucide-react"
 
 const contactOptions = [
-  { icon: NucleoSupportIcon, title: "Support", description: "Get help with your account or technical issues", action: "support@gravitre.com", href: "mailto:support@gravitre.com" },
-  { icon: NucleoSalesIcon, title: "Sales", description: "Learn about enterprise plans and custom solutions", action: "sales@gravitre.com", href: "mailto:sales@gravitre.com" },
-  { icon: NucleoPartnersIcon, title: "Partnerships", description: "Explore integration and partnership opportunities", action: "partners@gravitre.com", href: "mailto:partners@gravitre.com" },
+  { icon: Headphones, title: "Support", description: "Get help with your account or technical issues", action: "support@gravitre.com", href: "mailto:support@gravitre.com" },
+  { icon: Building2, title: "Sales", description: "Learn about enterprise plans and custom solutions", action: "sales@gravitre.com", href: "mailto:sales@gravitre.com" },
+  { icon: Users, title: "Partnerships", description: "Explore integration and partnership opportunities", action: "partners@gravitre.com", href: "mailto:partners@gravitre.com" },
 ]
 
 const offices = [
@@ -58,7 +52,7 @@ export default function ContactPage() {
               return (
                 <motion.a key={option.title} href={option.href} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="group rounded-2xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4 group-hover:bg-emerald-200 transition-colors">
-                    <Icon size={20} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
+                    <Icon className="h-5 w-5 text-emerald-600" />
                   </div>
                   <h3 className="text-lg font-medium text-zinc-900 mb-1">{option.title}</h3>
                   <p className="text-sm text-zinc-500 mb-3">{option.description}</p>

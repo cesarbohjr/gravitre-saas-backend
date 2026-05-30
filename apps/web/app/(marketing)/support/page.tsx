@@ -2,57 +2,58 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Search, ArrowRight, Mail, MessageSquare, BookOpen } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
-
-// Verified Nucleo icons for support categories
-const NucleoZapIcon = createNucleoIcon("77720")       // Arrow up - getting started
-const NucleoUsersIcon = createNucleoIcon("77920")     // Store - account/billing
-const NucleoDatabaseIcon = createNucleoIcon("77980")  // Dashboard - integrations
-const NucleoShieldIcon = createNucleoIcon("77860")    // Checkmark - security
-const NucleoHelpIcon = createNucleoIcon("77760")      // Magnifying glass - troubleshooting
-const NucleoCodeIcon = createNucleoIcon("77840")      // Edit - API/developers
-const NucleoBookIcon = createNucleoIcon("77820")      // Image - knowledge base
-const NucleoMessageIcon = createNucleoIcon("77800")   // Phone - chat support
+import { 
+  Search, 
+  BookOpen, 
+  MessageSquare, 
+  Mail, 
+  ArrowRight,
+  HelpCircle,
+  Zap,
+  Shield,
+  Database,
+  Users,
+  CreditCard
+} from "lucide-react"
 
 const categories = [
   {
-    icon: NucleoZapIcon,
+    icon: Zap,
     title: "Getting Started",
     description: "Setup guides and quickstarts",
     articles: 12,
     href: "/support/getting-started",
   },
   {
-    icon: NucleoUsersIcon,
+    icon: Users,
     title: "Account & Billing",
     description: "Manage your subscription and team",
     articles: 8,
     href: "/support/account",
   },
   {
-    icon: NucleoDatabaseIcon,
+    icon: Database,
     title: "Integrations",
     description: "Connect your tools and data",
     articles: 24,
     href: "/support/integrations",
   },
   {
-    icon: NucleoShieldIcon,
+    icon: Shield,
     title: "Security & Compliance",
     description: "Privacy, security, and compliance",
     articles: 10,
     href: "/support/security",
   },
   {
-    icon: NucleoHelpIcon,
+    icon: HelpCircle,
     title: "Troubleshooting",
     description: "Common issues and solutions",
     articles: 18,
     href: "/support/troubleshooting",
   },
   {
-    icon: NucleoCodeIcon,
+    icon: CreditCard,
     title: "API & Developers",
     description: "Technical documentation",
     articles: 15,
@@ -142,7 +143,7 @@ export default function SupportPage() {
                   className="group rounded-xl border border-zinc-200 bg-white p-6 transition-all hover:border-emerald-300 hover:shadow-md"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
-                    <Icon size={20} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
+                    <Icon className="h-5 w-5 text-emerald-600" />
                   </div>
                   <h3 className="font-medium text-zinc-900 group-hover:text-emerald-600 transition-colors">
                     {category.title}

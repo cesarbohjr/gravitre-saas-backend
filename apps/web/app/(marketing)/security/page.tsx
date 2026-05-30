@@ -2,16 +2,17 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, CheckCircle2 } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
-
-// Verified Nucleo icons for security features
-const NucleoLockIcon = createNucleoIcon("77860")     // Checkmark circle - encryption/verified
-const NucleoShieldIcon = createNucleoIcon("77860")   // Checkmark circle - access controls
-const NucleoEyeIcon = createNucleoIcon("77760")      // Magnifying glass - audit/visibility
-const NucleoServerIcon = createNucleoIcon("77980")   // Dashboard - infrastructure
-const NucleoFileCheckIcon = createNucleoIcon("77860") // Checkmark circle - vulnerability mgmt
-const NucleoUsersIcon = createNucleoIcon("77920")    // Store/business - security team
+import { 
+  ArrowRight, 
+  Shield, 
+  Lock, 
+  Eye, 
+  Server,
+  FileCheck,
+  Users,
+  Globe,
+  CheckCircle2
+} from "lucide-react"
 
 const certifications = [
   { name: "GDPR Compliant", description: "Full compliance with EU data protection" },
@@ -22,32 +23,32 @@ const certifications = [
 
 const features = [
   {
-    icon: NucleoLockIcon,
+    icon: Lock,
     title: "Encryption",
     description: "All data is encrypted at rest (AES-256) and in transit (TLS 1.3). We use industry-standard cryptographic protocols to protect your information.",
   },
   {
-    icon: NucleoShieldIcon,
+    icon: Shield,
     title: "Access Controls",
     description: "Role-based access control (RBAC), multi-factor authentication (MFA), and SSO/SAML support ensure only authorized users access your data.",
   },
   {
-    icon: NucleoEyeIcon,
+    icon: Eye,
     title: "Audit Logging",
     description: "Comprehensive audit logs track all user actions, API calls, and system events. Logs are retained and available for compliance review.",
   },
   {
-    icon: NucleoServerIcon,
+    icon: Server,
     title: "Infrastructure",
     description: "Hosted on enterprise-grade cloud infrastructure with 99.9% uptime SLA. Multi-region deployment with automatic failover.",
   },
   {
-    icon: NucleoFileCheckIcon,
+    icon: FileCheck,
     title: "Vulnerability Management",
     description: "Regular penetration testing, automated vulnerability scanning, and a responsible disclosure program keep our systems secure.",
   },
   {
-    icon: NucleoUsersIcon,
+    icon: Users,
     title: "Security Team",
     description: "Dedicated security team monitoring 24/7. Incident response procedures tested quarterly with tabletop exercises.",
   },
@@ -79,7 +80,7 @@ export default function SecurityPage() {
             transition={{ duration: 0.6 }}
           >
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100">
-              <NucleoIcon id="77860" size={32} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
+              <Shield className="h-8 w-8 text-emerald-600" />
             </div>
             <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
               Enterprise-grade security
@@ -148,7 +149,7 @@ export default function SecurityPage() {
                   className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 mb-4">
-                    <Icon size={20} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
+                    <Icon className="h-5 w-5 text-emerald-600" />
                   </div>
                   <h3 className="text-lg font-medium text-zinc-900 mb-2">{feature.title}</h3>
                   <p className="text-sm text-zinc-600">{feature.description}</p>

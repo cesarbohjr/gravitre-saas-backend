@@ -3,8 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, ArrowRight, HelpCircle, Play, Mail, FileText, Send, ChevronRight, X, Star, Minus, Info, Cpu, Monitor, Smartphone, Crown, Blocks, Sparkles, Users, Zap } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
+import { Check, ArrowRight, HelpCircle, Zap, Play, Mail, FileText, Send, ChevronRight, Users, Crown, Smartphone, Monitor, Building2, Rocket, Info, Shield, Cpu, Sparkles, X, Blocks, Star, Clock, BadgeCheck, RefreshCcw, Minus } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
@@ -12,42 +11,22 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-// Nucleo icons for pricing tiers - verified icons
-const NucleoLightningIcon = createNucleoIcon("77720")  // Arrow up - speed/starter
-const NucleoWorkflowIcon = createNucleoIcon("77900")   // Bezier - workflow/control
-const NucleoEnterpriseIcon = createNucleoIcon("77960") // Globe - enterprise/scale
-const NucleoSparklesIcon = createNucleoIcon("77860")   // Checkmark - verified/premium
-const NucleoShieldIcon = createNucleoIcon("77860")     // Checkmark - security
-const NucleoCpuIcon = createNucleoIcon("77980")        // Dashboard - compute/AI
-const NucleoBlocksIcon = createNucleoIcon("77900")     // Bezier - blocks/modules
-const NucleoClockIcon = createNucleoIcon("77980")      // Dashboard - time/schedule
-const NucleoBadgeIcon = createNucleoIcon("77860")      // Checkmark - badge/verified
-const NucleoRefreshIcon = createNucleoIcon("77900")    // Bezier - sync/refresh
-
-// Role icons
-const NucleoCrownIcon = createNucleoIcon("77720")      // Arrow up - admin/crown
-const NucleoMonitorIcon = createNucleoIcon("77840")    // Edit - core user/monitor
-const NucleoMobileIcon = createNucleoIcon("77800")     // Phone - mobile/lite user
-const NucleoUsersIcon = createNucleoIcon("77920")      // Store - users/team
-const NucleoBuildingIcon = createNucleoIcon("77920")   // Store - building/enterprise
-const NucleoRocketIcon = createNucleoIcon("77720")     // Arrow up - rocket/launch
-
 // Role definitions for tooltips
 const roles = {
   masterAdmin: {
     name: "Master Admin",
     description: "Full system control, billing, and organization management. Automatically included.",
-    icon: NucleoCrownIcon,
+    icon: Crown,
   },
   coreUser: {
     name: "Core User",
     description: "Builds and configures agents. Full access to Gravitre Core for creating workflows and managing outputs.",
-    icon: NucleoMonitorIcon,
+    icon: Monitor,
   },
   liteUser: {
     name: "Lite User",
     description: "Assigns work and views outputs using Gravitre Lite. Mobile-first interface for team-wide adoption.",
-    icon: NucleoMobileIcon,
+    icon: Smartphone,
   },
 }
 
@@ -75,7 +54,7 @@ const tiers = [
     color: "emerald",
     gradient: "from-emerald-500 to-emerald-600",
     glow: "emerald-500/20",
-    icon: NucleoLightningIcon,
+    icon: Zap,
   },
   {
     name: "Control",
@@ -99,64 +78,10 @@ const tiers = [
     cta: "Start 7-day free trial",
     highlighted: true,
     badge: "Most Popular",
-    color: "emerald",
-    gradient: "from-emerald-500 to-teal-500",
-    glow: "emerald-500/30",
-    icon: NucleoWorkflowIcon,
-  },
-  {
-    name: "Scale",
-    tagline: "Enterprise automation at scale",
-    price: { monthly: 349, annual: 291 },
-    description: "Full operational automation with advanced workflows, unlimited team access, and dedicated support.",
-    outputs: "Up to 150 complete outputs / month",
-    team: {
-      agents: "5+ Agents",
-      coreUsers: "5 Core Users",
-      liteUsers: "Unlimited",
-    },
-    meson: { count: 50, label: "50 Mesons / month" },
-    features: [
-      "All Control features",
-      "Custom integrations",
-      "Advanced workflows",
-      "Audit logs & compliance",
-      "Dedicated success manager",
-      "SLA guarantee",
-    ],
-    cta: "Start 7-day free trial",
-    highlighted: false,
-    color: "emerald",
-    gradient: "from-teal-500 to-cyan-500",
-    glow: "teal-500/20",
-    icon: NucleoEnterpriseIcon,
-  },
-  {
-    name: "Enterprise",
-    tagline: "Custom solutions for large teams",
-    price: { monthly: null, annual: null },
-    description: "Custom pricing for organizations with unique needs and advanced security requirements.",
-    outputs: "Custom output limits",
-    team: {
-      agents: "Unlimited Agents",
-      coreUsers: "Unlimited Core Users",
-      liteUsers: "Unlimited Lite Users",
-    },
-    meson: { count: 100, label: "100+ Mesons / month" },
-    features: [
-      "All Scale features",
-      "Custom contracts",
-      "Dedicated infrastructure",
-      "24/7 premium support",
-      "Custom SLA",
-      "On-premise options",
-    ],
-    cta: "Contact Sales",
-    highlighted: false,
     color: "amber",
     gradient: "from-amber-500 to-orange-500",
     glow: "amber-500/30",
-    icon: NucleoBuildingIcon,
+    icon: Building2,
   },
   {
     name: "Command",
@@ -183,7 +108,7 @@ const tiers = [
     color: "blue",
     gradient: "from-blue-500 to-indigo-500",
     glow: "blue-500/20",
-    icon: NucleoRocketIcon,
+    icon: Rocket,
   },
 ]
 
@@ -192,19 +117,19 @@ const addOns = [
     name: "Additional Core Users",
     price: "$29/month each",
     description: "Add more builders and configurers to your team",
-    icon: NucleoUsersIcon,
+    icon: Users,
   },
   {
     name: "Additional Outputs",
     price: "$2-$3 each",
     description: "Pay-as-you-go for extra capacity when needed",
-    icon: NucleoLightningIcon,
+    icon: Zap,
   },
   {
     name: "Additional Mesons",
     price: "$2-$4 each",
     description: "Build more systems on demand (Control + Command only)",
-    icon: NucleoBlocksIcon,
+    icon: Blocks,
   },
 ]
 
@@ -1367,10 +1292,10 @@ export default function PricingPage() {
         <div className="mx-auto max-w-5xl px-6">
           <div className="grid sm:grid-cols-4 gap-6">
             {[
-              { icon: NucleoShieldIcon, title: "Enterprise-grade security", description: "End-to-end encryption" },
-              { icon: NucleoClockIcon, title: "7-day free trial", description: "Full access to all features" },
-              { icon: NucleoRefreshIcon, title: "Cancel anytime", description: "No long-term contracts" },
-              { icon: NucleoBadgeIcon, title: "Money-back guarantee", description: "30-day refund policy" },
+              { icon: Shield, title: "Enterprise-grade security", description: "End-to-end encryption" },
+              { icon: Clock, title: "7-day free trial", description: "Full access to all features" },
+              { icon: RefreshCcw, title: "Cancel anytime", description: "No long-term contracts" },
+              { icon: BadgeCheck, title: "Money-back guarantee", description: "30-day refund policy" },
             ].map((badge, i) => (
               <motion.div
                 key={i}
@@ -1381,7 +1306,7 @@ export default function PricingPage() {
                 className="text-center"
               >
                 <div className="mx-auto h-12 w-12 rounded-xl bg-zinc-100 flex items-center justify-center mb-3">
-                  <badge.icon size={24} className="opacity-70" />
+                  <badge.icon className="h-6 w-6 text-zinc-600" />
                 </div>
                 <p className="font-medium text-zinc-900 text-sm">{badge.title}</p>
                 <p className="text-xs text-zinc-500 mt-1">{badge.description}</p>

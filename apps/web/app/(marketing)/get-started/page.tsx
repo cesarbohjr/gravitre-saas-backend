@@ -11,20 +11,18 @@ import {
   EyeOff, 
   Loader2, 
   Github, 
-  Check
+  Check,
+  Building2,
+  Users,
+  Zap,
+  Shield,
+  Sparkles,
+  Rocket
 } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
 import { billingApi, organizationsApi } from "@/lib/api"
 import { setSelectedOrgInStorage } from "@/lib/org-context"
-
-// Verified Nucleo icons for use cases
-const NucleoUsersIcon = createNucleoIcon("77920")     // Store - sales/CRM
-const NucleoSparklesIcon = createNucleoIcon("77720")  // Arrow up - marketing
-const NucleoDataIcon = createNucleoIcon("77980")      // Dashboard - analytics
-const NucleoBuildingIcon = createNucleoIcon("77920")  // Store - finance
-const NucleoShieldIcon = createNucleoIcon("77860")    // Checkmark - support
 
 const plans = [
   {
@@ -57,11 +55,11 @@ const plans = [
 ]
 
 const useCases = [
-  { id: "sales", label: "Sales & CRM", icon: NucleoUsersIcon },
-  { id: "marketing", label: "Marketing", icon: NucleoSparklesIcon },
-  { id: "data", label: "Analytics", icon: NucleoDataIcon },
-  { id: "finance", label: "Finance", icon: NucleoBuildingIcon },
-  { id: "support", label: "Support", icon: NucleoShieldIcon },
+  { id: "sales", label: "Sales & CRM", icon: Users },
+  { id: "marketing", label: "Marketing", icon: Sparkles },
+  { id: "data", label: "Analytics", icon: Zap },
+  { id: "finance", label: "Finance", icon: Building2 },
+  { id: "support", label: "Support", icon: Shield },
 ]
 
 const stepTitles = [
@@ -597,7 +595,7 @@ export default function GetStartedPage() {
                                   : "bg-zinc-100 text-zinc-600 border border-zinc-200 hover:border-zinc-300"
                               }`}
                             >
-                              <Icon size={16} />
+                              <Icon className="h-4 w-4" />
                               {useCase.label}
                             </button>
                           )

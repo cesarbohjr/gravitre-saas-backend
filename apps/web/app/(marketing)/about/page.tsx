@@ -2,33 +2,26 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, ChevronRight, Sparkles, Zap } from "lucide-react"
-import { createNucleoIcon, NucleoIcon } from "@/components/ui/nucleo-icon"
-
-// Verified Nucleo icons for values
-const NucleoSpeedIcon = createNucleoIcon("77720")    // Arrow up circle - speed/growth
-const NucleoVerifiedIcon = createNucleoIcon("77860") // Checkmark circle - trust/verified
-const NucleoTeamIcon = createNucleoIcon("77920")     // Store/business - team/collaboration
-const NucleoGlobeIcon = createNucleoIcon("77960")    // Globe - enterprise/global
+import { ArrowRight, Zap, Shield, Users, Globe, ChevronRight, Sparkles } from "lucide-react"
 
 const values = [
   {
-    icon: NucleoSpeedIcon,
+    icon: Zap,
     title: "Move fast with intention",
     description: "We ship quickly but never compromise on quality. Every feature is designed with purpose and precision.",
   },
   {
-    icon: NucleoVerifiedIcon,
+    icon: Shield,
     title: "Trust through transparency",
     description: "AI should be explainable. We build tools that show their work and earn user confidence at every step.",
   },
   {
-    icon: NucleoTeamIcon,
+    icon: Users,
     title: "Empower, don't replace",
     description: "Our AI augments human capability. We believe in collaboration between humans and machines.",
   },
   {
-    icon: NucleoGlobeIcon,
+    icon: Globe,
     title: "Enterprise-grade, startup-fast",
     description: "Security and compliance at scale, with the agility and innovation speed of a startup.",
   },
@@ -282,7 +275,7 @@ export default function AboutPage() {
                 
                 <div className="relative">
                   <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 border border-emerald-200 flex items-center justify-center mb-6">
-                    <value.icon size={24} className="[filter:invert(39%)_sepia(89%)_saturate(401%)_hue-rotate(108deg)_brightness(94%)_contrast(87%)]" />
+                    <value.icon className="h-6 w-6 text-emerald-600" />
                   </div>
                   <h3 className="text-xl font-semibold text-zinc-900 mb-3">{value.title}</h3>
                   <p className="text-zinc-600 leading-relaxed">{value.description}</p>
