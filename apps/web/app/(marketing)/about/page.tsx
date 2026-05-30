@@ -34,16 +34,179 @@ const milestones = [
   { year: "2026", text: "Public launch", current: true },
 ]
 
+// Animated connection nodes - represents AI connecting work together
+function ConnectionNodes() {
+  const nodes = [
+    { x: "15%", y: "25%", size: 8, delay: 0 },
+    { x: "85%", y: "20%", size: 6, delay: 0.5 },
+    { x: "75%", y: "70%", size: 10, delay: 1 },
+    { x: "20%", y: "75%", size: 6, delay: 1.5 },
+    { x: "50%", y: "15%", size: 8, delay: 2 },
+    { x: "40%", y: "85%", size: 6, delay: 0.8 },
+  ]
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Connection lines between nodes */}
+      <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="aboutLineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
+            <stop offset="50%" stopColor="#10b981" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[
+          { x1: "15%", y1: "25%", x2: "50%", y2: "15%" },
+          { x1: "50%", y1: "15%", x2: "85%", y2: "20%" },
+          { x1: "85%", y1: "20%", x2: "75%", y2: "70%" },
+          { x1: "75%", y1: "70%", x2: "40%", y2: "85%" },
+          { x1: "40%", y1: "85%", x2: "20%", y2: "75%" },
+          { x1: "20%", y1: "75%", x2: "15%", y2: "25%" },
+        ].map((line, i) => (
+          <motion.line
+            key={i}
+            x1={line.x1}
+            y1={line.y1}
+            x2={line.x2}
+            y2={line.y2}
+            stroke="url(#aboutLineGrad)"
+            strokeWidth="1"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: [0, 0.6, 0] }}
+            transition={{
+              duration: 4,
+              delay: i * 0.8,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </svg>
+
+      {/* Animated nodes */}
+      {nodes.map((node, i) => (
+        <motion.div
+          key={i}
+          className="absolute"
+          style={{ left: node.x, top: node.y }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.4, 0.8, 0.4],
+          }}
+          transition={{
+            duration: 3,
+            delay: node.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          <div 
+            className="rounded-full bg-gradient-to-br from-emerald-400 to-teal-500"
+            style={{ width: node.size, height: node.size }}
+          />
+          <motion.div
+            className="absolute inset-0 rounded-full border border-emerald-400/50"
+            animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+            transition={{
+              duration: 2,
+              delay: node.delay,
+              repeat: Infinity,
+              ease: "easeOut",
+            }}
+            style={{ width: node.size, height: node.size }}
+          />
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+// Flowing data streams
+function DataStreams() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Horizontal scan lines */}
+      <motion.div
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"
+        animate={{ y: [0, 800] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+      />
+      <motion.div
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-400/20 to-transparent"
+        animate={{ y: [800, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 3 }}
+      />
+      
+      {/* Radial pulse from center */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-emerald-500/10"
+        animate={{ scale: [0.5, 2], opacity: [0.5, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeOut" }}
+      />
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-emerald-500/10"
+        animate={{ scale: [0.5, 2], opacity: [0.5, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeOut", delay: 2 }}
+      />
+    </div>
+  )
+}
+
+// Floating gradient orbs
+function FloatingOrbs() {
+  return (
+    <>
+      <motion.div
+        className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-emerald-200/30 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, 60, 0],
+          y: [0, 40, 0],
+          scale: [1, 1.1, 1]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full bg-gradient-to-br from-teal-200/25 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, -50, 0],
+          y: [0, -40, 0],
+          scale: [1, 1.15, 1]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+      <motion.div
+        className="absolute top-1/3 right-10 w-[300px] h-[300px] rounded-full bg-gradient-to-br from-cyan-100/20 to-transparent blur-3xl"
+        animate={{ 
+          x: [0, -30, 0],
+          y: [0, 50, 0],
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+      />
+    </>
+  )
+}
+
 export default function AboutPage() {
   return (
     <div className="bg-white">
       {/* Hero - Bold statement */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Subtle gradient background */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-white to-white" />
+        {/* Base gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/80 via-white to-white" />
+        
+        {/* Floating gradient orbs */}
+        <FloatingOrbs />
+        
+        {/* Connection nodes animation */}
+        <ConnectionNodes />
+        
+        {/* Data streams */}
+        <DataStreams />
         
         {/* Grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:72px_72px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
         
         <div className="relative px-6 py-32 max-w-6xl mx-auto text-center">
           <motion.div
