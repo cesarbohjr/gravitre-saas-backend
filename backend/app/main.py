@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -96,7 +97,21 @@ def root() -> dict:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    """Unauthenticated liveness probe for Railway / deployment monitors."""
+    ai_disabled = False
+    try:
+        from app.config import get_settings
+
+        ai_disabled = bool(get_settings().disable_ai)
+    except Exception:
+        # Health must succeed even when Settings cannot load (misconfigured env).
+        pass
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": app.version,
+        "ai_disabled": ai_disabled,
+    }
 
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -117,6 +132,7 @@ app.add_middleware(
         "X-Api-Version",
         "Accept-Version",
         "X-Environment",
+        "X-Org-Id",
     ],
 )
 

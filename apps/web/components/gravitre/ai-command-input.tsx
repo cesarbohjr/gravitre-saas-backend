@@ -287,7 +287,9 @@ export function AICommandInput({
                 Commands
               </div>
               <div className="space-y-0.5">
-                {filteredCommands.map((cmd, index) => (
+                {filteredCommands.map((cmd, index) => {
+                  const CmdIcon = cmd.icon
+                  return (
                   <motion.button
                     key={cmd.command}
                     initial={{ opacity: 0, x: -4 }}
@@ -303,7 +305,7 @@ export function AICommandInput({
                     `}
                   >
                     <div className={`rounded-lg p-2 ${index === selectedCommandIndex ? "bg-blue-500/20" : "bg-secondary"} transition-colors`}>
-                      <cmd.icon className={`h-4 w-4 ${cmd.color}`} />
+                      <CmdIcon className={`h-4 w-4 ${cmd.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -314,7 +316,8 @@ export function AICommandInput({
                     </div>
                     <ChevronRight className={`h-4 w-4 transition-colors ${index === selectedCommandIndex ? "text-blue-400" : "text-muted-foreground/50"}`} />
                   </motion.button>
-                ))}
+                  )
+                })}
               </div>
             </motion.div>
           )}
@@ -365,7 +368,9 @@ export function AICommandInput({
           Try asking
         </div>
         <div className="flex flex-wrap gap-2">
-          {suggestedActions.map((action, i) => (
+          {suggestedActions.map((action, i) => {
+            const ActionIcon = action.icon
+            return (
             <motion.button
               key={i}
               initial={{ opacity: 0, y: 8 }}
@@ -375,10 +380,11 @@ export function AICommandInput({
               disabled={disabled || isProcessing}
               className="group flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm px-4 py-2.5 text-[13px] text-muted-foreground transition-all duration-200 hover:border-blue-500/40 hover:bg-blue-500/5 hover:text-foreground hover:shadow-md hover:shadow-blue-500/5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <action.icon className="h-4 w-4 text-muted-foreground/70 group-hover:text-blue-400 transition-colors" />
+              <ActionIcon className="h-4 w-4 text-muted-foreground/70 group-hover:text-blue-400 transition-colors" />
               <span>{action.label}</span>
             </motion.button>
-          ))}
+            )
+          })}
         </div>
       </div>
 

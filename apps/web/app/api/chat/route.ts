@@ -13,29 +13,54 @@ function getBackendBaseUrl(): string | null {
   return value ? value.replace(/\/+$/, "") : null
 }
 
-function jsonError(message: string, status: number, detail?: string) {
-  return new Response(JSON.stringify({ error: message, ...(detail ? { detail } : {}) }), {
+function jsonError(message: string, status: number, extra?: Record<string, string>) {
+  return new Response(JSON.stringify({ error: message, ...extra }), {
     status,
     headers: { "content-type": "application/json" },
   })
 }
 
+function resolveOrgId(req: NextRequest, bodyText: string): string {
+  // Priority: request body → x-org-id header → query string.
+  if (bodyText) {
+    try {
+      const parsed = JSON.parse(bodyText) as { org_id?: string }
+      const fromBody = parsed.org_id?.trim()
+      if (fromBody) return fromBody
+    } catch {
+      // Body may not be JSON during malformed requests.
+    }
+  }
+
+  const fromHeader = req.headers.get("x-org-id")?.trim()
+  if (fromHeader) return fromHeader
+
+  const fromQuery = req.nextUrl.searchParams.get("org_id")?.trim()
+  if (fromQuery) return fromQuery
+
+  return ""
+}
+
 export async function POST(req: NextRequest) {
   const baseUrl = getBackendBaseUrl()
   if (!baseUrl) {
-    return jsonError("AI assistant is not configured", 503, "FASTAPI_BASE_URL is not set")
+    return jsonError("AI assistant is not configured — FASTAPI_BASE_URL is not set", 503)
   }
 
   const body = await req.text()
   const auth = req.headers.get("authorization")
-  const orgId = req.headers.get("x-org-id")
+  const orgId = resolveOrgId(req, body)
+
+  if (!orgId) {
+    return jsonError("org_id is required", 400)
+  }
 
   const headers: Record<string, string> = {
     "content-type": "application/json",
     accept: "text/event-stream",
+    "x-org-id": orgId,
   }
   if (auth) headers.authorization = auth
-  if (orgId) headers["x-org-id"] = orgId
 
   let upstream: Response
   try {
@@ -47,9 +72,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     return jsonError(
-      "AI assistant backend is unreachable",
+      "Could not reach the AI backend — check your connection",
       502,
-      error instanceof Error ? error.message : "proxy error",
+      error instanceof Error ? { detail: error.message } : undefined,
     )
   }
 

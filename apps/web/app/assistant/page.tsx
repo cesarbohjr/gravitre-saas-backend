@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { getSelectedOrgFromStorage, DEFAULT_DEMO_ORG_ID } from "@/lib/org-context"
@@ -36,7 +36,72 @@ const samplePrompts = [
   { icon: Database, label: "Show me failed workflows from today" },
   { icon: Sparkles, label: "How do I set up a new automation?" },
   { icon: Plug, label: "Which connectors have sync errors?" },
-]
+] as const
+
+function parseChatError(error: Error): string {
+  const raw = error.message?.trim() ?? ""
+  if (!raw) return "Failed to send message"
+
+  const fromBody = (() => {
+    try {
+      const parsed = JSON.parse(raw) as { detail?: unknown; error?: unknown }
+      if (typeof parsed.detail === "string" && parsed.detail) return parsed.detail
+      if (typeof parsed.error === "string" && parsed.error) return parsed.error
+    } catch {
+      // Response body is plain text, not JSON.
+    }
+    return ""
+  })()
+
+  if (fromBody) {
+    if (/payment required|budget|usage limit|402/i.test(fromBody)) {
+      return "AI usage limit reached — check billing settings"
+    }
+    if (/too many|rate limit|429/i.test(fromBody)) {
+      return "Too many requests — please wait a moment"
+    }
+    if (/disabled|killswitch|unavailable|503/i.test(fromBody)) {
+      return "AI assistant is currently unavailable"
+    }
+    if (/organization|org_id|forbidden|403/i.test(fromBody)) {
+      return "You don't have access to this organization"
+    }
+    if (/unauthorized|401/i.test(fromBody)) {
+      return "Please sign in again to continue"
+    }
+    if (/FASTAPI_BASE_URL|not configured/i.test(fromBody)) {
+      return "AI assistant is not configured — FASTAPI_BASE_URL is not set"
+    }
+    if (/unreachable|502|connection/i.test(fromBody)) {
+      return "Could not reach the AI backend — check your connection"
+    }
+    return fromBody.length <= 180 ? fromBody : `${fromBody.slice(0, 177)}...`
+  }
+
+  if (/401|unauthorized/i.test(raw)) {
+    return "Please sign in again to continue"
+  }
+  if (/402|payment required/i.test(raw)) {
+    return "AI usage limit reached — check billing settings"
+  }
+  if (/403|forbidden/i.test(raw)) {
+    return "You don't have access to this organization"
+  }
+  if (/429|too many requests/i.test(raw)) {
+    return "Too many requests — please wait a moment"
+  }
+  if (/FASTAPI_BASE_URL|not configured/i.test(raw)) {
+    return "AI assistant is not configured — FASTAPI_BASE_URL is not set"
+  }
+  if (/502|unreachable|fetch failed|ECONNREFUSED|connection/i.test(raw)) {
+    return "Could not reach the AI backend — check your connection"
+  }
+  if (/503|disabled|killswitch|unavailable/i.test(raw)) {
+    return "AI assistant is currently unavailable"
+  }
+
+  return raw.length <= 180 ? raw : "Failed to send message"
+}
 
 // Tool icons mapping
 const toolIcons: Record<string, typeof Database> = {
@@ -367,8 +432,8 @@ export default function AssistantPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Load initial messages from localStorage
-  const getInitialMessages = useCallback((): UIMessage[] => {
+  // Hydrate once from localStorage (avoid re-reading on every render).
+  const [initialMessages] = useState<UIMessage[]>(() => {
     if (typeof window === "undefined") return []
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -380,7 +445,7 @@ export default function AssistantPage() {
       // Ignore parse errors
     }
     return []
-  }, [])
+  })
 
   // Transport forwards the Supabase JWT + selected org so the backend can
   // authenticate, enforce tenant isolation, and apply the governance layer.
@@ -409,10 +474,10 @@ export default function AssistantPage() {
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport,
-    messages: getInitialMessages(),
+    messages: initialMessages,
     onError: (error) => {
       console.error("[v0] Chat error:", error)
-      toast.error("Failed to send message")
+      toast.error(parseChatError(error))
     },
   })
 
@@ -537,16 +602,19 @@ export default function AssistantPage() {
                 {/* Sample prompts */}
                 {!hasSentMessage && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-                    {samplePrompts.map((prompt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => submitText(prompt.label)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-left"
-                      >
-                        <prompt.icon className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                        <span>{prompt.label}</span>
-                      </button>
-                    ))}
+                    {samplePrompts.map((prompt, i) => {
+                      const PromptIcon = prompt.icon
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => submitText(prompt.label)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-left"
+                        >
+                          <PromptIcon className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                          <span>{prompt.label}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </motion.div>
