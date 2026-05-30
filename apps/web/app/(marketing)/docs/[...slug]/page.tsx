@@ -381,6 +381,158 @@ const tokens = await gravitre.oauth.exchangeCode(code);`
       }
     ],
     prevPage: { title: "Authentication", href: "/docs/authentication" }
+  },
+  "security": {
+    title: "Security Overview",
+    description: "Learn about Gravitre's security practices, compliance certifications, and how we protect your data.",
+    category: "Security",
+    readTime: "8 min",
+    sections: [
+      {
+        title: "Data Protection",
+        content: "All data is encrypted at rest using AES-256 and in transit using TLS 1.3. We implement strict access controls and audit logging for all data access.",
+      },
+      {
+        title: "Compliance",
+        content: "Gravitre is SOC 2 Type II certified and GDPR compliant. We undergo regular third-party security audits and penetration testing.",
+      },
+      {
+        title: "Infrastructure Security",
+        content: "Our infrastructure runs on enterprise-grade cloud providers with 99.99% uptime SLA. We maintain geographic redundancy and automatic failover capabilities.",
+      }
+    ],
+    prevPage: { title: "Workspaces", href: "/docs/workspaces" }
+  },
+  "api/quickstart": {
+    title: "API Quickstart",
+    description: "Get started with the Gravitre API in minutes. Learn how to authenticate, make your first request, and integrate with your applications.",
+    category: "API Reference",
+    readTime: "5 min",
+    sections: [
+      {
+        title: "Authentication",
+        content: "All API requests require authentication using an API key. Generate your API key from the dashboard under Settings > API Keys.",
+        code: `curl -X GET "https://api.gravitre.com/v1/workflows" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json"`
+      },
+      {
+        title: "Your First Request",
+        content: "Let's create a simple workflow using the API. This example creates a workflow that triggers daily and syncs data between two systems.",
+        code: `const response = await fetch('https://api.gravitre.com/v1/workflows', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Daily Data Sync',
+    trigger: { type: 'schedule', cron: '0 9 * * *' }
+  })
+});`
+      }
+    ],
+    nextPage: { title: "API Reference", href: "/docs/api/reference" }
+  },
+  "api/reference": {
+    title: "API Reference",
+    description: "Complete reference documentation for all Gravitre API endpoints, including request/response schemas and examples.",
+    category: "API Reference",
+    readTime: "15 min",
+    sections: [
+      {
+        title: "Base URL",
+        content: "All API requests should be made to: https://api.gravitre.com/v1",
+      },
+      {
+        title: "Workflows",
+        content: "The Workflows API allows you to create, read, update, and delete workflows programmatically.",
+        code: `// List all workflows
+GET /v1/workflows
+
+// Create a workflow
+POST /v1/workflows
+
+// Get a specific workflow
+GET /v1/workflows/:id
+
+// Update a workflow
+PATCH /v1/workflows/:id
+
+// Delete a workflow
+DELETE /v1/workflows/:id`
+      },
+      {
+        title: "Runs",
+        content: "The Runs API provides access to workflow execution history and real-time status.",
+        code: `// List runs for a workflow
+GET /v1/workflows/:id/runs
+
+// Get a specific run
+GET /v1/runs/:id
+
+// Cancel a running workflow
+POST /v1/runs/:id/cancel`
+      }
+    ],
+    prevPage: { title: "API Quickstart", href: "/docs/api/quickstart" },
+    nextPage: { title: "Webhooks", href: "/docs/api/webhooks" }
+  },
+  "api/webhooks": {
+    title: "Webhooks",
+    description: "Learn how to receive real-time notifications when events occur in your Gravitre workflows.",
+    category: "API Reference",
+    readTime: "7 min",
+    sections: [
+      {
+        title: "Setting Up Webhooks",
+        content: "Configure webhook endpoints in your dashboard under Settings > Webhooks. Gravitre will send POST requests to your endpoint when events occur.",
+      },
+      {
+        title: "Event Types",
+        content: "Subscribe to specific event types: workflow.completed, workflow.failed, workflow.started, run.step_completed, and more.",
+        code: `// Example webhook payload
+{
+  "event": "workflow.completed",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "workflow_id": "wf_abc123",
+    "run_id": "run_xyz789",
+    "status": "success",
+    "duration_ms": 1250
+  }
+}`
+      },
+      {
+        title: "Security",
+        content: "All webhook requests include a signature header (X-Gravitre-Signature) that you should verify to ensure the request is authentic.",
+      }
+    ],
+    prevPage: { title: "API Reference", href: "/docs/api/reference" },
+    nextPage: { title: "Authentication", href: "/docs/api/authentication" }
+  },
+  "api/authentication": {
+    title: "API Authentication",
+    description: "Detailed guide on authenticating with the Gravitre API, including API keys, OAuth, and service accounts.",
+    category: "API Reference",
+    readTime: "6 min",
+    sections: [
+      {
+        title: "API Keys",
+        content: "API keys are the simplest way to authenticate. Create keys in your dashboard with specific scopes and expiration dates.",
+        code: `// Include your API key in the Authorization header
+Authorization: Bearer gtr_live_abc123xyz...`
+      },
+      {
+        title: "Scopes",
+        content: "API keys can be scoped to limit access: workflows:read, workflows:write, runs:read, runs:write, connectors:manage, admin:full.",
+      },
+      {
+        title: "Rate Limits",
+        content: "API requests are rate limited to 1000 requests per minute for standard plans and 10,000 for enterprise plans. Rate limit headers are included in all responses.",
+      }
+    ],
+    prevPage: { title: "Webhooks", href: "/docs/api/webhooks" }
   }
 }
 
