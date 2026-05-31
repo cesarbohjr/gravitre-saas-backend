@@ -68,6 +68,12 @@ async def enqueue_job(
         payload={"task": body.task, "context": body.context or {}},
         created_by=current_user.get("user_id"),
     )
+    from app.workers.queue import enqueue_agent_execution_job
+
+    try:
+        await enqueue_agent_execution_job(job["id"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("agent job enqueue failed job_id=%s error=%s", job.get("id"), str(exc))
     return _public(job)
 
 

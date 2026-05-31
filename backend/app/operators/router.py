@@ -5,7 +5,8 @@ import uuid
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -1740,7 +1741,7 @@ async def create_session_route(
         }
 
 
-@sessions_router.post("/{session_id}/task", status_code=status.HTTP_201_CREATED)
+@sessions_router.post("/{session_id}/task")
 async def submit_session_task(
     session_id: UUID,
     body: SessionTaskRequest,
@@ -1748,6 +1749,12 @@ async def submit_session_task(
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    sync: Annotated[
+        bool,
+        Query(
+            description="Deprecated: execute inline and return 200. Default is async 202.",
+        ),
+    ] = False,
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -1767,6 +1774,39 @@ async def submit_session_task(
         session = [{"id": str(session_id), "title": body.task or "Session task", "status": "active"}]
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    # Default: enqueue async execution (avoids Railway HTTP timeout on long AI tasks).
+    # ?sync=true preserves the legacy inline 200 response for clients not yet migrated.
+    if not sync:
+        from app.operators import agent_jobs as agent_jobs_mod
+        from app.workers.queue import enqueue_agent_execution_job
+
+        job = agent_jobs_mod.create_job(
+            client,
+            org_id,
+            kind="operator_task",
+            session_id=str(session_id),
+            environment=environment,
+            payload={"task": body.task, "context": body.context or {}, "session_task": True},
+            created_by=current_user.get("user_id"),
+        )
+        try:
+            await enqueue_agent_execution_job(job["id"])
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content={
+                    "job_id": job["id"],
+                    "run_id": job["id"],
+                    "status": "queued",
+                    "poll_url": f"/api/agent-jobs/{job['id']}",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Job queue unavailable — executing synchronously. Long tasks may timeout. error=%s",
+                str(exc),
+            )
+
     task_id = str(uuid.uuid4())
     summary = (body.task or "Automation task").strip()
     model_router = get_model_router()

@@ -12,7 +12,8 @@ so it's safe under the single prod instance; for many instances add SKIP LOCKED.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.billing.service import (
@@ -50,7 +51,12 @@ def create_job(
     environment: str = "production",
     payload: dict[str, Any] | None = None,
     created_by: str | None = None,
+    timeout_seconds: int = 300,
+    max_attempts: int = 3,
 ) -> dict[str, Any]:
+    """Insert a queued agent job row."""
+    now = datetime.now(timezone.utc)
+    timeout_at = now + timedelta(seconds=timeout_seconds)
     row = {
         "org_id": org_id,
         "kind": kind,
@@ -59,6 +65,10 @@ def create_job(
         "payload": payload or {},
         "status": "queued",
         "created_by": created_by,
+        "max_attempts": max_attempts,
+        "queued_at": now.isoformat(),
+        "timeout_at": timeout_at.isoformat(),
+        "retry_count": 0,
     }
     resp = client.table("agent_jobs").insert(row).execute()
     return resp.data[0] if resp.data else row
@@ -78,6 +88,32 @@ def list_jobs(client: Any, org_id: str, *, limit: int = 20, status: str | None =
     if status:
         q = q.eq("status", status)
     return q.order("created_at", desc=True).limit(limit).execute().data or []
+
+
+def claim_job_by_id(client: Any, job_id: str) -> dict[str, Any] | None:
+    """Claim a specific queued job (queued -> running). Returns it or None."""
+    rows = (
+        client.table("agent_jobs").select("*").eq("id", job_id).eq("status", "queued").limit(1).execute().data
+        or []
+    )
+    if not rows:
+        return None
+    job = rows[0]
+    upd = (
+        client.table("agent_jobs")
+        .update(
+            {
+                "status": "running",
+                "started_at": _now(),
+                "attempts": int(job.get("attempts") or 0) + 1,
+                "updated_at": _now(),
+            }
+        )
+        .eq("id", job_id)
+        .eq("status", "queued")
+        .execute()
+    )
+    return upd.data[0] if upd.data else None
 
 
 def claim_next_job(client: Any) -> dict[str, Any] | None:
@@ -110,13 +146,25 @@ def complete_job(client: Any, job_id: str, result: dict[str, Any]) -> None:
 def fail_or_requeue_job(client: Any, job: dict[str, Any], error: str) -> None:
     attempts = int(job.get("attempts") or 0)
     max_attempts = int(job.get("max_attempts") or 3)
+    retry_count = int(job.get("retry_count") or 0) + 1
     if attempts < max_attempts:
         client.table("agent_jobs").update(
-            {"status": "queued", "error": error, "updated_at": _now()}
+            {
+                "status": "queued",
+                "error": error,
+                "retry_count": retry_count,
+                "updated_at": _now(),
+            }
         ).eq("id", job["id"]).execute()
     else:
         client.table("agent_jobs").update(
-            {"status": "failed", "error": error, "finished_at": _now(), "updated_at": _now()}
+            {
+                "status": "failed",
+                "error": error,
+                "retry_count": retry_count,
+                "finished_at": _now(),
+                "updated_at": _now(),
+            }
         ).eq("id", job["id"]).execute()
 
 
@@ -230,6 +278,29 @@ _HANDLERS = {"operator_task": run_operator_job}
 # ---------------------------------------------------------------------------
 
 
+async def _process_job_id(settings: Settings, job_id: str) -> bool:
+    """Claim and process a job by id. Returns True if handled."""
+    client = get_supabase_client(settings)
+    job = await asyncio.to_thread(claim_job_by_id, client, job_id)
+    if not job:
+        return False
+    handler = _HANDLERS.get(job.get("kind") or "")
+    timeout_s = int((job.get("payload") or {}).get("timeout_seconds") or 300)
+    try:
+        if handler is None:
+            raise ValueError(f"no handler for kind={job.get('kind')}")
+        result = await asyncio.wait_for(handler(settings, job), timeout=timeout_s)
+        await asyncio.to_thread(complete_job, client, job["id"], result)
+        logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
+    except TimeoutError:
+        await asyncio.to_thread(fail_or_requeue_job, client, job, "execution_timeout")
+        logger.warning("agent_job_timeout id=%s timeout_s=%s", job.get("id"), timeout_s)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("agent_job_failed id=%s error=%s", job.get("id"), str(exc))
+        await asyncio.to_thread(fail_or_requeue_job, client, job, str(exc))
+    return True
+
+
 async def _process_one(settings: Settings) -> bool:
     """Claim and process a single job. Returns True if a job was handled."""
     client = get_supabase_client(settings)
@@ -250,8 +321,18 @@ async def _process_one(settings: Settings) -> bool:
 
 
 async def _worker_loop(poll_seconds: int, settings: Settings) -> None:
+    from app.workers.queue import dequeue_agent_execution_job
+
     while True:
         try:
+            raw = await dequeue_agent_execution_job(timeout_seconds=poll_seconds)
+            if raw:
+                job_id = raw
+                if raw.startswith("{"):
+                    job_id = str(json.loads(raw).get("job_id") or raw)
+                handled = await _process_job_id(settings, job_id)
+                if handled:
+                    continue
             handled = await _process_one(settings)
         except Exception as exc:  # noqa: BLE001 - never let the loop die
             logger.warning("agent_job_worker tick error: %s", str(exc))
