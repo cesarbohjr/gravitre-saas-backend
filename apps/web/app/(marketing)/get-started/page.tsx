@@ -366,7 +366,6 @@ export default function GetStartedPage() {
                   </span>
                 )}
                 <span className="hidden sm:inline">{s.title}</span>
-                <span className="sm:hidden">{s.num}</span>
               </button>
               {i < stepTitles.length - 1 && (
                 <div className={`w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1 ${i + 1 < step ? "bg-emerald-300" : "bg-zinc-200"}`} />
