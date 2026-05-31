@@ -86,8 +86,6 @@ class TestModelRouter:
             openai_api_key="sk-test",
             anthropic_api_key="",
             google_api_key="",
-            default_fast_model="gpt-5.4-mini",
-            default_reasoning_model="gpt-5.5",
         )
         with patch("app.services.model_router.get_settings", return_value=fake_settings):
             router1 = get_model_router()

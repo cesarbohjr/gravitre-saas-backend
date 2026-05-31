@@ -29,6 +29,7 @@ def mock_settings() -> Settings:
         openai_api_key="sk-test-openai",
         anthropic_api_key="sk-test-anthropic",
         google_api_key="test-google-key",
+        ai_moderation_enabled=False,
     )
 
 

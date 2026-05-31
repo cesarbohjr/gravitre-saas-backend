@@ -59,9 +59,6 @@ class Settings(BaseSettings):
     # (see MODEL_TIERS + providers/). These keys enable those providers.
     anthropic_api_key: str = ""
     google_api_key: str = ""
-    default_fast_model: str = "gpt-5.4-mini"
-    # Reserved hint for a reasoning-tier model (routing uses MODEL_TIERS).
-    default_reasoning_model: str = "claude-sonnet-4-6"
     default_embedding_model: str = "text-embedding-3-small"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimension: int = 1536
@@ -138,9 +135,6 @@ class Settings(BaseSettings):
     # Redact PII (email/SSN/card/phone) from user + retrieved content before it
     # is sent to an external AI provider.
     ai_pii_redaction_enabled: bool = True
-    # Resilience: if the primary task model fails all retries, try this model
-    # once before giving up. Empty disables the fallback.
-    ai_fallback_model: str = "gpt-5.4-mini"
 
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
