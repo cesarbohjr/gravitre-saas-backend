@@ -341,25 +341,25 @@ export default function GetStartedPage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-emerald-100/60 to-teal-100/40 rounded-full blur-3xl pointer-events-none" />
 
       {/* Step indicator */}
-      <div className="relative z-10 py-6 sm:py-8 overflow-x-auto">
-        <div className="flex items-center justify-start sm:justify-center gap-0 px-4 min-w-max mx-auto">
+      <div className="relative z-10 py-6 sm:py-8">
+        <div className="flex items-center justify-center gap-2 sm:gap-0 px-4">
           {stepTitles.map((s, i) => (
             <div key={i} className="flex items-center">
               <button
                 onClick={() => i + 1 < step && setStep(i + 1)}
                 disabled={i + 1 > step}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                className={`flex items-center justify-center gap-2 sm:gap-2 sm:px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
                   i + 1 === step 
-                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 px-4 sm:px-4" 
                     : i + 1 < step 
-                      ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer" 
-                      : "bg-zinc-100 text-zinc-400"
+                      ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer px-2 sm:px-4" 
+                      : "bg-zinc-100 text-zinc-400 px-2 sm:px-4"
                 }`}
               >
                 {i + 1 < step ? (
-                  <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <Check className="h-4 w-4" strokeWidth={2.5} />
                 ) : (
-                  <span className={`h-4 w-4 sm:h-5 sm:w-5 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold ${
+                  <span className={`h-6 w-6 sm:h-5 sm:w-5 rounded-full flex items-center justify-center text-xs sm:text-xs font-bold ${
                     i + 1 === step ? "bg-white/20" : "bg-current/10"
                   }`}>
                     {s.num}
@@ -368,7 +368,7 @@ export default function GetStartedPage() {
                 <span className="hidden sm:inline">{s.title}</span>
               </button>
               {i < stepTitles.length - 1 && (
-                <div className={`w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1 ${i + 1 < step ? "bg-emerald-300" : "bg-zinc-200"}`} />
+                <div className={`w-3 sm:w-8 h-0.5 mx-1 sm:mx-1 ${i + 1 < step ? "bg-emerald-300" : "bg-zinc-200"}`} />
               )}
             </div>
           ))}
