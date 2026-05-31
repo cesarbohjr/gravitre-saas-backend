@@ -17,6 +17,7 @@ The response is streamed as the AI SDK UI message stream protocol
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from typing import Annotated, Any
@@ -26,6 +27,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from app.auth.dependencies import get_current_user, get_org_context
+from app.billing.service import (
+    apply_usage_with_overage,
+    build_ai_usage_metadata_from_tokens,
+    get_current_period,
+    get_plan_for_org,
+)
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.ai_guardrails import (
@@ -35,7 +42,7 @@ from app.services.ai_guardrails import (
     AIServiceDisabledError,
     fence_untrusted,
 )
-from app.services.model_router import TaskType, get_model_router
+from app.services.model_router import ModelResponse, TaskType, get_model_router
 from app.services.providers.base import (
     AllProvidersFailedError,
     ProviderInvalidResponseError,
@@ -97,6 +104,86 @@ def _message_text(message: dict[str, Any]) -> str:
         if isinstance(part, dict) and part.get("type") == "text" and isinstance(part.get("text"), str):
             out.append(part["text"])
     return "".join(out)
+
+
+async def _log_assistant_guardrail_event(
+    settings: Settings,
+    org_id: str | None,
+    event_type: str,
+    detail: dict[str, Any],
+) -> None:
+    """Best-effort guardrail_events insert for assistant-only audit paths.
+
+    Can fail if Supabase is unreachable; failures are logged and swallowed so
+    the caller response is never blocked.
+    """
+    if not org_id:
+        return
+    try:
+        client = get_supabase_client(settings)
+        client.table("guardrail_events").insert(
+            {"org_id": org_id, "event_type": event_type, "detail": detail}
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "assistant guardrail_events insert failed org_id=%s event=%s error=%s",
+            org_id,
+            event_type,
+            str(exc),
+        )
+
+
+async def _record_assistant_billing(
+    settings: Settings,
+    org_id: str,
+    result: ModelResponse,
+) -> None:
+    """Record assistant AI credits to usage_tracking after a successful completion.
+
+    Idempotent via metadata source=assistant + model_calls row id. On failure,
+    logs billing_write_failed to guardrail_events; never raises to the caller.
+    """
+    model_call_id = result.model_call_id
+    try:
+        client = get_supabase_client(settings)
+        plan = get_plan_for_org(client, org_id)
+        period_start, period_end = get_current_period()
+        source_id = model_call_id or org_id
+        ai_meta = build_ai_usage_metadata_from_tokens(
+            result.input_tokens,
+            result.output_tokens,
+            result.model,
+            "assistant",
+            source_id,
+        )
+        apply_usage_with_overage(
+            client=client,
+            org_id=org_id,
+            environment="production",
+            metric_type="ai_credits",
+            quantity=int(ai_meta["credits"]),
+            plan=plan,
+            period_start=period_start,
+            period_end=period_end,
+            metadata=ai_meta,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "assistant billing write failed org_id=%s model_call_id=%s error=%s",
+            org_id,
+            model_call_id,
+            str(exc),
+        )
+        await _log_assistant_guardrail_event(
+            settings,
+            org_id,
+            "billing_write_failed",
+            {
+                "source": "assistant",
+                "model_calls_id": model_call_id,
+                "error": str(exc),
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +368,19 @@ async def assistant_chat(
     # Killswitch first — refuse before any tool/model work or spend.
     if getattr(settings, "disable_ai", False):
         logger.warning("assistant killswitch active user_id=%s", current_user.get("user_id"))
+        asyncio.create_task(
+            _log_assistant_guardrail_event(
+                settings,
+                org_id,
+                "killswitch_blocked",
+                {
+                    "endpoint": "assistant",
+                    "path": "/api/assistant/chat",
+                    "disable_ai_flag": True,
+                    "user_id": current_user.get("user_id"),
+                },
+            )
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI assistant is temporarily disabled",
@@ -354,6 +454,8 @@ async def assistant_chat(
     except Exception as exc:  # noqa: BLE001
         logger.error("assistant completion failed org_id=%s error=%s", org_id, str(exc))
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
+
+    asyncio.create_task(_record_assistant_billing(settings, org_id, result))
 
     return StreamingResponse(
         _build_stream(tool_results, answer),
