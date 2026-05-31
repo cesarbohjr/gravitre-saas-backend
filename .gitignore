@@ -37,6 +37,7 @@ __pycache__/
 # Build / misc
 dist/
 build/
+.vercel/
 *.tsbuildinfo
 # Local test / verification output (never commit)
 backend/pytest*.txt
