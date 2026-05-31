@@ -38,6 +38,71 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
+class StripeAttachmentError(RuntimeError):
+    """Raised when a metered price cannot be attached to a subscription."""
+
+
+def metered_price_id_for_plan_code(settings: Settings, plan_code: str) -> str:
+    """Resolve the configured metered price id for a plan code.
+
+    Raises StripeAttachmentError when the plan has no configured metered price.
+    """
+    from app.billing.stripe import metered_price_id_for_plan
+
+    price_id = metered_price_id_for_plan(settings, plan_code)
+    if not price_id:
+        raise StripeAttachmentError(
+            f"No metered price configured for plan_code={plan_code!r}. "
+            f"Set STRIPE_METERED_PRICE_ID_{plan_code.upper()} in environment."
+        )
+    return price_id
+
+
+def attach_metered_price_to_subscription(
+    org_id: str,
+    subscription_id: str,
+    plan_code: str,
+    settings: Settings,
+) -> dict[str, Any]:
+    """Attach the metered overage price to an existing Stripe subscription.
+
+    Idempotent: if the metered price item already exists, returns the existing
+    item without creating a duplicate.
+
+    Raises StripeAttachmentError when subscription is missing, plan has no
+    metered price, or Stripe returns an unrecoverable error.
+    """
+    _ = org_id  # reserved for audit/logging
+    metered_price_id = metered_price_id_for_plan_code(settings, plan_code)
+    if not (settings.stripe_secret_key or "").strip():
+        raise StripeAttachmentError("STRIPE_SECRET_KEY is not configured")
+
+    stripe.api_key = settings.stripe_secret_key
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+    except stripe.error.InvalidRequestError as exc:
+        raise StripeAttachmentError(f"subscription_id not found: {subscription_id}") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise StripeAttachmentError(f"Stripe subscription retrieve failed: {exc}") from exc
+
+    items = getattr(getattr(subscription, "items", None), "data", None) or []
+    for item in items:
+        price = getattr(item, "price", None)
+        if price and getattr(price, "id", None) == metered_price_id:
+            return {"status": "already_attached", "item_id": item.id}
+
+    try:
+        new_item = stripe.SubscriptionItem.create(
+            subscription=subscription_id,
+            price=metered_price_id,
+            payment_behavior="default_incomplete",
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise StripeAttachmentError(f"Stripe SubscriptionItem.create failed: {exc}") from exc
+
+    return {"status": "attached", "item_id": new_item.id}
+
+
 def _get_customer_id(client: Any, org_id: str) -> str | None:
     for table in ("subscriptions", "org_billing"):
         try:
