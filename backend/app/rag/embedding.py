@@ -2,14 +2,9 @@
 
 Note on dimensions: the pgvector column is sized for OpenAI text-embedding-3-small
 (1536 dims). Voyage (voyage-3, 1024 dims) is NOT dimension-compatible with an
-OpenAI-indexed corpus, so the Voyage fallback is only semantically valid if the
-corpus is (re)indexed with Voyage. For querying an OpenAI-indexed corpus, a Voyage
-vector will fail the vector search and the caller falls back to keyword search.
-
-Cost tracking: embedding spend is recorded to `model_calls` (task_type="embedding")
-so completions + embeddings are visible in one place for Stripe metering / tenant
-spend limits. (There is no separate `ai_usage` table; `model_calls` is the canonical
-AI-spend table.) Recording requires an org_id and is best-effort (never blocks).
+OpenAI-indexed corpus unless the corpus is re-indexed (see docs/voyage-reindex-runbook.md).
+When VOYAGE_EMBEDDING_ENABLED=false (default), Voyage is skipped entirely in the
+failover chain.
 """
 from __future__ import annotations
 
@@ -19,6 +14,8 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 EMBEDDING_REQUEST_TIMEOUT_S = 30.0
+OPENAI_CORPUS_DIMENSION = 1536
+VOYAGE_EMBEDDING_DIMENSION = 1024
 
 # Per-1K-token embedding pricing by method.
 _EMBEDDING_RATE_PER_1K: dict[str, float] = {
@@ -27,8 +24,29 @@ _EMBEDDING_RATE_PER_1K: dict[str, float] = {
 }
 
 
+class EmbeddingDimensionMismatchError(ValueError):
+    """Raised when Voyage embeddings cannot be used against the current corpus."""
+
+
 def _estimate_tokens(text: str) -> int:
     return max(1, len(text or "") // 4)
+
+
+def _voyage_enabled(settings: Settings) -> bool:
+    """Single source of truth for whether Voyage is eligible in the failover chain."""
+    return bool(getattr(settings, "voyage_embedding_enabled", False))
+
+
+def _tag_langfuse_degradation(reason: str) -> None:
+    """Best-effort Langfuse span tags when the SDK is configured."""
+    try:
+        from langfuse.decorators import langfuse_context  # type: ignore[import-untyped]
+
+        langfuse_context.update_current_trace(
+            metadata={"rag.embedding_degraded": True, "rag.degradation_reason": reason}
+        )
+    except Exception:  # noqa: BLE001
+        return
 
 
 def record_embedding_cost(
@@ -68,19 +86,17 @@ def embed_with_failover(
     settings: Settings,
     org_id: str | None = None,
 ) -> tuple[list[float], str]:
-    """Return (embedding_vector, method) trying OpenAI then Voyage.
+    """Return (embedding_vector, method) trying OpenAI then Voyage (when enabled).
 
     method is one of: "openai" | "voyage". Raises ValueError if no provider is
-    configured or all configured providers fail. When org_id is provided, the
-    embedding cost is recorded to model_calls.
+    configured or all configured providers fail. Raises EmbeddingDimensionMismatchError
+    when Voyage is enabled but the corpus dimension is incompatible.
     """
-    # Imported lazily to avoid an app.services <-> app.rag import cycle.
     from app.services.providers.anthropic_adapter import AnthropicAdapter
     from app.services.providers.openai_adapter import OpenAIAdapter
 
     errors: list[str] = []
 
-    # 1) OpenAI (primary)
     if (settings.openai_api_key or "").strip():
         try:
             adapter = OpenAIAdapter(
@@ -95,18 +111,21 @@ def embed_with_failover(
             errors.append(f"openai: {exc}")
             logger.warning("embedding openai failed, trying voyage: %s", str(exc))
 
-    # 2) Voyage (fallback, Anthropic ecosystem). Only safe when the corpus is
-    # Voyage-dimensioned (voyage-3 = 1024 dims); a 1024-dim vector against a
-    # 1536-dim OpenAI-indexed pgvector column would fail the search, so skip it
-    # and let the caller fall back to keyword search instead.
     voyage_key = (getattr(settings, "voyage_api_key", "") or "").strip()
-    corpus_dim = int(getattr(settings, "openai_embedding_dimension", 1536) or 1536)
-    if voyage_key and corpus_dim != 1024:
-        logger.warning(
-            "voyage fallback skipped: corpus dim=%s != voyage 1024 (would be incompatible)", corpus_dim
-        )
-        errors.append("voyage: skipped (dimension mismatch)")
+    if not _voyage_enabled(settings):
+        if voyage_key:
+            errors.append("voyage: disabled (VOYAGE_EMBEDDING_ENABLED=false)")
     elif voyage_key:
+        corpus_dim = int(getattr(settings, "openai_embedding_dimension", OPENAI_CORPUS_DIMENSION) or OPENAI_CORPUS_DIMENSION)
+        if corpus_dim != VOYAGE_EMBEDDING_DIMENSION:
+            msg = (
+                f"Voyage embedding dimension mismatch: corpus is {corpus_dim}-dim, "
+                f"Voyage returns {VOYAGE_EMBEDDING_DIMENSION}-dim. Falling back to keyword search. "
+                "Semantic quality will be degraded. Re-index corpus with Voyage to fix."
+            )
+            logger.warning(msg)
+            _tag_langfuse_degradation("voyage_dimension_mismatch")
+            raise EmbeddingDimensionMismatchError(msg)
         try:
             adapter = AnthropicAdapter(
                 api_key_getter=lambda: "",
@@ -124,6 +143,6 @@ def embed_with_failover(
 
 
 def get_embedding(text: str, settings: Settings, org_id: str | None = None) -> list[float]:
-    """Return embedding vector for text (OpenAI primary, Voyage fallback)."""
+    """Return embedding vector for text (OpenAI primary, Voyage when enabled)."""
     vector, _method = embed_with_failover(text, settings, org_id=org_id)
     return vector

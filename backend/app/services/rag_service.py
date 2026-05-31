@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.core.logging import get_logger
-from app.rag.embedding import embed_with_failover
+from app.rag.embedding import EmbeddingDimensionMismatchError, embed_with_failover
 from app.rag.ingest import chunk_text, replace_chunks_and_embeddings, upsert_document
 from app.rag.retrieval import search_chunks
 from app.services.model_router import TaskType, get_model_router
@@ -90,6 +90,29 @@ class RAGService:
         try:
             query_embedding, embedding_method = embed_with_failover(query, self.settings, org_id=org_id)
             logger.info("rag embedding org_id=%s method=%s", org_id, embedding_method)
+        except EmbeddingDimensionMismatchError as exc:
+            logger.warning("rag dimension mismatch org_id=%s error=%s", org_id, str(exc))
+            keyword_rows = self._keyword_search(org_id, query, top_k=top_k, environment=environment)
+            return RAGResponse(
+                answer="Semantic search degraded to keyword matching due to embedding dimension mismatch.",
+                chunks=[
+                    Chunk(
+                        id=str(row.get("id")),
+                        content=str(row.get("content") or ""),
+                        score=float(row.get("score") or 0.0),
+                        source=str(row.get("title") or "") if include_sources else None,
+                    )
+                    for row in keyword_rows[:top_k]
+                ],
+                metrics={
+                    "top_k": top_k,
+                    "semantic_candidates": 0,
+                    "keyword_candidates": len(keyword_rows),
+                    "reranked": 0,
+                    "embedding_method": "keyword_fallback_dimension_mismatch",
+                    "fallback": "voyage_dimension_mismatch",
+                },
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("rag embedding unavailable org_id=%s error=%s", org_id, str(exc))
             return RAGResponse(

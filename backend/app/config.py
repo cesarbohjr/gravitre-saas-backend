@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     ml_anomaly_contamination: float = 0.1
     ml_forecast_horizon: int = 7
     redis_url: str = ""
+    # Circuit breaker state backend: auto (Redis when REDIS_URL set, else memory),
+    # memory (always per-process), redis (require Redis — falls back on error).
+    circuit_breaker_backend: str = "auto"
 
     # IN-00: Fernet key for connector_secrets (generate: from cryptography.fernet import Fernet; Fernet.generate_key())
     connector_secrets_encryption_key: str = ""
@@ -139,6 +142,8 @@ class Settings(BaseSettings):
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
     voyage_api_key: str = ""          # Voyage AI embeddings fallback (VOYAGE_API_KEY)
+    # True only after corpus is re-indexed with Voyage (1024-dim). See docs/voyage-reindex-runbook.md
+    voyage_embedding_enabled: bool = False
     # Provider preference for the failover chain: openai | anthropic | gemini | auto
     preferred_ai_provider: str = "openai"
     # When false, only the preferred/OpenAI provider is used (no cross-provider failover).

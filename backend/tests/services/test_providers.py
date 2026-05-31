@@ -163,19 +163,36 @@ class TestEmbeddingFailover:
         )
         monkeypatch.setattr(AnthropicAdapter, "embed", lambda self, text, model="voyage-3": [0.9])
         # Voyage is only used when the corpus is Voyage-dimensioned (1024).
-        settings = mock_settings.model_copy(update={"voyage_api_key": "vk", "openai_embedding_dimension": 1024})
+        settings = mock_settings.model_copy(
+            update={"voyage_api_key": "vk", "openai_embedding_dimension": 1024, "voyage_embedding_enabled": True}
+        )
         vec, method = embed_with_failover("query", settings)
         assert method == "voyage"
         assert vec == [0.9]
 
     def test_voyage_skipped_on_dimension_mismatch(self, monkeypatch, mock_settings):
+        from app.rag.embedding import EmbeddingDimensionMismatchError
+
         monkeypatch.setattr(
             OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
         )
         monkeypatch.setattr(AnthropicAdapter, "embed", lambda self, text, model="voyage-3": [0.9])
-        # Default 1536-dim corpus -> Voyage (1024) is incompatible, so it's skipped.
-        settings = mock_settings.model_copy(update={"voyage_api_key": "vk", "openai_embedding_dimension": 1536})
-        with pytest.raises(ValueError):
+        settings = mock_settings.model_copy(
+            update={
+                "voyage_api_key": "vk",
+                "openai_embedding_dimension": 1536,
+                "voyage_embedding_enabled": True,
+            }
+        )
+        with pytest.raises(EmbeddingDimensionMismatchError):
+            embed_with_failover("query", settings)
+
+    def test_voyage_disabled_by_config_gate(self, monkeypatch, mock_settings):
+        monkeypatch.setattr(
+            OpenAIAdapter, "embed", MagicMock(side_effect=ProviderUnavailableError("openai", "down"))
+        )
+        settings = mock_settings.model_copy(update={"voyage_api_key": "vk", "voyage_embedding_enabled": False})
+        with pytest.raises(ValueError, match="voyage: disabled"):
             embed_with_failover("query", settings)
 
     def test_all_fail_raises(self, mock_settings):
