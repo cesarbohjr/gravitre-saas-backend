@@ -38,3 +38,9 @@ __pycache__/
 dist/
 build/
 *.tsbuildinfo
+# Local test / verification output (never commit)
+backend/pytest*.txt
+backend/*.txt
+apps/web/*.txt
+build.txt
+tests_list.txt
