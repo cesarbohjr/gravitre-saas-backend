@@ -43,3 +43,10 @@ def get_sync_redis(settings: Settings) -> Any | None:
         logger.warning("redis unavailable, using in-process fallback: %s", str(exc))
         _failed.add(url)
         return None
+
+
+def get_redis_client(settings: Settings | None = None) -> Any | None:
+    """Return the shared sync Redis client, or None when unavailable."""
+    from app.config import get_settings
+
+    return get_sync_redis(settings or get_settings())

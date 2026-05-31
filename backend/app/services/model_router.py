@@ -26,13 +26,12 @@ from app.services.ai_guardrails import (
 from app.services.providers.anthropic_adapter import AnthropicAdapter
 from app.services.providers.base import (
     AllProvidersFailedError,
-    CircuitBreaker,
     CompletionOptions,
     Message,
     ProviderAdapter,
     ProviderInvalidResponseError,
 )
-from app.services.providers.failover import build_priority, run_failover
+from app.services.providers.failover import build_priority, create_circuit_breaker, run_failover
 from app.services.providers.gemini_adapter import GeminiAdapter
 from app.services.providers.openai_adapter import OpenAIAdapter
 from app.core.db import get_supabase_client
@@ -121,13 +120,7 @@ class ModelRouter:
         }
         # Redis-backed breaker state (shared across instances) when REDIS_URL is
         # configured; falls back to per-process state otherwise.
-        from app.core.redis_client import get_sync_redis
-
-        self._breaker = CircuitBreaker(
-            failure_threshold=3,
-            cooldown_s=60.0,
-            redis_getter=lambda: get_sync_redis(self.settings),
-        )
+        self._breaker = create_circuit_breaker(self.settings)
         self._cache: dict[str, ModelResponse] = {}
 
     # FUTURE (STA-5): Add a streaming path to the router (e.g. complete_stream()).

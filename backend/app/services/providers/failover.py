@@ -22,6 +22,21 @@ logger = get_logger(__name__)
 _PROVIDER_ORDER = ["openai", "anthropic", "gemini"]
 
 
+def create_circuit_breaker(settings: Any | None = None) -> CircuitBreaker:
+    """Build a shared CircuitBreaker with optional Redis-backed state."""
+    from app.config import get_settings
+    from app.core.redis_client import get_redis_client
+
+    cfg = settings or get_settings()
+    redis = get_redis_client(cfg)
+    return CircuitBreaker(
+        failure_threshold=3,
+        recovery_timeout=60.0,
+        redis_client=redis,
+        backend=getattr(cfg, "circuit_breaker_backend", "auto") or "auto",
+    )
+
+
 def _provider_order(preferred: str, complexity: str) -> list[str]:
     pref = (preferred or "openai").strip().lower()
     if pref == "auto":
