@@ -4,12 +4,24 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.council_service import AgentCouncilService, AgentOpinion, AgentRole, DecisionMethod
+from app.services.council_service import (
+    AgentCouncilService,
+    AgentOpinion,
+    AgentRole,
+    DecisionMethod,
+    build_council_system_prompt,
+)
 
 
 @pytest.fixture
 def service() -> AgentCouncilService:
     return AgentCouncilService.__new__(AgentCouncilService)
+
+
+def test_build_council_system_prompt_includes_agent_identity():
+    prompt = build_council_system_prompt({"name": "Analyst One", "role": "analyst"})
+    assert "Analyst One" in prompt
+    assert "analyst" in prompt
 
 
 def test_resolve_vote_weighted(service: AgentCouncilService):

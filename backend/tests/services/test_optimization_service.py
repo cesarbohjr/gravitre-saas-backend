@@ -5,13 +5,28 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.optimization_service import OptimizationService, Recommendation, RecommendationType
+from app.services.optimization_service import OPTIMIZATION_SYSTEM_PROMPT, OptimizationService, Recommendation, RecommendationType
 
 
 @pytest.fixture
 def service(mock_settings) -> OptimizationService:
     with patch("app.services.optimization_service.get_settings", return_value=mock_settings):
         return OptimizationService()
+
+
+@pytest.mark.asyncio
+async def test_analyze_workflow_passes_system_prompt(service: OptimizationService):
+    mock_client = MagicMock()
+    mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {"id": "run-1", "status": "completed", "duration_ms": 350000},
+    ]
+    complete = AsyncMock(return_value=SimpleNamespace(content='{"recommendations":[]}'))
+    with patch("app.services.optimization_service.get_supabase_client", return_value=mock_client):
+        with patch.object(service.model_router, "complete", complete):
+            with patch.object(service, "_persist_recommendations"):
+                await service.analyze_workflow(org_id="org-1", workflow_id="wf-1", days=30)
+    complete.assert_awaited_once()
+    assert complete.call_args.kwargs["system_prompt"] == OPTIMIZATION_SYSTEM_PROMPT
 
 
 @pytest.mark.asyncio
