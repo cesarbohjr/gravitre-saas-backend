@@ -230,7 +230,7 @@ const initialNodes: WorkflowNode[] = [
     type: "agent",
     name: "Data Validator",
     description: "Validate and clean records",
-    config: { model: "gpt-4-turbo", temperature: 0.3 },
+    config: { model: "gpt-5.5", temperature: 0.3 },
     position: { x: 350, y: 150 },
     connections: ["node-3"],
     state: "idle",

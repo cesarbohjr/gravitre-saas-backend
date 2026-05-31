@@ -58,7 +58,7 @@ function createDemoRows(orgId: string) {
         purpose: "Triages escalations and drafts safe customer responses.",
         role: "Support Operations",
         department: "Support",
-        model: "claude-3.5-sonnet",
+        model: "claude-sonnet-4-6",
         personality: {
           color: "violet",
           gradient: "from-violet-500 to-fuchsia-500",
