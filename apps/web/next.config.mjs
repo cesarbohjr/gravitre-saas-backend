@@ -14,6 +14,16 @@ const nextConfig = {
       },
     ]
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.gravitre.app" }],
+        destination: "https://gravitre.app/:path*",
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig
