@@ -1,91 +1,100 @@
 import { NextRequest, NextResponse } from "next/server"
-import { snakeToCamel } from "@/lib/supabase/transforms"
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { proxyToFastApi } from "@/lib/backend-proxy"
+import { createSupabaseServerClient } from "@/lib/supabase-server"
 
-function clampConfidence(value: number) {
-  if (Number.isNaN(value)) return 0.5
-  return Math.max(0, Math.min(1, value))
+function mapDecisionMethod(mode: string): string {
+  if (mode === "majority_vote") return "majority_vote"
+  if (mode === "lead_decides") return "chair_decides"
+  return "majority_vote"
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const supabase = createSupabaseRouteClient(request)
-    const orgId = await resolveOrgId(supabase, request)
-    if (!orgId) {
-      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
-    }
+  const body = (await request.json()) as Record<string, unknown>
+  const participatingAgents = Array.isArray(body.participatingAgents) ? body.participatingAgents : []
+  const objective = String(body.objective ?? "").trim()
+  const context = String(body.context ?? "")
+  const evidenceSources = Array.isArray(body.evidenceSources) ? body.evidenceSources : []
+  const debateModeRaw = String(body.debateMode ?? "consensus")
 
-    const body = (await request.json()) as Record<string, unknown>
-    const participatingAgents = Array.isArray(body.participatingAgents) ? body.participatingAgents : []
-    const objective = String(body.objective ?? "").trim()
-    const context = String(body.context ?? "")
-    const evidenceSources = Array.isArray(body.evidenceSources) ? body.evidenceSources : []
-    const debateModeRaw = String(body.debateMode ?? "consensus")
-    const debateMode =
-      debateModeRaw === "majority_vote" || debateModeRaw === "lead_decides" ? debateModeRaw : "consensus"
-
-    if (!objective) {
-      return NextResponse.json({ error: "objective is required" }, { status: 400 })
-    }
-
-    const { data: session, error: sessionError } = await supabase
-      .from("council_sessions")
-      .insert({
-        org_id: orgId,
-        objective,
-        participating_agents: participatingAgents,
-        debate_mode: debateMode,
-        status: "in_progress",
-      })
-      .select("*")
-      .single()
-
-    if (sessionError) {
-      return NextResponse.json({ error: sessionError.message }, { status: 500 })
-    }
-
-    // TODO: Replace placeholder contribution generation with real multi-agent reasoning.
-    const generatedContributions = (participatingAgents as Array<Record<string, unknown>>).map((agent, index) => {
-      const agentId = typeof agent.id === "string" ? agent.id : null
-      const agentName = typeof agent.name === "string" ? agent.name : `Agent ${index + 1}`
-      const confidence = clampConfidence(0.55 + index * 0.08)
-      return {
-        org_id: orgId,
-        session_id: session.id,
-        agent_id: agentId,
-        position: `${agentName} proposes a constrained path to objective completion.`,
-        confidence,
-        reasoning: `Context considered: ${context || "limited context"}. Evidence reviewed: ${
-          evidenceSources.length > 0 ? evidenceSources.join(", ") : "none provided"
-        }.`,
-        evidence_used: evidenceSources,
-      }
-    })
-
-    const { data: contributionRows, error: contributionError } = generatedContributions.length
-      ? await supabase.from("council_contributions").insert(generatedContributions).select("*")
-      : await supabase.from("council_contributions").select("*").eq("session_id", session.id).limit(0)
-
-    if (contributionError) {
-      return NextResponse.json({ error: contributionError.message }, { status: 500 })
-    }
-
-    const contributions = (contributionRows ?? []).map((row) => snakeToCamel<Record<string, unknown>>(row))
-    return NextResponse.json(
-      {
-        councilId: session.id,
-        status: session.status,
-        agentPositions: contributions.map((item) => item.position ?? ""),
-        confidenceScores: contributions.map((item) => item.confidence ?? 0),
-        reasoning: contributions.map((item) => item.reasoning ?? ""),
-        contributions,
-      },
-      { status: 201 }
-    )
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
+  if (!objective) {
+    return NextResponse.json({ error: "objective is required" }, { status: 400 })
   }
+
+  const agents = (participatingAgents as Array<Record<string, unknown>>).map((agent, index) => ({
+    name: typeof agent.name === "string" ? agent.name : `Agent ${index + 1}`,
+    role: typeof agent.role === "string" ? agent.role : "analyst",
+    weight: typeof agent.weight === "number" ? agent.weight : 1,
+  }))
+
+  const backendBody = JSON.stringify({
+    objective,
+    options: ["proceed", "defer", "reject"],
+    agents,
+    evidence: { context, evidenceSources },
+    decision_method: mapDecisionMethod(debateModeRaw),
+    max_rounds: 1,
+  })
+
+  const proxyRequest = new NextRequest(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body: backendBody,
+  })
+  proxyRequest.headers.set("content-type", "application/json")
+
+  const upstream = await proxyToFastApi(proxyRequest, "/api/agent-council/start")
+  if (!upstream.ok) {
+    return upstream
+  }
+
+  const session = (await upstream.json()) as Record<string, unknown>
+  const lastRound = Array.isArray(session.debate_rounds)
+    ? (session.debate_rounds[session.debate_rounds.length - 1] as Record<string, unknown>)
+    : null
+  const opinions = Array.isArray(lastRound?.opinions) ? (lastRound?.opinions as Array<Record<string, unknown>>) : []
+
+  const contributions = opinions.map((opinion) => ({
+    position: opinion.position ?? "",
+    confidence: opinion.confidence ?? 0,
+    reasoning: opinion.reasoning ?? "",
+    agentName: opinion.agent_name ?? "",
+  }))
+
+  let councilId = String(session.id ?? "")
+  try {
+    const supabase = await createSupabaseServerClient()
+    const { data: userData } = await supabase.auth.getUser()
+    const orgQuery = await supabase.from("organization_members").select("org_id").limit(1).maybeSingle()
+    const orgId = orgQuery.data?.org_id
+    if (orgId) {
+      const { data: inserted } = await supabase
+        .from("council_sessions")
+        .insert({
+          org_id: orgId,
+          objective,
+          participating_agents: participatingAgents,
+          debate_mode: debateModeRaw,
+          status: "completed",
+        })
+        .select("id")
+        .single()
+      if (inserted?.id) councilId = String(inserted.id)
+    }
+  } catch {
+    // Best-effort session persistence; governed AI result is still returned.
+  }
+
+  return NextResponse.json(
+    {
+      councilId,
+      status: session.status ?? "completed",
+      agentPositions: contributions.map((item) => item.position),
+      confidenceScores: contributions.map((item) => item.confidence),
+      reasoning: contributions.map((item) => item.reasoning),
+      contributions,
+      finalRecommendation: session.final_recommendation,
+      finalConfidence: session.final_confidence,
+    },
+    { status: 201 },
+  )
 }
