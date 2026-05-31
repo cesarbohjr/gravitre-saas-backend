@@ -1,37 +1,51 @@
 name: Usage Sync
 
-# Manual Stripe usage-sync trigger: calls the backend's internal sync endpoint,
-# which reports unreported ai_credits usage for all active orgs to the Stripe
-# meter. Reporting is idempotent (only unreported rows are sent).
-#
-# NOTE: hourly syncing is handled in-process by the backend
-# (USAGE_SYNC_INTERVAL_SECONDS, default 3600s), so this workflow is manual-only
-# to avoid duplicate scheduled runs. Re-enable the `schedule:` trigger only if
-# you set USAGE_SYNC_INTERVAL_SECONDS=0 and want GitHub to drive the cron
-# (requires the INTERNAL_API_SECRET repo secret).
+# Hourly Stripe usage-sync: reports unreported ai_credits usage to Stripe meter.
+# In-process scheduler also runs when USAGE_SYNC_INTERVAL_SECONDS > 0 (default 3600).
 on:
-  workflow_dispatch: {} # manual trigger from the Actions tab
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
 
 concurrency:
   group: usage-sync
   cancel-in-progress: false
 
 jobs:
-  sync:
+  sync-usage:
+    name: Sync AI usage to Stripe
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Trigger usage sync
         env:
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
-          # Public Railway URL; override with the BACKEND_URL repo variable if it changes.
-          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://gravitre-saas-backend-production.up.railway.app' }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL || vars.BACKEND_URL || 'https://gravitre-saas-backend-production.up.railway.app' }}
         run: |
           if [ -z "$INTERNAL_API_SECRET" ]; then
             echo "INTERNAL_API_SECRET secret is not set; add it in repo Settings → Secrets and variables → Actions." >&2
             exit 1
           fi
-          echo "POST $BACKEND_URL/api/internal/billing/sync-usage"
-          curl -fsS -X POST "$BACKEND_URL/api/internal/billing/sync-usage" \
-            -H "X-Internal-Secret: $INTERNAL_API_SECRET" \
+          echo "Triggering usage sync at $(date -u)"
+          RESPONSE=$(curl -sf \
+            --max-time 30 \
+            --retry 2 \
+            --retry-delay 5 \
+            -X POST \
+            "${BACKEND_URL}/api/internal/billing/sync-usage" \
+            -H "X-Internal-Secret: ${INTERNAL_API_SECRET}" \
             -H "Content-Type: application/json" \
-            -w "\nHTTP %{http_code}\n"
+            -w "\nHTTP_STATUS:%{http_code}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS")
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Sync failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Sync completed successfully"

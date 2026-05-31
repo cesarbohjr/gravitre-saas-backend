@@ -36,6 +36,7 @@ from app.routers import (
     notifications,
     onboarding,
     optimization,
+    goals,
     org,
     lite,
     ml_models,
@@ -58,6 +59,43 @@ print("Gravitre backend booting...")
 logger = get_logger(__name__)
 
 
+def _log_billing_startup_config() -> None:
+    """Log billing configuration warnings at startup (observability only)."""
+    try:
+        from app.config import get_settings
+
+        settings = get_settings()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Billing configuration check skipped: %s", str(exc))
+        return
+
+    stripe_key = (settings.stripe_secret_key or "").strip()
+    if settings.app_env == "prod" and stripe_key and not stripe_key.startswith("sk_live_"):
+        logger.warning("Billing configuration: STRIPE_SECRET_KEY appears to be a test key in production")
+    if not stripe_key:
+        logger.warning("Billing configuration: STRIPE_SECRET_KEY is missing")
+
+    meter_name = (settings.stripe_meter_event_name or "").strip()
+    if not meter_name:
+        logger.warning("Billing configuration: STRIPE_METER_EVENT_NAME is missing")
+
+    metered = [
+        settings.stripe_metered_price_id_node,
+        settings.stripe_metered_price_id_control,
+        settings.stripe_metered_price_id_command,
+    ]
+    missing_metered = sum(1 for value in metered if not (value or "").strip())
+    if not (settings.internal_api_secret or "").strip():
+        logger.warning("Billing configuration: INTERNAL_API_SECRET is missing — sync endpoint is unprotected")
+
+    logger.info(
+        "Billing configuration: Stripe=%s, Metered prices=%s, Usage sync=%s",
+        "configured" if stripe_key else "missing",
+        "all set" if missing_metered == 0 else f"{missing_metered} missing",
+        "scheduled via GitHub Actions and in-process scheduler",
+    )
+
+
 public_app_url = (os.environ.get("NEXT_PUBLIC_APP_URL") or "").strip()
 allowed_origins = [
     "http://localhost:3000",
@@ -75,6 +113,7 @@ async def lifespan(app: FastAPI):
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
+    _log_billing_startup_config()
     try:
         yield
     finally:
@@ -251,6 +290,7 @@ app.include_router(agent_council.router)
 app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)
+app.include_router(goals.router)
 app.include_router(scim.router)
 app.include_router(ml_models.router)
 app.include_router(ai_system.router)

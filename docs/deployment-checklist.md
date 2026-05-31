@@ -35,6 +35,17 @@
 - [ ] Check Railway logs for any startup errors
 - [ ] Check Vercel function logs for any proxy errors
 
+### Billing Verification
+- [ ] GitHub secret `BACKEND_URL` set for CI integration smoke test
+- [ ] GitHub secret `INTERNAL_API_SECRET` set (matches Railway `INTERNAL_API_SECRET`)
+- [ ] `usage-sync.yml` workflow enabled in GitHub Actions
+- [ ] First manual sync: Actions → Usage Sync → Run workflow → verify Railway logs
+- [ ] Stripe Dashboard → Billing → Meters → confirm `ai_credits_used` events appear
+
+### CI Integration
+- [ ] GitHub secret `BACKEND_URL` set for CI
+- [ ] Integration smoke test job passing on push to main
+
 ## Environment Variable Reference
 See `backend/.env.example` and `apps/web/.env.example`
 for the full list with descriptions.
