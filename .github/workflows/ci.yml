@@ -47,6 +47,27 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           FASTAPI_BASE_URL: http://127.0.0.1:8000
 
+  integration-smoke-test:
+    name: Integration Smoke Test
+    runs-on: ubuntu-latest
+    needs: [web, backend]
+    if: ${{ secrets.BACKEND_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration smoke test
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          chmod +x scripts/test-integration.sh
+          bash scripts/test-integration.sh
+
+      - name: Annotate on failure
+        if: failure()
+        run: |
+          echo "::error::Integration smoke test failed."
+          echo "::error::Check that BACKEND_URL is set and the backend is deployed and healthy."
+
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
