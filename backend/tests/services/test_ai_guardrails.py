@@ -16,6 +16,7 @@ from app.services.ai_guardrails import (
     enforce_rate_limit,
     fence_untrusted,
     harden_system_prompt,
+    moderate_input,
     moderate_output,
     redact_pii,
 )
@@ -143,9 +144,16 @@ class TestOutputModeration:
             await moderate_output("bad output", settings, client)
 
     async def test_noop_when_disabled(self, mock_settings):
+        settings = mock_settings.model_copy(update={"ai_moderation_enabled": False})
         client = AsyncMock()
-        await moderate_output("anything", mock_settings, client)  # disabled by default
+        await moderate_output("anything", settings, client)
         client.moderations.create.assert_not_called()
+
+    async def test_fail_open_when_moderation_api_errors(self, mock_settings):
+        settings = mock_settings.model_copy(update={"ai_moderation_enabled": True})
+        client = AsyncMock()
+        client.moderations.create = AsyncMock(side_effect=RuntimeError("moderation unavailable"))
+        await moderate_input("hello", settings, client)  # must not raise
 
 
 class TestBudgetGate:

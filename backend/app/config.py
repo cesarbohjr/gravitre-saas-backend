@@ -129,8 +129,11 @@ class Settings(BaseSettings):
     # enforcement on a DB blip); the per-org rate limiter remains the hard cap.
     ai_hard_budget_enabled: bool = True
     ai_budget_overage_multiplier: float = 2.0
-    # Input moderation via OpenAI moderation endpoint before completion.
-    ai_moderation_enabled: bool = False
+    # OpenAI moderation API applied to all inputs before provider calls.
+    # Default: True. Set False only for internal/dev deployments where cost
+    # reduction outweighs moderation need. Fails open on moderation API
+    # unavailability — the request proceeds if moderation cannot be reached.
+    ai_moderation_enabled: bool = True
     ai_moderation_model: str = "omni-moderation-latest"
     # Redact PII (email/SSN/card/phone) from user + retrieved content before it
     # is sent to an external AI provider.
