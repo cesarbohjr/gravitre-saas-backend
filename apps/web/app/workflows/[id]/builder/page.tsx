@@ -4615,11 +4615,11 @@ const handleRun = useCallback(async () => {
       }
     }}
   />
-  </div>
-  </div>
+        </div>
+        </div>
   
-  {/* Connect/Disconnect Confirmation Dialog */}
-      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {/* Connect/Disconnect Confirmation Dialog */}
+        <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -4742,7 +4742,7 @@ const handleRun = useCallback(async () => {
           </div>
         </DialogContent>
       </Dialog>
-          </>
+      </>
         )}
       </div>
     </AppShell>
