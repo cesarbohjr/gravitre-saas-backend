@@ -1,32 +1,37 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext, useCallback } from "react"
+import { useState, useEffect, createContext, useContext, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import useSWR from "swr"
 import {
   Check,
   ChevronDown,
   ChevronUp,
-  Circle,
   Sparkles,
   Bot,
   Plug,
-  FileText,
   Users,
   Zap,
   X,
   ArrowRight,
   Rocket,
   Gift,
+  UserCheck,
+  PlayCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useViewModeSafe } from "@/lib/view-mode-context"
+import { useAuth } from "@/lib/auth-context"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { onboardingApi, settingsApi } from "@/lib/api"
+import type { OnboardingProgress } from "@/types/api"
 
 // Types
 interface ChecklistItem {
   id: string
+  stepKey: string
   title: string
   description: string
   href: string
@@ -34,78 +39,109 @@ interface ChecklistItem {
   completed: boolean
 }
 
-interface OnboardingState {
-  items: ChecklistItem[]
-  dismissed: boolean
-  completedAt: string | null
+interface OrgSettings {
+  onboarding?: {
+    checklist_dismissed?: boolean
+  }
 }
 
-// Default checklist items
-const defaultItems: ChecklistItem[] = [
+const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
+  {
+    id: "create-account",
+    stepKey: "welcome",
+    title: "Create your account",
+    description: "You're signed in and ready to go",
+    href: "/operator",
+    icon: UserCheck,
+  },
+  {
+    id: "connect-tool",
+    stepKey: "connect",
+    title: "Connect your first tool",
+    description: "Link Slack, HubSpot, or another integration",
+    href: "/connectors",
+    icon: Plug,
+  },
   {
     id: "create-agent",
+    stepKey: "operator",
     title: "Create your first agent",
     description: "Set up an AI agent to handle tasks",
     href: "/agents/new",
     icon: Bot,
-    completed: false,
   },
   {
-    id: "connect-tool",
-    title: "Connect a tool",
-    description: "Link Slack, HubSpot, or another integration",
-    href: "/connectors",
-    icon: Plug,
-    completed: false,
+    id: "run-first-task",
+    stepKey: "task",
+    title: "Run your first task",
+    description: "Assign work and see agent output",
+    href: "/operator",
+    icon: PlayCircle,
   },
   {
-    id: "run-workflow",
-    title: "Run your first workflow",
+    id: "setup-workflow",
+    stepKey: "path",
+    title: "Set up your first workflow",
     description: "Create and execute an automation",
     href: "/workflows",
     icon: Zap,
-    completed: false,
-  },
-  {
-    id: "review-output",
-    title: "Review an output",
-    description: "Check a deliverable from your agent",
-    href: "/deliverables",
-    icon: FileText,
-    completed: false,
   },
   {
     id: "invite-team",
+    stepKey: "next",
     title: "Invite a teammate",
     description: "Collaborate with your team",
     href: "/settings/organizations",
     icon: Users,
-    completed: false,
   },
 ]
 
-// Local storage key
-const STORAGE_KEY = "gravitre-onboarding"
-
-// Map of item IDs to their icons (icons can't be serialized to localStorage)
 const itemIconMap: Record<string, React.ElementType> = {
-  "create-agent": Bot,
+  "create-account": UserCheck,
   "connect-tool": Plug,
-  "run-workflow": Zap,
-  "review-output": FileText,
+  "create-agent": Bot,
+  "run-first-task": PlayCircle,
+  "setup-workflow": Zap,
   "invite-team": Users,
 }
 
-// Helper to reconstruct items with icons from stored state
-function reconstructItemsWithIcons(storedItems: Array<{ id: string; completed: boolean }>): ChecklistItem[] {
-  return defaultItems.map(defaultItem => {
-    const storedItem = storedItems.find(s => s.id === defaultItem.id)
-    return {
-      ...defaultItem,
-      icon: itemIconMap[defaultItem.id] || defaultItem.icon,
-      completed: storedItem?.completed ?? defaultItem.completed,
-    }
-  })
+function buildItemsFromProgress(
+  progress: OnboardingProgress | undefined,
+  accountComplete: boolean,
+): ChecklistItem[] {
+  const completedKeys = new Set(
+    (progress?.steps ?? []).filter((step) => step.is_completed).map((step) => step.key),
+  )
+  if (accountComplete) {
+    completedKeys.add("welcome")
+  }
+
+  return CHECKLIST_DEFS.map((def) => ({
+    ...def,
+    icon: itemIconMap[def.id] ?? def.icon,
+    completed: completedKeys.has(def.stepKey),
+  }))
+}
+
+const ROUTE_STEP_MAP: Array<{ prefix: string; stepKey: string }> = [
+  { prefix: "/connectors", stepKey: "connect" },
+  { prefix: "/agents/new", stepKey: "operator" },
+  { prefix: "/operator", stepKey: "task" },
+  { prefix: "/workflows", stepKey: "path" },
+  { prefix: "/settings/organizations", stepKey: "next" },
+]
+
+async function persistChecklistDismissed() {
+  const payload = await settingsApi.get()
+  const current = (payload.settings ?? {}) as OrgSettings
+  const nextSettings = {
+    ...current,
+    onboarding: {
+      ...(current.onboarding ?? {}),
+      checklist_dismissed: true,
+    },
+  }
+  await settingsApi.update({ settings: nextSettings })
 }
 
 // Context
@@ -134,101 +170,99 @@ export function useOnboarding() {
 
 // Provider
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<OnboardingState>(() => {
-    if (typeof window === "undefined") {
-      return {
-        items: defaultItems,
-        dismissed: false,
-        completedAt: null,
-      }
-    }
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (!stored) {
-      return {
-        items: defaultItems,
-        dismissed: false,
-        completedAt: null,
-      }
-    }
-    try {
-      const parsed = JSON.parse(stored)
-      const reconstructedItems = reconstructItemsWithIcons(
-        parsed.items?.map((item: ChecklistItem) => ({ id: item.id, completed: item.completed })) || []
-      )
-      return {
-        dismissed: Boolean(parsed.dismissed),
-        completedAt: typeof parsed.completedAt === "string" ? parsed.completedAt : null,
-        items: reconstructedItems,
-      }
-    } catch {
-      return {
-        items: defaultItems,
-        dismissed: false,
-        completedAt: null,
-      }
-    }
-  })
+  const { user } = useAuth()
+  const pathname = usePathname()
+  const [dismissed, setDismissed] = useState(false)
+  const [welcomeSynced, setWelcomeSynced] = useState(false)
 
-  // Save to localStorage (only save serializable data, not icon components)
+  const { data: progress, mutate: mutateProgress } = useSWR<OnboardingProgress>(
+    user ? "/api/onboarding" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+
+  const { data: settingsPayload, mutate: mutateSettings } = useSWR<{ settings?: OrgSettings }>(
+    user ? "/api/settings" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+
   useEffect(() => {
-    const serializableState = {
-      items: state.items.map(item => ({ id: item.id, completed: item.completed })),
-      dismissed: state.dismissed,
-      completedAt: state.completedAt,
+    const serverDismissed = Boolean(settingsPayload?.settings?.onboarding?.checklist_dismissed)
+    setDismissed(serverDismissed)
+  }, [settingsPayload])
+
+  // Auto-complete account step for authenticated users
+  useEffect(() => {
+    if (!user || welcomeSynced || !progress) return
+    const welcomeDone = progress.steps?.some((step) => step.key === "welcome" && step.is_completed)
+    if (welcomeDone) {
+      setWelcomeSynced(true)
+      return
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializableState))
-  }, [state])
+    setWelcomeSynced(true)
+    void onboardingApi.completeStep("welcome").then(() => mutateProgress())
+  }, [user, welcomeSynced, progress, mutateProgress])
 
-  const completedCount = state.items.filter((item) => item.completed).length
-  const totalCount = state.items.length
-  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
-  const isComplete = completedCount === totalCount
+  // Auto-complete steps when user visits relevant routes
+  useEffect(() => {
+    if (!user || !progress || !pathname) return
 
-  const markComplete = useCallback((itemId: string) => {
-    setState((prev) => {
-      const newItems = prev.items.map((item) =>
-        item.id === itemId ? { ...item, completed: true } : item
-      )
-      const allComplete = newItems.every((item) => item.completed)
-      return {
-        ...prev,
-        items: newItems,
-        completedAt: allComplete ? new Date().toISOString() : prev.completedAt,
-      }
-    })
-  }, [])
+    const match = ROUTE_STEP_MAP.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    if (!match) return
 
-  const markIncomplete = useCallback((itemId: string) => {
-    setState((prev) => ({
-      ...prev,
-      items: prev.items.map((item) =>
-        item.id === itemId ? { ...item, completed: false } : item
-      ),
-      completedAt: null,
-    }))
+    const alreadyDone = progress.steps?.some(
+      (step) => step.key === match.stepKey && step.is_completed,
+    )
+    if (alreadyDone) return
+
+    void onboardingApi.completeStep(match.stepKey).then(() => mutateProgress())
+  }, [user, pathname, progress, mutateProgress])
+
+  const items = useMemo(
+    () => buildItemsFromProgress(progress, Boolean(user)),
+    [progress, user],
+  )
+
+  const completedCount = items.filter((item) => item.completed).length
+  const totalCount = items.length
+  const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+  const isComplete = totalCount > 0 && completedCount === totalCount
+
+  const markComplete = useCallback(
+    (itemId: string) => {
+      const item = CHECKLIST_DEFS.find((def) => def.id === itemId)
+      if (!item || items.find((i) => i.id === itemId)?.completed) return
+      void onboardingApi.completeStep(item.stepKey).then(() => mutateProgress())
+    },
+    [items, mutateProgress],
+  )
+
+  const markIncomplete = useCallback((_itemId: string) => {
+    // Server-tracked checklist; no uncomplete in v1
   }, [])
 
   const dismiss = useCallback(() => {
-    setState((prev) => ({ ...prev, dismissed: true }))
-  }, [])
+    setDismissed(true)
+    void persistChecklistDismissed()
+      .then(() => mutateSettings())
+      .catch((err) => console.warn("Failed to persist checklist dismiss", err))
+  }, [mutateSettings])
 
   const reset = useCallback(() => {
-    setState({
-      items: defaultItems,
-      dismissed: false,
-      completedAt: null,
-    })
-  }, [])
+    setDismissed(false)
+    void onboardingApi.reset().then(() => mutateProgress())
+  }, [mutateProgress])
 
   return (
     <OnboardingContext.Provider
       value={{
-        items: state.items,
+        items,
         completedCount,
         totalCount,
-        progress,
+        progress: progressPct,
         isComplete,
-        isDismissed: state.dismissed,
+        isDismissed: dismissed,
         markComplete,
         markIncomplete,
         dismiss,
@@ -243,7 +277,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 // Floating Checklist Widget
 export function OnboardingChecklist() {
   const pathname = usePathname()
-  const { isAdmin } = useViewModeSafe()
+  const { user } = useAuth()
   const {
     items,
     completedCount,
@@ -272,9 +306,8 @@ export function OnboardingChecklist() {
   
   const hiddenPaths = ["/onboarding", "/lite"]
   const isHiddenPath = hiddenPaths.some((path) => pathname === path || pathname?.startsWith(path))
-  
-  // Only show for admin users in the web app, not on marketing pages or for lite users
-  const shouldHide = isMarketingPage || isHiddenPath || !isAdmin
+
+  const shouldHide = isMarketingPage || isHiddenPath || !user
 
   // Show celebration when complete
   useEffect(() => {
