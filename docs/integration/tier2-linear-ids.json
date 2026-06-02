@@ -1,0 +1,133 @@
+{
+  "createdAt": "2026-06-02T17:18:30.308Z",
+  "epics": {
+    "epic-a": "STA-24",
+    "epic-b": "STA-25",
+    "epic-c": "STA-26",
+    "epic-d": "STA-27",
+    "epic-e": "STA-28",
+    "epic-f": "STA-29"
+  },
+  "issues": [
+    {
+      "ref": "T2-001",
+      "linear": "STA-30",
+      "title": "Salesforce OAuth + token lifecycle",
+      "parent": "STA-24"
+    },
+    {
+      "ref": "T2-002",
+      "linear": "STA-31",
+      "title": "Salesforce v1 actions",
+      "parent": "STA-24"
+    },
+    {
+      "ref": "T2-003",
+      "linear": "STA-32",
+      "title": "Salesforce inbound triggers → workflows",
+      "parent": "STA-24"
+    },
+    {
+      "ref": "T2-004",
+      "linear": "STA-33",
+      "title": "QuickBooks Online OAuth + token lifecycle",
+      "parent": "STA-25"
+    },
+    {
+      "ref": "T2-005",
+      "linear": "STA-34",
+      "title": "QuickBooks v1 read actions",
+      "parent": "STA-25"
+    },
+    {
+      "ref": "T2-006",
+      "linear": "STA-35",
+      "title": "Stripe read-only agent tool",
+      "parent": "STA-25"
+    },
+    {
+      "ref": "T2-007",
+      "linear": "STA-36",
+      "title": "Jira Cloud OAuth + v1 actions",
+      "parent": "STA-26"
+    },
+    {
+      "ref": "T2-008",
+      "linear": "STA-37",
+      "title": "PagerDuty OAuth + incident triggers",
+      "parent": "STA-26"
+    },
+    {
+      "ref": "T2-009",
+      "linear": "STA-38",
+      "title": "PagerDuty v1 actions",
+      "parent": "STA-26"
+    },
+    {
+      "ref": "T2-010",
+      "linear": "STA-39",
+      "title": "Cross-tool DevOps workflow (PagerDuty + Jira + Slack)",
+      "parent": "STA-26"
+    },
+    {
+      "ref": "T2-011",
+      "linear": "STA-40",
+      "title": "Google Analytics OAuth + property linking",
+      "parent": "STA-27"
+    },
+    {
+      "ref": "T2-012",
+      "linear": "STA-41",
+      "title": "GA4 v1 read actions",
+      "parent": "STA-27"
+    },
+    {
+      "ref": "T2-013",
+      "linear": "STA-42",
+      "title": "Marketing attribution workflow template",
+      "parent": "STA-27"
+    },
+    {
+      "ref": "T2-014",
+      "linear": "STA-43",
+      "title": "Notion OAuth + workspace sync → RAG",
+      "parent": "STA-28"
+    },
+    {
+      "ref": "T2-015",
+      "linear": "STA-44",
+      "title": "Confluence OAuth + space sync → RAG",
+      "parent": "STA-28"
+    },
+    {
+      "ref": "T2-016",
+      "linear": "STA-45",
+      "title": "Knowledge sync scheduler + webhook framework",
+      "parent": "STA-28"
+    },
+    {
+      "ref": "T2-017",
+      "linear": "STA-46",
+      "title": "HubSpot + Zendesk → RAG incremental sync",
+      "parent": "STA-28"
+    },
+    {
+      "ref": "T2-018",
+      "linear": "STA-47",
+      "title": "Workflow schedule / cron trigger worker",
+      "parent": "STA-29"
+    },
+    {
+      "ref": "T2-019",
+      "linear": "STA-48",
+      "title": "Council → workflow branch integration",
+      "parent": "STA-29"
+    },
+    {
+      "ref": "T2-020",
+      "linear": "STA-49",
+      "title": "Agent memory API (replace mock UI)",
+      "parent": "STA-29"
+    }
+  ]
+}

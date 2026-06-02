@@ -530,6 +530,8 @@ def create_workflow_node(
         "metadata": payload.get("metadata"),
         "created_by": created_by,
     }
+    if payload.get("id"):
+        row["id"] = payload["id"]
     r = client.table("workflow_nodes").insert(row).execute()
     if not r.data or len(r.data) == 0:
         raise RuntimeError("workflow_nodes insert returned no row")

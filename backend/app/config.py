@@ -95,6 +95,18 @@ class Settings(BaseSettings):
     stripe_price_id_command_monthly: str = ""
     stripe_price_id_command_annual: str = ""
     public_app_url: str = Field(default="", alias="NEXT_PUBLIC_APP_URL")
+    # Public API base for OAuth callbacks (defaults to same host as app in dev)
+    api_public_url: str = ""
+
+    # HubSpot OAuth (STA-13 / STA-14) — production app
+    hubspot_client_id: str = ""
+    hubspot_client_secret: str = ""
+    # Optional separate HubSpot app for staging/sandbox connectors
+    hubspot_sandbox_client_id: str = ""
+    hubspot_sandbox_client_secret: str = ""
+    # HubSpot inbound webhooks (STA-16) — platform operator sets once per app
+    hubspot_app_id: str = ""
+    hubspot_developer_api_key: str = ""
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"

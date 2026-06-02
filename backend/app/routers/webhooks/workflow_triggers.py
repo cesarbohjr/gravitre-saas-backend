@@ -166,6 +166,9 @@ async def trigger_workflow(
             workflow_id=workflow_id,
             run_id=run_id,
             parameters=parameters,
+            user_id=triggered_by,
+            definition=definition,
+            environment_name="production",
         )
         update_payload: dict[str, Any] = {"status": result.status}
         if result.status == "failed":

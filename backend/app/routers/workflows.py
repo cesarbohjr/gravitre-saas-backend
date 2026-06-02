@@ -88,6 +88,7 @@ from app.connectors.repository import get_connector
 from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
+from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
 from app.workflows.schema import (
     WorkflowValidationError,
     compute_run_hash,
@@ -186,6 +187,41 @@ class WorkflowAiSuggestRequest(BaseModel):
 
 class WorkflowAiChatRequest(BaseModel):
     message: str
+
+
+class BuilderGraphNodeInput(BaseModel):
+    id: str
+    node_type: str = Field(..., alias="type")
+    name: str
+    description: str | None = None
+    config: dict | None = None
+    metadata: dict | None = None
+    position: dict | None = None
+    position_x: int | None = Field(default=None, alias="positionX")
+    position_y: int | None = Field(default=None, alias="positionY")
+    operator_id: UUID | None = Field(default=None, alias="operatorId")
+    connector_id: UUID | None = Field(default=None, alias="connectorId")
+    source_id: UUID | None = Field(default=None, alias="sourceId")
+
+    model_config = {"populate_by_name": True}
+
+
+class BuilderGraphEdgeInput(BaseModel):
+    from_node_id: str = Field(..., alias="fromNodeId")
+    to_node_id: str = Field(..., alias="toNodeId")
+    edge_type: str | None = None
+    condition: dict | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+class BuilderSaveRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    nodes: list[BuilderGraphNodeInput]
+    edges: list[BuilderGraphEdgeInput] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
 
 
 class WorkflowNodeCreateRequest(BaseModel):
@@ -522,7 +558,84 @@ async def get_workflow_builder(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
     nodes = list_workflow_nodes(client, org_id, str(workflow_id), environment_name)
     edges = list_workflow_edges(client, org_id, str(workflow_id), environment_name)
-    return {"workflow_id": str(workflow_id), "nodes": [_node_out(n) for n in nodes], "edges": [_edge_out(e) for e in edges]}
+    if not nodes:
+        definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
+        if definition.get("steps"):
+            synth_nodes, synth_edges = definition_to_builder_nodes(definition)
+            for node in synth_nodes:
+                node["workflow_id"] = str(workflow_id)
+                node["environment"] = environment_name
+            for edge in synth_edges:
+                edge["workflow_id"] = str(workflow_id)
+                edge["environment"] = environment_name
+            nodes = synth_nodes
+            edges = synth_edges
+    return {
+        "workflow_id": str(workflow_id),
+        "name": wf.get("name"),
+        "description": wf.get("description"),
+        "status": wf.get("status"),
+        "nodes": [_node_out(n) for n in nodes],
+        "edges": [_edge_out(e) for e in edges],
+    }
+
+
+@router.put("/{workflow_id}/builder")
+async def save_workflow_builder(
+    workflow_id: UUID,
+    body: BuilderSaveRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Persist builder canvas (nodes, edges) and compile an executable definition (STA-19)."""
+    user, org_id = _admin
+    client = get_supabase_client(settings)
+    wf = get_workflow_def(client, org_id, str(workflow_id))
+    if not wf:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+
+    if body.name or body.description:
+        update_payload: dict[str, Any] = {}
+        if body.name:
+            update_payload["name"] = body.name
+        if body.description is not None:
+            update_payload["description"] = body.description
+        client.table("workflow_defs").update(update_payload).eq("id", str(workflow_id)).eq("org_id", org_id).execute()
+
+    try:
+        nodes_payload = [n.model_dump(by_alias=True) for n in body.nodes]
+        edges_payload = [e.model_dump(by_alias=True) for e in body.edges]
+        stored_nodes, stored_edges, definition = sync_builder_graph(
+            client,
+            org_id=org_id,
+            workflow_id=str(workflow_id),
+            environment_name=environment_name,
+            nodes=nodes_payload,
+            edges=edges_payload,
+            created_by=user.get("user_id"),
+        )
+    except WorkflowValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user.get("user_id"),
+        action="workflow.builder.saved",
+        resource_type="workflow",
+        resource_id=str(workflow_id),
+        metadata={"node_count": len(stored_nodes), "edge_count": len(stored_edges)},
+    )
+    return {
+        "workflow_id": str(workflow_id),
+        "nodes": [_node_out(n) for n in stored_nodes],
+        "edges": [_edge_out(e) for e in stored_edges],
+        "definition": definition,
+        "step_count": len(definition.get("steps") or []),
+    }
 
 
 @router.post("/{workflow_id}/nodes", status_code=status.HTTP_201_CREATED)

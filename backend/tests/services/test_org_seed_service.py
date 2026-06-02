@@ -1,7 +1,7 @@
 """Tests for org demo seed service."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -62,7 +62,8 @@ def test_seed_org_if_needed_skips_when_already_seeded():
     client.table("agents").upsert.assert_not_called()
 
 
-def test_seed_org_if_needed_inserts_demo_rows_once():
+@patch("app.services.org_seed_service._seed_demo_agent_tool_permissions")
+def test_seed_org_if_needed_inserts_demo_rows_once(_mock_tool_perms):
     settings_holder: dict = {"settings": {"onboarding": {"seeded": False}}}
     upsert_calls: list[str] = []
 
@@ -102,7 +103,7 @@ def test_seed_org_if_needed_inserts_demo_rows_once():
     assert result["workflows_created"] == 1
     assert result["runs_created"] == 3
     assert settings_holder["settings"]["onboarding"]["seeded"] is True
-    assert upsert_calls == ["agents", "workflows", "runs", "connected_systems"]
+    assert upsert_calls == ["agents", "workflows", "workflow_defs", "runs", "connected_systems"]
 
 
 def test_seed_org_if_needed_raises_when_org_missing():

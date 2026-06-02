@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi, settingsApi } from "@/lib/api"
-import { trackSignupEvent } from "@/lib/analytics/signup-events"
 import type { OnboardingProgress } from "@/types/api"
 
 // Types
@@ -202,10 +201,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       return
     }
     setWelcomeSynced(true)
-    void onboardingApi.completeStep("welcome").then(() => {
-      trackSignupEvent("onboarding_step_completed", { step_key: "welcome" })
-      mutateProgress()
-    })
+    void onboardingApi.completeStep("welcome").then(() => mutateProgress())
   }, [user, welcomeSynced, progress, mutateProgress])
 
   // Auto-complete steps when user visits relevant routes
@@ -220,10 +216,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     )
     if (alreadyDone) return
 
-    void onboardingApi.completeStep(match.stepKey).then(() => {
-      trackSignupEvent("onboarding_step_completed", { step_key: match.stepKey })
-      mutateProgress()
-    })
+    void onboardingApi.completeStep(match.stepKey).then(() => mutateProgress())
   }, [user, pathname, progress, mutateProgress])
 
   const items = useMemo(
@@ -240,10 +233,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     (itemId: string) => {
       const item = CHECKLIST_DEFS.find((def) => def.id === itemId)
       if (!item || items.find((i) => i.id === itemId)?.completed) return
-      void onboardingApi.completeStep(item.stepKey).then(() => {
-        trackSignupEvent("onboarding_step_completed", { step_key: item.stepKey })
-        mutateProgress()
-      })
+      void onboardingApi.completeStep(item.stepKey).then(() => mutateProgress())
     },
     [items, mutateProgress],
   )

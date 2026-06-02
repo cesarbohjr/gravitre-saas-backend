@@ -1,0 +1,127 @@
+{
+  "createdAt": "2026-06-02T17:36:03.664Z",
+  "epics": {
+    "epic-a": "STA-100",
+    "epic-b": "STA-101",
+    "epic-c": "STA-102",
+    "epic-d": "STA-103",
+    "epic-e": "STA-104",
+    "epic-f": "STA-105"
+  },
+  "issues": [
+    {
+      "ref": "T5-001",
+      "linear": "STA-106",
+      "title": "Policy-gated auto-execute mode per agent",
+      "parent": "STA-100"
+    },
+    {
+      "ref": "T5-002",
+      "linear": "STA-107",
+      "title": "Compensating transactions / rollback for tool actions",
+      "parent": "STA-100"
+    },
+    {
+      "ref": "T5-003",
+      "linear": "STA-108",
+      "title": "Real-time human-in-the-loop interrupt channel",
+      "parent": "STA-100"
+    },
+    {
+      "ref": "T5-004",
+      "linear": "STA-109",
+      "title": "Autonomous run budgets (tokens, actions, spend/day)",
+      "parent": "STA-100"
+    },
+    {
+      "ref": "T5-005",
+      "linear": "STA-110",
+      "title": "HIPAA BAA workflow + PHI handling controls",
+      "parent": "STA-101"
+    },
+    {
+      "ref": "T5-006",
+      "linear": "STA-111",
+      "title": "FedRAMP Moderate — control gap assessment & roadmap",
+      "parent": "STA-101"
+    },
+    {
+      "ref": "T5-007",
+      "linear": "STA-112",
+      "title": "EU AI Act — agent decision transparency logs",
+      "parent": "STA-101"
+    },
+    {
+      "ref": "T5-008",
+      "linear": "STA-113",
+      "title": "Healthcare vertical pack (FHIR read + prior-auth template)",
+      "parent": "STA-102"
+    },
+    {
+      "ref": "T5-009",
+      "linear": "STA-114",
+      "title": "Legal vertical pack (Clio + matter workflows)",
+      "parent": "STA-102"
+    },
+    {
+      "ref": "T5-010",
+      "linear": "STA-115",
+      "title": "Real estate vertical pack (CRM + listing workflow)",
+      "parent": "STA-102"
+    },
+    {
+      "ref": "T5-011",
+      "linear": "STA-116",
+      "title": "Cross-org agent handoff protocol (B2B briefing exchange)",
+      "parent": "STA-103"
+    },
+    {
+      "ref": "T5-012",
+      "linear": "STA-117",
+      "title": "Federated connector consent (share tool access across orgs)",
+      "parent": "STA-103"
+    },
+    {
+      "ref": "T5-013",
+      "linear": "STA-118",
+      "title": "Delegate task to external Gravitre org",
+      "parent": "STA-103"
+    },
+    {
+      "ref": "T5-014",
+      "linear": "STA-119",
+      "title": "Multi-agent swarm coordinator",
+      "parent": "STA-104"
+    },
+    {
+      "ref": "T5-015",
+      "linear": "STA-120",
+      "title": "Workflow digital twin — simulate before live run",
+      "parent": "STA-104"
+    },
+    {
+      "ref": "T5-016",
+      "linear": "STA-121",
+      "title": "Agent role marketplace (install department packs)",
+      "parent": "STA-104"
+    },
+    {
+      "ref": "T5-017",
+      "linear": "STA-122",
+      "title": "Predictive workflow failure detection",
+      "parent": "STA-105"
+    },
+    {
+      "ref": "T5-018",
+      "linear": "STA-123",
+      "title": "Auto-suggest connectors & workflows from audit data",
+      "parent": "STA-105"
+    },
+    {
+      "ref": "T5-019",
+      "linear": "STA-124",
+      "title": "Customer integration health score (CS dashboard)",
+      "parent": "STA-105"
+    }
+  ]
+}

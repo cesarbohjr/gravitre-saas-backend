@@ -20,6 +20,7 @@ from app.core.logging import get_logger, request_id_ctx
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
+    agent_tool_permissions,
     ai_system,
     agent_council,
     agent_jobs,
@@ -28,6 +29,7 @@ from app.routers import (
     audit,
     billing,
     billing_sync,
+    connector_oauth,
     connectors,
     decisions,
     execution,
@@ -52,6 +54,8 @@ from app.routers import (
     environments,
     settings,
 )
+from app.routers import hubspot_triggers
+from app.routers.webhooks import hubspot_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.routers.webhooks import workflow_triggers
 
@@ -267,6 +271,7 @@ app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
+app.include_router(connector_oauth.router)
 app.include_router(rag.router)
 app.include_router(rag_admin.router)
 app.include_router(search.router)
@@ -284,7 +289,9 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(stripe_webhooks.router)
+app.include_router(hubspot_inbound.router)
 app.include_router(workflow_triggers.router)
+app.include_router(hubspot_triggers.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(execution.router)
@@ -299,4 +306,5 @@ app.include_router(agent_jobs.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
+app.include_router(agent_tool_permissions.router)
 app.include_router(operators_router.sessions_router)

@@ -86,7 +86,9 @@ def execute_dry_run(
         step_id = sdef["id"]
         step_name = sdef["name"]
         step_type = sdef["type"]
-        config = sdef.get("config") or {}
+        config = dict(sdef.get("config") or {})
+        if isinstance(sdef.get("metadata"), dict):
+            config["metadata"] = sdef["metadata"]
         created = create_step(
             client=client,
             run_id=run_id,

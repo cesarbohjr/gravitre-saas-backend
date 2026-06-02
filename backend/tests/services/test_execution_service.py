@@ -17,7 +17,7 @@ def service() -> ExecutionService:
 def sample_nodes() -> list[dict]:
     return [
         {"id": "node_1", "node_type": "trigger", "name": "Start", "config": {}, "order_index": 0},
-        {"id": "node_2", "node_type": "action", "name": "Process", "config": {"action": "transform"}, "order_index": 1},
+        {"id": "node_2", "node_type": "action", "name": "Process", "config": {"action": "noop"}, "order_index": 1},
         {
             "id": "node_3",
             "node_type": "decision",
@@ -27,6 +27,33 @@ def sample_nodes() -> list[dict]:
         },
         {"id": "node_4", "node_type": "end", "name": "End", "config": {}, "order_index": 3},
     ]
+
+
+@pytest.mark.asyncio
+async def test_execute_workflow_uses_step_executor_when_definition_has_steps(service: ExecutionService):
+    definition = {
+        "schema_version": "v1",
+        "steps": [{"id": "s1", "name": "Slack", "type": "slack_post_message", "config": {}}],
+    }
+    mock_client = MagicMock()
+    mock_settings = SimpleNamespace()
+    with patch("app.services.execution_service.get_settings", return_value=mock_settings):
+        with patch("app.services.execution_service.get_supabase_client", return_value=mock_client):
+            with patch(
+                "app.services.execution_service.execute_workflow_steps",
+                return_value=("completed", [{"step_id": "s1", "status": "completed", "output_snapshot": {"ok": True}}], [], False),
+            ) as mock_steps:
+                result = await service.execute_workflow(
+                    org_id="org-1",
+                    workflow_id="wf-1",
+                    run_id="run-1",
+                    parameters={"message": "hi"},
+                    user_id="user-1",
+                    definition=definition,
+                )
+    mock_steps.assert_called_once()
+    assert result.status == "completed"
+    assert result.results[0].node_id == "s1"
 
 
 @pytest.mark.asyncio

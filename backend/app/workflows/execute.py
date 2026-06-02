@@ -71,7 +71,9 @@ def execute_workflow_steps(
         step_id = sdef["id"]
         step_name = sdef["name"]
         step_type = sdef["type"]
-        config = sdef.get("config") or {}
+        config = dict(sdef.get("config") or {})
+        if isinstance(sdef.get("metadata"), dict):
+            config["metadata"] = sdef["metadata"]
         if steps_exist and idx < len(existing_steps):
             step_uuid = str(existing_steps[idx]["id"])
         else:
