@@ -1,7 +1,8 @@
 // Workflow Builder Persistence Layer
 // Maps between canvas nodes and API payloads for save/load/execute
 
-import { workflowsApi, type Workflow, type WorkflowNode as ApiWorkflowNode, type WorkflowEdge } from "@/lib/api"
+import { workflowsApi } from "@/lib/api"
+import type { Workflow, WorkflowNode as ApiWorkflowNode, WorkflowEdge } from "@/types/api"
 
 // Canvas node shape used by the builder
 export interface CanvasWorkflowNode {
@@ -175,8 +176,8 @@ export async function loadBuilderGraph(workflowId: string): Promise<{
     
     // Fetch nodes and edges
     const [nodesResponse, edgesResponse] = await Promise.all([
-      workflowsApi.nodes.list(workflowId),
-      workflowsApi.edges.list(workflowId),
+      workflowsApi.listNodes(workflowId),
+      workflowsApi.listEdges(workflowId),
     ])
 
     const nodes = Array.isArray(nodesResponse) ? nodesResponse : (nodesResponse as { nodes: ApiWorkflowNode[] }).nodes || []
@@ -191,7 +192,7 @@ export async function loadBuilderGraph(workflowId: string): Promise<{
         description: workflow.description,
         status: workflow.status as WorkflowMeta["status"],
         environment: workflow.environment as WorkflowMeta["environment"],
-        version: workflow.active_version_id ? `v${workflow.active_version_id}` : undefined,
+        version: workflow.active_version?.id ? `v${workflow.active_version.version}` : undefined,
         created_at: workflow.created_at,
         updated_at: workflow.updated_at,
       },
@@ -228,26 +229,26 @@ export async function saveBuilderGraph(
 
     // Clear existing nodes and edges, then recreate
     // This is a simple approach - a more sophisticated one would diff and patch
-    const existingNodes = await workflowsApi.nodes.list(workflowId)
+    const existingNodes = await workflowsApi.listNodes(workflowId)
     const existingNodesList = Array.isArray(existingNodes) ? existingNodes : (existingNodes as { nodes: ApiWorkflowNode[] }).nodes || []
     
-    const existingEdges = await workflowsApi.edges.list(workflowId)
+    const existingEdges = await workflowsApi.listEdges(workflowId)
     const existingEdgesList = Array.isArray(existingEdges) ? existingEdges : (existingEdges as { edges: WorkflowEdge[] }).edges || []
 
     // Delete existing edges first (to avoid FK issues)
-    await Promise.all(existingEdgesList.map((e) => workflowsApi.edges.delete(workflowId, e.id)))
+    await Promise.all(existingEdgesList.map((e) => workflowsApi.deleteEdge(workflowId, e.id)))
     
     // Delete existing nodes
-    await Promise.all(existingNodesList.map((n) => workflowsApi.nodes.delete(workflowId, n.id)))
+    await Promise.all(existingNodesList.map((n) => workflowsApi.deleteNode(workflowId, n.id)))
 
     // Create new nodes
     for (const node of apiNodes) {
-      await workflowsApi.nodes.create(workflowId, node as Parameters<typeof workflowsApi.nodes.create>[1])
+      await workflowsApi.createNode(workflowId, node as Parameters<typeof workflowsApi.createNode>[1])
     }
 
     // Create new edges
     for (const edge of apiEdges) {
-      await workflowsApi.edges.create(workflowId, edge as Parameters<typeof workflowsApi.edges.create>[1])
+      await workflowsApi.createEdge(workflowId, edge as Parameters<typeof workflowsApi.createEdge>[1])
     }
 
     return { success: true, stepCount: nodes.length }
