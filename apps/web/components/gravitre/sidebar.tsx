@@ -67,40 +67,40 @@ const adminNavigation: NavGroup[] = [
     group: "WORK",
     items: [
       { name: "AI Operator", href: "/operator", icon: "ai", badge: "AI", emphasis: true },
-      { name: "Assistant", href: "/assistant", icon: "assistant", badge: "Chat" },
+      { name: "Assistant", href: "/assistant", icon: "chat", badge: "Chat" },
       { name: "Search", href: "/chat", icon: "search" },
-      { name: "Agents", href: "/agents", icon: "agents" },
-      { name: "Assignments", href: "/assignments", icon: "tasks" },
+      { name: "Agents", href: "/agents", icon: "team" },
+      { name: "Assignments", href: "/assignments", icon: "clipboardList" },
     ],
   },
   {
     group: "BUILD",
     items: [
-      { name: "Automations", href: "/workflows", icon: "automations" },
+      { name: "Automations", href: "/workflows", icon: "waypoints" },
       { name: "Training", href: "/training", icon: "brain" },
-      { name: "Apps", href: "/connectors", icon: "apps" },
-      { name: "Data", href: "/sources", icon: "data" },
+      { name: "Apps", href: "/connectors", icon: "blocks" },
+      { name: "Data", href: "/sources", icon: "database" },
     ],
   },
   {
     group: "ACTIVITY",
     items: [
-      { name: "Tasks", href: "/runs", icon: "tasks" },
-      { name: "Approvals", href: "/approvals", icon: "approvals" },
+      { name: "Tasks", href: "/runs", icon: "listTodo" },
+      { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
     ],
   },
   {
     group: "INSIGHTS",
     items: [
-      { name: "Dashboard", href: "/metrics", icon: "dashboard" },
+      { name: "Dashboard", href: "/metrics", icon: "layoutDashboard" },
       { name: "History", href: "/audit", icon: "history" },
     ],
   },
   {
     group: "SETTINGS",
     items: [
-      { name: "Workspaces", href: "/environments", icon: "workspaces" },
-      { name: "Settings", href: "/settings", icon: "settings" },
+      { name: "Workspaces", href: "/environments", icon: "boxes" },
+      { name: "Settings", href: "/settings", icon: "sliders" },
     ],
   },
 ]
@@ -112,20 +112,20 @@ const liteNavigation: NavGroup[] = [
     items: [
       { name: "Home", href: "/lite", icon: "home", emphasis: true },
       { name: "Assign Work", href: "/lite/assign", icon: "send" },
-      { name: "My Tasks", href: "/lite/tasks", icon: "tasks" },
+      { name: "My Tasks", href: "/lite/tasks", icon: "listTodo" },
     ],
   },
   {
     group: "ACTIVITY",
     items: [
-      { name: "Deliverables", href: "/lite/deliverables", icon: "file" },
-      { name: "Approvals", href: "/approvals", icon: "approvals" },
+      { name: "Deliverables", href: "/lite/deliverables", icon: "fileText" },
+      { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
     ],
   },
   {
     group: "INSIGHTS",
     items: [
-      { name: "Results", href: "/lite/results", icon: "chart" },
+      { name: "Results", href: "/lite/results", icon: "chartLine" },
     ],
   },
 ]
