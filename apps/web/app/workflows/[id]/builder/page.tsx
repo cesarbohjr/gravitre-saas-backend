@@ -4,6 +4,7 @@
 // Includes: Agent, Task, Connector, Tool, Source, Approval, Decision, and Council node types
 import { useState, useCallback, useEffect, useRef, useMemo, use } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -12,6 +13,15 @@ import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  loadBuilderGraph,
+  saveBuilderGraph,
+  executeWorkflow,
+  isPersistableWorkflowId,
+  type CanvasWorkflowNode,
+  type WorkflowMeta,
+} from "@/lib/workflows/builder-persistence"
 import {
   ArrowLeft,
   Plus,
@@ -56,6 +66,8 @@ import {
   Gauge,
   FileSearch,
   Users,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react"
 import {
   Sheet,
@@ -175,24 +187,8 @@ interface DecisionConfig {
   }
 }
 
-interface WorkflowNode {
-  id: string
-  type: NodeType
-  name: string
-  description?: string
-  config: Record<string, unknown>
-  position: { x: number; y: number }
-  connections: string[]
-  state?: NodeState
-  vendor?: string
-  selectedAction?: string
-  dataLabel?: string
-  // Decision node specific
-  decisionConfig?: DecisionConfig
-  outputPaths?: DecisionPath[]
-  // Council node specific
-  councilConfig?: CouncilConfig
-}
+// Re-export WorkflowNode type from persistence for internal use
+type WorkflowNode = CanvasWorkflowNode
 
 interface Connection {
   id: string
@@ -200,13 +196,13 @@ interface Connection {
   to: string
 }
 
-// Mock workflow data
-const workflowMeta = {
-  id: "wf-001",
+// Default workflow metadata (used for non-UUID routes)
+const defaultWorkflowMeta: WorkflowMeta = {
+  id: "demo",
   name: "Customer Data Pipeline",
   description: "End-to-end customer data sync with validation and enrichment",
-  status: "draft" as const,
-  environment: "staging" as const,
+  status: "draft",
+  environment: "staging",
   version: "v1.2.0",
 }
 
@@ -653,8 +649,12 @@ function CanvasNode({
 {/* Connection handles - all 4 sides - Drag from these to connect */}
   {/* Left handle */}
   <div
+  role="button"
+  tabIndex={0}
+  aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
   className={`absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
   isDraggingConnection
   ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
@@ -666,8 +666,12 @@ function CanvasNode({
   />
   {/* Right handle */}
   <div
+  role="button"
+  tabIndex={0}
+  aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
   className={`absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
   isDraggingConnection
   ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
@@ -679,8 +683,12 @@ function CanvasNode({
   />
   {/* Top handle */}
   <div
+  role="button"
+  tabIndex={0}
+  aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
   className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
   isDraggingConnection
   ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
@@ -692,8 +700,12 @@ function CanvasNode({
   />
   {/* Bottom handle */}
   <div
+  role="button"
+  tabIndex={0}
+  aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
   className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
   isDraggingConnection
   ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
@@ -1834,6 +1846,17 @@ function ConfigPanel({
     return () => clearTimeout(timer)
   }, [node?.id])
   
+  // Escape key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && node) {
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [node, onClose])
+  
   if (!node) return null
 
   const config = nodeTypeConfig[node.type]
@@ -2600,6 +2623,16 @@ node.type === "approval" && "bg-red-500",
 
 export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
+  
+  // Persistence state
+  const canPersist = isPersistableWorkflowId(id)
+  const [isLoadingGraph, setIsLoadingGraph] = useState(canPersist)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [workflowMeta, setWorkflowMeta] = useState<WorkflowMeta>(defaultWorkflowMeta)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [lastRunId, setLastRunId] = useState<string | null>(null)
+  
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
@@ -2620,6 +2653,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   // Settings dialog state
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsName, setSettingsName] = useState("")
+  const [settingsDescription, setSettingsDescription] = useState("")
   
   // Debate view dialog state
   const [debateDialogOpen, setDebateDialogOpen] = useState(false)
@@ -2637,6 +2672,37 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [executionElapsed, setExecutionElapsed] = useState(0)
   const [executionStatus, setExecutionStatus] = useState<"idle" | "running" | "completed" | "error">("idle")
   const [executionError, setExecutionError] = useState<string | null>(null)
+  
+  // Load workflow on mount for UUID routes
+  useEffect(() => {
+    if (!canPersist) {
+      setIsLoadingGraph(false)
+      return
+    }
+    
+    async function loadGraph() {
+      try {
+        setIsLoadingGraph(true)
+        setLoadError(null)
+        const result = await loadBuilderGraph(id)
+        if (result) {
+          setWorkflowMeta(result.meta)
+          setSettingsName(result.meta.name)
+          setSettingsDescription(result.meta.description || "")
+          if (result.nodes.length > 0) {
+            setNodes(result.nodes)
+          }
+        }
+      } catch (err) {
+        console.error("[WorkflowBuilder] Failed to load graph:", err)
+        setLoadError(err instanceof Error ? err.message : "Failed to load workflow")
+      } finally {
+        setIsLoadingGraph(false)
+      }
+    }
+    
+    loadGraph()
+  }, [id, canPersist])
   
   // Elapsed time timer
   useEffect(() => {
@@ -2971,17 +3037,104 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   }, [])
 
   // Handle save workflow
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    if (!canPersist) {
+      toast.info("Demo mode", {
+        description: "Create a real workflow to enable saving. Go to Workflows → New."
+      })
+      return
+    }
+    
     setIsSaving(true)
-    // Simulate save operation
-    setTimeout(() => {
+    try {
+      const result = await saveBuilderGraph(id, nodes, {
+        name: settingsName || workflowMeta.name,
+        description: settingsDescription || workflowMeta.description,
+      })
+      setLastSavedAt(new Date())
+      toast.success("Workflow saved", {
+        description: `${result.stepCount} steps saved successfully`
+      })
+    } catch (err) {
+      console.error("[WorkflowBuilder] Save failed:", err)
+      toast.error("Save failed", {
+        description: err instanceof Error ? err.message : "Could not save workflow"
+      })
+    } finally {
       setIsSaving(false)
-      toast.success("Workflow saved successfully")
-    }, 800)
-  }, [])
+    }
+  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description])
 
   // Handle run workflow with execution simulation
 const handleRun = useCallback(async () => {
+  // For UUID workflows, save first then execute via API
+  if (canPersist) {
+    setIsRunning(true)
+    try {
+      // Save current state first
+      await saveBuilderGraph(id, nodes, {
+        name: settingsName || workflowMeta.name,
+        description: settingsDescription || workflowMeta.description,
+      })
+      setLastSavedAt(new Date())
+      
+      // Execute via API
+      const response = await executeWorkflow(id)
+      setLastRunId(response.run_id)
+      
+      // Start local execution visualization
+      setIsExecuting(true)
+      setExecutionStatus("running")
+      setExecutionStartTime(Date.now())
+      setExecutionStep(0)
+      setExecutionError(null)
+      
+      // Simulate progress through nodes (in real implementation, poll API for step status)
+      const orderedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x)
+      for (let i = 0; i < orderedNodes.length; i++) {
+        const currentNode = orderedNodes[i]
+        setExecutionStep(i + 1)
+        
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === currentNode.id ? { ...n, state: "running" as NodeState } : n
+          )
+        )
+        
+        await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400))
+        
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.id === currentNode.id ? { ...n, state: "success" as NodeState } : n
+          )
+        )
+      }
+      
+      setIsExecuting(false)
+      setIsRunning(false)
+      setExecutionStatus("completed")
+      
+      toast.success("Workflow executed successfully", {
+        description: `Run ID: ${response.run_id}`,
+        action: {
+          label: "View Run",
+          onClick: () => router.push(`/runs/${response.run_id}`),
+        },
+      })
+    } catch (err) {
+      console.error("[WorkflowBuilder] Execute failed:", err)
+      setIsExecuting(false)
+      setIsRunning(false)
+      setExecutionStatus("error")
+      setExecutionError(err instanceof Error ? err.message : "Execution failed")
+      toast.error("Execution failed", {
+        description: err instanceof Error ? err.message : "Could not execute workflow",
+      })
+    }
+    return
+  }
+  
+  // Demo mode: local simulation for non-UUID workflows
   setIsRunning(true)
   setIsExecuting(true)
   setExecutionStatus("running")
@@ -3071,27 +3224,6 @@ const handleRun = useCallback(async () => {
       const processingTime = 800 + Math.random() * 1200
       await new Promise((resolve) => setTimeout(resolve, processingTime))
       
-      // Simulate random error (5% chance) for demo - skip for now
-      // const hasError = Math.random() < 0.05
-      const hasError = false
-      
-      if (hasError) {
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === currentNode.id
-              ? { ...n, state: "error" as NodeState }
-              : n
-          )
-        )
-        setExecutionStatus("error")
-        setExecutionError(`${currentNode.name} failed: API key invalid`)
-        setIsRunning(false)
-        toast.error("Workflow execution failed", {
-          description: `Error at step: ${currentNode.name}`,
-        })
-        return
-      }
-      
       // Set current node to success
       setNodes((prev) =>
         prev.map((n) =>
@@ -3111,7 +3243,7 @@ const handleRun = useCallback(async () => {
   toast.success("Workflow completed successfully", {
     description: `Executed ${orderedNodes.length} steps in ${((Date.now() - (executionStartTime || Date.now())) / 1000).toFixed(1)}s`,
   })
-  }, [nodes, executionStartTime])
+  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router, executionStartTime])
   
   // Reset execution state
   const handleResetExecution = useCallback(() => {
@@ -3185,6 +3317,44 @@ const handleRun = useCallback(async () => {
   return (
     <AppShell>
       <div className="flex h-full flex-col">
+        {/* Loading state */}
+        {isLoadingGraph && (
+          <div className="flex-1 flex items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading workflow...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Load error state */}
+        {loadError && !isLoadingGraph && (
+          <div className="flex-1 flex items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Failed to load workflow</p>
+                <p className="text-sm text-muted-foreground mt-1">{loadError}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => router.push("/workflows")}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Workflows
+                </Button>
+                <Button onClick={() => window.location.reload()}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Main builder UI */}
+        {!isLoadingGraph && !loadError && (
+          <>
         {/* Top toolbar */}
         <div className="flex-shrink-0 border-b border-border bg-card px-3 md:px-4 py-2 md:py-3">
           <div className="flex items-center justify-between gap-2">
@@ -3196,14 +3366,23 @@ const handleRun = useCallback(async () => {
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
+              
+              {/* Breadcrumb */}
+              <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Gravitre Labs</span>
+                <ChevronRight className="h-3 w-3" />
+                <Link href="/workflows" className="hover:text-foreground transition-colors">Workflows</Link>
+                <ChevronRight className="h-3 w-3" />
+              </div>
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className="hidden sm:flex items-center gap-2 min-w-0 hover:text-foreground transition-colors group"
+                    className="flex items-center gap-2 min-w-0 hover:text-foreground transition-colors group"
                     title="Switch workflow"
                   >
                     <Workflow className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-foreground truncate">{workflowMeta.name}</span>
+                    <span className="text-sm font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">{workflowMeta.name}</span>
                     <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </button>
                 </DropdownMenuTrigger>
@@ -3247,15 +3426,35 @@ const handleRun = useCallback(async () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               <StatusBadge variant="muted">{workflowMeta.status}</StatusBadge>
-              <EnvironmentBadge environment={workflowMeta.environment} />
-              <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version}</span>
+              <EnvironmentBadge environment={workflowMeta.environment || "development"} />
+              <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version || "v1"}</span>
+              
+              {/* Last saved indicator */}
+              {lastSavedAt && (
+                <span className="hidden lg:inline text-xs text-muted-foreground/70">
+                  Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1 md:gap-2 shrink-0">
+              {/* View last run link */}
+              {lastRunId && (
+                <Link href={`/runs/${lastRunId}`}>
+                  <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
+                    <ExternalLink className="h-3 w-3" />
+                    <span className="hidden sm:inline">Last Run</span>
+                  </Button>
+                </Link>
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="h-8 gap-2"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => {
+                  setSettingsName(workflowMeta.name)
+                  setSettingsDescription(workflowMeta.description || "")
+                  setSettingsOpen(true)
+                }}
               >
                 <Settings className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Settings</span>
@@ -3265,7 +3464,8 @@ const handleRun = useCallback(async () => {
                 size="sm" 
                 className="h-8 gap-2"
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || isLoadingGraph || isRunning}
+                aria-busy={isSaving}
               >
                 {isSaving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3278,7 +3478,8 @@ const handleRun = useCallback(async () => {
                 size="sm" 
                 className="h-8 gap-2"
                 onClick={handleRun}
-                disabled={isRunning}
+                disabled={isRunning || isLoadingGraph || isSaving}
+                aria-busy={isRunning}
               >
                 {isRunning ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3692,6 +3893,27 @@ const handleRun = useCallback(async () => {
                 }}
               />
             </div>
+
+            {/* Empty state CTA */}
+            {nodes.length === 0 && !isLoadingGraph && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+                  <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center border border-border">
+                    <Workflow className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Start building your workflow</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Add your first step from the library to begin automating tasks
+                    </p>
+                  </div>
+                  <Button onClick={openLibraryPanel} size="lg" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add First Step
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Connections - render as one SVG for all lines */}
             <svg 
@@ -4227,11 +4449,33 @@ const handleRun = useCallback(async () => {
                     <span className="font-mono">{executionElapsed}s</span>
                   </div>
                   
-                  {/* Error message */}
+                  {/* Error message and retry */}
                   {executionError && (
                     <>
                       <div className="w-px h-6 bg-border" />
                       <span className="text-xs text-red-400 max-w-[200px] truncate">{executionError}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-red-400 hover:text-red-300"
+                        onClick={handleRun}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Retry
+                      </Button>
+                    </>
+                  )}
+                  
+                  {/* View Run link when completed */}
+                  {executionStatus === "completed" && lastRunId && (
+                    <>
+                      <div className="w-px h-6 bg-border" />
+                      <Link href={`/runs/${lastRunId}`}>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-400 hover:text-emerald-300">
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View Run
+                        </Button>
+                      </Link>
                     </>
                   )}
                   
@@ -4409,7 +4653,8 @@ const handleRun = useCallback(async () => {
               <Label htmlFor="workflow-name">Workflow Name</Label>
               <Input 
                 id="workflow-name" 
-                defaultValue={workflowMeta.name}
+                value={settingsName}
+                onChange={(e) => setSettingsName(e.target.value)}
                 placeholder="Enter workflow name"
               />
             </div>
@@ -4419,7 +4664,8 @@ const handleRun = useCallback(async () => {
               <Label htmlFor="workflow-description">Description</Label>
               <Textarea 
                 id="workflow-description" 
-                defaultValue="Automatically syncs customer data from Salesforce"
+                value={settingsDescription}
+                onChange={(e) => setSettingsDescription(e.target.value)}
                 placeholder="Enter workflow description"
                 rows={3}
               />
@@ -4466,15 +4712,38 @@ const handleRun = useCallback(async () => {
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
+            <Button onClick={async () => {
+              // Update local workflow meta
+              setWorkflowMeta(prev => ({
+                ...prev,
+                name: settingsName,
+                description: settingsDescription,
+              }))
               setSettingsOpen(false)
-              toast.success("Settings saved")
+              
+              // Auto-save if persistable
+              if (canPersist) {
+                try {
+                  await saveBuilderGraph(id, nodes, {
+                    name: settingsName,
+                    description: settingsDescription,
+                  })
+                  setLastSavedAt(new Date())
+                  toast.success("Settings saved")
+                } catch (err) {
+                  toast.error("Failed to save settings")
+                }
+              } else {
+                toast.success("Settings updated locally")
+              }
             }}>
               Save Settings
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+      </>
+        )}
     </AppShell>
   )
 }
