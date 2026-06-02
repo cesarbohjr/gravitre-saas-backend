@@ -4568,58 +4568,58 @@ const handleRun = useCallback(async () => {
           </div>
 
           {/* Right config panel */}
-<ConfigPanel
-  node={selectedNode}
-  onClose={() => setSelectedNodeId(null)}
-  onUpdate={handleUpdateNode}
-  />
+          <ConfigPanel
+            node={selectedNode}
+            onClose={() => setSelectedNodeId(null)}
+            onUpdate={handleUpdateNode}
+          />
 
-  {/* Debate View Dialog */}
-  <DebateViewDialog
-    open={debateDialogOpen}
-    onOpenChange={setDebateDialogOpen}
-    node={debateNode}
-    onAcceptDecision={() => {
-      if (debateNode) {
-        handleUpdateNode({
-          state: "success",
-          councilConfig: {
-            ...debateNode.councilConfig,
-            finalDecision: {
-              recommendation: debateNode.councilConfig?.finalDecision?.recommendation ?? "Decision accepted",
-              method: debateNode.councilConfig?.finalDecision?.method ?? "consensus",
-              confidence: debateNode.councilConfig?.finalDecision?.confidence ?? 100,
-              keyReasons: debateNode.councilConfig?.finalDecision?.keyReasons ?? [],
-              dissentingOpinions: debateNode.councilConfig?.finalDecision?.dissentingOpinions,
-              executedAction: debateNode.councilConfig?.finalDecision?.recommendation
-            }
-          }
-        })
-        toast.success("Decision accepted", {
-          description: "The council recommendation has been executed"
-        })
-      }
-      setDebateDialogOpen(false)
-    }}
-    onOverrideDecision={() => {
-      toast.info("Override requested", {
-        description: "Please select a different action"
-      })
-    }}
-    onRequestMoreEvidence={() => {
-      if (debateNode) {
-        handleUpdateNode({ state: "debating" })
-        toast.info("Requesting more evidence", {
-          description: "Agents are gathering additional data..."
-        })
-      }
-    }}
-  />
+          {/* Debate View Dialog */}
+          <DebateViewDialog
+            open={debateDialogOpen}
+            onOpenChange={setDebateDialogOpen}
+            node={debateNode}
+            onAcceptDecision={() => {
+              if (debateNode) {
+                handleUpdateNode({
+                  state: "success",
+                  councilConfig: {
+                    ...debateNode.councilConfig,
+                    finalDecision: {
+                      recommendation: debateNode.councilConfig?.finalDecision?.recommendation ?? "Decision accepted",
+                      method: debateNode.councilConfig?.finalDecision?.method ?? "consensus",
+                      confidence: debateNode.councilConfig?.finalDecision?.confidence ?? 100,
+                      keyReasons: debateNode.councilConfig?.finalDecision?.keyReasons ?? [],
+                      dissentingOpinions: debateNode.councilConfig?.finalDecision?.dissentingOpinions,
+                      executedAction: debateNode.councilConfig?.finalDecision?.recommendation
+                    }
+                  }
+                })
+                toast.success("Decision accepted", {
+                  description: "The council recommendation has been executed"
+                })
+              }
+              setDebateDialogOpen(false)
+            }}
+            onOverrideDecision={() => {
+              toast.info("Override requested", {
+                description: "Please select a different action"
+              })
+            }}
+            onRequestMoreEvidence={() => {
+              if (debateNode) {
+                handleUpdateNode({ state: "debating" })
+                toast.info("Requesting more evidence", {
+                  description: "Agents are gathering additional data..."
+                })
+              }
+            }}
+          />
         </div>
         </div>
   
-        {/* Connect/Disconnect Confirmation Dialog */}
-        <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Connect/Disconnect Confirmation Dialog */}
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -4742,7 +4742,7 @@ const handleRun = useCallback(async () => {
           </div>
         </DialogContent>
       </Dialog>
-      </>
+          </>
         )}
       </div>
     </AppShell>
