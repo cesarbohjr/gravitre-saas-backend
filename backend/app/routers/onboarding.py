@@ -10,6 +10,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.services.org_seed_service import seed_org_if_needed
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
@@ -231,6 +232,24 @@ async def skip_onboarding(
     org_settings["onboarding"] = onboarding_state
     _save_org_settings(client, org_id, org_settings)
     return {"ok": True}
+
+
+@router.post("/bootstrap")
+async def bootstrap_org(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Seed demo agents, workflows, and runs for a new organization (idempotent)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return seed_org_if_needed(client, org_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
 
 @router.post("/reset")

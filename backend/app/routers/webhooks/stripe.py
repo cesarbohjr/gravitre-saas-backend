@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import create_client
 
+from app.billing.service import resolve_org_id_from_checkout_metadata
 from app.billing.stripe import verify_webhook
 from app.config import Settings, get_settings
 
@@ -106,6 +107,9 @@ async def stripe_webhook(
     org_id = metadata.get("org_id")
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+
+    if not org_id:
+        org_id = resolve_org_id_from_checkout_metadata(client, metadata)
 
     if event_type == "checkout.session.completed":
         subscription_id = data.get("subscription")

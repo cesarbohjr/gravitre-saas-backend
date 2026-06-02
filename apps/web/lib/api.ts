@@ -387,6 +387,11 @@ export const billingApi = {
   status: () =>
     fetcher<{
       billingStatus: string
+      planCode?: string
+      canAccessApp?: boolean
+      requiresUpgrade?: boolean
+      upgradeReason?: string | null
+      trialEndsAt?: string | null
       currentPeriodEnd?: string | null
       cancelAtPeriodEnd?: boolean
     }>(apiUrl("/api/billing/status")),
@@ -568,6 +573,15 @@ export const notificationsApi = {
 export const onboardingApi = {
   getProgress: () =>
     fetcher<OnboardingProgress>(apiUrl("/api/onboarding")),
+  bootstrap: () =>
+    postJson<{
+      org_id: string
+      seeded: boolean
+      agents_created: number
+      workflows_created: number
+      runs_created: number
+      welcome_message: string
+    }>(apiUrl("/api/onboarding/bootstrap"), {}),
   completeStep: (stepKey: string, data?: Record<string, unknown>) =>
     postJson<OnboardingProgress>(apiUrl("/api/onboarding/complete-step"), {
       step_key: stepKey,

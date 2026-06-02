@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
+from app.billing.entitlements import compute_app_access, normalize_billing_status
+from app.billing.service import DEFAULT_PLAN_CODE, get_org_billing
 from app.config import Settings, get_settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -54,6 +56,50 @@ def _resolve_role(client, org_id: str | None, user_id: str) -> str | None:
     return None
 
 
+def _load_onboarding_summary(client, org_id: str | None) -> dict:
+    if not org_id:
+        return {"seeded": False, "completed_at": None, "checklist_dismissed": False}
+    org_resp = (
+        client.table("organizations")
+        .select("settings")
+        .eq("id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if not org_resp.data:
+        return {"seeded": False, "completed_at": None, "checklist_dismissed": False}
+    settings = org_resp.data[0].get("settings") or {}
+    onboarding = settings.get("onboarding") if isinstance(settings, dict) else {}
+    if not isinstance(onboarding, dict):
+        onboarding = {}
+    return {
+        "seeded": bool(onboarding.get("seeded")),
+        "completed_at": onboarding.get("completed_at"),
+        "checklist_dismissed": bool(onboarding.get("checklist_dismissed")),
+    }
+
+
+def _load_billing_summary(client, org_id: str | None) -> dict:
+    if not org_id:
+        return {
+            "status": "inactive",
+            "plan_code": DEFAULT_PLAN_CODE,
+            "can_access_app": False,
+        }
+    billing = get_org_billing(client, org_id) or {
+        "plan_code": DEFAULT_PLAN_CODE,
+        "billing_status": "trialing",
+    }
+    status = normalize_billing_status(billing.get("billing_status"))
+    access = compute_app_access(status)
+    return {
+        "status": status,
+        "plan_code": (billing.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower(),
+        "can_access_app": access["can_access_app"],
+        "trial_ends_at": billing.get("current_period_end"),
+    }
+
+
 def _resolve_user_row(client, user_id: str) -> dict:
     user_resp = (
         client.table("users")
@@ -93,6 +139,8 @@ async def me(
     }
 
     current_org = {"id": org_id, "name": "Current Organization"} if org_id else None
+    onboarding = _load_onboarding_summary(client, org_id)
+    billing = _load_billing_summary(client, org_id)
 
     return {
         "user_id": current_user["user_id"],
@@ -102,6 +150,8 @@ async def me(
         "user": merged_user,
         "organizations": [current_org] if current_org else [],
         "current_org": current_org,
+        "onboarding": onboarding,
+        "billing": billing,
     }
 
 

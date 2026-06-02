@@ -157,6 +157,44 @@ def get_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
     return apply_overrides(base_plan, overrides)
 
 
+def resolve_org_id_from_checkout_metadata(client: Client, metadata: dict | None) -> str | None:
+    """Resolve org_id from Stripe checkout session metadata."""
+    meta = metadata or {}
+    org_id = str(meta.get("org_id") or "").strip() or None
+    if org_id:
+        return org_id
+
+    user_id = str(meta.get("user_id") or "").strip() or None
+    if user_id:
+        member_rows = (
+            client.table("organization_members")
+            .select("org_id")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if member_rows:
+            return str(member_rows[0]["org_id"])
+
+    checkout_email = str(meta.get("checkout_email") or meta.get("email") or "").strip().lower()
+    if checkout_email:
+        user_rows = (
+            client.table("users")
+            .select("org_id")
+            .eq("email", checkout_email)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if user_rows:
+            return str(user_rows[0]["org_id"])
+
+    return None
+
+
 def get_org_billing(client: Client, org_id: str) -> dict | None:
     row = (
         client.table("org_billing")

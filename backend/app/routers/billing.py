@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
     get_base_plan_for_org,
@@ -20,6 +21,7 @@ from app.billing.service import (
     get_supabase_client,
     get_usage_totals,
     overrides_active,
+    resolve_org_id_from_checkout_metadata,
     usage_warning,
 )
 from app.billing.stripe import (
@@ -190,6 +192,8 @@ class PublicCheckoutRequest(BaseModel):
     price_id: str | None = Field(default=None, alias="price_id")
     email: EmailStr
     company_name: str | None = Field(default=None, alias="companyName")
+    org_id: str | None = Field(default=None, alias="orgId")
+    user_id: str | None = Field(default=None, alias="userId")
 
 
 class SeatsRequest(BaseModel):
@@ -198,6 +202,10 @@ class SeatsRequest(BaseModel):
 
 class CancelRequest(BaseModel):
     at_period_end: bool = Field(default=True)
+
+
+def _resolve_org_id_from_checkout_metadata(client, metadata: dict) -> str | None:
+    return resolve_org_id_from_checkout_metadata(client, metadata)
 
 
 def _usage_from_records(client, org_id: str, tier: str | None) -> dict:
@@ -339,12 +347,36 @@ async def get_billing_status(
     runs_included = int(plan.get("workflow_runs_included") or 0)
     ai_warn = usage_warning(ai_used, ai_included)
     run_warn = usage_warning(runs_used, runs_included)
+    billing_status = normalize_billing_status(billing.get("billing_status"))
+    plan_code = (billing.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower()
+    access = compute_app_access(billing_status)
+    trial_ends_at = billing.get("current_period_end")
+    if billing_status == "trialing" and not trial_ends_at:
+        org_row = (
+            client.table("organizations")
+            .select("settings")
+            .eq("id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if org_row:
+            org_settings = org_row[0].get("settings") or {}
+            billing_settings = org_settings.get("billing") if isinstance(org_settings, dict) else {}
+            if isinstance(billing_settings, dict):
+                trial_ends_at = billing_settings.get("trial_ends_at")
     return {
         "plan": plan,
         "basePlan": base_plan,
         "overridesActive": overrides_active(overrides),
         "overrides": overrides or {},
-        "billingStatus": billing.get("billing_status") or "trialing",
+        "billingStatus": billing_status,
+        "planCode": plan_code,
+        "canAccessApp": access["can_access_app"],
+        "requiresUpgrade": access["requires_upgrade"],
+        "upgradeReason": access["upgrade_reason"],
+        "trialEndsAt": trial_ends_at,
         "currentPeriodEnd": billing.get("current_period_end"),
         "cancelAtPeriodEnd": billing.get("cancel_at_period_end") or False,
         "usage": {
@@ -475,6 +507,9 @@ async def create_public_checkout(
                 "plan_code": plan_code or "free",
                 "billing_interval": billing_interval or "monthly",
                 "company_name": (body.company_name or "").strip(),
+                "checkout_email": str(body.email).strip().lower(),
+                **({"org_id": str(body.org_id).strip()} if body.org_id else {}),
+                **({"user_id": str(body.user_id).strip()} if body.user_id else {}),
             },
         )
         session = create_checkout_session(
@@ -489,6 +524,8 @@ async def create_public_checkout(
                 "billing_interval": billing_interval or "monthly",
                 "checkout_email": str(body.email).strip().lower(),
                 "company_name": (body.company_name or "").strip(),
+                **({"org_id": str(body.org_id).strip()} if body.org_id else {}),
+                **({"user_id": str(body.user_id).strip()} if body.user_id else {}),
             },
         )
     except stripe.error.StripeError as exc:
@@ -660,21 +697,25 @@ async def handle_webhook(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     event_type = event["type"]
     data = event["data"]["object"]
-    org_id = None
-    if isinstance(data, dict):
-        metadata = data.get("metadata") or {}
-        org_id = metadata.get("org_id")
+    metadata = data.get("metadata") or {} if isinstance(data, dict) else {}
+    org_id = metadata.get("org_id") if isinstance(metadata, dict) else None
+    if not org_id and isinstance(metadata, dict):
+        org_id = _resolve_org_id_from_checkout_metadata(client, metadata)
     if event_type == "checkout.session.completed":
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
-        client.table("org_billing").upsert(
-            {
-                "org_id": org_id,
-                "stripe_customer_id": customer_id,
-                "stripe_subscription_id": subscription_id,
-                "billing_status": "active",
-            }
-        ).execute()
+        plan_code = (metadata.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower() if isinstance(metadata, dict) else DEFAULT_PLAN_CODE
+        if org_id:
+            client.table("org_billing").upsert(
+                {
+                    "org_id": org_id,
+                    "stripe_customer_id": customer_id,
+                    "stripe_subscription_id": subscription_id,
+                    "plan_code": plan_code,
+                    "billing_status": "active",
+                },
+                on_conflict="org_id",
+            ).execute()
         if org_id:
             write_audit_event(
                 client,
