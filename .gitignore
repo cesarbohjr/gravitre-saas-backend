@@ -39,6 +39,7 @@ dist/
 build/
 .vercel/
 *.tsbuildinfo
+.env*.local
 # Local test / verification output (never commit)
 backend/pytest*.txt
 backend/*.txt
