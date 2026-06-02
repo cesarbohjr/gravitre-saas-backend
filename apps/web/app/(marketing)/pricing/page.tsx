@@ -480,6 +480,21 @@ export default function PricingPage() {
             >
               Replace hours of work with a single task.
             </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65 }}
+              className="mt-6"
+            >
+              <Link
+                href="/get-started"
+                className="group inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-all hover:border-zinc-400 hover:bg-zinc-50"
+              >
+                Start free — no card required
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </motion.div>
             
             {/* Billing toggle with enhanced animation */}
             <motion.div 
@@ -1397,6 +1412,12 @@ export default function PricingPage() {
               >
                 Start your 7-day free trial
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link
+                href="/get-started"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-8 py-4 text-base font-semibold text-zinc-900 transition-all hover:bg-zinc-50 hover:border-zinc-400"
+              >
+                Start free — no card required
               </Link>
             </div>
             <p className="mt-4 text-sm text-zinc-500">

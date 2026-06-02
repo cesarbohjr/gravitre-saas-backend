@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi } from "@/lib/api"
+import { trackSignupEvent } from "@/lib/analytics/signup-events"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -101,8 +102,10 @@ export function AppShell({ children, title }: AppShellProps) {
     setBootstrapAttempted(true)
     
     void (async () => {
+      trackSignupEvent("onboarding_bootstrap_started", { source: "app_shell" })
       try {
         await onboardingApi.bootstrap()
+        trackSignupEvent("onboarding_bootstrap_completed", { source: "app_shell" })
         // Revalidate auth/me so welcome banner can read seeded: true
         mutate("/api/auth/me")
       } catch (err) {

@@ -9,6 +9,27 @@ import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
+import { trackSignupEvent } from "@/lib/analytics/signup-events"
+
+type AuthMode = "password" | "magic_link"
+
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  "invalid login credentials": "That email and password don't match. Try again or reset your password.",
+  "email not confirmed": "Confirm your email to continue. We can send another link.",
+  "too many requests": "Too many attempts. Wait a minute and try again.",
+  "email rate limit exceeded": "Too many attempts. Wait a minute and try again.",
+}
+
+function humanizeAuthError(message: string): string {
+  const lower = message.toLowerCase()
+  for (const [key, copy] of Object.entries(AUTH_ERROR_MESSAGES)) {
+    if (lower.includes(key)) return copy
+  }
+  if (lower.includes("signups not allowed")) {
+    return "Your account doesn't exist yet. Sign up to continue."
+  }
+  return message
+}
 
 const features = [
   "Deploy AI agents in minutes",
@@ -31,6 +52,7 @@ function LoginPageContent() {
   const [showSignupCta, setShowSignupCta] = useState(false)
   const [canResendVerification, setCanResendVerification] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [authMode, setAuthMode] = useState<AuthMode>("password")
   const oauthLoginCheckRef = useRef(false)
 
   const sessionExpiredMessage =
@@ -130,6 +152,25 @@ function LoginPageContent() {
     setCanResendVerification(false)
     setIsLoading(true)
 
+    if (authMode === "magic_link") {
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl("/operator"),
+        },
+      })
+
+      setIsLoading(false)
+      if (error) {
+        trackSignupEvent("signup_failed", { error_type: "magic_link", context: "login" })
+        setAuthError(humanizeAuthError(error.message))
+        return
+      }
+
+      setAuthInfo(`Check your inbox — we sent a sign-in link to ${email.trim()}`)
+      return
+    }
+
     const { error } = await supabaseClient.auth.signInWithPassword({
       email,
       password,
@@ -137,7 +178,9 @@ function LoginPageContent() {
 
     setIsLoading(false)
     if (error) {
-      setAuthError(error.message)
+      trackSignupEvent("signup_failed", { error_type: "password", context: "login" })
+      const friendly = humanizeAuthError(error.message)
+      setAuthError(friendly)
       if ((error.message || "").toLowerCase().includes("email not confirmed")) {
         setCanResendVerification(true)
       }
@@ -145,7 +188,7 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
-    router.push(redirect)
+    router.replace(redirect)
   }
 
   const handleResendVerification = async () => {
@@ -179,6 +222,7 @@ function LoginPageContent() {
     setAuthError(null)
     setShowSignupCta(false)
     setLoadingProvider(provider)
+    trackSignupEvent("signup_oauth_clicked", { provider, context: "login" })
 
     const selectedProvider =
       provider === "github" ? "github" : provider === "microsoft" ? "azure" : "google"
@@ -191,7 +235,8 @@ function LoginPageContent() {
     const result = await beginOAuthSignIn(selectedProvider, "/operator")
     if (!result.ok) {
       clearTimeout(resetTimer)
-      setAuthError(result.error)
+      trackSignupEvent("signup_failed", { error_type: "oauth", provider, context: "login" })
+      setAuthError(humanizeAuthError(result.error))
       setLoadingProvider(null)
       return
     }
@@ -200,7 +245,7 @@ function LoginPageContent() {
 
   // Don't block render - show form immediately, redirect happens via useEffect if logged in
   return (
-    <div className="min-h-screen bg-zinc-50 relative overflow-hidden">
+    <div className="min-h-screen bg-zinc-50 relative overflow-x-hidden">
       {/* Background grid */}
       <div 
         className="absolute inset-0 opacity-[0.03]"
@@ -263,14 +308,14 @@ function LoginPageContent() {
         </div>
 
         {/* Right side - Login form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12">
+        <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 py-6 sm:py-12">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-[440px]"
           >
-            <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-xl shadow-zinc-200/40 p-8 lg:p-10">
+            <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-xl shadow-zinc-200/40 p-6 sm:p-8 lg:p-10">
               {/* Header */}
               <div className="text-center mb-8">
                 {/* Mobile logo */}
@@ -340,7 +385,7 @@ function LoginPageContent() {
                     disabled={isLoading || loadingProvider !== null}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300 disabled:opacity-50"
                   >
                     {loadingProvider === provider.id ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -361,65 +406,94 @@ function LoginPageContent() {
                 <div className="h-px flex-1 bg-zinc-200" />
               </div>
 
+              {/* Auth mode toggle */}
+              <div className="flex rounded-xl border border-zinc-200 p-1 mb-6 bg-zinc-50">
+                {(["password", "magic_link"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      setAuthMode(mode)
+                      setAuthError(null)
+                      setAuthInfo(null)
+                      setCanResendVerification(false)
+                    }}
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      authMode === mode
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-700"
+                    }`}
+                  >
+                    {mode === "password" ? "Password" : "Magic link"}
+                  </button>
+                ))}
+              </div>
+
               {/* Email form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1.5">
+                  <label htmlFor="login-email" className="block text-sm font-medium text-zinc-700 mb-1.5">
                     Email
                   </label>
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
                     required
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-zinc-700">
-                      Password
-                    </label>
-                    <Link 
-                      href="/forgot-password" 
-                      className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors"
-                    >
-                      Forgot password?
-                    </Link>
+                {authMode === "password" && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label htmlFor="login-password" className="block text-sm font-medium text-zinc-700">
+                        Password
+                      </label>
+                      <Link 
+                        href="/forgot-password" 
+                        className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        required
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 pr-12 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      required
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 pr-12 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+                )}
 
                 <motion.button
                   type="submit"
                   disabled={isLoading || loadingProvider !== null}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 min-h-[48px] text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
                 >
                   {isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      <span>Sign in</span>
+                      <span>{authMode === "magic_link" ? "Email me a sign-in link" : "Sign in"}</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -433,6 +507,11 @@ function LoginPageContent() {
                   Get started free
                 </Link>
               </p>
+              <footer className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-zinc-400">
+                <Link href="/privacy" className="hover:text-zinc-600 transition-colors">Privacy</Link>
+                <Link href="/terms" className="hover:text-zinc-600 transition-colors">Terms</Link>
+                <Link href="/security" className="hover:text-zinc-600 transition-colors">Security</Link>
+              </footer>
             </div>
           </motion.div>
         </div>

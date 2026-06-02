@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
@@ -10,6 +10,7 @@ import { beginOAuthSignIn } from "@/lib/oauth"
 import { onboardingApi, billingApi } from "@/lib/api"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabaseClient } from "@/lib/supabaseClient"
+import { getUtmParams, trackSignupEvent } from "@/lib/analytics/signup-events"
 
 // Human-readable error messages
 function humanizeAuthError(message: string): string {
@@ -57,6 +58,17 @@ export default function GetStartedPage() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const signupStartedRef = useRef(false)
+
+  useEffect(() => {
+    trackSignupEvent("signup_page_viewed", getUtmParams())
+  }, [])
+
+  const handleSignupStarted = () => {
+    if (signupStartedRef.current) return
+    signupStartedRef.current = true
+    trackSignupEvent("signup_started")
+  }
 
   // Auth guard: redirect logged-in users based on billing status
   useEffect(() => {
@@ -135,6 +147,7 @@ export default function GetStartedPage() {
     }
 
     setIsLoading(true)
+    trackSignupEvent("signup_form_submitted")
     try {
       const { data, error } = await supabaseClient.auth.signUp({
         email: email.trim(),
@@ -150,22 +163,27 @@ export default function GetStartedPage() {
       const session = data.session ?? (await supabaseClient.auth.getSession()).data.session
 
       if (!session) {
-        // Email confirmation required
+        trackSignupEvent("signup_completed", { method: "email", pending_confirmation: true })
         setSuccessMessage("Check your inbox — we sent a confirmation link. Click it to access your workspace.")
         setIsLoading(false)
         return
       }
 
-      // Seed demo data (idempotent)
+      trackSignupEvent("onboarding_bootstrap_started")
       try {
         await onboardingApi.bootstrap()
+        trackSignupEvent("onboarding_bootstrap_completed")
       } catch {
-        // Non-blocking — user still gets in
         console.warn("Demo bootstrap failed, continuing to app")
       }
 
+      trackSignupEvent("signup_completed", { method: "email" })
       router.replace("/operator")
     } catch (err) {
+      trackSignupEvent("signup_failed", {
+        error_type: "email",
+        message: err instanceof Error ? err.message.slice(0, 80) : "unknown",
+      })
       setAuthError(humanizeAuthError(err instanceof Error ? err.message : "Signup failed"))
       setIsLoading(false)
     }
@@ -175,7 +193,7 @@ export default function GetStartedPage() {
   const anyLoading = isLoading || loadingProvider !== null
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="min-h-screen bg-white relative overflow-x-hidden overflow-y-auto">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/50 via-white to-white" />
       <div 
@@ -187,7 +205,7 @@ export default function GetStartedPage() {
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-6 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -301,6 +319,7 @@ export default function GetStartedPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onFocus={handleSignupStarted}
                   required
                   disabled={anyLoading}
                   className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 min-h-[48px] text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:bg-zinc-50 disabled:cursor-not-allowed"
@@ -389,13 +408,18 @@ export default function GetStartedPage() {
             </form>
           </div>
 
-          {/* Footer link */}
+          {/* Footer */}
           <p className="mt-6 text-center text-sm text-zinc-500">
             Already have an account?{" "}
             <Link href="/login" className="text-emerald-600 hover:text-emerald-700 font-medium">
               Sign in
             </Link>
           </p>
+          <footer className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-zinc-400">
+            <Link href="/privacy" className="hover:text-zinc-600 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-zinc-600 transition-colors">Terms</Link>
+            <Link href="/security" className="hover:text-zinc-600 transition-colors">Security</Link>
+          </footer>
         </motion.div>
       </div>
     </div>

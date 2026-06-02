@@ -411,16 +411,30 @@ Do not block UI on analytics failures.
 
 ### v0 Prompt B6 — Mobile + SEO polish (P2)
 
+> **Full copy-paste prompt:** [`docs/onboarding/v0-prompt-B6.md`](./v0-prompt-B6.md)
+
 ```
-/get-started and /login:
-- Verify no horizontal scroll at 390px width
-- OAuth buttons stack full-width on mobile
-- CTA above fold on iPhone SE viewport
-- Footer links to Privacy, Terms, Security visible
+Polish mobile layout and SEO metadata for Gravitre auth/marketing pages.
 
-/pricing page: add secondary CTA "Start free — no card required" linking to /get-started
+FILES: get-started/page.tsx, get-started/layout.tsx, login/page.tsx, login/layout.tsx,
+       pricing/page.tsx, public/og-get-started.png
 
-Add public/og-get-started.png placeholder reference in get-started layout metadata (twitter:card summary_large_image)
+MOBILE (/get-started + /login):
+- overflow-x-hidden on root; no horizontal scroll at 390px
+- OAuth + inputs + CTAs: min-h-[48px], full width
+- py-6 sm:py-12 so headline + first OAuth above fold on iPhone SE
+- Footer: Privacy · Terms · Security (text-xs, centered, /privacy /terms /security)
+- autocomplete: email, new-password (signup), current-password (login)
+
+SEO:
+- get-started/layout.tsx + login/layout.tsx with openGraph + twitter summary_large_image
+- OG image: /og-get-started.png (1200×630) — emerald gradient, logo, "Build your AI team in minutes"
+
+PRICING:
+- Hero + final CTA: secondary link "Start free — no card required" → /get-started (outline pill)
+
+Do NOT change auth handlers, app-shell, backend, or analytics (B1–B5).
+See v0-prompt-B6.md for full acceptance checklist.
 ```
 
 ---
