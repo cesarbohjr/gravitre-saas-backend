@@ -4742,8 +4742,9 @@ const handleRun = useCallback(async () => {
           </div>
         </DialogContent>
       </Dialog>
-      </>
+          </>
         )}
+      </div>
     </AppShell>
   )
 }
