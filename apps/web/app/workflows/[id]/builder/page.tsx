@@ -3047,7 +3047,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     
     setIsSaving(true)
     try {
-      const result = await saveBuilderGraph(id, nodes, {
+      const result = await saveBuilderGraph(id, nodes as CanvasWorkflowNode[], {
         name: settingsName || workflowMeta.name,
         description: settingsDescription || workflowMeta.description,
       })
@@ -3072,7 +3072,7 @@ const handleRun = useCallback(async () => {
     setIsRunning(true)
     try {
       // Save current state first
-      await saveBuilderGraph(id, nodes, {
+      await saveBuilderGraph(id, nodes as CanvasWorkflowNode[], {
         name: settingsName || workflowMeta.name,
         description: settingsDescription || workflowMeta.description,
       })
@@ -4723,7 +4723,7 @@ const handleRun = useCallback(async () => {
               // Auto-save if persistable
               if (canPersist) {
                 try {
-                  await saveBuilderGraph(id, nodes, {
+                  await saveBuilderGraph(id, nodes as CanvasWorkflowNode[], {
                     name: settingsName,
                     description: settingsDescription,
                   })

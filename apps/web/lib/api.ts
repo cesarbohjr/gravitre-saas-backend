@@ -255,6 +255,23 @@ export const workflowsApi = {
   deleteSchedule: (workflowId: string, scheduleId: string) =>
     deleteRequest(apiUrl(`/api/workflows/${workflowId}/schedules/${scheduleId}`)),
   
+  getBuilder: (workflowId: string) =>
+    fetcher<{ workflow_id: string; name?: string; nodes: WorkflowNode[]; edges: WorkflowEdge[] }>(
+      apiUrl(`/api/workflows/${workflowId}/builder`)
+    ),
+  saveBuilder: (workflowId: string, data: { nodes: unknown[]; edges: unknown[]; name?: string; description?: string }) =>
+    apiFetch(apiUrl(`/api/workflows/${workflowId}/builder`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+      }
+      return response.json()
+    }),
+
   // Execution
   execute: (data: ExecuteWorkflowRequest) => postJson<Run>(apiUrl("/api/workflows/execute"), data),
   dryRun: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
@@ -299,6 +316,16 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
+  startOAuth: (provider: string, data: { name: string; connectorId?: string; redirectPath?: string }) =>
+    postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
+      apiUrl(`/api/connectors/oauth/${provider}/start`),
+      data
+    ),
+  reconnectOAuth: (provider: string, connectorId: string, name: string) =>
+    postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
+      apiUrl(`/api/connectors/oauth/${provider}/start`),
+      { name, connectorId, redirectPath: "/connectors" }
+    ),
 }
 
 // ============ Sources ============
