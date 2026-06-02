@@ -179,13 +179,13 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-2 right-2 p-1.5 rounded bg-zinc-700/80 hover:bg-zinc-600 transition-colors"
+      className="absolute top-2 right-2 p-1.5 rounded bg-zinc-200/80 hover:bg-zinc-300 transition-colors"
       title="Copy code"
     >
       {copied ? (
-        <Check className="h-3.5 w-3.5 text-emerald-400" />
+        <Check className="h-3.5 w-3.5 text-emerald-600" />
       ) : (
-        <Copy className="h-3.5 w-3.5 text-zinc-400" />
+        <Copy className="h-3.5 w-3.5 text-zinc-500" />
       )}
     </button>
   )
@@ -207,11 +207,11 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
   return (
     <div className="relative group my-3">
       {language && (
-        <div className="absolute top-0 left-0 px-2 py-0.5 text-[10px] text-zinc-500 bg-zinc-800 rounded-br">
+        <div className="absolute top-0 left-0 px-2 py-0.5 text-[10px] text-zinc-500 bg-zinc-100 rounded-br">
           {language}
         </div>
       )}
-      <pre className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 pt-6 overflow-x-auto">
+      <pre className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 pt-6 overflow-x-auto">
         <code className={className}>
           {children}
         </code>
@@ -258,8 +258,8 @@ function ToolChip({ invocation }: { invocation: ToolInvocation }) {
         className={cn(
           "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
           isComplete
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer"
-            : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 cursor-pointer"
+            : "bg-zinc-100 text-zinc-500 border border-zinc-200"
         )}
       >
         {isComplete ? (
@@ -287,8 +287,8 @@ function ToolChip({ invocation }: { invocation: ToolInvocation }) {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 text-xs">
-              <pre className="text-zinc-400 overflow-x-auto whitespace-pre-wrap">
+            <div className="mt-2 p-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs">
+              <pre className="text-zinc-600 overflow-x-auto whitespace-pre-wrap">
                 {formatResult(invocation.result)}
               </pre>
             </div>
@@ -306,10 +306,10 @@ function SourceCitations({ sources }: { sources: SourceCitation[] }) {
   if (!sources || sources.length === 0) return null
 
   return (
-    <div className="mt-3 pt-3 border-t border-zinc-800">
+    <div className="mt-3 pt-3 border-t border-zinc-200">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+        className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-700 transition-colors"
       >
         <Database className="h-3 w-3" />
         <span>{sources.length} source{sources.length !== 1 ? "s" : ""} used</span>
@@ -333,9 +333,9 @@ function SourceCitations({ sources }: { sources: SourceCitation[] }) {
               {sources.map((source, i) => (
                 <div
                   key={i}
-                  className="p-2 rounded-lg bg-zinc-900/50 border border-zinc-800"
+                  className="p-2 rounded-lg bg-zinc-50 border border-zinc-200"
                 >
-                  <p className="text-xs font-medium text-zinc-300">{source.title}</p>
+                  <p className="text-xs font-medium text-zinc-700">{source.title}</p>
                   <p className="text-[11px] text-zinc-500 mt-1 line-clamp-2">
                     {source.snippet.slice(0, 100)}...
                   </p>
@@ -363,8 +363,8 @@ function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean 
       )}
     >
       {!isUser && (
-        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center ring-1 ring-emerald-500/20">
-          <Sparkles className="h-4 w-4 text-emerald-400" />
+        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center ring-1 ring-emerald-200">
+          <Sparkles className="h-4 w-4 text-emerald-600" />
         </div>
       )}
 
@@ -372,8 +372,8 @@ function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean 
         className={cn(
           "max-w-[80%] rounded-2xl px-4 py-3",
           isUser
-            ? "bg-blue-600 text-white"
-            : "bg-zinc-800/80 text-zinc-100 border border-zinc-700/50"
+            ? "bg-emerald-600 text-white"
+            : "bg-white text-zinc-900 border border-zinc-200 shadow-sm"
         )}
       >
         {/* Tool invocations */}
@@ -389,7 +389,7 @@ function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean 
         {isUser ? (
           <p className="text-sm whitespace-pre-wrap">{text}</p>
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-code:text-emerald-400 prose-code:bg-zinc-900/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+          <div className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
@@ -399,7 +399,7 @@ function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean 
                   const isInline = !className
                   if (isInline) {
                     return (
-                      <code className="text-emerald-400 bg-zinc-900/50 px-1 py-0.5 rounded" {...props}>
+                      <code className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded" {...props}>
                         {children}
                       </code>
                     )
@@ -418,7 +418,7 @@ function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean 
       </div>
 
       {isUser && (
-        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center">
           <span className="text-xs font-medium text-white">You</span>
         </div>
       )}
@@ -532,16 +532,16 @@ export default function AssistantPage() {
 
   return (
     <AppShell title="Assistant">
-      <div className="flex h-full flex-col bg-[#0B0F14]">
+      <div className="flex h-full flex-col bg-zinc-50">
         {/* Header */}
-        <div className="border-b border-zinc-800 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-zinc-900 to-zinc-900/50">
+        <div className="border-b border-zinc-200 px-4 md:px-6 py-3 md:py-4 bg-white">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/20 shrink-0">
-                <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
+              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 ring-1 ring-emerald-200 shrink-0">
+                <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-emerald-600" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-base md:text-lg font-semibold text-zinc-100">Gravitre Assistant</h1>
+                <h1 className="text-base md:text-lg font-semibold text-zinc-900">Gravitre Assistant</h1>
                 <p className="text-xs md:text-sm text-zinc-500 truncate">
                   AI-powered help for your automation platform
                 </p>
@@ -551,7 +551,7 @@ export default function AssistantPage() {
               variant="outline"
               size="sm"
               onClick={handleNewConversation}
-              className="gap-2 bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100"
+              className="gap-2 bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
             >
               <MessageSquarePlus className="h-4 w-4" />
               <span className="hidden sm:inline">New chat</span>
@@ -568,10 +568,10 @@ export default function AssistantPage() {
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center justify-center py-16 text-center"
               >
-                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center mb-6">
-                  <Sparkles className="h-8 w-8 text-emerald-400" />
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-6">
+                  <Sparkles className="h-8 w-8 text-emerald-600" />
                 </div>
-                <h2 className="text-lg font-semibold text-zinc-100 mb-2">Sign in required</h2>
+                <h2 className="text-lg font-semibold text-zinc-900 mb-2">Sign in required</h2>
                 <p className="text-sm text-zinc-500 max-w-md">
                   Sign in to use the Gravitre AI Assistant.
                 </p>
@@ -583,16 +583,16 @@ export default function AssistantPage() {
                 className="flex flex-col items-center justify-center py-16 text-center"
               >
                 <div className="relative mb-6">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
-                    <Sparkles className="h-8 w-8 text-emerald-400" />
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+                    <Sparkles className="h-8 w-8 text-emerald-600" />
                   </div>
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                    className="absolute inset-0 rounded-full border-2 border-emerald-300"
                     animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
                     transition={{ duration: 3, repeat: Infinity }}
                   />
                 </div>
-                <h2 className="text-lg font-semibold text-zinc-100 mb-2">
+                <h2 className="text-lg font-semibold text-zinc-900 mb-2">
                   How can I help you today?
                 </h2>
                 <p className="text-sm text-zinc-500 mb-8 max-w-md">
@@ -608,9 +608,9 @@ export default function AssistantPage() {
                         <button
                           key={i}
                           onClick={() => submitText(prompt.label)}
-                          className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/50 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-left"
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50 transition-all text-left shadow-sm"
                         >
-                          <PromptIcon className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                          <PromptIcon className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                           <span>{prompt.label}</span>
                         </button>
                       )
@@ -634,13 +634,13 @@ export default function AssistantPage() {
                     animate={{ opacity: 1 }}
                     className="flex gap-3"
                   >
-                    <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center ring-1 ring-emerald-500/20">
-                      <Sparkles className="h-4 w-4 text-emerald-400" />
+                    <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center ring-1 ring-emerald-200">
+                      <Sparkles className="h-4 w-4 text-emerald-600" />
                     </div>
-                    <div className="bg-zinc-800/80 border border-zinc-700/50 rounded-2xl px-4 py-3">
+                    <div className="bg-white border border-zinc-200 rounded-2xl px-4 py-3 shadow-sm">
                       <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
-                        <span className="text-sm text-zinc-400">Thinking...</span>
+                        <Loader2 className="h-4 w-4 text-emerald-600 animate-spin" />
+                        <span className="text-sm text-zinc-500">Thinking...</span>
                       </div>
                     </div>
                   </motion.div>
@@ -653,12 +653,12 @@ export default function AssistantPage() {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-zinc-800 p-4 bg-zinc-900/50">
+        <div className="border-t border-zinc-200 p-4 bg-white">
           <form onSubmit={onSubmit} className="max-w-4xl mx-auto">
             <div
               className={cn(
-                "flex items-end gap-3 rounded-xl border bg-zinc-900 p-3 transition-all",
-                "border-zinc-800 hover:border-zinc-700 focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
+                "flex items-end gap-3 rounded-xl border bg-white p-3 transition-all",
+                "border-zinc-200 hover:border-zinc-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20"
               )}
             >
               <textarea
@@ -669,7 +669,7 @@ export default function AssistantPage() {
                 placeholder={user ? "Ask me anything about your automation setup..." : "Sign in to chat"}
                 disabled={!user || isLoading}
                 rows={1}
-                className="flex-1 bg-transparent text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
+                className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
                 style={{ height: "24px" }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement
@@ -690,7 +690,7 @@ export default function AssistantPage() {
                 )}
               </Button>
             </div>
-            <p className="text-[11px] text-zinc-600 text-center mt-2">
+            <p className="text-[11px] text-zinc-500 text-center mt-2">
               Assistant can make mistakes. Check important information.
             </p>
           </form>
