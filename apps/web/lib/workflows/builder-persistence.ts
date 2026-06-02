@@ -33,7 +33,6 @@ export interface CanvasWorkflowNode {
   }
   outputPaths?: { id: string; label: string; condition?: string; targetNodeId?: string; isDefault?: boolean }[]
   councilConfig?: Record<string, unknown>
-  metadata?: Record<string, unknown>
 }
 
 // Workflow metadata from API
@@ -95,25 +94,26 @@ export function apiGraphToCanvasNodes(
   }
 
   return apiNodes.map((apiNode) => {
-    const nodeType = (apiNode.node_type || apiNode.type || "task") as CanvasWorkflowNode["type"]
-    const position = apiNode.position || { x: apiNode.position_x || 0, y: apiNode.position_y || 0 }
+    const nodeType = (apiNode.node_type || "task") as CanvasWorkflowNode["type"]
+    const position = apiNode.position || { x: 0, y: 0 }
+    // Config may contain extended metadata like vendor, selectedAction, etc.
+    const config = (apiNode.config || {}) as Record<string, unknown>
     
     return {
       id: apiNode.id,
       type: nodeType,
       name: apiNode.title || apiNode.name || "Untitled",
       description: apiNode.description,
-      config: apiNode.config || {},
+      config: config,
       position: { x: position.x, y: position.y },
       connections: edgeMap.get(apiNode.id) || [],
       state: "idle",
-      vendor: apiNode.metadata?.vendor as string | undefined,
-      selectedAction: apiNode.metadata?.selected_action as string | undefined,
-      dataLabel: apiNode.metadata?.data_label as string | undefined,
-      decisionConfig: apiNode.metadata?.decisionConfig as CanvasWorkflowNode["decisionConfig"],
-      outputPaths: apiNode.metadata?.outputPaths as CanvasWorkflowNode["outputPaths"],
-      councilConfig: apiNode.metadata?.councilConfig as Record<string, unknown>,
-      metadata: apiNode.metadata,
+      vendor: config.vendor as string | undefined,
+      selectedAction: config.selected_action as string | undefined,
+      dataLabel: config.data_label as string | undefined,
+      decisionConfig: config.decisionConfig as CanvasWorkflowNode["decisionConfig"],
+      outputPaths: config.outputPaths as CanvasWorkflowNode["outputPaths"],
+      councilConfig: config.councilConfig as Record<string, unknown>,
     }
   })
 }
@@ -130,19 +130,17 @@ export function canvasToSavePayload(nodes: CanvasWorkflowNode[]): {
     node_type: node.type,
     title: node.name,
     description: node.description,
-    config: node.config,
-    position: node.position,
-    position_x: node.position.x,
-    position_y: node.position.y,
-    metadata: {
+    config: {
+      ...node.config,
+      // Store extended metadata in config
       vendor: node.vendor,
       selected_action: node.selectedAction,
       data_label: node.dataLabel,
       decisionConfig: node.decisionConfig,
       outputPaths: node.outputPaths,
       councilConfig: node.councilConfig,
-      ...node.metadata,
     },
+    position: node.position,
   }))
 
   // Derive edges from node connections
