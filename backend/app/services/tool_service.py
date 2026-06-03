@@ -55,6 +55,28 @@ from app.connectors.salesforce import (
     update_opportunity,
     update_opportunity_stage,
 )
+from app.connectors.quickbooks import (
+    QuickBooksAPIError,
+    get_bill,
+    get_company_info,
+    get_customer,
+    get_invoice,
+    get_vendor,
+    list_accounts,
+    list_bills,
+    list_customers,
+    list_invoices,
+    list_payments,
+    list_vendors,
+    search_customers,
+)
+from app.connectors.quickbooks_oauth import ensure_quickbooks_session
+from app.connectors.stripe_api import (
+    StripeAPIError,
+    get_subscription,
+    list_invoices,
+    resolve_stripe_credentials,
+)
 from app.connectors.salesforce_oauth import ensure_salesforce_session
 from app.connectors.github_api import (
     GitHubAPIError,
@@ -692,6 +714,325 @@ def _exec_salesforce_accounts_update(ctx: ToolContext, params: dict[str, Any]) -
     )
 
 
+def _quickbooks_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "quickbooks", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active QuickBooks connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "quickbooks", cid)
+    token, _realm, api_base, err = ensure_quickbooks_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token or not api_base:
+        raise ToolAuthExpiredError(err or "QuickBooks OAuth not connected")
+    return cid, token, api_base
+
+
+def _handle_quickbooks_error(exc: QuickBooksAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_quickbooks_invoices_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_invoices(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.invoices.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_invoices_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    invoice_id = params.get("invoice_id") or params.get("invoiceId")
+    if not invoice_id:
+        raise ToolValidationError("quickbooks.invoices.get requires invoice_id")
+    try:
+        data = get_invoice(api_base, token, str(invoice_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.invoices.get",
+        connector_id=cid,
+        data={"invoice": data.get("Invoice") or data},
+    )
+
+
+def _exec_quickbooks_payments_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_payments(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.payments.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_vendors_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    vendor_id = params.get("vendor_id") or params.get("vendorId")
+    if not vendor_id:
+        raise ToolValidationError("quickbooks.vendors.get requires vendor_id")
+    try:
+        data = get_vendor(api_base, token, str(vendor_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.vendors.get",
+        connector_id=cid,
+        data={"vendor": data.get("Vendor") or data},
+    )
+
+
+def _exec_quickbooks_customers_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_customers(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_customers_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    customer_id = params.get("customer_id") or params.get("customerId")
+    if not customer_id:
+        raise ToolValidationError("quickbooks.customers.get requires customer_id")
+    try:
+        data = get_customer(api_base, token, str(customer_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.get",
+        connector_id=cid,
+        data={"customer": data.get("Customer") or data},
+    )
+
+
+def _exec_quickbooks_customers_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    display_name = params.get("display_name") or params.get("displayName") or params.get("name")
+    email = params.get("email")
+    if not display_name and not email:
+        raise ToolValidationError("quickbooks.customers.search requires display_name or email")
+    try:
+        data = search_customers(
+            api_base,
+            token,
+            display_name=str(display_name) if display_name else None,
+            email=str(email) if email else None,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.search",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_vendors_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_vendors(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.vendors.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_accounts_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_accounts(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.accounts.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_bills_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_bills(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.bills.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_bills_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    bill_id = params.get("bill_id") or params.get("billId")
+    if not bill_id:
+        raise ToolValidationError("quickbooks.bills.get requires bill_id")
+    try:
+        data = get_bill(api_base, token, str(bill_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.bills.get",
+        connector_id=cid,
+        data={"bill": data.get("Bill") or data},
+    )
+
+
+def _exec_quickbooks_companyinfo_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = get_company_info(api_base, token)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.companyinfo.get",
+        connector_id=cid,
+        data={"companyInfo": data.get("CompanyInfo") or data},
+    )
+
+
+def _stripe_connector_and_key(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str | None]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "stripe", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active Stripe connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "stripe", cid)
+    try:
+        api_key, stripe_account = resolve_stripe_credentials(ctx.client, ctx.org_id, cid, ctx.settings)
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return cid, api_key, stripe_account
+
+
+def _handle_stripe_error(exc: StripeAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_stripe_invoices_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key, stripe_account = _stripe_connector_and_key(ctx, params)
+    try:
+        data = list_invoices(
+            api_key,
+            stripe_account=stripe_account,
+            customer_id=params.get("customer_id") or params.get("customerId"),
+            status=params.get("status"),
+            limit=int(params.get("limit") or params.get("max_results") or 10),
+            starting_after=params.get("starting_after") or params.get("startingAfter"),
+        )
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="stripe.invoices.list",
+        connector_id=cid,
+        data={"invoices": data},
+    )
+
+
+def _exec_stripe_subscriptions_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key, stripe_account = _stripe_connector_and_key(ctx, params)
+    subscription_id = params.get("subscription_id") or params.get("subscriptionId")
+    if not subscription_id:
+        raise ToolValidationError("stripe.subscriptions.get requires subscription_id")
+    try:
+        data = get_subscription(api_key, str(subscription_id), stripe_account=stripe_account)
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="stripe.subscriptions.get",
+        connector_id=cid,
+        data={"subscription": data},
+    )
+
+
 def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
@@ -1138,6 +1479,20 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "salesforce.opportunities.update": _exec_salesforce_opportunities_update,
     "salesforce.accounts.create": _exec_salesforce_accounts_create,
     "salesforce.accounts.update": _exec_salesforce_accounts_update,
+    "quickbooks.invoices.list": _exec_quickbooks_invoices_list,
+    "quickbooks.invoices.get": _exec_quickbooks_invoices_get,
+    "quickbooks.payments.list": _exec_quickbooks_payments_list,
+    "quickbooks.vendors.get": _exec_quickbooks_vendors_get,
+    "quickbooks.customers.list": _exec_quickbooks_customers_list,
+    "quickbooks.customers.get": _exec_quickbooks_customers_get,
+    "quickbooks.customers.search": _exec_quickbooks_customers_search,
+    "quickbooks.vendors.list": _exec_quickbooks_vendors_list,
+    "quickbooks.accounts.list": _exec_quickbooks_accounts_list,
+    "quickbooks.bills.list": _exec_quickbooks_bills_list,
+    "quickbooks.bills.get": _exec_quickbooks_bills_get,
+    "quickbooks.companyinfo.get": _exec_quickbooks_companyinfo_get,
+    "stripe.invoices.list": _exec_stripe_invoices_list,
+    "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
     "zendesk.tickets.get": _exec_zendesk_tickets_get,
     "zendesk.tickets.create": _exec_zendesk_tickets_create,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,

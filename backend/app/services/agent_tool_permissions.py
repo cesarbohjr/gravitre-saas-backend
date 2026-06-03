@@ -34,6 +34,20 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "salesforce.opportunities.update": ["salesforce:opportunities:write", "salesforce:*"],
     "salesforce.accounts.create": ["salesforce:accounts:write", "salesforce:*"],
     "salesforce.accounts.update": ["salesforce:accounts:write", "salesforce:*"],
+    "quickbooks.invoices.list": ["quickbooks:invoices:read", "quickbooks:*"],
+    "quickbooks.invoices.get": ["quickbooks:invoices:read", "quickbooks:*"],
+    "quickbooks.payments.list": ["quickbooks:payments:read", "quickbooks:*"],
+    "quickbooks.vendors.get": ["quickbooks:vendors:read", "quickbooks:*"],
+    "quickbooks.customers.list": ["quickbooks:customers:read", "quickbooks:*"],
+    "quickbooks.customers.get": ["quickbooks:customers:read", "quickbooks:*"],
+    "quickbooks.customers.search": ["quickbooks:customers:read", "quickbooks:*"],
+    "quickbooks.vendors.list": ["quickbooks:vendors:read", "quickbooks:*"],
+    "quickbooks.accounts.list": ["quickbooks:accounts:read", "quickbooks:*"],
+    "quickbooks.bills.list": ["quickbooks:bills:read", "quickbooks:*"],
+    "quickbooks.bills.get": ["quickbooks:bills:read", "quickbooks:*"],
+    "quickbooks.companyinfo.get": ["quickbooks:company:read", "quickbooks:*"],
+    "stripe.invoices.list": ["stripe:invoices:read", "stripe:*"],
+    "stripe.subscriptions.get": ["stripe:subscriptions:read", "stripe:*"],
     "zendesk.tickets.get": ["zendesk:tickets:read", "zendesk:*"],
     "zendesk.tickets.create": ["zendesk:tickets:write", "zendesk:*"],
     "zendesk.tickets.update": ["zendesk:tickets:write", "zendesk:*"],
@@ -209,6 +223,23 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "salesforce:opportunities:write",
             "salesforce:tasks:write",
             "salesforce:*",
+        ]
+    if system == "quickbooks":
+        return [
+            "quickbooks:invoices:read",
+            "quickbooks:payments:read",
+            "quickbooks:vendors:read",
+            "quickbooks:customers:read",
+            "quickbooks:accounts:read",
+            "quickbooks:bills:read",
+            "quickbooks:company:read",
+            "quickbooks:*",
+        ]
+    if system == "stripe":
+        return [
+            "stripe:invoices:read",
+            "stripe:subscriptions:read",
+            "stripe:*",
         ]
     if system == "slack":
         return ["slack:messages:write", "slack:*"]
