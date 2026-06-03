@@ -74,6 +74,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
     {
         "salesforce",
         "hubspot",
+        "quickbooks",
         "slack",
         "postgresql",
         "stripe",
@@ -122,6 +123,7 @@ def _docs_url(vendor: str) -> str | None:
         "postgresql": "https://www.postgresql.org/docs/",
         "stripe": "https://stripe.com/docs/api",
         "microsoft365": "https://docs.microsoft.com/en-us/graph/",
+        "quickbooks": "https://developer.intuit.com/app/developer/qbo/docs",
     }
     return mapping.get(vendor)
 

@@ -12,7 +12,10 @@
     "hubspot:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-hubspot-operator-env.ps1",
     "hubspot:open": "cd integrations/hubspot-app && hs project open",
     "generate:connector-key": "node backend/scripts/generate-connector-encryption-key.mjs",
-    "hubspot:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-hubspot-oauth.ps1"
+    "hubspot:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-hubspot-oauth.ps1",
+    "quickbooks:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
+    "quickbooks:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-quickbooks-operator-env.ps1",
+    "quickbooks:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-quickbooks-oauth.ps1"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.195",

@@ -5,6 +5,10 @@ from typing import Any
 
 from app.config import Settings
 from app.connectors.hubspot_oauth import hubspot_connection_auth_status, normalize_vendor as normalize_hubspot_vendor
+from app.connectors.quickbooks_oauth import (
+    normalize_vendor as normalize_quickbooks_vendor,
+    quickbooks_connection_auth_status,
+)
 from app.connectors.salesforce_oauth import (
     normalize_vendor as normalize_salesforce_vendor,
     salesforce_connection_auth_status,
@@ -27,6 +31,10 @@ def resolve_connector_auth_status(
         )
     if normalize_salesforce_vendor(vendor) == "salesforce":
         return salesforce_connection_auth_status(
+            client, org_id, connector_id, settings, environment_name=environment_name
+        )
+    if normalize_quickbooks_vendor(vendor) == "quickbooks":
+        return quickbooks_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
         )
     return None

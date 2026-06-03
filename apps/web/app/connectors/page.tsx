@@ -729,7 +729,7 @@ const availableConnectors = Object.entries(connectorCategories).flatMap(([catego
   data.connectors.map(c => ({ ...c, category }))
 )
 
-const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce"])
+const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce", "QuickBooks"])
 
 function connectorVendorKey(type: string): string {
   const key = type.toLowerCase().replace(/\s+/g, "")

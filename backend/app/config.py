@@ -114,6 +114,11 @@ class Settings(BaseSettings):
     salesforce_client_secret: str = ""
     salesforce_sandbox_client_id: str = ""
     salesforce_sandbox_client_secret: str = ""
+    # QuickBooks Online OAuth (STA-33)
+    quickbooks_client_id: str = ""
+    quickbooks_client_secret: str = ""
+    quickbooks_sandbox_client_id: str = ""
+    quickbooks_sandbox_client_secret: str = ""
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"

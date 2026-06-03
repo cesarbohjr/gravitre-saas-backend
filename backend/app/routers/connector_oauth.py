@@ -22,6 +22,14 @@ from app.connectors.hubspot_oauth import (
     hubspot_redirect_uri,
     normalize_vendor,
 )
+from app.connectors.quickbooks_oauth import (
+    complete_quickbooks_oauth_connection,
+    quickbooks_authorize_url,
+    quickbooks_credentials,
+    quickbooks_oauth_configured,
+    quickbooks_redirect_uri,
+    normalize_vendor as normalize_quickbooks_vendor,
+)
 from app.connectors.salesforce_oauth import (
     complete_salesforce_oauth_connection,
     salesforce_authorize_url,
@@ -37,7 +45,7 @@ from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
 
-SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot", "salesforce"})
+SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot", "salesforce", "quickbooks"})
 
 
 class OAuthStartRequest(BaseModel):
@@ -90,8 +98,10 @@ async def oauth_provider_status(
 ) -> OAuthProviderStatusResponse:
     """Public readiness check for platform OAuth (no secrets)."""
     vendor = normalize_vendor(provider)
-    if vendor == "salesforce":
-        vendor = normalize_salesforce_vendor(provider)
+    if normalize_salesforce_vendor(provider) == "salesforce":
+        vendor = "salesforce"
+    elif normalize_quickbooks_vendor(provider) == "quickbooks":
+        vendor = "quickbooks"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -103,6 +113,9 @@ async def oauth_provider_status(
     elif vendor == "salesforce":
         configured = salesforce_oauth_configured(settings, environment_name)
         redirect_uri = salesforce_redirect_uri(settings)
+    elif vendor == "quickbooks":
+        configured = quickbooks_oauth_configured(settings, environment_name)
+        redirect_uri = quickbooks_redirect_uri(settings)
 
     return OAuthProviderStatusResponse(
         provider=vendor,
@@ -127,6 +140,8 @@ async def start_oauth(
         pass
     elif normalize_salesforce_vendor(provider) == "salesforce":
         vendor = "salesforce"
+    elif normalize_quickbooks_vendor(provider) == "quickbooks":
+        vendor = "quickbooks"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -139,6 +154,11 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Salesforce OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "quickbooks" and not quickbooks_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("QuickBooks OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -184,6 +204,8 @@ async def start_oauth(
                 "https://developers.hubspot.com/docs"
                 if vendor == "hubspot"
                 else "https://developer.salesforce.com/docs"
+                if vendor == "salesforce"
+                else "https://developer.intuit.com/app/developer/qbo/docs"
             ),
         }
         created = client.table("connectors").insert(row).execute()
@@ -227,6 +249,12 @@ async def start_oauth(
         auth_url = salesforce_authorize_url(
             client_id, redirect_uri, state, environment_name=environment_name
         )
+    elif vendor == "quickbooks":
+        redirect_uri = quickbooks_redirect_uri(settings)
+        client_id, _secret = quickbooks_credentials(settings, environment_name)
+        auth_url = quickbooks_authorize_url(
+            client_id, redirect_uri, state, environment_name=environment_name
+        )
 
     write_audit_event(
         client,
@@ -248,11 +276,14 @@ async def oauth_callback(
     state: str | None = Query(default=None),
     error: str | None = Query(default=None),
     error_description: str | None = Query(default=None, alias="error_description"),
+    realm_id: str | None = Query(default=None, alias="realmId"),
 ) -> RedirectResponse:
     """OAuth callback (browser redirect). Exchanges code and stores encrypted tokens."""
     vendor = normalize_vendor(provider)
     if vendor != "hubspot" and normalize_salesforce_vendor(provider) == "salesforce":
         vendor = "salesforce"
+    elif normalize_quickbooks_vendor(provider) == "quickbooks":
+        vendor = "quickbooks"
     default_fail = _frontend_redirect(settings, "/connectors", {"oauth": "error", "provider": vendor})
 
     if error:
@@ -298,6 +329,17 @@ async def oauth_callback(
                 connector_id,
                 code,
                 settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "quickbooks":
+            complete_quickbooks_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                realm_id=realm_id,
                 environment_name=environment_name,
                 reconnect=reconnect,
             )
