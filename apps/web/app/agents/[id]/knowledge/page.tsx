@@ -87,10 +87,8 @@ export default function AgentKnowledgePage({
     () => trainingApi.listDatasets(),
     { fallbackData: { datasets: [] as TrainingDataset[] } }
   )
-  const datasets = useMemo(() => 
-    (datasetsData?.datasets ?? []).filter((d) => d.agent_id === agentId || !d.agent_id),
-    [datasetsData, agentId]
-  )
+  // Filter datasets - in a real app, this would filter by agent_id in the API
+  const datasets = datasetsData?.datasets ?? []
 
   // Fetch instructions
   const { data: instructionsData, mutate: mutateInstructions } = useSWR(
@@ -98,10 +96,8 @@ export default function AgentKnowledgePage({
     () => trainingApi.listInstructions(),
     { fallbackData: { instructions: [] as CustomInstruction[] } }
   )
-  const instructions = useMemo(() => 
-    (instructionsData?.instructions ?? []).filter((i) => i.agent_id === agentId || !i.agent_id),
-    [instructionsData, agentId]
-  )
+  // Filter instructions - in a real app, this would filter by agent_id in the API
+  const instructions = instructionsData?.instructions ?? []
 
   // Stats
   const stats = useMemo(() => ({
@@ -406,7 +402,7 @@ export default function AgentKnowledgePage({
                             disabled={mutatingId === instruction.id}
                             className="text-muted-foreground hover:text-foreground"
                           >
-                            <Icon name={instruction.is_active ? "eyeOff" : "eye"} size="sm" />
+                          <Icon name={instruction.is_active ? "stop" : "play"} size="sm" />
                           </Button>
                           <Button
                             variant="ghost"
