@@ -33,7 +33,7 @@ def get_connector_by_type(
         .eq("org_id", org_id)
         .eq("environment", environment_name)
         .eq("type", connector_type)
-        .eq("status", "active")
+        .in_("status", ["active", "healthy"])
         .limit(1)
         .execute()
     )

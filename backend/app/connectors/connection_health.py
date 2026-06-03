@@ -4,7 +4,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.config import Settings
-from app.connectors.hubspot_oauth import hubspot_connection_auth_status, normalize_vendor
+from app.connectors.hubspot_oauth import hubspot_connection_auth_status, normalize_vendor as normalize_hubspot_vendor
+from app.connectors.salesforce_oauth import (
+    normalize_vendor as normalize_salesforce_vendor,
+    salesforce_connection_auth_status,
+)
 
 
 def resolve_connector_auth_status(
@@ -17,9 +21,12 @@ def resolve_connector_auth_status(
     environment_name: str | None = None,
 ) -> str | None:
     """Return auth status for OAuth connectors, or None if not applicable."""
-    v = normalize_vendor(vendor)
-    if v == "hubspot":
+    if normalize_hubspot_vendor(vendor) == "hubspot":
         return hubspot_connection_auth_status(
+            client, org_id, connector_id, settings, environment_name=environment_name
+        )
+    if normalize_salesforce_vendor(vendor) == "salesforce":
+        return salesforce_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
         )
     return None

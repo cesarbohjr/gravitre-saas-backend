@@ -1,0 +1,23 @@
+{
+  "uid": "gravitre_operator_webhooks",
+  "type": "webhooks",
+  "config": {
+    "settings": {
+      "targetUrl": "https://gravitre-saas-backend-production.up.railway.app/api/webhooks/hubspot/inbound",
+      "maxConcurrentRequests": 10
+    },
+    "subscriptions": {
+      "legacyCrmObjects": [
+        {
+          "subscriptionType": "contact.creation",
+          "active": true
+        },
+        {
+          "subscriptionType": "deal.propertyChange",
+          "propertyName": "dealstage",
+          "active": true
+        }
+      ]
+    }
+  }
+}

@@ -40,7 +40,7 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | 2 | T1-002 | [STA-11](https://linear.app/staqbot/issue/STA-11) | Agent-tool permission model ✅ | STA-10 |
 | 3 | T1-003 | [STA-12](https://linear.app/staqbot/issue/STA-12) | Merge dual execution engines ✅ | STA-10 |
 | 4 | T1-004 | [STA-13](https://linear.app/staqbot/issue/STA-13) | Real connector OAuth UX ✅ | STA-10 |
-| 4a | T1-004a | [STA-125](https://linear.app/staqbot/issue/STA-125) | **Platform setup:** HubSpot OAuth app & deployment secrets | STA-13 (code) |
+| 4a | T1-004a | [STA-125](https://linear.app/staqbot/issue/STA-125) | **Platform setup:** HubSpot OAuth app & deployment secrets ✅ (CLI app deployed; Railway env via `npm run hubspot:railway`) | STA-13 (code) |
 | 5 | T1-005 | [STA-14](https://linear.app/staqbot/issue/STA-14) | HubSpot OAuth + token lifecycle ✅ | STA-13, [STA-125](https://linear.app/staqbot/issue/STA-125) |
 | 6 | T1-006 | [STA-15](https://linear.app/staqbot/issue/STA-15) | HubSpot v1 actions (5 core) ✅ | STA-10, STA-11, STA-14 |
 | 7 | T1-007 | [STA-16](https://linear.app/staqbot/issue/STA-16) | HubSpot inbound triggers ✅ | STA-12, STA-14, STA-15 |
@@ -53,6 +53,8 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | 14 | T1-014 | [STA-23](https://linear.app/staqbot/issue/STA-23) | Calendar integration (stretch) ✅ | STA-13 |
 
 **Tier 1 demo milestone:** Seed workflow `backend/app/services/org_seed_service.py:89-100` runs live (STA-15 + STA-18).
+
+**Production verification:** `docs/integration/TIER1_PRODUCTION_SMOKE.md` (HubSpot env: `npm run hubspot:fill-env` after `npm run hubspot:open`).
 
 ### Platform ops (before STA-14)
 
@@ -83,7 +85,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 | Order | Ref | Linear | Title | Blocked by (Tier 1 / Tier 2) |
 |-------|-----|--------|-------|------------------------------|
-| 1 | T2-001 | [STA-30](https://linear.app/staqbot/issue/STA-30) | Salesforce OAuth | STA-10, STA-13 |
+| 1 | T2-001 | [STA-30](https://linear.app/staqbot/issue/STA-30) | Salesforce OAuth ✅ | STA-10, STA-13 |
 | 2 | T2-002 | [STA-31](https://linear.app/staqbot/issue/STA-31) | Salesforce v1 actions | STA-10, STA-11 |
 | 3 | T2-004 | [STA-33](https://linear.app/staqbot/issue/STA-33) | QuickBooks OAuth | STA-10, STA-13 |
 | 4 | T2-005 | [STA-34](https://linear.app/staqbot/issue/STA-34) | QuickBooks v1 read actions | STA-10, STA-11 |

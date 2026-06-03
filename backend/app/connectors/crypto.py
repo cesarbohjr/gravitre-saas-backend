@@ -1,15 +1,16 @@
-"""IN-00: Fernet encryption for connector secrets."""
+"""IN-00: Fernet encryption for connector secrets (key material: 64-char hex or legacy Fernet)."""
 from __future__ import annotations
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from app.connectors.secret_key import fernet_key_bytes
+
 
 def _make_fernet(key_str: str) -> Fernet:
-    """Create Fernet from env key. Must be Fernet.generate_key() output."""
-    key_str = (key_str or "").strip()
-    if not key_str:
+    """Create Fernet from CONNECTOR_SECRETS_ENCRYPTION_KEY (64 hex or legacy Fernet string)."""
+    if not (key_str or "").strip():
         raise ValueError("connector_secrets_encryption_key is required")
-    return Fernet(key_str.encode())
+    return Fernet(fernet_key_bytes(key_str))
 
 
 def encrypt_secret(plaintext: str, encryption_key: str) -> str:

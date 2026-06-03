@@ -781,6 +781,15 @@ export interface CreateConnectorRequest {
   webhook_url?: string
   sync_frequency?: string
   environment_id?: string
+  config?: Record<string, unknown>
+  secrets?: Record<string, string>
+}
+
+export interface OAuthProviderStatus {
+  provider: string
+  configured: boolean
+  encryptionConfigured: boolean
+  redirectUri?: string
 }
 
 export interface CreateSourceRequest {

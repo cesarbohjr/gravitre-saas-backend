@@ -1,0 +1,37 @@
+{
+  "uid": "gravitre_operator_hubspot",
+  "type": "app",
+  "config": {
+    "name": "Gravitre Operator",
+    "description": "Gravitre multi-tenant HubSpot connector - OAuth CRM tools and inbound workflow triggers.",
+    "distribution": "marketplace",
+    "auth": {
+      "type": "oauth",
+      "redirectUrls": [
+        "https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/hubspot/callback",
+        "http://localhost:8000/api/connectors/oauth/hubspot/callback"
+      ],
+      "requiredScopes": [
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write",
+        "crm.lists.read",
+        "crm.lists.write",
+        "oauth"
+      ],
+      "optionalScopes": ["automation"],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": ["https://api.hubapi.com"],
+      "iframe": [],
+      "img": []
+    },
+    "support": {
+      "supportEmail": "support@gravitre.com",
+      "documentationUrl": "https://github.com/gravitre/gravitre-operator-ai/blob/main/docs/integration/HUBSPOT_PLATFORM_SETUP.md",
+      "supportUrl": "https://gravitre.com"
+    }
+  }
+}

@@ -1,9 +1,11 @@
 """BE-00: Config and environment wiring. Loads from .env; no secrets in code."""
 from functools import lru_cache
 
-from pydantic import ValidationError
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, field_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.connectors.secret_key import validate_connector_secrets_encryption_key
 
 
 class Settings(BaseSettings):
@@ -74,7 +76,7 @@ class Settings(BaseSettings):
     # memory (always per-process), redis (require Redis — falls back on error).
     circuit_breaker_backend: str = "auto"
 
-    # IN-00: Fernet key for connector_secrets (generate: from cryptography.fernet import Fernet; Fernet.generate_key())
+    # IN-00: 32-byte connector secret key as 64-char hex (node backend/scripts/generate-connector-encryption-key.mjs)
     connector_secrets_encryption_key: str = ""
     # Phase 15: AES-256-GCM key for connector/source config (32-byte base64 or raw)
     encryption_key: str = ""
@@ -107,6 +109,11 @@ class Settings(BaseSettings):
     # HubSpot inbound webhooks (STA-16) — platform operator sets once per app
     hubspot_app_id: str = ""
     hubspot_developer_api_key: str = ""
+    # Salesforce OAuth (STA-30)
+    salesforce_client_id: str = ""
+    salesforce_client_secret: str = ""
+    salesforce_sandbox_client_id: str = ""
+    salesforce_sandbox_client_secret: str = ""
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"
@@ -171,6 +178,11 @@ class Settings(BaseSettings):
     policy_max_steps: int = 0
     policy_max_runtime_seconds: int = 0
     policy_allowed_envs: str = ""
+
+    @field_validator("connector_secrets_encryption_key")
+    @classmethod
+    def _validate_connector_secrets_key_format(cls, value: str) -> str:
+        return validate_connector_secrets_encryption_key(value)
 
     @model_validator(mode="after")
     def _validate_required_secrets(self) -> "Settings":
