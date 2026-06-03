@@ -38,6 +38,8 @@ import type {
   CreateSourceRequest,
   SearchResponse,
   SearchHistoryItem,
+  Conversation,
+  ConversationMessage,
   TrainingDatasetType,
   TrainingDataset,
   TrainingJob,
@@ -318,6 +320,16 @@ export const searchApi = {
   history: () => fetcher<{ searches: SearchHistoryItem[] }>(apiUrl("/api/search/history")),
   deleteHistory: (id: string) => deleteRequest(apiUrl(`/api/search/history/${id}`)),
   clearHistory: () => deleteRequest(apiUrl("/api/search/history")),
+}
+
+// ============ Conversations ============
+export const conversationsApi = {
+  list: () => fetcher<{ conversations: Conversation[] }>(apiUrl("/api/conversations")),
+  get: (id: string) => fetcher<Conversation>(apiUrl(`/api/conversations/${id}`)),
+  create: (data: { title?: string }) => postJson<Conversation>(apiUrl("/api/conversations"), data),
+  update: (id: string, data: { title?: string }) => patchJson<Conversation>(apiUrl(`/api/conversations/${id}`), data),
+  delete: (id: string) => deleteRequest(apiUrl(`/api/conversations/${id}`)),
+  getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
 }
 
 // ============ Training ============

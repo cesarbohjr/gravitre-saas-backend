@@ -326,6 +326,25 @@ export interface SearchHistoryItem {
   created_at: string
 }
 
+// ============ Conversations ============
+export interface Conversation {
+  id: string
+  title: string
+  preview?: string
+  created_at: string
+  updated_at: string
+  message_count: number
+}
+
+export interface ConversationMessage {
+  id: string
+  conversation_id: string
+  role: "user" | "assistant"
+  content: string
+  tool_calls?: unknown[]
+  created_at: string
+}
+
 // ============ Training ============
 export type TrainingDatasetType = "examples" | "documents" | "feedback"
 export type TrainingDatasetStatus = "processing" | "ready" | "failed"
