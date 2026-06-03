@@ -36,6 +36,8 @@ class SourceCreateRequest(BaseModel):
     title: str = Field(..., min_length=1)
     type: str = Field(..., min_length=1)
     metadata: dict | None = None
+    department_id: UUID | None = None
+    agent_id: UUID | None = None
 
 
 class SourceUpdateRequest(BaseModel):
@@ -85,6 +87,8 @@ async def create_source_route(
         body.metadata,
         user["user_id"],
         environment_name=environment_name,
+        department_id=str(body.department_id) if body.department_id else None,
+        agent_id=str(body.agent_id) if body.agent_id else None,
     )
     write_audit_event(
         client,

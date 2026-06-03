@@ -88,7 +88,7 @@ def get_source(client: Client, org_id: str, source_id: str, environment_name: st
 def list_sources(client: Client, org_id: str, environment_name: str = "default") -> list[dict]:
     r = (
         client.table("rag_sources")
-        .select("id, title, type, metadata, created_at, updated_at")
+        .select("id, title, type, metadata, department_id, agent_id, created_at, updated_at")
         .eq("org_id", org_id)
         .eq("environment", environment_name)
         .order("updated_at", desc=True)
@@ -105,6 +105,8 @@ def create_source(
     metadata: dict | None,
     created_by: str,
     environment_name: str = "default",
+    department_id: str | None = None,
+    agent_id: str | None = None,
 ) -> dict:
     row = {
         "org_id": org_id,
@@ -114,6 +116,10 @@ def create_source(
         "created_by": created_by,
         "environment": environment_name,
     }
+    if department_id:
+        row["department_id"] = department_id
+    if agent_id:
+        row["agent_id"] = agent_id
     r = client.table("rag_sources").insert(row).execute()
     if not r.data:
         raise RuntimeError("rag_sources insert returned no row")

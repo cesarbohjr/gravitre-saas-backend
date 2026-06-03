@@ -36,10 +36,10 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 
 | Order | Ref | Linear | Title | Blocked by |
 |-------|-----|--------|-------|------------|
-| 1 | T1-001 | [STA-10](https://linear.app/staqbot/issue/STA-10) | Unified invoke_tool service | — |
-| 2 | T1-002 | [STA-11](https://linear.app/staqbot/issue/STA-11) | Agent-tool permission model | STA-10 |
-| 3 | T1-003 | [STA-12](https://linear.app/staqbot/issue/STA-12) | Merge dual execution engines | STA-10 |
-| 4 | T1-004 | [STA-13](https://linear.app/staqbot/issue/STA-13) | Real connector OAuth UX | STA-10 |
+| 1 | T1-001 | [STA-10](https://linear.app/staqbot/issue/STA-10) | Unified invoke_tool service ✅ | — |
+| 2 | T1-002 | [STA-11](https://linear.app/staqbot/issue/STA-11) | Agent-tool permission model ✅ | STA-10 |
+| 3 | T1-003 | [STA-12](https://linear.app/staqbot/issue/STA-12) | Merge dual execution engines ✅ | STA-10 |
+| 4 | T1-004 | [STA-13](https://linear.app/staqbot/issue/STA-13) | Real connector OAuth UX ✅ | STA-10 |
 | 4a | T1-004a | [STA-125](https://linear.app/staqbot/issue/STA-125) | **Platform setup:** HubSpot OAuth app & deployment secrets | STA-13 (code) |
 | 5 | T1-005 | [STA-14](https://linear.app/staqbot/issue/STA-14) | HubSpot OAuth + token lifecycle ✅ | STA-13, [STA-125](https://linear.app/staqbot/issue/STA-125) |
 | 6 | T1-006 | [STA-15](https://linear.app/staqbot/issue/STA-15) | HubSpot v1 actions (5 core) ✅ | STA-10, STA-11, STA-14 |
@@ -47,10 +47,10 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | 8 | T1-008 | [STA-17](https://linear.app/staqbot/issue/STA-17) | Cross-agent handoff data bus ✅ | STA-10 |
 | 9 | T1-009 | [STA-18](https://linear.app/staqbot/issue/STA-18) | Wire next_agent_id routing ✅ | STA-17, STA-15 |
 | 10 | T1-010 | [STA-19](https://linear.app/staqbot/issue/STA-19) | Workflow builder persistence ✅ | STA-12 |
-| 11 | T1-011 | [STA-20](https://linear.app/staqbot/issue/STA-20) | Department-scoped RAG | — |
-| 12 | T1-012 | [STA-21](https://linear.app/staqbot/issue/STA-21) | Zendesk v1 | STA-10, STA-11 |
-| 13 | T1-013 | [STA-22](https://linear.app/staqbot/issue/STA-22) | GitHub v1 | STA-10, STA-11 |
-| 14 | T1-014 | [STA-23](https://linear.app/staqbot/issue/STA-23) | Calendar integration (stretch) | STA-13 |
+| 11 | T1-011 | [STA-20](https://linear.app/staqbot/issue/STA-20) | Department-scoped RAG ✅ | — |
+| 12 | T1-012 | [STA-21](https://linear.app/staqbot/issue/STA-21) | Zendesk v1 ✅ | STA-10, STA-11 |
+| 13 | T1-013 | [STA-22](https://linear.app/staqbot/issue/STA-22) | GitHub v1 ✅ | STA-10, STA-11 |
+| 14 | T1-014 | [STA-23](https://linear.app/staqbot/issue/STA-23) | Calendar integration (stretch) ✅ | STA-13 |
 
 **Tier 1 demo milestone:** Seed workflow `backend/app/services/org_seed_service.py:89-100` runs live (STA-15 + STA-18).
 

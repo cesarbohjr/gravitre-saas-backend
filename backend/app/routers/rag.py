@@ -35,6 +35,8 @@ class RetrieveRequest(BaseModel):
     source_id: UUID | None = None
     document_id: UUID | None = None
     min_score: float | None = Field(default=None, ge=0, le=1)
+    agent_id: UUID | None = Field(default=None, description="Scope retrieval to agent department")
+    department_id: UUID | None = Field(default=None, description="Explicit department scope")
 
 
 class QueryRequest(BaseModel):
@@ -87,6 +89,14 @@ async def retrieve(
             detail="Retrieval temporarily unavailable",
         ) from e
 
+    from supabase import create_client
+
+    sb = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    department_id = str(body.department_id) if body.department_id else None
+    agent_id = str(body.agent_id) if body.agent_id else None
+    if agent_id and not department_id:
+        department_id, agent_id = resolve_department_id_for_agent(sb, org_id, agent_id)
+
     try:
         rows = search_chunks(
             settings=settings,
@@ -96,6 +106,8 @@ async def retrieve(
             source_id=str(body.source_id) if body.source_id else None,
             document_id=str(body.document_id) if body.document_id else None,
             environment_name=environment_name,
+            department_id=department_id,
+            agent_id=agent_id,
         )
     except Exception as e:
         logger.warning("rag_search_failure request_id=%s", request_id_ctx.get(), exc_info=True)

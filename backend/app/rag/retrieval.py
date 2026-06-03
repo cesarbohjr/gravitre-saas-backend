@@ -14,6 +14,8 @@ def search_chunks(
     source_id: str | None = None,
     document_id: str | None = None,
     environment_name: str = "default",
+    department_id: str | None = None,
+    agent_id: str | None = None,
 ) -> list[dict]:
     """Run vector search for org; return list of chunk dicts with score and titles."""
     client = create_client(
@@ -29,6 +31,8 @@ def search_chunks(
         "p_source_id": source_id,
         "p_document_id": document_id,
         "p_environment": environment_name,
+        "p_department_id": department_id,
+        "p_agent_id": agent_id,
     }
     r = client.rpc("rag_search", payload).execute()
     return list(r.data) if r.data else []

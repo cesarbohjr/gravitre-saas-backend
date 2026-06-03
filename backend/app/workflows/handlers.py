@@ -23,6 +23,7 @@ from app.services.tool_service import (
     params_for_step,
     tool_context_from_step,
 )
+from app.rag.department import resolve_department_id_for_agent
 from app.rag.embedding import get_embedding
 from app.rag.retrieval import search_chunks
 from app.workflows.constants import OUTPUT_SNAPSHOT_MAX_BYTES
@@ -43,6 +44,7 @@ def _rag_retrieve(
     parameters: dict[str, Any],
     config: dict[str, Any],
     environment_name: str = "default",
+    client: Any | None = None,
 ) -> dict[str, Any]:
     """Call BE-10 retrieval (read-only). Returns output for output_snapshot; raises on failure."""
     query_key = config.get("query_input_key", "query")
@@ -53,14 +55,22 @@ def _rag_retrieve(
     if top_k < 1:
         top_k = 10
     embedding = get_embedding(query.strip(), settings)
+    department_id = config.get("department_id")
+    agent_id = config.get("agent_id")
+    if client and agent_id and not department_id:
+        department_id, agent_id = resolve_department_id_for_agent(
+            client, org_id, str(agent_id)
+        )
     rows = search_chunks(
         settings=settings,
         org_id=org_id,
         query_embedding=embedding,
         top_k=top_k,
-        source_id=None,
+        source_id=config.get("source_id"),
         document_id=None,
         environment_name=environment_name,
+        department_id=str(department_id) if department_id else None,
+        agent_id=str(agent_id) if agent_id else None,
     )
     chunks = [
         {
@@ -90,6 +100,7 @@ class RagRetrieveHandler(StepHandler):
             context.parameters,
             context.config,
             environment_name=context.environment_name or "default",
+            client=context.client,
         )
 
     def execute(self, context: StepContext) -> dict[str, Any]:
@@ -99,6 +110,7 @@ class RagRetrieveHandler(StepHandler):
             context.parameters,
             context.config,
             environment_name=context.environment_name or "default",
+            client=context.client,
         )
 
 

@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.core.logging import get_logger
 from app.rag.embedding import EmbeddingDimensionMismatchError, embed_with_failover
 from app.rag.ingest import chunk_text, replace_chunks_and_embeddings, upsert_document
+from app.rag.department import resolve_department_id_for_agent
 from app.rag.retrieval import search_chunks
 from app.services.model_router import TaskType, get_model_router
 from app.workflows.repository import get_supabase_client
@@ -83,9 +84,21 @@ class RAGService:
         filters: dict | None = None,
         include_sources: bool = True,
     ) -> RAGResponse:
-        _ = scope
         environment = str((filters or {}).get("environment") or "default")
         top_k = top_k or self.settings.rag_top_k or 8
+        client = get_supabase_client(self.settings)
+        department_id = (filters or {}).get("department_id")
+        agent_id = (filters or {}).get("agent_id")
+        if scope == "department" or scope == "agent":
+            resolved_dept, resolved_agent = resolve_department_id_for_agent(
+                client, org_id, str(agent_id) if agent_id else None
+            )
+            department_id = department_id or resolved_dept
+            agent_id = agent_id or resolved_agent
+        elif agent_id and not department_id:
+            department_id, agent_id = resolve_department_id_for_agent(
+                client, org_id, str(agent_id)
+            )
         embedding_method = "none"
         try:
             query_embedding, embedding_method = embed_with_failover(query, self.settings, org_id=org_id)
@@ -135,6 +148,8 @@ class RAGService:
             source_id=(filters or {}).get("source_id"),
             document_id=(filters or {}).get("document_id"),
             environment_name=environment,
+            department_id=str(department_id) if department_id else None,
+            agent_id=str(agent_id) if agent_id else None,
         )
 
         keyword_rows = self._keyword_search(org_id, query, top_k=max(top_k * 2, top_k), environment=environment)

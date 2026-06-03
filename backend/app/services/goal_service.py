@@ -16,7 +16,9 @@ CONNECTOR_ACTIONS = {
     "slack": ["send_message", "create_channel", "read_messages"],
     "stripe": ["read_invoices", "read_subscriptions", "read_customers"],
     "gmail": ["send_email", "read_emails", "search_emails"],
-    "zendesk": ["read_tickets", "create_tickets", "update_tickets"],
+    "zendesk": ["read_tickets", "create_tickets", "update_tickets", "add_tags"],
+    "github": ["list_pull_requests", "create_issue", "comment", "request_reviewer"],
+    "google_calendar": ["check_availability", "create_event"],
     "notion": ["read_pages", "create_pages", "update_pages"],
     "quickbooks": ["read_invoices", "create_invoices", "read_customers"],
 }

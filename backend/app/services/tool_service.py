@@ -40,7 +40,27 @@ from app.connectors.hubspot import (
     update_deal,
     update_deal_stage,
 )
+from app.connectors.github_api import (
+    GitHubAPIError,
+    create_issue,
+    create_issue_comment,
+    list_pull_requests,
+    request_pull_request_reviewer,
+)
+from app.connectors.google_calendar import (
+    GoogleCalendarAPIError,
+    create_event,
+    default_window_iso,
+    query_freebusy,
+)
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token
+from app.connectors.zendesk import (
+    ZendeskAPIError,
+    add_ticket_tags,
+    create_ticket,
+    get_ticket,
+    update_ticket,
+)
 from app.services.agent_tool_permissions import assert_agent_tool_permission
 from app.services.tool_types import (
     NormalizedResult,
@@ -557,6 +577,240 @@ def _exec_webhook_post(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
     )
 
 
+def _connector_by_type(ctx: ToolContext, connector_type: str, params: dict[str, Any]) -> dict:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, connector_type, environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError(f"No active {connector_type} connector found for org")
+    return conn
+
+
+def _zendesk_credentials(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str, str]:
+    conn = _connector_by_type(ctx, "zendesk", params)
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "zendesk", cid)
+    cfg = conn.get("config") or {}
+    subdomain = str(cfg.get("subdomain") or cfg.get("zendesk_subdomain") or "").strip()
+    if not subdomain:
+        raise ToolValidationError("Zendesk connector missing subdomain in config")
+    email = get_decrypted_secret(ctx.client, cid, "email", ctx.settings)
+    token = get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
+    if not email or not token:
+        raise ToolAuthExpiredError("Zendesk email/api_token secrets not configured")
+    return cid, subdomain, email, token
+
+
+def _github_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    conn = _connector_by_type(ctx, "github", params)
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "github", cid)
+    token = get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
+    if not token:
+        raise ToolAuthExpiredError("GitHub token secret not configured")
+    return cid, token
+
+
+def _google_calendar_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    conn = _connector_by_type(ctx, "google_calendar", params)
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "google_calendar", cid)
+    token = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
+    if not token:
+        raise ToolAuthExpiredError("Google Calendar access_token not configured")
+    return cid, token
+
+
+def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
+    status = getattr(exc, "status_code", None)
+    if status == 429:
+        return ToolRateLimitedError(str(exc))
+    if status in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_zendesk_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    ticket_id = params.get("ticket_id") or params.get("ticketId")
+    if not ticket_id:
+        raise ToolValidationError("zendesk.tickets.get requires ticket_id")
+    try:
+        ticket = get_ticket(subdomain, email, token, ticket_id)
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(success=True, action="zendesk.tickets.get", connector_id=cid, data={"ticket": ticket})
+
+
+def _exec_zendesk_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    subject = params.get("subject")
+    comment = params.get("comment") or params.get("body")
+    if not subject or not comment:
+        raise ToolValidationError("zendesk.tickets.create requires subject and comment")
+    try:
+        ticket = create_ticket(
+            subdomain,
+            email,
+            token,
+            subject=str(subject),
+            comment=str(comment),
+            requester_email=params.get("requester_email") or params.get("requesterEmail"),
+            priority=params.get("priority"),
+            tags=params.get("tags"),
+        )
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(success=True, action="zendesk.tickets.create", connector_id=cid, data={"ticket": ticket})
+
+
+def _exec_zendesk_tickets_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    ticket_id = params.get("ticket_id") or params.get("ticketId")
+    if not ticket_id:
+        raise ToolValidationError("zendesk.tickets.update requires ticket_id")
+    try:
+        ticket = update_ticket(
+            subdomain,
+            email,
+            token,
+            ticket_id,
+            status=params.get("status"),
+            priority=params.get("priority"),
+            comment=params.get("comment"),
+            tags=params.get("tags"),
+        )
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(success=True, action="zendesk.tickets.update", connector_id=cid, data={"ticket": ticket})
+
+
+def _exec_zendesk_tickets_add_tags(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    ticket_id = params.get("ticket_id") or params.get("ticketId")
+    tags = params.get("tags")
+    if not ticket_id or not isinstance(tags, list) or not tags:
+        raise ToolValidationError("zendesk.tickets.add_tags requires ticket_id and tags[]")
+    try:
+        result = add_ticket_tags(subdomain, email, token, ticket_id, [str(t) for t in tags])
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(success=True, action="zendesk.tickets.add_tags", connector_id=cid, data={"tags": result})
+
+
+def _exec_github_pulls_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
+    cfg = conn.get("config") or {}
+    owner = params.get("owner") or cfg.get("owner")
+    repo = params.get("repo") or cfg.get("repo")
+    if not owner or not repo:
+        raise ToolValidationError("github.pulls.list requires owner and repo")
+    try:
+        pulls = list_pull_requests(token, str(owner), str(repo), state=str(params.get("state") or "open"))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.list", connector_id=cid, data={"pull_requests": pulls})
+
+
+def _exec_github_issues_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
+    cfg = conn.get("config") or {}
+    owner = params.get("owner") or cfg.get("owner")
+    repo = params.get("repo") or cfg.get("repo")
+    title = params.get("title")
+    if not owner or not repo or not title:
+        raise ToolValidationError("github.issues.create requires owner, repo, and title")
+    try:
+        issue = create_issue(token, str(owner), str(repo), title=str(title), body=params.get("body"), labels=params.get("labels"))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.issues.create", connector_id=cid, data={"issue": issue})
+
+
+def _exec_github_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
+    cfg = conn.get("config") or {}
+    owner = params.get("owner") or cfg.get("owner")
+    repo = params.get("repo") or cfg.get("repo")
+    issue_number = params.get("issue_number") or params.get("issueNumber")
+    body = params.get("body") or params.get("comment")
+    if not owner or not repo or not issue_number or not body:
+        raise ToolValidationError("github.issues.comment requires owner, repo, issue_number, body")
+    try:
+        comment = create_issue_comment(token, str(owner), str(repo), int(issue_number), str(body))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.issues.comment", connector_id=cid, data={"comment": comment})
+
+
+def _exec_github_pulls_request_reviewer(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
+    cfg = conn.get("config") or {}
+    owner = params.get("owner") or cfg.get("owner")
+    repo = params.get("repo") or cfg.get("repo")
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    reviewers = params.get("reviewers")
+    if not owner or not repo or not pull_number or not isinstance(reviewers, list):
+        raise ToolValidationError("github.pulls.request_reviewer requires owner, repo, pull_number, reviewers[]")
+    try:
+        result = request_pull_request_reviewer(
+            token, str(owner), str(repo), int(pull_number), [str(r) for r in reviewers]
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(
+        success=True,
+        action="github.pulls.request_reviewer",
+        connector_id=cid,
+        data={"requested_reviewers": result},
+    )
+
+
+def _exec_calendar_freebusy(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _google_calendar_token(ctx, params)
+    calendar_id = str(params.get("calendar_id") or params.get("calendarId") or "primary")
+    time_min = params.get("time_min") or params.get("timeMin")
+    time_max = params.get("time_max") or params.get("timeMax")
+    if not time_min or not time_max:
+        time_min, time_max = default_window_iso()
+    try:
+        data = query_freebusy(token, calendar_id=calendar_id, time_min=str(time_min), time_max=str(time_max))
+    except GoogleCalendarAPIError as exc:
+        raise _vendor_api_error(exc, "google_calendar") from exc
+    return NormalizedResult(success=True, action="calendar.freebusy", connector_id=cid, data={"freebusy": data})
+
+
+def _exec_calendar_events_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _google_calendar_token(ctx, params)
+    summary = params.get("summary") or params.get("title")
+    start_iso = params.get("start") or params.get("start_iso")
+    end_iso = params.get("end") or params.get("end_iso")
+    if not summary or not start_iso or not end_iso:
+        raise ToolValidationError("calendar.events.create requires summary, start, end")
+    try:
+        event = create_event(
+            token,
+            calendar_id=str(params.get("calendar_id") or "primary"),
+            summary=str(summary),
+            description=params.get("description"),
+            start_iso=str(start_iso),
+            end_iso=str(end_iso),
+            attendees=params.get("attendees"),
+        )
+    except GoogleCalendarAPIError as exc:
+        raise _vendor_api_error(exc, "google_calendar") from exc
+    return NormalizedResult(success=True, action="calendar.events.create", connector_id=cid, data={"event": event})
+
+
 _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "slack.post_message": _exec_slack_post_message,
     "email.send": _exec_email_send,
@@ -572,6 +826,16 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.create": _exec_hubspot_deals_create,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
+    "zendesk.tickets.get": _exec_zendesk_tickets_get,
+    "zendesk.tickets.create": _exec_zendesk_tickets_create,
+    "zendesk.tickets.update": _exec_zendesk_tickets_update,
+    "zendesk.tickets.add_tags": _exec_zendesk_tickets_add_tags,
+    "github.pulls.list": _exec_github_pulls_list,
+    "github.issues.create": _exec_github_issues_create,
+    "github.issues.comment": _exec_github_issues_comment,
+    "github.pulls.request_reviewer": _exec_github_pulls_request_reviewer,
+    "calendar.freebusy": _exec_calendar_freebusy,
+    "calendar.events.create": _exec_calendar_events_create,
 }
 
 # Workflow step type → canonical tool action

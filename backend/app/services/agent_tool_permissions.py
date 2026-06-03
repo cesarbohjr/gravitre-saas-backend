@@ -22,6 +22,16 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "hubspot.deals.create": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.deals.update": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.lists.add_contact": ["hubspot:lists:write", "hubspot:contacts:write", "hubspot:*"],
+    "zendesk.tickets.get": ["zendesk:tickets:read", "zendesk:*"],
+    "zendesk.tickets.create": ["zendesk:tickets:write", "zendesk:*"],
+    "zendesk.tickets.update": ["zendesk:tickets:write", "zendesk:*"],
+    "zendesk.tickets.add_tags": ["zendesk:tickets:write", "zendesk:*"],
+    "github.pulls.list": ["github:pulls:read", "github:*"],
+    "github.issues.create": ["github:issues:write", "github:*"],
+    "github.issues.comment": ["github:issues:write", "github:*"],
+    "github.pulls.request_reviewer": ["github:pulls:write", "github:*"],
+    "calendar.freebusy": ["calendar:read", "calendar:*"],
+    "calendar.events.create": ["calendar:write", "calendar:*"],
 }
 
 WILDCARD_SCOPE = "*"
