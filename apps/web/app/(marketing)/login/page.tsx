@@ -16,6 +16,19 @@ const features = [
   "Scale with enterprise security",
 ]
 
+const AUTH_ERRORS: Record<string, string> = {
+  session_expired:
+    "Your session has expired. Please sign in again.",
+  auth_callback_failed:
+    "Sign-in was interrupted. Please try again.",
+  oauth_error:
+    "Sign-in failed. Please try a different method.",
+  account_not_found:
+    "No account found. Would you like to get started?",
+  access_denied:
+    "Access was denied. Please try again.",
+}
+
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -33,28 +46,14 @@ function LoginPageContent() {
   const [isResendingVerification, setIsResendingVerification] = useState(false)
   const oauthLoginCheckRef = useRef(false)
 
-  const sessionExpiredMessage =
-    searchParams.get("error") === "session_expired"
-      ? "Your session has expired. Please sign in again."
-      : null
-  const authCallbackFailedMessage =
-    searchParams.get("error") === "auth_callback_failed"
-      ? "Sign-in was interrupted. Please try again."
-      : null
-  const accountNotFoundMessage =
-    searchParams.get("error") === "account_not_found"
-      ? "No account found with that email. Would you like to create one?"
-      : null
-  const oauthErrorMessage =
-    searchParams.get("error") === "oauth_error"
-      ? `Sign-in with ${searchParams.get("provider") ?? "your provider"} failed. Please try again or use email instead.`
-      : null
-  const displayedAuthError =
-    authError ??
-    sessionExpiredMessage ??
-    authCallbackFailedMessage ??
-    accountNotFoundMessage ??
-    oauthErrorMessage
+  const errorKey = searchParams.get("error")
+  const urlAuthError = errorKey
+    ? AUTH_ERRORS[errorKey] ??
+      (errorKey === "oauth_error"
+        ? `Sign-in with ${searchParams.get("provider") ?? "your provider"} failed. Please try again or use email instead.`
+        : "An error occurred. Please try again.")
+    : null
+  const displayedAuthError = authError ?? urlAuthError
 
   useEffect(() => {
     const interval = setInterval(() => {

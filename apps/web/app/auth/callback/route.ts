@@ -1,7 +1,42 @@
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+
+function buildRedirectUrl(request: NextRequest, next: string): URL {
+  const { origin } = new URL(request.url)
+  const forwardedHost = request.headers.get("x-forwarded-host")
+  const isLocalEnv = process.env.NODE_ENV === "development"
+
+  if (isLocalEnv) {
+    return new URL(next, origin)
+  }
+  if (forwardedHost) {
+    return new URL(next, `https://${forwardedHost}`)
+  }
+  return new URL(next, origin)
+}
+
+function createSupabaseWithResponse(
+  request: NextRequest,
+  response: NextResponse
+) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -9,69 +44,71 @@ export async function GET(request: NextRequest) {
   const tokenHash = requestUrl.searchParams.get("token_hash")
   const type = requestUrl.searchParams.get("type")
   const next = requestUrl.searchParams.get("next") ?? "/operator"
+  const error = requestUrl.searchParams.get("error")
+  const errorDescription = requestUrl.searchParams.get("error_description")
 
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Server component — cookies set by middleware
-          }
-        },
-      },
-    }
-  )
-
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-    if (!error) {
-      return NextResponse.redirect(new URL(next, requestUrl.origin))
-    }
-
-    console.error("Auth callback error:", error.message)
+  if (error) {
+    console.error("OAuth provider error:", error, errorDescription)
     return NextResponse.redirect(
-      new URL("/login?error=auth_callback_failed", requestUrl.origin)
+      new URL(
+        `/login?error=oauth_error&provider_error=${encodeURIComponent(error)}`,
+        requestUrl.origin
+      )
     )
   }
 
+  if (code) {
+    const redirectUrl = buildRedirectUrl(request, next)
+    const response = NextResponse.redirect(redirectUrl)
+    const supabase = createSupabaseWithResponse(request, response)
+
+    const { data, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code)
+
+    if (exchangeError) {
+      console.error("Session exchange error:", exchangeError.message)
+      return NextResponse.redirect(
+        new URL("/login?error=auth_callback_failed", requestUrl.origin)
+      )
+    }
+
+    if (data.session) {
+      console.log("Session established for:", data.user?.email)
+      return response
+    }
+  }
+
   if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
+    const redirectUrl = buildRedirectUrl(request, next)
+    const response = NextResponse.redirect(redirectUrl)
+    const supabase = createSupabaseWithResponse(request, response)
+
+    const { error: verifyError } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: type as "signup" | "invite" | "recovery" | "email" | "email_change",
     })
 
-    if (!error) {
-      return NextResponse.redirect(new URL(next, requestUrl.origin))
+    if (!verifyError) {
+      return response
     }
 
-    console.error("Auth OTP verify error:", error.message)
+    console.error("Auth OTP verify error:", verifyError.message)
     return NextResponse.redirect(
       new URL("/login?error=auth_callback_failed", requestUrl.origin)
     )
   }
 
-  // Implicit/hash flow requires a client page (fragments are not sent to the server).
-  const urlError =
-    requestUrl.searchParams.get("error_description") ||
-    requestUrl.searchParams.get("error")
-  if (urlError) {
+  if (errorDescription || requestUrl.searchParams.get("error")) {
     return NextResponse.redirect(
       new URL("/login?error=oauth_error", requestUrl.origin)
     )
   }
 
+  // Implicit/hash flow — fragments are not sent to the server.
   return NextResponse.redirect(
-    new URL("/auth/callback/complete", requestUrl.origin)
+    new URL(
+      `/auth/callback/complete?next=${encodeURIComponent(next)}`,
+      requestUrl.origin
+    )
   )
 }

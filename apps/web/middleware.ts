@@ -1,31 +1,8 @@
 import { createServerClient } from "@supabase/ssr"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-
-const CANONICAL_REDIRECT_ROUTES = [
-  "/login",
-  "/get-started",
-  "/forgot-password",
-  "/auth/callback",
-  "/operator",
-  "/onboarding",
-]
-
-const STATIC_PATTERNS = [
-  "/_next",
-  "/api",
-  "/images",
-  "/favicon",
-  "/robots.txt",
-  "/sitemap.xml",
-]
+import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  if (STATIC_PATTERNS.some((pattern) => pathname.startsWith(pattern))) {
-    return NextResponse.next()
-  }
+  const pathname = request.nextUrl.pathname
 
   let supabaseResponse = NextResponse.next({
     request,
@@ -54,69 +31,57 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // CRITICAL: getUser() validates with Supabase — never getSession() here.
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const canonicalAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim()
-  if (
-    canonicalAppUrl &&
-    CANONICAL_REDIRECT_ROUTES.some(
-      (route) => pathname === route || pathname.startsWith(`${route}/`),
-    )
-  ) {
-    try {
-      const canonicalUrl = new URL(canonicalAppUrl)
-      if (request.nextUrl.host !== canonicalUrl.host) {
-        const redirectUrl = new URL(
-          `${pathname}${request.nextUrl.search}`,
-          canonicalUrl,
-        )
-        return NextResponse.redirect(redirectUrl)
-      }
-    } catch {
-      // Ignore malformed NEXT_PUBLIC_APP_URL and continue request handling.
-    }
-  }
+  const publicPaths = [
+    "/",
+    "/login",
+    "/get-started",
+    "/auth",
+    "/pricing",
+    "/features",
+    "/about",
+    "/docs",
+    "/forgot-password",
+    "/privacy",
+    "/terms",
+    "/security",
+    "/api/auth",
+    "/_next",
+    "/favicon",
+    "/robots.txt",
+    "/sitemap",
+  ]
 
-  if (pathname.startsWith("/auth/callback")) {
-    return supabaseResponse
-  }
+  const isPublicPath = publicPaths.some(
+    (p) =>
+      pathname === p ||
+      pathname.startsWith(`${p}/`) ||
+      (p !== "/" && pathname.startsWith(p))
+  )
 
-  const isPublic =
-    pathname === "/" ||
-    [
-      "/login",
-      "/get-started",
-      "/auth/",
-      "/api/",
-      "/_next/",
-      "/favicon",
-      "/robots",
-      "/sitemap",
-      "/pricing",
-      "/about",
-      "/features",
-      "/forgot-password",
-      "/privacy",
-      "/terms",
-      "/security",
-      "/docs",
-    ].some((p) => pathname.startsWith(p))
+  const isApiRoute = pathname.startsWith("/api/")
 
-  if (isPublic) {
+  if (isPublicPath || isApiRoute) {
     return supabaseResponse
   }
 
   if (!user) {
     const loginUrl = new URL("/login", request.url)
-    const hadSession = request.cookies
+    const hasSupabaseCookie = request.cookies
       .getAll()
-      .some((c) => c.name.includes("supabase"))
+      .some(
+        (c) =>
+          c.name.startsWith("sb-") || c.name.includes("supabase-auth-token")
+      )
 
-    if (hadSession) {
+    if (hasSupabaseCookie) {
       loginUrl.searchParams.set("error", "session_expired")
     }
+
     return NextResponse.redirect(loginUrl)
   }
 
@@ -125,6 +90,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
   ],
 }

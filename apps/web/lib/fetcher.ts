@@ -38,7 +38,7 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
       "/get-started",
       "/login",
       "/forgot-password",
-      "/auth/callback",
+      "/auth",
     ]
     const shouldSkipRedirect = deferredAuthPages.some((page) =>
       currentPath.startsWith(page)
@@ -52,7 +52,10 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
       if (!alreadyRedirecting) {
         window.sessionStorage.setItem("gravitre_auth_login_redirect", "1")
         const loginUrl = new URL("/login", window.location.origin)
-        if (token) {
+        const hasSupabaseCookie = document.cookie
+          .split(";")
+          .some((c) => c.trim().startsWith("sb-"))
+        if (token || hasSupabaseCookie) {
           loginUrl.searchParams.set("error", "session_expired")
         }
         window.location.assign(loginUrl.toString())
