@@ -322,27 +322,27 @@ export default function AgentProfilePage({
                   >
                     <Button 
                       className="w-full gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/25"
-                      onClick={() => router.push("/assignments/new?agent=" + agent.id)}
+                      onClick={() => router.push(`/agents/${agent.id}/chat`)}
                     >
-                      <Icon name="add" size="sm" />
-                      Assign Work
+                      <Icon name="chat" size="sm" />
+                      Chat with {agent.name}
                     </Button>
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
                         variant="outline" 
                         className="gap-2"
-                        onClick={() => router.push("/training?agent=" + agent.id)}
+                        onClick={() => router.push(`/agents/${agent.id}/knowledge`)}
                       >
-                        <Icon name="brain" size="sm" />
-                        Train
+                        <Icon name="database" size="sm" />
+                        Knowledge
                       </Button>
                       <Button 
                         variant="outline" 
                         className="gap-2"
-                        onClick={() => router.push(`/agents/${agent.id}/memory`)}
+                        onClick={() => router.push("/assignments/new?agent=" + agent.id)}
                       >
-                        <Icon name="database" size="sm" />
-                        Memory
+                        <Icon name="add" size="sm" />
+                        Assign
                       </Button>
                     </div>
                   </motion.div>

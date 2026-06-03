@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { getSelectedOrgFromStorage, DEFAULT_DEMO_ORG_ID } from "@/lib/org-context"
@@ -17,6 +17,15 @@ import {
   Database,
   Bot,
   Plug,
+  Trash2,
+  PanelLeftClose,
+  PanelLeft,
+  RefreshCw,
+  Square,
+  Zap,
+  Brain,
+  Gauge,
+  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -25,10 +34,50 @@ import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
+import useSWR from "swr"
+import { conversationsApi } from "@/lib/api"
+import type { Conversation } from "@/types/api"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 // localStorage key for message persistence
 const STORAGE_KEY = "gravitre_assistant_messages"
+const CONVERSATION_ID_KEY = "gravitre_last_conversation_id"
+const MODE_KEY = "gravitre_assistant_mode"
 const MAX_STORED_MESSAGES = 50
+
+// Intelligence modes
+type IntelligenceMode = "fast" | "standard" | "reasoning" | "agent"
+
+interface ModeConfig {
+  id: IntelligenceMode
+  label: string
+  icon: typeof Zap
+  description: string
+  placeholder: string
+}
+
+const intelligenceModes: ModeConfig[] = [
+  { id: "fast", label: "Fast", icon: Zap, description: "Quick answers, simple tasks", placeholder: "Ask a quick question..." },
+  { id: "standard", label: "Standard", icon: Gauge, description: "Balanced intelligence and speed", placeholder: "Ask anything about your AI team..." },
+  { id: "reasoning", label: "Deep Reasoning", icon: Brain, description: "Complex analysis and planning", placeholder: "Describe a complex problem..." },
+  { id: "agent", label: "Agent Mode", icon: Bot, description: "Autonomous task execution", placeholder: "Describe a task to execute..." },
+]
 
 // Gravitre-specific sample prompts
 const samplePrompts = [
@@ -349,18 +398,269 @@ function SourceCitations({ sources }: { sources: SourceCitation[] }) {
   )
 }
 
+// Helper to group conversations by date
+function groupConversationsByDate(conversations: Conversation[]) {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  const groups: { label: string; conversations: Conversation[] }[] = [
+    { label: "Today", conversations: [] },
+    { label: "Yesterday", conversations: [] },
+    { label: "Last 7 days", conversations: [] },
+    { label: "Older", conversations: [] },
+  ]
+
+  for (const conv of conversations) {
+    const date = new Date(conv.updated_at)
+    if (date >= today) {
+      groups[0].conversations.push(conv)
+    } else if (date >= yesterday) {
+      groups[1].conversations.push(conv)
+    } else if (date >= lastWeek) {
+      groups[2].conversations.push(conv)
+    } else {
+      groups[3].conversations.push(conv)
+    }
+  }
+
+  return groups.filter((g) => g.conversations.length > 0)
+}
+
+// Relative time formatter
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return "just now"
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
+}
+
+// Conversation Sidebar Component
+function ConversationSidebar({
+  conversations,
+  activeConversationId,
+  onSelect,
+  onNew,
+  onDelete,
+  isOpen,
+  onToggle,
+}: {
+  conversations: Conversation[]
+  activeConversationId: string | null
+  onSelect: (id: string) => void
+  onNew: () => void
+  onDelete: (id: string) => void
+  isOpen: boolean
+  onToggle: () => void
+}) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
+
+  const grouped = useMemo(() => groupConversationsByDate(conversations), [conversations])
+
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setConversationToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (conversationToDelete) {
+      onDelete(conversationToDelete)
+      setConversationToDelete(null)
+    }
+    setDeleteDialogOpen(false)
+  }
+
+  return (
+    <>
+      {/* Mobile toggle button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggle}
+        className="fixed top-20 left-4 z-40 md:hidden h-9 w-9 bg-white shadow-md border border-zinc-200"
+      >
+        {isOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+      </Button>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/20 md:hidden"
+          onClick={onToggle}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed md:static inset-y-0 left-0 z-40 w-60 flex flex-col border-r border-zinc-200 bg-white transition-transform duration-200",
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden"
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-3 border-b border-zinc-200">
+          <span className="text-sm font-semibold text-zinc-900">Conversations</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNew}>
+            <MessageSquarePlus className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Conversation list */}
+        <ScrollArea className="flex-1">
+          {conversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <MessageSquarePlus className="h-8 w-8 text-zinc-300 mb-3" />
+              <p className="text-xs text-zinc-500">
+                No conversations yet. Start a new conversation above.
+              </p>
+            </div>
+          ) : (
+            <div className="py-2">
+              {grouped.map((group) => (
+                <div key={group.label} className="mb-2">
+                  <div className="px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                      {group.label}
+                    </span>
+                  </div>
+                  {group.conversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => onSelect(conv.id)}
+                      className={cn(
+                        "w-full group flex items-center gap-2 px-3 py-2 text-left transition-colors",
+                        activeConversationId === conv.id
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "hover:bg-zinc-50 text-zinc-700"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{conv.title || "New conversation"}</p>
+                        <p className="text-[10px] text-zinc-400">{formatRelativeTime(conv.updated_at)}</p>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteClick(conv.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-200 text-zinc-400 hover:text-red-500 transition-all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </aside>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this conversation and all its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
+// Intelligence Mode Selector
+function ModeSelector({
+  value,
+  onChange,
+}: {
+  value: IntelligenceMode
+  onChange: (mode: IntelligenceMode) => void
+}) {
+  const current = intelligenceModes.find((m) => m.id === value) || intelligenceModes[1]
+  const Icon = current.icon
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+          <Icon className="h-3.5 w-3.5" />
+          <span>{current.label}</span>
+          <ChevronDown className="h-3 w-3 text-zinc-400" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        {intelligenceModes.map((mode) => {
+          const ModeIcon = mode.icon
+          return (
+            <DropdownMenuItem
+              key={mode.id}
+              onClick={() => onChange(mode.id)}
+              className={cn("flex items-start gap-3 p-3", value === mode.id && "bg-emerald-50")}
+            >
+              <ModeIcon className={cn("h-4 w-4 mt-0.5", value === mode.id ? "text-emerald-600" : "text-zinc-500")} />
+              <div className="flex-1">
+                <p className={cn("text-sm font-medium", value === mode.id && "text-emerald-700")}>{mode.label}</p>
+                <p className="text-xs text-zinc-500">{mode.description}</p>
+              </div>
+              {value === mode.id && <Check className="h-4 w-4 text-emerald-600" />}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 // Message component with markdown rendering
-function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean }) {
+function ChatMessage({
+  message,
+  isUser,
+  isLast,
+  onCopy,
+  onRegenerate,
+}: {
+  message: UIMessage
+  isUser: boolean
+  isLast?: boolean
+  onCopy?: () => void
+  onRegenerate?: () => void
+}) {
   const { text, tools, sources } = normalizeMessage(message)
+  const [showActions, setShowActions] = useState(false)
+
+  const handleCopyMessage = async () => {
+    await navigator.clipboard.writeText(text)
+    toast.success("Message copied")
+    onCopy?.()
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "flex gap-3",
+        "flex gap-3 group",
         isUser ? "justify-end" : "justify-start"
       )}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
       {!isUser && (
         <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center ring-1 ring-emerald-200">
@@ -415,6 +715,28 @@ function ChatMessage({ message, isUser }: { message: UIMessage; isUser: boolean 
 
         {/* Source citations */}
         {!isUser && sources.length > 0 && <SourceCitations sources={sources} />}
+
+        {/* Message actions (copy, regenerate) */}
+        {!isUser && showActions && (
+          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-zinc-100">
+            <button
+              onClick={handleCopyMessage}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            >
+              <Copy className="h-3 w-3" />
+              Copy
+            </button>
+            {isLast && onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Regenerate
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {isUser && (
@@ -431,6 +753,27 @@ export default function AssistantPage() {
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  
+  // Intelligence mode state
+  const [mode, setMode] = useState<IntelligenceMode>(() => {
+    if (typeof window === "undefined") return "standard"
+    return (localStorage.getItem(MODE_KEY) as IntelligenceMode) || "standard"
+  })
+
+  // Save mode to localStorage
+  useEffect(() => {
+    localStorage.setItem(MODE_KEY, mode)
+  }, [mode])
+
+  // Fetch conversations list
+  const { data: conversationsData, mutate: mutateConversations } = useSWR(
+    user ? "conversations" : null,
+    () => conversationsApi.list(),
+    { fallbackData: { conversations: [] as Conversation[] }, revalidateOnFocus: false }
+  )
+  const conversations = conversationsData?.conversations ?? []
 
   // Hydrate once from localStorage (avoid re-reading on every render).
   const [initialMessages] = useState<UIMessage[]>(() => {
@@ -450,7 +793,7 @@ export default function AssistantPage() {
   // Transport forwards the Supabase JWT + selected org so the backend can
   // authenticate, enforce tenant isolation, and apply the governance layer.
   // All AI logic lives in the backend; /api/chat is a thin proxy.
-  const [transport] = useState(
+  const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
@@ -466,13 +809,16 @@ export default function AssistantPage() {
           const org = getSelectedOrgFromStorage()
           return {
             org_id: org?.id ?? DEFAULT_DEMO_ORG_ID,
+            mode,
+            conversation_id: activeConversationId,
             tools: ["knowledge_base", "agent_status", "connector_status"],
           }
         },
       }),
+    [mode, activeConversationId]
   )
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, stop } = useChat({
     transport,
     messages: initialMessages,
     onError: (error) => {
@@ -482,8 +828,10 @@ export default function AssistantPage() {
   })
 
   const isLoading = status === "submitted" || status === "streaming"
+  const isStreaming = status === "streaming"
   // Derived from state (no effect needed): true once any user message exists.
   const hasSentMessage = messages.some((m) => m.role === "user")
+  const currentModeConfig = intelligenceModes.find((m) => m.id === mode) || intelligenceModes[1]
 
   // Persist messages to localStorage
   useEffect(() => {
@@ -503,17 +851,65 @@ export default function AssistantPage() {
   }, [messages, status])
 
   // Handle new conversation
-  const handleNewConversation = () => {
+  const handleNewConversation = useCallback(() => {
     setMessages([])
+    setActiveConversationId(null)
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(CONVERSATION_ID_KEY)
     inputRef.current?.focus()
-  }
+    void mutateConversations()
+  }, [setMessages, mutateConversations])
+
+  // Handle selecting a conversation from sidebar
+  const handleSelectConversation = useCallback(async (id: string) => {
+    setActiveConversationId(id)
+    localStorage.setItem(CONVERSATION_ID_KEY, id)
+    // TODO: Load messages from API when backend supports it
+    // For now, clear messages and let the conversation context be set
+    setMessages([])
+  }, [setMessages])
+
+  // Handle deleting a conversation
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    try {
+      await conversationsApi.delete(id)
+      if (activeConversationId === id) {
+        handleNewConversation()
+      }
+      await mutateConversations()
+      toast.success("Conversation deleted")
+    } catch (error) {
+      console.error("[v0] Delete conversation failed:", error)
+      toast.error("Failed to delete conversation")
+    }
+  }, [activeConversationId, handleNewConversation, mutateConversations])
+
+  // Handle regenerate (retry last assistant message)
+  const handleRegenerate = useCallback(() => {
+    // Find the last user message and resend it
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
+    if (lastUserMessage) {
+      // Remove the last assistant message
+      const withoutLastAssistant = messages.filter((m, i) => {
+        if (i === messages.length - 1 && m.role === "assistant") return false
+        return true
+      })
+      setMessages(withoutLastAssistant)
+      // Re-submit the last user message
+      const text = normalizeMessage(lastUserMessage).text
+      if (text) {
+        sendMessage({ text })
+      }
+    }
+  }, [messages, setMessages, sendMessage])
 
   const submitText = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || isLoading) return
     sendMessage({ text: trimmed })
     setInput("")
+    // Refresh conversations to get the new/updated conversation
+    void mutateConversations()
   }
 
   // Handle form submit
@@ -532,30 +928,53 @@ export default function AssistantPage() {
 
   return (
     <AppShell title="Assistant">
-      <div className="flex h-full flex-col bg-zinc-50">
-        {/* Header */}
-        <div className="border-b border-zinc-200 px-4 md:px-6 py-3 md:py-4 bg-white">
-          <div className="flex items-center justify-between max-w-4xl mx-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 ring-1 ring-emerald-200 shrink-0">
-                <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-emerald-600" />
+      <div className="flex h-full">
+        {/* Conversation Sidebar */}
+        <ConversationSidebar
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelect={handleSelectConversation}
+          onNew={handleNewConversation}
+          onDelete={handleDeleteConversation}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
+
+        {/* Main chat area */}
+        <div className="flex-1 flex flex-col min-w-0 bg-zinc-50">
+          {/* Header */}
+          <div className="border-b border-zinc-200 px-4 md:px-6 py-3 md:py-4 bg-white">
+            <div className="flex items-center justify-between max-w-4xl mx-auto">
+              <div className="flex items-center gap-3">
+                {/* Sidebar toggle for desktop */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="hidden md:flex h-9 w-9"
+                >
+                  {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+                </Button>
+                <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 ring-1 ring-emerald-200 shrink-0">
+                  <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-base md:text-lg font-semibold text-zinc-900">Gravitre Assistant</h1>
+                  <p className="text-xs md:text-sm text-zinc-500 truncate">
+                    AI-powered help for your automation platform
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h1 className="text-base md:text-lg font-semibold text-zinc-900">Gravitre Assistant</h1>
-                <p className="text-xs md:text-sm text-zinc-500 truncate">
-                  AI-powered help for your automation platform
-                </p>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNewConversation}
+                className="gap-2 bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                <span className="hidden sm:inline">New chat</span>
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNewConversation}
-              className="gap-2 bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-              <span className="hidden sm:inline">New chat</span>
-            </Button>
           </div>
         </div>
 
@@ -620,15 +1039,17 @@ export default function AssistantPage() {
               </motion.div>
             ) : (
               <>
-                {messages.map((message) => (
+                {messages.map((message, index) => (
                   <ChatMessage
                     key={message.id}
                     message={message}
                     isUser={message.role === "user"}
+                    isLast={index === messages.length - 1 && message.role === "assistant"}
+                    onRegenerate={handleRegenerate}
                   />
                 ))}
 
-                {isLoading && (
+                {isLoading && !isStreaming && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -652,6 +1073,18 @@ export default function AssistantPage() {
           </div>
         </div>
 
+        {/* Agent Mode notice */}
+        {mode === "agent" && (
+          <div className="mx-4 mb-2">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>Agent Mode can take actions on your behalf. Review results before applying them.</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Input area */}
         <div className="border-t border-zinc-200 p-4 bg-white">
           <form onSubmit={onSubmit} className="max-w-4xl mx-auto">
@@ -661,12 +1094,15 @@ export default function AssistantPage() {
                 "border-zinc-200 hover:border-zinc-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20"
               )}
             >
+              {/* Mode selector */}
+              <ModeSelector value={mode} onChange={setMode} />
+
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={user ? "Ask me anything about your automation setup..." : "Sign in to chat"}
+                placeholder={user ? currentModeConfig.placeholder : "Sign in to chat"}
                 disabled={!user || isLoading}
                 rows={1}
                 className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
@@ -677,25 +1113,40 @@ export default function AssistantPage() {
                   target.style.height = Math.min(target.scrollHeight, 120) + "px"
                 }}
               />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!user || !input.trim() || isLoading}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+              
+              {/* Stop button (shown while streaming) */}
+              {isStreaming ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => stop()}
+                  className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!user || !input.trim() || isLoading}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </div>
             <p className="text-[11px] text-zinc-500 text-center mt-2">
               Assistant can make mistakes. Check important information.
             </p>
           </form>
         </div>
-      </div>
+        </div>
     </AppShell>
   )
 }
