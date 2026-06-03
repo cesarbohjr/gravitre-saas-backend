@@ -34,10 +34,27 @@ function LoginPageContent() {
   const oauthLoginCheckRef = useRef(false)
 
   const sessionExpiredMessage =
-    searchParams.get("session_expired") === "true"
+    searchParams.get("error") === "session_expired"
       ? "Your session has expired. Please sign in again."
       : null
-  const displayedAuthError = authError ?? sessionExpiredMessage
+  const authCallbackFailedMessage =
+    searchParams.get("error") === "auth_callback_failed"
+      ? "Sign-in was interrupted. Please try again."
+      : null
+  const accountNotFoundMessage =
+    searchParams.get("error") === "account_not_found"
+      ? "No account found with that email. Would you like to create one?"
+      : null
+  const oauthErrorMessage =
+    searchParams.get("error") === "oauth_error"
+      ? `Sign-in with ${searchParams.get("provider") ?? "your provider"} failed. Please try again or use email instead.`
+      : null
+  const displayedAuthError =
+    authError ??
+    sessionExpiredMessage ??
+    authCallbackFailedMessage ??
+    accountNotFoundMessage ??
+    oauthErrorMessage
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -51,6 +68,7 @@ function LoginPageContent() {
       setIsLoading(false)
       setLoadingProvider(null)
       window.sessionStorage.removeItem("gravitre_auth_redirecting")
+      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
     }
 
     const onPageShow = () => {
@@ -112,6 +130,8 @@ function LoginPageContent() {
         }
 
         const redirect = searchParams.get("redirect") || "/operator"
+        window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
+        window.sessionStorage.removeItem("gravitre_auth_login_redirect")
         router.replace(redirect)
       } catch {
         await supabaseClient.auth.signOut()
@@ -145,6 +165,8 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
+    window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
+    window.sessionStorage.removeItem("gravitre_auth_login_redirect")
     router.push(redirect)
   }
 

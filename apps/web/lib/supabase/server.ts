@@ -1,5 +1,33 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { createServerClient } from "@supabase/ssr"
+import { createClient as createSupabaseJsClient, type SupabaseClient } from "@supabase/supabase-js"
+import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
+
+/** Cookie-based Supabase client for Server Components, Route Handlers, and Server Actions. */
+export async function createClient() {
+  const cookieStore = await cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Read-only in Server Components
+          }
+        },
+      },
+    }
+  )
+}
 
 const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -41,7 +69,7 @@ export function createSupabaseRouteClient(request: NextRequest): SupabaseClient 
   const authHeader = request.headers.get("authorization")
   const serviceRoleKey = getSupabaseServiceRoleKey()
   const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
-  return createClient(getSupabaseUrl(), accessKey, {
+  return createSupabaseJsClient(getSupabaseUrl(), accessKey, {
     global: {
       headers: authHeader ? { Authorization: authHeader } : {},
     },

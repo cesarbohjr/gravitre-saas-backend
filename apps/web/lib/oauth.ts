@@ -77,6 +77,8 @@ export async function beginOAuthSignIn(
     }
   }
 
+  window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
+  window.sessionStorage.removeItem("gravitre_auth_login_redirect")
   window.location.assign(data.url)
   return { ok: true }
 }

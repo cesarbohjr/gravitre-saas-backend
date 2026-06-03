@@ -128,6 +128,14 @@ export function AppShell({ children, title }: AppShellProps) {
     }
   }
 
+  // Clear auth transition flags once the protected shell has loaded.
+  useEffect(() => {
+    if (user && !loading) {
+      window.sessionStorage.removeItem("gravitre_auth_redirecting")
+      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+    }
+  }, [user, loading])
+
   // Show loading while checking auth and billing
   if (loading || (user && billingLoading && billingStatusData === undefined)) {
     return (
