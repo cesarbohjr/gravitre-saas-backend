@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     quickbooks_client_secret: str = ""
     quickbooks_sandbox_client_id: str = ""
     quickbooks_sandbox_client_secret: str = ""
+    # Jira Cloud OAuth (STA-36)
+    jira_client_id: str = ""
+    jira_client_secret: str = ""
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"

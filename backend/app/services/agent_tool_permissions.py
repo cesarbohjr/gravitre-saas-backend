@@ -48,6 +48,10 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "quickbooks.companyinfo.get": ["quickbooks:company:read", "quickbooks:*"],
     "stripe.invoices.list": ["stripe:invoices:read", "stripe:*"],
     "stripe.subscriptions.get": ["stripe:subscriptions:read", "stripe:*"],
+    "jira.issues.create": ["jira:issues:write", "jira:*"],
+    "jira.issues.assign": ["jira:issues:write", "jira:*"],
+    "jira.issues.transition": ["jira:issues:write", "jira:*"],
+    "jira.issues.comment": ["jira:issues:write", "jira:*"],
     "zendesk.tickets.get": ["zendesk:tickets:read", "zendesk:*"],
     "zendesk.tickets.create": ["zendesk:tickets:write", "zendesk:*"],
     "zendesk.tickets.update": ["zendesk:tickets:write", "zendesk:*"],
@@ -240,6 +244,11 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "stripe:invoices:read",
             "stripe:subscriptions:read",
             "stripe:*",
+        ]
+    if system == "jira":
+        return [
+            "jira:issues:write",
+            "jira:*",
         ]
     if system == "slack":
         return ["slack:messages:write", "slack:*"]

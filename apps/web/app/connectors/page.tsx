@@ -688,6 +688,7 @@ const connectorCategories = {
     connectors: [
       { type: "Notion", description: "All-in-one workspace", authType: "oauth" },
       { type: "Airtable", description: "Database spreadsheets", authType: "apiKey" },
+      { type: "Jira", description: "Issue tracking and DevOps", authType: "oauth" },
       { type: "Asana", description: "Project management", authType: "oauth" },
       { type: "Monday.com", description: "Work OS", authType: "oauth" },
       { type: "ClickUp", description: "Productivity platform", authType: "apiKey" },
@@ -729,7 +730,7 @@ const availableConnectors = Object.entries(connectorCategories).flatMap(([catego
   data.connectors.map(c => ({ ...c, category }))
 )
 
-const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce", "QuickBooks"])
+const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce", "QuickBooks", "Jira"])
 
 function connectorVendorKey(type: string): string {
   const key = type.toLowerCase().replace(/\s+/g, "")

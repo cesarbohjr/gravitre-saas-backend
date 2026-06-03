@@ -77,6 +77,14 @@ from app.connectors.stripe_api import (
     list_invoices,
     resolve_stripe_credentials,
 )
+from app.connectors.jira import (
+    JiraAPIError,
+    add_issue_comment,
+    assign_issue,
+    create_issue as jira_create_issue,
+    transition_issue,
+)
+from app.connectors.jira_oauth import ensure_jira_session
 from app.connectors.salesforce_oauth import ensure_salesforce_session
 from app.connectors.github_api import (
     GitHubAPIError,
@@ -1033,6 +1041,130 @@ def _exec_stripe_subscriptions_get(ctx: ToolContext, params: dict[str, Any]) -> 
     )
 
 
+def _jira_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "jira", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active Jira connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "jira", cid)
+    token, cloud_id, err = ensure_jira_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token or not cloud_id:
+        raise ToolAuthExpiredError(err or "Jira OAuth not connected")
+    return cid, token, cloud_id
+
+
+def _handle_jira_error(exc: JiraAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_jira_issues_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    project_key = params.get("project_key") or params.get("projectKey")
+    summary = params.get("summary")
+    issue_type = params.get("issue_type") or params.get("issueType") or "Task"
+    if not project_key:
+        raise ToolValidationError("jira.issues.create requires project_key")
+    if not summary:
+        raise ToolValidationError("jira.issues.create requires summary")
+    extra = params.get("fields")
+    field_dict = extra if isinstance(extra, dict) else None
+    try:
+        data = jira_create_issue(
+            cloud_id,
+            token,
+            project_key=str(project_key),
+            summary=str(summary),
+            issue_type=str(issue_type),
+            description=params.get("description"),
+            fields=field_dict,
+        )
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.create",
+        connector_id=cid,
+        data={"issue": data},
+    )
+
+
+def _exec_jira_issues_assign(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    account_id = params.get("account_id") or params.get("accountId") or params.get("assignee_account_id")
+    if not issue_id:
+        raise ToolValidationError("jira.issues.assign requires issue_id or issue_key")
+    if not account_id:
+        raise ToolValidationError("jira.issues.assign requires account_id")
+    try:
+        data = assign_issue(cloud_id, token, str(issue_id), str(account_id))
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.assign",
+        connector_id=cid,
+        data={"assigned": data or {"ok": True}},
+    )
+
+
+def _exec_jira_issues_transition(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    transition_id = params.get("transition_id") or params.get("transitionId")
+    if not issue_id:
+        raise ToolValidationError("jira.issues.transition requires issue_id or issue_key")
+    if not transition_id:
+        raise ToolValidationError("jira.issues.transition requires transition_id")
+    try:
+        data = transition_issue(cloud_id, token, str(issue_id), str(transition_id))
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.transition",
+        connector_id=cid,
+        data={"transition": data or {"ok": True}},
+    )
+
+
+def _exec_jira_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    body = params.get("body") or params.get("comment") or params.get("text")
+    if not issue_id:
+        raise ToolValidationError("jira.issues.comment requires issue_id or issue_key")
+    if not body:
+        raise ToolValidationError("jira.issues.comment requires body")
+    try:
+        data = add_issue_comment(cloud_id, token, str(issue_id), str(body))
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.comment",
+        connector_id=cid,
+        data={"comment": data},
+    )
+
+
 def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
@@ -1493,6 +1625,10 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "quickbooks.companyinfo.get": _exec_quickbooks_companyinfo_get,
     "stripe.invoices.list": _exec_stripe_invoices_list,
     "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
+    "jira.issues.create": _exec_jira_issues_create,
+    "jira.issues.assign": _exec_jira_issues_assign,
+    "jira.issues.transition": _exec_jira_issues_transition,
+    "jira.issues.comment": _exec_jira_issues_comment,
     "zendesk.tickets.get": _exec_zendesk_tickets_get,
     "zendesk.tickets.create": _exec_zendesk_tickets_create,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,
