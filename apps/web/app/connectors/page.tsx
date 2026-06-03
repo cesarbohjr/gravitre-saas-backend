@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
@@ -1409,7 +1409,7 @@ function AddConnectorModal({
   )
 }
 
-export default function ConnectorsPage() {
+function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
 
@@ -1833,5 +1833,23 @@ export default function ConnectorsPage() {
         />
       </div>
     </AppShell>
+  )
+}
+
+function ConnectorsPageFallback() {
+  return (
+    <AppShell title="Connectors">
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    </AppShell>
+  )
+}
+
+export default function ConnectorsPage() {
+  return (
+    <Suspense fallback={<ConnectorsPageFallback />}>
+      <ConnectorsPageContent />
+    </Suspense>
   )
 }
