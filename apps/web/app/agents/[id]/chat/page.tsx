@@ -39,8 +39,15 @@ const mockAgent: Agent = {
   id: "agent-001",
   name: "Atlas",
   role: "Marketing Agent",
+  department: "Marketing",
   description: "Marketing campaign orchestration",
   status: "active",
+  personality: { color: "#10B981", gradient: "from-emerald-500 to-teal-500", glow: "emerald-500/20" },
+  stats: { tasksToday: 12, successRate: 95, avgResponseTime: "2.4s", workflowsUsing: 3 },
+  capabilities: ["campaign_management", "content_creation", "analytics"],
+  permissions: ["read", "write", "execute"],
+  lastAction: "Generated campaign report",
+  lastActionTime: new Date().toISOString(),
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -66,13 +73,17 @@ function normalizeMessage(message: UIMessage): {
   for (const part of message.parts) {
     if (part.type === "text") {
       text += part.text
-    } else if (part.type === "tool-invocation") {
-      tools.push({ name: part.toolInvocation.toolName, result: part.toolInvocation.result })
-      // Extract sources from tool results
-      if (part.toolInvocation.toolName === "knowledge_base" && part.toolInvocation.result) {
-        const result = part.toolInvocation.result as { sources?: { title: string; url?: string; excerpt?: string }[] }
-        if (result.sources) {
-          sources.push(...result.sources)
+    } else if (part.type.startsWith("tool-")) {
+      // AI SDK v6 tool parts have the properties directly on the part
+      const toolPart = part as { type: string; toolCallId: string; toolName?: string; result?: unknown }
+      if (toolPart.toolName) {
+        tools.push({ name: toolPart.toolName, result: toolPart.result })
+        // Extract sources from tool results
+        if (toolPart.toolName === "knowledge_base" && toolPart.result) {
+          const result = toolPart.result as { sources?: { title: string; url?: string; excerpt?: string }[] }
+          if (result.sources) {
+            sources.push(...result.sources)
+          }
         }
       }
     }
