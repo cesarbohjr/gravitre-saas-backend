@@ -1,0 +1,121 @@
+{
+  "createdAt": "2026-06-02T17:23:11.325Z",
+  "epics": {
+    "epic-a": "STA-50",
+    "epic-b": "STA-51",
+    "epic-c": "STA-52",
+    "epic-d": "STA-53",
+    "epic-e": "STA-54",
+    "epic-f": "STA-55"
+  },
+  "issues": [
+    {
+      "ref": "T3-001",
+      "linear": "STA-56",
+      "title": "NetSuite OAuth + token lifecycle (SuiteScript REST)",
+      "parent": "STA-50"
+    },
+    {
+      "ref": "T3-002",
+      "linear": "STA-57",
+      "title": "NetSuite v1 read actions",
+      "parent": "STA-50"
+    },
+    {
+      "ref": "T3-003",
+      "linear": "STA-58",
+      "title": "NetSuite v1 write actions (controlled)",
+      "parent": "STA-50"
+    },
+    {
+      "ref": "T3-004",
+      "linear": "STA-59",
+      "title": "Workday OAuth + API integration",
+      "parent": "STA-51"
+    },
+    {
+      "ref": "T3-005",
+      "linear": "STA-60",
+      "title": "Workday v1 read actions",
+      "parent": "STA-51"
+    },
+    {
+      "ref": "T3-006",
+      "linear": "STA-61",
+      "title": "Workday policy docs → department RAG sync",
+      "parent": "STA-51"
+    },
+    {
+      "ref": "T3-007",
+      "linear": "STA-62",
+      "title": "LinkedIn / Sales Navigator API evaluation + compliance",
+      "parent": "STA-52"
+    },
+    {
+      "ref": "T3-008",
+      "linear": "STA-63",
+      "title": "Sales Agent prospect enrichment action",
+      "parent": "STA-52"
+    },
+    {
+      "ref": "T3-009",
+      "linear": "STA-64",
+      "title": "Marketo OAuth + instance linking",
+      "parent": "STA-53"
+    },
+    {
+      "ref": "T3-010",
+      "linear": "STA-65",
+      "title": "Marketo v1 actions",
+      "parent": "STA-53"
+    },
+    {
+      "ref": "T3-011",
+      "linear": "STA-66",
+      "title": "Enterprise nurture workflow templates (Marketo + handoffs)",
+      "parent": "STA-53"
+    },
+    {
+      "ref": "T3-012",
+      "linear": "STA-67",
+      "title": "Segment source OAuth + workspace linking",
+      "parent": "STA-54"
+    },
+    {
+      "ref": "T3-013",
+      "linear": "STA-68",
+      "title": "Segment v1 agent actions (identify + track)",
+      "parent": "STA-54"
+    },
+    {
+      "ref": "T3-014",
+      "linear": "STA-69",
+      "title": "Segment → workflow trigger bridge",
+      "parent": "STA-54"
+    },
+    {
+      "ref": "T3-015",
+      "linear": "STA-70",
+      "title": "Connector SDK specification (manifest + handlers)",
+      "parent": "STA-55"
+    },
+    {
+      "ref": "T3-016",
+      "linear": "STA-71",
+      "title": "Partner connector submission + review workflow",
+      "parent": "STA-55"
+    },
+    {
+      "ref": "T3-017",
+      "linear": "STA-72",
+      "title": "Sandbox org for third-party connector testing",
+      "parent": "STA-55"
+    },
+    {
+      "ref": "T3-018",
+      "linear": "STA-73",
+      "title": "Marketplace demo: partner-built connector in sandbox",
+      "parent": "STA-55"
+    }
+  ]
+}

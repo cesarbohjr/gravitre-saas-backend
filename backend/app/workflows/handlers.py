@@ -1,34 +1,32 @@
 """Step handler implementations for registry."""
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
 from app.config import Settings
-from app.connectors.crypto import decrypt_secret
 from app.connectors.email import body_hash as _body_hash
 from app.connectors.email import extract_to_domain
-from app.connectors.email import send_email_smtp
 from app.connectors.email import subject_hash as _subject_hash
-from app.connectors.rate_limit import enforce_rate_limit
-from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
-from app.connectors.slack import message_hash, send_slack_message
+from app.connectors.repository import get_connector
 from app.connectors.webhook import (
-    ALLOWED_HEADER_NAMES as WEBHOOK_ALLOWED_HEADERS,
-    build_headers,
-    build_url,
     coerce_payload,
     parse_connector_config,
     payload_hash as _payload_hash,
-    resolve_and_validate_host,
     sanitize_headers,
-    send_webhook,
     validate_path,
+)
+from app.services.tool_service import (
+    STEP_TYPE_TO_ACTION,
+    invoke_tool,
+    params_for_step,
+    tool_context_from_step,
 )
 from app.rag.embedding import get_embedding
 from app.rag.retrieval import search_chunks
-from app.workflows.audit import write_audit_event
-from app.workflows.constants import OUTPUT_SNAPSHOT_MAX_BYTES, RESOURCE_TYPE_WORKFLOW_RUN
+from app.workflows.constants import OUTPUT_SNAPSHOT_MAX_BYTES
+from app.services.handoff_service import execute_agent_step_with_handoff
 from app.workflows.registry import StepContext, StepHandler, register_handler
 
 
@@ -130,68 +128,13 @@ class SlackPostMessageHandler(StepHandler):
         })
 
     def execute(self, context: StepContext) -> dict[str, Any]:
-        settings = context.settings
-        org_id = context.org_id
-        parameters = context.parameters
-        config = context.config
-        client = context.client
-        run_id = context.run_id or ""
-        user_id = context.user_id or ""
-        step_id = context.step_id
-        environment = context.environment_name or "default"
-
-        cfg = config or {}
-        if settings.disable_connectors:
-            raise ValueError("Connectors are disabled")
-        connector_id = cfg.get("connector_id")
-        if connector_id:
-            conn = get_connector(client, org_id, str(connector_id), environment_name=environment)
-        else:
-            conn = get_connector_by_type(client, org_id, "slack", environment_name=environment)
-        if not conn:
-            raise ValueError("No active Slack connector found for org")
-        enforce_rate_limit(client, org_id, "slack_post_message", "slack", str(conn["id"]))
-        token = get_decrypted_secret(client, str(conn["id"]), "token", settings)
-        if not token:
-            raise ValueError("Slack connector missing token secret")
-        channel = (cfg.get("channel") or parameters.get("channel") or "").strip()
-        if not channel:
-            raise ValueError("Slack channel is required (config.channel or parameters.channel)")
-        msg_key = cfg.get("message_input_key", "message")
-        text = (parameters.get(msg_key) or "").strip()
-        if not text:
-            raise ValueError(f"Slack message is required (parameters.{msg_key})")
-        write_audit_event(
-            client, org_id, user_id,
-            action="slack.send.requested",
-            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-            resource_id=run_id,
-            metadata={"step_id": step_id, "channel": channel[:80], "message_hash": message_hash(text)},
+        action = STEP_TYPE_TO_ACTION[self.step_type]
+        result = invoke_tool(
+            tool_context_from_step(context),
+            action,
+            params_for_step(self.step_type, context.config or {}, context.parameters),
         )
-        try:
-            result = send_slack_message(token, channel, text)
-        except ValueError as e:
-            write_audit_event(
-                client, org_id, user_id,
-                action="slack.send.failed",
-                resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-                resource_id=run_id,
-                metadata={"step_id": step_id, "error": str(e)[:200]},
-            )
-            raise
-        write_audit_event(
-            client, org_id, user_id,
-            action="slack.send.sent",
-            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-            resource_id=run_id,
-            metadata={
-                "step_id": step_id,
-                "channel": channel[:80],
-                "ts": result.get("ts", "")[:30],
-                "latency_ms": int(result.get("_latency_ms", 0) or 0),
-            },
-        )
-        return _truncate_output_snapshot({"executed": True, "channel": channel, "ts": result.get("ts"), "ok": True})
+        return _truncate_output_snapshot(result.to_step_output())
 
 
 class EmailSendHandler(StepHandler):
@@ -236,106 +179,13 @@ class EmailSendHandler(StepHandler):
         })
 
     def execute(self, context: StepContext) -> dict[str, Any]:
-        settings = context.settings
-        org_id = context.org_id
-        parameters = context.parameters
-        config = context.config
-        client = context.client
-        run_id = context.run_id or ""
-        user_id = context.user_id or ""
-        step_id = context.step_id
-        environment = context.environment_name or "default"
-
-        cfg = config or {}
-        if settings.disable_connectors:
-            raise ValueError("Connectors are disabled")
-        connector_id = cfg.get("connector_id")
-        if not connector_id:
-            raise ValueError("email_send requires config.connector_id")
-        conn = get_connector(client, org_id, str(connector_id), environment_name=environment)
-        if not conn:
-            raise ValueError("Connector not found")
-        if conn.get("type") != "email":
-            raise ValueError("Connector must be type email")
-        enforce_rate_limit(client, org_id, "email_send", "email", str(conn["id"]))
-        to_key = cfg.get("to_input_key", "to")
-        subj_key = cfg.get("subject_input_key", "subject")
-        body_key = cfg.get("body_input_key", "body")
-        to_addr = (parameters.get(to_key) or "").strip()
-        subject = str(parameters.get(subj_key, ""))
-        body = str(parameters.get(body_key, ""))
-        if not to_addr:
-            raise ValueError(f"email_send requires parameters.{to_key}")
-        content_type = (cfg.get("content_type") or "text/plain").strip()
-        if content_type not in ("text/plain", "text/html"):
-            content_type = "text/plain"
-        conn_config = conn.get("config") or {}
-        use_tls = conn_config.get("use_tls", True)
-        smtp_host = get_decrypted_secret(client, str(conn["id"]), "SMTP_HOST", settings)
-        smtp_port = get_decrypted_secret(client, str(conn["id"]), "SMTP_PORT", settings)
-        smtp_user = get_decrypted_secret(client, str(conn["id"]), "SMTP_USERNAME", settings)
-        smtp_pass = get_decrypted_secret(client, str(conn["id"]), "SMTP_PASSWORD", settings)
-        smtp_from = get_decrypted_secret(client, str(conn["id"]), "SMTP_FROM", settings)
-        if not smtp_host:
-            raise ValueError("Email connector missing SMTP_HOST secret")
-        if not smtp_from:
-            raise ValueError("Email connector missing SMTP_FROM secret")
-        port = int(smtp_port) if smtp_port else (587 if use_tls else 25)
-        to_domain = extract_to_domain(to_addr)
-        subj_h = _subject_hash(subject)
-        body_h = _body_hash(body)
-        write_audit_event(
-            client, org_id, user_id,
-            action="email.send.requested",
-            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-            resource_id=run_id,
-            metadata={"step_id": step_id, "to_domain": to_domain, "subject_hash": subj_h, "body_hash": body_h},
+        action = STEP_TYPE_TO_ACTION[self.step_type]
+        result = invoke_tool(
+            tool_context_from_step(context),
+            action,
+            params_for_step(self.step_type, context.config or {}, context.parameters),
         )
-        try:
-            msg_id, latency_ms = send_email_smtp(
-                host=smtp_host,
-                port=port,
-                username=smtp_user or "",
-                password=smtp_pass or "",
-                from_addr=smtp_from,
-                to_addr=to_addr,
-                subject=subject,
-                body=body,
-                content_type=content_type,
-                use_tls=use_tls,
-            )
-        except ValueError as e:
-            write_audit_event(
-                client, org_id, user_id,
-                action="email.send.failed",
-                resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-                resource_id=run_id,
-                metadata={"step_id": step_id, "to_domain": to_domain, "error": str(e)[:200]},
-            )
-            raise
-        write_audit_event(
-            client, org_id, user_id,
-            action="email.send.sent",
-            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-            resource_id=run_id,
-            metadata={
-                "step_id": step_id,
-                "to_domain": to_domain,
-                "subject_hash": subj_h,
-                "body_hash": body_h,
-                "latency_ms": latency_ms,
-            },
-        )
-        out: dict[str, Any] = {
-            "simulated": False,
-            "to_domain": to_domain,
-            "subject_hash": subj_h,
-            "body_hash": body_h,
-            "content_type": content_type,
-        }
-        if msg_id:
-            out["message_id"] = msg_id[:200]
-        return _truncate_output_snapshot(out)
+        return _truncate_output_snapshot(result.to_step_output())
 
 
 class WebhookPostHandler(StepHandler):
@@ -380,143 +230,64 @@ class WebhookPostHandler(StepHandler):
         })
 
     def execute(self, context: StepContext) -> dict[str, Any]:
-        settings = context.settings
-        org_id = context.org_id
-        parameters = context.parameters
-        config = context.config
-        client = context.client
-        run_id = context.run_id or ""
-        user_id = context.user_id or ""
-        step_id = context.step_id
-        environment = context.environment_name or "default"
-
-        cfg = config or {}
-        if settings.disable_connectors:
-            raise ValueError("Connectors are disabled")
-        connector_id = cfg.get("connector_id")
-        if not connector_id:
-            raise ValueError("webhook_post requires config.connector_id")
-        conn = get_connector(client, org_id, str(connector_id), environment_name=environment)
-        if not conn:
-            raise ValueError("Connector not found")
-        if conn.get("type") != "webhook":
-            raise ValueError("Connector must be type webhook")
-        if conn.get("status") != "active":
-            raise ValueError("Connector must be active")
-        enforce_rate_limit(client, org_id, "webhook_post", "webhook", str(conn["id"]))
-        conn_cfg = parse_connector_config(conn.get("config") or {})
-        allowed_hosts = conn_cfg["allowed_hosts"]
-        target_host = allowed_hosts[0]
-        path = cfg.get("path") or conn_cfg.get("default_path") or "/"
-        path = validate_path(path)
-        payload_key = cfg.get("payload_input_key", "payload")
-        if payload_key not in parameters:
-            raise ValueError(f"webhook_post requires parameters.{payload_key}")
-        payload_bytes = coerce_payload(parameters[payload_key])
-        if len(payload_bytes) > conn_cfg["max_payload_bytes"]:
-            raise ValueError("webhook_post payload exceeds max_payload_bytes")
-        step_headers = cfg.get("headers") or {}
-        sanitize_headers(step_headers)
-
-        ips = resolve_and_validate_host(target_host)
-        connect_ip = ips[0]
-
-        bearer_token = get_decrypted_secret(client, str(conn["id"]), "WEBHOOK_BEARER_TOKEN", settings)
-        hmac_secret = get_decrypted_secret(client, str(conn["id"]), "WEBHOOK_HMAC_SECRET", settings)
-        secret_headers: dict[str, str] = {}
-        rows = (
-            client.table("connector_secrets")
-            .select("key_name, encrypted_value")
-            .eq("connector_id", str(conn["id"]))
-            .execute()
+        action = STEP_TYPE_TO_ACTION[self.step_type]
+        result = invoke_tool(
+            tool_context_from_step(context),
+            action,
+            params_for_step(self.step_type, context.config or {}, context.parameters),
         )
-        for row in (rows.data or []):
-            key_name = row.get("key_name", "")
-            if not key_name.startswith("WEBHOOK_HEADER_"):
-                continue
-            header_name = key_name[len("WEBHOOK_HEADER_") :].replace("_", "-")
-            if header_name.lower() not in WEBHOOK_ALLOWED_HEADERS:
-                raise ValueError(f"Header {header_name!r} not allowlisted")
-            secret_val = decrypt_secret(row["encrypted_value"], settings.connector_secrets_encryption_key)
-            secret_headers[header_name] = secret_val
+        return _truncate_output_snapshot(result.to_step_output())
 
-        headers, preview_keys, request_id = build_headers(
-            step_headers=step_headers,
-            secret_headers=secret_headers,
-            bearer_token=bearer_token,
-            hmac_secret=hmac_secret,
-            payload_bytes=payload_bytes,
+
+def _step_def_from_config(config: dict[str, Any]) -> dict[str, Any]:
+    metadata = config.get("metadata")
+    if isinstance(metadata, dict):
+        return {
+            "metadata": metadata,
+            "config": {k: v for k, v in config.items() if k != "metadata"},
+        }
+    return {"metadata": config, "config": config}
+
+
+class AgentStepHandler(StepHandler):
+    """STA-17/18: agent step with optional next_agent_id handoff routing."""
+
+    step_type = "agent"
+
+    def simulate(self, context: StepContext) -> dict[str, Any]:
+        from app.services.handoff_service import resolve_step_agent_metadata
+
+        step_def = _step_def_from_config(context.config or {})
+        agent_id, next_agent_id, task = resolve_step_agent_metadata(step_def)
+        return _truncate_output_snapshot(
+            {
+                "simulated": True,
+                "agent_id": agent_id,
+                "next_agent_id": next_agent_id,
+                "task": task,
+                "message": "Agent step simulated (dry-run)",
+            }
         )
-        build_url(target_host, path, conn_cfg["allowed_schemes"])
-        p_hash = _payload_hash(payload_bytes)
-        write_audit_event(
-            client, org_id, user_id,
-            action="webhook.send.requested",
-            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-            resource_id=run_id,
-            metadata={
-                "step_id": step_id,
-                "target_host": target_host,
-                "payload_hash": p_hash,
-                "payload_bytes": len(payload_bytes),
-                "request_id": request_id,
-            },
-        )
-        try:
-            status_code, response_time_ms = send_webhook(
-                host=target_host,
-                path=path,
-                connect_ip=connect_ip,
-                payload_bytes=payload_bytes,
-                headers=headers,
-                timeout_seconds=conn_cfg["timeout_seconds"],
-                retry_count=conn_cfg["retry_count"],
-                retry_backoff_ms=conn_cfg["retry_backoff_ms"],
+
+    def execute(self, context: StepContext) -> dict[str, Any]:
+        if not context.client:
+            raise ValueError("agent step requires database client")
+        actor_id = context.user_id or context.org_id
+        step_def = _step_def_from_config(context.config or {})
+        output = asyncio.run(
+            execute_agent_step_with_handoff(
+                context.settings,
+                org_id=context.org_id,
+                user_id=str(actor_id),
+                run_id=str(context.run_id or context.org_id),
+                step_id=context.step_id,
+                step_def=step_def,
+                parameters=context.parameters,
+                step_outputs=context.step_outputs,
+                client=context.client,
             )
-        except ValueError as e:
-            write_audit_event(
-                client, org_id, user_id,
-                action="webhook.send.failed",
-                resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-                resource_id=run_id,
-                metadata={
-                    "step_id": step_id,
-                    "target_host": target_host,
-                    "payload_hash": p_hash,
-                    "payload_bytes": len(payload_bytes),
-                    "request_id": request_id,
-                    "error_code": "webhook_failed",
-                },
-            )
-            raise
-        write_audit_event(
-            client, org_id, user_id,
-            action="webhook.send.sent",
-            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-            resource_id=run_id,
-            metadata={
-                "step_id": step_id,
-                "target_host": target_host,
-                "status_code": status_code,
-                "response_time_ms": int(response_time_ms),
-                "latency_ms": int(response_time_ms),
-                "payload_hash": p_hash,
-                "payload_bytes": len(payload_bytes),
-                "request_id": request_id,
-            },
         )
-        return _truncate_output_snapshot({
-            "simulated": False,
-            "target_host": target_host,
-            "path": path,
-            "payload_hash": p_hash,
-            "payload_bytes": len(payload_bytes),
-            "status_code": status_code,
-            "response_time_ms": int(response_time_ms),
-            "retry_count_used": conn_cfg["retry_count"],
-            "request_id": request_id,
-            "headers_preview": preview_keys,
-        })
+        return _truncate_output_snapshot(output)
 
 
 class ConditionHandler(StepHandler):
@@ -549,6 +320,7 @@ class TransformHandler(StepHandler):
 
 def register_handlers() -> None:
     register_handler(RagRetrieveHandler())
+    register_handler(AgentStepHandler())
     register_handler(NoopHandler())
     register_handler(SlackPostMessageHandler())
     register_handler(EmailSendHandler())

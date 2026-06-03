@@ -1,7 +1,8 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
@@ -77,6 +78,7 @@ interface Connector {
   latency?: number
   category?: string
   authType?: "oauth" | "apiKey" | "webhook"
+  authStatus?: string
   usedByWorkflows?: number
   triggeredByAgents?: number
   config?: {
@@ -88,19 +90,26 @@ interface Connector {
 
 function normalizeConnector(input: Record<string, unknown> | ApiConnector): Connector {
   const model = input as Record<string, unknown>
-  const status = String(model.status ?? "disconnected") as ConnectorStatus | Connector["status"]
+  const rawStatus = String(model.status ?? "disconnected")
   const environment = String(input.environment ?? "staging")
-  const authType = String(model.authType ?? model.auth_type ?? "apiKey")
+  const cfg =
+    model.config && typeof model.config === "object"
+      ? (model.config as Record<string, unknown>)
+      : {}
+  const authType = String(cfg.authType ?? model.authType ?? model.auth_type ?? "apiKey")
+  const authStatus = String(model.authStatus ?? model.auth_status ?? "")
   const normalizedStatus: Connector["status"] =
-    status === "connected" || status === "syncing" || status === "error" || status === "disconnected"
-      ? status
-      : status === "active"
+    rawStatus === "connected" || rawStatus === "syncing" || rawStatus === "error" || rawStatus === "disconnected"
+      ? rawStatus
+      : rawStatus === "healthy" || rawStatus === "active"
         ? "connected"
-        : status === "pending"
+        : rawStatus === "pending_auth" || rawStatus === "pending"
           ? "syncing"
-          : status === "inactive"
-            ? "disconnected"
-            : "error"
+          : authStatus === "auth_expired" || authStatus === "misconfigured"
+            ? "error"
+            : rawStatus === "inactive"
+              ? "disconnected"
+              : "error"
   return {
     id: String(model.id ?? ""),
     name: String(model.name ?? "connector"),
@@ -115,6 +124,7 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     latency: Number(model.latency ?? 0),
     category: String(model.category ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
+    authStatus: authStatus || undefined,
     usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
     triggeredByAgents: Number(model.triggeredByAgents ?? model.triggered_by_agents ?? 0),
     config:
@@ -327,6 +337,7 @@ function ConnectorNode({
   onConfigure,
   onSync,
   onTestConnection,
+  onReconnect,
   onDelete,
 }: { 
   connector: Connector
@@ -334,6 +345,7 @@ function ConnectorNode({
   onConfigure: () => void
   onSync: (connectorId: string) => Promise<void>
   onTestConnection: (connectorId: string) => Promise<void>
+  onReconnect?: (connector: Connector) => Promise<void>
   onDelete: () => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
@@ -760,14 +772,22 @@ function AddConnectorModal({
   const getSelectedConnector = () => availableConnectors.find((c) => c.type === selectedType)
 
   const handleOAuthConnect = async () => {
+    if (!selectedType || !name) return
+    const provider = selectedType.toLowerCase().replace(/\s+/g, "")
     setOauthStatus("redirecting")
-    // Simulate OAuth redirect
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    // Simulate OAuth callback success
-    setOauthStatus("success")
-    toast.success(`Connected to ${selectedType}`, { description: "OAuth authentication successful" })
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    await completeConnection()
+    try {
+      const { authorizationUrl } = await connectorsApi.startOAuth(provider, {
+        name,
+        redirectPath: "/connectors",
+      })
+      window.location.assign(authorizationUrl)
+    } catch (err) {
+      console.error("[connectors] OAuth start failed:", err)
+      setOauthStatus("error")
+      toast.error(`Failed to connect ${selectedType}`, {
+        description: "Check HubSpot OAuth credentials are configured on the API",
+      })
+    }
   }
 
   const handleConnect = async () => {
@@ -1391,6 +1411,29 @@ function AddConnectorModal({
 
 export default function ConnectorsPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const oauth = searchParams.get("oauth")
+    const provider = searchParams.get("provider")
+    if (!oauth) return
+    if (oauth === "success") {
+      toast.success("Connector connected", {
+        description: provider ? `${provider} OAuth completed` : "OAuth authentication successful",
+      })
+    } else if (oauth === "error") {
+      const message = searchParams.get("message")
+      toast.error("OAuth connection failed", { description: message || "Try again or contact support" })
+    }
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("oauth")
+      url.searchParams.delete("provider")
+      url.searchParams.delete("connectorId")
+      url.searchParams.delete("message")
+      window.history.replaceState({}, "", url.pathname + url.search)
+    }
+  }, [searchParams])
   // Fetch connectors from API with SWR
   const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
     user ? "/api/connectors" : null,
@@ -1469,11 +1512,29 @@ export default function ConnectorsPage() {
     }
   }
 
+  const handleReconnectOAuth = async (connector: Connector) => {
+    const provider = connector.type.toLowerCase().replace(/\s+/g, "")
+    try {
+      const { authorizationUrl } = await connectorsApi.reconnectOAuth(
+        provider,
+        connector.id,
+        connector.name
+      )
+      window.location.assign(authorizationUrl)
+    } catch (err) {
+      console.error("[connectors] OAuth reconnect failed:", err)
+      toast.error("Failed to start reconnect", {
+        description: "HubSpot OAuth may not be configured on the server",
+      })
+    }
+  }
+
   const handleTestConnection = async (connectorId: string) => {
     try {
       const result = await connectorsApi.testConnection(connectorId)
       if (result.success) {
         toast.success("Connection successful")
+        await mutate()
       } else {
         toast.error(result.message || "Connection test failed")
       }
@@ -1678,6 +1739,7 @@ export default function ConnectorsPage() {
                   onConfigure={() => setConfigureModal(connector)}
                   onSync={handleSync}
                   onTestConnection={handleTestConnection}
+                  onReconnect={handleReconnectOAuth}
                   onDelete={() => setDeleteModal(connector)}
                 />
               ))}
@@ -1698,6 +1760,7 @@ export default function ConnectorsPage() {
                       onConfigure={() => setConfigureModal(connector)}
                       onSync={handleSync}
                       onTestConnection={handleTestConnection}
+                  onReconnect={handleReconnectOAuth}
                       onDelete={() => setDeleteModal(connector)}
                     />
                   ))}
@@ -1716,6 +1779,7 @@ export default function ConnectorsPage() {
                       onConfigure={() => setConfigureModal(connector)}
                       onSync={handleSync}
                       onTestConnection={handleTestConnection}
+                  onReconnect={handleReconnectOAuth}
                       onDelete={() => setDeleteModal(connector)}
                     />
                   ))}
@@ -1735,6 +1799,7 @@ export default function ConnectorsPage() {
                   onConfigure={() => setConfigureModal(connector)}
                   onSync={handleSync}
                   onTestConnection={handleTestConnection}
+                  onReconnect={handleReconnectOAuth}
                   onDelete={() => setDeleteModal(connector)}
                 />
               ))}

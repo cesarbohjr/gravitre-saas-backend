@@ -1,41 +1,112 @@
-// Workflow Builder Persistence Layer
-// Maps between canvas nodes and API payloads for save/load/execute
-
+/**
+ * STA-19: Map workflow builder canvas ↔ API builder graph (GET/PUT /api/workflows/{id}/builder).
+ */
 import { workflowsApi } from "@/lib/api"
-import type { Workflow, WorkflowNode as ApiWorkflowNode, WorkflowEdge } from "@/types/api"
 
-// Canvas node shape used by the builder
+export type CanvasNodeType =
+  | "agent"
+  | "task"
+  | "connector"
+  | "tool"
+  | "source"
+  | "approval"
+  | "decision"
+  | "council"
+
+export type NodeState =
+  | "idle"
+  | "running"
+  | "success"
+  | "error"
+  | "waiting"
+  | "evaluating"
+  | "debating"
+  | "consensus"
+  | "escalated"
+
+export interface DecisionPath {
+  id: string
+  label: string
+  condition?: string
+  targetNodeId?: string
+  isDefault?: boolean
+}
+
+export interface DecisionConfig {
+  objective?: string
+  strategy?: "rule-based" | "ai-assisted" | "hybrid"
+  inputSources?: string[]
+  conditions?: string
+  outputPaths?: DecisionPath[]
+  reasoning?: {
+    summary: string
+    confidence: number
+    factors: string[]
+    chosenPath: string
+    rejectedPaths?: string[]
+  }
+}
+
+export interface CouncilAgent {
+  id: string
+  name: string
+  role: string
+  expertise: string
+  confidenceStyle: "cautious" | "fast" | "analytical" | "creative"
+  dataSources?: string[]
+  position?: string
+  confidence?: number
+  reasoning?: string
+  evidenceUsed?: string[]
+}
+
+export interface DebateContribution {
+  agentId: string
+  position: string
+  confidence: number
+  reasoning: string
+  evidenceUsed: string[]
+  timestamp: Date
+}
+
+export interface CouncilConfig {
+  objective?: string
+  participatingAgents?: CouncilAgent[]
+  debateMode?: "consensus" | "majority" | "lead-decides" | "human-approval" | "risk-escalation"
+  evidenceSources?: string[]
+  outputOptions?: { id: string; label: string; description?: string }[]
+  debate?: {
+    contributions: DebateContribution[]
+    disagreements?: { agentIds: string[]; topic: string }[]
+    timeline: { step: string; status: "pending" | "active" | "complete" }[]
+  }
+  finalDecision?: {
+    recommendation: string
+    method: "consensus" | "majority" | "lead-decides" | "human-approval" | "risk-escalation"
+    confidence: number
+    keyReasons: string[]
+    dissentingOpinions?: { agentId: string; opinion: string }[]
+    executedAction?: string
+  }
+}
+
 export interface CanvasWorkflowNode {
   id: string
-  type: "agent" | "task" | "connector" | "tool" | "source" | "approval" | "decision" | "council"
+  type: CanvasNodeType
   name: string
   description?: string
   config: Record<string, unknown>
   position: { x: number; y: number }
-  connections: string[] // target node ids
-  state?: "idle" | "running" | "success" | "error" | "waiting" | "evaluating" | "debating" | "consensus" | "escalated"
+  connections: string[]
+  state?: NodeState
   vendor?: string
   selectedAction?: string
   dataLabel?: string
-  decisionConfig?: {
-    objective?: string
-    strategy?: "rule-based" | "ai-assisted" | "hybrid"
-    inputSources?: string[]
-    conditions?: string
-    outputPaths?: { id: string; label: string; condition?: string; targetNodeId?: string; isDefault?: boolean }[]
-    reasoning?: {
-      summary: string
-      confidence: number
-      factors: string[]
-      chosenPath: string
-      rejectedPaths?: string[]
-    }
-  }
-  outputPaths?: { id: string; label: string; condition?: string; targetNodeId?: string; isDefault?: boolean }[]
-  councilConfig?: Record<string, unknown>
+  decisionConfig?: DecisionConfig
+  outputPaths?: DecisionPath[]
+  councilConfig?: CouncilConfig
 }
 
-// Workflow metadata from API
 export interface WorkflowMeta {
   id: string
   name: string
@@ -47,17 +118,19 @@ export interface WorkflowMeta {
   updated_at?: string
 }
 
-// Builder graph response from API
 export interface BuilderGraphResponse {
   workflow_id: string
-  name: string
+  name?: string
   description?: string
-  status: "draft" | "active" | "paused" | "archived"
-  nodes: ApiWorkflowNode[]
-  edges: WorkflowEdge[]
+  status?: string
+  nodes: Array<Record<string, unknown>>
+  edges: Array<Record<string, unknown>>
 }
 
-// Execute response
+export interface BuilderSaveResponse extends BuilderGraphResponse {
+  step_count?: number
+}
+
 export interface ExecuteResponse {
   run_id: string
   status: "pending" | "running" | "completed" | "failed"
@@ -70,141 +143,95 @@ export interface ExecuteResponse {
   }[]
 }
 
-/**
- * Check if ID is a persistable UUID (real workflow from backend)
- */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 export function isPersistableWorkflowId(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  return uuidRegex.test(id)
+  return UUID_RE.test(id)
 }
 
-/**
- * Convert API nodes/edges to canvas nodes with connections array
- */
-export function apiGraphToCanvasNodes(
-  apiNodes: ApiWorkflowNode[],
-  apiEdges: WorkflowEdge[]
-): CanvasWorkflowNode[] {
-  // Build edge lookup: source_node_id -> target_node_ids[]
-  const edgeMap = new Map<string, string[]>()
-  for (const edge of apiEdges) {
-    const targets = edgeMap.get(edge.source_node_id) || []
-    targets.push(edge.target_node_id)
-    edgeMap.set(edge.source_node_id, targets)
-  }
+function edgeTargets(edges: Array<Record<string, unknown>>, nodeId: string): string[] {
+  return edges
+    .filter((e) => String(e.from_node_id ?? e.fromNodeId) === nodeId)
+    .map((e) => String(e.to_node_id ?? e.toNodeId))
+}
 
-  return apiNodes.map((apiNode) => {
-    const nodeType = (apiNode.node_type || "task") as CanvasWorkflowNode["type"]
-    const position = apiNode.position || { x: 0, y: 0 }
-    // Config may contain extended metadata like vendor, selectedAction, etc.
-    const config = (apiNode.config || {}) as Record<string, unknown>
-    
+export function apiGraphToCanvasNodes(
+  apiNodes: Array<Record<string, unknown>>,
+  apiEdges: Array<Record<string, unknown>>
+): CanvasWorkflowNode[] {
+  return apiNodes.map((node) => {
+    const id = String(node.id)
+    const metadata = (node.metadata as Record<string, unknown>) || {}
+    const config = (node.config as Record<string, unknown>) || {}
+    const position =
+      (node.position as { x?: number; y?: number }) ||
+      ({ x: Number(node.position_x ?? 0), y: Number(node.position_y ?? 0) })
     return {
-      id: apiNode.id,
-      type: nodeType,
-      name: apiNode.title || apiNode.name || "Untitled",
-      description: apiNode.description,
-      config: config,
-      position: { x: position.x, y: position.y },
-      connections: edgeMap.get(apiNode.id) || [],
+      id,
+      type: String(node.node_type ?? node.type ?? "task") as CanvasNodeType,
+      name: String(node.name ?? node.title ?? "Node"),
+      description: (node.description as string) || (node.instruction as string),
+      config,
+      position: { x: Number(position.x ?? 0), y: Number(position.y ?? 0) },
+      connections: edgeTargets(apiEdges, id),
       state: "idle",
-      vendor: config.vendor as string | undefined,
-      selectedAction: config.selected_action as string | undefined,
-      dataLabel: config.data_label as string | undefined,
-      decisionConfig: config.decisionConfig as CanvasWorkflowNode["decisionConfig"],
-      outputPaths: config.outputPaths as CanvasWorkflowNode["outputPaths"],
-      councilConfig: config.councilConfig as Record<string, unknown>,
+      vendor: (config.vendor as string) || (node.systemName as string),
+      selectedAction: (config.selected_action as string) || (config.selectedAction as string),
+      dataLabel: (config.data_label as string) || (config.dataLabel as string),
+      decisionConfig: (metadata.decisionConfig ?? config.decisionConfig) as DecisionConfig | undefined,
+      outputPaths: (metadata.outputPaths ?? config.outputPaths) as DecisionPath[] | undefined,
+      councilConfig: (metadata.councilConfig ?? config.councilConfig) as CouncilConfig | undefined,
     }
   })
 }
 
-/**
- * Convert canvas nodes to API save payload (nodes + edges derived from connections)
- */
-export function canvasToSavePayload(nodes: CanvasWorkflowNode[]): {
-  nodes: Partial<ApiWorkflowNode>[]
-  edges: Partial<WorkflowEdge>[]
-} {
-  const apiNodes: Partial<ApiWorkflowNode>[] = nodes.map((node) => ({
-    id: node.id,
-    node_type: node.type,
-    title: node.name,
-    description: node.description,
-    config: {
-      ...node.config,
-      // Store extended metadata in config
-      vendor: node.vendor,
-      selected_action: node.selectedAction,
-      data_label: node.dataLabel,
-      decisionConfig: node.decisionConfig,
-      outputPaths: node.outputPaths,
-      councilConfig: node.councilConfig,
-    },
-    position: node.position,
-  }))
-
-  // Derive edges from node connections
-  const apiEdges: Partial<WorkflowEdge>[] = []
+export function canvasToSavePayload(nodes: CanvasWorkflowNode[]) {
+  const edges: Array<{ fromNodeId: string; toNodeId: string }> = []
   for (const node of nodes) {
-    for (const targetId of node.connections) {
-      apiEdges.push({
-        source_node_id: node.id,
-        target_node_id: targetId,
-      })
+    for (const target of node.connections) {
+      edges.push({ fromNodeId: node.id, toNodeId: target })
     }
   }
-
-  return { nodes: apiNodes, edges: apiEdges }
-}
-
-/**
- * Load workflow builder graph from API
- */
-export async function loadBuilderGraph(workflowId: string): Promise<{
-  meta: WorkflowMeta
-  nodes: CanvasWorkflowNode[]
-} | null> {
-  if (!isPersistableWorkflowId(workflowId)) {
-    return null // Non-UUID ids use local demo data
-  }
-
-  try {
-    // Fetch workflow metadata
-    const workflow = await workflowsApi.get(workflowId)
-    
-    // Fetch nodes and edges
-    const [nodesResponse, edgesResponse] = await Promise.all([
-      workflowsApi.listNodes(workflowId),
-      workflowsApi.listEdges(workflowId),
-    ])
-
-    const nodes = Array.isArray(nodesResponse) ? nodesResponse : (nodesResponse as { nodes: ApiWorkflowNode[] }).nodes || []
-    const edges = Array.isArray(edgesResponse) ? edgesResponse : (edgesResponse as { edges: WorkflowEdge[] }).edges || []
-
-    const canvasNodes = apiGraphToCanvasNodes(nodes, edges)
-
-    return {
-      meta: {
-        id: workflow.id,
-        name: workflow.name,
-        description: workflow.description,
-        status: workflow.status as WorkflowMeta["status"],
-        environment: workflow.environment as WorkflowMeta["environment"],
-        version: workflow.active_version?.id ? `v${workflow.active_version.version}` : undefined,
-        created_at: workflow.created_at,
-        updated_at: workflow.updated_at,
+  return {
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      type: node.type,
+      name: node.name,
+      description: node.description,
+      config: node.config,
+      position: node.position,
+      metadata: {
+        ...(node.decisionConfig ? { decisionConfig: node.decisionConfig } : {}),
+        ...(node.outputPaths ? { outputPaths: node.outputPaths } : {}),
+        ...(node.councilConfig ? { councilConfig: node.councilConfig } : {}),
+        ...(node.config?.agent_id ? { agent_id: node.config.agent_id } : {}),
+        ...(node.config?.next_agent_id ? { next_agent_id: node.config.next_agent_id } : {}),
+        ...(node.config?.task ? { task: node.config.task } : {}),
       },
-      nodes: canvasNodes,
-    }
-  } catch (error) {
-    console.error("[builder-persistence] Failed to load workflow:", error)
-    throw error
+    })),
+    edges,
   }
 }
 
-/**
- * Save workflow builder graph to API
- */
+export async function loadBuilderGraph(
+  workflowId: string
+): Promise<{ meta: WorkflowMeta; nodes: CanvasWorkflowNode[] } | null> {
+  if (!isPersistableWorkflowId(workflowId)) {
+    return null
+  }
+  const graph = (await workflowsApi.getBuilder(workflowId)) as unknown as BuilderGraphResponse
+  return {
+    meta: {
+      id: workflowId,
+      name: graph.name || "Workflow",
+      description: graph.description,
+      status: (graph.status as WorkflowMeta["status"]) || "draft",
+    },
+    nodes: apiGraphToCanvasNodes(graph.nodes, graph.edges),
+  }
+}
+
 export async function saveBuilderGraph(
   workflowId: string,
   nodes: CanvasWorkflowNode[],
@@ -213,52 +240,14 @@ export async function saveBuilderGraph(
   if (!isPersistableWorkflowId(workflowId)) {
     throw new Error("Cannot save non-UUID workflow. Create a real workflow first.")
   }
-
-  try {
-    const { nodes: apiNodes, edges: apiEdges } = canvasToSavePayload(nodes)
-
-    // Update workflow metadata if provided
-    if (options?.name || options?.description) {
-      await workflowsApi.update(workflowId, {
-        name: options.name,
-        description: options.description,
-      })
-    }
-
-    // Clear existing nodes and edges, then recreate
-    // This is a simple approach - a more sophisticated one would diff and patch
-    const existingNodes = await workflowsApi.listNodes(workflowId)
-    const existingNodesList = Array.isArray(existingNodes) ? existingNodes : (existingNodes as { nodes: ApiWorkflowNode[] }).nodes || []
-    
-    const existingEdges = await workflowsApi.listEdges(workflowId)
-    const existingEdgesList = Array.isArray(existingEdges) ? existingEdges : (existingEdges as { edges: WorkflowEdge[] }).edges || []
-
-    // Delete existing edges first (to avoid FK issues)
-    await Promise.all(existingEdgesList.map((e) => workflowsApi.deleteEdge(workflowId, e.id)))
-    
-    // Delete existing nodes
-    await Promise.all(existingNodesList.map((n) => workflowsApi.deleteNode(workflowId, n.id)))
-
-    // Create new nodes
-    for (const node of apiNodes) {
-      await workflowsApi.createNode(workflowId, node as Parameters<typeof workflowsApi.createNode>[1])
-    }
-
-    // Create new edges
-    for (const edge of apiEdges) {
-      await workflowsApi.createEdge(workflowId, edge as Parameters<typeof workflowsApi.createEdge>[1])
-    }
-
-    return { success: true, stepCount: nodes.length }
-  } catch (error) {
-    console.error("[builder-persistence] Failed to save workflow:", error)
-    throw error
+  const payload = { ...canvasToSavePayload(nodes), ...options }
+  const saved = (await workflowsApi.saveBuilder(workflowId, payload)) as BuilderSaveResponse
+  return {
+    success: true,
+    stepCount: saved.step_count ?? nodes.length,
   }
 }
 
-/**
- * Execute workflow via API
- */
 export async function executeWorkflow(
   workflowId: string,
   parameters?: Record<string, unknown>
@@ -266,20 +255,12 @@ export async function executeWorkflow(
   if (!isPersistableWorkflowId(workflowId)) {
     throw new Error("Cannot execute non-UUID workflow. Create a real workflow first.")
   }
-
-  try {
-    const response = await workflowsApi.execute({
-      workflow_id: workflowId,
-      parameters,
-    })
-
-    return {
-      run_id: response.id,
-      status: response.status as ExecuteResponse["status"],
-      steps: [], // Will be populated by polling if needed
-    }
-  } catch (error) {
-    console.error("[builder-persistence] Failed to execute workflow:", error)
-    throw error
+  const run = await workflowsApi.execute({
+    workflow_id: workflowId,
+    parameters: parameters ?? {},
+  })
+  return {
+    run_id: run.id,
+    status: run.status as ExecuteResponse["status"],
   }
 }

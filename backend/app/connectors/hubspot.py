@@ -1,0 +1,325 @@
+"""HubSpot CRM API client.
+
+v1 (STA-15): contacts.get/update, notes.create, deals.update_stage, sequences.enroll
+v2: contacts.create/search, deals.get/create/update, lists.add_contact
+"""
+from __future__ import annotations
+
+import time
+from typing import Any
+
+import httpx
+
+HUBSPOT_API_BASE = "https://api.hubapi.com"
+TIMEOUT_SEC = 30.0
+MAX_RETRIES = 2
+RETRY_BACKOFF_SEC = 1.0
+
+
+class HubSpotAPIError(Exception):
+    def __init__(self, message: str, *, status_code: int | None = None, details: Any = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.details = details
+
+
+def _request(
+    method: str,
+    path: str,
+    access_token: str,
+    *,
+    json_body: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    url = f"{HUBSPOT_API_BASE}{path}"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    last_error: Exception | None = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            with httpx.Client(timeout=TIMEOUT_SEC) as client:
+                response = client.request(method, url, headers=headers, json=json_body, params=params)
+            if response.status_code in {429, 500, 502, 503} and attempt < MAX_RETRIES:
+                time.sleep(RETRY_BACKOFF_SEC * (attempt + 1))
+                continue
+            if response.status_code >= 400:
+                detail: Any = None
+                try:
+                    detail = response.json()
+                except Exception:
+                    detail = response.text[:500]
+                raise HubSpotAPIError(
+                    f"HubSpot API {response.status_code}: {path}",
+                    status_code=response.status_code,
+                    details=detail,
+                )
+            if not response.text:
+                return {}
+            return response.json()
+        except HubSpotAPIError:
+            raise
+        except httpx.TimeoutException as exc:
+            last_error = exc
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_BACKOFF_SEC * (attempt + 1))
+                continue
+            raise HubSpotAPIError("HubSpot API timeout") from exc
+        except httpx.HTTPError as exc:
+            last_error = exc
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_BACKOFF_SEC * (attempt + 1))
+                continue
+            raise HubSpotAPIError(str(exc)) from exc
+    raise HubSpotAPIError(str(last_error or "HubSpot request failed"))
+
+
+def get_contact(
+    access_token: str,
+    *,
+    contact_id: str | None = None,
+    email: str | None = None,
+    properties: list[str] | None = None,
+) -> dict[str, Any]:
+    props = properties or ["email", "firstname", "lastname", "company", "lifecyclestage"]
+    prop_query = ",".join(props)
+    if contact_id:
+        return _request(
+            "GET",
+            f"/crm/v3/objects/contacts/{contact_id}",
+            access_token,
+            params={"properties": prop_query},
+        )
+    if not email:
+        raise HubSpotAPIError("contact_id or email is required")
+    search = _request(
+        "POST",
+        "/crm/v3/objects/contacts/search",
+        access_token,
+        json_body={
+            "filterGroups": [
+                {
+                    "filters": [
+                        {
+                            "propertyName": "email",
+                            "operator": "EQ",
+                            "value": email.strip(),
+                        }
+                    ]
+                }
+            ],
+            "properties": props,
+            "limit": 1,
+        },
+    )
+    results = search.get("results") or []
+    if not results:
+        raise HubSpotAPIError(f"No contact found for email", status_code=404)
+    return results[0]
+
+
+def update_contact(
+    access_token: str,
+    contact_id: str,
+    properties: dict[str, Any],
+) -> dict[str, Any]:
+    if not contact_id:
+        raise HubSpotAPIError("contact_id is required")
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    return _request(
+        "PATCH",
+        f"/crm/v3/objects/contacts/{contact_id}",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )
+
+
+def create_note(
+    access_token: str,
+    *,
+    body: str,
+    contact_id: str | None = None,
+    deal_id: str | None = None,
+) -> dict[str, Any]:
+    if not body.strip():
+        raise HubSpotAPIError("note body is required")
+    if not contact_id and not deal_id:
+        raise HubSpotAPIError("contact_id or deal_id is required for note association")
+    note = _request(
+        "POST",
+        "/crm/v3/objects/notes",
+        access_token,
+        json_body={
+            "properties": {
+                "hs_note_body": body.strip(),
+                "hs_timestamp": str(int(time.time() * 1000)),
+            }
+        },
+    )
+    note_id = note.get("id")
+    if not note_id:
+        return note
+    if contact_id:
+        _associate(access_token, from_type="notes", from_id=str(note_id), to_type="contacts", to_id=contact_id)
+    if deal_id:
+        _associate(access_token, from_type="notes", from_id=str(note_id), to_type="deals", to_id=deal_id)
+    return note
+
+
+def _associate(
+    access_token: str,
+    *,
+    from_type: str,
+    from_id: str,
+    to_type: str,
+    to_id: str,
+) -> dict[str, Any]:
+    return _request(
+        "PUT",
+        f"/crm/v4/objects/{from_type}/{from_id}/associations/default/{to_type}/{to_id}",
+        access_token,
+    )
+
+
+def update_deal_stage(
+    access_token: str,
+    deal_id: str,
+    dealstage: str,
+) -> dict[str, Any]:
+    if not deal_id:
+        raise HubSpotAPIError("deal_id is required")
+    if not dealstage:
+        raise HubSpotAPIError("dealstage is required")
+    return _request(
+        "PATCH",
+        f"/crm/v3/objects/deals/{deal_id}",
+        access_token,
+        json_body={"properties": {"dealstage": dealstage}},
+    )
+
+
+def create_contact(access_token: str, properties: dict[str, Any]) -> dict[str, Any]:
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    return _request(
+        "POST",
+        "/crm/v3/objects/contacts",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )
+
+
+def search_contacts(
+    access_token: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    if not filter_groups:
+        raise HubSpotAPIError("filter_groups is required for contact search")
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["email", "firstname", "lastname", "company"]
+    return _request(
+        "POST",
+        "/crm/v3/objects/contacts/search",
+        access_token,
+        json_body={
+            "filterGroups": filter_groups,
+            "properties": props,
+            "limit": lim,
+        },
+    )
+
+
+def get_deal(
+    access_token: str,
+    deal_id: str,
+    *,
+    properties: list[str] | None = None,
+) -> dict[str, Any]:
+    if not deal_id:
+        raise HubSpotAPIError("deal_id is required")
+    props = properties or ["dealname", "dealstage", "amount", "closedate", "pipeline"]
+    prop_query = ",".join(props)
+    return _request(
+        "GET",
+        f"/crm/v3/objects/deals/{deal_id}",
+        access_token,
+        params={"properties": prop_query},
+    )
+
+
+def create_deal(
+    access_token: str,
+    properties: dict[str, Any],
+    *,
+    contact_id: str | None = None,
+) -> dict[str, Any]:
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    deal = _request(
+        "POST",
+        "/crm/v3/objects/deals",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )
+    deal_id = deal.get("id")
+    if deal_id and contact_id:
+        _associate(
+            access_token,
+            from_type="deals",
+            from_id=str(deal_id),
+            to_type="contacts",
+            to_id=str(contact_id),
+        )
+    return deal
+
+
+def update_deal(access_token: str, deal_id: str, properties: dict[str, Any]) -> dict[str, Any]:
+    if not deal_id:
+        raise HubSpotAPIError("deal_id is required")
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    return _request(
+        "PATCH",
+        f"/crm/v3/objects/deals/{deal_id}",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )
+
+
+def add_contact_to_list(access_token: str, list_id: str, contact_id: str) -> dict[str, Any]:
+    if not list_id or not contact_id:
+        raise HubSpotAPIError("list_id and contact_id are required")
+    return _request(
+        "PUT",
+        f"/crm/v3/lists/{list_id}/memberships/add",
+        access_token,
+        json_body=[str(contact_id)],
+    )
+
+
+def enroll_contact_in_sequence(
+    access_token: str,
+    *,
+    contact_id: str,
+    sequence_id: str,
+    sender_email: str | None = None,
+) -> dict[str, Any]:
+    if not contact_id or not sequence_id:
+        raise HubSpotAPIError("contact_id and sequence_id are required")
+    body: dict[str, Any] = {
+        "contactId": contact_id,
+        "sequenceId": sequence_id,
+    }
+    if sender_email:
+        body["senderEmail"] = sender_email.strip()
+    return _request(
+        "POST",
+        "/automation/v4/sequences/enrollments",
+        access_token,
+        json_body=body,
+    )

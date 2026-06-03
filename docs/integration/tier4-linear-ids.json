@@ -1,0 +1,133 @@
+{
+  "createdAt": "2026-06-02T17:30:44.236Z",
+  "epics": {
+    "epic-a": "STA-74",
+    "epic-b": "STA-75",
+    "epic-c": "STA-76",
+    "epic-d": "STA-77",
+    "epic-e": "STA-78",
+    "epic-f": "STA-79"
+  },
+  "issues": [
+    {
+      "ref": "T4-001",
+      "linear": "STA-80",
+      "title": "Data residency — region-pinned org storage",
+      "parent": "STA-74"
+    },
+    {
+      "ref": "T4-002",
+      "linear": "STA-81",
+      "title": "SOC2 control mapping + compliance evidence export API",
+      "parent": "STA-74"
+    },
+    {
+      "ref": "T4-003",
+      "linear": "STA-82",
+      "title": "PII detection & redaction in tool I/O audit stream",
+      "parent": "STA-74"
+    },
+    {
+      "ref": "T4-004",
+      "linear": "STA-83",
+      "title": "SIEM export (Splunk / Datadog / webhook)",
+      "parent": "STA-74"
+    },
+    {
+      "ref": "T4-005",
+      "linear": "STA-84",
+      "title": "White-label branding (domain, logo, email templates)",
+      "parent": "STA-75"
+    },
+    {
+      "ref": "T4-006",
+      "linear": "STA-85",
+      "title": "Single-tenant / VPC deployment (Helm + runbook)",
+      "parent": "STA-75"
+    },
+    {
+      "ref": "T4-007",
+      "linear": "STA-86",
+      "title": "Enterprise SSO (SAML/OIDC) for operators & admins",
+      "parent": "STA-75"
+    },
+    {
+      "ref": "T4-008",
+      "linear": "STA-87",
+      "title": "BambooHR OAuth + v1 read actions",
+      "parent": "STA-76"
+    },
+    {
+      "ref": "T4-009",
+      "linear": "STA-88",
+      "title": "Greenhouse OAuth + recruiting pipeline read",
+      "parent": "STA-76"
+    },
+    {
+      "ref": "T4-010",
+      "linear": "STA-89",
+      "title": "Xero OAuth + accounting read (complement QuickBooks)",
+      "parent": "STA-76"
+    },
+    {
+      "ref": "T4-011",
+      "linear": "STA-90",
+      "title": "Org model allowlist / blocklist policy engine",
+      "parent": "STA-77"
+    },
+    {
+      "ref": "T4-012",
+      "linear": "STA-91",
+      "title": "Agent workforce analytics dashboard",
+      "parent": "STA-77"
+    },
+    {
+      "ref": "T4-013",
+      "linear": "STA-92",
+      "title": "Per-agent cost attribution (LLM + connector API)",
+      "parent": "STA-77"
+    },
+    {
+      "ref": "T4-014",
+      "linear": "STA-93",
+      "title": "Multi-region workflow execution routing",
+      "parent": "STA-78"
+    },
+    {
+      "ref": "T4-015",
+      "linear": "STA-94",
+      "title": "Durable workflow run queue (HA worker pool)",
+      "parent": "STA-78"
+    },
+    {
+      "ref": "T4-016",
+      "linear": "STA-95",
+      "title": "Workflow engine disaster recovery runbook + drills",
+      "parent": "STA-78"
+    },
+    {
+      "ref": "T4-017",
+      "linear": "STA-96",
+      "title": "Marketplace v2 — partner revenue share & billing",
+      "parent": "STA-79"
+    },
+    {
+      "ref": "T4-018",
+      "linear": "STA-97",
+      "title": "Certified partner program + automated security review",
+      "parent": "STA-79"
+    },
+    {
+      "ref": "T4-019",
+      "linear": "STA-98",
+      "title": "Customer private connector runtime (signed packages)",
+      "parent": "STA-79"
+    },
+    {
+      "ref": "T4-020",
+      "linear": "STA-99",
+      "title": "Fine-tuning pipeline wired to agent runtime",
+      "parent": "STA-79"
+    }
+  ]
+}

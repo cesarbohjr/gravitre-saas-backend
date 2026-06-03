@@ -21,6 +21,12 @@ import {
   isPersistableWorkflowId,
   type CanvasWorkflowNode,
   type WorkflowMeta,
+  type NodeState,
+  type DecisionConfig,
+  type DecisionPath,
+  type CouncilConfig,
+  type CouncilAgent,
+  type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import {
   ArrowLeft,
@@ -114,80 +120,9 @@ import { toast } from "sonner"
 
 // Node types
 type NodeType = "agent" | "task" | "connector" | "tool" | "source" | "approval" | "decision" | "council"
-type NodeState = "idle" | "running" | "success" | "error" | "waiting" | "evaluating" | "debating" | "consensus" | "escalated"
-type DecisionStrategy = "rule-based" | "ai-assisted" | "hybrid"
-type DebateMode = "consensus" | "majority" | "lead-decides" | "human-approval" | "risk-escalation"
+type DecisionStrategy = DecisionConfig["strategy"]
+type DebateMode = NonNullable<CouncilConfig["debateMode"]>
 
-// Agent role for council
-interface CouncilAgent {
-  id: string
-  name: string
-  role: string
-  expertise: string
-  confidenceStyle: "cautious" | "fast" | "analytical" | "creative"
-  dataSources?: string[]
-  position?: string
-  confidence?: number
-  reasoning?: string
-  evidenceUsed?: string[]
-}
-
-// Council debate contribution
-interface DebateContribution {
-  agentId: string
-  position: string
-  confidence: number
-  reasoning: string
-  evidenceUsed: string[]
-  timestamp: Date
-}
-
-// Council configuration
-interface CouncilConfig {
-  objective?: string
-  participatingAgents?: CouncilAgent[]
-  debateMode?: DebateMode
-  evidenceSources?: string[]
-  outputOptions?: { id: string; label: string; description?: string }[]
-  debate?: {
-    contributions: DebateContribution[]
-    disagreements?: { agentIds: string[]; topic: string }[]
-    timeline: { step: string; status: "pending" | "active" | "complete" }[]
-  }
-  finalDecision?: {
-    recommendation: string
-    method: DebateMode
-    confidence: number
-    keyReasons: string[]
-    dissentingOpinions?: { agentId: string; opinion: string }[]
-    executedAction?: string
-  }
-}
-
-interface DecisionPath {
-  id: string
-  label: string
-  condition?: string
-  targetNodeId?: string
-  isDefault?: boolean
-}
-
-interface DecisionConfig {
-  objective?: string
-  strategy?: DecisionStrategy
-  inputSources?: string[]
-  conditions?: string
-  outputPaths?: DecisionPath[]
-  reasoning?: {
-    summary: string
-    confidence: number
-    factors: string[]
-    chosenPath: string
-    rejectedPaths?: string[]
-  }
-}
-
-// Re-export WorkflowNode type from persistence for internal use
 type WorkflowNode = CanvasWorkflowNode
 
 interface Connection {
@@ -3426,7 +3361,11 @@ const handleRun = useCallback(async () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               <StatusBadge variant="muted">{workflowMeta.status}</StatusBadge>
-              <EnvironmentBadge environment={workflowMeta.environment || "development"} />
+              <EnvironmentBadge
+                environment={
+                  workflowMeta.environment === "production" ? "production" : "staging"
+                }
+              />
               <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version || "v1"}</span>
               
               {/* Last saved indicator */}

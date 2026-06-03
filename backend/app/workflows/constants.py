@@ -14,6 +14,7 @@ ALLOWED_STEP_TYPES = frozenset({
     "transform",
     "condition",
     "noop",
+    "agent",
     "slack_post_message",
     "email_send",
     "webhook_post",
@@ -28,7 +29,14 @@ RUN_STATUS_PENDING_APPROVAL = "pending_approval"
 RUN_STATUS_CANCELLED = "cancelled"
 
 # BE-20 + IN-10/11/12: execute-allowed (approval-gated external actions)
-EXECUTE_ALLOWED_STEP_TYPES = frozenset({"rag_retrieve", "noop", "slack_post_message", "email_send", "webhook_post"})
+EXECUTE_ALLOWED_STEP_TYPES = frozenset({
+    "rag_retrieve",
+    "noop",
+    "agent",
+    "slack_post_message",
+    "email_send",
+    "webhook_post",
+})
 
 # BE-20: closed role set for approver_roles
 ALLOWED_ROLES = frozenset({"admin", "member"})

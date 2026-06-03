@@ -7,6 +7,11 @@ from typing import Any
 
 from supabase import Client
 
+from app.services.agent_tool_permissions import (
+    default_demo_scopes_for_system,
+    upsert_agent_tool_permission,
+)
+
 WELCOME_MESSAGE = (
     "Welcome to Gravitre. We've set up a sample AI team to show you what's possible. "
     "These are demo agents — connect your real tools to activate them."
@@ -173,12 +178,62 @@ def build_seed_payload(org_id: str) -> dict[str, list[dict[str, Any]]]:
         },
     ]
 
+    workflow_defs = [
+        {
+            "id": workflow_id,
+            "org_id": org_id,
+            "name": "New Lead → Sales qualifies → Marketing enrolls",
+            "description": "Inbound HubSpot contact triggers qualification, then marketing nurture.",
+            "status": "active",
+            "schema_version": "v1",
+            "definition": {
+                "schema_version": "v1",
+                "steps": [
+                    {
+                        "id": "sales_to_marketing",
+                        "name": "Sales qualifies → Marketing enrolls",
+                        "type": "agent",
+                        "metadata": {
+                            "role": "Sales",
+                            "agent_id": sales_agent_id,
+                            "next_agent_id": marketing_agent_id,
+                            "task": "Qualify inbound lead and score fit for nurture",
+                            "receiver_task": "Enroll qualified lead in nurture sequence",
+                        },
+                    },
+                ],
+            },
+        },
+    ]
+
     return {
         "agents": agents,
         "workflows": workflows,
+        "workflow_defs": workflow_defs,
+        "demo_hubspot_workflow_id": workflow_id,
         "runs": runs,
         "connected_systems": connected_systems,
     }
+
+
+def _seed_demo_agent_tool_permissions(
+    client: Client, org_id: str, agents: list[dict[str, Any]]
+) -> None:
+    """Grant demo agents connector-type scopes for their declared systems (STA-11)."""
+    for agent in agents:
+        agent_id = str(agent["id"])
+        for system in agent.get("systems") or []:
+            if not isinstance(system, str) or not system.strip():
+                continue
+            upsert_agent_tool_permission(
+                client,
+                org_id,
+                agent_id,
+                connector_id=None,
+                connector_type=system.strip(),
+                scopes=default_demo_scopes_for_system(system.strip()),
+                granted_by=None,
+            )
 
 
 def seed_org_if_needed(client: Client, org_id: str) -> dict[str, Any]:
@@ -205,11 +260,16 @@ def seed_org_if_needed(client: Client, org_id: str) -> dict[str, Any]:
     payload = build_seed_payload(org_id)
 
     client.table("agents").upsert(payload["agents"], on_conflict="id").execute()
+    _seed_demo_agent_tool_permissions(client, org_id, payload["agents"])
     client.table("workflows").upsert(payload["workflows"], on_conflict="id").execute()
+    if payload.get("workflow_defs"):
+        client.table("workflow_defs").upsert(payload["workflow_defs"], on_conflict="id").execute()
     client.table("runs").upsert(payload["runs"], on_conflict="id").execute()
     client.table("connected_systems").upsert(payload["connected_systems"], on_conflict="id").execute()
 
     onboarding["seeded"] = True
+    if payload.get("demo_hubspot_workflow_id"):
+        onboarding["demo_hubspot_workflow_id"] = payload["demo_hubspot_workflow_id"]
     onboarding["seeded_at"] = _now().isoformat()
     onboarding.setdefault("checklist_dismissed", False)
     settings["onboarding"] = onboarding

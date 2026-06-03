@@ -20,6 +20,8 @@ from app.core.crypto import decrypt_value, encrypt_value, mask_value
 from app.core.errors import error_detail
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
+from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
+from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
@@ -95,6 +97,47 @@ def _docs_url(vendor: str) -> str | None:
         "microsoft365": "https://docs.microsoft.com/en-us/graph/",
     }
     return mapping.get(vendor)
+
+
+def _connector_response_item(
+    row: dict,
+    *,
+    environment_name: str,
+    settings: Settings,
+    client,
+    org_id: str,
+) -> dict:
+    api_key = None
+    if row.get("api_key_encrypted") and settings.encryption_key:
+        try:
+            api_key = decrypt_value(row["api_key_encrypted"], settings.encryption_key)
+        except Exception:
+            api_key = None
+    vendor = row.get("vendor") or row.get("type") or ""
+    connector_id = str(row["id"])
+    env = row.get("environment") or environment_name
+    auth_status = resolve_connector_auth_status(
+        client, org_id, connector_id, vendor, settings, environment_name=env
+    )
+    status_value = map_auth_status_to_connector_status(auth_status, row.get("status") or "healthy")
+    return {
+        "id": connector_id,
+        "name": row.get("name") or "",
+        "vendor": vendor,
+        "description": row.get("description"),
+        "status": status_value,
+        "authStatus": auth_status,
+        "environment": row.get("environment") or environment_name,
+        "lastSync": row.get("last_sync_at"),
+        "recordsSynced": row.get("records_synced") or 0,
+        "syncFrequency": row.get("sync_frequency") or "1h",
+        "config": {
+            "apiKey": mask_value(api_key),
+            "webhookUrl": row.get("webhook_url"),
+            "authType": (row.get("config") or {}).get("auth_type"),
+        },
+        "docsUrl": row.get("docs_url"),
+    }
 
 
 def _validate_webhook(url: str | None) -> None:
@@ -364,30 +407,55 @@ async def get_connector_route_alias(
     if not row.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
     data = row.data[0]
-    api_key = None
-    if data.get("api_key_encrypted") and settings.encryption_key:
-        try:
-            api_key = decrypt_value(data["api_key_encrypted"], settings.encryption_key)
-        except Exception:
-            api_key = None
     return {
-        "connector": {
-            "id": str(data["id"]),
-            "name": data.get("name") or "",
-            "vendor": data.get("vendor") or data.get("type") or "",
-            "description": data.get("description"),
-            "status": data.get("status") or "healthy",
-            "environment": data.get("environment") or environment_name,
-            "lastSync": data.get("last_sync_at"),
-            "recordsSynced": data.get("records_synced") or 0,
-            "syncFrequency": data.get("sync_frequency") or "1h",
-            "config": {
-                "apiKey": mask_value(api_key),
-                "webhookUrl": data.get("webhook_url"),
-            },
-            "docsUrl": data.get("docs_url"),
-        }
+        "connector": _connector_response_item(
+            data,
+            environment_name=environment_name,
+            settings=settings,
+            client=client,
+            org_id=org_id,
+        )
     }
+
+
+@connectors_router.post("/{connector_id}/test")
+async def test_connector_route(
+    connector_id: UUID,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Test connector connectivity (OAuth token validity for HubSpot)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    row = (
+        client.table("connectors")
+        .select("id, vendor, name")
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .eq("id", str(connector_id))
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if not row.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    data = row.data[0]
+    vendor = normalize_vendor(data.get("vendor") or "")
+    if vendor == "hubspot":
+        token, err = ensure_hubspot_access_token(
+            client,
+            org_id,
+            str(connector_id),
+            settings,
+            environment_name=data.get("environment") or environment_name,
+        )
+        if token:
+            return {"success": True, "message": "HubSpot connection is valid"}
+        return {"success": False, "message": err or "HubSpot connection failed"}
+    return {"success": True, "message": "No automated test for this connector type"}
 
 
 @connectors_router.post("/{connector_id}/sync", status_code=status.HTTP_202_ACCEPTED)

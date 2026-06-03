@@ -10,6 +10,10 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.core.logging import get_logger
 from app.services.decision_service import DecisionPath, DecisionType, get_decision_service
+from app.services.tool_service import STEP_TYPE_TO_ACTION, invoke_tool, params_for_step
+from app.services.tool_types import ToolContext
+from app.workflows.constants import RUN_STATUS_COMPLETED, RUN_STATUS_FAILED
+from app.workflows.execute import execute_workflow_steps
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -64,9 +68,119 @@ class ExecutionService:
         workflow_id: str,
         run_id: str,
         parameters: dict | None = None,
+        *,
+        user_id: str | None = None,
+        definition: dict[str, Any] | None = None,
+        environment_name: str = "production",
     ) -> RunResult:
         settings = get_settings()
         client = get_supabase_client(settings)
+        params = parameters or {}
+
+        if definition is None:
+            run_resp = (
+                client.table("workflow_runs")
+                .select("definition_snapshot,triggered_by,environment_name")
+                .eq("id", run_id)
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+            )
+            if run_resp.data:
+                row = run_resp.data[0]
+                definition = row.get("definition_snapshot") or definition
+                user_id = user_id or row.get("triggered_by")
+                environment_name = row.get("environment_name") or environment_name
+
+        steps = (definition or {}).get("steps")
+        if isinstance(steps, list) and steps:
+            actor_id = user_id or self._resolve_actor_id(client, org_id)
+            final_status, step_rows, errors, _rate_limited = await asyncio.to_thread(
+                execute_workflow_steps,
+                settings,
+                org_id,
+                str(actor_id),
+                run_id,
+                definition,
+                params,
+                client,
+                environment_name,
+                False,
+            )
+            return self._run_result_from_steps(run_id, final_status, step_rows, params, errors)
+
+        return await self._execute_workflow_graph(
+            org_id=org_id,
+            workflow_id=workflow_id,
+            run_id=run_id,
+            parameters=params,
+            settings=settings,
+            client=client,
+        )
+
+    def _resolve_actor_id(self, client: Any, org_id: str) -> str:
+        membership = (
+            client.table("organization_members")
+            .select("user_id")
+            .eq("org_id", org_id)
+            .in_("role", ["owner", "admin", "member"])
+            .limit(1)
+            .execute()
+        )
+        if membership.data:
+            return str(membership.data[0]["user_id"])
+        return org_id
+
+    def _run_result_from_steps(
+        self,
+        run_id: str,
+        final_status: str,
+        step_rows: list[dict[str, Any]],
+        final_context: dict[str, Any],
+        errors: list[str],
+    ) -> RunResult:
+        results: list[NodeResult] = []
+        for row in step_rows:
+            status = str(row.get("status") or "completed")
+            results.append(
+                NodeResult(
+                    node_id=str(row.get("step_id") or row.get("id") or ""),
+                    status=status,
+                    output=row.get("output_snapshot") or {},
+                    error=row.get("error_message"),
+                    duration_ms=int(row.get("duration_ms") or 0),
+                )
+            )
+        if not results and errors:
+            results.append(
+                NodeResult(
+                    node_id="workflow",
+                    status="failed",
+                    output={},
+                    error=errors[0],
+                    duration_ms=0,
+                )
+            )
+        status = "completed" if final_status == RUN_STATUS_COMPLETED else "failed"
+        if final_status not in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED}:
+            status = final_status
+        return RunResult(
+            run_id=run_id,
+            status=status,
+            results=results,
+            final_context=final_context,
+        )
+
+    async def _execute_workflow_graph(
+        self,
+        *,
+        org_id: str,
+        workflow_id: str,
+        run_id: str,
+        parameters: dict[str, Any],
+        settings: Any,
+        client: Any,
+    ) -> RunResult:
         nodes_resp = (
             client.table("workflow_nodes")
             .select("id,node_type,name,config,order_index")
@@ -85,10 +199,17 @@ class ExecutionService:
             )
             for n in raw_nodes
         ]
-        context = ExecutionContext(state=parameters or {})
+        context = ExecutionContext(state=parameters)
         results: list[NodeResult] = []
         for node in nodes:
-            result = await self.execute_node(org_id=org_id, run_id=run_id, node=node, context=context)
+            result = await self.execute_node(
+                org_id=org_id,
+                run_id=run_id,
+                node=node,
+                context=context,
+                settings=settings,
+                client=client,
+            )
             results.append(result)
             context.events.append({"node_id": node.id, "status": result.status})
             if result.status == "failed":
@@ -104,13 +225,23 @@ class ExecutionService:
         run_id: str,
         node: WorkflowNode,
         context: ExecutionContext,
+        *,
+        settings: Any | None = None,
+        client: Any | None = None,
     ) -> NodeResult:
         start = time.perf_counter()
         try:
             if node.type == NodeType.TRIGGER:
                 output = {"triggered": True}
             elif node.type == NodeType.ACTION:
-                output = await self._execute_action_node(node, context)
+                output = await self._execute_action_node(
+                    node,
+                    context,
+                    org_id=org_id,
+                    run_id=run_id,
+                    settings=settings or get_settings(),
+                    client=client or get_supabase_client(get_settings()),
+                )
             elif node.type == NodeType.DECISION:
                 output = await self._execute_decision_node(org_id, run_id, node, context)
             elif node.type == NodeType.LOOP:
@@ -146,9 +277,51 @@ class ExecutionService:
                 duration_ms=int((time.perf_counter() - start) * 1000),
             )
 
-    async def _execute_action_node(self, node: WorkflowNode, context: ExecutionContext) -> dict[str, Any]:
-        action = node.config.get("action") or "noop"
-        return {"action": action, "input_keys": list(context.state.keys())}
+    async def _execute_action_node(
+        self,
+        node: WorkflowNode,
+        context: ExecutionContext,
+        *,
+        org_id: str,
+        run_id: str,
+        settings: Any,
+        client: Any,
+    ) -> dict[str, Any]:
+        step_type = node.config.get("step_type")
+        raw_action = node.config.get("tool_action") or node.config.get("action") or "noop"
+        tool_action = raw_action
+        if step_type and step_type in STEP_TYPE_TO_ACTION:
+            tool_action = STEP_TYPE_TO_ACTION[step_type]
+        elif isinstance(raw_action, str) and raw_action in STEP_TYPE_TO_ACTION:
+            tool_action = STEP_TYPE_TO_ACTION[raw_action]
+
+        if tool_action in ("noop", None) or (
+            isinstance(raw_action, str) and "." not in raw_action and raw_action not in STEP_TYPE_TO_ACTION.values()
+        ):
+            return {"action": "noop", "input_keys": list(context.state.keys())}
+
+        step_type_key = step_type or next(
+            (k for k, v in STEP_TYPE_TO_ACTION.items() if v == tool_action),
+            "noop",
+        )
+        ctx = ToolContext(
+            settings=settings,
+            client=client,
+            org_id=org_id,
+            actor_id="",
+            run_id=run_id,
+            agent_id=node.config.get("agent_id"),
+            connector_id=node.config.get("connector_id"),
+        )
+        params = params_for_step(step_type_key, node.config, context.state)
+        result = await asyncio.to_thread(invoke_tool, ctx, str(tool_action), params)
+        return {
+            "action": tool_action,
+            "success": result.success,
+            "data": result.data,
+            "error_code": result.error_code,
+            "error": result.error_message,
+        }
 
     async def _execute_decision_node(
         self,
