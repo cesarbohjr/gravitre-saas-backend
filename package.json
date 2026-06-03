@@ -16,7 +16,8 @@
     "quickbooks:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
     "quickbooks:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-quickbooks-operator-env.ps1",
     "quickbooks:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-quickbooks-oauth.ps1",
-    "jira:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-jira-oauth.ps1"
+    "jira:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-jira-oauth.ps1",
+    "pagerduty:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-pagerduty-oauth.ps1"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.195",

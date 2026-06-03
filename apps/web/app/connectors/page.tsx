@@ -683,6 +683,18 @@ const connectorCategories = {
       { type: "Twilio", description: "SMS and voice API", authType: "apiKey" },
     ]
   },
+  "DevOps / Incidents": {
+    color: "rose",
+    connectors: [
+      { type: "PagerDuty", description: "Incident management and on-call", authType: "oauth" },
+    ],
+  },
+  "DevOps / Incidents": {
+    color: "rose",
+    connectors: [
+      { type: "PagerDuty", description: "Incident management and on-call", authType: "oauth" },
+    ],
+  },
   "Operations / Workflow": {
     color: "amber",
     connectors: [
@@ -730,7 +742,7 @@ const availableConnectors = Object.entries(connectorCategories).flatMap(([catego
   data.connectors.map(c => ({ ...c, category }))
 )
 
-const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce", "QuickBooks", "Jira"])
+const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce", "QuickBooks", "Jira", "PagerDuty"])
 
 function connectorVendorKey(type: string): string {
   const key = type.toLowerCase().replace(/\s+/g, "")

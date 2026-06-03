@@ -38,6 +38,15 @@ from app.connectors.jira_oauth import (
     jira_redirect_uri,
     normalize_vendor as normalize_jira_vendor,
 )
+from app.connectors.pagerduty_oauth import (
+    complete_pagerduty_oauth_connection,
+    pagerduty_authorize_url,
+    pagerduty_credentials,
+    pagerduty_oauth_configured,
+    pagerduty_redirect_uri,
+    normalize_vendor as normalize_pagerduty_vendor,
+)
+from app.connectors.pagerduty_webhooks import pagerduty_inbound_webhook_url
 from app.connectors.salesforce_oauth import (
     complete_salesforce_oauth_connection,
     salesforce_authorize_url,
@@ -53,7 +62,7 @@ from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
 
-SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot", "salesforce", "quickbooks", "jira"})
+SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot", "salesforce", "quickbooks", "jira", "pagerduty"})
 
 
 class OAuthStartRequest(BaseModel):
@@ -112,6 +121,8 @@ async def oauth_provider_status(
         vendor = "quickbooks"
     elif normalize_jira_vendor(provider) == "jira":
         vendor = "jira"
+    elif normalize_pagerduty_vendor(provider) == "pagerduty":
+        vendor = "pagerduty"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -129,6 +140,9 @@ async def oauth_provider_status(
     elif vendor == "jira":
         configured = jira_oauth_configured(settings, environment_name)
         redirect_uri = jira_redirect_uri(settings)
+    elif vendor == "pagerduty":
+        configured = pagerduty_oauth_configured(settings, environment_name)
+        redirect_uri = pagerduty_redirect_uri(settings)
 
     return OAuthProviderStatusResponse(
         provider=vendor,
@@ -157,6 +171,8 @@ async def start_oauth(
         vendor = "quickbooks"
     elif normalize_jira_vendor(provider) == "jira":
         vendor = "jira"
+    elif normalize_pagerduty_vendor(provider) == "pagerduty":
+        vendor = "pagerduty"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -179,6 +195,11 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Jira OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "pagerduty" and not pagerduty_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("PagerDuty OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -228,6 +249,8 @@ async def start_oauth(
                 else "https://developer.intuit.com/app/developer/qbo/docs"
                 if vendor == "quickbooks"
                 else "https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/"
+                if vendor == "jira"
+                else "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality"
             ),
         }
         created = client.table("connectors").insert(row).execute()
@@ -281,6 +304,10 @@ async def start_oauth(
         redirect_uri = jira_redirect_uri(settings)
         client_id, _secret = jira_credentials(settings, environment_name)
         auth_url = jira_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "pagerduty":
+        redirect_uri = pagerduty_redirect_uri(settings)
+        client_id, _secret = pagerduty_credentials(settings, environment_name)
+        auth_url = pagerduty_authorize_url(client_id, redirect_uri, state)
 
     write_audit_event(
         client,
@@ -380,6 +407,18 @@ async def oauth_callback(
                 settings,
                 environment_name=environment_name,
                 reconnect=reconnect,
+            )
+        elif vendor == "pagerduty":
+            inbound_url = pagerduty_inbound_webhook_url(settings, connector_id)
+            complete_pagerduty_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+                inbound_webhook_url=inbound_url,
             )
     except (httpx.HTTPError, ValueError):
         return RedirectResponse(

@@ -76,6 +76,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "hubspot",
         "quickbooks",
         "jira",
+        "pagerduty",
         "slack",
         "postgresql",
         "stripe",
@@ -126,6 +127,7 @@ def _docs_url(vendor: str) -> str | None:
         "microsoft365": "https://docs.microsoft.com/en-us/graph/",
         "quickbooks": "https://developer.intuit.com/app/developer/qbo/docs",
         "jira": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/",
+        "pagerduty": "https://developer.pagerduty.com/docs/",
     }
     return mapping.get(vendor)
 
