@@ -2,7 +2,7 @@
 
 DevOps / Engineering agent tools for Jira Cloud (OAuth connector).
 
-## v1 actions
+## v1 actions (write)
 
 | Action | Params |
 |--------|--------|
@@ -25,12 +25,51 @@ DevOps / Engineering agent tools for Jira Cloud (OAuth connector).
 }
 ```
 
-### Agent scopes
+### Agent scopes (v1)
 
 | Scope | Actions |
 |-------|---------|
-| `jira:issues:write` | All v1 issue actions |
-| `jira:*` | All of the above |
+| `jira:issues:write` | create, assign, transition, comment, update |
+| `jira:*` | All actions below |
+
+## v2 actions (read + workflow helpers)
+
+| Action | Params |
+|--------|--------|
+| `jira.issues.get` | `issue_id` or `issue_key`, optional `fields[]` |
+| `jira.issues.search` | `jql` **or** `project_key` / `status` / `assignee`, optional `limit`, `fields[]` |
+| `jira.issues.update` | `issue_id` or `issue_key`, `fields{}` or `summary` / `description` |
+| `jira.issues.transitions.list` | `issue_id` or `issue_key` — use before `jira.issues.transition` |
+| `jira.projects.list` | optional `query`, `limit` |
+| `jira.users.search` | `query`, `email`, or `display_name`; optional `limit` (for assignee `account_id`) |
+
+### Example: incident triage
+
+```json
+[
+  {
+    "action": "jira.issues.search",
+    "params": { "project_key": "ENG", "status": "Open", "limit": 10 }
+  },
+  {
+    "action": "jira.issues.transitions.list",
+    "params": { "issue_key": "ENG-42" }
+  },
+  {
+    "action": "jira.issues.transition",
+    "params": { "issue_key": "ENG-42", "transition_id": "31" }
+  }
+]
+```
+
+### Agent scopes (v2)
+
+| Scope | Actions |
+|-------|---------|
+| `jira:issues:read` | `jira.issues.get`, `.search`, `.transitions.list` |
+| `jira:issues:write` | v1 + `jira.issues.update` |
+| `jira:projects:read` | `jira.projects.list` |
+| `jira:users:read` | `jira.users.search` |
 
 ## Code
 

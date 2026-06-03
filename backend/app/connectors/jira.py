@@ -1,4 +1,4 @@
-"""Jira Cloud REST API v3 client (STA-36)."""
+"""Jira Cloud REST API v3 client (STA-36 v1 / v2)."""
 from __future__ import annotations
 
 import time
@@ -35,6 +35,7 @@ def _request(
     path: str,
     *,
     json_body: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     url = f"{jira_api_base_url(cloud_id=cloud_id)}{path}"
     headers = {
@@ -46,7 +47,7 @@ def _request(
     for attempt in range(MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=TIMEOUT_SEC) as client:
-                response = client.request(method, url, headers=headers, json=json_body)
+                response = client.request(method, url, headers=headers, json=json_body, params=params)
             if response.status_code in {429, 500, 502, 503} and attempt < MAX_RETRIES:
                 time.sleep(RETRY_BACKOFF_SEC * (attempt + 1))
                 continue
@@ -151,4 +152,89 @@ def add_issue_comment(
         access_token,
         f"/issue/{issue_id_or_key}/comment",
         json_body={"body": _adf_paragraph(body)},
+    )
+
+
+def get_issue(
+    cloud_id: str,
+    access_token: str,
+    issue_id_or_key: str,
+    *,
+    fields: list[str] | None = None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if fields:
+        params["fields"] = ",".join(fields)
+    return _request("GET", cloud_id, access_token, f"/issue/{issue_id_or_key}", params=params or None)
+
+
+def search_issues(
+    cloud_id: str,
+    access_token: str,
+    jql: str,
+    *,
+    max_results: int = 50,
+    fields: list[str] | None = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "jql": jql,
+        "maxResults": max(1, min(int(max_results), 100)),
+    }
+    if fields:
+        body["fields"] = fields
+    return _request("POST", cloud_id, access_token, "/search/jql", json_body=body)
+
+
+def update_issue(
+    cloud_id: str,
+    access_token: str,
+    issue_id_or_key: str,
+    fields: dict[str, Any],
+) -> dict[str, Any]:
+    normalized = dict(fields)
+    if "description" in normalized and isinstance(normalized["description"], str):
+        normalized["description"] = _adf_paragraph(normalized["description"])
+    return _request(
+        "PUT",
+        cloud_id,
+        access_token,
+        f"/issue/{issue_id_or_key}",
+        json_body={"fields": normalized},
+    )
+
+
+def list_issue_transitions(
+    cloud_id: str,
+    access_token: str,
+    issue_id_or_key: str,
+) -> dict[str, Any]:
+    return _request("GET", cloud_id, access_token, f"/issue/{issue_id_or_key}/transitions")
+
+
+def list_projects(
+    cloud_id: str,
+    access_token: str,
+    *,
+    query: str | None = None,
+    max_results: int = 50,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"maxResults": max(1, min(int(max_results), 100))}
+    if query:
+        params["query"] = query
+    return _request("GET", cloud_id, access_token, "/project/search", params=params)
+
+
+def search_users(
+    cloud_id: str,
+    access_token: str,
+    query: str,
+    *,
+    max_results: int = 20,
+) -> dict[str, Any]:
+    return _request(
+        "GET",
+        cloud_id,
+        access_token,
+        "/user/search",
+        params={"query": query, "maxResults": max(1, min(int(max_results), 50))},
     )

@@ -82,7 +82,13 @@ from app.connectors.jira import (
     add_issue_comment,
     assign_issue,
     create_issue as jira_create_issue,
+    get_issue,
+    list_issue_transitions,
+    list_projects,
+    search_issues,
+    search_users,
     transition_issue,
+    update_issue,
 )
 from app.connectors.jira_oauth import ensure_jira_session
 from app.connectors.salesforce_oauth import ensure_salesforce_session
@@ -1165,6 +1171,150 @@ def _exec_jira_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> Norma
     )
 
 
+def _issue_id_from_params(params: dict[str, Any]) -> str | None:
+    raw = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    return str(raw).strip() if raw else None
+
+
+def _exec_jira_issues_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = _issue_id_from_params(params)
+    if not issue_id:
+        raise ToolValidationError("jira.issues.get requires issue_id or issue_key")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_issue(cloud_id, token, issue_id, fields=field_list)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.get",
+        connector_id=cid,
+        data={"issue": data},
+    )
+
+
+def _exec_jira_issues_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    jql = params.get("jql")
+    if not jql:
+        project = params.get("project_key") or params.get("projectKey")
+        status = params.get("status")
+        assignee = params.get("assignee")
+        parts: list[str] = []
+        if project:
+            parts.append(f'project = "{project}"')
+        if status:
+            parts.append(f'status = "{status}"')
+        if assignee:
+            parts.append(f'assignee = "{assignee}"')
+        jql = " AND ".join(parts) if parts else ""
+    if not jql:
+        raise ToolValidationError(
+            "jira.issues.search requires jql or at least one of project_key, status, assignee"
+        )
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    limit = int(params.get("limit") or params.get("max_results") or 50)
+    try:
+        data = search_issues(cloud_id, token, str(jql), max_results=limit, fields=field_list)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.search",
+        connector_id=cid,
+        data={"search": data},
+    )
+
+
+def _exec_jira_issues_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = _issue_id_from_params(params)
+    fields = params.get("fields") or {}
+    if not issue_id:
+        raise ToolValidationError("jira.issues.update requires issue_id or issue_key")
+    if not isinstance(fields, dict) or not fields:
+        summary = params.get("summary")
+        description = params.get("description")
+        if summary:
+            fields = {"summary": summary}
+        if description:
+            fields = {**fields, "description": description}
+    if not fields:
+        raise ToolValidationError("jira.issues.update requires fields object or summary/description")
+    try:
+        data = update_issue(cloud_id, token, issue_id, fields)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.update",
+        connector_id=cid,
+        data={"issue": data or {"ok": True}},
+    )
+
+
+def _exec_jira_issues_transitions_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = _issue_id_from_params(params)
+    if not issue_id:
+        raise ToolValidationError("jira.issues.transitions.list requires issue_id or issue_key")
+    try:
+        data = list_issue_transitions(cloud_id, token, issue_id)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.transitions.list",
+        connector_id=cid,
+        data={"transitions": data},
+    )
+
+
+def _exec_jira_projects_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    try:
+        data = list_projects(
+            cloud_id,
+            token,
+            query=params.get("query"),
+            max_results=int(params.get("limit") or params.get("max_results") or 50),
+        )
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.projects.list",
+        connector_id=cid,
+        data={"projects": data},
+    )
+
+
+def _exec_jira_users_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    query = params.get("query") or params.get("email") or params.get("display_name")
+    if not query:
+        raise ToolValidationError("jira.users.search requires query, email, or display_name")
+    try:
+        data = search_users(
+            cloud_id,
+            token,
+            str(query),
+            max_results=int(params.get("limit") or params.get("max_results") or 20),
+        )
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    users = data if isinstance(data, list) else data.get("users") or data
+    return NormalizedResult(
+        success=True,
+        action="jira.users.search",
+        connector_id=cid,
+        data={"users": users},
+    )
+
+
 def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
@@ -1626,9 +1776,15 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "stripe.invoices.list": _exec_stripe_invoices_list,
     "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
     "jira.issues.create": _exec_jira_issues_create,
+    "jira.issues.get": _exec_jira_issues_get,
+    "jira.issues.search": _exec_jira_issues_search,
+    "jira.issues.update": _exec_jira_issues_update,
     "jira.issues.assign": _exec_jira_issues_assign,
     "jira.issues.transition": _exec_jira_issues_transition,
+    "jira.issues.transitions.list": _exec_jira_issues_transitions_list,
     "jira.issues.comment": _exec_jira_issues_comment,
+    "jira.projects.list": _exec_jira_projects_list,
+    "jira.users.search": _exec_jira_users_search,
     "zendesk.tickets.get": _exec_zendesk_tickets_get,
     "zendesk.tickets.create": _exec_zendesk_tickets_create,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,
