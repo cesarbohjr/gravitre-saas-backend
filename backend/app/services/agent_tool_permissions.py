@@ -22,6 +22,18 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "hubspot.deals.create": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.deals.update": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.lists.add_contact": ["hubspot:lists:write", "hubspot:contacts:write", "hubspot:*"],
+    "salesforce.leads.get": ["salesforce:leads:read", "salesforce:*"],
+    "salesforce.leads.update": ["salesforce:leads:write", "salesforce:*"],
+    "salesforce.accounts.get": ["salesforce:accounts:read", "salesforce:*"],
+    "salesforce.opportunities.create": ["salesforce:opportunities:write", "salesforce:*"],
+    "salesforce.opportunities.update_stage": ["salesforce:opportunities:write", "salesforce:*"],
+    "salesforce.tasks.create": ["salesforce:tasks:write", "salesforce:*"],
+    "salesforce.leads.create": ["salesforce:leads:write", "salesforce:*"],
+    "salesforce.leads.search": ["salesforce:leads:read", "salesforce:*"],
+    "salesforce.opportunities.get": ["salesforce:opportunities:read", "salesforce:*"],
+    "salesforce.opportunities.update": ["salesforce:opportunities:write", "salesforce:*"],
+    "salesforce.accounts.create": ["salesforce:accounts:write", "salesforce:*"],
+    "salesforce.accounts.update": ["salesforce:accounts:write", "salesforce:*"],
     "zendesk.tickets.get": ["zendesk:tickets:read", "zendesk:*"],
     "zendesk.tickets.create": ["zendesk:tickets:write", "zendesk:*"],
     "zendesk.tickets.update": ["zendesk:tickets:write", "zendesk:*"],
@@ -186,6 +198,17 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "hubspot:lists:write",
             "hubspot:deals:read",
             "hubspot:*",
+        ]
+    if system == "salesforce":
+        return [
+            "salesforce:leads:read",
+            "salesforce:leads:write",
+            "salesforce:accounts:read",
+            "salesforce:accounts:write",
+            "salesforce:opportunities:read",
+            "salesforce:opportunities:write",
+            "salesforce:tasks:write",
+            "salesforce:*",
         ]
     if system == "slack":
         return ["slack:messages:write", "slack:*"]

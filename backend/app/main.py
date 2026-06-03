@@ -54,8 +54,8 @@ from app.routers import (
     environments,
     settings,
 )
-from app.routers import hubspot_triggers
-from app.routers.webhooks import hubspot_inbound
+from app.routers import hubspot_triggers, salesforce_triggers
+from app.routers.webhooks import hubspot_inbound, salesforce_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.routers.webhooks import workflow_triggers
 
@@ -290,8 +290,10 @@ app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(stripe_webhooks.router)
 app.include_router(hubspot_inbound.router)
+app.include_router(salesforce_inbound.router)
 app.include_router(workflow_triggers.router)
 app.include_router(hubspot_triggers.router)
+app.include_router(salesforce_triggers.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(execution.router)

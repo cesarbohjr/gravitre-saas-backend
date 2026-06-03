@@ -86,7 +86,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | Order | Ref | Linear | Title | Blocked by (Tier 1 / Tier 2) |
 |-------|-----|--------|-------|------------------------------|
 | 1 | T2-001 | [STA-30](https://linear.app/staqbot/issue/STA-30) | Salesforce OAuth ✅ | STA-10, STA-13 |
-| 2 | T2-002 | [STA-31](https://linear.app/staqbot/issue/STA-31) | Salesforce v1 actions | STA-10, STA-11 |
+| 2 | T2-002 | [STA-31](https://linear.app/staqbot/issue/STA-31) | Salesforce v1 actions ✅ | STA-10, STA-11 |
 | 3 | T2-004 | [STA-33](https://linear.app/staqbot/issue/STA-33) | QuickBooks OAuth | STA-10, STA-13 |
 | 4 | T2-005 | [STA-34](https://linear.app/staqbot/issue/STA-34) | QuickBooks v1 read actions | STA-10, STA-11 |
 | 5 | T2-006 | [STA-35](https://linear.app/staqbot/issue/STA-35) | Stripe read-only agent tool | STA-10 |
@@ -97,7 +97,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 10 | T2-014 | [STA-43](https://linear.app/staqbot/issue/STA-43) | Notion sync → RAG | STA-20 |
 | 11 | T2-016 | [STA-45](https://linear.app/staqbot/issue/STA-45) | Knowledge sync scheduler | STA-20 |
 | 12 | T2-017 | [STA-46](https://linear.app/staqbot/issue/STA-46) | HubSpot + Zendesk → RAG | STA-15, STA-21 |
-| 13 | T2-003 | [STA-32](https://linear.app/staqbot/issue/STA-32) | Salesforce triggers | STA-12 |
+| 13 | T2-003 | [STA-32](https://linear.app/staqbot/issue/STA-32) | Salesforce triggers ✅ | STA-12 |
 | 14 | T2-011 | [STA-40](https://linear.app/staqbot/issue/STA-40) | Google Analytics OAuth | STA-13, STA-10 |
 | 15 | T2-012 | [STA-41](https://linear.app/staqbot/issue/STA-41) | GA4 v1 read actions | STA-40 |
 | 16 | T2-013 | [STA-42](https://linear.app/staqbot/issue/STA-42) | Marketing attribution workflow | STA-41, STA-15 |

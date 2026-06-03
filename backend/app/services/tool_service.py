@@ -40,6 +40,22 @@ from app.connectors.hubspot import (
     update_deal,
     update_deal_stage,
 )
+from app.connectors.salesforce import (
+    SalesforceAPIError,
+    create_account,
+    create_lead,
+    create_opportunity,
+    create_task,
+    get_account,
+    get_lead,
+    get_opportunity,
+    search_leads,
+    update_account,
+    update_lead,
+    update_opportunity,
+    update_opportunity_stage,
+)
+from app.connectors.salesforce_oauth import ensure_salesforce_session
 from app.connectors.github_api import (
     GitHubAPIError,
     create_issue,
@@ -389,6 +405,290 @@ def _exec_hubspot_sequences_enroll(ctx: ToolContext, params: dict[str, Any]) -> 
         action="hubspot.sequences.enroll",
         connector_id=cid,
         data={"enrollment": data},
+    )
+
+
+def _salesforce_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "salesforce", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active Salesforce connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "salesforce", cid)
+    token, instance_url, err = ensure_salesforce_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token or not instance_url:
+        raise ToolAuthExpiredError(err or "Salesforce OAuth not connected")
+    return cid, token, instance_url
+
+
+def _handle_salesforce_error(exc: SalesforceAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_salesforce_leads_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    lead_id = params.get("lead_id") or params.get("leadId")
+    if not lead_id:
+        raise ToolValidationError("salesforce.leads.get requires lead_id")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_lead(instance_url, token, str(lead_id), fields=field_list)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.get",
+        connector_id=cid,
+        data={"lead": data},
+    )
+
+
+def _exec_salesforce_leads_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    lead_id = params.get("lead_id") or params.get("leadId")
+    fields = params.get("fields") or params.get("properties")
+    if not lead_id:
+        raise ToolValidationError("salesforce.leads.update requires lead_id")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.leads.update requires fields object")
+    try:
+        data = update_lead(instance_url, token, str(lead_id), fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.update",
+        connector_id=cid,
+        data={"lead": data or {"id": lead_id, "updated": True}},
+    )
+
+
+def _exec_salesforce_accounts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    account_id = params.get("account_id") or params.get("accountId")
+    if not account_id:
+        raise ToolValidationError("salesforce.accounts.get requires account_id")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_account(instance_url, token, str(account_id), fields=field_list)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.accounts.get",
+        connector_id=cid,
+        data={"account": data},
+    )
+
+
+def _exec_salesforce_opportunities_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.opportunities.create requires fields object")
+    try:
+        data = create_opportunity(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.create",
+        connector_id=cid,
+        data={"opportunity": data},
+    )
+
+
+def _exec_salesforce_opportunities_update_stage(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
+    stage_name = params.get("stage_name") or params.get("stageName") or params.get("stage")
+    if not opportunity_id:
+        raise ToolValidationError("salesforce.opportunities.update_stage requires opportunity_id")
+    if not stage_name:
+        raise ToolValidationError("salesforce.opportunities.update_stage requires stage_name")
+    try:
+        data = update_opportunity_stage(instance_url, token, str(opportunity_id), str(stage_name))
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.update_stage",
+        connector_id=cid,
+        data={"opportunity": data or {"id": opportunity_id, "StageName": stage_name}},
+    )
+
+
+def _exec_salesforce_tasks_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict):
+        fields = {}
+    subject = params.get("subject")
+    if subject and "Subject" not in fields:
+        fields = {**fields, "Subject": str(subject)}
+    who_id = params.get("who_id") or params.get("whoId")
+    what_id = params.get("what_id") or params.get("whatId")
+    if who_id and "WhoId" not in fields:
+        fields = {**fields, "WhoId": str(who_id)}
+    if what_id and "WhatId" not in fields:
+        fields = {**fields, "WhatId": str(what_id)}
+    description = params.get("description") or params.get("body")
+    if description and "Description" not in fields:
+        fields = {**fields, "Description": str(description)}
+    status = params.get("status")
+    if status and "Status" not in fields:
+        fields = {**fields, "Status": str(status)}
+    if not fields.get("Subject"):
+        raise ToolValidationError("salesforce.tasks.create requires subject or fields.Subject")
+    try:
+        data = create_task(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.tasks.create",
+        connector_id=cid,
+        data={"task": data},
+    )
+
+
+def _exec_salesforce_leads_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.leads.create requires fields object")
+    try:
+        data = create_lead(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.create",
+        connector_id=cid,
+        data={"lead": data},
+    )
+
+
+def _exec_salesforce_leads_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    soql = params.get("soql")
+    if soql and not isinstance(soql, str):
+        raise ToolValidationError("salesforce.leads.search soql must be a string")
+    if not soql and not any(params.get(k) for k in ("email", "company", "status")):
+        raise ToolValidationError(
+            "salesforce.leads.search requires soql or at least one of email, company, status"
+        )
+    try:
+        data = search_leads(
+            instance_url,
+            token,
+            soql=str(soql) if soql else None,
+            email=params.get("email"),
+            company=params.get("company"),
+            status=params.get("status"),
+            limit=int(params.get("limit") or 25),
+        )
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.search",
+        connector_id=cid,
+        data={"results": data},
+    )
+
+
+def _exec_salesforce_opportunities_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
+    if not opportunity_id:
+        raise ToolValidationError("salesforce.opportunities.get requires opportunity_id")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_opportunity(instance_url, token, str(opportunity_id), fields=field_list)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.get",
+        connector_id=cid,
+        data={"opportunity": data},
+    )
+
+
+def _exec_salesforce_opportunities_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
+    fields = params.get("fields") or params.get("properties")
+    if not opportunity_id:
+        raise ToolValidationError("salesforce.opportunities.update requires opportunity_id")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.opportunities.update requires fields object")
+    try:
+        data = update_opportunity(instance_url, token, str(opportunity_id), fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.update",
+        connector_id=cid,
+        data={"opportunity": data or {"id": opportunity_id, "updated": True}},
+    )
+
+
+def _exec_salesforce_accounts_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.accounts.create requires fields object")
+    try:
+        data = create_account(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.accounts.create",
+        connector_id=cid,
+        data={"account": data},
+    )
+
+
+def _exec_salesforce_accounts_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    account_id = params.get("account_id") or params.get("accountId")
+    fields = params.get("fields") or params.get("properties")
+    if not account_id:
+        raise ToolValidationError("salesforce.accounts.update requires account_id")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.accounts.update requires fields object")
+    try:
+        data = update_account(instance_url, token, str(account_id), fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.accounts.update",
+        connector_id=cid,
+        data={"account": data or {"id": account_id, "updated": True}},
     )
 
 
@@ -826,6 +1126,18 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.create": _exec_hubspot_deals_create,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
+    "salesforce.leads.get": _exec_salesforce_leads_get,
+    "salesforce.leads.update": _exec_salesforce_leads_update,
+    "salesforce.accounts.get": _exec_salesforce_accounts_get,
+    "salesforce.opportunities.create": _exec_salesforce_opportunities_create,
+    "salesforce.opportunities.update_stage": _exec_salesforce_opportunities_update_stage,
+    "salesforce.tasks.create": _exec_salesforce_tasks_create,
+    "salesforce.leads.create": _exec_salesforce_leads_create,
+    "salesforce.leads.search": _exec_salesforce_leads_search,
+    "salesforce.opportunities.get": _exec_salesforce_opportunities_get,
+    "salesforce.opportunities.update": _exec_salesforce_opportunities_update,
+    "salesforce.accounts.create": _exec_salesforce_accounts_create,
+    "salesforce.accounts.update": _exec_salesforce_accounts_update,
     "zendesk.tickets.get": _exec_zendesk_tickets_get,
     "zendesk.tickets.create": _exec_zendesk_tickets_create,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,
