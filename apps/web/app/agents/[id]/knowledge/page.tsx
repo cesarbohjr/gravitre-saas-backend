@@ -402,7 +402,7 @@ export default function AgentKnowledgePage({
                             disabled={mutatingId === instruction.id}
                             className="text-muted-foreground hover:text-foreground"
                           >
-                          <Icon name={instruction.is_active ? "stop" : "play"} size="sm" />
+                                                    <Icon name={instruction.is_active ? "close" : "check"} size="sm" />
                           </Button>
                           <Button
                             variant="ghost"
