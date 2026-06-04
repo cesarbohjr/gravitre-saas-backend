@@ -50,13 +50,14 @@ def pagerduty_oauth_configured(settings: Settings, environment_name: str | None 
 
 
 def pagerduty_redirect_uri(settings: Settings) -> str:
+    """Must match the redirect URL registered in the PagerDuty OAuth app (often locked after create)."""
+    app_base = (settings.public_app_url or "").strip().rstrip("/")
+    if app_base:
+        return f"{app_base}/api/auth/callback/pagerduty"
     api_base = (settings.api_public_url or "").strip().rstrip("/")
     if api_base:
         return f"{api_base}/api/connectors/oauth/pagerduty/callback"
-    base = (settings.public_app_url or "").strip().rstrip("/")
-    if base:
-        return f"{base}/api/connectors/oauth/pagerduty/callback"
-    return "http://localhost:8000/api/connectors/oauth/pagerduty/callback"
+    return "http://localhost:3000/api/auth/callback/pagerduty"
 
 
 def pagerduty_authorize_url(client_id: str, redirect_uri: str, state: str) -> str:

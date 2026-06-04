@@ -3,11 +3,13 @@
 ## Platform setup (operator)
 
 1. Register an OAuth app in [PagerDuty Developer](https://developer.pagerduty.com/).
-2. **Redirect URL:**
+2. **Redirect URL** (register in PagerDuty; often cannot be changed after app creation):
 
 ```text
-{API_PUBLIC_URL}/api/connectors/oauth/pagerduty/callback
+https://gravitre.app/api/auth/callback/pagerduty
 ```
+
+The Next.js app proxies this to the API callback (`/api/connectors/oauth/pagerduty/callback`). Local dev: `http://localhost:3000/api/auth/callback/pagerduty`.
 
 3. Set on API host:
 

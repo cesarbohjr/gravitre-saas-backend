@@ -21,8 +21,11 @@ def test_pagerduty_oauth_configured():
 
 
 def test_pagerduty_redirect_and_authorize():
-    settings = SimpleNamespace(api_public_url="https://api.example.com", public_app_url="")
+    settings = SimpleNamespace(
+        api_public_url="https://api.example.com",
+        public_app_url="https://gravitre.app",
+    )
     redirect = pagerduty_redirect_uri(settings)
-    assert redirect.endswith("/api/connectors/oauth/pagerduty/callback")
+    assert redirect == "https://gravitre.app/api/auth/callback/pagerduty"
     url = pagerduty_authorize_url("cid", redirect, "state")
     assert "app.pagerduty.com/oauth/authorize" in url
