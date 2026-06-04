@@ -128,6 +128,12 @@ class Settings(BaseSettings):
     # Notion OAuth (STA-43)
     notion_client_id: str = ""
     notion_client_secret: str = ""
+    # Google OAuth — shared "Gravitre OAuth" app (Calendar, GA4, future Gmail/Drive)
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    # Google Analytics OAuth (STA-40); falls back from GOOGLE_OAUTH_* when unset
+    google_analytics_client_id: str = ""
+    google_analytics_client_secret: str = ""
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"

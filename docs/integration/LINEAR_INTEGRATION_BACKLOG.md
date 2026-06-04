@@ -96,10 +96,10 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 9 | T2-010 | [STA-39](https://linear.app/staqbot/issue/STA-39) | DevOps cross-tool workflow ✅ | STA-36–38, Slack |
 | 10 | T2-014 | [STA-43](https://linear.app/staqbot/issue/STA-43) | Notion sync → RAG ✅ | STA-20 |
 | 11 | T2-016 | [STA-45](https://linear.app/staqbot/issue/STA-45) | Knowledge sync scheduler ✅ | STA-20 |
-| 12 | T2-017 | [STA-46](https://linear.app/staqbot/issue/STA-46) | HubSpot + Zendesk → RAG | STA-15, STA-21 |
+| 12 | T2-017 | [STA-46](https://linear.app/staqbot/issue/STA-46) | HubSpot + Zendesk → RAG ✅ | STA-15, STA-21 |
 | 13 | T2-003 | [STA-32](https://linear.app/staqbot/issue/STA-32) | Salesforce triggers ✅ | STA-12 |
-| 14 | T2-011 | [STA-40](https://linear.app/staqbot/issue/STA-40) | Google Analytics OAuth | STA-13, STA-10 |
-| 15 | T2-012 | [STA-41](https://linear.app/staqbot/issue/STA-41) | GA4 v1 read actions | STA-40 |
+| 14 | T2-011 | [STA-40](https://linear.app/staqbot/issue/STA-40) | Google Analytics OAuth ✅ | STA-13, STA-10 |
+| 15 | T2-012 | [STA-41](https://linear.app/staqbot/issue/STA-41) | GA4 v1 read actions ✅ | STA-40 |
 | 16 | T2-013 | [STA-42](https://linear.app/staqbot/issue/STA-42) | Marketing attribution workflow | STA-41, STA-15 |
 | 17 | T2-015 | [STA-44](https://linear.app/staqbot/issue/STA-44) | Confluence sync → RAG | STA-20 |
 | 18 | T2-018 | [STA-47](https://linear.app/staqbot/issue/STA-47) | Workflow schedule / cron worker | STA-12 |

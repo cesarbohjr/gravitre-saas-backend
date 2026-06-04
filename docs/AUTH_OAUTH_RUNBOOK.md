@@ -54,13 +54,22 @@ bash scripts/configure-auth-production.sh
 - `SUPABASE_URL=https://smyeexlrqdpymwjmgzqu.supabase.co`
 - `SUPABASE_JWT_SECRET` — must match Supabase **Settings → API → JWT Secret** (invalid secret → `/api/auth/me` 401 → client shows `session_expired`)
 
-### Google Cloud Console (OAuth client used by Supabase)
+### Google Cloud Console (Gravitre OAuth client)
 
-Authorized redirect URI:
+**Login (Supabase):**
 
 ```
 https://smyeexlrqdpymwjmgzqu.supabase.co/auth/v1/callback
 ```
+
+**Connectors (Railway API)** — see [integration/GOOGLE_OAUTH.md](integration/GOOGLE_OAUTH.md):
+
+```
+https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_analytics/callback
+https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/google_calendar/callback
+```
+
+CLI: `npm run google:setup`, `npm run google:fill-env`, `npm run google:railway`, `npm run google:check`
 
 ## Verify
 

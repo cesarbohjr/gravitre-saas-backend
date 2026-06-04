@@ -1828,14 +1828,37 @@ def _github_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
     return cid, token
 
 
-def _google_calendar_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
-    conn = _connector_by_type(ctx, "google_calendar", params)
+def _google_vendor_token(ctx: ToolContext, vendor: str, params: dict[str, Any]) -> tuple[str, str]:
+    from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+
+    conn = _connector_by_type(ctx, vendor, params)
     cid = str(conn["id"])
-    _enforce_tool_rate_limit(ctx, "google_calendar", cid)
-    token = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
-    if not token:
-        raise ToolAuthExpiredError("Google Calendar access_token not configured")
-    return cid, token
+    _enforce_tool_rate_limit(ctx, vendor, cid)
+    oauth_token, oauth_err = ensure_google_vendor_session(
+        ctx.client, ctx.org_id, cid, ctx.settings, environment_name=ctx.environment_name
+    )
+    if oauth_token:
+        return cid, oauth_token
+    if vendor == "google_calendar":
+        legacy = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
+        if legacy:
+            return cid, legacy
+    raise ToolAuthExpiredError(oauth_err or f"{vendor} not connected")
+
+
+def _google_calendar_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    return _google_vendor_token(ctx, "google_calendar", params)
+
+
+def _ga_property_id(conn: dict[str, Any], params: dict[str, Any]) -> str:
+    pid = params.get("property_id") or params.get("propertyId")
+    if pid:
+        return str(pid).strip()
+    cfg = conn.get("config") or {}
+    linked = (cfg.get("property_id") or cfg.get("propertyId") or "").strip()
+    if not linked:
+        raise ToolValidationError("analytics actions require property_id or linked GA4 property")
+    return linked
 
 
 def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
@@ -2023,6 +2046,175 @@ def _exec_calendar_events_create(ctx: ToolContext, params: dict[str, Any]) -> No
     return NormalizedResult(success=True, action="calendar.events.create", connector_id=cid, data={"event": event})
 
 
+def _exec_analytics_properties_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_analytics import GoogleAnalyticsAPIError, list_ga4_properties
+
+    cid, token = _google_vendor_token(ctx, "google_analytics", params)
+    try:
+        properties = list_ga4_properties(token)
+    except GoogleAnalyticsAPIError as exc:
+        raise _vendor_api_error(exc, "google_analytics") from exc
+    return NormalizedResult(
+        success=True,
+        action="analytics.properties.list",
+        connector_id=cid,
+        data={"properties": properties},
+    )
+
+
+def _exec_analytics_reports_run(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_analytics import GoogleAnalyticsAPIError, run_ga4_report
+
+    conn = _connector_by_type(ctx, "google_analytics", params)
+    cid, token = _google_vendor_token(ctx, "google_analytics", params)
+    property_id = _ga_property_id(conn, params)
+    try:
+        report = run_ga4_report(
+            token,
+            property_id,
+            start_date=str(params.get("start_date") or params.get("startDate") or "7daysAgo"),
+            end_date=str(params.get("end_date") or params.get("endDate") or "today"),
+            dimensions=params.get("dimensions"),
+            metrics=params.get("metrics"),
+        )
+    except GoogleAnalyticsAPIError as exc:
+        raise _vendor_api_error(exc, "google_analytics") from exc
+    return NormalizedResult(
+        success=True,
+        action="analytics.reports.run",
+        connector_id=cid,
+        data={"property_id": property_id, "report": report},
+    )
+
+
+def _exec_gmail_messages_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, list_messages
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    try:
+        data = list_messages(
+            token,
+            query=params.get("query") or params.get("q"),
+            max_results=int(params.get("max_results") or params.get("maxResults") or 25),
+        )
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.messages.list", connector_id=cid, data=data)
+
+
+def _exec_gmail_messages_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, get_message
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    message_id = params.get("message_id") or params.get("messageId")
+    if not message_id:
+        raise ToolValidationError("gmail.messages.get requires message_id")
+    try:
+        data = get_message(token, str(message_id))
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.messages.get", connector_id=cid, data={"message": data})
+
+
+def _exec_gmail_messages_send(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, send_message
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    to = params.get("to")
+    subject = params.get("subject")
+    body = params.get("body") or params.get("text")
+    if not to or not subject or not body:
+        raise ToolValidationError("gmail.messages.send requires to, subject, body")
+    try:
+        data = send_message(token, to=str(to), subject=str(subject), body=str(body))
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.messages.send", connector_id=cid, data=data)
+
+
+def _exec_drive_files_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_drive import GoogleDriveAPIError, list_files
+
+    cid, token = _google_vendor_token(ctx, "google_drive", params)
+    try:
+        data = list_files(
+            token,
+            page_size=int(params.get("page_size") or params.get("pageSize") or 25),
+            query=params.get("query") or params.get("q"),
+        )
+    except GoogleDriveAPIError as exc:
+        raise _vendor_api_error(exc, "google_drive") from exc
+    return NormalizedResult(success=True, action="drive.files.list", connector_id=cid, data=data)
+
+
+def _exec_drive_files_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_drive import GoogleDriveAPIError, get_file
+
+    cid, token = _google_vendor_token(ctx, "google_drive", params)
+    file_id = params.get("file_id") or params.get("fileId")
+    if not file_id:
+        raise ToolValidationError("drive.files.get requires file_id")
+    try:
+        data = get_file(token, str(file_id))
+    except GoogleDriveAPIError as exc:
+        raise _vendor_api_error(exc, "google_drive") from exc
+    return NormalizedResult(success=True, action="drive.files.get", connector_id=cid, data={"file": data})
+
+
+def _exec_sheets_spreadsheets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_sheets import GoogleSheetsAPIError, get_spreadsheet
+
+    cid, token = _google_vendor_token(ctx, "google_sheets", params)
+    spreadsheet_id = params.get("spreadsheet_id") or params.get("spreadsheetId")
+    if not spreadsheet_id:
+        raise ToolValidationError("sheets.spreadsheets.get requires spreadsheet_id")
+    try:
+        data = get_spreadsheet(token, str(spreadsheet_id))
+    except GoogleSheetsAPIError as exc:
+        raise _vendor_api_error(exc, "google_sheets") from exc
+    return NormalizedResult(
+        success=True,
+        action="sheets.spreadsheets.get",
+        connector_id=cid,
+        data={"spreadsheet": data},
+    )
+
+
+def _exec_sheets_values_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_sheets import GoogleSheetsAPIError, get_values
+
+    cid, token = _google_vendor_token(ctx, "google_sheets", params)
+    spreadsheet_id = params.get("spreadsheet_id") or params.get("spreadsheetId")
+    range_a1 = params.get("range") or params.get("rangeA1")
+    if not spreadsheet_id or not range_a1:
+        raise ToolValidationError("sheets.values.get requires spreadsheet_id and range")
+    try:
+        data = get_values(token, str(spreadsheet_id), str(range_a1))
+    except GoogleSheetsAPIError as exc:
+        raise _vendor_api_error(exc, "google_sheets") from exc
+    return NormalizedResult(success=True, action="sheets.values.get", connector_id=cid, data=data)
+
+
+def _exec_docs_documents_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_docs import GoogleDocsAPIError, document_plain_text, get_document
+
+    cid, token = _google_vendor_token(ctx, "google_docs", params)
+    document_id = params.get("document_id") or params.get("documentId")
+    if not document_id:
+        raise ToolValidationError("docs.documents.get requires document_id")
+    try:
+        doc = get_document(token, str(document_id))
+        text = document_plain_text(doc)
+    except GoogleDocsAPIError as exc:
+        raise _vendor_api_error(exc, "google_docs") from exc
+    return NormalizedResult(
+        success=True,
+        action="docs.documents.get",
+        connector_id=cid,
+        data={"document": doc, "plain_text": text},
+    )
+
+
 _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "slack.post_message": _exec_slack_post_message,
     "email.send": _exec_email_send,
@@ -2094,6 +2286,16 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "github.pulls.request_reviewer": _exec_github_pulls_request_reviewer,
     "calendar.freebusy": _exec_calendar_freebusy,
     "calendar.events.create": _exec_calendar_events_create,
+    "analytics.properties.list": _exec_analytics_properties_list,
+    "analytics.reports.run": _exec_analytics_reports_run,
+    "gmail.messages.list": _exec_gmail_messages_list,
+    "gmail.messages.get": _exec_gmail_messages_get,
+    "gmail.messages.send": _exec_gmail_messages_send,
+    "drive.files.list": _exec_drive_files_list,
+    "drive.files.get": _exec_drive_files_get,
+    "sheets.spreadsheets.get": _exec_sheets_spreadsheets_get,
+    "sheets.values.get": _exec_sheets_values_get,
+    "docs.documents.get": _exec_docs_documents_get,
 }
 
 # Workflow step type → canonical tool action

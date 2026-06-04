@@ -1,6 +1,8 @@
 # Environment and secrets — NEVER commit
 .env
 .env.*
+backend/.google-oauth-client.json
+backend/.env.operator.local
 .env.local
 .env.*.local
 # ...but DO track example templates (no real secrets)

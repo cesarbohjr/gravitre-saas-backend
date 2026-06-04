@@ -135,6 +135,19 @@ async function patchJson<T>(url: string, data: unknown): Promise<T> {
   return response.json()
 }
 
+async function putJson<T>(url: string, data: unknown): Promise<T> {
+  const response = await apiFetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+  }
+  return response.json()
+}
+
 async function deleteRequest(url: string): Promise<void> {
   const response = await apiFetch(url, { method: "DELETE" })
   if (!response.ok) {
@@ -336,6 +349,26 @@ export const connectorsApi = {
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
       { name, connectorId, redirectPath: "/connectors" }
+    ),
+  listGoogleAnalyticsProperties: (connectorId: string) =>
+    fetcher<{
+      connectorId: string
+      properties: Array<{
+        property_id: string
+        property_resource?: string
+        display_name?: string
+        account_name?: string
+      }>
+      linkedPropertyId?: string
+      linkedPropertyName?: string
+    }>(apiUrl(`/api/connectors/${connectorId}/google-analytics/properties`)),
+  linkGoogleAnalyticsProperty: (
+    connectorId: string,
+    data: { propertyId: string; propertyName?: string }
+  ) =>
+    putJson<{ connectorId: string; propertyId: string; propertyName?: string; status: string }>(
+      apiUrl(`/api/connectors/${connectorId}/google-analytics/property`),
+      data
     ),
 }
 

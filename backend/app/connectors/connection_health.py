@@ -25,6 +25,11 @@ from app.connectors.salesforce_oauth import (
     normalize_vendor as normalize_salesforce_vendor,
     salesforce_connection_auth_status,
 )
+from app.connectors.google_vendor_oauth import (
+    GOOGLE_OAUTH_VENDORS,
+    google_vendor_connection_auth_status,
+    normalize_google_vendor,
+)
 
 
 def resolve_connector_auth_status(
@@ -61,6 +66,16 @@ def resolve_connector_auth_status(
         return notion_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
         )
+    google_vendor = normalize_google_vendor(vendor)
+    if google_vendor and google_vendor in GOOGLE_OAUTH_VENDORS:
+        return google_vendor_connection_auth_status(
+            client,
+            org_id,
+            connector_id,
+            google_vendor,
+            settings,
+            environment_name=environment_name,
+        )
     return None
 
 
@@ -70,6 +85,8 @@ def map_auth_status_to_connector_status(auth_status: str | None, current_status:
     if auth_status == "connected":
         return "healthy"
     if auth_status == "pending_auth":
+        return "pending_auth"
+    if auth_status == "pending_property":
         return "pending_auth"
     if auth_status in {"auth_expired", "misconfigured"}:
         return "error"

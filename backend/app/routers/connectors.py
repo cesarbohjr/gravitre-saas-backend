@@ -78,6 +78,11 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "jira",
         "pagerduty",
         "notion",
+        "google_analytics",
+        "gmail",
+        "google_drive",
+        "google_docs",
+        "google_sheets",
         "slack",
         "postgresql",
         "stripe",
@@ -130,6 +135,12 @@ def _docs_url(vendor: str) -> str | None:
         "jira": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/",
         "pagerduty": "https://developer.pagerduty.com/docs/",
         "notion": "https://developers.notion.com/docs",
+        "google_analytics": "https://developers.google.com/analytics/devguides/config/admin/v1",
+        "google_calendar": "https://developers.google.com/calendar/api/guides/overview",
+        "gmail": "https://developers.google.com/gmail/api",
+        "google_drive": "https://developers.google.com/drive/api",
+        "google_docs": "https://developers.google.com/docs/api",
+        "google_sheets": "https://developers.google.com/sheets/api",
     }
     return mapping.get(vendor)
 
@@ -516,9 +527,19 @@ async def test_connector_route(
         if vendor == "github":
             if not get_decrypted_secret(client, str(connector_id), "token", settings):
                 return {"success": False, "message": "Missing token secret"}
-        if vendor == "google_calendar":
-            if not get_decrypted_secret(client, str(connector_id), "access_token", settings):
-                return {"success": False, "message": "Missing access_token secret"}
+        if vendor in {"google_calendar", "gmail", "google_drive", "google_docs", "google_sheets", "google_analytics"}:
+            from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+
+            token, err = ensure_google_vendor_session(
+                client, org_id, str(connector_id), settings, environment_name=environment_name
+            )
+            if token:
+                return {"success": True, "message": f"{vendor} connection is valid"}
+            if vendor == "google_calendar":
+                legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings)
+                if legacy:
+                    return {"success": True, "message": "Google Calendar access_token configured (legacy)"}
+            return {"success": False, "message": err or f"{vendor} not connected"}
         return {"success": True, "message": f"{vendor} credentials configured"}
     return {"success": True, "message": "No automated test for this connector type"}
 

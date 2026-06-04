@@ -7,7 +7,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 from app.config import Settings
+from app.services.hubspot_knowledge_sync_service import (
+    hubspot_knowledge_sync_enabled,
+    run_hubspot_knowledge_sync,
+)
 from app.services.notion_sync_service import get_notion_sync_targets, run_notion_sync
+from app.services.zendesk_knowledge_sync_service import (
+    run_zendesk_knowledge_sync,
+    zendesk_knowledge_sync_enabled,
+)
 from app.workflows.audit import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -19,6 +27,16 @@ SOURCE_REGISTRY: dict[str, dict[str, Any]] = {
         "targets_key": "notion_sync_targets",
         "last_synced_key": "notion_last_synced_at",
         "runner": "notion",
+    },
+    "hubspot": {
+        "last_synced_key": "hubspot_last_synced_at",
+        "runner": "hubspot",
+        "skip_targets_check": True,
+    },
+    "zendesk": {
+        "last_synced_key": "zendesk_last_synced_at",
+        "runner": "zendesk",
+        "skip_targets_check": True,
     },
 }
 
@@ -67,9 +85,17 @@ def connector_is_due(connector: dict[str, Any], *, now: datetime | None = None) 
     spec = SOURCE_REGISTRY.get(vendor)
     if not spec:
         return False
-    targets = config.get(spec["targets_key"]) or []
-    if not isinstance(targets, list) or not targets:
+    if vendor == "hubspot" and not hubspot_knowledge_sync_enabled(connector):
         return False
+    if vendor == "zendesk" and not zendesk_knowledge_sync_enabled(connector):
+        return False
+    if not spec.get("skip_targets_check"):
+        targets_key = spec.get("targets_key")
+        if not targets_key:
+            return False
+        targets = config.get(targets_key) or []
+        if not isinstance(targets, list) or not targets:
+            return False
 
     last = _parse_ts(config.get(spec["last_synced_key"])) or _parse_ts(
         connector.get("last_sync_at") or connector.get("last_synced_at")
@@ -181,8 +207,46 @@ def _run_notion_sync(
     )
 
 
+def _run_hubspot_sync(
+    client: Any,
+    settings: Settings,
+    connector: dict[str, Any],
+    *,
+    actor_id: str,
+    full_sync: bool = False,
+) -> dict[str, Any]:
+    return run_hubspot_knowledge_sync(
+        client,
+        str(connector["org_id"]),
+        str(connector["id"]),
+        settings,
+        actor_id=actor_id,
+        full_sync=full_sync,
+    )
+
+
+def _run_zendesk_sync(
+    client: Any,
+    settings: Settings,
+    connector: dict[str, Any],
+    *,
+    actor_id: str,
+    full_sync: bool = False,
+) -> dict[str, Any]:
+    return run_zendesk_knowledge_sync(
+        client,
+        str(connector["org_id"]),
+        str(connector["id"]),
+        settings,
+        actor_id=actor_id,
+        full_sync=full_sync,
+    )
+
+
 _RUNNERS: dict[str, Callable[..., dict[str, Any]]] = {
     "notion": _run_notion_sync,
+    "hubspot": _run_hubspot_sync,
+    "zendesk": _run_zendesk_sync,
 }
 
 
@@ -226,6 +290,10 @@ def execute_knowledge_sync_job(
             raise ValueError(f"Unsupported knowledge source: {source_type}")
         if source_type == "notion" and not get_notion_sync_targets(connector):
             raise ValueError("No Notion sync targets configured")
+        if source_type == "hubspot" and not hubspot_knowledge_sync_enabled(connector):
+            raise ValueError("HubSpot knowledge sync is disabled")
+        if source_type == "zendesk" and not zendesk_knowledge_sync_enabled(connector):
+            raise ValueError("Zendesk knowledge sync is disabled")
 
         result = runner(client, settings, connector, actor_id=actor_id, full_sync=full_sync)
         pages = int(result.get("pages_synced") or 0)

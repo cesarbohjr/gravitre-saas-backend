@@ -11,7 +11,17 @@ Unified scheduled and webhook-triggered sync from knowledge connectors (Notion v
 | Internal cron | `POST /api/internal/knowledge/sync-due` |
 | Webhook hook | `POST /api/webhooks/knowledge/{connector_id}/sync` |
 
-## Notion (v1)
+## Sources (STA-45 / STA-46)
+
+| Connector | Content | Config |
+|-----------|---------|--------|
+| Notion | Pages/databases from targets | `notion_sync_targets` — see [NOTION.md](./NOTION.md) |
+| HubSpot | Notes + emails (incremental) | Enabled by default; `hubspot_knowledge_sync_enabled: false` to disable |
+| Zendesk | Resolved tickets | Enabled by default; `zendesk_knowledge_sync_enabled: false` to disable |
+
+All use `connector.sync_frequency` (e.g. `1h`, `24h`, `daily`) and store `*_last_synced_at` in `connectors.config`.
+
+## Notion
 
 Uses [NOTION.md](./NOTION.md) targets and `connector.sync_frequency` (e.g. `1h`, `24h`, `daily`).
 
@@ -63,6 +73,12 @@ Set `KNOWLEDGE_SYNC_INTERVAL_SECONDS=0` to disable the in-process loop (use cron
 - `backend/app/knowledge/sync_scheduler.py`
 - `backend/app/routers/knowledge_sync.py`
 
-## Next (STA-46)
+## HubSpot + Zendesk (STA-46)
 
-HubSpot notes and Zendesk resolved tickets → same job framework.
+- HubSpot: CRM search on `notes` and `emails` since `hubspot_last_synced_at` (first run: last 24h).
+- Zendesk: search `type:ticket status:solved updated>=<date>` since `zendesk_last_synced_at`.
+- RAG sources: `hubspot_rag_source_id`, `zendesk_rag_source_id` on connector config.
+
+## Next
+
+Confluence sync → RAG (STA-44).

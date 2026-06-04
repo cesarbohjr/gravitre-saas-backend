@@ -49,7 +49,7 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:3000"
+site_url = "https://gravitre.app"
 additional_redirect_urls = [
   "https://127.0.0.1:3000",
   "http://localhost:3000",

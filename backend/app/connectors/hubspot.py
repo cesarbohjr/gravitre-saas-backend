@@ -302,6 +302,74 @@ def add_contact_to_list(access_token: str, list_id: str, contact_id: str) -> dic
     )
 
 
+def search_crm_objects(
+    access_token: str,
+    object_type: str,
+    *,
+    properties: list[str],
+    since_ms: int | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    """Search CRM objects (e.g. notes, emails) optionally filtered by last modified."""
+    if not object_type:
+        raise HubSpotAPIError("object_type is required")
+    lim = min(max(int(limit), 1), 100)
+    body: dict[str, Any] = {
+        "properties": properties,
+        "limit": lim,
+        "sorts": [{"propertyName": "hs_lastmodifieddate", "direction": "DESCENDING"}],
+    }
+    if since_ms is not None:
+        body["filterGroups"] = [
+            {
+                "filters": [
+                    {
+                        "propertyName": "hs_lastmodifieddate",
+                        "operator": "GTE",
+                        "value": str(int(since_ms)),
+                    }
+                ]
+            }
+        ]
+    data = _request(
+        "POST",
+        f"/crm/v3/objects/{object_type}/search",
+        access_token,
+        json_body=body,
+    )
+    return [dict(r) for r in (data.get("results") or []) if isinstance(r, dict)]
+
+
+def list_notes_since(
+    access_token: str,
+    *,
+    since_ms: int | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    return search_crm_objects(
+        access_token,
+        "notes",
+        properties=["hs_note_body", "hs_timestamp", "hs_lastmodifieddate"],
+        since_ms=since_ms,
+        limit=limit,
+    )
+
+
+def list_emails_since(
+    access_token: str,
+    *,
+    since_ms: int | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    return search_crm_objects(
+        access_token,
+        "emails",
+        properties=["hs_email_subject", "hs_email_text", "hs_timestamp", "hs_lastmodifieddate"],
+        since_ms=since_ms,
+        limit=limit,
+    )
+
+
 def enroll_contact_in_sequence(
     access_token: str,
     *,

@@ -78,6 +78,16 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "github.pulls.request_reviewer": ["github:pulls:write", "github:*"],
     "calendar.freebusy": ["calendar:read", "calendar:*"],
     "calendar.events.create": ["calendar:write", "calendar:*"],
+    "analytics.properties.list": ["analytics:read", "google_analytics:*", "analytics:*"],
+    "analytics.reports.run": ["analytics:read", "google_analytics:*", "analytics:*"],
+    "gmail.messages.list": ["gmail:read", "gmail:*"],
+    "gmail.messages.get": ["gmail:read", "gmail:*"],
+    "gmail.messages.send": ["gmail:send", "gmail:write", "gmail:*"],
+    "drive.files.list": ["drive:read", "google_drive:*", "drive:*"],
+    "drive.files.get": ["drive:read", "google_drive:*", "drive:*"],
+    "sheets.spreadsheets.get": ["sheets:read", "google_sheets:*", "sheets:*"],
+    "sheets.values.get": ["sheets:read", "google_sheets:*", "sheets:*"],
+    "docs.documents.get": ["docs:read", "google_docs:*", "docs:*"],
 }
 
 WILDCARD_SCOPE = "*"

@@ -58,6 +58,7 @@ from app.routers import (
     hubspot_triggers,
     knowledge_sync,
     notion_sync,
+    google_analytics,
     pagerduty_triggers,
     salesforce_triggers,
 )
@@ -315,6 +316,7 @@ app.include_router(hubspot_triggers.router)
 app.include_router(salesforce_triggers.router)
 app.include_router(pagerduty_triggers.router)
 app.include_router(notion_sync.router)
+app.include_router(google_analytics.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(execution.router)
