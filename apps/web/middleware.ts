@@ -41,7 +41,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user) {
-    return redirectToLogin(request, { staleSession: true })
+    const hadSupabaseSession = request.cookies
+      .getAll()
+      .some((c) => c.name.startsWith("sb-") || c.name.includes("supabase-auth-token"))
+    return redirectToLogin(request, { staleSession: hadSupabaseSession })
   }
 
   return supabaseResponse

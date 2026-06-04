@@ -1,5 +1,6 @@
 import type { Provider } from "@supabase/supabase-js"
 
+import { markAuthTransition } from "@/lib/auth-transition"
 import { getAppOrigin } from "@/lib/auth-session"
 import { createClient } from "@/lib/supabase/client"
 
@@ -42,7 +43,6 @@ export async function beginOAuthSignIn(
     return { ok: false, error: error.message }
   }
 
-  window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
-  window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+  markAuthTransition()
   return { ok: true }
 }

@@ -10,6 +10,7 @@ import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi } from "@/lib/api"
 import { Loader2, X } from "lucide-react"
@@ -82,7 +83,7 @@ export function AppShell({ children, title }: AppShellProps) {
   )
 
   // Fetch auth/me for onboarding status
-  const { data: meData } = useSWR<MeData>(
+  const { data: meData, error: meError } = useSWR<MeData>(
     user ? "/api/auth/me" : null,
     apiFetcher,
     { revalidateOnFocus: false }
@@ -128,13 +129,16 @@ export function AppShell({ children, title }: AppShellProps) {
     }
   }
 
-  // Clear auth transition flags once the protected shell has loaded.
+  // Clear OAuth transition grace period only after /api/auth/me succeeds (or user signed out).
   useEffect(() => {
-    if (user && !loading) {
-      window.sessionStorage.removeItem("gravitre_auth_redirecting")
-      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+    if (!user && !loading) {
+      clearAuthTransition()
+      return
     }
-  }, [user, loading])
+    if (user && meData && !meError) {
+      clearAuthTransition()
+    }
+  }, [user, loading, meData, meError])
 
   // Show loading while checking auth and billing
   if (loading || (user && billingLoading && billingStatusData === undefined)) {

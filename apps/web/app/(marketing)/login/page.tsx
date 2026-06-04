@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "luci
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
+import { markAuthTransition } from "@/lib/auth-transition"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
@@ -74,6 +75,15 @@ function LoginPageContent() {
 
     let cancelled = false
     const resetBrokenSession = async () => {
+      if (error === "session_expired") {
+        const { data: { user: liveUser } } = await supabaseClient.auth.getUser()
+        if (liveUser && !cancelled) {
+          markAuthTransition()
+          router.replace(searchParams.get("redirect") || "/operator")
+          return
+        }
+      }
+
       try {
         await supabaseClient.auth.signOut({ scope: "local" })
       } catch {
@@ -82,13 +92,14 @@ function LoginPageContent() {
       if (cancelled) return
       window.sessionStorage.removeItem("gravitre_auth_redirecting")
       window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+      window.sessionStorage.removeItem("gravitre_auth_redirect_until")
     }
 
     void resetBrokenSession()
     return () => {
       cancelled = true
     }
-  }, [searchParams])
+  }, [searchParams, router])
 
   useEffect(() => {
     const resetAuthLoading = () => {
@@ -157,8 +168,7 @@ function LoginPageContent() {
         }
 
         const redirect = searchParams.get("redirect") || "/operator"
-        window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
-        window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+        markAuthTransition()
         router.replace(redirect)
       } catch {
         await supabaseClient.auth.signOut()
@@ -192,8 +202,7 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
-    window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
-    window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+    markAuthTransition()
     router.push(redirect)
   }
 

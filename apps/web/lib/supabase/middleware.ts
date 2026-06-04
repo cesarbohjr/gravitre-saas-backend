@@ -47,7 +47,8 @@ export function redirectToLogin(
   }
 
   const redirect = NextResponse.redirect(loginUrl)
-  if (hasSupabaseCookie) {
+  // Only clear broken cookies when we know the session was stale (not a first visit).
+  if (options?.staleSession && hasSupabaseCookie) {
     for (const cookie of request.cookies.getAll()) {
       if (isSupabaseAuthCookie(cookie.name)) {
         redirect.cookies.set(cookie.name, "", { maxAge: 0, path: "/" })
