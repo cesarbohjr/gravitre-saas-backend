@@ -42,19 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let mounted = true
 
-    // Get initial session with timeout guard — validate server-side via getUser()
-    withTimeout(supabaseClient.auth.getUser(), AUTH_INIT_TIMEOUT_MS)
-      .then(({ data: { user } }) => {
+    // Get initial session with timeout guard
+    withTimeout(supabaseClient.auth.getSession(), AUTH_INIT_TIMEOUT_MS)
+      .then(({ data: { session } }) => {
         if (!mounted) return
-        setUser(user ?? null)
-        if (user) {
-          void supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            if (!mounted) return
-            setSession(session)
-          })
-        } else {
-          setSession(null)
-        }
+        setSession(session)
+        setUser(session?.user ?? null)
       })
       .catch((err) => {
         console.warn("[v0] Auth session check failed:", err)
@@ -116,39 +109,25 @@ export async function getAccessToken(): Promise<string | null> {
   if (!hasSupabasePublicEnv) return null
   
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser()
-
-    if (userError || !user) {
-      return null
-    }
-
-    const {
-      data: { session },
-      error,
-    } = await supabaseClient.auth.getSession()
-
+    const { data: { session }, error } = await supabaseClient.auth.getSession()
+    
     if (error) {
       console.warn("[v0] getAccessToken error:", error.message)
       return null
     }
-
+    
     if (!session) {
-      const {
-        data: { session: refreshedSession },
-        error: refreshError,
-      } = await supabaseClient.auth.refreshSession()
-
+      // Try to refresh the session
+      const { data: { session: refreshedSession }, error: refreshError } = await supabaseClient.auth.refreshSession()
+      
       if (refreshError) {
         console.warn("[v0] Session refresh failed:", refreshError.message)
         return null
       }
-
+      
       return refreshedSession?.access_token ?? null
     }
-
+    
     return session.access_token
   } catch (err) {
     console.warn("[v0] getAccessToken exception:", err)

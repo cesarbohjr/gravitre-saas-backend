@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, startTransition, useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
@@ -655,9 +655,8 @@ const connectorCategories = {
   "CRM / Marketing": {
     color: "emerald",
     connectors: [
-      { type: "Salesforce", description: "CRM and sales automation", authType: "oauth" as const },
+      { type: "Salesforce", description: "CRM and sales automation", authType: "oauth" },
       { type: "HubSpot", description: "Marketing, sales, and service", authType: "oauth" },
-      { type: "Google Analytics", description: "GA4 campaign and conversion analytics", authType: "oauth" },
       { type: "Marketo", description: "Marketing automation", authType: "apiKey" },
       { type: "Mailchimp", description: "Email marketing campaigns", authType: "apiKey" },
       { type: "Segment", description: "Customer data platform", authType: "apiKey" },
@@ -679,23 +678,15 @@ const connectorCategories = {
       { type: "Slack", description: "Team messaging", authType: "oauth" },
       { type: "Microsoft Teams", description: "Collaboration hub", authType: "oauth" },
       { type: "Gmail", description: "Email integration", authType: "oauth" },
-      { type: "Google Calendar", description: "Calendar availability and events", authType: "oauth" },
       { type: "Outlook", description: "Microsoft email", authType: "oauth" },
       { type: "Twilio", description: "SMS and voice API", authType: "apiKey" },
     ]
-  },
-  "DevOps / Incidents": {
-    color: "rose",
-    connectors: [
-      { type: "PagerDuty", description: "Incident management and on-call", authType: "oauth" },
-    ],
   },
   "Operations / Workflow": {
     color: "amber",
     connectors: [
       { type: "Notion", description: "All-in-one workspace", authType: "oauth" },
       { type: "Airtable", description: "Database spreadsheets", authType: "apiKey" },
-      { type: "Jira", description: "Issue tracking and DevOps", authType: "oauth" },
       { type: "Asana", description: "Project management", authType: "oauth" },
       { type: "Monday.com", description: "Work OS", authType: "oauth" },
       { type: "ClickUp", description: "Productivity platform", authType: "apiKey" },
@@ -704,7 +695,7 @@ const connectorCategories = {
   "Customer Support": {
     color: "pink",
     connectors: [
-      { type: "Zendesk", description: "Customer service", authType: "apiKey" },
+      { type: "Zendesk", description: "Customer service", authType: "oauth" },
       { type: "Intercom", description: "Customer messaging", authType: "oauth" },
       { type: "Freshdesk", description: "Help desk software", authType: "apiKey" },
       { type: "Gorgias", description: "E-commerce helpdesk", authType: "apiKey" },
@@ -723,12 +714,10 @@ const connectorCategories = {
     color: "orange",
     connectors: [
       { type: "AWS S3", description: "Cloud object storage", authType: "apiKey" },
-      { type: "GitHub", description: "Code repository", authType: "apiKey" },
+      { type: "GitHub", description: "Code repository", authType: "oauth" },
       { type: "PostgreSQL", description: "SQL database", authType: "apiKey" },
       { type: "MongoDB", description: "NoSQL database", authType: "apiKey" },
       { type: "Snowflake", description: "Data warehouse", authType: "apiKey" },
-      { type: "Google Drive", description: "File storage", authType: "oauth" },
-      { type: "Google Docs", description: "Documents", authType: "oauth" },
       { type: "Google Sheets", description: "Spreadsheets", authType: "oauth" },
     ]
   },
@@ -738,31 +727,6 @@ const connectorCategories = {
 const availableConnectors = Object.entries(connectorCategories).flatMap(([category, data]) =>
   data.connectors.map(c => ({ ...c, category }))
 )
-
-const OAUTH_CONNECTOR_TYPES = new Set([
-  "HubSpot",
-  "Salesforce",
-  "QuickBooks",
-  "Jira",
-  "PagerDuty",
-  "Notion",
-  "Google Analytics",
-  "Google Calendar",
-  "Gmail",
-  "Google Drive",
-  "Google Docs",
-  "Google Sheets",
-])
-
-function connectorVendorKey(type: string): string {
-  const key = type.toLowerCase().replace(/\s+/g, "")
-  if (key === "googlecalendar") return "google_calendar"
-  if (key === "googleanalytics") return "google_analytics"
-  if (key === "googledrive") return "google_drive"
-  if (key === "googledocs") return "google_docs"
-  if (key === "googlesheets") return "google_sheets"
-  return key
-}
 
 // Add Connector Modal
 function AddConnectorModal({
@@ -787,11 +751,7 @@ function AddConnectorModal({
   const [modalCategoryFilter, setModalCategoryFilter] = useState<string>("all")
   const [copied, setCopied] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
-  const [zendeskSubdomain, setZendeskSubdomain] = useState("")
-  const [zendeskEmail, setZendeskEmail] = useState("")
-  const [githubOwner, setGithubOwner] = useState("")
-  const [githubRepo, setGithubRepo] = useState("")
-
+  
   // Webhook URL for webhook-based connectors
   const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
 
@@ -813,7 +773,7 @@ function AddConnectorModal({
 
   const handleOAuthConnect = async () => {
     if (!selectedType || !name) return
-    const provider = connectorVendorKey(selectedType)
+    const provider = selectedType.toLowerCase().replace(/\s+/g, "")
     setOauthStatus("redirecting")
     try {
       const { authorizationUrl } = await connectorsApi.startOAuth(provider, {
@@ -825,25 +785,17 @@ function AddConnectorModal({
       console.error("[connectors] OAuth start failed:", err)
       setOauthStatus("error")
       toast.error(`Failed to connect ${selectedType}`, {
-        description: "Check OAuth credentials are configured on the API host",
+        description: "Check HubSpot OAuth credentials are configured on the API",
       })
     }
   }
 
-  const canSubmitApiKey = (): boolean => {
-    if (!name) return false
-    if (selectedType === "Zendesk") {
-      return Boolean(zendeskSubdomain && zendeskEmail && apiKey)
-    }
-    if (selectedType === "GitHub") {
-      return Boolean(githubOwner && githubRepo && apiKey)
-    }
-    return Boolean(apiKey)
-  }
-
   const handleConnect = async () => {
     if (!selectedType || !name) return
-    if (selectedAuthType === "apiKey" && !canSubmitApiKey()) return
+    
+    // For API Key auth, require API key
+    if (selectedAuthType === "apiKey" && !apiKey) return
+    
     setIsCreating(true)
     await completeConnection()
   }
@@ -852,31 +804,20 @@ function AddConnectorModal({
     if (!selectedType || !name) return
     setIsCreating(true)
     try {
-      const vendor = connectorVendorKey(selectedType)
-      const payload: import("@/types/api").CreateConnectorRequest = {
+      await connectorsApi.create({
         name,
-        vendor,
+        vendor: selectedType,
         description: getSelectedConnector()?.description,
         sync_frequency: "5m",
-      }
-      if (selectedType === "Zendesk") {
-        payload.config = { subdomain: zendeskSubdomain.trim() }
-        payload.secrets = {
-          email: zendeskEmail.trim(),
-          api_token: apiKey.trim(),
-        }
-      } else if (selectedType === "GitHub") {
-        payload.config = { owner: githubOwner.trim(), repo: githubRepo.trim() }
-        payload.secrets = { token: apiKey.trim() }
-      } else if (apiKey) {
-        payload.api_key = apiKey
-      }
-      await connectorsApi.create(payload)
+      })
       toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
       await onCreated()
       handleClose()
+      if (typeof window !== "undefined") {
+        window.location.assign("/integrations")
+      }
     } catch (err) {
-      console.error("[connectors] Failed to create connector:", err)
+      console.error("[v0] Failed to create connector:", err)
       toast.error("Failed to create connector")
     } finally {
       setIsCreating(false)
@@ -903,10 +844,6 @@ function AddConnectorModal({
     setOauthStatus("idle")
     setCopied(false)
     setShowApiKey(false)
-    setZendeskSubdomain("")
-    setZendeskEmail("")
-    setGithubOwner("")
-    setGithubRepo("")
     onClose()
   }
 
@@ -914,9 +851,9 @@ function AddConnectorModal({
     setSelectedType(connector.type)
     setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
     setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
-
+    
     // Route to appropriate auth flow
-    if (OAUTH_CONNECTOR_TYPES.has(connector.type)) {
+    if (connector.authType === "oauth") {
       setStep("oauth")
     } else if (connector.authType === "webhook") {
       setStep("webhook")
@@ -1043,12 +980,10 @@ function AddConnectorModal({
                               <span className={cn(
                                 "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
                                 connector.authType === "oauth" ? "bg-blue-500/10 text-blue-400" :
-                                connector.authType === "planned" ? "bg-zinc-500/10 text-zinc-400" :
                                 connector.authType === "webhook" ? "bg-violet-500/10 text-violet-400" :
                                 "bg-amber-500/10 text-amber-400"
                               )}>
-                                {connector.authType === "oauth" ? "OAuth" :
-                                 connector.authType === "planned" ? "Planned" :
+                                {connector.authType === "oauth" ? "OAuth" : 
                                  connector.authType === "webhook" ? "Webhook" : "API Key"}
                               </span>
                             </div>
@@ -1352,75 +1287,31 @@ function AddConnectorModal({
                   </p>
                 </div>
 
-                {selectedType === "Zendesk" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Zendesk subdomain</label>
-                      <Input
-                        value={zendeskSubdomain}
-                        onChange={(e) => setZendeskSubdomain(e.target.value)}
-                        placeholder="your-company"
-                        className="bg-secondary"
-                      />
-                      <p className="text-xs text-muted-foreground">From your-company.zendesk.com</p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Agent email</label>
-                      <Input
-                        value={zendeskEmail}
-                        onChange={(e) => setZendeskEmail(e.target.value)}
-                        placeholder="agent@company.com"
-                        className="bg-secondary"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "GitHub" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Owner (org or user)</label>
-                      <Input
-                        value={githubOwner}
-                        onChange={(e) => setGithubOwner(e.target.value)}
-                        placeholder="my-org"
-                        className="bg-secondary"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Repository</label>
-                      <Input
-                        value={githubRepo}
-                        onChange={(e) => setGithubRepo(e.target.value)}
-                        placeholder="my-repo"
-                        className="bg-secondary"
-                      />
-                    </div>
-                  </>
-                )}
-
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Key className="h-4 w-4 text-amber-400" />
-                      {selectedType === "Zendesk" ? "API token" : selectedType === "GitHub" ? "Personal access token" : "API Key"}
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showApiKey ? "text" : "password"}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your API key or token"
-                        className="bg-secondary pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Key className="h-4 w-4 text-amber-400" />
+                    API Key
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showApiKey ? "text" : "password"}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Enter your API key"
+                      className="bg-secondary pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Your {selectedType} API key or access token
+                  </p>
+                </div>
 
                 {/* Optional API Secret for some services */}
                 {(selectedType === "Stripe" || selectedType === "AWS S3") && (
@@ -1477,7 +1368,7 @@ function AddConnectorModal({
           {step === "configure" && (
             <Button 
               onClick={handleConnect} 
-              disabled={!canSubmitApiKey() || isCreating}
+              disabled={!name || !apiKey || isCreating}
               className="gap-2"
             >
               {isCreating ? (
@@ -1518,130 +1409,18 @@ function AddConnectorModal({
   )
 }
 
-function GaPropertyPickerModal({
-  connectorId,
-  open,
-  onClose,
-  onLinked,
-}: {
-  connectorId: string
-  open: boolean
-  onClose: () => void
-  onLinked: () => void
-}) {
-  const [properties, setProperties] = useState<
-    Array<{ property_id: string; display_name?: string; account_name?: string }>
-  >([])
-  const [selectedId, setSelectedId] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    if (!open || !connectorId) return
-    startTransition(() => setLoading(true))
-    connectorsApi
-      .listGoogleAnalyticsProperties(connectorId)
-      .then((res) => {
-        setProperties(res.properties || [])
-        const linked = res.linkedPropertyId
-        if (linked) setSelectedId(linked)
-        else if (res.properties?.length === 1) setSelectedId(res.properties[0].property_id)
-      })
-      .catch((err) => {
-        console.error("[connectors] GA properties:", err)
-        toast.error("Could not load GA4 properties")
-      })
-      .finally(() => setLoading(false))
-  }, [open, connectorId])
-
-  const handleLink = async () => {
-    if (!selectedId) return
-    const prop = properties.find((p) => p.property_id === selectedId)
-    setSaving(true)
-    try {
-      await connectorsApi.linkGoogleAnalyticsProperty(connectorId, {
-        propertyId: selectedId,
-        propertyName: prop?.display_name,
-      })
-      toast.success("GA4 property linked")
-      onLinked()
-      onClose()
-    } catch (err) {
-      console.error("[connectors] GA property link:", err)
-      toast.error("Failed to link property")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Link GA4 property</DialogTitle>
-          <DialogDescription>
-            Choose which Google Analytics 4 property this connector should use for reports.
-          </DialogDescription>
-        </DialogHeader>
-        {loading ? (
-          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading properties…
-          </div>
-        ) : properties.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">
-            No GA4 properties found for this Google account.
-          </p>
-        ) : (
-          <select
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-          >
-            <option value="">Select a property…</option>
-            {properties.map((p) => (
-              <option key={p.property_id} value={p.property_id}>
-                {p.display_name || p.property_id}
-                {p.account_name ? ` (${p.account_name})` : ""}
-              </option>
-            ))}
-          </select>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleLink} disabled={!selectedId || saving || loading}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link property"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
-  const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
 
   useEffect(() => {
     const oauth = searchParams.get("oauth")
     const provider = searchParams.get("provider")
-    const connectorId = searchParams.get("connectorId")
-    const selectProperty = searchParams.get("selectProperty")
     if (!oauth) return
     if (oauth === "success") {
-      if (provider === "google_analytics" && selectProperty === "1" && connectorId) {
-        startTransition(() => setGaPropertyPicker({ connectorId }))
-        toast.info("Select a GA4 property", {
-          description: "Your Google account has multiple analytics properties.",
-        })
-      } else {
-        toast.success("Connector connected", {
-          description: provider ? `${provider} OAuth completed` : "OAuth authentication successful",
-        })
-      }
+      toast.success("Connector connected", {
+        description: provider ? `${provider} OAuth completed` : "OAuth authentication successful",
+      })
     } else if (oauth === "error") {
       const message = searchParams.get("message")
       toast.error("OAuth connection failed", { description: message || "Try again or contact support" })
@@ -1652,7 +1431,6 @@ function ConnectorsPageContent() {
       url.searchParams.delete("provider")
       url.searchParams.delete("connectorId")
       url.searchParams.delete("message")
-      url.searchParams.delete("selectProperty")
       window.history.replaceState({}, "", url.pathname + url.search)
     }
   }, [searchParams])
@@ -2053,14 +1831,6 @@ function ConnectorsPageContent() {
             await mutate()
           }}
         />
-        {gaPropertyPicker && (
-          <GaPropertyPickerModal
-            connectorId={gaPropertyPicker.connectorId}
-            open
-            onClose={() => setGaPropertyPicker(null)}
-            onLinked={() => void mutate()}
-          />
-        )}
       </div>
     </AppShell>
   )

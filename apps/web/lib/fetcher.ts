@@ -1,7 +1,5 @@
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getAccessToken } from "@/lib/auth-context"
-import { isAuthTransitionActive } from "@/lib/auth-transition"
-import { createClient } from "@/lib/supabase/client"
 
 function withSelectedOrg(url: string): string {
   if (typeof window === "undefined" || !url.startsWith("/api/")) return url
@@ -19,67 +17,44 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   if (!headers.has("accept")) {
     headers.set("accept", "application/json")
   }
-
-  let token: string | null = null
+  
+  // Add auth token if available
   if (typeof window !== "undefined") {
-    token = await getAccessToken()
+    const token = await getAccessToken()
     if (token && !headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${token}`)
     }
   }
-
+  
   const response = await fetch(withSelectedOrg(url), {
     ...init,
     headers,
     cache: init?.cache ?? "no-store",
   })
-
+  
+  // Handle 401 by redirecting to login once.
+  // Skip redirect for pages that handle deferred auth (like /get-started)
   if (response.status === 401 && typeof window !== "undefined") {
     const currentPath = window.location.pathname
-    const deferredAuthPages = [
-      "/get-started",
-      "/login",
-      "/forgot-password",
-      "/auth",
-    ]
-    const shouldSkipRedirect = deferredAuthPages.some((page) =>
-      currentPath.startsWith(page)
-    )
-    const authTransition = isAuthTransitionActive()
-
-    if (!shouldSkipRedirect && !authTransition) {
-      const alreadyRedirecting =
-        window.sessionStorage.getItem("gravitre_auth_login_redirect") === "1"
+    const deferredAuthPages = ["/get-started", "/login", "/forgot-password"]
+    const shouldSkipRedirect = deferredAuthPages.some(page => currentPath.startsWith(page))
+    
+    if (!shouldSkipRedirect) {
+      const alreadyRedirecting = window.sessionStorage.getItem("gravitre_auth_redirecting") === "1"
       if (!alreadyRedirecting) {
-        // Supabase session may still be valid while the API JWT is rejected (config mismatch).
-        const supabase = createClient()
-        const { data: { user: liveUser } } = await supabase.auth.getUser()
-        if (liveUser) {
-          console.warn(
-            "[apiFetch] Backend returned 401 but Supabase session is valid — not signing out.",
-          )
-          throw new Error("API authentication failed")
-        }
-
-        window.sessionStorage.setItem("gravitre_auth_login_redirect", "1")
-        const loginUrl = new URL("/login", window.location.origin)
-        const hasSupabaseCookie = document.cookie
-          .split(";")
-          .some((c) => c.trim().startsWith("sb-"))
-        if (hasSupabaseCookie) {
-          loginUrl.searchParams.set("error", "session_expired")
-        }
-        window.location.assign(loginUrl.toString())
+        window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
+        window.location.assign("/login?session_expired=true")
       }
     }
     throw new Error("Session expired")
   }
-
+  
   return response
 }
 
 export async function fetcher<T>(url: string): Promise<T> {
   const response = await apiFetch(url)
+
 
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`

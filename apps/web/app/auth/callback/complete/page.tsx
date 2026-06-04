@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
-import { markAuthTransition } from "@/lib/auth-transition"
 import { supabaseClient } from "@/lib/supabaseClient"
 
 function normalizeNextPath(nextPath: string | null, fallback: string): string {
@@ -60,7 +59,6 @@ function AuthCallbackCompleteContent() {
         return
       }
 
-      markAuthTransition()
       if (!cancelled) {
         router.replace(callbackContext.nextPath)
       }

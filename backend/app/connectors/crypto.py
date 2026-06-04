@@ -1,4 +1,7 @@
-"""IN-00: Fernet encryption for connector secrets (key material: 64-char hex or legacy Fernet)."""
+"""IN-00: Fernet encryption for connector secrets.
+
+Accepts CONNECTOR_SECRETS_ENCRYPTION_KEY as 64-char hex or legacy Fernet string.
+"""
 from __future__ import annotations
 
 from cryptography.fernet import Fernet, InvalidToken

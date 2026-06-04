@@ -1,8 +1,7 @@
 import type { Provider } from "@supabase/supabase-js"
 
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
-import { markAuthTransition } from "@/lib/auth-transition"
-import { createClient } from "@/lib/supabase/client"
+import { supabaseClient } from "@/lib/supabaseClient"
 
 type OAuthResult =
   | { ok: true }
@@ -29,15 +28,7 @@ export async function beginOAuthSignIn(
     }
   }
 
-  if (typeof window === "undefined") {
-    return {
-      ok: false,
-      error: "Unable to continue OAuth sign-in in this environment.",
-    }
-  }
-
-  const supabase = createClient()
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo,
@@ -82,7 +73,13 @@ export async function beginOAuthSignIn(
     }
   }
 
-  markAuthTransition()
+  if (typeof window === "undefined") {
+    return {
+      ok: false,
+      error: "Unable to continue OAuth sign-in in this environment.",
+    }
+  }
+
   window.location.assign(data.url)
   return { ok: true }
 }
