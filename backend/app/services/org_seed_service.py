@@ -267,6 +267,14 @@ def seed_org_if_needed(client: Client, org_id: str) -> dict[str, Any]:
     client.table("runs").upsert(payload["runs"], on_conflict="id").execute()
     client.table("connected_systems").upsert(payload["connected_systems"], on_conflict="id").execute()
 
+    try:
+        from app.services.council_workflow_service import ensure_uncertain_lead_council_workflow
+
+        council_wf_id = ensure_uncertain_lead_council_workflow(client, org_id)
+        onboarding["demo_council_workflow_id"] = council_wf_id
+    except Exception:  # noqa: BLE001
+        pass
+
     onboarding["seeded"] = True
     if payload.get("demo_hubspot_workflow_id"):
         onboarding["demo_hubspot_workflow_id"] = payload["demo_hubspot_workflow_id"]

@@ -11,6 +11,7 @@ from app.services.hubspot_knowledge_sync_service import (
     hubspot_knowledge_sync_enabled,
     run_hubspot_knowledge_sync,
 )
+from app.services.confluence_sync_service import get_confluence_sync_targets, run_confluence_sync
 from app.services.notion_sync_service import get_notion_sync_targets, run_notion_sync
 from app.services.zendesk_knowledge_sync_service import (
     run_zendesk_knowledge_sync,
@@ -27,6 +28,11 @@ SOURCE_REGISTRY: dict[str, dict[str, Any]] = {
         "targets_key": "notion_sync_targets",
         "last_synced_key": "notion_last_synced_at",
         "runner": "notion",
+    },
+    "confluence": {
+        "targets_key": "confluence_sync_targets",
+        "last_synced_key": "confluence_last_synced_at",
+        "runner": "confluence",
     },
     "hubspot": {
         "last_synced_key": "hubspot_last_synced_at",
@@ -207,6 +213,24 @@ def _run_notion_sync(
     )
 
 
+def _run_confluence_sync(
+    client: Any,
+    settings: Settings,
+    connector: dict[str, Any],
+    *,
+    actor_id: str,
+    full_sync: bool = False,
+) -> dict[str, Any]:
+    return run_confluence_sync(
+        client,
+        str(connector["org_id"]),
+        str(connector["id"]),
+        settings,
+        actor_id=actor_id,
+        full_sync=full_sync,
+    )
+
+
 def _run_hubspot_sync(
     client: Any,
     settings: Settings,
@@ -245,6 +269,7 @@ def _run_zendesk_sync(
 
 _RUNNERS: dict[str, Callable[..., dict[str, Any]]] = {
     "notion": _run_notion_sync,
+    "confluence": _run_confluence_sync,
     "hubspot": _run_hubspot_sync,
     "zendesk": _run_zendesk_sync,
 }
@@ -290,6 +315,8 @@ def execute_knowledge_sync_job(
             raise ValueError(f"Unsupported knowledge source: {source_type}")
         if source_type == "notion" and not get_notion_sync_targets(connector):
             raise ValueError("No Notion sync targets configured")
+        if source_type == "confluence" and not get_confluence_sync_targets(connector):
+            raise ValueError("No Confluence sync targets configured")
         if source_type == "hubspot" and not hubspot_knowledge_sync_enabled(connector):
             raise ValueError("HubSpot knowledge sync is disabled")
         if source_type == "zendesk" and not zendesk_knowledge_sync_enabled(connector):

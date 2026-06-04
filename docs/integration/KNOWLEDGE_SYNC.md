@@ -79,6 +79,8 @@ Set `KNOWLEDGE_SYNC_INTERVAL_SECONDS=0` to disable the in-process loop (use cron
 - Zendesk: search `type:ticket status:solved updated>=<date>` since `zendesk_last_synced_at`.
 - RAG sources: `hubspot_rag_source_id`, `zendesk_rag_source_id` on connector config.
 
-## Next
+## Confluence (STA-44)
 
-Confluence sync → RAG (STA-44).
+- Spaces configured via `confluence_sync_targets` on the connector.
+- RAG source: `confluence_rag_source_id` on connector config.
+- See [CONFLUENCE.md](./CONFLUENCE.md).

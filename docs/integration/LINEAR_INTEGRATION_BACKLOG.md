@@ -100,11 +100,11 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 13 | T2-003 | [STA-32](https://linear.app/staqbot/issue/STA-32) | Salesforce triggers ✅ | STA-12 |
 | 14 | T2-011 | [STA-40](https://linear.app/staqbot/issue/STA-40) | Google Analytics OAuth ✅ | STA-13, STA-10 |
 | 15 | T2-012 | [STA-41](https://linear.app/staqbot/issue/STA-41) | GA4 v1 read actions ✅ | STA-40 |
-| 16 | T2-013 | [STA-42](https://linear.app/staqbot/issue/STA-42) | Marketing attribution workflow | STA-41, STA-15 |
-| 17 | T2-015 | [STA-44](https://linear.app/staqbot/issue/STA-44) | Confluence sync → RAG | STA-20 |
-| 18 | T2-018 | [STA-47](https://linear.app/staqbot/issue/STA-47) | Workflow schedule / cron worker | STA-12 |
-| 19 | T2-019 | [STA-48](https://linear.app/staqbot/issue/STA-48) | Council → workflow branch | STA-17, STA-12 |
-| 20 | T2-020 | [STA-49](https://linear.app/staqbot/issue/STA-49) | Agent memory API | STA-20 |
+| 16 | T2-013 | [STA-42](https://linear.app/staqbot/issue/STA-42) | Marketing attribution workflow ✅ | STA-41, STA-15 |
+| 17 | T2-015 | [STA-44](https://linear.app/staqbot/issue/STA-44) | Confluence sync → RAG ✅ | STA-20 |
+| 18 | T2-018 | [STA-47](https://linear.app/staqbot/issue/STA-47) | Workflow schedule / cron worker ✅ | STA-12 |
+| 19 | T2-019 | [STA-48](https://linear.app/staqbot/issue/STA-48) | Council → workflow branch ✅ | STA-17, STA-12 |
+| 20 | T2-020 | [STA-49](https://linear.app/staqbot/issue/STA-49) | Agent memory API ✅ | STA-20 |
 
 **Start Tier 2 only after:** STA-10, STA-12, STA-13 (minimum platform), and relevant Tier 1 connector for your track.
 

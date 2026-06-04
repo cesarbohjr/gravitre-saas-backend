@@ -19,6 +19,7 @@ ALLOWED_STEP_TYPES = frozenset({
     "email_send",
     "webhook_post",
     "invoke_tool",
+    "council",
 })
 
 RUN_TYPE_DRY_RUN = "dry_run"
@@ -38,6 +39,7 @@ EXECUTE_ALLOWED_STEP_TYPES = frozenset({
     "email_send",
     "webhook_post",
     "invoke_tool",
+    "council",
 })
 
 # BE-20: closed role set for approver_roles

@@ -178,7 +178,12 @@ class SlackPostMessageHandler(StepHandler):
         result = invoke_tool(
             tool_context_from_step(context),
             action,
-            params_for_step(self.step_type, context.config or {}, context.parameters),
+            params_for_step(
+                self.step_type,
+                context.config or {},
+                context.parameters,
+                step_outputs=context.step_outputs,
+            ),
         )
         return _truncate_output_snapshot(result.to_step_output())
 
@@ -336,6 +341,46 @@ class AgentStepHandler(StepHandler):
         return _truncate_output_snapshot(output)
 
 
+class CouncilStepHandler(StepHandler):
+    """STA-48: convene agent council and select a workflow branch."""
+
+    step_type = "council"
+
+    def simulate(self, context: StepContext) -> dict[str, Any]:
+        cfg = context.config or {}
+        options = cfg.get("options") or ["enroll", "nurture"]
+        return _truncate_output_snapshot(
+            {
+                "simulated": True,
+                "branch": str(options[0]),
+                "escalated": True,
+                "message": "Council step simulated (dry-run)",
+            }
+        )
+
+    def execute(self, context: StepContext) -> dict[str, Any]:
+        from app.services.council_workflow_service import execute_council_step
+
+        if not context.client:
+            raise ValueError("council step requires database client")
+        workflow_id = str((context.parameters or {}).get("workflow_id") or context.run_id or "")
+        output = asyncio.run(
+            execute_council_step(
+                context.settings,
+                org_id=context.org_id,
+                user_id=str(context.user_id or context.org_id),
+                run_id=str(context.run_id or context.org_id),
+                workflow_id=workflow_id,
+                step_id=context.step_id,
+                config=context.config or {},
+                parameters=context.parameters,
+                step_outputs=context.step_outputs,
+                client=context.client,
+            )
+        )
+        return _truncate_output_snapshot(output)
+
+
 class ConditionHandler(StepHandler):
     step_type = "condition"
     supports_execute = False
@@ -369,6 +414,7 @@ def register_handlers() -> None:
     register_handler(AgentStepHandler())
     register_handler(NoopHandler())
     register_handler(InvokeToolHandler())
+    register_handler(CouncilStepHandler())
     register_handler(SlackPostMessageHandler())
     register_handler(EmailSendHandler())
     register_handler(WebhookPostHandler())

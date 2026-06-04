@@ -36,6 +36,7 @@ Connector `config` after link: `property_id`, `property_name`, `property_resourc
 
 - [STA-40](https://linear.app/staqbot/issue/STA-40) — OAuth + property linking ✅
 - [STA-41](https://linear.app/staqbot/issue/STA-41) — GA4 v1 read actions ✅
+- [STA-42](https://linear.app/staqbot/issue/STA-42) — Marketing attribution workflow ✅ — see [MARKETING_ATTRIBUTION.md](./MARKETING_ATTRIBUTION.md)
 
 ## Code
 

@@ -2439,7 +2439,12 @@ def params_for_step(
                     params[key] = resolved
     if step_type == "slack_post_message":
         msg_key = cfg.get("message_input_key", "message")
-        params["message"] = parameters.get(msg_key, parameters.get("message", ""))
+        message = parameters.get(msg_key, parameters.get("message", ""))
+        if cfg.get("message_from_step"):
+            resolved = _resolve_param_source(cfg["message_from_step"], parameters, step_outputs)
+            if resolved is not None and resolved != "":
+                message = resolved
+        params["message"] = message
         params["channel"] = cfg.get("channel") or parameters.get("channel", "")
     elif step_type == "email_send":
         params["to"] = parameters.get(cfg.get("to_input_key", "to"), "")
