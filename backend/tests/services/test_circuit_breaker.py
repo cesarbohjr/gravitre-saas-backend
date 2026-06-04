@@ -156,9 +156,10 @@ def test_half_open_failure_reopens(monkeypatch):
     cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.01, redis_client=redis)
     cb.record_failure("openai")
     assert cb.is_open("openai") is True
+    last_failure = redis.kv.get("cb:openai:last_failure", "0")
     monkeypatch.setattr(
         "app.services.providers.base.time.time",
-        lambda: redis.kv.get("cb:openai:last_failure", 0) + 1.0,
+        lambda: float(last_failure) + 1.0,
     )
     assert cb.is_open("openai") is False  # half_open allows probe
     cb.record_failure("openai")
