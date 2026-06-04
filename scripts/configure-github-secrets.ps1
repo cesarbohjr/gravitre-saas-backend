@@ -65,9 +65,22 @@ if (-not $supabaseToken) {
     $supabaseToken = Read-DotEnvValue -Path $OperatorFile -Key "SUPABASE_ACCESS_TOKEN"
 }
 if (-not $supabaseToken) {
-    Write-Host "SUPABASE_ACCESS_TOKEN missing. Add to backend/.env.operator.local or:" -ForegroundColor Yellow
+    $cliTokenScript = Join-Path $PSScriptRoot "read-supabase-cli-token.ps1"
+    if (Test-Path $cliTokenScript) {
+        $supabaseToken = & $cliTokenScript
+    }
+}
+if (-not $supabaseToken) {
+    Write-Host "SUPABASE_ACCESS_TOKEN missing. Run: supabase login" -ForegroundColor Yellow
+    Write-Host "  or add to backend/.env.operator.local from:" -ForegroundColor Yellow
     Write-Host "  https://supabase.com/dashboard/account/tokens" -ForegroundColor Yellow
     Write-Host "Continuing without Supabase Management API secret..." -ForegroundColor Yellow
+} elseif (-not (Read-DotEnvValue -Path $OperatorFile -Key "SUPABASE_ACCESS_TOKEN")) {
+    $lines = @()
+    if (Test-Path $OperatorFile) { $lines = Get-Content $OperatorFile }
+    $lines += "SUPABASE_ACCESS_TOKEN=$supabaseToken"
+    Set-Content -Path $OperatorFile -Value $lines -Encoding utf8
+    Write-Host "  saved SUPABASE_ACCESS_TOKEN to backend/.env.operator.local" -ForegroundColor Green
 }
 
 if (-not (Test-Path $VercelEnvFile)) {
