@@ -84,7 +84,8 @@ Add repository secrets for the **Auth Config Sync** workflow (Settings → Secre
 ### Railway
 
 - `SUPABASE_URL=https://smyeexlrqdpymwjmgzqu.supabase.co`
-- `SUPABASE_JWT_SECRET` — must match Supabase **Settings → API → JWT Secret** (invalid secret → `/api/auth/me` 401 → client shows `session_expired`)
+- `SUPABASE_URL` — used for JWKS (`/auth/v1/.well-known/jwks.json`) when tokens are **ES256**
+- `SUPABASE_JWT_SECRET` — legacy **HS256** verification only; ES256 user tokens are verified via JWKS automatically
 
 ### Google Cloud Console (Gravitre OAuth client)
 

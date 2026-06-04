@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_anon_key: str
     supabase_service_role_key: str
-    supabase_jwt_secret: str  # Project Settings → API → JWT Secret
+    supabase_jwt_secret: str  # Legacy HS256 secret; ES256 tokens verified via JWKS
     # JWT validation: issuer must match (e.g. https://<project-ref>.supabase.co/auth/v1)
     supabase_jwt_issuer: str = ""
     # Optional; default "authenticated" used if empty
