@@ -180,10 +180,12 @@ main() {
   require_cmd curl
   require_cmd python3
 
+  local skip_supabase=0
   if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
-    echo "ERROR: SUPABASE_ACCESS_TOKEN is required." >&2
-    echo "Create one at https://supabase.com/dashboard/account/tokens" >&2
-    exit 1
+    echo "WARNING: SUPABASE_ACCESS_TOKEN not set; skipping Supabase Management API patch." >&2
+    echo "  Use: npm run auth:supabase-google  (linked Supabase CLI)" >&2
+    echo "  Or create a token: https://supabase.com/dashboard/account/tokens" >&2
+    skip_supabase=1
   fi
 
   if [[ -z "${VERCEL_TOKEN:-}" ]]; then
@@ -192,11 +194,14 @@ main() {
     exit 1
   fi
 
-  local project_ref
-  project_ref="$(discover_supabase_project_ref)"
-  export SUPABASE_PROJECT_REF="$project_ref"
-
-  configure_supabase_auth "$project_ref"
+  if [[ "$skip_supabase" -eq 0 ]]; then
+    local project_ref
+    project_ref="$(discover_supabase_project_ref)"
+    export SUPABASE_PROJECT_REF="$project_ref"
+    configure_supabase_auth "$project_ref"
+  else
+    export SUPABASE_PROJECT_REF="${SUPABASE_PROJECT_REF:-smyeexlrqdpymwjmgzqu}"
+  fi
   configure_vercel_env
   deploy_vercel_production
   verify_production

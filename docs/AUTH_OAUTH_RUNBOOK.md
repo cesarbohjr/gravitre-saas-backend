@@ -55,6 +55,21 @@ Enable Google login provider on Supabase (linked CLI + `backend/.env.operator.lo
 npm run auth:supabase-google
 ```
 
+One-pass platform setup (Supabase, Google, Vercel deploy, GitHub secrets):
+
+```powershell
+npm run platform:apply
+# After first-time GCP login:
+gcloud auth login
+npm run platform:apply
+```
+
+Set GitHub secrets only:
+
+```powershell
+npm run platform:github-secrets
+```
+
 Add repository secrets for the **Auth Config Sync** workflow (Settings → Secrets → Actions):
 
 | Secret | Purpose |
