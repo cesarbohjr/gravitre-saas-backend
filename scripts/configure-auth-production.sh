@@ -214,7 +214,7 @@ main() {
   verify_production
 
   echo ""
-  echo "Done. Supabase project: ${project_ref}"
+  echo "Done. Supabase project: ${SUPABASE_PROJECT_REF}"
   echo "Site URL: ${APP_URL}"
 }
 
