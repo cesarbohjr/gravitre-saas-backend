@@ -541,13 +541,18 @@ async def sync_connector_route_alias(
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    body: ConnectorSyncRequest | None = None,
 ) -> dict:
-    """Manual sync request."""
+    """Manual sync — runs knowledge sync for Notion; legacy status for other connectors."""
+    import asyncio
+
+    from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
+
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     conn = (
         client.table("connectors")
-        .select("id, status, name, vendor")
+        .select("id, status, name, vendor, type")
         .eq("org_id", org_id)
         .eq("environment", environment_name)
         .eq("id", str(connector_id))
@@ -557,7 +562,31 @@ async def sync_connector_route_alias(
     )
     if not conn.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
-    status_value = conn.data[0].get("status")
+    row = conn.data[0]
+    vendor = str(row.get("type") or row.get("vendor") or "").lower()
+    if vendor in SOURCE_REGISTRY:
+        full_sync = bool((body or ConnectorSyncRequest()).full_sync)
+        try:
+            result = await asyncio.to_thread(
+                trigger_connector_knowledge_sync,
+                client,
+                settings,
+                org_id,
+                str(connector_id),
+                actor_id=str(_user["user_id"]),
+                trigger_type="manual",
+                full_sync=full_sync,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return {
+            "success": True,
+            "status": "completed",
+            "syncId": f"knowledge-{str(connector_id)[:8]}",
+            **result,
+        }
+
+    status_value = row.get("status")
     if status_value == "syncing":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

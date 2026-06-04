@@ -54,7 +54,13 @@ from app.routers import (
     environments,
     settings,
 )
-from app.routers import hubspot_triggers, notion_sync, pagerduty_triggers, salesforce_triggers
+from app.routers import (
+    hubspot_triggers,
+    knowledge_sync,
+    notion_sync,
+    pagerduty_triggers,
+    salesforce_triggers,
+)
 from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.routers.webhooks import workflow_triggers
@@ -113,15 +119,21 @@ async def lifespan(app: FastAPI):
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
+    from app.knowledge.sync_scheduler import (
+        start_knowledge_sync_scheduler,
+        stop_knowledge_sync_scheduler,
+    )
     from app.operators.agent_jobs import start_agent_job_worker, stop_agent_job_worker
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
+    app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
     _log_billing_startup_config()
     try:
         yield
     finally:
         await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
+        await stop_knowledge_sync_scheduler(getattr(app.state, "knowledge_sync_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
 
 
@@ -269,6 +281,9 @@ app.include_router(org.organizations_router)
 app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
+app.include_router(knowledge_sync.internal_router)
+app.include_router(knowledge_sync.admin_router)
+app.include_router(knowledge_sync.webhook_router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(connector_oauth.router)

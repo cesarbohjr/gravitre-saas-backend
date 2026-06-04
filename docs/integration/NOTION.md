@@ -54,6 +54,10 @@ PUT /api/connectors/{connector_id}/notion-sync
 
 Each page is ingested via `rag_ingest_jobs` with `external_id` `notion:page:{id}`. Requires the ingest worker and `OPENAI_API_KEY` for embeddings.
 
+## Scheduled sync (STA-45)
+
+When sync targets are configured, the knowledge sync scheduler runs on `connector.sync_frequency` (default `1h` on create). See [KNOWLEDGE_SYNC.md](./KNOWLEDGE_SYNC.md).
+
 ## Code
 
 - `backend/app/connectors/notion_oauth.py`
