@@ -16,19 +16,6 @@ const features = [
   "Scale with enterprise security",
 ]
 
-const AUTH_ERRORS: Record<string, string> = {
-  session_expired:
-    "Your session has expired. Please sign in again.",
-  auth_callback_failed:
-    "Sign-in was interrupted. Please try again.",
-  oauth_error:
-    "Sign-in failed. Please try a different method.",
-  account_not_found:
-    "No account found. Would you like to get started?",
-  access_denied:
-    "Access was denied. Please try again.",
-}
-
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -46,14 +33,11 @@ function LoginPageContent() {
   const [isResendingVerification, setIsResendingVerification] = useState(false)
   const oauthLoginCheckRef = useRef(false)
 
-  const errorKey = searchParams.get("error")
-  const urlAuthError = errorKey
-    ? AUTH_ERRORS[errorKey] ??
-      (errorKey === "oauth_error"
-        ? `Sign-in with ${searchParams.get("provider") ?? "your provider"} failed. Please try again or use email instead.`
-        : "An error occurred. Please try again.")
-    : null
-  const displayedAuthError = authError ?? urlAuthError
+  const sessionExpiredMessage =
+    searchParams.get("session_expired") === "true"
+      ? "Your session has expired. Please sign in again."
+      : null
+  const displayedAuthError = authError ?? sessionExpiredMessage
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -67,7 +51,6 @@ function LoginPageContent() {
       setIsLoading(false)
       setLoadingProvider(null)
       window.sessionStorage.removeItem("gravitre_auth_redirecting")
-      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
     }
 
     const onPageShow = () => {
@@ -129,8 +112,6 @@ function LoginPageContent() {
         }
 
         const redirect = searchParams.get("redirect") || "/operator"
-        window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
-        window.sessionStorage.removeItem("gravitre_auth_login_redirect")
         router.replace(redirect)
       } catch {
         await supabaseClient.auth.signOut()
@@ -164,8 +145,6 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
-    window.sessionStorage.setItem("gravitre_auth_redirecting", "1")
-    window.sessionStorage.removeItem("gravitre_auth_login_redirect")
     router.push(redirect)
   }
 

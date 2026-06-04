@@ -318,19 +318,10 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
-  oauthStatus: (provider: string) =>
-    fetcher<import("@/types/api").OAuthProviderStatus>(
-      apiUrl(`/api/connectors/oauth/${provider}/status`)
-    ),
   startOAuth: (provider: string, data: { name: string; connectorId?: string; redirectPath?: string }) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
       data
-    ),
-  setSecret: (id: string, keyName: string, value: string) =>
-    postJson<{ key_name: string; message: string }>(
-      apiUrl(`/api/connectors/${id}/secrets`),
-      { key_name: keyName, value }
     ),
   reconnectOAuth: (provider: string, connectorId: string, name: string) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(

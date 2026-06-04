@@ -22,14 +22,6 @@ from app.connectors.hubspot_oauth import (
     hubspot_redirect_uri,
     normalize_vendor,
 )
-from app.connectors.salesforce_oauth import (
-    complete_salesforce_oauth_connection,
-    salesforce_authorize_url,
-    salesforce_credentials,
-    salesforce_oauth_configured,
-    salesforce_redirect_uri,
-    normalize_vendor as normalize_salesforce_vendor,
-)
 from app.connectors.oauth_state import sign_oauth_state, verify_oauth_state
 from app.core.errors import error_detail
 from app.middleware.entitlements import resolve_entitlements
@@ -37,7 +29,7 @@ from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
 
-SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot", "salesforce"})
+SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot"})
 
 
 class OAuthStartRequest(BaseModel):
@@ -52,15 +44,6 @@ class OAuthStartResponse(BaseModel):
     authorization_url: str = Field(alias="authorizationUrl")
     connector_id: str = Field(alias="connectorId")
     state: str
-
-    model_config = {"populate_by_name": True}
-
-
-class OAuthProviderStatusResponse(BaseModel):
-    provider: str
-    configured: bool
-    encryption_configured: bool = Field(alias="encryptionConfigured")
-    redirect_uri: str | None = Field(default=None, alias="redirectUri")
 
     model_config = {"populate_by_name": True}
 
@@ -82,36 +65,6 @@ def _frontend_redirect(settings: Settings, path: str, params: dict[str, str]) ->
     return f"{base}{safe_path}?{query}" if query else f"{base}{safe_path}"
 
 
-@router.get("/{provider}/status", response_model=OAuthProviderStatusResponse)
-async def oauth_provider_status(
-    provider: str,
-    environment_name: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> OAuthProviderStatusResponse:
-    """Public readiness check for platform OAuth (no secrets)."""
-    vendor = normalize_vendor(provider)
-    if vendor == "salesforce":
-        vendor = normalize_salesforce_vendor(provider)
-    if vendor not in SUPPORTED_OAUTH_PROVIDERS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
-
-    configured = False
-    redirect_uri: str | None = None
-    if vendor == "hubspot":
-        configured = hubspot_oauth_configured(settings, environment_name)
-        redirect_uri = hubspot_redirect_uri(settings)
-    elif vendor == "salesforce":
-        configured = salesforce_oauth_configured(settings, environment_name)
-        redirect_uri = salesforce_redirect_uri(settings)
-
-    return OAuthProviderStatusResponse(
-        provider=vendor,
-        configured=configured,
-        encryption_configured=bool((settings.connector_secrets_encryption_key or "").strip()),
-        redirect_uri=redirect_uri,
-    )
-
-
 @router.post("/{provider}/start", response_model=OAuthStartResponse)
 async def start_oauth(
     provider: str,
@@ -123,10 +76,6 @@ async def start_oauth(
     """Create (or reuse) a connector and return the provider authorization URL."""
     _user, org_id = _admin
     vendor = normalize_vendor(provider)
-    if vendor == "hubspot":
-        pass
-    elif normalize_salesforce_vendor(provider) == "salesforce":
-        vendor = "salesforce"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -134,11 +83,6 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("HubSpot OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
-        )
-    if vendor == "salesforce" and not salesforce_oauth_configured(settings, environment_name):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail("Salesforce OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -154,7 +98,6 @@ async def start_oauth(
             )
 
     connector_id = body.connector_id
-    reconnect = bool(body.connector_id)
     if connector_id:
         existing = (
             client.table("connectors")
@@ -180,11 +123,7 @@ async def start_oauth(
             "environment": environment_name,
             "sync_frequency": "1h",
             "config": {"auth_type": "oauth"},
-            "docs_url": (
-                "https://developers.hubspot.com/docs"
-                if vendor == "hubspot"
-                else "https://developer.salesforce.com/docs"
-            ),
+            "docs_url": "https://developers.hubspot.com/docs",
         }
         created = client.table("connectors").insert(row).execute()
         if not created.data:
@@ -216,17 +155,10 @@ async def start_oauth(
         _oauth_state_secret(settings),
     )
 
-    auth_url = ""
+    redirect_uri = hubspot_redirect_uri(settings)
     if vendor == "hubspot":
-        redirect_uri = hubspot_redirect_uri(settings)
         client_id, _secret = hubspot_credentials(settings, environment_name)
         auth_url = hubspot_authorize_url(client_id, redirect_uri, state)
-    elif vendor == "salesforce":
-        redirect_uri = salesforce_redirect_uri(settings)
-        client_id, _secret = salesforce_credentials(settings, environment_name)
-        auth_url = salesforce_authorize_url(
-            client_id, redirect_uri, state, environment_name=environment_name
-        )
 
     write_audit_event(
         client,
@@ -251,8 +183,6 @@ async def oauth_callback(
 ) -> RedirectResponse:
     """OAuth callback (browser redirect). Exchanges code and stores encrypted tokens."""
     vendor = normalize_vendor(provider)
-    if vendor != "hubspot" and normalize_salesforce_vendor(provider) == "salesforce":
-        vendor = "salesforce"
     default_fail = _frontend_redirect(settings, "/connectors", {"oauth": "error", "provider": vendor})
 
     if error:
@@ -283,16 +213,6 @@ async def oauth_callback(
     try:
         if vendor == "hubspot":
             complete_hubspot_oauth_connection(
-                client,
-                org_id,
-                connector_id,
-                code,
-                settings,
-                environment_name=environment_name,
-                reconnect=reconnect,
-            )
-        elif vendor == "salesforce":
-            complete_salesforce_oauth_connection(
                 client,
                 org_id,
                 connector_id,

@@ -50,17 +50,7 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = [
-  "https://127.0.0.1:3000",
-  "http://localhost:3000",
-  "https://localhost:3000",
-  "http://localhost:3000/auth/callback",
-  "http://localhost:3000/**",
-  "https://localhost:3000/auth/callback",
-  "https://localhost:3000/**",
-  "https://gravitre.app/auth/callback",
-  "https://gravitre.app/**",
-]
+additional_redirect_urls = ["https://127.0.0.1:3000", "http://localhost:3000", "https://localhost:3000"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10

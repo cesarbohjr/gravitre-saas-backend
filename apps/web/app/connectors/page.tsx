@@ -655,7 +655,7 @@ const connectorCategories = {
   "CRM / Marketing": {
     color: "emerald",
     connectors: [
-      { type: "Salesforce", description: "CRM and sales automation", authType: "oauth" as const },
+      { type: "Salesforce", description: "CRM and sales automation", authType: "oauth" },
       { type: "HubSpot", description: "Marketing, sales, and service", authType: "oauth" },
       { type: "Marketo", description: "Marketing automation", authType: "apiKey" },
       { type: "Mailchimp", description: "Email marketing campaigns", authType: "apiKey" },
@@ -678,7 +678,6 @@ const connectorCategories = {
       { type: "Slack", description: "Team messaging", authType: "oauth" },
       { type: "Microsoft Teams", description: "Collaboration hub", authType: "oauth" },
       { type: "Gmail", description: "Email integration", authType: "oauth" },
-      { type: "Google Calendar", description: "Calendar availability and events", authType: "apiKey" },
       { type: "Outlook", description: "Microsoft email", authType: "oauth" },
       { type: "Twilio", description: "SMS and voice API", authType: "apiKey" },
     ]
@@ -696,7 +695,7 @@ const connectorCategories = {
   "Customer Support": {
     color: "pink",
     connectors: [
-      { type: "Zendesk", description: "Customer service", authType: "apiKey" },
+      { type: "Zendesk", description: "Customer service", authType: "oauth" },
       { type: "Intercom", description: "Customer messaging", authType: "oauth" },
       { type: "Freshdesk", description: "Help desk software", authType: "apiKey" },
       { type: "Gorgias", description: "E-commerce helpdesk", authType: "apiKey" },
@@ -715,7 +714,7 @@ const connectorCategories = {
     color: "orange",
     connectors: [
       { type: "AWS S3", description: "Cloud object storage", authType: "apiKey" },
-      { type: "GitHub", description: "Code repository", authType: "apiKey" },
+      { type: "GitHub", description: "Code repository", authType: "oauth" },
       { type: "PostgreSQL", description: "SQL database", authType: "apiKey" },
       { type: "MongoDB", description: "NoSQL database", authType: "apiKey" },
       { type: "Snowflake", description: "Data warehouse", authType: "apiKey" },
@@ -728,14 +727,6 @@ const connectorCategories = {
 const availableConnectors = Object.entries(connectorCategories).flatMap(([category, data]) =>
   data.connectors.map(c => ({ ...c, category }))
 )
-
-const OAUTH_CONNECTOR_TYPES = new Set(["HubSpot", "Salesforce"])
-
-function connectorVendorKey(type: string): string {
-  const key = type.toLowerCase().replace(/\s+/g, "")
-  if (key === "googlecalendar") return "google_calendar"
-  return key
-}
 
 // Add Connector Modal
 function AddConnectorModal({
@@ -760,12 +751,7 @@ function AddConnectorModal({
   const [modalCategoryFilter, setModalCategoryFilter] = useState<string>("all")
   const [copied, setCopied] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
-  const [zendeskSubdomain, setZendeskSubdomain] = useState("")
-  const [zendeskEmail, setZendeskEmail] = useState("")
-  const [githubOwner, setGithubOwner] = useState("")
-  const [githubRepo, setGithubRepo] = useState("")
-  const [calendarAccessToken, setCalendarAccessToken] = useState("")
-
+  
   // Webhook URL for webhook-based connectors
   const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
 
@@ -787,7 +773,7 @@ function AddConnectorModal({
 
   const handleOAuthConnect = async () => {
     if (!selectedType || !name) return
-    const provider = connectorVendorKey(selectedType)
+    const provider = selectedType.toLowerCase().replace(/\s+/g, "")
     setOauthStatus("redirecting")
     try {
       const { authorizationUrl } = await connectorsApi.startOAuth(provider, {
@@ -799,28 +785,17 @@ function AddConnectorModal({
       console.error("[connectors] OAuth start failed:", err)
       setOauthStatus("error")
       toast.error(`Failed to connect ${selectedType}`, {
-        description: "Check OAuth credentials are configured on the API host",
+        description: "Check HubSpot OAuth credentials are configured on the API",
       })
     }
   }
 
-  const canSubmitApiKey = (): boolean => {
-    if (!name) return false
-    if (selectedType === "Zendesk") {
-      return Boolean(zendeskSubdomain && zendeskEmail && apiKey)
-    }
-    if (selectedType === "GitHub") {
-      return Boolean(githubOwner && githubRepo && apiKey)
-    }
-    if (selectedType === "Google Calendar") {
-      return Boolean(calendarAccessToken)
-    }
-    return Boolean(apiKey)
-  }
-
   const handleConnect = async () => {
     if (!selectedType || !name) return
-    if (selectedAuthType === "apiKey" && !canSubmitApiKey()) return
+    
+    // For API Key auth, require API key
+    if (selectedAuthType === "apiKey" && !apiKey) return
+    
     setIsCreating(true)
     await completeConnection()
   }
@@ -829,33 +804,20 @@ function AddConnectorModal({
     if (!selectedType || !name) return
     setIsCreating(true)
     try {
-      const vendor = connectorVendorKey(selectedType)
-      const payload: import("@/types/api").CreateConnectorRequest = {
+      await connectorsApi.create({
         name,
-        vendor,
+        vendor: selectedType,
         description: getSelectedConnector()?.description,
         sync_frequency: "5m",
-      }
-      if (selectedType === "Zendesk") {
-        payload.config = { subdomain: zendeskSubdomain.trim() }
-        payload.secrets = {
-          email: zendeskEmail.trim(),
-          api_token: apiKey.trim(),
-        }
-      } else if (selectedType === "GitHub") {
-        payload.config = { owner: githubOwner.trim(), repo: githubRepo.trim() }
-        payload.secrets = { token: apiKey.trim() }
-      } else if (selectedType === "Google Calendar") {
-        payload.secrets = { access_token: calendarAccessToken.trim() }
-      } else if (apiKey) {
-        payload.api_key = apiKey
-      }
-      await connectorsApi.create(payload)
+      })
       toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
       await onCreated()
       handleClose()
+      if (typeof window !== "undefined") {
+        window.location.assign("/integrations")
+      }
     } catch (err) {
-      console.error("[connectors] Failed to create connector:", err)
+      console.error("[v0] Failed to create connector:", err)
       toast.error("Failed to create connector")
     } finally {
       setIsCreating(false)
@@ -882,11 +844,6 @@ function AddConnectorModal({
     setOauthStatus("idle")
     setCopied(false)
     setShowApiKey(false)
-    setZendeskSubdomain("")
-    setZendeskEmail("")
-    setGithubOwner("")
-    setGithubRepo("")
-    setCalendarAccessToken("")
     onClose()
   }
 
@@ -894,9 +851,9 @@ function AddConnectorModal({
     setSelectedType(connector.type)
     setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
     setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
-
+    
     // Route to appropriate auth flow
-    if (OAUTH_CONNECTOR_TYPES.has(connector.type)) {
+    if (connector.authType === "oauth") {
       setStep("oauth")
     } else if (connector.authType === "webhook") {
       setStep("webhook")
@@ -1330,103 +1287,31 @@ function AddConnectorModal({
                   </p>
                 </div>
 
-                {selectedType === "Zendesk" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Zendesk subdomain</label>
-                      <Input
-                        value={zendeskSubdomain}
-                        onChange={(e) => setZendeskSubdomain(e.target.value)}
-                        placeholder="your-company"
-                        className="bg-secondary"
-                      />
-                      <p className="text-xs text-muted-foreground">From your-company.zendesk.com</p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Agent email</label>
-                      <Input
-                        value={zendeskEmail}
-                        onChange={(e) => setZendeskEmail(e.target.value)}
-                        placeholder="agent@company.com"
-                        className="bg-secondary"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "GitHub" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Owner (org or user)</label>
-                      <Input
-                        value={githubOwner}
-                        onChange={(e) => setGithubOwner(e.target.value)}
-                        placeholder="my-org"
-                        className="bg-secondary"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Repository</label>
-                      <Input
-                        value={githubRepo}
-                        onChange={(e) => setGithubRepo(e.target.value)}
-                        placeholder="my-repo"
-                        className="bg-secondary"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "Google Calendar" ? (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Key className="h-4 w-4 text-amber-400" />
-                      OAuth access token
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showApiKey ? "text" : "password"}
-                        value={calendarAccessToken}
-                        onChange={(e) => setCalendarAccessToken(e.target.value)}
-                        placeholder="Google Calendar OAuth access token"
-                        className="bg-secondary pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Paste a token with Calendar API scope until Google OAuth UI ships.
-                    </p>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Key className="h-4 w-4 text-amber-400" />
+                    API Key
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showApiKey ? "text" : "password"}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Enter your API key"
+                      className="bg-secondary pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                      <Key className="h-4 w-4 text-amber-400" />
-                      {selectedType === "Zendesk" ? "API token" : selectedType === "GitHub" ? "Personal access token" : "API Key"}
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showApiKey ? "text" : "password"}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your API key or token"
-                        className="bg-secondary pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  <p className="text-xs text-muted-foreground">
+                    Your {selectedType} API key or access token
+                  </p>
+                </div>
 
                 {/* Optional API Secret for some services */}
                 {(selectedType === "Stripe" || selectedType === "AWS S3") && (
@@ -1483,7 +1368,7 @@ function AddConnectorModal({
           {step === "configure" && (
             <Button 
               onClick={handleConnect} 
-              disabled={!canSubmitApiKey() || isCreating}
+              disabled={!name || !apiKey || isCreating}
               className="gap-2"
             >
               {isCreating ? (

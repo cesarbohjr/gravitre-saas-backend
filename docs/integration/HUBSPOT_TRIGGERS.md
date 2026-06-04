@@ -4,17 +4,14 @@ HubSpot CRM events start workflow runs through the merged step executor (STA-12)
 
 ## Platform setup (operators)
 
-Full runbook: **[HUBSPOT_PLATFORM_SETUP.md](./HUBSPOT_PLATFORM_SETUP.md)** ([STA-125](https://linear.app/staqbot/issue/STA-125)).
+Configure once per environment ([STA-125](https://linear.app/staqbot/issue/STA-125)):
 
-Summary:
-
-1. Create a **Legacy public app** in the HubSpot developer portal (not MCP Auth Apps).
-2. **Redirect URL:** `{API_PUBLIC_URL}/api/connectors/oauth/hubspot/callback`
-3. **Webhook target (STA-16):** `{API_PUBLIC_URL}/api/webhooks/hubspot/inbound`
-4. Env vars:
-   - **OAuth + tools:** `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, `CONNECTOR_SECRETS_ENCRYPTION_KEY`, `API_PUBLIC_URL`
-   - **Inbound triggers only:** also `HUBSPOT_APP_ID`, `HUBSPOT_DEVELOPER_API_KEY` (Developer API key + `hapikey`, not customer Private App token)
-   - `HUBSPOT_CLIENT_SECRET` also verifies `X-HubSpot-Signature-v3` on inbound webhooks
+1. HubSpot developer app **Target URL**: `{API_PUBLIC_URL}/api/webhooks/hubspot/inbound`
+2. Env vars:
+   - `HUBSPOT_APP_ID` — numeric app ID from the developer dashboard
+   - `HUBSPOT_DEVELOPER_API_KEY` — developer API key (subscriptions API)
+   - `HUBSPOT_CLIENT_SECRET` — used to verify `X-HubSpot-Signature-v3`
+   - `API_PUBLIC_URL` — public API base (HTTPS)
 
 On each customer **Connect HubSpot** (OAuth complete), the API syncs app-level subscriptions for:
 

@@ -6,13 +6,7 @@
     "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --port 8000",
     "dev:web": "cd apps/web && pnpm dev",
     "dev:full": "node scripts/dev.mjs",
-    "dev": "cd apps/web && pnpm dev",
-    "hubspot:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-hubspot-app.ps1",
-    "hubspot:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
-    "hubspot:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-hubspot-operator-env.ps1",
-    "hubspot:open": "cd integrations/hubspot-app && hs project open",
-    "generate:connector-key": "node backend/scripts/generate-connector-encryption-key.mjs",
-    "hubspot:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-hubspot-oauth.ps1"
+    "dev": "cd apps/web && pnpm dev"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.195",
