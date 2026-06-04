@@ -98,7 +98,7 @@ PY
 
 discover_vercel_project() {
   local project="${VERCEL_PROJECT:-gravitre-saas-backend}"
-  local team="${VERCEL_ORG_ID:-gravitre-ai}"
+  local team="${VERCEL_ORG_ID:-team_kuQmNfrn5RtMeaWuH88LLuAf}"
 
   if [[ -n "${VERCEL_PROJECT_ID:-}" ]]; then
     echo "${VERCEL_PROJECT_ID}|${team}"

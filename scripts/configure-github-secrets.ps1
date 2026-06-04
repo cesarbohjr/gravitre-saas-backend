@@ -80,7 +80,8 @@ if (-not (Test-Path $VercelEnvFile)) {
 
 Write-Host "Setting GitHub secrets..." -ForegroundColor Cyan
 Set-GhSecret "VERCEL_TOKEN" $vercelToken
-Set-GhSecret "VERCEL_ORG_ID" "gravitre-ai"
+# Vercel API teamId (not slug). gravitre-ai team:
+Set-GhSecret "VERCEL_ORG_ID" "team_kuQmNfrn5RtMeaWuH88LLuAf"
 Set-GhSecret "SUPABASE_PROJECT_REF" "smyeexlrqdpymwjmgzqu"
 if ($supabaseToken) { Set-GhSecret "SUPABASE_ACCESS_TOKEN" $supabaseToken }
 Set-GhSecret "NEXT_PUBLIC_SUPABASE_URL" (Read-DotEnvValue $VercelEnvFile "NEXT_PUBLIC_SUPABASE_URL")
