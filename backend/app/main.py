@@ -31,6 +31,7 @@ from app.routers import (
     billing_sync,
     connector_oauth,
     connectors,
+    conversations,
     decisions,
     execution,
     entitlements,
@@ -327,6 +328,7 @@ app.include_router(scim.router)
 app.include_router(ml_models.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
+app.include_router(conversations.router)
 app.include_router(agent_jobs.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
