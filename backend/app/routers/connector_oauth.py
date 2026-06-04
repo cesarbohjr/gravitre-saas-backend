@@ -47,6 +47,14 @@ from app.connectors.pagerduty_oauth import (
     pagerduty_redirect_uri,
     normalize_vendor as normalize_pagerduty_vendor,
 )
+from app.connectors.notion_oauth import (
+    complete_notion_oauth_connection,
+    notion_authorize_url,
+    notion_credentials,
+    notion_oauth_configured,
+    notion_redirect_uri,
+    normalize_vendor as normalize_notion_vendor,
+)
 from app.connectors.pagerduty_webhooks import pagerduty_inbound_webhook_url
 from app.connectors.salesforce_oauth import (
     complete_salesforce_oauth_connection,
@@ -63,7 +71,9 @@ from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
 
-SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot", "salesforce", "quickbooks", "jira", "pagerduty"})
+SUPPORTED_OAUTH_PROVIDERS = frozenset(
+    {"hubspot", "salesforce", "quickbooks", "jira", "pagerduty", "notion"}
+)
 
 
 class OAuthStartRequest(BaseModel):
@@ -124,6 +134,8 @@ async def oauth_provider_status(
         vendor = "jira"
     elif normalize_pagerduty_vendor(provider) == "pagerduty":
         vendor = "pagerduty"
+    elif normalize_notion_vendor(provider) == "notion":
+        vendor = "notion"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -144,6 +156,9 @@ async def oauth_provider_status(
     elif vendor == "pagerduty":
         configured = pagerduty_oauth_configured(settings, environment_name)
         redirect_uri = pagerduty_redirect_uri(settings)
+    elif vendor == "notion":
+        configured = notion_oauth_configured(settings, environment_name)
+        redirect_uri = notion_redirect_uri(settings)
 
     return OAuthProviderStatusResponse(
         provider=vendor,
@@ -174,6 +189,8 @@ async def start_oauth(
         vendor = "jira"
     elif normalize_pagerduty_vendor(provider) == "pagerduty":
         vendor = "pagerduty"
+    elif normalize_notion_vendor(provider) == "notion":
+        vendor = "notion"
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -201,6 +218,11 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("PagerDuty OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "notion" and not notion_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Notion OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -252,6 +274,8 @@ async def start_oauth(
                 else "https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/"
                 if vendor == "jira"
                 else "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality"
+                if vendor == "pagerduty"
+                else "https://developers.notion.com/docs/authorization"
             ),
         }
         created = client.table("connectors").insert(row).execute()
@@ -309,6 +333,10 @@ async def start_oauth(
         redirect_uri = pagerduty_redirect_uri(settings)
         client_id, _secret = pagerduty_credentials(settings, environment_name)
         auth_url = pagerduty_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "notion":
+        redirect_uri = notion_redirect_uri(settings)
+        client_id, _secret = notion_credentials(settings, environment_name)
+        auth_url = notion_authorize_url(client_id, redirect_uri, state)
 
     write_audit_event(
         client,
@@ -340,6 +368,8 @@ async def oauth_callback(
         vendor = "quickbooks"
     elif normalize_jira_vendor(provider) == "jira":
         vendor = "jira"
+    elif normalize_notion_vendor(provider) == "notion":
+        vendor = "notion"
     default_fail = _frontend_redirect(settings, "/connectors", {"oauth": "error", "provider": vendor})
 
     if error:
@@ -422,6 +452,16 @@ async def oauth_callback(
                 inbound_webhook_url=inbound_url,
             )
             on_pagerduty_connector_connected(client, org_id, connector_id, settings)
+        elif vendor == "notion":
+            complete_notion_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
     except (httpx.HTTPError, ValueError):
         return RedirectResponse(
             _frontend_redirect(
