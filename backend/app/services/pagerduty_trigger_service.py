@@ -14,6 +14,10 @@ from app.connectors.pagerduty_webhooks import (
     normalize_pagerduty_event,
 )
 from app.services.execution_service import ExecutionService, get_execution_service
+from app.services.devops_workflow_service import (
+    devops_workflow_id,
+    enrich_devops_incident_parameters,
+)
 from app.workflows.repository import create_execute_run, get_supabase_client
 from app.workflows.schema import compute_run_hash
 
@@ -245,6 +249,10 @@ async def process_pagerduty_event_batch(
                 trigger = {**trigger, "id": str(uuid.uuid4())}
             workflow_id = str(trigger["workflow_id"])
             parameters = {**normalized, "trigger": dict(trigger)}
+            if workflow_id == devops_workflow_id(org_id):
+                workflow = _load_active_workflow(client, org_id, workflow_id)
+                if workflow:
+                    parameters = enrich_devops_incident_parameters(parameters, workflow)
             result = await start_workflow_from_pagerduty(
                 settings,
                 org_id=org_id,

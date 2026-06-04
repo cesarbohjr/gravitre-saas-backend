@@ -124,6 +124,40 @@ class NoopHandler(StepHandler):
         return _truncate_output_snapshot({"executed": True, "message": "No-op"})
 
 
+class InvokeToolHandler(StepHandler):
+    """STA-39: run a registered connector tool action from workflow config."""
+
+    step_type = "invoke_tool"
+
+    def simulate(self, context: StepContext) -> dict[str, Any]:
+        cfg = context.config or {}
+        action = cfg.get("action") or ""
+        return _truncate_output_snapshot(
+            {
+                "simulated": True,
+                "action": action,
+                "message": "Tool invoke simulated (dry-run)",
+            }
+        )
+
+    def execute(self, context: StepContext) -> dict[str, Any]:
+        cfg = context.config or {}
+        action = cfg.get("action")
+        if not action:
+            raise ValueError("invoke_tool requires config.action")
+        result = invoke_tool(
+            tool_context_from_step(context),
+            str(action),
+            params_for_step(
+                "invoke_tool",
+                cfg,
+                context.parameters,
+                step_outputs=context.step_outputs,
+            ),
+        )
+        return _truncate_output_snapshot(result.to_step_output())
+
+
 class SlackPostMessageHandler(StepHandler):
     step_type = "slack_post_message"
 
@@ -334,6 +368,7 @@ def register_handlers() -> None:
     register_handler(RagRetrieveHandler())
     register_handler(AgentStepHandler())
     register_handler(NoopHandler())
+    register_handler(InvokeToolHandler())
     register_handler(SlackPostMessageHandler())
     register_handler(EmailSendHandler())
     register_handler(WebhookPostHandler())

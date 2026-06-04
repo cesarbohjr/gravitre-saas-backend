@@ -1,8 +1,8 @@
-"""PagerDuty REST API v2 client (STA-38)."""
+"""PagerDuty REST API v2 client (STA-38 v1 / v2)."""
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 import httpx
 
@@ -25,6 +25,7 @@ def api_request(
     access_token: str,
     *,
     json_body: dict[str, Any] | None = None,
+    params: Mapping[str, Any] | Sequence[tuple[str, str]] | None = None,
     from_email: str | None = None,
 ) -> dict[str, Any]:
     url = f"{PAGERDUTY_API_BASE}{path}"
@@ -40,7 +41,7 @@ def api_request(
     for attempt in range(MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=TIMEOUT_SEC) as client:
-                response = client.request(method, url, headers=headers, json=json_body)
+                response = client.request(method, url, headers=headers, json=json_body, params=params)
             if response.status_code in {429, 500, 502, 503} and attempt < MAX_RETRIES:
                 time.sleep(RETRY_BACKOFF_SEC * (attempt + 1))
                 continue
@@ -147,5 +148,88 @@ def escalate_incident(
     return manage_incidents(
         access_token,
         [{"id": incident_id, "escalation_level": int(level)}],
+        from_email=from_email,
+    )
+
+
+def list_incidents(
+    access_token: str,
+    *,
+    statuses: list[str] | None = None,
+    service_ids: list[str] | None = None,
+    urgencies: list[str] | None = None,
+    limit: int = 25,
+) -> dict[str, Any]:
+    query: list[tuple[str, str]] = [("limit", str(max(1, min(int(limit), 100))))]
+    for status in statuses or []:
+        query.append(("statuses[]", status))
+    for service_id in service_ids or []:
+        query.append(("service_ids[]", service_id))
+    for urgency in urgencies or []:
+        query.append(("urgencies[]", urgency))
+    return api_request("GET", "/incidents", access_token, params=query)
+
+
+def list_incident_notes(access_token: str, incident_id: str) -> dict[str, Any]:
+    data = api_request("GET", f"/incidents/{incident_id}/notes", access_token)
+    notes = data.get("notes")
+    return {"notes": notes if isinstance(notes, list) else data}
+
+
+def list_services(
+    access_token: str,
+    *,
+    query: str | None = None,
+    limit: int = 25,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"limit": max(1, min(int(limit), 100))}
+    if query:
+        params["query"] = query
+    return api_request("GET", "/services", access_token, params=params)
+
+
+def list_oncalls(
+    access_token: str,
+    *,
+    schedule_ids: list[str] | None = None,
+    escalation_policy_ids: list[str] | None = None,
+    limit: int = 25,
+) -> dict[str, Any]:
+    query: list[tuple[str, str]] = [("limit", str(max(1, min(int(limit), 100))))]
+    for schedule_id in schedule_ids or []:
+        query.append(("schedule_ids[]", schedule_id))
+    for policy_id in escalation_policy_ids or []:
+        query.append(("escalation_policy_ids[]", policy_id))
+    return api_request("GET", "/oncalls", access_token, params=query)
+
+
+def resolve_incident(
+    access_token: str,
+    incident_id: str,
+    *,
+    from_email: str,
+    resolution: str | None = None,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {"id": incident_id, "status": "resolved"}
+    if resolution:
+        item["resolution"] = resolution
+    return manage_incidents(access_token, [item], from_email=from_email)
+
+
+def reassign_incident(
+    access_token: str,
+    incident_id: str,
+    user_id: str,
+    *,
+    from_email: str,
+) -> dict[str, Any]:
+    return manage_incidents(
+        access_token,
+        [
+            {
+                "id": incident_id,
+                "assignments": [{"assignee": {"id": user_id, "type": "user_reference"}}],
+            }
+        ],
         from_email=from_email,
     )

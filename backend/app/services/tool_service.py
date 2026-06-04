@@ -83,6 +83,13 @@ from app.connectors.pagerduty import (
     add_incident_note,
     escalate_incident,
     fetch_current_user as fetch_pagerduty_user,
+    get_incident,
+    list_incident_notes,
+    list_incidents,
+    list_oncalls,
+    list_services,
+    reassign_incident,
+    resolve_incident,
 )
 from app.connectors.pagerduty_oauth import ensure_pagerduty_session
 from app.connectors.jira import (
@@ -1055,13 +1062,26 @@ def _exec_stripe_subscriptions_get(ctx: ToolContext, params: dict[str, Any]) -> 
     )
 
 
-def _pagerduty_connector_and_token(
+def _pagerduty_str_list(params: dict[str, Any], *keys: str) -> list[str] | None:
+    for key in keys:
+        val = params.get(key)
+        if val is None:
+            continue
+        if isinstance(val, list):
+            return [str(item) for item in val if item is not None]
+        if isinstance(val, str):
+            parts = [part.strip() for part in val.split(",") if part.strip()]
+            return parts or None
+    return None
+
+
+def _pagerduty_connector_session(
     ctx: ToolContext, params: dict[str, Any]
-) -> tuple[str, str, str]:
+) -> tuple[str, str, dict[str, Any]]:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
     connector_id = params.get("connector_id") or ctx.connector_id
-    conn = None
+    conn: dict[str, Any] | None = None
     if connector_id:
         conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
     else:
@@ -1079,6 +1099,18 @@ def _pagerduty_connector_and_token(
     )
     if err or not token:
         raise ToolAuthExpiredError(err or "PagerDuty OAuth not connected")
+    return cid, token, conn
+
+
+def _pagerduty_connector_read(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    cid, token, _conn = _pagerduty_connector_session(ctx, params)
+    return cid, token
+
+
+def _pagerduty_connector_and_token(
+    ctx: ToolContext, params: dict[str, Any]
+) -> tuple[str, str, str]:
+    cid, token, conn = _pagerduty_connector_session(ctx, params)
     config = conn.get("config") or {}
     from_email = (
         params.get("from_email")
@@ -1163,6 +1195,142 @@ def _exec_pagerduty_incidents_escalate(ctx: ToolContext, params: dict[str, Any])
     return NormalizedResult(
         success=True,
         action="pagerduty.incidents.escalate",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _exec_pagerduty_incidents_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.get requires incident_id")
+    try:
+        data = get_incident(token, str(incident_id))
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.get",
+        connector_id=cid,
+        data={"incident": data},
+    )
+
+
+def _exec_pagerduty_incidents_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    try:
+        data = list_incidents(
+            token,
+            statuses=_pagerduty_str_list(params, "statuses", "status"),
+            service_ids=_pagerduty_str_list(params, "service_ids", "serviceIds", "service_id"),
+            urgencies=_pagerduty_str_list(params, "urgencies", "urgency"),
+            limit=int(params.get("limit") or params.get("max_results") or 25),
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.list",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data), "more": data.get("more")},
+    )
+
+
+def _exec_pagerduty_incidents_notes_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.notes.list requires incident_id")
+    try:
+        data = list_incident_notes(token, str(incident_id))
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.notes.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_pagerduty_services_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    try:
+        data = list_services(
+            token,
+            query=params.get("query") or params.get("q"),
+            limit=int(params.get("limit") or params.get("max_results") or 25),
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.services.list",
+        connector_id=cid,
+        data={"services": data.get("services", data), "more": data.get("more")},
+    )
+
+
+def _exec_pagerduty_oncalls_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    try:
+        data = list_oncalls(
+            token,
+            schedule_ids=_pagerduty_str_list(params, "schedule_ids", "scheduleIds", "schedule_id"),
+            escalation_policy_ids=_pagerduty_str_list(
+                params, "escalation_policy_ids", "escalationPolicyIds", "escalation_policy_id"
+            ),
+            limit=int(params.get("limit") or params.get("max_results") or 25),
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.oncalls.list",
+        connector_id=cid,
+        data={"oncalls": data.get("oncalls", data), "more": data.get("more")},
+    )
+
+
+def _exec_pagerduty_incidents_resolve(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.resolve requires incident_id")
+    resolution = params.get("resolution") or params.get("resolve_note") or params.get("note")
+    try:
+        data = resolve_incident(
+            token,
+            str(incident_id),
+            from_email=from_email,
+            resolution=str(resolution) if resolution else None,
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.resolve",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _exec_pagerduty_incidents_reassign(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    user_id = params.get("user_id") or params.get("userId") or params.get("assignee_id")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.reassign requires incident_id")
+    if not user_id:
+        raise ToolValidationError("pagerduty.incidents.reassign requires user_id")
+    try:
+        data = reassign_incident(token, str(incident_id), str(user_id), from_email=from_email)
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.reassign",
         connector_id=cid,
         data={"incidents": data.get("incidents", data)},
     )
@@ -1899,6 +2067,13 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "pagerduty.incidents.acknowledge": _exec_pagerduty_incidents_acknowledge,
     "pagerduty.incidents.add_note": _exec_pagerduty_incidents_add_note,
     "pagerduty.incidents.escalate": _exec_pagerduty_incidents_escalate,
+    "pagerduty.incidents.get": _exec_pagerduty_incidents_get,
+    "pagerduty.incidents.list": _exec_pagerduty_incidents_list,
+    "pagerduty.incidents.notes.list": _exec_pagerduty_incidents_notes_list,
+    "pagerduty.incidents.resolve": _exec_pagerduty_incidents_resolve,
+    "pagerduty.incidents.reassign": _exec_pagerduty_incidents_reassign,
+    "pagerduty.services.list": _exec_pagerduty_services_list,
+    "pagerduty.oncalls.list": _exec_pagerduty_oncalls_list,
     "jira.issues.create": _exec_jira_issues_create,
     "jira.issues.get": _exec_jira_issues_get,
     "jira.issues.search": _exec_jira_issues_search,
@@ -2021,12 +2196,45 @@ def tool_context_from_step(context: Any) -> ToolContext:
     )
 
 
-def params_for_step(step_type: str, config: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
+def _resolve_param_source(
+    spec: Any,
+    parameters: dict[str, Any],
+    step_outputs: dict[str, Any] | None,
+) -> Any:
+    if isinstance(spec, dict) and spec.get("from_step"):
+        step_id = str(spec["from_step"])
+        path = spec.get("path") or []
+        output = (step_outputs or {}).get(step_id) or {}
+        value: Any = output
+        for key in path:
+            if not isinstance(value, dict):
+                return None
+            value = value.get(key)
+        return value
+    if isinstance(spec, str) and spec.startswith("$"):
+        return parameters.get(spec[1:])
+    return spec
+
+
+def params_for_step(
+    step_type: str,
+    config: dict[str, Any],
+    parameters: dict[str, Any],
+    *,
+    step_outputs: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Map workflow step config + parameters to invoke_tool params."""
     cfg = config or {}
     params = dict(parameters)
     if cfg.get("connector_id"):
         params["connector_id"] = cfg["connector_id"]
+    if step_type == "invoke_tool":
+        sources = cfg.get("param_sources") or cfg.get("params") or {}
+        if isinstance(sources, dict):
+            for key, spec in sources.items():
+                resolved = _resolve_param_source(spec, parameters, step_outputs)
+                if resolved is not None and resolved != "":
+                    params[key] = resolved
     if step_type == "slack_post_message":
         msg_key = cfg.get("message_input_key", "message")
         params["message"] = parameters.get(msg_key, parameters.get("message", ""))

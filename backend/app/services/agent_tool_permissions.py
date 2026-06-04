@@ -51,6 +51,13 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "pagerduty.incidents.acknowledge": ["pagerduty:incidents:write", "pagerduty:*"],
     "pagerduty.incidents.add_note": ["pagerduty:incidents:write", "pagerduty:*"],
     "pagerduty.incidents.escalate": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.incidents.get": ["pagerduty:incidents:read", "pagerduty:*"],
+    "pagerduty.incidents.list": ["pagerduty:incidents:read", "pagerduty:*"],
+    "pagerduty.incidents.notes.list": ["pagerduty:incidents:read", "pagerduty:*"],
+    "pagerduty.incidents.resolve": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.incidents.reassign": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.services.list": ["pagerduty:services:read", "pagerduty:*"],
+    "pagerduty.oncalls.list": ["pagerduty:oncalls:read", "pagerduty:*"],
     "jira.issues.create": ["jira:issues:write", "jira:*"],
     "jira.issues.get": ["jira:issues:read", "jira:*"],
     "jira.issues.search": ["jira:issues:read", "jira:*"],
@@ -264,7 +271,10 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
         ]
     if system == "pagerduty":
         return [
+            "pagerduty:incidents:read",
             "pagerduty:incidents:write",
+            "pagerduty:services:read",
+            "pagerduty:oncalls:read",
             "pagerduty:*",
         ]
     if system == "slack":

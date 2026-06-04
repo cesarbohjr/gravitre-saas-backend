@@ -131,3 +131,7 @@ def validate_execute_steps(definition: dict) -> None:
             cfg = s.get("config") or {}
             if not cfg.get("connector_id"):
                 raise ValueError(f"Step {i} (webhook_post) requires config.connector_id for execute")
+        if stype == "invoke_tool":
+            cfg = s.get("config") or {}
+            if not cfg.get("action"):
+                raise ValueError(f"Step {i} (invoke_tool) requires config.action for execute")

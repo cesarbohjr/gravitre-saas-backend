@@ -38,6 +38,7 @@ from app.connectors.jira_oauth import (
     jira_redirect_uri,
     normalize_vendor as normalize_jira_vendor,
 )
+from app.services.devops_workflow_service import on_pagerduty_connector_connected
 from app.connectors.pagerduty_oauth import (
     complete_pagerduty_oauth_connection,
     pagerduty_authorize_url,
@@ -420,6 +421,7 @@ async def oauth_callback(
                 reconnect=reconnect,
                 inbound_webhook_url=inbound_url,
             )
+            on_pagerduty_connector_connected(client, org_id, connector_id, settings)
     except (httpx.HTTPError, ValueError):
         return RedirectResponse(
             _frontend_redirect(

@@ -32,6 +32,10 @@ See [PAGERDUTY_TRIGGERS.md](./PAGERDUTY_TRIGGERS.md).
 
 See [PAGERDUTY_ACTIONS.md](./PAGERDUTY_ACTIONS.md).
 
+## Cross-tool workflow (STA-39)
+
+See [DEVOPS_WORKFLOW.md](./DEVOPS_WORKFLOW.md) — incident → Jira + Slack on `incident.triggered`.
+
 ## Readiness
 
 ```powershell
