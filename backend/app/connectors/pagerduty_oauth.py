@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 import httpx
 
 from app.config import Settings
+from app.connectors.pagerduty import api_request, fetch_current_user
 from app.connectors.hubspot_oauth import (
     _connector_environment,
     load_oauth_tokens,
@@ -24,7 +25,6 @@ logger = logging.getLogger(__name__)
 PAGERDUTY_SCOPES = "openid users.read incidents.read incidents.write"
 PAGERDUTY_AUTHORIZE_URL = "https://app.pagerduty.com/oauth/authorize"
 PAGERDUTY_TOKEN_URL = "https://app.pagerduty.com/oauth/token"
-PAGERDUTY_API_BASE = "https://api.pagerduty.com"
 TOKEN_REFRESH_BUFFER_SEC = 300
 
 V1_WEBHOOK_EVENTS = ("incident.triggered", "incident.acknowledged")
@@ -190,33 +190,6 @@ def ensure_pagerduty_session(
     return token, None
 
 
-def _api_request(
-    method: str,
-    path: str,
-    access_token: str,
-    *,
-    json_body: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    url = f"{PAGERDUTY_API_BASE}{path}"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Accept": "application/vnd.pagerduty+json;version=2",
-        "Content-Type": "application/json",
-    }
-    with httpx.Client(timeout=30.0) as client:
-        response = client.request(method, url, headers=headers, json=json_body)
-        response.raise_for_status()
-        if response.status_code == 204 or not response.text:
-            return {}
-        data = response.json()
-        return data if isinstance(data, dict) else {"data": data}
-
-
-def fetch_current_user(access_token: str) -> dict[str, Any]:
-    data = _api_request("GET", "/users/me", access_token)
-    return dict(data.get("user") or data)
-
-
 def try_register_webhook_subscription(
     access_token: str,
     *,
@@ -244,7 +217,7 @@ def try_register_webhook_subscription(
         }
     }
     try:
-        result = _api_request("POST", "/webhook_subscriptions", access_token, json_body=body)
+        result = api_request("POST", "/webhook_subscriptions", access_token, json_body=body)
     except httpx.HTTPError as exc:
         logger.warning("pagerduty_webhook_subscription_failed error=%s", exc)
         return None
@@ -308,6 +281,8 @@ def complete_pagerduty_oauth_connection(
     user = fetch_current_user(access_token)
     if user.get("id"):
         config["pagerduty_user_id"] = str(user["id"])
+    if user.get("email"):
+        config["pagerduty_requester_email"] = str(user["email"])
     account = user.get("account") or {}
     if isinstance(account, dict) and account.get("id"):
         config["pagerduty_account_id"] = str(account["id"])

@@ -77,6 +77,14 @@ from app.connectors.stripe_api import (
     list_invoices,
     resolve_stripe_credentials,
 )
+from app.connectors.pagerduty import (
+    PagerDutyAPIError,
+    acknowledge_incident,
+    add_incident_note,
+    escalate_incident,
+    fetch_current_user as fetch_pagerduty_user,
+)
+from app.connectors.pagerduty_oauth import ensure_pagerduty_session
 from app.connectors.jira import (
     JiraAPIError,
     add_issue_comment,
@@ -1047,6 +1055,119 @@ def _exec_stripe_subscriptions_get(ctx: ToolContext, params: dict[str, Any]) -> 
     )
 
 
+def _pagerduty_connector_and_token(
+    ctx: ToolContext, params: dict[str, Any]
+) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "pagerduty", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active PagerDuty connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "pagerduty", cid)
+    token, err = ensure_pagerduty_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token:
+        raise ToolAuthExpiredError(err or "PagerDuty OAuth not connected")
+    config = conn.get("config") or {}
+    from_email = (
+        params.get("from_email")
+        or params.get("fromEmail")
+        or params.get("requester_email")
+        or config.get("pagerduty_requester_email")
+    )
+    if not from_email:
+        try:
+            user = fetch_pagerduty_user(token)
+            from_email = user.get("email")
+        except PagerDutyAPIError:
+            from_email = None
+    if not from_email:
+        raise ToolValidationError(
+            "pagerduty actions require from_email or a connected user with email on the connector"
+        )
+    return cid, token, str(from_email)
+
+
+def _handle_pagerduty_error(exc: PagerDutyAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_pagerduty_incidents_acknowledge(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.acknowledge requires incident_id")
+    try:
+        data = acknowledge_incident(token, str(incident_id), from_email=from_email)
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.acknowledge",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _exec_pagerduty_incidents_add_note(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    content = params.get("content") or params.get("note") or params.get("body")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.add_note requires incident_id")
+    if not content:
+        raise ToolValidationError("pagerduty.incidents.add_note requires content")
+    try:
+        data = add_incident_note(token, str(incident_id), str(content), from_email=from_email)
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.add_note",
+        connector_id=cid,
+        data={"note": data.get("note", data)},
+    )
+
+
+def _exec_pagerduty_incidents_escalate(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.escalate requires incident_id")
+    level = params.get("escalation_level") or params.get("escalationLevel")
+    level_int = int(level) if level is not None else None
+    try:
+        data = escalate_incident(
+            token,
+            str(incident_id),
+            from_email=from_email,
+            escalation_level=level_int,
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.escalate",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
 def _jira_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
@@ -1775,6 +1896,9 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "quickbooks.companyinfo.get": _exec_quickbooks_companyinfo_get,
     "stripe.invoices.list": _exec_stripe_invoices_list,
     "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
+    "pagerduty.incidents.acknowledge": _exec_pagerduty_incidents_acknowledge,
+    "pagerduty.incidents.add_note": _exec_pagerduty_incidents_add_note,
+    "pagerduty.incidents.escalate": _exec_pagerduty_incidents_escalate,
     "jira.issues.create": _exec_jira_issues_create,
     "jira.issues.get": _exec_jira_issues_get,
     "jira.issues.search": _exec_jira_issues_search,

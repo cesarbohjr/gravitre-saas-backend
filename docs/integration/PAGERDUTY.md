@@ -28,6 +28,10 @@ API_PUBLIC_URL=https://gravitre-saas-backend-production.up.railway.app
 
 See [PAGERDUTY_TRIGGERS.md](./PAGERDUTY_TRIGGERS.md).
 
+## Agent tools (STA-38)
+
+See [PAGERDUTY_ACTIONS.md](./PAGERDUTY_ACTIONS.md).
+
 ## Readiness
 
 ```powershell

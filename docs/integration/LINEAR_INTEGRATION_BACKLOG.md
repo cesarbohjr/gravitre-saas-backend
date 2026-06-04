@@ -92,7 +92,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 5 | T2-006 | [STA-35](https://linear.app/staqbot/issue/STA-35) | Stripe read-only agent tool ✅ | STA-10 |
 | 6 | T2-007 | [STA-36](https://linear.app/staqbot/issue/STA-36) | Jira Cloud OAuth + v1/v2 actions ✅ | STA-10, STA-13 |
 | 7 | T2-008 | [STA-37](https://linear.app/staqbot/issue/STA-37) | PagerDuty OAuth + triggers ✅ | STA-12 |
-| 8 | T2-009 | [STA-38](https://linear.app/staqbot/issue/STA-38) | PagerDuty v1 actions | STA-10 |
+| 8 | T2-009 | [STA-38](https://linear.app/staqbot/issue/STA-38) | PagerDuty v1 actions ✅ | STA-10 |
 | 9 | T2-010 | [STA-39](https://linear.app/staqbot/issue/STA-39) | DevOps cross-tool workflow | STA-36–38, Slack |
 | 10 | T2-014 | [STA-43](https://linear.app/staqbot/issue/STA-43) | Notion sync → RAG | STA-20 |
 | 11 | T2-016 | [STA-45](https://linear.app/staqbot/issue/STA-45) | Knowledge sync scheduler | STA-20 |
