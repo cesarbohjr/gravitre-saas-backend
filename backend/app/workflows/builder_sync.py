@@ -138,7 +138,28 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
         mapped = config.get("step_type") or config.get("tool_action")
         if mapped in {"slack_post_message", "email_send", "webhook_post", "rag_retrieve", "noop"}:
             return {"id": step_id, "name": name, "type": str(mapped), "config": dict(config)}
-    if node_type in {"approval", "decision", "council", "task"}:
+    if node_type == "council":
+        council_cfg = metadata.get("councilConfig") if isinstance(metadata.get("councilConfig"), dict) else {}
+        if not council_cfg and isinstance(config.get("councilConfig"), dict):
+            council_cfg = config.get("councilConfig")
+        return {
+            "id": step_id,
+            "name": name,
+            "type": "council",
+            "config": {
+                "objective": council_cfg.get("objective") or metadata.get("objective"),
+                "options": council_cfg.get("options") or ["enroll", "nurture"],
+                "output_paths": council_cfg.get("outputPaths") or council_cfg.get("output_paths") or {},
+                "decision_method": council_cfg.get("decisionMethod") or council_cfg.get("decision_method"),
+                "confidence_threshold": council_cfg.get("confidenceThreshold")
+                or council_cfg.get("confidence_threshold"),
+                "source_step_id": council_cfg.get("sourceStepId") or council_cfg.get("source_step_id"),
+                "agent_ids": council_cfg.get("agentIds") or council_cfg.get("agent_ids") or [],
+                "max_rounds": council_cfg.get("maxRounds") or council_cfg.get("max_rounds"),
+            },
+            "metadata": metadata or {},
+        }
+    if node_type in {"approval", "decision", "task"}:
         return {
             "id": step_id,
             "name": name,

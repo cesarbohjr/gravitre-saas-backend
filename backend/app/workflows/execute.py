@@ -10,6 +10,7 @@ from app.connectors.rate_limit import RateLimitError
 from app.workflows import handlers as _handlers
 from app.workflows.registry import StepContext, get_handler
 from app.workflows.audit import write_audit_event
+from app.services.council_workflow_service import resolve_active_branch, should_skip_for_branch
 from app.workflows.constants import (
     ERROR_CODE_EMAIL_FAILED,
     ERROR_CODE_RAG_UNAVAILABLE,
@@ -23,6 +24,7 @@ from app.workflows.constants import (
     RUN_STATUS_FAILED,
     STEP_STATUS_COMPLETED,
     STEP_STATUS_FAILED,
+    STEP_STATUS_SKIPPED,
 )
 from app.workflows.repository import (
     create_step,
@@ -89,6 +91,25 @@ def execute_workflow_steps(
             step_uuid = str(created["id"])
         step_started = datetime.now(timezone.utc).isoformat()
         set_step_running(client, step_uuid, step_started)
+
+        active_branch = resolve_active_branch(step_outputs)
+        if should_skip_for_branch(config, active_branch):
+            skipped_output = {
+                "skipped": True,
+                "reason": "branch_mismatch",
+                "when_branch": config.get("when_branch"),
+                "active_branch": active_branch,
+            }
+            step_outputs[step_id] = skipped_output
+            update_step(
+                client=client,
+                step_uuid=step_uuid,
+                status=STEP_STATUS_SKIPPED,
+                output_snapshot=skipped_output,
+                completed_at=datetime.now(timezone.utc).isoformat(),
+            )
+            emit_execute_step_completed(client, org_id, user_id, run_id, idx, step_id)
+            continue
 
         try:
             handler = get_handler(step_type)

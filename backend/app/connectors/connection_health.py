@@ -9,6 +9,10 @@ from app.connectors.quickbooks_oauth import (
     normalize_vendor as normalize_quickbooks_vendor,
     quickbooks_connection_auth_status,
 )
+from app.connectors.confluence_oauth import (
+    confluence_connection_auth_status,
+    normalize_vendor as normalize_confluence_vendor,
+)
 from app.connectors.jira_oauth import (
     jira_connection_auth_status,
     normalize_vendor as normalize_jira_vendor,
@@ -56,6 +60,10 @@ def resolve_connector_auth_status(
         )
     if normalize_jira_vendor(vendor) == "jira":
         return jira_connection_auth_status(
+            client, org_id, connector_id, settings, environment_name=environment_name
+        )
+    if normalize_confluence_vendor(vendor) == "confluence":
+        return confluence_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name
         )
     if normalize_pagerduty_vendor(vendor) == "pagerduty":

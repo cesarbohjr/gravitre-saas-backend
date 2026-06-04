@@ -30,6 +30,14 @@ from app.connectors.quickbooks_oauth import (
     quickbooks_redirect_uri,
     normalize_vendor as normalize_quickbooks_vendor,
 )
+from app.connectors.confluence_oauth import (
+    complete_confluence_oauth_connection,
+    confluence_authorize_url,
+    confluence_credentials,
+    confluence_oauth_configured,
+    confluence_redirect_uri,
+    normalize_vendor as normalize_confluence_vendor,
+)
 from app.connectors.jira_oauth import (
     complete_jira_oauth_connection,
     jira_authorize_url,
@@ -87,6 +95,7 @@ SUPPORTED_OAUTH_PROVIDERS = frozenset(
         "salesforce",
         "quickbooks",
         "jira",
+        "confluence",
         "pagerduty",
         "notion",
     }
@@ -106,6 +115,8 @@ def _resolve_oauth_vendor(provider: str) -> str:
         return "quickbooks"
     if normalize_jira_vendor(provider) == "jira":
         return "jira"
+    if normalize_confluence_vendor(provider) == "confluence":
+        return "confluence"
     if normalize_pagerduty_vendor(provider) == "pagerduty":
         return "pagerduty"
     if normalize_notion_vendor(provider) == "notion":
@@ -183,6 +194,9 @@ async def oauth_provider_status(
     elif vendor == "jira":
         configured = jira_oauth_configured(settings, environment_name)
         redirect_uri = jira_redirect_uri(settings)
+    elif vendor == "confluence":
+        configured = confluence_oauth_configured(settings, environment_name)
+        redirect_uri = confluence_redirect_uri(settings)
     elif vendor == "pagerduty":
         configured = pagerduty_oauth_configured(settings, environment_name)
         redirect_uri = pagerduty_redirect_uri(settings)
@@ -231,6 +245,11 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Jira OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "confluence" and not confluence_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Confluence OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
     if vendor == "pagerduty" and not pagerduty_oauth_configured(settings, environment_name):
         raise HTTPException(
@@ -356,6 +375,10 @@ async def start_oauth(
         redirect_uri = jira_redirect_uri(settings)
         client_id, _secret = jira_credentials(settings, environment_name)
         auth_url = jira_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "confluence":
+        redirect_uri = confluence_redirect_uri(settings)
+        client_id, _secret = confluence_credentials(settings, environment_name)
+        auth_url = confluence_authorize_url(client_id, redirect_uri, state)
     elif vendor == "pagerduty":
         redirect_uri = pagerduty_redirect_uri(settings)
         client_id, _secret = pagerduty_credentials(settings, environment_name)
@@ -455,6 +478,16 @@ async def oauth_callback(
             )
         elif vendor == "jira":
             complete_jira_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "confluence":
+            complete_confluence_oauth_connection(
                 client,
                 org_id,
                 connector_id,

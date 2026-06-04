@@ -9,8 +9,10 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
+from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
 from app.services.model_router import TaskType, get_model_router
 from app.workflows.audit import write_audit_event
+from app.workflows.repository import get_supabase_client
 from app.workflows.constants import RESOURCE_TYPE_WORKFLOW_RUN
 
 logger = logging.getLogger(__name__)
@@ -196,6 +198,20 @@ async def run_agent_task(
     if parameters:
         prompt += f"<workflow_context>{json.dumps(parameters, default=str)[:8000]}</workflow_context>\n"
 
+    try:
+        client = get_supabase_client(settings)
+        retrieval = build_task_retrieval_context(
+            settings,
+            client,
+            org_id=org_id,
+            agent=agent,
+            task=task,
+            parameters=parameters,
+        )
+        prompt += format_retrieval_prompt_section(retrieval)
+    except Exception:  # noqa: BLE001
+        logger.debug("agent memory retrieval skipped", exc_info=True)
+
     router = get_model_router()
     ai_result = await router.complete(
         task_type=TaskType.WORKFLOW_PLANNING,
@@ -249,12 +265,24 @@ async def execute_agent_step_with_handoff(
     if (source_agent.get("status") or "active") != "active":
         raise ValueError(f"Agent is not active: {agent_id}")
 
+    metadata = step_def.get("metadata") if isinstance(step_def.get("metadata"), dict) else {}
+    config = step_def.get("config") if isinstance(step_def.get("config"), dict) else {}
+    briefing_from_steps = bool(
+        metadata.get("briefing_from_steps") or config.get("briefing_from_steps")
+    )
+    source_briefing = None
+    if briefing_from_steps and step_outputs:
+        source_briefing = build_handoff_briefing(
+            parameters=parameters,
+            step_outputs=step_outputs,
+        )
+
     source_output = await run_agent_task(
         settings,
         org_id=org_id,
         agent=source_agent,
         task=task,
-        briefing=None,
+        briefing=source_briefing,
         parameters=parameters,
     )
 

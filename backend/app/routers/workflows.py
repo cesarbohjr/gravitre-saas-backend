@@ -89,6 +89,8 @@ from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
 from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
+from app.workflows.cron import compute_next_run_at
+from app.services.workflow_schedule_service import dispatch_org_workflow_schedules
 from app.workflows.schema import (
     WorkflowValidationError,
     compute_run_hash,
@@ -391,75 +393,6 @@ def _generate_goal(name: str, description: str | None = None) -> str:
 
 class PromoteVersionRequest(BaseModel):
     to_environment: str = Field(..., min_length=1)
-
-
-def _next_hour(base: datetime) -> datetime:
-    return (base.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1))
-
-
-def _next_day(base: datetime) -> datetime:
-    next_day = base.date() + timedelta(days=1)
-    return datetime.combine(next_day, datetime.min.time(), tzinfo=timezone.utc)
-
-
-def _next_week(base: datetime) -> datetime:
-    # Next Sunday at 00:00 UTC
-    days_ahead = (6 - base.weekday()) % 7
-    days_ahead = 7 if days_ahead == 0 else days_ahead
-    target = base.date() + timedelta(days=days_ahead)
-    return datetime.combine(target, datetime.min.time(), tzinfo=timezone.utc)
-
-
-def _next_month(base: datetime) -> datetime:
-    year = base.year + (1 if base.month == 12 else 0)
-    month = 1 if base.month == 12 else base.month + 1
-    return datetime(year, month, 1, tzinfo=timezone.utc)
-
-
-def compute_next_run_at(cron_expression: str, base: datetime | None = None) -> str | None:
-    """Best-effort next_run_at for common cron patterns. Returns ISO or None."""
-    if base is None:
-        base = datetime.now(timezone.utc)
-    expr = cron_expression.strip()
-    if not expr:
-        return None
-    if expr == "@hourly":
-        return _next_hour(base).isoformat()
-    if expr == "@daily":
-        return _next_day(base).isoformat()
-    if expr == "@weekly":
-        return _next_week(base).isoformat()
-    if expr == "@monthly":
-        return _next_month(base).isoformat()
-    parts = expr.split()
-    if len(parts) != 5:
-        return None
-    minute, hour, dom, month, dow = parts
-    if minute.startswith("*/") and hour == "*" and dom == "*" and month == "*" and dow == "*":
-        try:
-            interval = int(minute.replace("*/", ""))
-        except ValueError:
-            return None
-        if interval <= 0:
-            return None
-        base_floor = base.replace(second=0, microsecond=0)
-        minutes_since_hour = base_floor.minute
-        next_minute = ((minutes_since_hour // interval) + 1) * interval
-        next_time = base_floor
-        if next_minute >= 60:
-            next_time = next_time.replace(minute=0) + timedelta(hours=1)
-        else:
-            next_time = next_time.replace(minute=next_minute)
-        return next_time.isoformat()
-    if minute == "0" and hour == "*" and dom == "*" and month == "*" and dow == "*":
-        return _next_hour(base).isoformat()
-    if minute == "0" and hour == "0" and dom == "*" and month == "*" and dow == "*":
-        return _next_day(base).isoformat()
-    if minute == "0" and hour == "0" and dom == "*" and month == "*" and dow in {"0", "7"}:
-        return _next_week(base).isoformat()
-    if minute == "0" and hour == "0" and dom == "1" and month == "*" and dow == "*":
-        return _next_month(base).isoformat()
-    return None
 
 
 class StepOut(BaseModel):
@@ -1968,49 +1901,13 @@ async def dispatch_workflow_schedules(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = get_supabase_client(settings)
-    now_iso = datetime.now(timezone.utc).isoformat()
-    r = (
-        client.table("workflow_schedules")
-        .select("*")
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .eq("enabled", True)
-        .lte("next_run_at", now_iso)
-        .execute()
+    summary = dispatch_org_workflow_schedules(
+        settings,
+        org_id=org_id,
+        environment_name=environment_name,
+        actor_id=str(_user["user_id"]),
     )
-    schedules = list(r.data or [])
-    results: list[dict] = []
-    for schedule in schedules:
-        schedule_id = str(schedule["id"])
-        actor_id = schedule.get("created_by") or _user["user_id"]
-        try:
-            response = _execute_workflow_with_context(
-                client=client,
-                settings=settings,
-                org_id=org_id,
-                environment_name=environment_name,
-                workflow_id=str(schedule["workflow_id"]),
-                parameters={},
-                actor_id=actor_id,
-                trigger_type="schedule",
-                schedule_id=schedule_id,
-            )
-            next_run_at = compute_next_run_at(schedule.get("cron_expression") or "", datetime.now(timezone.utc))
-            update_workflow_schedule(
-                client,
-                org_id=org_id,
-                schedule_id=schedule_id,
-                environment_name=environment_name,
-                cron_expression=None,
-                enabled=True if next_run_at else False,
-                next_run_at=next_run_at,
-                updated_by=_user["user_id"],
-            )
-            results.append({"schedule_id": schedule_id, "status": "ok", "run_id": response.get("run_id")})
-        except HTTPException as exc:
-            results.append({"schedule_id": schedule_id, "status": "error", "detail": exc.detail})
-    return {"dispatched": results}
+    return {"dispatched": summary.get("outcomes", []), **summary}
 
 
 @router.post("/runs/{run_id}/rollback")

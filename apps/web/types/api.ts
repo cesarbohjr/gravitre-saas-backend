@@ -672,6 +672,21 @@ export interface OperatorSessionListResponse {
   sessions: OperatorSessionSummary[]
 }
 
+export interface AgentMemory {
+  id: string
+  agentId: string
+  content: string
+  category: "fact" | "preference" | "pattern" | "rule"
+  provenance?: string | null
+  source?: string | null
+  confidence: number
+  usageCount: number
+  editable: boolean
+  createdAt?: string
+  updatedAt?: string
+  score?: number
+}
+
 export interface AgentListResponse {
   agents: Agent[]
 }
