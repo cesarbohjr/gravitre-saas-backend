@@ -976,10 +976,9 @@ export default function AssistantPage() {
               </Button>
             </div>
           </div>
-        </div>
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-auto p-4 md:p-6">
+          {/* Messages area */}
+          <div className="flex-1 overflow-auto p-4 md:p-6">
           <div className="max-w-4xl mx-auto space-y-4">
             {!user ? (
               <motion.div
@@ -1071,9 +1070,9 @@ export default function AssistantPage() {
               </>
             )}
           </div>
-        </div>
+          </div>
 
-        {/* Agent Mode notice */}
+          {/* Agent Mode notice */}
         {mode === "agent" && (
           <div className="mx-4 mb-2">
             <div className="max-w-4xl mx-auto">
@@ -1103,11 +1102,11 @@ export default function AssistantPage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={user ? currentModeConfig.placeholder : "Sign in to chat"}
-                disabled={!user || isLoading}
-                rows={1}
-                className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
-                style={{ height: "24px" }}
-                onInput={(e) => {
+                  disabled={!user || isLoading}
+                  rows={1}
+                  className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px]"
+                  style={{ height: "24px" }}
+                  onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement
                   target.style.height = "24px"
                   target.style.height = Math.min(target.scrollHeight, 120) + "px"
@@ -1146,7 +1145,8 @@ export default function AssistantPage() {
             </p>
           </form>
         </div>
-        </div>
+      </div>
+      </div>
     </AppShell>
   )
 }
