@@ -19,12 +19,18 @@ Uses [NOTION.md](./NOTION.md) targets and `connector.sync_frequency` (e.g. `1h`,
 - **Manual:** `POST /api/connectors/{id}/sync` or `POST /api/admin/knowledge/connectors/{id}/sync`
 - **Webhook:** optional `X-Webhook-Secret` matching `connectors.config.webhook_secret`
 
-## Operator cron (Railway / GitHub Actions)
+## Operator cron (GitHub Actions)
+
+Workflow: `.github/workflows/knowledge-sync.yml` (hourly at :15, offset from usage sync).
+
+Requires repo secret `INTERNAL_API_SECRET` matching Railway `INTERNAL_API_SECRET`.
 
 ```http
 POST https://<api>/api/internal/knowledge/sync-due
 X-Internal-Secret: <INTERNAL_API_SECRET>
 ```
+
+Manual: GitHub Actions → **Knowledge Sync** → Run workflow.
 
 ## Admin
 

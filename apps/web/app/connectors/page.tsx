@@ -689,12 +689,6 @@ const connectorCategories = {
       { type: "PagerDuty", description: "Incident management and on-call", authType: "oauth" },
     ],
   },
-  "DevOps / Incidents": {
-    color: "rose",
-    connectors: [
-      { type: "PagerDuty", description: "Incident management and on-call", authType: "oauth" },
-    ],
-  },
   "Operations / Workflow": {
     color: "amber",
     connectors: [

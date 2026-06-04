@@ -71,7 +71,9 @@ def connector_is_due(connector: dict[str, Any], *, now: datetime | None = None) 
     if not isinstance(targets, list) or not targets:
         return False
 
-    last = _parse_ts(config.get(spec["last_synced_key"])) or _parse_ts(connector.get("last_synced_at"))
+    last = _parse_ts(config.get(spec["last_synced_key"])) or _parse_ts(
+        connector.get("last_sync_at") or connector.get("last_synced_at")
+    )
     if not last:
         return True
     interval = parse_sync_interval(connector.get("sync_frequency"))
@@ -81,7 +83,7 @@ def connector_is_due(connector: dict[str, Any], *, now: datetime | None = None) 
 def list_due_knowledge_connectors(client: Any, *, environment: str | None = None) -> list[dict[str, Any]]:
     query = (
         client.table("connectors")
-        .select("id,org_id,type,vendor,status,config,environment,sync_frequency,last_synced_at")
+        .select("id,org_id,type,vendor,status,config,environment,sync_frequency,last_sync_at")
         .in_("type", list(SOURCE_REGISTRY.keys()))
         .eq("status", "active")
         .is_("deleted_at", "null")
@@ -364,7 +366,7 @@ def trigger_connector_knowledge_sync(
 ) -> dict[str, Any]:
     row = (
         client.table("connectors")
-        .select("id,org_id,type,vendor,status,config,environment,sync_frequency,last_synced_at")
+        .select("id,org_id,type,vendor,status,config,environment,sync_frequency,last_sync_at")
         .eq("id", connector_id)
         .eq("org_id", org_id)
         .is_("deleted_at", "null")

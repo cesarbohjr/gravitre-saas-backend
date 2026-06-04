@@ -63,7 +63,9 @@
 - [ ] GitHub secret `BACKEND_URL` set for CI integration smoke test
 - [ ] GitHub secret `INTERNAL_API_SECRET` set (matches Railway `INTERNAL_API_SECRET`)
 - [ ] `usage-sync.yml` workflow enabled in GitHub Actions
+- [ ] `knowledge-sync.yml` workflow enabled (hourly `POST /api/internal/knowledge/sync-due`)
 - [ ] First manual sync: Actions → Usage Sync → Run workflow → verify Railway logs
+- [ ] First manual knowledge sync: Actions → Knowledge Sync → Run workflow → HTTP 200
 - [ ] Stripe Dashboard → Billing → Meters → confirm `ai_credits_used` events appear
 
 ### CI Integration

@@ -96,7 +96,10 @@ def _log_billing_startup_config() -> None:
     ]
     missing_metered = sum(1 for value in metered if not (value or "").strip())
     if not (settings.internal_api_secret or "").strip():
-        logger.warning("Billing configuration: INTERNAL_API_SECRET is missing — sync endpoint is unprotected")
+        logger.warning(
+            "INTERNAL_API_SECRET is missing — internal cron endpoints "
+            "(billing/sync-usage, knowledge/sync-due) are unprotected"
+        )
 
     logger.info(
         "Billing configuration: Stripe=%s, Metered prices=%s, Usage sync=%s",
