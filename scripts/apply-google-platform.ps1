@@ -126,6 +126,13 @@ try {
     }
 } finally { Pop-Location }
 
+if ($hasSecret) {
+    & (Join-Path $RepoRoot "scripts\configure-supabase-google.ps1") -ProjectRef $ProjectRef
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Supabase Google provider push failed (see above)." -ForegroundColor Yellow
+    }
+}
+
 if ($hasSecret -and $supabaseToken -and -not $SkipSupabase) {
     $allowList = @(
         "$AppUrl/auth/callback"

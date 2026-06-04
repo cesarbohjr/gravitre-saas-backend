@@ -12,6 +12,8 @@ backend/.env.operator.local
 # Supabase
 supabase/.branches
 supabase/.temp
+supabase/.env
+supabase/supabase/
 
 # OS and IDE
 .DS_Store

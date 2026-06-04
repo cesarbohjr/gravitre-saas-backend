@@ -65,6 +65,7 @@ $env:GOOGLE_OAUTH_CLIENT_SECRET = "<secret>"
 
 npm run google:fill-env
 npm run google:railway
+npm run auth:supabase-google   # Supabase login provider (linked CLI)
 npm run google:check
 ```
 

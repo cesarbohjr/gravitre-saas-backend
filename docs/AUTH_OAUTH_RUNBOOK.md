@@ -43,11 +43,28 @@ CLI sync (needs `SUPABASE_ACCESS_TOKEN`):
 powershell -File scripts/sync-supabase-auth-urls.ps1
 ```
 
-Or full sync + Vercel env:
+Or full sync + Vercel env (requires GitHub/repo secrets `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`):
 
 ```bash
 bash scripts/configure-auth-production.sh
 ```
+
+Enable Google login provider on Supabase (linked CLI + `backend/.env.operator.local`):
+
+```powershell
+npm run auth:supabase-google
+```
+
+Add repository secrets for the **Auth Config Sync** workflow (Settings → Secrets → Actions):
+
+| Secret | Purpose |
+|--------|---------|
+| `SUPABASE_ACCESS_TOKEN` | Management API auth URL + Google secret patch |
+| `SUPABASE_PROJECT_REF` | `smyeexlrqdpymwjmgzqu` |
+| `VERCEL_TOKEN` | Vercel env upsert + optional deploy |
+| `VERCEL_ORG_ID` | `gravitre-ai` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://smyeexlrqdpymwjmgzqu.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 
 ### Railway
 
