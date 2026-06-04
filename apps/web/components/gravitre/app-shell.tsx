@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, startTransition } from "react"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
@@ -57,8 +57,16 @@ function daysLeft(isoDate: string): number {
 export function AppShell({ children, title }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
-  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("gravitre-trial-banner-dismissed") === "true",
+  )
+  const [welcomeDismissed, setWelcomeDismissed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem("gravitre-welcome-dismissed") === "true",
+  )
   const [bootstrapAttempted, setBootstrapAttempted] = useState(false)
   const router = useRouter()
   const { user, loading } = useAuth()
@@ -85,20 +93,12 @@ export function AppShell({ children, title }: AppShellProps) {
   const trialEndsAt = billingStatusData?.trialEndsAt
   const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
 
-  // Load persisted banner dismiss states
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setTrialBannerDismissed(sessionStorage.getItem("gravitre-trial-banner-dismissed") === "true")
-      setWelcomeDismissed(localStorage.getItem("gravitre-welcome-dismissed") === "true")
-    }
-  }, [])
-
   // Auto-bootstrap for OAuth users who skip /get-started
   useEffect(() => {
     if (!user || !canAccessApp || !meData || bootstrapAttempted) return
     if (meData.onboarding?.seeded === true) return
 
-    setBootstrapAttempted(true)
+    startTransition(() => setBootstrapAttempted(true))
     
     void (async () => {
       try {

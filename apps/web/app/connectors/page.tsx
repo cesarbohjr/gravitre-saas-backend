@@ -1538,7 +1538,7 @@ function GaPropertyPickerModal({
 
   useEffect(() => {
     if (!open || !connectorId) return
-    setLoading(true)
+    startTransition(() => setLoading(true))
     connectorsApi
       .listGoogleAnalyticsProperties(connectorId)
       .then((res) => {
