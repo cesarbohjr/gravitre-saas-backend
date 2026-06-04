@@ -1,7 +1,8 @@
 import type { Provider } from "@supabase/supabase-js"
 
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
-import { supabaseClient } from "@/lib/supabaseClient"
+import { markAuthTransition } from "@/lib/auth-transition"
+import { createClient } from "@/lib/supabase/client"
 
 type OAuthResult =
   | { ok: true }
@@ -28,7 +29,8 @@ export async function beginOAuthSignIn(
     }
   }
 
-  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+  const supabase = createClient()
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo,
@@ -80,6 +82,7 @@ export async function beginOAuthSignIn(
     }
   }
 
+  markAuthTransition()
   window.location.assign(data.url)
   return { ok: true }
 }

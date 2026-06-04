@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "luci
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
+import { clearAuthTransition, markAuthTransition } from "@/lib/auth-transition"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
@@ -42,7 +43,8 @@ function LoginPageContent() {
   const oauthLoginCheckRef = useRef(false)
 
   const sessionExpiredMessage =
-    searchParams.get("session_expired") === "true"
+    searchParams.get("session_expired") === "true" ||
+    searchParams.get("error") === "session_expired"
       ? "Your session has expired. Please sign in again."
       : null
   const errorKey = searchParams.get("error")
@@ -65,7 +67,7 @@ function LoginPageContent() {
     const resetAuthLoading = () => {
       setIsLoading(false)
       setLoadingProvider(null)
-      window.sessionStorage.removeItem("gravitre_auth_redirecting")
+      clearAuthTransition()
     }
 
     const onPageShow = () => {
@@ -127,6 +129,7 @@ function LoginPageContent() {
         }
 
         const redirect = searchParams.get("redirect") || "/operator"
+        markAuthTransition()
         router.replace(redirect)
       } catch {
         await supabaseClient.auth.signOut()
@@ -160,6 +163,7 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
+    markAuthTransition()
     router.push(redirect)
   }
 

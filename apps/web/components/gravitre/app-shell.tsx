@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, startTransition } from "react"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
@@ -8,8 +8,9 @@ import { TopBar } from "./top-bar"
 import { NotificationProvider } from "./notification-center"
 import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi } from "@/lib/api"
 import { Loader2, X } from "lucide-react"
@@ -61,6 +62,7 @@ export function AppShell({ children, title }: AppShellProps) {
   const [welcomeDismissed, setWelcomeDismissed] = useState(false)
   const [bootstrapAttempted, setBootstrapAttempted] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const { user, loading } = useAuth()
 
   // Fetch billing status
@@ -74,7 +76,7 @@ export function AppShell({ children, title }: AppShellProps) {
   )
 
   // Fetch auth/me for onboarding status
-  const { data: meData } = useSWR<MeData>(
+  const { data: meData, error: meError } = useSWR<MeData>(
     user ? "/api/auth/me" : null,
     apiFetcher,
     { revalidateOnFocus: false }
@@ -98,8 +100,8 @@ export function AppShell({ children, title }: AppShellProps) {
     if (!user || !canAccessApp || !meData || bootstrapAttempted) return
     if (meData.onboarding?.seeded === true) return
 
-    setBootstrapAttempted(true)
-    
+    startTransition(() => setBootstrapAttempted(true))
+
     void (async () => {
       try {
         await onboardingApi.bootstrap()
@@ -137,11 +139,7 @@ export function AppShell({ children, title }: AppShellProps) {
     )
   }
 
-  // Redirect to login if not authenticated
   if (!user) {
-    if (typeof window !== "undefined") {
-      router.replace("/login")
-    }
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -151,10 +149,7 @@ export function AppShell({ children, title }: AppShellProps) {
 
   // Billing gate: redirect users who cannot access the app
   // Note: If billing API fails, fail open for trialing users (allow access)
-  if (!billingLoading && !canAccessApp && !billingError) {
-    if (typeof window !== "undefined") {
-      router.replace("/settings/billing?reason=subscription_required")
-    }
+  if (!billingLoading && !canAccessApp && !billingError && !pathname.startsWith("/settings/billing")) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
