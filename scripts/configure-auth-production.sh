@@ -120,20 +120,23 @@ upsert_vercel_env() {
   local project_id="$3"
   local team_id="$4"
 
-  curl -fsS -X POST "${VERCEL_API}/v10/projects/${project_id}/env?teamId=${team_id}" \
-    -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "$(python3 - <<PY
-import json
+  local payload
+  payload="$(VERCEL_ENV_KEY="$key" VERCEL_ENV_VALUE="$value" python3 - <<'PY'
+import json, os
 print(json.dumps({
-    "key": "${key}",
-    "value": """${value}""",
+    "key": os.environ["VERCEL_ENV_KEY"],
+    "value": os.environ["VERCEL_ENV_VALUE"],
     "type": "plain",
     "target": ["production", "preview", "development"],
     "upsert": True,
 }))
 PY
-)" >/dev/null
+)"
+
+  curl -fsS -X POST "${VERCEL_API}/v10/projects/${project_id}/env?teamId=${team_id}" \
+    -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
 }
 
 configure_vercel_env() {
@@ -165,8 +168,7 @@ deploy_vercel_production() {
   echo "==> Triggering Vercel production deployment"
   require_cmd npx
   npx --yes vercel deploy --prod --yes --token "$VERCEL_TOKEN" \
-    ${VERCEL_ORG_ID:+--scope "$VERCEL_ORG_ID"} \
-    --cwd apps/web
+    ${VERCEL_ORG_ID:+--scope "$VERCEL_ORG_ID"}
 }
 
 verify_production() {
