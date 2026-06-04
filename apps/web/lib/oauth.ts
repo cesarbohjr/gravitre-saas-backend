@@ -1,5 +1,6 @@
 import type { Provider } from "@supabase/supabase-js"
 
+import { getAppOrigin } from "@/lib/auth-session"
 import { createClient } from "@/lib/supabase/client"
 
 type OAuthResult =
@@ -22,7 +23,8 @@ export async function beginOAuthSignIn(
     ? redirectPath
     : `/${redirectPath}`
   const typeParam = isSignup ? "&type=signup" : ""
-  const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(normalizedDest)}${typeParam}`
+  const origin = getAppOrigin() || window.location.origin
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(normalizedDest)}${typeParam}`
 
   const supabase = createClient()
 

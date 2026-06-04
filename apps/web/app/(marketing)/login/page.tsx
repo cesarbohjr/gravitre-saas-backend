@@ -62,6 +62,34 @@ function LoginPageContent() {
     return () => clearInterval(interval)
   }, [])
 
+  // Clear stale Supabase cookies when redirected with an auth error (breaks OAuth loops).
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (
+      !error ||
+      !["session_expired", "auth_callback_failed", "oauth_error"].includes(error)
+    ) {
+      return
+    }
+
+    let cancelled = false
+    const resetBrokenSession = async () => {
+      try {
+        await supabaseClient.auth.signOut({ scope: "local" })
+      } catch {
+        // ignore — cookies may already be invalid
+      }
+      if (cancelled) return
+      window.sessionStorage.removeItem("gravitre_auth_redirecting")
+      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+    }
+
+    void resetBrokenSession()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams])
+
   useEffect(() => {
     const resetAuthLoading = () => {
       setIsLoading(false)
