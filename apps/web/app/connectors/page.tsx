@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, startTransition, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
@@ -1633,7 +1633,7 @@ function ConnectorsPageContent() {
     if (!oauth) return
     if (oauth === "success") {
       if (provider === "google_analytics" && selectProperty === "1" && connectorId) {
-        setGaPropertyPicker({ connectorId })
+        startTransition(() => setGaPropertyPicker({ connectorId }))
         toast.info("Select a GA4 property", {
           description: "Your Google account has multiple analytics properties.",
         })
