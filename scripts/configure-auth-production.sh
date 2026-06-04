@@ -159,7 +159,7 @@ configure_vercel_env() {
 }
 
 deploy_vercel_production() {
-  if [[ "${SKIP_VERCEL_DEPLOY:-0}" == "1" ]]; then
+  if [[ "${SKIP_VERCEL_DEPLOY:-0}" == "1" || "${SKIP_VERCEL_DEPLOY}" == "true" ]]; then
     echo "==> Skipping Vercel deploy (SKIP_VERCEL_DEPLOY=1)"
     return
   fi
