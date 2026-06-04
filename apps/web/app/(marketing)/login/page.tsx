@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "luci
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
+import { markAuthTransition } from "@/lib/auth-transition"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
@@ -45,6 +46,44 @@ function LoginPageContent() {
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  // Clear stale Supabase cookies when redirected with an auth error (breaks OAuth loops).
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (
+      !error ||
+      !["session_expired", "auth_callback_failed", "oauth_error"].includes(error)
+    ) {
+      return
+    }
+
+    let cancelled = false
+    const resetBrokenSession = async () => {
+      if (error === "session_expired") {
+        const { data: { user: liveUser } } = await supabaseClient.auth.getUser()
+        if (liveUser && !cancelled) {
+          markAuthTransition()
+          router.replace(searchParams.get("redirect") || "/operator")
+          return
+        }
+      }
+
+      try {
+        await supabaseClient.auth.signOut({ scope: "local" })
+      } catch {
+        // ignore — cookies may already be invalid
+      }
+      if (cancelled) return
+      window.sessionStorage.removeItem("gravitre_auth_redirecting")
+      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+      window.sessionStorage.removeItem("gravitre_auth_redirect_until")
+    }
+
+    void resetBrokenSession()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     const resetAuthLoading = () => {
@@ -112,6 +151,7 @@ function LoginPageContent() {
         }
 
         const redirect = searchParams.get("redirect") || "/operator"
+        markAuthTransition()
         router.replace(redirect)
       } catch {
         await supabaseClient.auth.signOut()
@@ -145,6 +185,7 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
+    markAuthTransition()
     router.push(redirect)
   }
 

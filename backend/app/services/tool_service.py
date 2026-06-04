@@ -40,6 +40,73 @@ from app.connectors.hubspot import (
     update_deal,
     update_deal_stage,
 )
+from app.connectors.salesforce import (
+    SalesforceAPIError,
+    create_account,
+    create_lead,
+    create_opportunity,
+    create_task,
+    get_account,
+    get_lead,
+    get_opportunity,
+    search_leads,
+    update_account,
+    update_lead,
+    update_opportunity,
+    update_opportunity_stage,
+)
+from app.connectors.quickbooks import (
+    QuickBooksAPIError,
+    get_bill,
+    get_company_info,
+    get_customer,
+    get_invoice,
+    get_vendor,
+    list_accounts,
+    list_bills,
+    list_customers,
+    list_invoices,
+    list_payments,
+    list_vendors,
+    search_customers,
+)
+from app.connectors.quickbooks_oauth import ensure_quickbooks_session
+from app.connectors.stripe_api import (
+    StripeAPIError,
+    get_subscription,
+    list_invoices,
+    resolve_stripe_credentials,
+)
+from app.connectors.pagerduty import (
+    PagerDutyAPIError,
+    acknowledge_incident,
+    add_incident_note,
+    escalate_incident,
+    fetch_current_user as fetch_pagerduty_user,
+    get_incident,
+    list_incident_notes,
+    list_incidents,
+    list_oncalls,
+    list_services,
+    reassign_incident,
+    resolve_incident,
+)
+from app.connectors.pagerduty_oauth import ensure_pagerduty_session
+from app.connectors.jira import (
+    JiraAPIError,
+    add_issue_comment,
+    assign_issue,
+    create_issue as jira_create_issue,
+    get_issue,
+    list_issue_transitions,
+    list_projects,
+    search_issues,
+    search_users,
+    transition_issue,
+    update_issue,
+)
+from app.connectors.jira_oauth import ensure_jira_session
+from app.connectors.salesforce_oauth import ensure_salesforce_session
 from app.connectors.github_api import (
     GitHubAPIError,
     create_issue,
@@ -392,6 +459,1151 @@ def _exec_hubspot_sequences_enroll(ctx: ToolContext, params: dict[str, Any]) -> 
     )
 
 
+def _salesforce_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "salesforce", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active Salesforce connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "salesforce", cid)
+    token, instance_url, err = ensure_salesforce_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token or not instance_url:
+        raise ToolAuthExpiredError(err or "Salesforce OAuth not connected")
+    return cid, token, instance_url
+
+
+def _handle_salesforce_error(exc: SalesforceAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_salesforce_leads_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    lead_id = params.get("lead_id") or params.get("leadId")
+    if not lead_id:
+        raise ToolValidationError("salesforce.leads.get requires lead_id")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_lead(instance_url, token, str(lead_id), fields=field_list)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.get",
+        connector_id=cid,
+        data={"lead": data},
+    )
+
+
+def _exec_salesforce_leads_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    lead_id = params.get("lead_id") or params.get("leadId")
+    fields = params.get("fields") or params.get("properties")
+    if not lead_id:
+        raise ToolValidationError("salesforce.leads.update requires lead_id")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.leads.update requires fields object")
+    try:
+        data = update_lead(instance_url, token, str(lead_id), fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.update",
+        connector_id=cid,
+        data={"lead": data or {"id": lead_id, "updated": True}},
+    )
+
+
+def _exec_salesforce_accounts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    account_id = params.get("account_id") or params.get("accountId")
+    if not account_id:
+        raise ToolValidationError("salesforce.accounts.get requires account_id")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_account(instance_url, token, str(account_id), fields=field_list)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.accounts.get",
+        connector_id=cid,
+        data={"account": data},
+    )
+
+
+def _exec_salesforce_opportunities_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.opportunities.create requires fields object")
+    try:
+        data = create_opportunity(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.create",
+        connector_id=cid,
+        data={"opportunity": data},
+    )
+
+
+def _exec_salesforce_opportunities_update_stage(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
+    stage_name = params.get("stage_name") or params.get("stageName") or params.get("stage")
+    if not opportunity_id:
+        raise ToolValidationError("salesforce.opportunities.update_stage requires opportunity_id")
+    if not stage_name:
+        raise ToolValidationError("salesforce.opportunities.update_stage requires stage_name")
+    try:
+        data = update_opportunity_stage(instance_url, token, str(opportunity_id), str(stage_name))
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.update_stage",
+        connector_id=cid,
+        data={"opportunity": data or {"id": opportunity_id, "StageName": stage_name}},
+    )
+
+
+def _exec_salesforce_tasks_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict):
+        fields = {}
+    subject = params.get("subject")
+    if subject and "Subject" not in fields:
+        fields = {**fields, "Subject": str(subject)}
+    who_id = params.get("who_id") or params.get("whoId")
+    what_id = params.get("what_id") or params.get("whatId")
+    if who_id and "WhoId" not in fields:
+        fields = {**fields, "WhoId": str(who_id)}
+    if what_id and "WhatId" not in fields:
+        fields = {**fields, "WhatId": str(what_id)}
+    description = params.get("description") or params.get("body")
+    if description and "Description" not in fields:
+        fields = {**fields, "Description": str(description)}
+    status = params.get("status")
+    if status and "Status" not in fields:
+        fields = {**fields, "Status": str(status)}
+    if not fields.get("Subject"):
+        raise ToolValidationError("salesforce.tasks.create requires subject or fields.Subject")
+    try:
+        data = create_task(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.tasks.create",
+        connector_id=cid,
+        data={"task": data},
+    )
+
+
+def _exec_salesforce_leads_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.leads.create requires fields object")
+    try:
+        data = create_lead(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.create",
+        connector_id=cid,
+        data={"lead": data},
+    )
+
+
+def _exec_salesforce_leads_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    soql = params.get("soql")
+    if soql and not isinstance(soql, str):
+        raise ToolValidationError("salesforce.leads.search soql must be a string")
+    if not soql and not any(params.get(k) for k in ("email", "company", "status")):
+        raise ToolValidationError(
+            "salesforce.leads.search requires soql or at least one of email, company, status"
+        )
+    try:
+        data = search_leads(
+            instance_url,
+            token,
+            soql=str(soql) if soql else None,
+            email=params.get("email"),
+            company=params.get("company"),
+            status=params.get("status"),
+            limit=int(params.get("limit") or 25),
+        )
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.leads.search",
+        connector_id=cid,
+        data={"results": data},
+    )
+
+
+def _exec_salesforce_opportunities_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
+    if not opportunity_id:
+        raise ToolValidationError("salesforce.opportunities.get requires opportunity_id")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_opportunity(instance_url, token, str(opportunity_id), fields=field_list)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.get",
+        connector_id=cid,
+        data={"opportunity": data},
+    )
+
+
+def _exec_salesforce_opportunities_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    opportunity_id = params.get("opportunity_id") or params.get("opportunityId")
+    fields = params.get("fields") or params.get("properties")
+    if not opportunity_id:
+        raise ToolValidationError("salesforce.opportunities.update requires opportunity_id")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.opportunities.update requires fields object")
+    try:
+        data = update_opportunity(instance_url, token, str(opportunity_id), fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.opportunities.update",
+        connector_id=cid,
+        data={"opportunity": data or {"id": opportunity_id, "updated": True}},
+    )
+
+
+def _exec_salesforce_accounts_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    fields = params.get("fields") or params.get("properties")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.accounts.create requires fields object")
+    try:
+        data = create_account(instance_url, token, fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.accounts.create",
+        connector_id=cid,
+        data={"account": data},
+    )
+
+
+def _exec_salesforce_accounts_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, instance_url = _salesforce_connector_and_session(ctx, params)
+    account_id = params.get("account_id") or params.get("accountId")
+    fields = params.get("fields") or params.get("properties")
+    if not account_id:
+        raise ToolValidationError("salesforce.accounts.update requires account_id")
+    if not isinstance(fields, dict) or not fields:
+        raise ToolValidationError("salesforce.accounts.update requires fields object")
+    try:
+        data = update_account(instance_url, token, str(account_id), fields)
+    except SalesforceAPIError as exc:
+        raise _handle_salesforce_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="salesforce.accounts.update",
+        connector_id=cid,
+        data={"account": data or {"id": account_id, "updated": True}},
+    )
+
+
+def _quickbooks_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "quickbooks", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active QuickBooks connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "quickbooks", cid)
+    token, _realm, api_base, err = ensure_quickbooks_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token or not api_base:
+        raise ToolAuthExpiredError(err or "QuickBooks OAuth not connected")
+    return cid, token, api_base
+
+
+def _handle_quickbooks_error(exc: QuickBooksAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_quickbooks_invoices_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_invoices(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.invoices.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_invoices_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    invoice_id = params.get("invoice_id") or params.get("invoiceId")
+    if not invoice_id:
+        raise ToolValidationError("quickbooks.invoices.get requires invoice_id")
+    try:
+        data = get_invoice(api_base, token, str(invoice_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.invoices.get",
+        connector_id=cid,
+        data={"invoice": data.get("Invoice") or data},
+    )
+
+
+def _exec_quickbooks_payments_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_payments(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.payments.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_vendors_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    vendor_id = params.get("vendor_id") or params.get("vendorId")
+    if not vendor_id:
+        raise ToolValidationError("quickbooks.vendors.get requires vendor_id")
+    try:
+        data = get_vendor(api_base, token, str(vendor_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.vendors.get",
+        connector_id=cid,
+        data={"vendor": data.get("Vendor") or data},
+    )
+
+
+def _exec_quickbooks_customers_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_customers(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_customers_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    customer_id = params.get("customer_id") or params.get("customerId")
+    if not customer_id:
+        raise ToolValidationError("quickbooks.customers.get requires customer_id")
+    try:
+        data = get_customer(api_base, token, str(customer_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.get",
+        connector_id=cid,
+        data={"customer": data.get("Customer") or data},
+    )
+
+
+def _exec_quickbooks_customers_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    display_name = params.get("display_name") or params.get("displayName") or params.get("name")
+    email = params.get("email")
+    if not display_name and not email:
+        raise ToolValidationError("quickbooks.customers.search requires display_name or email")
+    try:
+        data = search_customers(
+            api_base,
+            token,
+            display_name=str(display_name) if display_name else None,
+            email=str(email) if email else None,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.search",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_vendors_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_vendors(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.vendors.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_accounts_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_accounts(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.accounts.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_bills_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = list_bills(
+            api_base,
+            token,
+            max_results=int(params.get("max_results") or params.get("limit") or 25),
+            start_position=int(params.get("start_position") or params.get("startPosition") or 1),
+        )
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.bills.list",
+        connector_id=cid,
+        data={"queryResponse": data.get("QueryResponse") or data},
+    )
+
+
+def _exec_quickbooks_bills_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    bill_id = params.get("bill_id") or params.get("billId")
+    if not bill_id:
+        raise ToolValidationError("quickbooks.bills.get requires bill_id")
+    try:
+        data = get_bill(api_base, token, str(bill_id))
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.bills.get",
+        connector_id=cid,
+        data={"bill": data.get("Bill") or data},
+    )
+
+
+def _exec_quickbooks_companyinfo_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    try:
+        data = get_company_info(api_base, token)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.companyinfo.get",
+        connector_id=cid,
+        data={"companyInfo": data.get("CompanyInfo") or data},
+    )
+
+
+def _stripe_connector_and_key(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str | None]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "stripe", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active Stripe connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "stripe", cid)
+    try:
+        api_key, stripe_account = resolve_stripe_credentials(ctx.client, ctx.org_id, cid, ctx.settings)
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return cid, api_key, stripe_account
+
+
+def _handle_stripe_error(exc: StripeAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_stripe_invoices_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key, stripe_account = _stripe_connector_and_key(ctx, params)
+    try:
+        data = list_invoices(
+            api_key,
+            stripe_account=stripe_account,
+            customer_id=params.get("customer_id") or params.get("customerId"),
+            status=params.get("status"),
+            limit=int(params.get("limit") or params.get("max_results") or 10),
+            starting_after=params.get("starting_after") or params.get("startingAfter"),
+        )
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="stripe.invoices.list",
+        connector_id=cid,
+        data={"invoices": data},
+    )
+
+
+def _exec_stripe_subscriptions_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key, stripe_account = _stripe_connector_and_key(ctx, params)
+    subscription_id = params.get("subscription_id") or params.get("subscriptionId")
+    if not subscription_id:
+        raise ToolValidationError("stripe.subscriptions.get requires subscription_id")
+    try:
+        data = get_subscription(api_key, str(subscription_id), stripe_account=stripe_account)
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="stripe.subscriptions.get",
+        connector_id=cid,
+        data={"subscription": data},
+    )
+
+
+def _pagerduty_str_list(params: dict[str, Any], *keys: str) -> list[str] | None:
+    for key in keys:
+        val = params.get(key)
+        if val is None:
+            continue
+        if isinstance(val, list):
+            return [str(item) for item in val if item is not None]
+        if isinstance(val, str):
+            parts = [part.strip() for part in val.split(",") if part.strip()]
+            return parts or None
+    return None
+
+
+def _pagerduty_connector_session(
+    ctx: ToolContext, params: dict[str, Any]
+) -> tuple[str, str, dict[str, Any]]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn: dict[str, Any] | None = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "pagerduty", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active PagerDuty connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "pagerduty", cid)
+    token, err = ensure_pagerduty_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token:
+        raise ToolAuthExpiredError(err or "PagerDuty OAuth not connected")
+    return cid, token, conn
+
+
+def _pagerduty_connector_read(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    cid, token, _conn = _pagerduty_connector_session(ctx, params)
+    return cid, token
+
+
+def _pagerduty_connector_and_token(
+    ctx: ToolContext, params: dict[str, Any]
+) -> tuple[str, str, str]:
+    cid, token, conn = _pagerduty_connector_session(ctx, params)
+    config = conn.get("config") or {}
+    from_email = (
+        params.get("from_email")
+        or params.get("fromEmail")
+        or params.get("requester_email")
+        or config.get("pagerduty_requester_email")
+    )
+    if not from_email:
+        try:
+            user = fetch_pagerduty_user(token)
+            from_email = user.get("email")
+        except PagerDutyAPIError:
+            from_email = None
+    if not from_email:
+        raise ToolValidationError(
+            "pagerduty actions require from_email or a connected user with email on the connector"
+        )
+    return cid, token, str(from_email)
+
+
+def _handle_pagerduty_error(exc: PagerDutyAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_pagerduty_incidents_acknowledge(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.acknowledge requires incident_id")
+    try:
+        data = acknowledge_incident(token, str(incident_id), from_email=from_email)
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.acknowledge",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _exec_pagerduty_incidents_add_note(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    content = params.get("content") or params.get("note") or params.get("body")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.add_note requires incident_id")
+    if not content:
+        raise ToolValidationError("pagerduty.incidents.add_note requires content")
+    try:
+        data = add_incident_note(token, str(incident_id), str(content), from_email=from_email)
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.add_note",
+        connector_id=cid,
+        data={"note": data.get("note", data)},
+    )
+
+
+def _exec_pagerduty_incidents_escalate(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.escalate requires incident_id")
+    level = params.get("escalation_level") or params.get("escalationLevel")
+    level_int = int(level) if level is not None else None
+    try:
+        data = escalate_incident(
+            token,
+            str(incident_id),
+            from_email=from_email,
+            escalation_level=level_int,
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.escalate",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _exec_pagerduty_incidents_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.get requires incident_id")
+    try:
+        data = get_incident(token, str(incident_id))
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.get",
+        connector_id=cid,
+        data={"incident": data},
+    )
+
+
+def _exec_pagerduty_incidents_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    try:
+        data = list_incidents(
+            token,
+            statuses=_pagerduty_str_list(params, "statuses", "status"),
+            service_ids=_pagerduty_str_list(params, "service_ids", "serviceIds", "service_id"),
+            urgencies=_pagerduty_str_list(params, "urgencies", "urgency"),
+            limit=int(params.get("limit") or params.get("max_results") or 25),
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.list",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data), "more": data.get("more")},
+    )
+
+
+def _exec_pagerduty_incidents_notes_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.notes.list requires incident_id")
+    try:
+        data = list_incident_notes(token, str(incident_id))
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.notes.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_pagerduty_services_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    try:
+        data = list_services(
+            token,
+            query=params.get("query") or params.get("q"),
+            limit=int(params.get("limit") or params.get("max_results") or 25),
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.services.list",
+        connector_id=cid,
+        data={"services": data.get("services", data), "more": data.get("more")},
+    )
+
+
+def _exec_pagerduty_oncalls_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _pagerduty_connector_read(ctx, params)
+    try:
+        data = list_oncalls(
+            token,
+            schedule_ids=_pagerduty_str_list(params, "schedule_ids", "scheduleIds", "schedule_id"),
+            escalation_policy_ids=_pagerduty_str_list(
+                params, "escalation_policy_ids", "escalationPolicyIds", "escalation_policy_id"
+            ),
+            limit=int(params.get("limit") or params.get("max_results") or 25),
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.oncalls.list",
+        connector_id=cid,
+        data={"oncalls": data.get("oncalls", data), "more": data.get("more")},
+    )
+
+
+def _exec_pagerduty_incidents_resolve(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.resolve requires incident_id")
+    resolution = params.get("resolution") or params.get("resolve_note") or params.get("note")
+    try:
+        data = resolve_incident(
+            token,
+            str(incident_id),
+            from_email=from_email,
+            resolution=str(resolution) if resolution else None,
+        )
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.resolve",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _exec_pagerduty_incidents_reassign(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, from_email = _pagerduty_connector_and_token(ctx, params)
+    incident_id = params.get("incident_id") or params.get("incidentId")
+    user_id = params.get("user_id") or params.get("userId") or params.get("assignee_id")
+    if not incident_id:
+        raise ToolValidationError("pagerduty.incidents.reassign requires incident_id")
+    if not user_id:
+        raise ToolValidationError("pagerduty.incidents.reassign requires user_id")
+    try:
+        data = reassign_incident(token, str(incident_id), str(user_id), from_email=from_email)
+    except PagerDutyAPIError as exc:
+        raise _handle_pagerduty_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="pagerduty.incidents.reassign",
+        connector_id=cid,
+        data={"incidents": data.get("incidents", data)},
+    )
+
+
+def _jira_connector_and_session(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str]:
+    if ctx.settings.disable_connectors:
+        raise ToolValidationError("Connectors are disabled")
+    connector_id = params.get("connector_id") or ctx.connector_id
+    conn = None
+    if connector_id:
+        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    else:
+        conn = get_connector_by_type(ctx.client, ctx.org_id, "jira", environment_name=ctx.environment_name)
+    if not conn:
+        raise ToolValidationError("No active Jira connector found for org")
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "jira", cid)
+    token, cloud_id, err = ensure_jira_session(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=conn.get("environment") or ctx.environment_name,
+    )
+    if err or not token or not cloud_id:
+        raise ToolAuthExpiredError(err or "Jira OAuth not connected")
+    return cid, token, cloud_id
+
+
+def _handle_jira_error(exc: JiraAPIError) -> ToolError:
+    if exc.status_code == 429:
+        return ToolRateLimitedError(str(exc))
+    if exc.status_code in {401, 403}:
+        return ToolAuthExpiredError(str(exc))
+    return ToolValidationError(str(exc))
+
+
+def _exec_jira_issues_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    project_key = params.get("project_key") or params.get("projectKey")
+    summary = params.get("summary")
+    issue_type = params.get("issue_type") or params.get("issueType") or "Task"
+    if not project_key:
+        raise ToolValidationError("jira.issues.create requires project_key")
+    if not summary:
+        raise ToolValidationError("jira.issues.create requires summary")
+    extra = params.get("fields")
+    field_dict = extra if isinstance(extra, dict) else None
+    try:
+        data = jira_create_issue(
+            cloud_id,
+            token,
+            project_key=str(project_key),
+            summary=str(summary),
+            issue_type=str(issue_type),
+            description=params.get("description"),
+            fields=field_dict,
+        )
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.create",
+        connector_id=cid,
+        data={"issue": data},
+    )
+
+
+def _exec_jira_issues_assign(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    account_id = params.get("account_id") or params.get("accountId") or params.get("assignee_account_id")
+    if not issue_id:
+        raise ToolValidationError("jira.issues.assign requires issue_id or issue_key")
+    if not account_id:
+        raise ToolValidationError("jira.issues.assign requires account_id")
+    try:
+        data = assign_issue(cloud_id, token, str(issue_id), str(account_id))
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.assign",
+        connector_id=cid,
+        data={"assigned": data or {"ok": True}},
+    )
+
+
+def _exec_jira_issues_transition(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    transition_id = params.get("transition_id") or params.get("transitionId")
+    if not issue_id:
+        raise ToolValidationError("jira.issues.transition requires issue_id or issue_key")
+    if not transition_id:
+        raise ToolValidationError("jira.issues.transition requires transition_id")
+    try:
+        data = transition_issue(cloud_id, token, str(issue_id), str(transition_id))
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.transition",
+        connector_id=cid,
+        data={"transition": data or {"ok": True}},
+    )
+
+
+def _exec_jira_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    body = params.get("body") or params.get("comment") or params.get("text")
+    if not issue_id:
+        raise ToolValidationError("jira.issues.comment requires issue_id or issue_key")
+    if not body:
+        raise ToolValidationError("jira.issues.comment requires body")
+    try:
+        data = add_issue_comment(cloud_id, token, str(issue_id), str(body))
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.comment",
+        connector_id=cid,
+        data={"comment": data},
+    )
+
+
+def _issue_id_from_params(params: dict[str, Any]) -> str | None:
+    raw = params.get("issue_id") or params.get("issueId") or params.get("issue_key") or params.get("issueKey")
+    return str(raw).strip() if raw else None
+
+
+def _exec_jira_issues_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = _issue_id_from_params(params)
+    if not issue_id:
+        raise ToolValidationError("jira.issues.get requires issue_id or issue_key")
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    try:
+        data = get_issue(cloud_id, token, issue_id, fields=field_list)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.get",
+        connector_id=cid,
+        data={"issue": data},
+    )
+
+
+def _exec_jira_issues_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    jql = params.get("jql")
+    if not jql:
+        project = params.get("project_key") or params.get("projectKey")
+        status = params.get("status")
+        assignee = params.get("assignee")
+        parts: list[str] = []
+        if project:
+            parts.append(f'project = "{project}"')
+        if status:
+            parts.append(f'status = "{status}"')
+        if assignee:
+            parts.append(f'assignee = "{assignee}"')
+        jql = " AND ".join(parts) if parts else ""
+    if not jql:
+        raise ToolValidationError(
+            "jira.issues.search requires jql or at least one of project_key, status, assignee"
+        )
+    fields = params.get("fields")
+    field_list = fields if isinstance(fields, list) else None
+    limit = int(params.get("limit") or params.get("max_results") or 50)
+    try:
+        data = search_issues(cloud_id, token, str(jql), max_results=limit, fields=field_list)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.search",
+        connector_id=cid,
+        data={"search": data},
+    )
+
+
+def _exec_jira_issues_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = _issue_id_from_params(params)
+    fields = params.get("fields") or {}
+    if not issue_id:
+        raise ToolValidationError("jira.issues.update requires issue_id or issue_key")
+    if not isinstance(fields, dict) or not fields:
+        summary = params.get("summary")
+        description = params.get("description")
+        if summary:
+            fields = {"summary": summary}
+        if description:
+            fields = {**fields, "description": description}
+    if not fields:
+        raise ToolValidationError("jira.issues.update requires fields object or summary/description")
+    try:
+        data = update_issue(cloud_id, token, issue_id, fields)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.update",
+        connector_id=cid,
+        data={"issue": data or {"ok": True}},
+    )
+
+
+def _exec_jira_issues_transitions_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    issue_id = _issue_id_from_params(params)
+    if not issue_id:
+        raise ToolValidationError("jira.issues.transitions.list requires issue_id or issue_key")
+    try:
+        data = list_issue_transitions(cloud_id, token, issue_id)
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.issues.transitions.list",
+        connector_id=cid,
+        data={"transitions": data},
+    )
+
+
+def _exec_jira_projects_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    try:
+        data = list_projects(
+            cloud_id,
+            token,
+            query=params.get("query"),
+            max_results=int(params.get("limit") or params.get("max_results") or 50),
+        )
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="jira.projects.list",
+        connector_id=cid,
+        data={"projects": data},
+    )
+
+
+def _exec_jira_users_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, cloud_id = _jira_connector_and_session(ctx, params)
+    query = params.get("query") or params.get("email") or params.get("display_name")
+    if not query:
+        raise ToolValidationError("jira.users.search requires query, email, or display_name")
+    try:
+        data = search_users(
+            cloud_id,
+            token,
+            str(query),
+            max_results=int(params.get("limit") or params.get("max_results") or 20),
+        )
+    except JiraAPIError as exc:
+        raise _handle_jira_error(exc) from exc
+    users = data if isinstance(data, list) else data.get("users") or data
+    return NormalizedResult(
+        success=True,
+        action="jira.users.search",
+        connector_id=cid,
+        data={"users": users},
+    )
+
+
 def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     if ctx.settings.disable_connectors:
         raise ToolValidationError("Connectors are disabled")
@@ -616,14 +1828,37 @@ def _github_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
     return cid, token
 
 
-def _google_calendar_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
-    conn = _connector_by_type(ctx, "google_calendar", params)
+def _google_vendor_token(ctx: ToolContext, vendor: str, params: dict[str, Any]) -> tuple[str, str]:
+    from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+
+    conn = _connector_by_type(ctx, vendor, params)
     cid = str(conn["id"])
-    _enforce_tool_rate_limit(ctx, "google_calendar", cid)
-    token = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
-    if not token:
-        raise ToolAuthExpiredError("Google Calendar access_token not configured")
-    return cid, token
+    _enforce_tool_rate_limit(ctx, vendor, cid)
+    oauth_token, oauth_err = ensure_google_vendor_session(
+        ctx.client, ctx.org_id, cid, ctx.settings, environment_name=ctx.environment_name
+    )
+    if oauth_token:
+        return cid, oauth_token
+    if vendor == "google_calendar":
+        legacy = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
+        if legacy:
+            return cid, legacy
+    raise ToolAuthExpiredError(oauth_err or f"{vendor} not connected")
+
+
+def _google_calendar_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    return _google_vendor_token(ctx, "google_calendar", params)
+
+
+def _ga_property_id(conn: dict[str, Any], params: dict[str, Any]) -> str:
+    pid = params.get("property_id") or params.get("propertyId")
+    if pid:
+        return str(pid).strip()
+    cfg = conn.get("config") or {}
+    linked = (cfg.get("property_id") or cfg.get("propertyId") or "").strip()
+    if not linked:
+        raise ToolValidationError("analytics actions require property_id or linked GA4 property")
+    return linked
 
 
 def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
@@ -811,6 +2046,175 @@ def _exec_calendar_events_create(ctx: ToolContext, params: dict[str, Any]) -> No
     return NormalizedResult(success=True, action="calendar.events.create", connector_id=cid, data={"event": event})
 
 
+def _exec_analytics_properties_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_analytics import GoogleAnalyticsAPIError, list_ga4_properties
+
+    cid, token = _google_vendor_token(ctx, "google_analytics", params)
+    try:
+        properties = list_ga4_properties(token)
+    except GoogleAnalyticsAPIError as exc:
+        raise _vendor_api_error(exc, "google_analytics") from exc
+    return NormalizedResult(
+        success=True,
+        action="analytics.properties.list",
+        connector_id=cid,
+        data={"properties": properties},
+    )
+
+
+def _exec_analytics_reports_run(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_analytics import GoogleAnalyticsAPIError, run_ga4_report
+
+    conn = _connector_by_type(ctx, "google_analytics", params)
+    cid, token = _google_vendor_token(ctx, "google_analytics", params)
+    property_id = _ga_property_id(conn, params)
+    try:
+        report = run_ga4_report(
+            token,
+            property_id,
+            start_date=str(params.get("start_date") or params.get("startDate") or "7daysAgo"),
+            end_date=str(params.get("end_date") or params.get("endDate") or "today"),
+            dimensions=params.get("dimensions"),
+            metrics=params.get("metrics"),
+        )
+    except GoogleAnalyticsAPIError as exc:
+        raise _vendor_api_error(exc, "google_analytics") from exc
+    return NormalizedResult(
+        success=True,
+        action="analytics.reports.run",
+        connector_id=cid,
+        data={"property_id": property_id, "report": report},
+    )
+
+
+def _exec_gmail_messages_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, list_messages
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    try:
+        data = list_messages(
+            token,
+            query=params.get("query") or params.get("q"),
+            max_results=int(params.get("max_results") or params.get("maxResults") or 25),
+        )
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.messages.list", connector_id=cid, data=data)
+
+
+def _exec_gmail_messages_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, get_message
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    message_id = params.get("message_id") or params.get("messageId")
+    if not message_id:
+        raise ToolValidationError("gmail.messages.get requires message_id")
+    try:
+        data = get_message(token, str(message_id))
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.messages.get", connector_id=cid, data={"message": data})
+
+
+def _exec_gmail_messages_send(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, send_message
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    to = params.get("to")
+    subject = params.get("subject")
+    body = params.get("body") or params.get("text")
+    if not to or not subject or not body:
+        raise ToolValidationError("gmail.messages.send requires to, subject, body")
+    try:
+        data = send_message(token, to=str(to), subject=str(subject), body=str(body))
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.messages.send", connector_id=cid, data=data)
+
+
+def _exec_drive_files_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_drive import GoogleDriveAPIError, list_files
+
+    cid, token = _google_vendor_token(ctx, "google_drive", params)
+    try:
+        data = list_files(
+            token,
+            page_size=int(params.get("page_size") or params.get("pageSize") or 25),
+            query=params.get("query") or params.get("q"),
+        )
+    except GoogleDriveAPIError as exc:
+        raise _vendor_api_error(exc, "google_drive") from exc
+    return NormalizedResult(success=True, action="drive.files.list", connector_id=cid, data=data)
+
+
+def _exec_drive_files_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_drive import GoogleDriveAPIError, get_file
+
+    cid, token = _google_vendor_token(ctx, "google_drive", params)
+    file_id = params.get("file_id") or params.get("fileId")
+    if not file_id:
+        raise ToolValidationError("drive.files.get requires file_id")
+    try:
+        data = get_file(token, str(file_id))
+    except GoogleDriveAPIError as exc:
+        raise _vendor_api_error(exc, "google_drive") from exc
+    return NormalizedResult(success=True, action="drive.files.get", connector_id=cid, data={"file": data})
+
+
+def _exec_sheets_spreadsheets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_sheets import GoogleSheetsAPIError, get_spreadsheet
+
+    cid, token = _google_vendor_token(ctx, "google_sheets", params)
+    spreadsheet_id = params.get("spreadsheet_id") or params.get("spreadsheetId")
+    if not spreadsheet_id:
+        raise ToolValidationError("sheets.spreadsheets.get requires spreadsheet_id")
+    try:
+        data = get_spreadsheet(token, str(spreadsheet_id))
+    except GoogleSheetsAPIError as exc:
+        raise _vendor_api_error(exc, "google_sheets") from exc
+    return NormalizedResult(
+        success=True,
+        action="sheets.spreadsheets.get",
+        connector_id=cid,
+        data={"spreadsheet": data},
+    )
+
+
+def _exec_sheets_values_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_sheets import GoogleSheetsAPIError, get_values
+
+    cid, token = _google_vendor_token(ctx, "google_sheets", params)
+    spreadsheet_id = params.get("spreadsheet_id") or params.get("spreadsheetId")
+    range_a1 = params.get("range") or params.get("rangeA1")
+    if not spreadsheet_id or not range_a1:
+        raise ToolValidationError("sheets.values.get requires spreadsheet_id and range")
+    try:
+        data = get_values(token, str(spreadsheet_id), str(range_a1))
+    except GoogleSheetsAPIError as exc:
+        raise _vendor_api_error(exc, "google_sheets") from exc
+    return NormalizedResult(success=True, action="sheets.values.get", connector_id=cid, data=data)
+
+
+def _exec_docs_documents_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_docs import GoogleDocsAPIError, document_plain_text, get_document
+
+    cid, token = _google_vendor_token(ctx, "google_docs", params)
+    document_id = params.get("document_id") or params.get("documentId")
+    if not document_id:
+        raise ToolValidationError("docs.documents.get requires document_id")
+    try:
+        doc = get_document(token, str(document_id))
+        text = document_plain_text(doc)
+    except GoogleDocsAPIError as exc:
+        raise _vendor_api_error(exc, "google_docs") from exc
+    return NormalizedResult(
+        success=True,
+        action="docs.documents.get",
+        connector_id=cid,
+        data={"document": doc, "plain_text": text},
+    )
+
+
 _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "slack.post_message": _exec_slack_post_message,
     "email.send": _exec_email_send,
@@ -826,6 +2230,52 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.create": _exec_hubspot_deals_create,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
+    "salesforce.leads.get": _exec_salesforce_leads_get,
+    "salesforce.leads.update": _exec_salesforce_leads_update,
+    "salesforce.accounts.get": _exec_salesforce_accounts_get,
+    "salesforce.opportunities.create": _exec_salesforce_opportunities_create,
+    "salesforce.opportunities.update_stage": _exec_salesforce_opportunities_update_stage,
+    "salesforce.tasks.create": _exec_salesforce_tasks_create,
+    "salesforce.leads.create": _exec_salesforce_leads_create,
+    "salesforce.leads.search": _exec_salesforce_leads_search,
+    "salesforce.opportunities.get": _exec_salesforce_opportunities_get,
+    "salesforce.opportunities.update": _exec_salesforce_opportunities_update,
+    "salesforce.accounts.create": _exec_salesforce_accounts_create,
+    "salesforce.accounts.update": _exec_salesforce_accounts_update,
+    "quickbooks.invoices.list": _exec_quickbooks_invoices_list,
+    "quickbooks.invoices.get": _exec_quickbooks_invoices_get,
+    "quickbooks.payments.list": _exec_quickbooks_payments_list,
+    "quickbooks.vendors.get": _exec_quickbooks_vendors_get,
+    "quickbooks.customers.list": _exec_quickbooks_customers_list,
+    "quickbooks.customers.get": _exec_quickbooks_customers_get,
+    "quickbooks.customers.search": _exec_quickbooks_customers_search,
+    "quickbooks.vendors.list": _exec_quickbooks_vendors_list,
+    "quickbooks.accounts.list": _exec_quickbooks_accounts_list,
+    "quickbooks.bills.list": _exec_quickbooks_bills_list,
+    "quickbooks.bills.get": _exec_quickbooks_bills_get,
+    "quickbooks.companyinfo.get": _exec_quickbooks_companyinfo_get,
+    "stripe.invoices.list": _exec_stripe_invoices_list,
+    "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
+    "pagerduty.incidents.acknowledge": _exec_pagerduty_incidents_acknowledge,
+    "pagerduty.incidents.add_note": _exec_pagerduty_incidents_add_note,
+    "pagerduty.incidents.escalate": _exec_pagerduty_incidents_escalate,
+    "pagerduty.incidents.get": _exec_pagerduty_incidents_get,
+    "pagerduty.incidents.list": _exec_pagerduty_incidents_list,
+    "pagerduty.incidents.notes.list": _exec_pagerduty_incidents_notes_list,
+    "pagerduty.incidents.resolve": _exec_pagerduty_incidents_resolve,
+    "pagerduty.incidents.reassign": _exec_pagerduty_incidents_reassign,
+    "pagerduty.services.list": _exec_pagerduty_services_list,
+    "pagerduty.oncalls.list": _exec_pagerduty_oncalls_list,
+    "jira.issues.create": _exec_jira_issues_create,
+    "jira.issues.get": _exec_jira_issues_get,
+    "jira.issues.search": _exec_jira_issues_search,
+    "jira.issues.update": _exec_jira_issues_update,
+    "jira.issues.assign": _exec_jira_issues_assign,
+    "jira.issues.transition": _exec_jira_issues_transition,
+    "jira.issues.transitions.list": _exec_jira_issues_transitions_list,
+    "jira.issues.comment": _exec_jira_issues_comment,
+    "jira.projects.list": _exec_jira_projects_list,
+    "jira.users.search": _exec_jira_users_search,
     "zendesk.tickets.get": _exec_zendesk_tickets_get,
     "zendesk.tickets.create": _exec_zendesk_tickets_create,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,
@@ -836,6 +2286,16 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "github.pulls.request_reviewer": _exec_github_pulls_request_reviewer,
     "calendar.freebusy": _exec_calendar_freebusy,
     "calendar.events.create": _exec_calendar_events_create,
+    "analytics.properties.list": _exec_analytics_properties_list,
+    "analytics.reports.run": _exec_analytics_reports_run,
+    "gmail.messages.list": _exec_gmail_messages_list,
+    "gmail.messages.get": _exec_gmail_messages_get,
+    "gmail.messages.send": _exec_gmail_messages_send,
+    "drive.files.list": _exec_drive_files_list,
+    "drive.files.get": _exec_drive_files_get,
+    "sheets.spreadsheets.get": _exec_sheets_spreadsheets_get,
+    "sheets.values.get": _exec_sheets_values_get,
+    "docs.documents.get": _exec_docs_documents_get,
 }
 
 # Workflow step type → canonical tool action
@@ -938,12 +2398,45 @@ def tool_context_from_step(context: Any) -> ToolContext:
     )
 
 
-def params_for_step(step_type: str, config: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
+def _resolve_param_source(
+    spec: Any,
+    parameters: dict[str, Any],
+    step_outputs: dict[str, Any] | None,
+) -> Any:
+    if isinstance(spec, dict) and spec.get("from_step"):
+        step_id = str(spec["from_step"])
+        path = spec.get("path") or []
+        output = (step_outputs or {}).get(step_id) or {}
+        value: Any = output
+        for key in path:
+            if not isinstance(value, dict):
+                return None
+            value = value.get(key)
+        return value
+    if isinstance(spec, str) and spec.startswith("$"):
+        return parameters.get(spec[1:])
+    return spec
+
+
+def params_for_step(
+    step_type: str,
+    config: dict[str, Any],
+    parameters: dict[str, Any],
+    *,
+    step_outputs: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Map workflow step config + parameters to invoke_tool params."""
     cfg = config or {}
     params = dict(parameters)
     if cfg.get("connector_id"):
         params["connector_id"] = cfg["connector_id"]
+    if step_type == "invoke_tool":
+        sources = cfg.get("param_sources") or cfg.get("params") or {}
+        if isinstance(sources, dict):
+            for key, spec in sources.items():
+                resolved = _resolve_param_source(spec, parameters, step_outputs)
+                if resolved is not None and resolved != "":
+                    params[key] = resolved
     if step_type == "slack_post_message":
         msg_key = cfg.get("message_input_key", "message")
         params["message"] = parameters.get(msg_key, parameters.get("message", ""))

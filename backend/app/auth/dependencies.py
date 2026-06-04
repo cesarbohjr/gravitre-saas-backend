@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, Header, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
+from app.auth.jwt_verify import decode_supabase_jwt
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, org_id_ctx, user_id_ctx
 
@@ -39,14 +40,7 @@ async def get_current_user(
         )
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            audience=settings.jwt_audience,
-            issuer=settings.jwt_issuer,
-            algorithms=["HS256"],
-            leeway=settings.supabase_jwt_leeway_seconds,
-        )
+        payload = decode_supabase_jwt(token, settings)
     except jwt.ExpiredSignatureError:
         logger.warning("401 auth_failure reason=%s", REASON_EXPIRED)
         raise HTTPException(

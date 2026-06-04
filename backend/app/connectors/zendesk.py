@@ -29,6 +29,7 @@ def _request(
     path: str,
     *,
     json_body: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     url = f"https://{subdomain}.zendesk.com/api/v2{path}"
     headers = {
@@ -36,7 +37,7 @@ def _request(
         "Content-Type": "application/json",
     }
     with httpx.Client(timeout=TIMEOUT_SEC) as client:
-        response = client.request(method, url, headers=headers, json=json_body)
+        response = client.request(method, url, headers=headers, json=json_body, params=params)
     if response.status_code >= 400:
         detail: Any = None
         try:
@@ -112,6 +113,49 @@ def update_ticket(
         json_body={"ticket": ticket},
     )
     return data.get("ticket") or data
+
+
+def search_tickets(
+    subdomain: str,
+    email: str,
+    api_token: str,
+    *,
+    query: str,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    """Zendesk search API — e.g. type:ticket status:solved updated>YYYY-MM-DD."""
+    if not query.strip():
+        raise ZendeskAPIError("search query is required")
+    per_page = min(max(int(limit), 1), 100)
+    data = _request(
+        subdomain,
+        email,
+        api_token,
+        "GET",
+        "/search.json",
+        params={"query": query, "per_page": per_page},
+    )
+    tickets: list[dict[str, Any]] = []
+    for item in data.get("results") or []:
+        if not isinstance(item, dict):
+            continue
+        ticket = item.get("ticket") if item.get("result_type") == "ticket" else item
+        if isinstance(ticket, dict):
+            tickets.append(dict(ticket))
+    return tickets
+
+
+def list_resolved_tickets_since(
+    subdomain: str,
+    email: str,
+    api_token: str,
+    *,
+    since_date: str,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    """Resolved/solved tickets updated on or after since_date (YYYY-MM-DD)."""
+    q = f"type:ticket status:solved updated>={since_date}"
+    return search_tickets(subdomain, email, api_token, query=q, limit=limit)
 
 
 def add_ticket_tags(

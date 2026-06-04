@@ -1,9 +1,11 @@
 """BE-00: Config and environment wiring. Loads from .env; no secrets in code."""
 from functools import lru_cache
 
-from pydantic import ValidationError
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, field_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.connectors.secret_key import validate_connector_secrets_encryption_key
 
 
 class Settings(BaseSettings):
@@ -17,7 +19,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_anon_key: str
     supabase_service_role_key: str
-    supabase_jwt_secret: str  # Project Settings → API → JWT Secret
+    supabase_jwt_secret: str  # Legacy HS256 secret; ES256 tokens verified via JWKS
     # JWT validation: issuer must match (e.g. https://<project-ref>.supabase.co/auth/v1)
     supabase_jwt_issuer: str = ""
     # Optional; default "authenticated" used if empty
@@ -74,7 +76,7 @@ class Settings(BaseSettings):
     # memory (always per-process), redis (require Redis — falls back on error).
     circuit_breaker_backend: str = "auto"
 
-    # IN-00: Fernet key for connector_secrets (generate: from cryptography.fernet import Fernet; Fernet.generate_key())
+    # IN-00: 32-byte connector secret key as 64-char hex (node backend/scripts/generate-connector-encryption-key.mjs)
     connector_secrets_encryption_key: str = ""
     # Phase 15: AES-256-GCM key for connector/source config (32-byte base64 or raw)
     encryption_key: str = ""
@@ -107,6 +109,31 @@ class Settings(BaseSettings):
     # HubSpot inbound webhooks (STA-16) — platform operator sets once per app
     hubspot_app_id: str = ""
     hubspot_developer_api_key: str = ""
+    # Salesforce OAuth (STA-30)
+    salesforce_client_id: str = ""
+    salesforce_client_secret: str = ""
+    salesforce_sandbox_client_id: str = ""
+    salesforce_sandbox_client_secret: str = ""
+    # QuickBooks Online OAuth (STA-33)
+    quickbooks_client_id: str = ""
+    quickbooks_client_secret: str = ""
+    quickbooks_sandbox_client_id: str = ""
+    quickbooks_sandbox_client_secret: str = ""
+    # Jira Cloud OAuth (STA-36)
+    jira_client_id: str = ""
+    jira_client_secret: str = ""
+    # PagerDuty OAuth (STA-37)
+    pagerduty_client_id: str = ""
+    pagerduty_client_secret: str = ""
+    # Notion OAuth (STA-43)
+    notion_client_id: str = ""
+    notion_client_secret: str = ""
+    # Google OAuth — shared "Gravitre OAuth" app (Calendar, GA4, future Gmail/Drive)
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    # Google Analytics OAuth (STA-40); falls back from GOOGLE_OAUTH_* when unset
+    google_analytics_client_id: str = ""
+    google_analytics_client_secret: str = ""
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"
@@ -118,6 +145,8 @@ class Settings(BaseSettings):
     stripe_metered_price_id_command: str = ""
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
+    # In-process knowledge sync scheduler (STA-45). 0 = disabled.
+    knowledge_sync_interval_seconds: int = 3600
     # In-process usage-sync scheduler interval (seconds). 0 disables it (e.g. if
     # you use the GitHub Action / a Railway cron service instead).
     usage_sync_interval_seconds: int = 3600
@@ -171,6 +200,11 @@ class Settings(BaseSettings):
     policy_max_steps: int = 0
     policy_max_runtime_seconds: int = 0
     policy_allowed_envs: str = ""
+
+    @field_validator("connector_secrets_encryption_key")
+    @classmethod
+    def _validate_connector_secrets_key_format(cls, value: str) -> str:
+        return validate_connector_secrets_encryption_key(value)
 
     @model_validator(mode="after")
     def _validate_required_secrets(self) -> "Settings":

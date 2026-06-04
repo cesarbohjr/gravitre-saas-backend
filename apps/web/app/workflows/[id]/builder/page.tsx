@@ -2,7 +2,7 @@
 
 // Workflow Builder - Main canvas for creating and editing workflows
 // Includes: Agent, Task, Connector, Tool, Source, Approval, Decision, and Council node types
-import { useState, useCallback, useEffect, useRef, useMemo, use } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo, use, startTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -2611,7 +2611,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   // Load workflow on mount for UUID routes
   useEffect(() => {
     if (!canPersist) {
-      setIsLoadingGraph(false)
+      startTransition(() => setIsLoadingGraph(false))
       return
     }
     

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import time
 from typing import Any
 from urllib.parse import urlencode
@@ -252,7 +253,20 @@ def complete_salesforce_oauth_connection(
     config = dict((existing.data or [{}])[0].get("config") or {})
     config["oauth_provider"] = "salesforce"
     config["instance_url"] = tokens.get("instance_url")
+    if not (config.get("webhook_secret") or "").strip():
+        config["webhook_secret"] = secrets.token_hex(32)
+    sf_id = tokens.get("id")
+    if isinstance(sf_id, str) and "/id/" in sf_id:
+        parts = sf_id.split("/id/")
+        if len(parts) > 1:
+            org_part = parts[1].split("/")[0]
+            if org_part:
+                config["salesforce_org_id"] = org_part
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
+
+    from app.services.salesforce_trigger_service import on_salesforce_connector_connected
+
+    on_salesforce_connector_connected(client, org_id, connector_id, settings)
 
 
 def ensure_salesforce_access_token(
@@ -263,12 +277,47 @@ def ensure_salesforce_access_token(
     *,
     environment_name: str | None = None,
 ) -> tuple[str | None, str | None]:
+    token, _, err = ensure_salesforce_session(
+        client, org_id, connector_id, settings, environment_name=environment_name
+    )
+    return token, err
+
+
+def _connector_instance_url(client: Any, org_id: str, connector_id: str) -> str | None:
+    row = (
+        client.table("connectors")
+        .select("config")
+        .eq("id", connector_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    config = dict((row.data or [{}])[0].get("config") or {})
+    url = (config.get("instance_url") or "").strip()
+    return url or None
+
+
+def ensure_salesforce_session(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Settings,
+    *,
+    environment_name: str | None = None,
+) -> tuple[str | None, str | None, str | None]:
+    """Return (access_token, instance_url, error)."""
     tokens, err = refresh_salesforce_tokens_if_needed(
         client, org_id, connector_id, settings, environment_name=environment_name
     )
     if err or not tokens:
-        return None, err or "OAuth not completed"
-    return str(tokens.get("access_token") or ""), None
+        return None, None, err or "OAuth not completed"
+    token = str(tokens.get("access_token") or "")
+    instance_url = (tokens.get("instance_url") or _connector_instance_url(client, org_id, connector_id) or "").strip()
+    if not token:
+        return None, None, "OAuth not completed"
+    if not instance_url:
+        return None, None, "Salesforce instance_url missing; reconnect OAuth"
+    return token, instance_url.rstrip("/"), None
 
 
 def salesforce_connection_auth_status(

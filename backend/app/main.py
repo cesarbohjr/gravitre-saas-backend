@@ -54,8 +54,15 @@ from app.routers import (
     environments,
     settings,
 )
-from app.routers import hubspot_triggers
-from app.routers.webhooks import hubspot_inbound
+from app.routers import (
+    hubspot_triggers,
+    knowledge_sync,
+    notion_sync,
+    google_analytics,
+    pagerduty_triggers,
+    salesforce_triggers,
+)
+from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.routers.webhooks import workflow_triggers
 
@@ -90,7 +97,10 @@ def _log_billing_startup_config() -> None:
     ]
     missing_metered = sum(1 for value in metered if not (value or "").strip())
     if not (settings.internal_api_secret or "").strip():
-        logger.warning("Billing configuration: INTERNAL_API_SECRET is missing — sync endpoint is unprotected")
+        logger.warning(
+            "INTERNAL_API_SECRET is missing — internal cron endpoints "
+            "(billing/sync-usage, knowledge/sync-due) are unprotected"
+        )
 
     logger.info(
         "Billing configuration: Stripe=%s, Metered prices=%s, Usage sync=%s",
@@ -113,15 +123,21 @@ async def lifespan(app: FastAPI):
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
+    from app.knowledge.sync_scheduler import (
+        start_knowledge_sync_scheduler,
+        stop_knowledge_sync_scheduler,
+    )
     from app.operators.agent_jobs import start_agent_job_worker, stop_agent_job_worker
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
+    app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
     _log_billing_startup_config()
     try:
         yield
     finally:
         await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
+        await stop_knowledge_sync_scheduler(getattr(app.state, "knowledge_sync_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
 
 
@@ -269,6 +285,9 @@ app.include_router(org.organizations_router)
 app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
+app.include_router(knowledge_sync.internal_router)
+app.include_router(knowledge_sync.admin_router)
+app.include_router(knowledge_sync.webhook_router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(connector_oauth.router)
@@ -290,8 +309,14 @@ app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(stripe_webhooks.router)
 app.include_router(hubspot_inbound.router)
+app.include_router(salesforce_inbound.router)
+app.include_router(pagerduty_inbound.router)
 app.include_router(workflow_triggers.router)
 app.include_router(hubspot_triggers.router)
+app.include_router(salesforce_triggers.router)
+app.include_router(pagerduty_triggers.router)
+app.include_router(notion_sync.router)
+app.include_router(google_analytics.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(execution.router)

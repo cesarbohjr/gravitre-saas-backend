@@ -22,6 +22,52 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "hubspot.deals.create": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.deals.update": ["hubspot:deals:write", "hubspot:*"],
     "hubspot.lists.add_contact": ["hubspot:lists:write", "hubspot:contacts:write", "hubspot:*"],
+    "salesforce.leads.get": ["salesforce:leads:read", "salesforce:*"],
+    "salesforce.leads.update": ["salesforce:leads:write", "salesforce:*"],
+    "salesforce.accounts.get": ["salesforce:accounts:read", "salesforce:*"],
+    "salesforce.opportunities.create": ["salesforce:opportunities:write", "salesforce:*"],
+    "salesforce.opportunities.update_stage": ["salesforce:opportunities:write", "salesforce:*"],
+    "salesforce.tasks.create": ["salesforce:tasks:write", "salesforce:*"],
+    "salesforce.leads.create": ["salesforce:leads:write", "salesforce:*"],
+    "salesforce.leads.search": ["salesforce:leads:read", "salesforce:*"],
+    "salesforce.opportunities.get": ["salesforce:opportunities:read", "salesforce:*"],
+    "salesforce.opportunities.update": ["salesforce:opportunities:write", "salesforce:*"],
+    "salesforce.accounts.create": ["salesforce:accounts:write", "salesforce:*"],
+    "salesforce.accounts.update": ["salesforce:accounts:write", "salesforce:*"],
+    "quickbooks.invoices.list": ["quickbooks:invoices:read", "quickbooks:*"],
+    "quickbooks.invoices.get": ["quickbooks:invoices:read", "quickbooks:*"],
+    "quickbooks.payments.list": ["quickbooks:payments:read", "quickbooks:*"],
+    "quickbooks.vendors.get": ["quickbooks:vendors:read", "quickbooks:*"],
+    "quickbooks.customers.list": ["quickbooks:customers:read", "quickbooks:*"],
+    "quickbooks.customers.get": ["quickbooks:customers:read", "quickbooks:*"],
+    "quickbooks.customers.search": ["quickbooks:customers:read", "quickbooks:*"],
+    "quickbooks.vendors.list": ["quickbooks:vendors:read", "quickbooks:*"],
+    "quickbooks.accounts.list": ["quickbooks:accounts:read", "quickbooks:*"],
+    "quickbooks.bills.list": ["quickbooks:bills:read", "quickbooks:*"],
+    "quickbooks.bills.get": ["quickbooks:bills:read", "quickbooks:*"],
+    "quickbooks.companyinfo.get": ["quickbooks:company:read", "quickbooks:*"],
+    "stripe.invoices.list": ["stripe:invoices:read", "stripe:*"],
+    "stripe.subscriptions.get": ["stripe:subscriptions:read", "stripe:*"],
+    "pagerduty.incidents.acknowledge": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.incidents.add_note": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.incidents.escalate": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.incidents.get": ["pagerduty:incidents:read", "pagerduty:*"],
+    "pagerduty.incidents.list": ["pagerduty:incidents:read", "pagerduty:*"],
+    "pagerduty.incidents.notes.list": ["pagerduty:incidents:read", "pagerduty:*"],
+    "pagerduty.incidents.resolve": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.incidents.reassign": ["pagerduty:incidents:write", "pagerduty:*"],
+    "pagerduty.services.list": ["pagerduty:services:read", "pagerduty:*"],
+    "pagerduty.oncalls.list": ["pagerduty:oncalls:read", "pagerduty:*"],
+    "jira.issues.create": ["jira:issues:write", "jira:*"],
+    "jira.issues.get": ["jira:issues:read", "jira:*"],
+    "jira.issues.search": ["jira:issues:read", "jira:*"],
+    "jira.issues.update": ["jira:issues:write", "jira:*"],
+    "jira.issues.assign": ["jira:issues:write", "jira:*"],
+    "jira.issues.transition": ["jira:issues:write", "jira:*"],
+    "jira.issues.transitions.list": ["jira:issues:read", "jira:*"],
+    "jira.issues.comment": ["jira:issues:write", "jira:*"],
+    "jira.projects.list": ["jira:projects:read", "jira:*"],
+    "jira.users.search": ["jira:users:read", "jira:*"],
     "zendesk.tickets.get": ["zendesk:tickets:read", "zendesk:*"],
     "zendesk.tickets.create": ["zendesk:tickets:write", "zendesk:*"],
     "zendesk.tickets.update": ["zendesk:tickets:write", "zendesk:*"],
@@ -32,6 +78,16 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "github.pulls.request_reviewer": ["github:pulls:write", "github:*"],
     "calendar.freebusy": ["calendar:read", "calendar:*"],
     "calendar.events.create": ["calendar:write", "calendar:*"],
+    "analytics.properties.list": ["analytics:read", "google_analytics:*", "analytics:*"],
+    "analytics.reports.run": ["analytics:read", "google_analytics:*", "analytics:*"],
+    "gmail.messages.list": ["gmail:read", "gmail:*"],
+    "gmail.messages.get": ["gmail:read", "gmail:*"],
+    "gmail.messages.send": ["gmail:send", "gmail:write", "gmail:*"],
+    "drive.files.list": ["drive:read", "google_drive:*", "drive:*"],
+    "drive.files.get": ["drive:read", "google_drive:*", "drive:*"],
+    "sheets.spreadsheets.get": ["sheets:read", "google_sheets:*", "sheets:*"],
+    "sheets.values.get": ["sheets:read", "google_sheets:*", "sheets:*"],
+    "docs.documents.get": ["docs:read", "google_docs:*", "docs:*"],
 }
 
 WILDCARD_SCOPE = "*"
@@ -186,6 +242,50 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "hubspot:lists:write",
             "hubspot:deals:read",
             "hubspot:*",
+        ]
+    if system == "salesforce":
+        return [
+            "salesforce:leads:read",
+            "salesforce:leads:write",
+            "salesforce:accounts:read",
+            "salesforce:accounts:write",
+            "salesforce:opportunities:read",
+            "salesforce:opportunities:write",
+            "salesforce:tasks:write",
+            "salesforce:*",
+        ]
+    if system == "quickbooks":
+        return [
+            "quickbooks:invoices:read",
+            "quickbooks:payments:read",
+            "quickbooks:vendors:read",
+            "quickbooks:customers:read",
+            "quickbooks:accounts:read",
+            "quickbooks:bills:read",
+            "quickbooks:company:read",
+            "quickbooks:*",
+        ]
+    if system == "stripe":
+        return [
+            "stripe:invoices:read",
+            "stripe:subscriptions:read",
+            "stripe:*",
+        ]
+    if system == "jira":
+        return [
+            "jira:issues:read",
+            "jira:issues:write",
+            "jira:projects:read",
+            "jira:users:read",
+            "jira:*",
+        ]
+    if system == "pagerduty":
+        return [
+            "pagerduty:incidents:read",
+            "pagerduty:incidents:write",
+            "pagerduty:services:read",
+            "pagerduty:oncalls:read",
+            "pagerduty:*",
         ]
     if system == "slack":
         return ["slack:messages:write", "slack:*"]

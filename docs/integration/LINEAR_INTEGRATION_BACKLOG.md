@@ -40,7 +40,7 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | 2 | T1-002 | [STA-11](https://linear.app/staqbot/issue/STA-11) | Agent-tool permission model ✅ | STA-10 |
 | 3 | T1-003 | [STA-12](https://linear.app/staqbot/issue/STA-12) | Merge dual execution engines ✅ | STA-10 |
 | 4 | T1-004 | [STA-13](https://linear.app/staqbot/issue/STA-13) | Real connector OAuth UX ✅ | STA-10 |
-| 4a | T1-004a | [STA-125](https://linear.app/staqbot/issue/STA-125) | **Platform setup:** HubSpot OAuth app & deployment secrets | STA-13 (code) |
+| 4a | T1-004a | [STA-125](https://linear.app/staqbot/issue/STA-125) | **Platform setup:** HubSpot OAuth app & deployment secrets ✅ (CLI app deployed; Railway env via `npm run hubspot:railway`) | STA-13 (code) |
 | 5 | T1-005 | [STA-14](https://linear.app/staqbot/issue/STA-14) | HubSpot OAuth + token lifecycle ✅ | STA-13, [STA-125](https://linear.app/staqbot/issue/STA-125) |
 | 6 | T1-006 | [STA-15](https://linear.app/staqbot/issue/STA-15) | HubSpot v1 actions (5 core) ✅ | STA-10, STA-11, STA-14 |
 | 7 | T1-007 | [STA-16](https://linear.app/staqbot/issue/STA-16) | HubSpot inbound triggers ✅ | STA-12, STA-14, STA-15 |
@@ -53,6 +53,8 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | 14 | T1-014 | [STA-23](https://linear.app/staqbot/issue/STA-23) | Calendar integration (stretch) ✅ | STA-13 |
 
 **Tier 1 demo milestone:** Seed workflow `backend/app/services/org_seed_service.py:89-100` runs live (STA-15 + STA-18).
+
+**Production verification:** `docs/integration/TIER1_PRODUCTION_SMOKE.md` (HubSpot env: `npm run hubspot:fill-env` after `npm run hubspot:open`).
 
 ### Platform ops (before STA-14)
 
@@ -83,21 +85,21 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 | Order | Ref | Linear | Title | Blocked by (Tier 1 / Tier 2) |
 |-------|-----|--------|-------|------------------------------|
-| 1 | T2-001 | [STA-30](https://linear.app/staqbot/issue/STA-30) | Salesforce OAuth | STA-10, STA-13 |
-| 2 | T2-002 | [STA-31](https://linear.app/staqbot/issue/STA-31) | Salesforce v1 actions | STA-10, STA-11 |
-| 3 | T2-004 | [STA-33](https://linear.app/staqbot/issue/STA-33) | QuickBooks OAuth | STA-10, STA-13 |
-| 4 | T2-005 | [STA-34](https://linear.app/staqbot/issue/STA-34) | QuickBooks v1 read actions | STA-10, STA-11 |
-| 5 | T2-006 | [STA-35](https://linear.app/staqbot/issue/STA-35) | Stripe read-only agent tool | STA-10 |
-| 6 | T2-007 | [STA-36](https://linear.app/staqbot/issue/STA-36) | Jira Cloud OAuth + v1 actions | STA-10, STA-13 |
-| 7 | T2-008 | [STA-37](https://linear.app/staqbot/issue/STA-37) | PagerDuty OAuth + triggers | STA-12 |
-| 8 | T2-009 | [STA-38](https://linear.app/staqbot/issue/STA-38) | PagerDuty v1 actions | STA-10 |
-| 9 | T2-010 | [STA-39](https://linear.app/staqbot/issue/STA-39) | DevOps cross-tool workflow | STA-36–38, Slack |
-| 10 | T2-014 | [STA-43](https://linear.app/staqbot/issue/STA-43) | Notion sync → RAG | STA-20 |
-| 11 | T2-016 | [STA-45](https://linear.app/staqbot/issue/STA-45) | Knowledge sync scheduler | STA-20 |
-| 12 | T2-017 | [STA-46](https://linear.app/staqbot/issue/STA-46) | HubSpot + Zendesk → RAG | STA-15, STA-21 |
-| 13 | T2-003 | [STA-32](https://linear.app/staqbot/issue/STA-32) | Salesforce triggers | STA-12 |
-| 14 | T2-011 | [STA-40](https://linear.app/staqbot/issue/STA-40) | Google Analytics OAuth | STA-13, STA-10 |
-| 15 | T2-012 | [STA-41](https://linear.app/staqbot/issue/STA-41) | GA4 v1 read actions | STA-40 |
+| 1 | T2-001 | [STA-30](https://linear.app/staqbot/issue/STA-30) | Salesforce OAuth ✅ | STA-10, STA-13 |
+| 2 | T2-002 | [STA-31](https://linear.app/staqbot/issue/STA-31) | Salesforce v1 actions ✅ | STA-10, STA-11 |
+| 3 | T2-004 | [STA-33](https://linear.app/staqbot/issue/STA-33) | QuickBooks OAuth ✅ | STA-10, STA-13 |
+| 4 | T2-005 | [STA-34](https://linear.app/staqbot/issue/STA-34) | QuickBooks v1 read actions ✅ | STA-10, STA-11 |
+| 5 | T2-006 | [STA-35](https://linear.app/staqbot/issue/STA-35) | Stripe read-only agent tool ✅ | STA-10 |
+| 6 | T2-007 | [STA-36](https://linear.app/staqbot/issue/STA-36) | Jira Cloud OAuth + v1/v2 actions ✅ | STA-10, STA-13 |
+| 7 | T2-008 | [STA-37](https://linear.app/staqbot/issue/STA-37) | PagerDuty OAuth + triggers ✅ | STA-12 |
+| 8 | T2-009 | [STA-38](https://linear.app/staqbot/issue/STA-38) | PagerDuty v1 actions ✅ | STA-10 |
+| 9 | T2-010 | [STA-39](https://linear.app/staqbot/issue/STA-39) | DevOps cross-tool workflow ✅ | STA-36–38, Slack |
+| 10 | T2-014 | [STA-43](https://linear.app/staqbot/issue/STA-43) | Notion sync → RAG ✅ | STA-20 |
+| 11 | T2-016 | [STA-45](https://linear.app/staqbot/issue/STA-45) | Knowledge sync scheduler ✅ | STA-20 |
+| 12 | T2-017 | [STA-46](https://linear.app/staqbot/issue/STA-46) | HubSpot + Zendesk → RAG ✅ | STA-15, STA-21 |
+| 13 | T2-003 | [STA-32](https://linear.app/staqbot/issue/STA-32) | Salesforce triggers ✅ | STA-12 |
+| 14 | T2-011 | [STA-40](https://linear.app/staqbot/issue/STA-40) | Google Analytics OAuth ✅ | STA-13, STA-10 |
+| 15 | T2-012 | [STA-41](https://linear.app/staqbot/issue/STA-41) | GA4 v1 read actions ✅ | STA-40 |
 | 16 | T2-013 | [STA-42](https://linear.app/staqbot/issue/STA-42) | Marketing attribution workflow | STA-41, STA-15 |
 | 17 | T2-015 | [STA-44](https://linear.app/staqbot/issue/STA-44) | Confluence sync → RAG | STA-20 |
 | 18 | T2-018 | [STA-47](https://linear.app/staqbot/issue/STA-47) | Workflow schedule / cron worker | STA-12 |

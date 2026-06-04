@@ -36,7 +36,17 @@ SALESFORCE_SANDBOX_CLIENT_SECRET=
 Invoke-RestMethod "https://<api-host>/api/connectors/oauth/salesforce/status"
 ```
 
+## Tool actions (STA-31 / v2)
+
+See [SALESFORCE_ACTIONS.md](./SALESFORCE_ACTIONS.md).
+
+## Inbound triggers (STA-32)
+
+See [SALESFORCE_TRIGGERS.md](./SALESFORCE_TRIGGERS.md).
+
 ## Code
 
 - `backend/app/connectors/salesforce_oauth.py`
+- `backend/app/connectors/salesforce.py`
+- `backend/app/services/tool_service.py`
 - `backend/app/routers/connector_oauth.py`

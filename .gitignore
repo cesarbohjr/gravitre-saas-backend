@@ -1,6 +1,8 @@
 # Environment and secrets — NEVER commit
 .env
 .env.*
+backend/.google-oauth-client.json
+backend/.env.operator.local
 .env.local
 .env.*.local
 # ...but DO track example templates (no real secrets)
@@ -10,6 +12,8 @@
 # Supabase
 supabase/.branches
 supabase/.temp
+supabase/.env
+supabase/supabase/
 
 # OS and IDE
 .DS_Store
@@ -43,6 +47,7 @@ build/
 # Local test / verification output (never commit)
 backend/pytest*.txt
 backend/*.txt
+!backend/requirements-dev.txt
 apps/web/*.txt
 build.txt
 tests_list.txt

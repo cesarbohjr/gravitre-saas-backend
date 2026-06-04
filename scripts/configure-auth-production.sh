@@ -98,7 +98,7 @@ PY
 
 discover_vercel_project() {
   local project="${VERCEL_PROJECT:-gravitre-saas-backend}"
-  local team="${VERCEL_ORG_ID:-gravitre-ai}"
+  local team="${VERCEL_ORG_ID:-team_kuQmNfrn5RtMeaWuH88LLuAf}"
 
   if [[ -n "${VERCEL_PROJECT_ID:-}" ]]; then
     echo "${VERCEL_PROJECT_ID}|${team}"
@@ -120,20 +120,22 @@ upsert_vercel_env() {
   local project_id="$3"
   local team_id="$4"
 
-  curl -fsS -X POST "${VERCEL_API}/v10/projects/${project_id}/env?teamId=${team_id}" \
-    -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "$(python3 - <<PY
-import json
+  local payload
+  payload="$(VERCEL_ENV_KEY="$key" VERCEL_ENV_VALUE="$value" python3 - <<'PY'
+import json, os
 print(json.dumps({
-    "key": "${key}",
-    "value": """${value}""",
+    "key": os.environ["VERCEL_ENV_KEY"],
+    "value": os.environ["VERCEL_ENV_VALUE"],
     "type": "plain",
     "target": ["production", "preview", "development"],
-    "upsert": True,
 }))
 PY
-)" >/dev/null
+)"
+
+  curl -fsS -X POST "${VERCEL_API}/v10/projects/${project_id}/env?teamId=${team_id}&upsert=true" \
+    -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
 }
 
 configure_vercel_env() {
@@ -157,7 +159,7 @@ configure_vercel_env() {
 }
 
 deploy_vercel_production() {
-  if [[ "${SKIP_VERCEL_DEPLOY:-0}" == "1" ]]; then
+  if [[ "${SKIP_VERCEL_DEPLOY:-0}" == "1" || "${SKIP_VERCEL_DEPLOY}" == "true" ]]; then
     echo "==> Skipping Vercel deploy (SKIP_VERCEL_DEPLOY=1)"
     return
   fi
@@ -165,14 +167,19 @@ deploy_vercel_production() {
   echo "==> Triggering Vercel production deployment"
   require_cmd npx
   npx --yes vercel deploy --prod --yes --token "$VERCEL_TOKEN" \
-    ${VERCEL_ORG_ID:+--scope "$VERCEL_ORG_ID"} \
-    --cwd apps/web
+    ${VERCEL_ORG_ID:+--scope "$VERCEL_ORG_ID"}
 }
 
 verify_production() {
   echo "==> Verifying production endpoints"
-  curl -fsSI "${APP_URL}/auth/callback?code=invalid-test" | grep -i '^location:' || true
-  curl -fsSI "${APP_URL}/operator" | grep -E '^(HTTP/|location:)' || true
+  local auth_headers operator_headers
+  auth_headers="$(curl -sSI "${APP_URL}/auth/callback?code=invalid-test" || true)"
+  operator_headers="$(curl -sSI "${APP_URL}/operator" || true)"
+  echo "$auth_headers" | grep -i '^location:' || true
+  echo "$operator_headers" | grep -E '^(HTTP/|location:)' || true
+  if echo "$auth_headers" | grep -qi 'session_expired'; then
+    echo "WARNING: auth callback still redirects to session_expired" >&2
+  fi
   echo "    Production checks complete (307 to /login without session_expired is expected for invalid code)."
 }
 
@@ -180,10 +187,12 @@ main() {
   require_cmd curl
   require_cmd python3
 
+  local skip_supabase=0
   if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
-    echo "ERROR: SUPABASE_ACCESS_TOKEN is required." >&2
-    echo "Create one at https://supabase.com/dashboard/account/tokens" >&2
-    exit 1
+    echo "WARNING: SUPABASE_ACCESS_TOKEN not set; skipping Supabase Management API patch." >&2
+    echo "  Use: npm run auth:supabase-google  (linked Supabase CLI)" >&2
+    echo "  Or create a token: https://supabase.com/dashboard/account/tokens" >&2
+    skip_supabase=1
   fi
 
   if [[ -z "${VERCEL_TOKEN:-}" ]]; then
@@ -192,17 +201,20 @@ main() {
     exit 1
   fi
 
-  local project_ref
-  project_ref="$(discover_supabase_project_ref)"
-  export SUPABASE_PROJECT_REF="$project_ref"
-
-  configure_supabase_auth "$project_ref"
+  if [[ "$skip_supabase" -eq 0 ]]; then
+    local project_ref
+    project_ref="$(discover_supabase_project_ref)"
+    export SUPABASE_PROJECT_REF="$project_ref"
+    configure_supabase_auth "$project_ref"
+  else
+    export SUPABASE_PROJECT_REF="${SUPABASE_PROJECT_REF:-smyeexlrqdpymwjmgzqu}"
+  fi
   configure_vercel_env
   deploy_vercel_production
   verify_production
 
   echo ""
-  echo "Done. Supabase project: ${project_ref}"
+  echo "Done. Supabase project: ${SUPABASE_PROJECT_REF}"
   echo "Site URL: ${APP_URL}"
 }
 

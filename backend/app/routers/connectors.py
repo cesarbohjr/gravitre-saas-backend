@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 from app.connectors.repository import (
     create_connector,
     get_connector,
+    get_decrypted_secret,
     list_connectors,
     set_secret,
     update_connector,
@@ -22,6 +23,7 @@ from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_f
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
+from app.connectors.salesforce_oauth import ensure_salesforce_access_token, normalize_vendor as normalize_salesforce_vendor
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
@@ -60,6 +62,38 @@ class SetSecretRequest(BaseModel):
     value: str = Field(..., min_length=1)
 
 
+TOOL_CONNECTOR_VENDORS = frozenset(
+    {
+        "zendesk",
+        "github",
+        "google_calendar",
+    }
+)
+
+ALLOWED_CONNECTOR_VENDORS = frozenset(
+    {
+        "salesforce",
+        "hubspot",
+        "quickbooks",
+        "jira",
+        "pagerduty",
+        "notion",
+        "google_analytics",
+        "gmail",
+        "google_drive",
+        "google_docs",
+        "google_sheets",
+        "slack",
+        "postgresql",
+        "stripe",
+        "microsoft365",
+        "zendesk",
+        "github",
+        "google_calendar",
+    }
+)
+
+
 class ConnectorCreateRequest(BaseModel):
     name: str = Field(..., min_length=1)
     vendor: str = Field(..., min_length=1)
@@ -68,6 +102,8 @@ class ConnectorCreateRequest(BaseModel):
     webhook_url: str | None = Field(default=None, alias="webhookUrl")
     sync_frequency: str | None = Field(default=None, alias="syncFrequency")
     environment_id: str | None = Field(default=None, alias="environmentId")
+    config: dict | None = None
+    secrets: dict[str, str] | None = None
 
 
 class ConnectorUpdateRequest(BaseModel):
@@ -95,6 +131,16 @@ def _docs_url(vendor: str) -> str | None:
         "postgresql": "https://www.postgresql.org/docs/",
         "stripe": "https://stripe.com/docs/api",
         "microsoft365": "https://docs.microsoft.com/en-us/graph/",
+        "quickbooks": "https://developer.intuit.com/app/developer/qbo/docs",
+        "jira": "https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/",
+        "pagerduty": "https://developer.pagerduty.com/docs/",
+        "notion": "https://developers.notion.com/docs",
+        "google_analytics": "https://developers.google.com/analytics/devguides/config/admin/v1",
+        "google_calendar": "https://developers.google.com/calendar/api/guides/overview",
+        "gmail": "https://developers.google.com/gmail/api",
+        "google_drive": "https://developers.google.com/drive/api",
+        "google_docs": "https://developers.google.com/docs/api",
+        "google_sheets": "https://developers.google.com/sheets/api",
     }
     return mapping.get(vendor)
 
@@ -455,7 +501,59 @@ async def test_connector_route(
         if token:
             return {"success": True, "message": "HubSpot connection is valid"}
         return {"success": False, "message": err or "HubSpot connection failed"}
+    if normalize_salesforce_vendor(vendor) == "salesforce":
+        token, err = ensure_salesforce_access_token(
+            client,
+            org_id,
+            str(connector_id),
+            settings,
+            environment_name=data.get("environment") or environment_name,
+        )
+        if token:
+            return {"success": True, "message": "Salesforce connection is valid"}
+        return {"success": False, "message": err or "Salesforce connection failed"}
+    if vendor in TOOL_CONNECTOR_VENDORS:
+        conn = get_connector(client, org_id, str(connector_id), environment_name=environment_name)
+        if not conn:
+            return {"success": False, "message": "Connector not found"}
+        if vendor == "zendesk":
+            cfg = conn.get("config") or {}
+            if not cfg.get("subdomain"):
+                return {"success": False, "message": "Missing subdomain in config"}
+            if not get_decrypted_secret(client, str(connector_id), "email", settings):
+                return {"success": False, "message": "Missing email secret"}
+            if not get_decrypted_secret(client, str(connector_id), "api_token", settings):
+                return {"success": False, "message": "Missing api_token secret"}
+        if vendor == "github":
+            if not get_decrypted_secret(client, str(connector_id), "token", settings):
+                return {"success": False, "message": "Missing token secret"}
+        if vendor in {"google_calendar", "gmail", "google_drive", "google_docs", "google_sheets", "google_analytics"}:
+            from app.connectors.google_vendor_oauth import ensure_google_vendor_session
+
+            token, err = ensure_google_vendor_session(
+                client, org_id, str(connector_id), settings, environment_name=environment_name
+            )
+            if token:
+                return {"success": True, "message": f"{vendor} connection is valid"}
+            if vendor == "google_calendar":
+                legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings)
+                if legacy:
+                    return {"success": True, "message": "Google Calendar access_token configured (legacy)"}
+            return {"success": False, "message": err or f"{vendor} not connected"}
+        return {"success": True, "message": f"{vendor} credentials configured"}
     return {"success": True, "message": "No automated test for this connector type"}
+
+
+@connectors_router.post("/{connector_id}/secrets")
+async def set_connector_secret_alias(
+    connector_id: UUID,
+    body: SetSecretRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Set encrypted connector secret (alias of integrations secrets route)."""
+    return await set_connector_secret(connector_id, body, _admin, environment_name, settings)
 
 
 @connectors_router.post("/{connector_id}/sync", status_code=status.HTTP_202_ACCEPTED)
@@ -464,13 +562,18 @@ async def sync_connector_route_alias(
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    body: ConnectorSyncRequest | None = None,
 ) -> dict:
-    """Manual sync request."""
+    """Manual sync — runs knowledge sync for Notion; legacy status for other connectors."""
+    import asyncio
+
+    from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
+
     _user, org_id = _admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     conn = (
         client.table("connectors")
-        .select("id, status, name, vendor")
+        .select("id, status, name, vendor, type")
         .eq("org_id", org_id)
         .eq("environment", environment_name)
         .eq("id", str(connector_id))
@@ -480,7 +583,31 @@ async def sync_connector_route_alias(
     )
     if not conn.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
-    status_value = conn.data[0].get("status")
+    row = conn.data[0]
+    vendor = str(row.get("type") or row.get("vendor") or "").lower()
+    if vendor in SOURCE_REGISTRY:
+        full_sync = bool((body or ConnectorSyncRequest()).full_sync)
+        try:
+            result = await asyncio.to_thread(
+                trigger_connector_knowledge_sync,
+                client,
+                settings,
+                org_id,
+                str(connector_id),
+                actor_id=str(_user["user_id"]),
+                trigger_type="manual",
+                full_sync=full_sync,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return {
+            "success": True,
+            "status": "completed",
+            "syncId": f"knowledge-{str(connector_id)[:8]}",
+            **result,
+        }
+
+    status_value = row.get("status")
     if status_value == "syncing":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -512,15 +639,10 @@ async def create_connector_route(
     _user, org_id = _admin
     entitlements = resolve_entitlements(settings, org_id)
     connector_limit = (entitlements.get("limits") or {}).get("connectors")
-    vendor = (body.vendor or "").strip().lower()
-    if vendor not in {
-        "salesforce",
-        "hubspot",
-        "slack",
-        "postgresql",
-        "stripe",
-        "microsoft365",
-    }:
+    vendor = (body.vendor or "").strip().lower().replace(" ", "")
+    if vendor == "googlecalendar":
+        vendor = "google_calendar"
+    if vendor not in ALLOWED_CONNECTOR_VENDORS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid vendor")
     plan = get_plan_for_org(create_client(settings.supabase_url, settings.supabase_service_role_key), org_id)
     if vendor in ADVANCED_CONNECTORS:
@@ -561,24 +683,34 @@ async def create_connector_route(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=error_detail("Upgrade required", "UNAUTHORIZED", {"feature": "advanced_connectors"}),
         )
+    connector_status = "active" if vendor in TOOL_CONNECTOR_VENDORS else "healthy"
     row = {
         "org_id": org_id,
         "name": body.name.strip(),
         "vendor": vendor,
         "type": vendor,
         "description": body.description,
-        "status": "healthy",
+        "status": connector_status,
         "environment": environment_name,
         "sync_frequency": body.sync_frequency or "1h",
         "api_key_encrypted": api_key_encrypted,
         "webhook_url": body.webhook_url,
         "docs_url": docs_url,
-        "config": {},
+        "config": body.config or {},
     }
     r = client.table("connectors").insert(row).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
     connector_id = str(r.data[0]["id"])
+    if body.secrets:
+        if not settings.connector_secrets_encryption_key:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Secrets encryption not configured",
+            )
+        for key_name, value in body.secrets.items():
+            if value:
+                set_secret(client, org_id, connector_id, key_name, value, settings)
     write_audit_event(
         client,
         org_id=org_id,

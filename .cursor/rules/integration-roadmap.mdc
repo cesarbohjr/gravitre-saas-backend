@@ -1,0 +1,33 @@
+---
+description: Integration platform Tier 1/2 backlog — use when working on connectors, agents, workflows, or RAG
+globs:
+  - backend/app/connectors/**
+  - backend/app/workflows/**
+  - backend/app/rag/**
+  - backend/app/operators/**
+  - apps/web/app/connectors/**
+  - apps/web/app/workflows/**
+  - docs/integration/**
+---
+
+# Integration roadmap (Linear)
+
+When implementing integrations, agents-as-workers, or workflow execution, follow the prioritized backlog:
+
+**Master doc:** `docs/integration/LINEAR_INTEGRATION_BACKLOG.md`
+
+- **Tier 1 (30 days):** Platform foundation + HubSpot + handoffs — Linear STA-6 through STA-23
+- **Tier 2 (90 days):** Salesforce, Finance, DevOps, Marketing analytics, knowledge sync — STA-24 through STA-49
+- **Tier 3 (6 months):** NetSuite, Workday, LinkedIn SN, Marketo, Segment, marketplace SDK — STA-50 through STA-73
+- **Tier 4 (12 months):** Compliance, VPC/white-label, extended HR/finance, AI governance, HA, marketplace v2 — STA-74 through STA-99
+- **Tier 5 (18 months):** Auto-execute agents, regulated verticals, B2B federation, swarms, platform intelligence — see backlog doc
+
+Do not start Tier 2 connector work until Tier 1 **invoke_tool** (STA-10) and **merge execution engines** (STA-12) are done unless the issue explicitly says otherwise.
+
+Do not start Tier 3 until Tier 1 platform and relevant Tier 2 connector patterns are shipped.
+
+Do not start Tier 4 until Tier 3 marketplace foundation (STA-70, STA-73) for ecosystem epics.
+
+Do not start Tier 5 auto-execute (Epic A) until Tier 1–4 guardrails (STA-10, STA-11, STA-82, STA-90) are shipped.
+
+After completing a Linear issue, update its status in Linear and note blockers for dependent issues in the backlog doc if scope changed.

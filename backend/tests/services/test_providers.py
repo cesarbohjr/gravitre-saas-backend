@@ -144,8 +144,11 @@ class TestGeminiAdapter:
         assert contents[0]["parts"][0].startswith("SYS")
         assert contents[1]["role"] == "model"
 
-    def test_unavailable_without_sdk(self):
-        # google-generativeai is not installed in the test environment.
+    def test_unavailable_without_sdk(self, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.providers.gemini_adapter._try_import",
+            lambda _name: None,
+        )
         adapter = GeminiAdapter(api_key_getter=lambda: "k")
         assert adapter.is_available() is False
 

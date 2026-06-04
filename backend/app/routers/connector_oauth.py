@@ -22,6 +22,58 @@ from app.connectors.hubspot_oauth import (
     hubspot_redirect_uri,
     normalize_vendor,
 )
+from app.connectors.quickbooks_oauth import (
+    complete_quickbooks_oauth_connection,
+    quickbooks_authorize_url,
+    quickbooks_credentials,
+    quickbooks_oauth_configured,
+    quickbooks_redirect_uri,
+    normalize_vendor as normalize_quickbooks_vendor,
+)
+from app.connectors.jira_oauth import (
+    complete_jira_oauth_connection,
+    jira_authorize_url,
+    jira_credentials,
+    jira_oauth_configured,
+    jira_redirect_uri,
+    normalize_vendor as normalize_jira_vendor,
+)
+from app.services.devops_workflow_service import on_pagerduty_connector_connected
+from app.connectors.pagerduty_oauth import (
+    complete_pagerduty_oauth_connection,
+    pagerduty_authorize_url,
+    pagerduty_credentials,
+    pagerduty_oauth_configured,
+    pagerduty_redirect_uri,
+    normalize_vendor as normalize_pagerduty_vendor,
+)
+from app.connectors.notion_oauth import (
+    complete_notion_oauth_connection,
+    notion_authorize_url,
+    notion_credentials,
+    notion_oauth_configured,
+    notion_redirect_uri,
+    normalize_vendor as normalize_notion_vendor,
+)
+from app.connectors.pagerduty_webhooks import pagerduty_inbound_webhook_url
+from app.connectors.salesforce_oauth import (
+    complete_salesforce_oauth_connection,
+    salesforce_authorize_url,
+    salesforce_credentials,
+    salesforce_oauth_configured,
+    salesforce_redirect_uri,
+    normalize_vendor as normalize_salesforce_vendor,
+)
+from app.connectors.google_vendor_oauth import (
+    GOOGLE_OAUTH_VENDORS,
+    VENDOR_DOCS as GOOGLE_VENDOR_DOCS,
+    complete_google_vendor_oauth_connection,
+    google_oauth_configured,
+    google_vendor_authorize_url,
+    google_vendor_redirect_uri,
+    normalize_google_vendor,
+)
+from app.connectors.google_oauth_common import google_oauth_credentials
 from app.connectors.oauth_state import sign_oauth_state, verify_oauth_state
 from app.core.errors import error_detail
 from app.middleware.entitlements import resolve_entitlements
@@ -29,7 +81,36 @@ from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
 
-SUPPORTED_OAUTH_PROVIDERS = frozenset({"hubspot"})
+SUPPORTED_OAUTH_PROVIDERS = frozenset(
+    {
+        "hubspot",
+        "salesforce",
+        "quickbooks",
+        "jira",
+        "pagerduty",
+        "notion",
+    }
+) | GOOGLE_OAUTH_VENDORS
+
+
+def _resolve_oauth_vendor(provider: str) -> str:
+    google = normalize_google_vendor(provider)
+    if google:
+        return google
+    vendor = normalize_vendor(provider)
+    if vendor == "hubspot":
+        return "hubspot"
+    if normalize_salesforce_vendor(provider) == "salesforce":
+        return "salesforce"
+    if normalize_quickbooks_vendor(provider) == "quickbooks":
+        return "quickbooks"
+    if normalize_jira_vendor(provider) == "jira":
+        return "jira"
+    if normalize_pagerduty_vendor(provider) == "pagerduty":
+        return "pagerduty"
+    if normalize_notion_vendor(provider) == "notion":
+        return "notion"
+    return vendor
 
 
 class OAuthStartRequest(BaseModel):
@@ -44,6 +125,15 @@ class OAuthStartResponse(BaseModel):
     authorization_url: str = Field(alias="authorizationUrl")
     connector_id: str = Field(alias="connectorId")
     state: str
+
+    model_config = {"populate_by_name": True}
+
+
+class OAuthProviderStatusResponse(BaseModel):
+    provider: str
+    configured: bool
+    encryption_configured: bool = Field(alias="encryptionConfigured")
+    redirect_uri: str | None = Field(default=None, alias="redirectUri")
 
     model_config = {"populate_by_name": True}
 
@@ -65,6 +155,49 @@ def _frontend_redirect(settings: Settings, path: str, params: dict[str, str]) ->
     return f"{base}{safe_path}?{query}" if query else f"{base}{safe_path}"
 
 
+@router.get("/{provider}/status", response_model=OAuthProviderStatusResponse)
+async def oauth_provider_status(
+    provider: str,
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> OAuthProviderStatusResponse:
+    """Public readiness check for platform OAuth (no secrets)."""
+    vendor = _resolve_oauth_vendor(provider)
+    if vendor not in SUPPORTED_OAUTH_PROVIDERS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
+
+    configured = False
+    redirect_uri: str | None = None
+    if vendor in GOOGLE_OAUTH_VENDORS:
+        configured = google_oauth_configured(settings, environment_name)
+        redirect_uri = google_vendor_redirect_uri(settings, vendor)
+    elif vendor == "hubspot":
+        configured = hubspot_oauth_configured(settings, environment_name)
+        redirect_uri = hubspot_redirect_uri(settings)
+    elif vendor == "salesforce":
+        configured = salesforce_oauth_configured(settings, environment_name)
+        redirect_uri = salesforce_redirect_uri(settings)
+    elif vendor == "quickbooks":
+        configured = quickbooks_oauth_configured(settings, environment_name)
+        redirect_uri = quickbooks_redirect_uri(settings)
+    elif vendor == "jira":
+        configured = jira_oauth_configured(settings, environment_name)
+        redirect_uri = jira_redirect_uri(settings)
+    elif vendor == "pagerduty":
+        configured = pagerduty_oauth_configured(settings, environment_name)
+        redirect_uri = pagerduty_redirect_uri(settings)
+    elif vendor == "notion":
+        configured = notion_oauth_configured(settings, environment_name)
+        redirect_uri = notion_redirect_uri(settings)
+
+    return OAuthProviderStatusResponse(
+        provider=vendor,
+        configured=configured,
+        encryption_configured=bool((settings.connector_secrets_encryption_key or "").strip()),
+        redirect_uri=redirect_uri,
+    )
+
+
 @router.post("/{provider}/start", response_model=OAuthStartResponse)
 async def start_oauth(
     provider: str,
@@ -75,7 +208,7 @@ async def start_oauth(
 ) -> OAuthStartResponse:
     """Create (or reuse) a connector and return the provider authorization URL."""
     _user, org_id = _admin
-    vendor = normalize_vendor(provider)
+    vendor = _resolve_oauth_vendor(provider)
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
 
@@ -83,6 +216,36 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("HubSpot OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "salesforce" and not salesforce_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Salesforce OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "quickbooks" and not quickbooks_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("QuickBooks OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "jira" and not jira_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Jira OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "pagerduty" and not pagerduty_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("PagerDuty OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "notion" and not notion_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Notion OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor in GOOGLE_OAUTH_VENDORS and not google_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Google OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -98,6 +261,7 @@ async def start_oauth(
             )
 
     connector_id = body.connector_id
+    reconnect = bool(body.connector_id)
     if connector_id:
         existing = (
             client.table("connectors")
@@ -123,7 +287,23 @@ async def start_oauth(
             "environment": environment_name,
             "sync_frequency": "1h",
             "config": {"auth_type": "oauth"},
-            "docs_url": "https://developers.hubspot.com/docs",
+            "docs_url": (
+                GOOGLE_VENDOR_DOCS.get(vendor)
+                if vendor in GOOGLE_OAUTH_VENDORS
+                else (
+                    "https://developers.hubspot.com/docs"
+                    if vendor == "hubspot"
+                    else "https://developer.salesforce.com/docs"
+                    if vendor == "salesforce"
+                    else "https://developer.intuit.com/app/developer/qbo/docs"
+                    if vendor == "quickbooks"
+                    else "https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/"
+                    if vendor == "jira"
+                    else "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality"
+                    if vendor == "pagerduty"
+                    else "https://developers.notion.com/docs/authorization"
+                )
+            ),
         }
         created = client.table("connectors").insert(row).execute()
         if not created.data:
@@ -155,10 +335,39 @@ async def start_oauth(
         _oauth_state_secret(settings),
     )
 
-    redirect_uri = hubspot_redirect_uri(settings)
+    auth_url = ""
     if vendor == "hubspot":
+        redirect_uri = hubspot_redirect_uri(settings)
         client_id, _secret = hubspot_credentials(settings, environment_name)
         auth_url = hubspot_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "salesforce":
+        redirect_uri = salesforce_redirect_uri(settings)
+        client_id, _secret = salesforce_credentials(settings, environment_name)
+        auth_url = salesforce_authorize_url(
+            client_id, redirect_uri, state, environment_name=environment_name
+        )
+    elif vendor == "quickbooks":
+        redirect_uri = quickbooks_redirect_uri(settings)
+        client_id, _secret = quickbooks_credentials(settings, environment_name)
+        auth_url = quickbooks_authorize_url(
+            client_id, redirect_uri, state, environment_name=environment_name
+        )
+    elif vendor == "jira":
+        redirect_uri = jira_redirect_uri(settings)
+        client_id, _secret = jira_credentials(settings, environment_name)
+        auth_url = jira_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "pagerduty":
+        redirect_uri = pagerduty_redirect_uri(settings)
+        client_id, _secret = pagerduty_credentials(settings, environment_name)
+        auth_url = pagerduty_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "notion":
+        redirect_uri = notion_redirect_uri(settings)
+        client_id, _secret = notion_credentials(settings, environment_name)
+        auth_url = notion_authorize_url(client_id, redirect_uri, state)
+    elif vendor in GOOGLE_OAUTH_VENDORS:
+        redirect_uri = google_vendor_redirect_uri(settings, vendor)
+        client_id, _secret = google_oauth_credentials(settings, environment_name)
+        auth_url = google_vendor_authorize_url(vendor, client_id, redirect_uri, state)
 
     write_audit_event(
         client,
@@ -180,9 +389,10 @@ async def oauth_callback(
     state: str | None = Query(default=None),
     error: str | None = Query(default=None),
     error_description: str | None = Query(default=None, alias="error_description"),
+    realm_id: str | None = Query(default=None, alias="realmId"),
 ) -> RedirectResponse:
     """OAuth callback (browser redirect). Exchanges code and stores encrypted tokens."""
-    vendor = normalize_vendor(provider)
+    vendor = _resolve_oauth_vendor(provider)
     default_fail = _frontend_redirect(settings, "/connectors", {"oauth": "error", "provider": vendor})
 
     if error:
@@ -209,6 +419,7 @@ async def oauth_callback(
     environment_name = str(payload.get("environment") or "production")
     reconnect = bool(payload.get("reconnect"))
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    property_linked = True
 
     try:
         if vendor == "hubspot":
@@ -216,6 +427,71 @@ async def oauth_callback(
                 client,
                 org_id,
                 connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "salesforce":
+            complete_salesforce_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "quickbooks":
+            complete_quickbooks_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                realm_id=realm_id,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "jira":
+            complete_jira_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "pagerduty":
+            inbound_url = pagerduty_inbound_webhook_url(settings, connector_id)
+            complete_pagerduty_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+                inbound_webhook_url=inbound_url,
+            )
+            on_pagerduty_connector_connected(client, org_id, connector_id, settings)
+        elif vendor == "notion":
+            complete_notion_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor in GOOGLE_OAUTH_VENDORS:
+            property_linked = complete_google_vendor_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                vendor,
                 code,
                 settings,
                 environment_name=environment_name,
@@ -240,10 +516,15 @@ async def oauth_callback(
         metadata={"provider": vendor, "environment": environment_name},
     )
 
+    success_params: dict[str, str] = {
+        "oauth": "success",
+        "provider": vendor,
+        "connectorId": connector_id,
+    }
+    if vendor == "google_analytics" and not property_linked:
+        success_params["selectProperty"] = "1"
+
     return RedirectResponse(
-        _frontend_redirect(
-            redirect_path,
-            {"oauth": "success", "provider": vendor, "connectorId": connector_id},
-        ),
+        _frontend_redirect(redirect_path, success_params),
         status_code=302,
     )

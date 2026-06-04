@@ -18,6 +18,7 @@ ALLOWED_STEP_TYPES = frozenset({
     "slack_post_message",
     "email_send",
     "webhook_post",
+    "invoke_tool",
 })
 
 RUN_TYPE_DRY_RUN = "dry_run"
@@ -36,6 +37,7 @@ EXECUTE_ALLOWED_STEP_TYPES = frozenset({
     "slack_post_message",
     "email_send",
     "webhook_post",
+    "invoke_tool",
 })
 
 # BE-20: closed role set for approver_roles

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext, useCallback, useMemo } from "react"
+import { useState, useEffect, createContext, useContext, useCallback, useMemo, startTransition } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -189,7 +189,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const serverDismissed = Boolean(settingsPayload?.settings?.onboarding?.checklist_dismissed)
-    setDismissed(serverDismissed)
+    startTransition(() => setDismissed(serverDismissed))
   }, [settingsPayload])
 
   // Auto-complete account step for authenticated users
@@ -197,10 +197,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     if (!user || welcomeSynced || !progress) return
     const welcomeDone = progress.steps?.some((step) => step.key === "welcome" && step.is_completed)
     if (welcomeDone) {
-      setWelcomeSynced(true)
+      startTransition(() => setWelcomeSynced(true))
       return
     }
-    setWelcomeSynced(true)
+    startTransition(() => setWelcomeSynced(true))
     void onboardingApi.completeStep("welcome").then(() => mutateProgress())
   }, [user, welcomeSynced, progress, mutateProgress])
 
