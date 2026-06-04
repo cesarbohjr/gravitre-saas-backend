@@ -28,7 +28,7 @@ function Read-DotEnvValue {
     if (-not (Test-Path $Path)) { return $null }
     foreach ($line in Get-Content $Path) {
         if ($line -match "^\s*$([regex]::Escape($Key))\s*=\s*(.+)$") {
-            return $matches[1].Trim().Trim('"')
+            return $matches[1].Trim().Trim('"').Trim()
         }
     }
     return $null

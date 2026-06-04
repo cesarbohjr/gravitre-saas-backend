@@ -128,12 +128,11 @@ print(json.dumps({
     "value": os.environ["VERCEL_ENV_VALUE"],
     "type": "plain",
     "target": ["production", "preview", "development"],
-    "upsert": True,
 }))
 PY
 )"
 
-  curl -fsS -X POST "${VERCEL_API}/v10/projects/${project_id}/env?teamId=${team_id}" \
+  curl -fsS -X POST "${VERCEL_API}/v10/projects/${project_id}/env?teamId=${team_id}&upsert=true" \
     -H "Authorization: Bearer ${VERCEL_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "$payload" >/dev/null
