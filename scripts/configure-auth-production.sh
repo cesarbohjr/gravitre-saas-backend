@@ -172,8 +172,14 @@ deploy_vercel_production() {
 
 verify_production() {
   echo "==> Verifying production endpoints"
-  curl -fsSI "${APP_URL}/auth/callback?code=invalid-test" | grep -i '^location:' || true
-  curl -fsSI "${APP_URL}/operator" | grep -E '^(HTTP/|location:)' || true
+  local auth_headers operator_headers
+  auth_headers="$(curl -sSI "${APP_URL}/auth/callback?code=invalid-test" || true)"
+  operator_headers="$(curl -sSI "${APP_URL}/operator" || true)"
+  echo "$auth_headers" | grep -i '^location:' || true
+  echo "$operator_headers" | grep -E '^(HTTP/|location:)' || true
+  if echo "$auth_headers" | grep -qi 'session_expired'; then
+    echo "WARNING: auth callback still redirects to session_expired" >&2
+  fi
   echo "    Production checks complete (307 to /login without session_expired is expected for invalid code)."
 }
 
