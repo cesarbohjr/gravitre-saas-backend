@@ -398,32 +398,16 @@ async def list_connectors_route_alias(
         .order("updated_at", desc=True)
         .execute()
     )
-    items = []
-    for row in list(q.data or []):
-        api_key = None
-        if row.get("api_key_encrypted") and settings.encryption_key:
-            try:
-                api_key = decrypt_value(row["api_key_encrypted"], settings.encryption_key)
-            except Exception:
-                api_key = None
-        items.append(
-            {
-                "id": str(row["id"]),
-                "name": row.get("name") or "",
-                "vendor": row.get("vendor") or row.get("type") or "",
-                "description": row.get("description"),
-                "status": row.get("status") or "healthy",
-                "environment": row.get("environment") or environment_name,
-                "lastSync": row.get("last_sync_at"),
-                "recordsSynced": row.get("records_synced") or 0,
-                "syncFrequency": row.get("sync_frequency") or "1h",
-                "config": {
-                    "apiKey": mask_value(api_key),
-                    "webhookUrl": row.get("webhook_url"),
-                },
-                "docsUrl": row.get("docs_url"),
-            }
+    items = [
+        _connector_response_item(
+            row,
+            environment_name=environment_name,
+            settings=settings,
+            client=client,
+            org_id=org_id,
         )
+        for row in list(q.data or [])
+    ]
     return {"connectors": items}
 
 

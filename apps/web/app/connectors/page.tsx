@@ -88,6 +88,75 @@ interface Connector {
   }
 }
 
+const OAUTH_VENDOR_KEYS = new Set([
+  "hubspot",
+  "salesforce",
+  "quickbooks",
+  "jira",
+  "confluence",
+  "pagerduty",
+  "notion",
+  "google_analytics",
+  "google_calendar",
+  "gmail",
+  "google_drive",
+  "google_docs",
+  "google_sheets",
+])
+
+function formatLastSync(value: unknown): string {
+  if (!value) return "Never"
+  const raw = String(value)
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return raw
+
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+  if (seconds < 60) return "Just now"
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
+  return `${Math.floor(seconds / 86400)} days ago`
+}
+
+function formatVendorLabel(vendor: string): string {
+  const labels: Record<string, string> = {
+    salesforce: "Salesforce",
+    hubspot: "HubSpot",
+    google_analytics: "Google Analytics",
+    google_calendar: "Google Calendar",
+    google_drive: "Google Drive",
+    google_docs: "Google Docs",
+    google_sheets: "Google Sheets",
+    quickbooks: "QuickBooks",
+    pagerduty: "PagerDuty",
+    microsoft365: "Microsoft 365",
+    aws_s3: "AWS S3",
+    github: "GitHub",
+  }
+  const key = vendor.toLowerCase().replace(/\s+/g, "_")
+  if (labels[key]) return labels[key]
+  return vendor
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function resolveConnectorStatus(
+  rawStatus: string,
+  authStatus: string
+): Connector["status"] {
+  if (authStatus === "connected") return "connected"
+  if (authStatus === "auth_expired" || authStatus === "misconfigured") return "error"
+  if (authStatus === "pending_auth" || authStatus === "pending_property") return "disconnected"
+
+  if (rawStatus === "connected" || rawStatus === "syncing" || rawStatus === "error" || rawStatus === "disconnected") {
+    return rawStatus
+  }
+  if (rawStatus === "healthy" || rawStatus === "active") return "connected"
+  if (rawStatus === "pending_auth" || rawStatus === "pending") return "disconnected"
+  if (rawStatus === "error") return "error"
+  if (rawStatus === "inactive") return "disconnected"
+  return "disconnected"
+}
+
 function normalizeConnector(input: Record<string, unknown> | ApiConnector): Connector {
   const model = input as Record<string, unknown>
   const rawStatus = String(model.status ?? "disconnected")
@@ -96,27 +165,28 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     model.config && typeof model.config === "object"
       ? (model.config as Record<string, unknown>)
       : {}
-  const authType = String(cfg.authType ?? model.authType ?? model.auth_type ?? "apiKey")
+  const vendorKey = String(model.vendor ?? model.type ?? "").toLowerCase().replace(/\s+/g, "_")
+  const normalizedVendorKey = vendorKey.replace(/-/g, "_")
+  const inferredOAuth =
+    OAUTH_VENDOR_KEYS.has(normalizedVendorKey) ||
+    OAUTH_VENDOR_KEYS.has(connectorVendorKey(normalizedVendorKey))
+  const authTypeRaw = String(cfg.authType ?? model.authType ?? model.auth_type ?? "")
+  const authType =
+    authTypeRaw === "oauth" || authTypeRaw === "webhook"
+      ? authTypeRaw
+      : inferredOAuth
+        ? "oauth"
+        : "apiKey"
   const authStatus = String(model.authStatus ?? model.auth_status ?? "")
-  const normalizedStatus: Connector["status"] =
-    rawStatus === "connected" || rawStatus === "syncing" || rawStatus === "error" || rawStatus === "disconnected"
-      ? rawStatus
-      : rawStatus === "healthy" || rawStatus === "active"
-        ? "connected"
-        : rawStatus === "pending_auth" || rawStatus === "pending"
-          ? "syncing"
-          : authStatus === "auth_expired" || authStatus === "misconfigured"
-            ? "error"
-            : rawStatus === "inactive"
-              ? "disconnected"
-              : "error"
+  const vendor = String(model.type ?? model.vendor ?? "unknown")
+  const normalizedStatus = resolveConnectorStatus(rawStatus, authStatus)
   return {
     id: String(model.id ?? ""),
     name: String(model.name ?? "connector"),
-    type: String(model.type ?? model.vendor ?? "unknown"),
+    type: formatVendorLabel(vendor),
     status: normalizedStatus,
     environment: environment === "production" ? "production" : "staging",
-    lastSync: String(model.lastSync ?? model.last_sync ?? model.last_sync_at ?? "Never"),
+    lastSync: formatLastSync(model.lastSync ?? model.last_sync ?? model.last_sync_at),
     health: Number(model.health ?? 0),
     description: String(model.description ?? ""),
     dataFlowRate: String(model.dataFlowRate ?? model.data_flow_rate ?? "0 MB/s"),
@@ -135,130 +205,23 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
 }
 
 function normalizeConnectorsResponse(payload: unknown): Connector[] {
-  if (!payload || typeof payload !== "object") return initialConnectors
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw =
     (Array.isArray(model.connectors) ? model.connectors : null) ??
     (Array.isArray(model.data) ? model.data : null) ??
     (Array.isArray(model.items) ? model.items : null)
-  if (!raw) return initialConnectors
-  const normalized = raw
+  if (!raw) return []
+  return raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeConnector(item))
     .filter((item) => item.id.length > 0)
-  return normalized.length > 0 ? normalized : initialConnectors
 }
 
-const initialConnectors: Connector[] = [
-  {
-    id: "1",
-    name: "salesforce-api",
-    type: "Salesforce",
-    status: "connected",
-    environment: "production",
-    lastSync: "2 minutes ago",
-    health: 98,
-    description: "Salesforce REST API connector",
-    dataFlowRate: "2.4 MB/s",
-    requestsToday: 12847,
-    latency: 45,
-    category: "CRM / Marketing",
-    authType: "oauth",
-    usedByWorkflows: 8,
-    triggeredByAgents: 3,
-    config: { apiKey: "sf_live_xxx", syncInterval: "5m" },
-  },
-  {
-    id: "2",
-    name: "stripe-payments",
-    type: "Stripe",
-    status: "connected",
-    environment: "production",
-    lastSync: "5 minutes ago",
-    health: 100,
-    description: "Payment processing",
-    dataFlowRate: "1.1 MB/s",
-    requestsToday: 8234,
-    latency: 32,
-    category: "Payments / Finance",
-    authType: "apiKey",
-    usedByWorkflows: 5,
-    triggeredByAgents: 2,
-    config: { apiKey: "sk_live_xxx", syncInterval: "1m" },
-  },
-  {
-    id: "3",
-    name: "slack-notifications",
-    type: "Slack",
-    status: "syncing",
-    environment: "production",
-    lastSync: "Syncing...",
-    health: 95,
-    description: "Workspace notifications",
-    dataFlowRate: "0.3 MB/s",
-    requestsToday: 3421,
-    latency: 28,
-    category: "Communication",
-    authType: "oauth",
-    usedByWorkflows: 12,
-    triggeredByAgents: 6,
-    config: { apiKey: "xoxb-xxx", syncInterval: "10m" },
-  },
-  {
-    id: "4",
-    name: "hubspot-crm",
-    type: "HubSpot",
-    status: "error",
-    environment: "staging",
-    lastSync: "1 hour ago",
-    health: 0,
-    description: "CRM integration (auth expired)",
-    dataFlowRate: "0 MB/s",
-    requestsToday: 0,
-    latency: 0,
-    category: "CRM / Marketing",
-    authType: "oauth",
-    usedByWorkflows: 4,
-    triggeredByAgents: 1,
-    config: { apiKey: "pat-xxx", syncInterval: "15m" },
-  },
-  {
-    id: "5",
-    name: "aws-s3-storage",
-    type: "AWS S3",
-    status: "connected",
-    environment: "production",
-    lastSync: "10 minutes ago",
-    health: 100,
-    description: "File storage bucket",
-    dataFlowRate: "5.2 MB/s",
-    requestsToday: 45892,
-    latency: 18,
-    category: "Storage / Dev / Infra",
-    authType: "apiKey",
-    usedByWorkflows: 15,
-    triggeredByAgents: 4,
-    config: { apiKey: "AKIA_xxx", syncInterval: "30m" },
-  },
-  {
-    id: "6",
-    name: "github-repos",
-    type: "GitHub",
-    status: "disconnected",
-    environment: "staging",
-    lastSync: "2 days ago",
-    health: 0,
-    description: "Repository access",
-    dataFlowRate: "0 MB/s",
-    requestsToday: 0,
-    latency: 0,
-    category: "Storage / Dev / Infra",
-    authType: "oauth",
-    usedByWorkflows: 2,
-    triggeredByAgents: 0,
-    config: { apiKey: "ghp_xxx", syncInterval: "5m" },
-  },
-]
+function oauthErrorMessage(err: unknown, providerLabel: string): string {
+  if (err instanceof Error && err.message.trim()) return err.message
+  return `${providerLabel} OAuth is not configured on the API host`
+}
 
 const statusConfig = {
   connected: { 
@@ -825,7 +788,7 @@ function AddConnectorModal({
       console.error("[connectors] OAuth start failed:", err)
       setOauthStatus("error")
       toast.error(`Failed to connect ${selectedType}`, {
-        description: "Check OAuth credentials are configured on the API host",
+        description: oauthErrorMessage(err, selectedType),
       })
     }
   }
@@ -1661,10 +1624,9 @@ function ConnectorsPageContent() {
     user ? "/api/connectors" : null,
     apiFetcher,
     {
-      fallbackData: { connectors: initialConnectors },
       revalidateOnFocus: true,
       refreshInterval: 30000,
-      onError: (err) => console.error("[v0] Connectors fetch error:", err),
+      onError: (err) => console.error("[connectors] fetch error:", err),
     }
   )
 
@@ -1935,6 +1897,34 @@ function ConnectorsPageContent() {
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">
+          {isLoading && connectors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-4" />
+              <p className="text-sm text-muted-foreground">Loading connectors...</p>
+            </div>
+          ) : error && connectors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <XCircle className="h-10 w-10 text-destructive mb-4" />
+              <h3 className="text-base font-medium text-foreground mb-1">Unable to load connectors</h3>
+              <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
+              <Button variant="outline" onClick={() => mutate()}>Try again</Button>
+            </div>
+          ) : connectors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
+                <Cable className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-medium text-foreground mb-1">No connectors yet</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                Connect your CRM, analytics, and productivity tools to power workflows and agents.
+              </p>
+              <Button onClick={() => setAddModal(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add your first connector
+              </Button>
+            </div>
+          ) : (
+          <>
           {/* Mobile: Card list view */}
           <div className="md:hidden space-y-4">
             {/* Mobile Hub Summary */}
@@ -2026,6 +2016,8 @@ function ConnectorsPageContent() {
                 />
               ))}
             </div>
+          )}
+          </>
           )}
         </div>
 
