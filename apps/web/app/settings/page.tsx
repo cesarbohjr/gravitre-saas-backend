@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import React, { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Image from "next/image"
@@ -1489,6 +1489,7 @@ function SettingsContent() {
   const { user, loading: authLoading } = useAuth()
   const initialSection = searchParams.get('section') || "organization"
   const [activeSection, setActiveSection] = useState(initialSection)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const isAdmin = user?.role === "admin" || user?.role === "owner"
 
   const { data: orgData, mutate: mutateOrg } = useSWR(
@@ -1580,9 +1581,56 @@ function SettingsContent() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="w-64 border-r border-border p-4">
+    <div className="flex flex-col md:flex-row h-full">
+      {/* Mobile Header with section selector */}
+      <div className="md:hidden flex items-center justify-between border-b border-border p-4 bg-card/50 sticky top-0 z-10">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-semibold text-foreground truncate">
+            {sections.find((s) => s.id === activeSection)?.title}
+          </h1>
+          <p className="text-xs text-muted-foreground truncate">
+            {sections.find((s) => s.id === activeSection)?.description}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="ml-3 gap-2 shrink-0"
+        >
+          {React.createElement(sections.find((s) => s.id === activeSection)?.icon || Building2, { className: "h-4 w-4" })}
+          <span className="sr-only md:not-sr-only">Menu</span>
+        </Button>
+      </div>
+
+      {/* Mobile Section Menu (Collapsible) */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-b border-border bg-card">
+          <div className="p-3 grid grid-cols-2 gap-2">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => {
+                  setActiveSection(section.id)
+                  setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-3 text-left text-sm transition-colors",
+                  activeSection === section.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <section.icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{section.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block w-64 border-r border-border p-4 shrink-0">
         <nav className="space-y-1">
           {sections.map((section) => (
             <button
@@ -1602,14 +1650,17 @@ function SettingsContent() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6">
-        <div className="max-w-2xl">
-          <h1 className="text-xl font-semibold text-foreground mb-1">
-            {sections.find((s) => s.id === activeSection)?.title}
-          </h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            {sections.find((s) => s.id === activeSection)?.description}
-          </p>
+      <div className="flex-1 p-4 md:p-6 overflow-auto">
+        <div className="max-w-2xl mx-auto md:mx-0">
+          {/* Desktop Header */}
+          <div className="hidden md:block mb-6">
+            <h1 className="text-xl font-semibold text-foreground mb-1">
+              {sections.find((s) => s.id === activeSection)?.title}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {sections.find((s) => s.id === activeSection)?.description}
+            </p>
+          </div>
           {renderContent()}
         </div>
       </div>

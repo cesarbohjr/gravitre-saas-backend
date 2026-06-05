@@ -255,43 +255,44 @@ function TimelineNode({
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className="relative"
     >
-      {/* Timeline connector */}
-      <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-border via-border to-transparent" />
+      {/* Timeline connector - hidden on mobile for cleaner look */}
+      <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-border via-border to-transparent hidden md:block" />
       
       {/* Node */}
       <motion.div 
         className={cn(
-          "relative ml-0 pl-14 pr-4 py-3 group cursor-pointer transition-all duration-200",
-          isExpanded && "bg-card/50 rounded-lg border border-border/50"
+          "relative pl-4 md:ml-0 md:pl-14 pr-3 md:pr-4 py-3 cursor-pointer transition-all duration-200 rounded-lg",
+          isExpanded ? "bg-card/50 border border-border/50" : "hover:bg-card/30",
+          "active:scale-[0.99] touch-manipulation"
         )}
         whileHover={{ x: 4 }}
         transition={{ duration: 0.15 }}
       >
-        {/* Status indicator */}
+        {/* Status indicator - adjusted for mobile */}
         <div className={cn(
-          "absolute left-3 top-4 h-6 w-6 rounded-full flex items-center justify-center z-10 transition-all",
+          "absolute left-0 md:left-3 top-4 h-8 w-8 md:h-6 md:w-6 rounded-full flex items-center justify-center z-10 transition-all",
           config.bg,
           run.status === "running" && "animate-pulse",
           run.status === "failed" && config.glow
         )}>
-          <StatusIcon className={cn("h-3.5 w-3.5", config.color)} />
+          <StatusIcon className={cn("h-4 w-4 md:h-3.5 md:w-3.5", config.color)} />
         </div>
 
         {/* Live indicator for running */}
         {run.status === "running" && (
-          <div className="absolute left-3 top-4 h-6 w-6">
+          <div className="absolute left-0 md:left-3 top-4 h-8 w-8 md:h-6 md:w-6">
             <span className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" />
           </div>
         )}
 
         {/* Main content */}
         <div 
-          className="flex items-start justify-between gap-4"
+          className="flex items-start justify-between gap-3 md:gap-4 pl-10 md:pl-0"
           onClick={onToggle}
         >
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-foreground truncate">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-1">
+              <span className="text-sm font-medium text-foreground">
                 {run.workflowName}
               </span>
               <EnvironmentBadge environment={run.environment} />
@@ -302,7 +303,7 @@ function TimelineNode({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-xs text-muted-foreground">
               <span className="font-mono">{run.id}</span>
               <span>{run.startedAt}</span>
               {run.duration !== "-" && (
@@ -314,10 +315,10 @@ function TimelineNode({
             </div>
           </div>
 
-          {/* Duration bar visualization */}
-          <div className="hidden sm:flex items-center gap-3">
+          {/* Duration bar visualization and chevron */}
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             {run.duration !== "-" && (
-              <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="w-16 md:w-24 h-1.5 bg-secondary rounded-full overflow-hidden hidden sm:block">
                 <motion.div 
                   className={cn("h-full rounded-full", config.bg.replace("/20", ""))}
                   initial={{ width: 0 }}
@@ -327,7 +328,7 @@ function TimelineNode({
               </div>
             )}
             <ChevronRight className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform",
+              "h-5 w-5 md:h-4 md:w-4 text-muted-foreground transition-transform",
               isExpanded && "rotate-90"
             )} />
           </div>
@@ -342,7 +343,7 @@ function TimelineNode({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="mt-4 pt-4 border-t border-border/50">
+              <div className="mt-4 pt-4 border-t border-border/50 pl-10 md:pl-0">
                 {/* Step progress */}
                 {run.steps && (
                   <div className="mb-4">
@@ -353,28 +354,28 @@ function TimelineNode({
                     <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-2">
                       Execution Steps
                     </p>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 md:gap-1">
                       {steps.map((step, i) => (
                         <div key={i} className="flex-1 flex items-center">
                           <div className={cn(
-                            "flex-1 h-1.5 rounded-full transition-all",
+                            "flex-1 h-2 md:h-1.5 rounded-full transition-all",
                             step.status === "completed" && "bg-emerald-500",
                             step.status === "running" && "bg-blue-500 animate-pulse",
                             step.status === "pending" && "bg-secondary",
                             step.status === "failed" && "bg-red-500"
                           )} />
                           {i < steps.length - 1 && (
-                            <ArrowRight className="h-3 w-3 text-muted-foreground mx-0.5 shrink-0" />
+                            <ArrowRight className="h-3 w-3 text-muted-foreground mx-0.5 shrink-0 hidden sm:block" />
                           )}
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between mt-1">
+                    <div className="flex justify-between mt-1.5 md:mt-1">
                       {steps.map((step, i) => (
                         <span 
                           key={i} 
                           className={cn(
-                            "text-[10px]",
+                            "text-[9px] md:text-[10px] truncate max-w-[60px] md:max-w-none",
                             step.status === "running" ? "text-blue-400" :
                             step.status === "completed" ? "text-emerald-400" :
                             step.status === "failed" ? "text-red-400" :
@@ -391,11 +392,11 @@ function TimelineNode({
                   </div>
                 )}
 
-                {/* Quick actions */}
-                <div className="flex items-center gap-2">
+                {/* Quick actions - larger touch targets on mobile */}
+                <div className="flex flex-wrap items-center gap-2">
                   <Link href={`/runs/${run.id}`}>
-                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-                      <Eye className="h-3 w-3" />
+                    <Button variant="outline" size="sm" className="h-9 md:h-7 gap-1.5 text-xs">
+                      <Eye className="h-3.5 w-3.5 md:h-3 md:w-3" />
                       Inspect
                     </Button>
                   </Link>
@@ -403,11 +404,11 @@ function TimelineNode({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                      className="h-9 md:h-7 gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
                       onClick={() => void onRetry(run.id)}
                       disabled={isMutating}
                     >
-                      <RotateCcw className="h-3 w-3" />
+                      <RotateCcw className="h-3.5 w-3.5 md:h-3 md:w-3" />
                       Retry
                     </Button>
                   )}
@@ -415,22 +416,22 @@ function TimelineNode({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 gap-1.5 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                      className="h-9 md:h-7 gap-1.5 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
                       onClick={() => void onCancel(run.id)}
                       disabled={isMutating}
                     >
-                      <XCircle className="h-3 w-3" />
+                      <XCircle className="h-3.5 w-3.5 md:h-3 md:w-3" />
                       Cancel
                     </Button>
                   )}
                   {run.approvalStatus === "pending" && (
                     <Button
                       size="sm"
-                      className="h-7 gap-1.5 text-xs"
+                      className="h-9 md:h-7 gap-1.5 text-xs"
                       onClick={() => void onApprove(run.id)}
                       disabled={isMutating}
                     >
-                      <Zap className="h-3 w-3" />
+                      <Zap className="h-3.5 w-3.5 md:h-3 md:w-3" />
                       Approve
                     </Button>
                   )}

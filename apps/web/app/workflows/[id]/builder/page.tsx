@@ -368,7 +368,7 @@ waiting: { border: "border-amber-500/50", bg: "bg-amber-500/5", animation: "opac
   escalated: { border: "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]", bg: "bg-red-500/10", animation: "" },
   }
 
-// Canvas Node Component
+// Canvas Node Component - with mobile touch support
 function CanvasNode({
   node,
   isSelected,
@@ -380,6 +380,7 @@ function CanvasNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  isMobile,
   }: {
   node: WorkflowNode
   isSelected: boolean
@@ -388,30 +389,42 @@ function CanvasNode({
   onDelete: () => void
   onDrag: (position: { x: number; y: number }) => void
   onShowDetails: () => void
-  onConnectionDragStart?: (nodeId: string, e: React.MouseEvent) => void
+  onConnectionDragStart?: (nodeId: string, e: React.MouseEvent | React.TouchEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  isMobile?: boolean
   }) {
   const config = nodeTypeConfig[node.type]
   const Icon = config.icon
   const [isDragging, setIsDragging] = useState(false)
-  const [isMouseDown, setIsMouseDown] = useState(false)
+  const [isInteracting, setIsInteracting] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0, nodeX: 0, nodeY: 0 })
   const hasDraggedRef = useRef(false)
   
   const stateConfig = nodeStateConfig[node.state || "idle"]
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Unified interaction start handler (mouse + touch)
+  const handleInteractionStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsMouseDown(true)
+    setIsInteracting(true)
     hasDraggedRef.current = false
     dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
+      x: clientX,
+      y: clientY,
       nodeX: node.position.x,
       nodeY: node.position.y,
+    }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    handleInteractionStart(e.clientX, e.clientY, e)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      handleInteractionStart(e.touches[0].clientX, e.touches[0].clientY, e)
     }
   }
 
@@ -422,14 +435,15 @@ function CanvasNode({
   }
 
   useEffect(() => {
-    if (!isMouseDown) return
+    if (!isInteracting) return
 
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragStartRef.current.x
-      const dy = e.clientY - dragStartRef.current.y
+    const handleMove = (clientX: number, clientY: number) => {
+      const dx = clientX - dragStartRef.current.x
+      const dy = clientY - dragStartRef.current.y
       
-      // Only count as drag if moved more than 5 pixels
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      // Only count as drag if moved more than 5 pixels (10 on mobile for better UX)
+      const threshold = isMobile ? 10 : 5
+      if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
         hasDraggedRef.current = true
         setIsDragging(true)
         const newX = Math.max(0, dragStartRef.current.nodeX + dx)
@@ -438,42 +452,67 @@ function CanvasNode({
       }
     }
 
-    const handleGlobalMouseUp = () => {
+    const handleEnd = () => {
       if (!hasDraggedRef.current) {
-        // This was a click, not a drag - trigger select
+        // This was a click/tap, not a drag - trigger select
         onSelect()
       }
       setIsDragging(false)
-      setIsMouseDown(false)
+      setIsInteracting(false)
       hasDraggedRef.current = false
     }
 
+    // Mouse events
+    const handleGlobalMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY)
+    const handleGlobalMouseUp = () => handleEnd()
+
+    // Touch events
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        e.preventDefault() // Prevent scrolling while dragging
+        handleMove(e.touches[0].clientX, e.touches[0].clientY)
+      }
+    }
+    const handleGlobalTouchEnd = () => handleEnd()
+
     window.addEventListener("mousemove", handleGlobalMouseMove)
     window.addEventListener("mouseup", handleGlobalMouseUp)
+    window.addEventListener("touchmove", handleGlobalTouchMove, { passive: false })
+    window.addEventListener("touchend", handleGlobalTouchEnd)
+    window.addEventListener("touchcancel", handleGlobalTouchEnd)
 
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove)
       window.removeEventListener("mouseup", handleGlobalMouseUp)
+      window.removeEventListener("touchmove", handleGlobalTouchMove)
+      window.removeEventListener("touchend", handleGlobalTouchEnd)
+      window.removeEventListener("touchcancel", handleGlobalTouchEnd)
     }
-  }, [isMouseDown, onDrag, onSelect, node.id])
+  }, [isInteracting, onDrag, onSelect, node.id, isMobile])
+
+  // Show controls when selected on mobile, or on hover for desktop
+  const showControls = isMobile ? isSelected : isHovered
 
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150",
+        "absolute cursor-pointer transition-all duration-150 touch-none select-none",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
         className={cn(
-          "group relative w-56 rounded-lg border bg-card p-3 shadow-lg transition-all duration-300",
+          "group relative rounded-lg border bg-card shadow-lg transition-all duration-300",
+          // Responsive width - narrower on mobile
+          "w-48 p-2.5 md:w-56 md:p-3",
           isSelected ? "border-info ring-2 ring-info/30" : "border-border hover:border-muted-foreground/50",
           stateConfig.border,
           stateConfig.bg,
@@ -485,20 +524,30 @@ function CanvasNode({
           <div className="absolute inset-0 rounded-lg bg-blue-500/10 animate-pulse pointer-events-none" />
         )}
 
-        {/* Drag handle */}
-        <div className="absolute -left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        {/* Drag handle - always visible on mobile when selected */}
+        <div className={cn(
+          "absolute -left-2 top-1/2 -translate-y-1/2 transition-opacity",
+          showControls ? "opacity-100" : "opacity-0"
+        )}>
+          <div className="bg-secondary rounded-md p-1">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
         </div>
 
-        {/* Delete button */}
+        {/* Delete button - larger touch target on mobile, visible when selected */}
         <button
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
-          className="absolute -right-2 -top-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          className={cn(
+            "absolute -right-2.5 -top-2.5 rounded-full bg-destructive text-destructive-foreground transition-all flex items-center justify-center shadow-lg",
+            // Larger on mobile (44px) for touch, smaller on desktop
+            "h-8 w-8 md:h-6 md:w-6",
+            showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+          )}
         >
-          <X className="h-3 w-3" />
+          <X className="h-4 w-4 md:h-3 md:w-3" />
         </button>
 
         {/* State indicator badge */}
@@ -582,21 +631,32 @@ function CanvasNode({
         )}
 
 {/* Connection handles - all 4 sides - Drag from these to connect */}
+  {/* Mobile-friendly: larger touch targets (44px touch area, visible indicator) */}
   {/* Left handle */}
   <div
   role="button"
   tabIndex={0}
   aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
+  onTouchStart={(e) => {
+    e.stopPropagation()
+    if (e.touches.length === 1) {
+      onConnectionDragStart?.(node.id, e)
+    }
+  }}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
   onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={`absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
-  isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-  : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  }`}
+  className={cn(
+    "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
+    // Larger touch target on mobile
+    "h-6 w-6 md:h-4 md:w-4",
+    isDraggingConnection
+      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      : isSelected
+        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+  )}
   title="Drag to connect"
   />
   {/* Right handle */}
@@ -605,15 +665,24 @@ function CanvasNode({
   tabIndex={0}
   aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
+  onTouchStart={(e) => {
+    e.stopPropagation()
+    if (e.touches.length === 1) {
+      onConnectionDragStart?.(node.id, e)
+    }
+  }}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
   onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={`absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
-  isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-  : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  }`}
+  className={cn(
+    "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
+    "h-6 w-6 md:h-4 md:w-4",
+    isDraggingConnection
+      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      : isSelected
+        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+  )}
   title="Drag to connect"
   />
   {/* Top handle */}
@@ -622,15 +691,24 @@ function CanvasNode({
   tabIndex={0}
   aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
+  onTouchStart={(e) => {
+    e.stopPropagation()
+    if (e.touches.length === 1) {
+      onConnectionDragStart?.(node.id, e)
+    }
+  }}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
   onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
-  isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-  : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  }`}
+  className={cn(
+    "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
+    "h-6 w-6 md:h-4 md:w-4",
+    isDraggingConnection
+      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      : isSelected
+        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+  )}
   title="Drag to connect"
   />
   {/* Bottom handle */}
@@ -639,15 +717,24 @@ function CanvasNode({
   tabIndex={0}
   aria-label={`Connect from ${node.name}`}
   onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
+  onTouchStart={(e) => {
+    e.stopPropagation()
+    if (e.touches.length === 1) {
+      onConnectionDragStart?.(node.id, e)
+    }
+  }}
   onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
   onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10 ${
-  isDraggingConnection
-  ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-  : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  }`}
+  className={cn(
+    "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
+    "h-6 w-6 md:h-4 md:w-4",
+    isDraggingConnection
+      ? "border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      : isSelected
+        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+  )}
   title="Drag to connect"
   />
       </div>
@@ -2608,6 +2695,19 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [executionStatus, setExecutionStatus] = useState<"idle" | "running" | "completed" | "error">("idle")
   const [executionError, setExecutionError] = useState<string | null>(null)
   
+  // Mobile detection for touch-friendly UI
+  const [isMobile, setIsMobile] = useState(false)
+  const [showMobileNodeList, setShowMobileNodeList] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
   // Load workflow on mount for UUID routes
   useEffect(() => {
     if (!canPersist) {
@@ -3788,13 +3888,26 @@ const handleRun = useCallback(async () => {
           <div 
             ref={canvasRef}
             className={cn(
-              "flex-1 relative overflow-hidden bg-background",
+              "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y",
               isDraggingConnection && "cursor-crosshair"
             )}
             onClick={handleCanvasClick}
             onMouseMove={handleConnectionDragMove}
             onMouseUp={handleConnectionDragEnd}
             onMouseLeave={handleConnectionDragEnd}
+            onTouchMove={(e) => {
+              // Only handle connection drag, not node drag (that's handled by CanvasNode)
+              if (isDraggingConnection && e.touches.length === 1) {
+                const rect = canvasRef.current?.getBoundingClientRect()
+                if (rect) {
+                  setDragMousePosition({
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                  })
+                }
+              }
+            }}
+            onTouchEnd={handleConnectionDragEnd}
           >
             {/* Enhanced grid background with subtle gradient */}
             <div className="absolute inset-0">
@@ -4254,6 +4367,7 @@ const handleRun = useCallback(async () => {
       onConnectionDragStart={handleConnectionDragStart}
       onConnectionDrop={handleConnectionDrop}
       isDraggingConnection={isDraggingConnection}
+      isMobile={isMobile}
     />
   )
   ))}
@@ -4680,6 +4794,163 @@ const handleRun = useCallback(async () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Node List Sheet */}
+      <Sheet open={showMobileNodeList} onOpenChange={setShowMobileNodeList}>
+        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="flex items-center justify-between">
+              <span>Workflow Nodes ({nodes.length})</span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setShowMobileNodeList(false)
+                  openLibraryPanel()
+                }}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                Add Node
+              </Button>
+            </SheetTitle>
+            <SheetDescription>
+              Tap a node to select, swipe left to delete
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-auto space-y-2 pb-safe">
+            {nodes.map((node, index) => {
+              const config = nodeTypeConfig[node.type]
+              const Icon = config.icon
+              const stateConfig = nodeStateConfig[node.state || "idle"]
+              return (
+                <div
+                  key={node.id}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg border transition-all active:scale-[0.98]",
+                    selectedNodeId === node.id
+                      ? "border-info bg-info/10"
+                      : "border-border bg-card hover:bg-secondary/50"
+                  )}
+                  onClick={() => {
+                    handleNodeClick(node.id)
+                    setShowMobileNodeList(false)
+                  }}
+                >
+                  <div className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border",
+                    config.color
+                  )}>
+                    {node.vendor ? (
+                      <ConnectorIcon vendor={node.vendor} size="sm" showStatusIndicator={false} />
+                    ) : (
+                      <Icon className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground truncate">{node.name}</p>
+                      {node.state && node.state !== "idle" && (
+                        <Badge variant="outline" className={cn(
+                          "text-[10px] py-0",
+                          node.state === "running" && "border-blue-500 text-blue-500",
+                          node.state === "success" && "border-emerald-500 text-emerald-500",
+                          node.state === "error" && "border-red-500 text-red-500"
+                        )}>
+                          {node.state}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{node.description || config.label}</p>
+                    {node.connections.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                        Connected to {node.connections.length} node{node.connections.length > 1 ? "s" : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleShowDetails(node.id)
+                        setShowMobileNodeList(false)
+                      }}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteNode(node.id)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+            {nodes.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Workflow className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No nodes yet</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 gap-1.5"
+                  onClick={() => {
+                    setShowMobileNodeList(false)
+                    openLibraryPanel()
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add First Node
+                </Button>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Mobile Floating Action Bar */}
+      {isMobile && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
+          <div className="flex items-center justify-between gap-2 p-2 bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-11 gap-2"
+              onClick={() => setShowMobileNodeList(true)}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              <span className="font-medium">{nodes.length} Nodes</span>
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 h-11 gap-2"
+              onClick={openLibraryPanel}
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+            {selectedNodeId && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                onClick={() => handleDeleteNode(selectedNodeId)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
         </>
         )}
       </div>
