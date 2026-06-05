@@ -165,6 +165,116 @@ def _frontend_redirect(settings: Settings, path: str, params: dict[str, str]) ->
     return f"{base}{safe_path}?{query}" if query else f"{base}{safe_path}"
 
 
+def _oauth_docs_url(vendor: str) -> str:
+    if vendor in GOOGLE_OAUTH_VENDORS:
+        return GOOGLE_VENDOR_DOCS.get(vendor) or ""
+    if vendor == "hubspot":
+        return "https://developers.hubspot.com/docs"
+    if vendor == "salesforce":
+        return "https://developer.salesforce.com/docs"
+    if vendor == "quickbooks":
+        return "https://developer.intuit.com/app/developer/qbo/docs"
+    if vendor == "jira":
+        return "https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/"
+    if vendor == "pagerduty":
+        return "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality"
+    if vendor == "notion":
+        return "https://developers.notion.com/docs/authorization"
+    return ""
+
+
+def _find_existing_oauth_connector(
+    client,
+    org_id: str,
+    vendor: str,
+    name: str,
+) -> dict | None:
+    """Reuse an existing connector row when OAuth is retried (org_id + name is unique)."""
+    normalized_name = name.strip()
+    by_name = (
+        client.table("connectors")
+        .select("id, vendor, name, status, environment")
+        .eq("org_id", org_id)
+        .eq("name", normalized_name)
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if by_name.data:
+        row = by_name.data[0]
+        existing_vendor = normalize_vendor(row.get("vendor") or row.get("type") or "")
+        if existing_vendor and existing_vendor != vendor:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=error_detail(
+                    f"A connector named {normalized_name!r} already exists for another integration",
+                    "CONNECTOR_NAME_CONFLICT",
+                ),
+            )
+        return row
+
+    by_vendor = (
+        client.table("connectors")
+        .select("id, vendor, name, status, environment")
+        .eq("org_id", org_id)
+        .eq("vendor", vendor)
+        .is_("deleted_at", "null")
+        .order("updated_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if by_vendor.data:
+        return by_vendor.data[0]
+    return None
+
+
+def _prepare_oauth_connector(
+    client,
+    *,
+    org_id: str,
+    vendor: str,
+    name: str,
+    environment_name: str,
+) -> tuple[str, bool, bool]:
+    """Create or reuse a pending_auth connector. Returns (connector_id, reconnect, is_new)."""
+    docs_url = _oauth_docs_url(vendor)
+    existing = _find_existing_oauth_connector(client, org_id, vendor, name)
+    if existing:
+        connector_id = str(existing["id"])
+        prior_status = str(existing.get("status") or "")
+        reconnect = prior_status not in {"", "pending_auth", "disconnected"}
+        client.table("connectors").update(
+            {
+                "status": "pending_auth",
+                "environment": environment_name,
+                "vendor": vendor,
+                "type": vendor,
+                "description": f"{vendor.title()} (OAuth)",
+                "sync_frequency": "1h",
+                "config": {"auth_type": "oauth"},
+                "docs_url": docs_url,
+            }
+        ).eq("id", connector_id).eq("org_id", org_id).execute()
+        return connector_id, reconnect, False
+
+    row = {
+        "org_id": org_id,
+        "name": name.strip(),
+        "vendor": vendor,
+        "type": vendor,
+        "description": f"{vendor.title()} (OAuth)",
+        "status": "pending_auth",
+        "environment": environment_name,
+        "sync_frequency": "1h",
+        "config": {"auth_type": "oauth"},
+        "docs_url": docs_url,
+    }
+    created = client.table("connectors").insert(row).execute()
+    if not created.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
+    return str(created.data[0]["id"]), False
+
+
 @router.get("/{provider}/status", response_model=OAuthProviderStatusResponse)
 async def oauth_provider_status(
     provider: str,
@@ -294,53 +404,32 @@ async def start_oauth(
         if normalize_vendor(existing.data[0].get("vendor") or "") != vendor:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connector vendor mismatch")
     else:
-        row = {
-            "org_id": org_id,
-            "name": body.name.strip(),
-            "vendor": vendor,
-            "type": vendor,
-            "description": f"{vendor.title()} (OAuth)",
-            "status": "pending_auth",
-            "environment": environment_name,
-            "sync_frequency": "1h",
-            "config": {"auth_type": "oauth"},
-            "docs_url": (
-                GOOGLE_VENDOR_DOCS.get(vendor)
-                if vendor in GOOGLE_OAUTH_VENDORS
-                else (
-                    "https://developers.hubspot.com/docs"
-                    if vendor == "hubspot"
-                    else "https://developer.salesforce.com/docs"
-                    if vendor == "salesforce"
-                    else "https://developer.intuit.com/app/developer/qbo/docs"
-                    if vendor == "quickbooks"
-                    else "https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/"
-                    if vendor == "jira"
-                    else "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality"
-                    if vendor == "pagerduty"
-                    else "https://developers.notion.com/docs/authorization"
-                )
-            ),
-        }
         try:
-            created = client.table("connectors").insert(row).execute()
+            connector_id, oauth_reconnect, is_new = _prepare_oauth_connector(
+                client,
+                org_id=org_id,
+                vendor=vendor,
+                name=body.name,
+                environment_name=environment_name,
+            )
+        except HTTPException:
+            raise
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),
             ) from exc
-        if not created.data:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
-        connector_id = str(created.data[0]["id"])
-        write_audit_event(
-            client,
-            org_id=org_id,
-            actor_id=_user["user_id"],
-            action="connector.created",
-            resource_type="connector",
-            resource_id=connector_id,
-            metadata={"environment": environment_name, "auth": "oauth"},
-        )
+        reconnect = oauth_reconnect
+        if is_new:
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=_user["user_id"],
+                action="connector.created",
+                resource_type="connector",
+                resource_id=connector_id,
+                metadata={"environment": environment_name, "auth": "oauth"},
+            )
 
     now = time.time()
     state = sign_oauth_state(
