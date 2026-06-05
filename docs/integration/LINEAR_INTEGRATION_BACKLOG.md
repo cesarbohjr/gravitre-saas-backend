@@ -39,7 +39,7 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | 1 | T1-001 | [STA-10](https://linear.app/staqbot/issue/STA-10) | Unified invoke_tool service ✅ | — |
 | 2 | T1-002 | [STA-11](https://linear.app/staqbot/issue/STA-11) | Agent-tool permission model ✅ | STA-10 |
 | 3 | T1-003 | [STA-12](https://linear.app/staqbot/issue/STA-12) | Merge dual execution engines ✅ | STA-10 |
-| 4 | T1-004 | [STA-13](https://linear.app/staqbot/issue/STA-13) | Real connector OAuth UX ✅ | STA-10 |
+| 4 | T1-004 | [STA-13](https://linear.app/staqbot/issue/STA-13) | Real connector OAuth UX ✅ (platform hardened: `CONNECTOR_PLATFORM.md`) | STA-10 |
 | 4a | T1-004a | [STA-125](https://linear.app/staqbot/issue/STA-125) | **Platform setup:** HubSpot OAuth app & deployment secrets ✅ (CLI app deployed; Railway env via `npm run hubspot:railway`) | STA-13 (code) |
 | 5 | T1-005 | [STA-14](https://linear.app/staqbot/issue/STA-14) | HubSpot OAuth + token lifecycle ✅ | STA-13, [STA-125](https://linear.app/staqbot/issue/STA-125) |
 | 6 | T1-006 | [STA-15](https://linear.app/staqbot/issue/STA-15) | HubSpot v1 actions (5 core) ✅ | STA-10, STA-11, STA-14 |
@@ -107,6 +107,10 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 20 | T2-020 | [STA-49](https://linear.app/staqbot/issue/STA-49) | Agent memory API ✅ | STA-20 |
 
 **Start Tier 2 only after:** STA-10, STA-12, STA-13 (minimum platform), and relevant Tier 1 connector for your track.
+
+**Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
+
+**Current focus:** Tier 2 production smoke — connect each STA-24–29 epic in production, then mark Linear Done.
 
 ---
 

@@ -113,3 +113,7 @@ $env:BACKEND_URL="https://gravitre-saas-backend-production.up.railway.app"
 - All rows in sections **1–5** pass in **production**.
 - Section **6** passes if you use the demo workflow as the release gate.
 - Linear issues STA-10–23 (+ STA-125 ops) marked **Done** in Linear after verification.
+
+**Platform note:** OAuth reuse, API key storage, delete, and audit logging are centralized in `docs/integration/CONNECTOR_PLATFORM.md` — all Tier 2 OAuth providers inherit the same fixes.
+
+**Next:** `docs/integration/TIER2_PRODUCTION_SMOKE.md`

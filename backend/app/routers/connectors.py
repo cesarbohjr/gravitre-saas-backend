@@ -22,6 +22,7 @@ from app.core.errors import error_detail
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
+from app.connectors.platform import masked_api_key_for_response, store_connector_api_key
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
 from app.connectors.salesforce_oauth import ensure_salesforce_access_token, normalize_vendor as normalize_salesforce_vendor
 from app.workflows.audit import write_audit_event
@@ -152,49 +153,6 @@ def _docs_url(vendor: str) -> str | None:
         "google_sheets": "https://developers.google.com/sheets/api",
     }
     return mapping.get(vendor)
-
-
-def _store_connector_api_key(
-    client,
-    org_id: str,
-    connector_id: str,
-    api_key: str,
-    settings: Settings,
-) -> str | None:
-    """Persist API key via connector_secrets (preferred) or legacy column encryption."""
-    plain = (api_key or "").strip()
-    if not plain:
-        return None
-    if (settings.connector_secrets_encryption_key or "").strip():
-        set_secret(client, org_id, connector_id, "api_key", plain, settings)
-        return None
-    if (settings.encryption_key or "").strip():
-        return encrypt_value(plain, settings.encryption_key)
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=error_detail(
-            "API key encryption is not configured (set CONNECTOR_SECRETS_ENCRYPTION_KEY)",
-            "INVALID_CONFIG",
-        ),
-    )
-
-
-def _read_masked_api_key(
-    client,
-    connector_id: str,
-    row: dict,
-    settings: Settings,
-) -> str | None:
-    secret = get_decrypted_secret(client, connector_id, "api_key", settings)
-    if secret:
-        return secret
-    encrypted = row.get("api_key_encrypted")
-    if encrypted and (settings.encryption_key or "").strip():
-        try:
-            return decrypt_value(encrypted, settings.encryption_key)
-        except Exception:
-            return None
-    return None
 
 
 def _connector_response_item(
@@ -753,7 +711,7 @@ async def create_connector_route(
         update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
         client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
     if body.api_key:
-        encrypted = _store_connector_api_key(client, org_id, connector_id, body.api_key, settings)
+        encrypted = store_connector_api_key(client, org_id, connector_id, body.api_key, settings)
         if encrypted:
             client.table("connectors").update({"api_key_encrypted": encrypted}).eq("id", connector_id).eq(
                 "org_id", org_id
@@ -817,7 +775,7 @@ async def update_connector_route(
         payload["config"] = {**current_config, **body.config}
     api_key_plain = (body.api_key or "").strip() or None
     if api_key_plain:
-        encrypted = _store_connector_api_key(client, org_id, str(connector_id), api_key_plain, settings)
+        encrypted = store_connector_api_key(client, org_id, str(connector_id), api_key_plain, settings)
         if encrypted:
             payload["api_key_encrypted"] = encrypted
     if not payload and not api_key_plain:

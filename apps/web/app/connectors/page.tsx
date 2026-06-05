@@ -62,6 +62,12 @@ import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { connectorsApi } from "@/lib/api"
+import {
+  OAUTH_CONNECTOR_TYPE_SET,
+  OAUTH_VENDOR_KEYS,
+  connectorVendorKey,
+  formatVendorLabel,
+} from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
 interface Connector {
@@ -88,22 +94,6 @@ interface Connector {
   }
 }
 
-const OAUTH_VENDOR_KEYS = new Set([
-  "hubspot",
-  "salesforce",
-  "quickbooks",
-  "jira",
-  "confluence",
-  "pagerduty",
-  "notion",
-  "google_analytics",
-  "google_calendar",
-  "gmail",
-  "google_drive",
-  "google_docs",
-  "google_sheets",
-])
-
 function formatLastSync(value: unknown): string {
   if (!value) return "Never"
   const raw = String(value)
@@ -115,28 +105,6 @@ function formatLastSync(value: unknown): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
   return `${Math.floor(seconds / 86400)} days ago`
-}
-
-function formatVendorLabel(vendor: string): string {
-  const labels: Record<string, string> = {
-    salesforce: "Salesforce",
-    hubspot: "HubSpot",
-    google_analytics: "Google Analytics",
-    google_calendar: "Google Calendar",
-    google_drive: "Google Drive",
-    google_docs: "Google Docs",
-    google_sheets: "Google Sheets",
-    quickbooks: "QuickBooks",
-    pagerduty: "PagerDuty",
-    microsoft365: "Microsoft 365",
-    aws_s3: "AWS S3",
-    github: "GitHub",
-  }
-  const key = vendor.toLowerCase().replace(/\s+/g, "_")
-  if (labels[key]) return labels[key]
-  return vendor
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 function resolveConnectorStatus(
@@ -705,6 +673,7 @@ const connectorCategories = {
       { type: "Notion", description: "All-in-one workspace", authType: "oauth" },
       { type: "Airtable", description: "Database spreadsheets", authType: "apiKey" },
       { type: "Jira", description: "Issue tracking and DevOps", authType: "oauth" },
+      { type: "Confluence", description: "Team documentation wiki", authType: "oauth" },
       { type: "Asana", description: "Project management", authType: "oauth" },
       { type: "Monday.com", description: "Work OS", authType: "oauth" },
       { type: "ClickUp", description: "Productivity platform", authType: "apiKey" },
@@ -747,31 +716,6 @@ const connectorCategories = {
 const availableConnectors = Object.entries(connectorCategories).flatMap(([category, data]) =>
   data.connectors.map(c => ({ ...c, category }))
 )
-
-const OAUTH_CONNECTOR_TYPES = new Set([
-  "HubSpot",
-  "Salesforce",
-  "QuickBooks",
-  "Jira",
-  "PagerDuty",
-  "Notion",
-  "Google Analytics",
-  "Google Calendar",
-  "Gmail",
-  "Google Drive",
-  "Google Docs",
-  "Google Sheets",
-])
-
-function connectorVendorKey(type: string): string {
-  const key = type.toLowerCase().replace(/\s+/g, "")
-  if (key === "googlecalendar") return "google_calendar"
-  if (key === "googleanalytics") return "google_analytics"
-  if (key === "googledrive") return "google_drive"
-  if (key === "googledocs") return "google_docs"
-  if (key === "googlesheets") return "google_sheets"
-  return key
-}
 
 // Add Connector Modal
 function AddConnectorModal({
@@ -933,7 +877,7 @@ function AddConnectorModal({
     setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
 
     // Route to appropriate auth flow
-    if (OAUTH_CONNECTOR_TYPES.has(connector.type)) {
+    if (OAUTH_CONNECTOR_TYPE_SET.has(connector.type)) {
       setStep("oauth")
     } else if (connector.authType === "webhook") {
       setStep("webhook")
