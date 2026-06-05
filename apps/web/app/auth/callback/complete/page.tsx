@@ -60,6 +60,7 @@ function AuthCallbackCompleteContent() {
         return
       }
 
+      markAuthTransition()
       if (!cancelled) {
         markAuthTransition()
         router.replace(callbackContext.nextPath)

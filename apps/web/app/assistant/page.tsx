@@ -309,7 +309,7 @@ function ToolChip({ invocation }: { invocation: ToolInvocation }) {
       </button>
 
       <AnimatePresence>
-        {expanded && invocation.result != null && (
+        {expanded && invocation.result && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}

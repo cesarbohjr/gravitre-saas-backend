@@ -58,8 +58,16 @@ function daysLeft(isoDate: string): number {
 export function AppShell({ children, title }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
-  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
-  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("gravitre-trial-banner-dismissed") === "true",
+  )
+  const [welcomeDismissed, setWelcomeDismissed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem("gravitre-welcome-dismissed") === "true",
+  )
   const [bootstrapAttempted, setBootstrapAttempted] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -86,14 +94,6 @@ export function AppShell({ children, title }: AppShellProps) {
   const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
   const trialEndsAt = billingStatusData?.trialEndsAt
   const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
-
-  // Load persisted banner dismiss states
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setTrialBannerDismissed(sessionStorage.getItem("gravitre-trial-banner-dismissed") === "true")
-      setWelcomeDismissed(localStorage.getItem("gravitre-welcome-dismissed") === "true")
-    }
-  }, [])
 
   // Auto-bootstrap for OAuth users who skip /get-started
   useEffect(() => {
@@ -129,6 +129,17 @@ export function AppShell({ children, title }: AppShellProps) {
       localStorage.setItem("gravitre-welcome-dismissed", "true")
     }
   }
+
+  // Clear OAuth transition grace period only after /api/auth/me succeeds (or user signed out).
+  useEffect(() => {
+    if (!user && !loading) {
+      clearAuthTransition()
+      return
+    }
+    if (user && meData && !meError) {
+      clearAuthTransition()
+    }
+  }, [user, loading, meData, meError])
 
   // Show loading while checking auth and billing
   if (loading || (user && billingLoading && billingStatusData === undefined)) {

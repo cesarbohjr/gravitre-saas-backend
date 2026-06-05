@@ -51,6 +51,7 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
       const alreadyRedirecting =
         window.sessionStorage.getItem("gravitre_auth_login_redirect") === "1"
       if (!alreadyRedirecting) {
+        // Supabase session may still be valid while the API JWT is rejected (config mismatch).
         const supabase = createClient()
         const { data: { user: liveUser } } = await supabase.auth.getUser()
         if (liveUser) {

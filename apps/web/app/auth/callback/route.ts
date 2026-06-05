@@ -2,18 +2,32 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-function buildRedirectUrl(request: NextRequest, next: string): URL {
-  const { origin } = new URL(request.url)
-  const forwardedHost = request.headers.get("x-forwarded-host")
-  const isLocalEnv = process.env.NODE_ENV === "development"
+import {
+  clearSupabaseAuthCookiesFromRequest,
+  getAppOrigin,
+} from "@/lib/auth-session"
 
-  if (isLocalEnv) {
-    return new URL(next, origin)
+function buildRedirectUrl(request: NextRequest, next: string): URL {
+  const origin = getAppOrigin(request) || new URL(request.url).origin
+  return new URL(next.startsWith("/") ? next : `/${next}`, origin)
+}
+
+function loginRedirect(
+  request: NextRequest,
+  error: string,
+  extra?: Record<string, string>
+): NextResponse {
+  const origin = getAppOrigin(request) || new URL(request.url).origin
+  const url = new URL("/login", origin)
+  url.searchParams.set("error", error)
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      url.searchParams.set(key, value)
+    }
   }
-  if (forwardedHost) {
-    return new URL(next, `https://${forwardedHost}`)
-  }
-  return new URL(next, origin)
+  const response = NextResponse.redirect(url)
+  clearSupabaseAuthCookiesFromRequest(request, response)
+  return response
 }
 
 function createSupabaseWithResponse(
@@ -49,12 +63,9 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error("OAuth provider error:", error, errorDescription)
-    return NextResponse.redirect(
-      new URL(
-        `/login?error=oauth_error&provider_error=${encodeURIComponent(error)}`,
-        requestUrl.origin
-      )
-    )
+    return loginRedirect(request, "oauth_error", {
+      provider_error: error,
+    })
   }
 
   if (code) {
@@ -67,9 +78,7 @@ export async function GET(request: NextRequest) {
 
     if (exchangeError) {
       console.error("Session exchange error:", exchangeError.message)
-      return NextResponse.redirect(
-        new URL("/login?error=auth_callback_failed", requestUrl.origin)
-      )
+      return loginRedirect(request, "auth_callback_failed")
     }
 
     if (data.session) {
@@ -93,22 +102,19 @@ export async function GET(request: NextRequest) {
     }
 
     console.error("Auth OTP verify error:", verifyError.message)
-    return NextResponse.redirect(
-      new URL("/login?error=auth_callback_failed", requestUrl.origin)
-    )
+    return loginRedirect(request, "auth_callback_failed")
   }
 
   if (errorDescription || requestUrl.searchParams.get("error")) {
-    return NextResponse.redirect(
-      new URL("/login?error=oauth_error", requestUrl.origin)
-    )
+    return loginRedirect(request, "oauth_error")
   }
 
   // Implicit/hash flow — fragments are not sent to the server.
+  const completeOrigin = getAppOrigin(request) || requestUrl.origin
   return NextResponse.redirect(
     new URL(
       `/auth/callback/complete?next=${encodeURIComponent(next)}`,
-      requestUrl.origin
+      completeOrigin
     )
   )
 }

@@ -134,120 +134,121 @@ export default function AuditPage() {
   return (
     <AppShell>
       <div className="flex flex-col h-full">
-        <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-xl font-semibold text-foreground">Audit Trail</h1>
-              <p className="text-sm text-muted-foreground mt-1">Who did what, when, and the outcome</p>
+        <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border space-y-4">
+          {/* Mobile: Stack header vertically */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg md:text-xl font-semibold text-foreground">Audit Trail</h1>
+              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Who did what, when, and the outcome</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => void handleExport("csv")}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void handleExport("csv")}>
                 <FileText className="h-3.5 w-3.5" />
-                CSV
+                <span className="hidden sm:inline">CSV</span>
               </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => void handleExport("json")}>
+              <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void handleExport("json")}>
                 <FileJson className="h-3.5 w-3.5" />
-                JSON
+                <span className="hidden sm:inline">JSON</span>
+              </Button>
+              <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void mutate()}>
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => void mutate()}>
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary border border-border">
-                <Clock className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-medium text-foreground">{data?.total ?? 0} logs</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary border border-border">
-                <User className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-medium text-foreground">{summaryData?.byUser?.length ?? 0} active users</span>
-              </div>
+          {/* Stats Pills - Horizontal scroll on mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary border border-border shrink-0">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground whitespace-nowrap">{data?.total ?? 0} logs</span>
             </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary border border-border shrink-0">
+              <User className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground whitespace-nowrap">{summaryData?.byUser?.length ?? 0} active users</span>
+            </div>
+          </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-              <Select
-                value={selectedDateRange}
-                onValueChange={(value) => {
-                  setSelectedDateRange(value)
-                  setOffset(0)
-                }}
-              >
-                <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
-                  <Calendar className="h-3 w-3 mr-2 text-muted-foreground" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24h">Last 24 hours</SelectItem>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Filters - Stack on mobile, row on desktop */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <Select
+              value={selectedDateRange}
+              onValueChange={(value) => {
+                setSelectedDateRange(value)
+                setOffset(0)
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[140px] h-10 sm:h-8 text-sm sm:text-xs bg-secondary border-border">
+                <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24 hours</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <Select
-                value={selectedAction}
-                onValueChange={(value) => {
-                  setSelectedAction(value)
-                  setOffset(0)
-                }}
-              >
-                <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
-                  <SelectValue placeholder="Action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All actions</SelectItem>
-                  {actions.map((action) => (
-                    <SelectItem key={action} value={action}>
-                      {formatAction(action)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Select
+              value={selectedAction}
+              onValueChange={(value) => {
+                setSelectedAction(value)
+                setOffset(0)
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[140px] h-10 sm:h-8 text-sm sm:text-xs bg-secondary border-border">
+                <SelectValue placeholder="Action" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All actions</SelectItem>
+                {actions.map((action) => (
+                  <SelectItem key={action} value={action}>
+                    {formatAction(action)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-              <Select
-                value={selectedEntityType}
-                onValueChange={(value) => {
-                  setSelectedEntityType(value)
-                  setOffset(0)
-                }}
-              >
-                <SelectTrigger className="w-[130px] h-8 text-xs bg-secondary border-border">
-                  <SelectValue placeholder="Entity Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All entities</SelectItem>
-                  {entityTypes.map((entityType) => (
-                    <SelectItem key={entityType} value={entityType}>
-                      {entityType}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Select
+              value={selectedEntityType}
+              onValueChange={(value) => {
+                setSelectedEntityType(value)
+                setOffset(0)
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[140px] h-10 sm:h-8 text-sm sm:text-xs bg-secondary border-border">
+                <SelectValue placeholder="Entity Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All entities</SelectItem>
+                {entityTypes.map((entityType) => (
+                  <SelectItem key={entityType} value={entityType}>
+                    {entityType}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search events..."
-                  className="pl-8 h-8 w-[200px] text-xs bg-secondary border-border"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+            <div className="relative flex-1 sm:flex-initial sm:w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search events..."
+                className="pl-9 h-10 sm:h-8 text-sm sm:text-xs bg-secondary border-border"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5" />
-            Failed to load audit logs.
+          <div className="mx-4 md:mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>Failed to load audit logs.</span>
           </div>
         )}
 
-        <div className="flex-1 overflow-auto px-6 py-4">
+        <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
