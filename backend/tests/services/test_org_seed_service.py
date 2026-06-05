@@ -62,8 +62,10 @@ def test_seed_org_if_needed_skips_when_already_seeded():
     client.table("agents").upsert.assert_not_called()
 
 
+@patch("app.services.council_workflow_service.ensure_uncertain_lead_council_workflow")
 @patch("app.services.org_seed_service._seed_demo_agent_tool_permissions")
-def test_seed_org_if_needed_inserts_demo_rows_once(_mock_tool_perms):
+def test_seed_org_if_needed_inserts_demo_rows_once(_mock_tool_perms, _mock_council):
+    _mock_council.return_value = "demo-council-workflow-id"
     settings_holder: dict = {"settings": {"onboarding": {"seeded": False}}}
     upsert_calls: list[str] = []
 

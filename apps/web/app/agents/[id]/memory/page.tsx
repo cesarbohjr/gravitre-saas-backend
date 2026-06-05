@@ -1,36 +1,47 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useMemo } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
+import useSWR from "swr"
+import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
+import { agentsApi } from "@/lib/api"
+import type { Agent, AgentMemory } from "@/types/api"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
-// Types
-interface Memory {
+type MemoryCategory = AgentMemory["category"]
+
+interface DisplayMemory {
   id: string
   content: string
-  category: "fact" | "preference" | "pattern" | "rule"
+  category: MemoryCategory
   source: string
   confidence: number
   createdAt: string
   usageCount: number
   editable: boolean
 }
-
-// Mock Data
-const memories: Memory[] = [
-  { id: "mem-1", content: "Primary ICP is mid-market B2B SaaS companies with 50-500 employees", category: "fact", source: "Training Session", confidence: 98, createdAt: "2 weeks ago", usageCount: 47, editable: true },
-  { id: "mem-2", content: "Brand voice should be professional but approachable, avoiding jargon", category: "preference", source: "Brand Guidelines", confidence: 95, createdAt: "1 month ago", usageCount: 156, editable: true },
-  { id: "mem-3", content: "Email campaigns perform 23% better when sent on Tuesday mornings", category: "pattern", source: "Performance Analysis", confidence: 87, createdAt: "1 week ago", usageCount: 12, editable: true },
-  { id: "mem-4", content: "Always include compliance disclaimer in financial-related content", category: "rule", source: "Compliance Training", confidence: 100, createdAt: "2 months ago", usageCount: 89, editable: false },
-  { id: "mem-5", content: "Healthcare vertical requires HIPAA-compliant messaging", category: "rule", source: "Vertical Training", confidence: 100, createdAt: "3 weeks ago", usageCount: 34, editable: false },
-  { id: "mem-6", content: "Competitor Acme Corp focuses on enterprise segment, not direct competition", category: "fact", source: "Competitive Analysis", confidence: 91, createdAt: "1 week ago", usageCount: 8, editable: true },
-  { id: "mem-7", content: "Users prefer shorter email subject lines (under 50 characters)", category: "pattern", source: "A/B Test Results", confidence: 82, createdAt: "3 days ago", usageCount: 5, editable: true },
-  { id: "mem-8", content: "Quarterly reports should include YoY comparison by default", category: "preference", source: "User Feedback", confidence: 88, createdAt: "2 weeks ago", usageCount: 23, editable: true },
-]
 
 const categoryConfig = {
   fact: { label: "Fact", icon: "database", color: "blue", glow: "shadow-blue-500/20" },
@@ -39,18 +50,29 @@ const categoryConfig = {
   rule: { label: "Rule", icon: "shield", color: "amber", glow: "shadow-amber-500/20" },
 }
 
-const agent = {
-  id: "agent-001",
-  name: "Atlas",
-  role: "Marketing Agent",
-  gradient: "from-emerald-500 to-teal-500",
+function formatDate(value?: string): string {
+  if (!value) return "Recently"
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return "Recently"
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
-// Neural Network Brain Visualization
+function toDisplayMemory(memory: AgentMemory): DisplayMemory {
+  return {
+    id: memory.id,
+    content: memory.content,
+    category: memory.category,
+    source: memory.source || memory.provenance || "Manual entry",
+    confidence: Math.round(memory.confidence),
+    createdAt: formatDate(memory.createdAt),
+    usageCount: memory.usageCount,
+    editable: memory.editable,
+  }
+}
+
 function BrainVisualization() {
   return (
     <div className="relative h-48 flex items-center justify-center">
-      {/* Orbiting rings */}
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
@@ -66,7 +88,6 @@ function BrainVisualization() {
             ease: "linear",
           }}
         >
-          {/* Orbiting dots */}
           <motion.div
             className="absolute h-2 w-2 rounded-full bg-emerald-500"
             style={{
@@ -80,7 +101,6 @@ function BrainVisualization() {
         </motion.div>
       ))}
 
-      {/* Central brain */}
       <motion.div
         className="relative z-10 h-24 w-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-2xl shadow-emerald-500/30"
         animate={{
@@ -93,8 +113,6 @@ function BrainVisualization() {
         transition={{ duration: 3, repeat: Infinity }}
       >
         <Icon name="brain" size="xl" className="text-white" />
-        
-        {/* Pulse effect */}
         <motion.div
           className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500"
           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
@@ -102,7 +120,6 @@ function BrainVisualization() {
         />
       </motion.div>
 
-      {/* Floating memory nodes */}
       {[
         { x: -80, y: -40, delay: 0, color: "blue" },
         { x: 80, y: -30, delay: 0.2, color: "rose" },
@@ -130,7 +147,6 @@ function BrainVisualization() {
   )
 }
 
-// Stat Card with Glow
 function StatCard({ label, value, icon, color, suffix }: { label: string; value: string | number; icon: string; color: string; suffix?: string }) {
   return (
     <motion.div
@@ -147,7 +163,7 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
                    color === "violet" ? "radial-gradient(circle, #8b5cf6 0%, transparent 70%)" :
                    "radial-gradient(circle, #f59e0b 0%, transparent 70%)"
       }} />
-      
+
       <div className={cn(
         "h-10 w-10 rounded-xl flex items-center justify-center mb-3",
         color === "emerald" && "bg-emerald-500/10",
@@ -155,15 +171,15 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
         color === "violet" && "bg-violet-500/10",
         color === "amber" && "bg-amber-500/10",
       )}>
-        <Icon 
+        <Icon
           name={icon as IconName}
-          size="sm" 
+          size="sm"
           className={cn(
             color === "emerald" && "text-emerald-400",
             color === "blue" && "text-blue-400",
             color === "violet" && "text-violet-400",
             color === "amber" && "text-amber-400",
-          )} 
+          )}
         />
       </div>
       <p className="text-3xl font-bold text-foreground">
@@ -175,12 +191,11 @@ function StatCard({ label, value, icon, color, suffix }: { label: string; value:
   )
 }
 
-// Memory Card with Rich Interactions
-function MemoryCard({ memory, index, onEdit, onDelete }: { 
-  memory: Memory; 
-  index: number; 
-  onEdit: (m: Memory) => void;
-  onDelete: (id: string) => void;
+function MemoryCard({ memory, index, onEdit, onDelete }: {
+  memory: DisplayMemory
+  index: number
+  onEdit: (m: DisplayMemory) => void
+  onDelete: (id: string) => void
 }) {
   const category = categoryConfig[memory.category]
   const [isHovered, setIsHovered] = useState(false)
@@ -207,7 +222,6 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
         isHovered && "shadow-lg shadow-black/10"
       )}
     >
-      {/* Animated border gradient on hover */}
       <motion.div
         className={cn(
           "absolute inset-0 rounded-2xl opacity-0 transition-opacity",
@@ -216,7 +230,6 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
         animate={{ opacity: isHovered ? 1 : 0 }}
       />
 
-      {/* Category badge */}
       <div className="flex items-start justify-between mb-3">
         <div className={cn(
           "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
@@ -225,19 +238,10 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
           <Icon name={category.icon as IconName} size="xs" />
           {category.label}
         </div>
-        
-        {/* Confidence ring */}
+
         <div className="relative h-10 w-10">
           <svg className="h-10 w-10 -rotate-90">
-            <circle
-              cx="20"
-              cy="20"
-              r="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              className="text-secondary"
-            />
+            <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-secondary" />
             <motion.circle
               cx="20"
               cy="20"
@@ -258,10 +262,8 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
         </div>
       </div>
 
-      {/* Content */}
       <p className="text-sm text-foreground leading-relaxed mb-4 pr-4">{memory.content}</p>
 
-      {/* Meta row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
@@ -278,24 +280,13 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {memory.editable ? (
             <>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0"
-                onClick={() => onEdit(memory)}
-              >
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onEdit(memory)}>
                 <Icon name="edit" size="sm" className="text-muted-foreground" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                onClick={() => onDelete(memory.id)}
-              >
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => onDelete(memory.id)}>
                 <Icon name="trash" size="sm" />
               </Button>
             </>
@@ -311,61 +302,233 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
   )
 }
 
+function MemoryEditorDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSave,
+  saving,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  initial?: DisplayMemory | null
+  onSave: (values: { content: string; category: MemoryCategory; source: string; confidence: number; editable: boolean }) => Promise<void>
+  saving: boolean
+}) {
+  const [content, setContent] = useState(initial?.content || "")
+  const [category, setCategory] = useState<MemoryCategory>(initial?.category || "fact")
+  const [source, setSource] = useState(initial?.source || "")
+  const [confidence, setConfidence] = useState(initial?.confidence ?? 90)
+  const [editable, setEditable] = useState(initial?.editable ?? true)
+
+  const resetFromInitial = () => {
+    setContent(initial?.content || "")
+    setCategory(initial?.category || "fact")
+    setSource(initial?.source || "")
+    setConfidence(initial?.confidence ?? 90)
+    setEditable(initial?.editable ?? true)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) resetFromInitial() }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{initial ? "Edit memory" : "Add memory"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What should this agent remember?"
+            className="w-full min-h-28 rounded-xl border border-border bg-card px-3 py-2 text-sm"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm space-y-1">
+              <span className="text-muted-foreground">Category</span>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as MemoryCategory)}
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+              >
+                <option value="fact">Fact</option>
+                <option value="preference">Preference</option>
+                <option value="pattern">Pattern</option>
+                <option value="rule">Rule</option>
+              </select>
+            </label>
+            <label className="text-sm space-y-1">
+              <span className="text-muted-foreground">Confidence</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={confidence}
+                onChange={(e) => setConfidence(Number(e.target.value))}
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+          <label className="text-sm space-y-1 block">
+            <span className="text-muted-foreground">Source / provenance</span>
+            <input
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder="Training session, brand guidelines, etc."
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={editable} onChange={(e) => setEditable(e.target.checked)} />
+            <span>Allow edits and deletion</span>
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button
+            disabled={saving || !content.trim()}
+            onClick={async () => {
+              await onSave({ content: content.trim(), category, source: source.trim(), confidence, editable })
+              onOpenChange(false)
+            }}
+          >
+            {saving ? "Saving..." : initial ? "Save changes" : "Add memory"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AgentMemoryPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
+  const { user } = useAuth()
   const [activeCategory, setActiveCategory] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [editingMemory, setEditingMemory] = useState<Memory | null>(null)
+  const [editingMemory, setEditingMemory] = useState<DisplayMemory | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<DisplayMemory | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  const filteredMemories = memories.filter(m => {
+  const { data: agentData } = useSWR(
+    user && id ? `agent/${id}` : null,
+    () => agentsApi.get(id),
+  )
+  const agent = agentData as Agent | undefined
+
+  const { data: memoriesData, mutate, isLoading } = useSWR(
+    user && id ? `agent/${id}/memories` : null,
+    () => agentsApi.listMemories(id),
+    { fallbackData: [] as AgentMemory[] },
+  )
+
+  const memories = useMemo(
+    () => (memoriesData || []).map(toDisplayMemory),
+    [memoriesData],
+  )
+
+  const filteredMemories = memories.filter((m) => {
     const matchesCategory = activeCategory === "all" || m.category === activeCategory
     const matchesSearch = m.content.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
   })
 
-  const stats = {
+  const stats = useMemo(() => ({
     total: memories.length,
-    avgConfidence: Math.round(memories.reduce((sum, m) => sum + m.confidence, 0) / memories.length),
+    avgConfidence: memories.length
+      ? Math.round(memories.reduce((sum, m) => sum + m.confidence, 0) / memories.length)
+      : 0,
     totalUsage: memories.reduce((sum, m) => sum + m.usageCount, 0),
-    protected: memories.filter(m => !m.editable).length,
+    protected: memories.filter((m) => !m.editable).length,
+  }), [memories])
+
+  const categoryCounts = useMemo(() => ({
+    all: memories.length,
+    fact: memories.filter((m) => m.category === "fact").length,
+    preference: memories.filter((m) => m.category === "preference").length,
+    pattern: memories.filter((m) => m.category === "pattern").length,
+    rule: memories.filter((m) => m.category === "rule").length,
+  }), [memories])
+
+  const handleSaveMemory = async (values: {
+    content: string
+    category: MemoryCategory
+    source: string
+    confidence: number
+    editable: boolean
+  }) => {
+    try {
+      setSaving(true)
+      if (editingMemory) {
+        await agentsApi.updateMemory(id, editingMemory.id, {
+          content: values.content,
+          category: values.category,
+          provenance: values.source || undefined,
+          confidence: values.confidence,
+          editable: values.editable,
+        })
+        toast.success("Memory updated")
+      } else {
+        await agentsApi.createMemory(id, {
+          content: values.content,
+          category: values.category,
+          provenance: values.source || undefined,
+          confidence: values.confidence,
+          editable: values.editable,
+        })
+        toast.success("Memory added")
+      }
+      await mutate()
+      setEditingMemory(null)
+    } catch (error) {
+      console.error("[memory] save failed:", error)
+      toast.error("Failed to save memory")
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const categoryCounts = {
-    all: memories.length,
-    fact: memories.filter(m => m.category === "fact").length,
-    preference: memories.filter(m => m.category === "preference").length,
-    pattern: memories.filter(m => m.category === "pattern").length,
-    rule: memories.filter(m => m.category === "rule").length,
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      setSaving(true)
+      await agentsApi.deleteMemory(id, deleteTarget.id)
+      toast.success("Memory deleted")
+      await mutate()
+    } catch (error) {
+      console.error("[memory] delete failed:", error)
+      toast.error("Failed to delete memory")
+    } finally {
+      setSaving(false)
+      setDeleteTarget(null)
+    }
   }
 
   return (
     <AppShell title="Agent Memory">
       <div className="flex flex-col min-h-full">
-        {/* Header */}
         <div className="relative overflow-hidden border-b border-border">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-teal-500/5" />
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-          
+
           <div className="relative px-8 py-6">
-            {/* Breadcrumb */}
             <div className="flex items-center gap-2 text-sm mb-6">
               <Link href="/agents" className="text-muted-foreground hover:text-foreground transition-colors">
                 AI Team
               </Link>
               <Icon name="chevronRight" size="xs" className="text-muted-foreground/50" />
               <Link href={`/agents/${id}`} className="text-muted-foreground hover:text-foreground transition-colors">
-                {agent.name}
+                {agent?.name || "Agent"}
               </Link>
               <Icon name="chevronRight" size="xs" className="text-muted-foreground/50" />
               <span className="text-foreground">Memory</span>
             </div>
 
             <div className="grid grid-cols-12 gap-8">
-              {/* Left: Brain Visualization */}
               <div className="col-span-4 flex flex-col items-center justify-center">
                 <BrainVisualization />
                 <motion.div
@@ -374,12 +537,11 @@ export default function AgentMemoryPage({
                   transition={{ delay: 0.3 }}
                   className="text-center mt-4"
                 >
-                  <h1 className="text-2xl font-bold text-foreground">{agent.name}&apos;s Memory</h1>
+                  <h1 className="text-2xl font-bold text-foreground">{agent?.name || "Agent"}&apos;s Memory</h1>
                   <p className="text-sm text-muted-foreground">Everything the agent has learned</p>
                 </motion.div>
               </div>
 
-              {/* Right: Stats */}
               <div className="col-span-8 grid grid-cols-4 gap-4 content-center">
                 <StatCard label="Total Memories" value={stats.total} icon="brain" color="emerald" />
                 <StatCard label="Avg Confidence" value={stats.avgConfidence} icon="target" color="blue" suffix="%" />
@@ -390,9 +552,7 @@ export default function AgentMemoryPage({
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 px-8 py-6">
-          {/* Filters & Search */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2 p-1 rounded-xl bg-secondary/50">
               {[
@@ -435,29 +595,38 @@ export default function AgentMemoryPage({
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
                 />
               </div>
-              <Button className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0">
+              <Button
+                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
+                onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
+              >
                 <Icon name="add" size="sm" />
                 Add Memory
               </Button>
             </div>
           </div>
 
-          {/* Memory Grid */}
-          <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-2 gap-4">
-              {filteredMemories.map((memory, i) => (
-                <MemoryCard
-                  key={memory.id}
-                  memory={memory}
-                  index={i}
-                  onEdit={setEditingMemory}
-                  onDelete={(id) => console.log("Delete:", id)}
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground py-12 text-center">Loading memories...</div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              <motion.div layout className="grid grid-cols-2 gap-4">
+                {filteredMemories.map((memory, i) => (
+                  <MemoryCard
+                    key={memory.id}
+                    memory={memory}
+                    index={i}
+                    onEdit={(m) => { setEditingMemory(m); setEditorOpen(true) }}
+                    onDelete={(memoryId) => {
+                      const target = memories.find((m) => m.id === memoryId)
+                      if (target) setDeleteTarget(target)
+                    }}
+                  />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
 
-          {filteredMemories.length === 0 && (
+          {!isLoading && filteredMemories.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -467,11 +636,35 @@ export default function AgentMemoryPage({
                 <Icon name="search" size="xl" className="text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">No memories found</h3>
-              <p className="text-sm text-muted-foreground">Try adjusting your search or category filter</p>
+              <p className="text-sm text-muted-foreground">Try adjusting your search or add a new memory</p>
             </motion.div>
           )}
         </div>
       </div>
+
+      <MemoryEditorDialog
+        key={editingMemory?.id || "new"}
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        initial={editingMemory}
+        onSave={handleSaveMemory}
+        saving={saving}
+      />
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete memory?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the memory from vector search and future agent tasks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={saving}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   )
 }

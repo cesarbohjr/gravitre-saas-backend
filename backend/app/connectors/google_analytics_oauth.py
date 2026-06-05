@@ -248,8 +248,20 @@ def complete_google_analytics_oauth_connection(
             property_name=prop.get("display_name"),
             property_resource=prop.get("property_resource"),
         )
+        _ensure_marketing_workflow_after_ga4_connect(client, org_id, settings)
         return True
+    _ensure_marketing_workflow_after_ga4_connect(client, org_id, settings)
     return False
+
+
+def _ensure_marketing_workflow_after_ga4_connect(
+    client: Any,
+    org_id: str,
+    settings: Settings,
+) -> None:
+    from app.services.marketing_workflow_service import on_marketing_connectors_updated
+
+    on_marketing_connectors_updated(client, org_id, settings)
 
 
 def google_analytics_connection_auth_status(

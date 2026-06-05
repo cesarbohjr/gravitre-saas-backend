@@ -338,3 +338,15 @@ def on_hubspot_connector_connected(
         ensure_default_hubspot_triggers_after_oauth(client, org_id, connector_id, settings)
     except Exception as exc:  # noqa: BLE001
         logger.warning("hubspot_default_triggers_failed org_id=%s error=%s", org_id, exc)
+    try:
+        from app.services.marketing_workflow_service import on_marketing_connectors_updated
+
+        on_marketing_connectors_updated(client, org_id, settings)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("marketing_workflow_setup_failed org_id=%s error=%s", org_id, exc)
+    try:
+        from app.services.council_workflow_service import on_council_workflow_org_ready
+
+        on_council_workflow_org_ready(client, org_id, settings)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("council_workflow_setup_failed org_id=%s error=%s", org_id, exc)

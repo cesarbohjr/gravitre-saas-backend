@@ -66,7 +66,7 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
         const hasSupabaseCookie = document.cookie
           .split(";")
           .some((c) => c.trim().startsWith("sb-"))
-        if (hasSupabaseCookie) {
+        if (token || hasSupabaseCookie) {
           loginUrl.searchParams.set("error", "session_expired")
         }
         window.location.assign(loginUrl.toString())

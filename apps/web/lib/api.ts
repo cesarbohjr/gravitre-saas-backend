@@ -17,6 +17,7 @@ import type {
   OperatorSessionCreateRequest,
   OperatorActionPlanRequest,
   Agent,
+  AgentMemory,
   AgentListResponse,
   CreateAgentRequest,
   Workflow,
@@ -221,6 +222,23 @@ export const agentsApi = {
   delete: (id: string) => deleteRequest(apiUrl(`/api/agents/${id}`)),
   start: async (id: string) => unwrapAgent(await postJson<unknown>(apiUrl(`/api/agents/${id}/start`), {})),
   stop: async (id: string) => unwrapAgent(await postJson<unknown>(apiUrl(`/api/agents/${id}/stop`), {})),
+  listMemories: (agentId: string, params?: { category?: string; q?: string }) => {
+    const search = new URLSearchParams()
+    if (params?.category) search.set("category", params.category)
+    if (params?.q) search.set("q", params.q)
+    const query = search.toString()
+    return fetcher<AgentMemory[]>(
+      apiUrl(`/api/agents/${agentId}/memories${query ? `?${query}` : ""}`)
+    )
+  },
+  createMemory: (agentId: string, data: Partial<AgentMemory> & { content: string }) =>
+    postJson<AgentMemory>(apiUrl(`/api/agents/${agentId}/memories`), data),
+  updateMemory: (agentId: string, memoryId: string, data: Partial<AgentMemory>) =>
+    patchJson<AgentMemory>(apiUrl(`/api/agents/${agentId}/memories/${memoryId}`), data),
+  deleteMemory: (agentId: string, memoryId: string) =>
+    deleteRequest(apiUrl(`/api/agents/${agentId}/memories/${memoryId}`)),
+  searchMemories: (agentId: string, data: { query: string; topK?: number; category?: string }) =>
+    postJson<AgentMemory[]>(apiUrl(`/api/agents/${agentId}/memories/search`), data),
 }
 
 // ============ Workflows ============
