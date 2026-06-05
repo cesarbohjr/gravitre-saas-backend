@@ -793,8 +793,11 @@ export interface CreateConnectorRequest {
   vendor: string
   description?: string
   api_key?: string
+  apiKey?: string
   webhook_url?: string
+  webhookUrl?: string
   sync_frequency?: string
+  syncFrequency?: string
   environment_id?: string
   config?: Record<string, unknown>
   secrets?: Record<string, string>

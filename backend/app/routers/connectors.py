@@ -106,6 +106,8 @@ class ConnectorCreateRequest(BaseModel):
     config: dict | None = None
     secrets: dict[str, str] | None = None
 
+    model_config = {"populate_by_name": True}
+
 
 class ConnectorUpdateRequest(BaseModel):
     name: str | None = None
@@ -114,10 +116,15 @@ class ConnectorUpdateRequest(BaseModel):
     webhook_url: str | None = Field(default=None, alias="webhookUrl")
     sync_frequency: str | None = Field(default=None, alias="syncFrequency")
     status: str | None = None
+    config: dict | None = None
+
+    model_config = {"populate_by_name": True}
 
 
 class ConnectorDeleteRequest(BaseModel):
     confirm_name: str = Field(..., alias="confirmName")
+
+    model_config = {"populate_by_name": True}
 
 
 class ConnectorSyncRequest(BaseModel):
@@ -464,9 +471,8 @@ async def test_connector_route(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     row = (
         client.table("connectors")
-        .select("id, vendor, name")
+        .select("id, vendor, name, environment")
         .eq("org_id", org_id)
-        .eq("environment", environment_name)
         .eq("id", str(connector_id))
         .is_("deleted_at", "null")
         .limit(1)
@@ -476,13 +482,14 @@ async def test_connector_route(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
     data = row.data[0]
     vendor = normalize_vendor(data.get("vendor") or "")
+    connector_env = data.get("environment") or environment_name
     if vendor == "hubspot":
         token, err = ensure_hubspot_access_token(
             client,
             org_id,
             str(connector_id),
             settings,
-            environment_name=data.get("environment") or environment_name,
+            environment_name=connector_env,
         )
         if token:
             return {"success": True, "message": "HubSpot connection is valid"}
@@ -493,7 +500,7 @@ async def test_connector_route(
             org_id,
             str(connector_id),
             settings,
-            environment_name=data.get("environment") or environment_name,
+            environment_name=connector_env,
         )
         if token:
             return {"success": True, "message": "Salesforce connection is valid"}
@@ -684,10 +691,38 @@ async def create_connector_route(
         "docs_url": docs_url,
         "config": body.config or {},
     }
-    r = client.table("connectors").insert(row).execute()
-    if not r.data:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
-    connector_id = str(r.data[0]["id"])
+    connector_id: str
+    try:
+        r = client.table("connectors").insert(row).execute()
+        if not r.data:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
+        connector_id = str(r.data[0]["id"])
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        if "23505" not in msg and "connectors_org_name_key" not in msg:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),
+            ) from exc
+        existing = (
+            client.table("connectors")
+            .select("id, vendor")
+            .eq("org_id", org_id)
+            .eq("name", body.name.strip())
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=error_detail("Connector name already exists", "CONNECTOR_NAME_CONFLICT"),
+            ) from exc
+        connector_id = str(existing.data[0]["id"])
+        update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
+        client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
     if body.secrets:
         if not settings.connector_secrets_encryption_key:
             raise HTTPException(
@@ -730,6 +765,21 @@ async def update_connector_route(
         payload["status"] = body.status
     if body.webhook_url is not None:
         payload["webhook_url"] = body.webhook_url
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if body.config is not None:
+        existing_row = (
+            client.table("connectors")
+            .select("config")
+            .eq("org_id", org_id)
+            .eq("id", str(connector_id))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        current_config = {}
+        if existing_row.data:
+            current_config = existing_row.data[0].get("config") or {}
+        payload["config"] = {**current_config, **body.config}
     if body.api_key:
         if not settings.encryption_key:
             raise HTTPException(
@@ -739,12 +789,10 @@ async def update_connector_route(
         payload["api_key_encrypted"] = encrypt_value(body.api_key, settings.encryption_key)
     if not payload:
         return await get_connector_route_alias(connector_id, _admin[0], org_id, environment_name, settings)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     updated = (
         client.table("connectors")
         .update(payload)
         .eq("org_id", org_id)
-        .eq("environment", environment_name)
         .eq("id", str(connector_id))
         .is_("deleted_at", "null")
         .execute()
@@ -763,6 +811,75 @@ async def update_connector_route(
     return await get_connector_route_alias(connector_id, _admin[0], org_id, environment_name, settings)
 
 
+async def _delete_connector_impl(
+    connector_id: UUID,
+    body: ConnectorDeleteRequest,
+    _admin: tuple,
+    settings: Settings,
+) -> dict:
+    _user, org_id = _admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    existing = (
+        client.table("connectors")
+        .select("id, name, environment")
+        .eq("org_id", org_id)
+        .eq("id", str(connector_id))
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    row = existing.data[0]
+    name = row.get("name") or ""
+    if body.confirm_name.strip() != name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Name mismatch", "NAME_MISMATCH"),
+        )
+    try:
+        deps = (
+            client.table("workflow_nodes")
+            .select("id, workflow_id")
+            .eq("org_id", org_id)
+            .eq("connector_id", str(connector_id))
+            .execute()
+        )
+        if deps.data:
+            workflows = list({str(d.get("workflow_id")) for d in deps.data if d.get("workflow_id")})
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_detail("Has dependencies", "HAS_DEPENDENCIES", {"workflows": workflows}),
+            )
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        # workflow_nodes may be absent in some environments; do not block connector removal.
+        pass
+
+    deleted_at = datetime.now(timezone.utc).isoformat()
+    updated = (
+        client.table("connectors")
+        .update({"deleted_at": deleted_at})
+        .eq("id", str(connector_id))
+        .eq("org_id", org_id)
+        .is_("deleted_at", "null")
+        .execute()
+    )
+    if not updated.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action="connector.deleted",
+        resource_type="connector",
+        resource_id=str(connector_id),
+        metadata={"environment": row.get("environment")},
+    )
+    return {"success": True}
+
+
 @connectors_router.delete("/{connector_id}")
 async def delete_connector_route(
     connector_id: UUID,
@@ -771,52 +888,19 @@ async def delete_connector_route(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    existing = (
-        client.table("connectors")
-        .select("id, name")
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .eq("id", str(connector_id))
-        .is_("deleted_at", "null")
-        .limit(1)
-        .execute()
-    )
-    if not existing.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
-    name = existing.data[0].get("name") or ""
-    if body.confirm_name.strip() != name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_detail("Name mismatch", "NAME_MISMATCH"),
-        )
-    deps = (
-        client.table("workflow_nodes")
-        .select("id, workflow_id")
-        .eq("org_id", org_id)
-        .eq("connector_id", str(connector_id))
-        .execute()
-    )
-    if deps.data:
-        workflows = list({str(d.get("workflow_id")) for d in deps.data if d.get("workflow_id")})
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_detail("Has dependencies", "HAS_DEPENDENCIES", {"workflows": workflows}),
-        )
-    client.table("connectors").update(
-        {"deleted_at": datetime.now(timezone.utc).isoformat()}
-    ).eq("id", str(connector_id)).execute()
-    write_audit_event(
-        client,
-        org_id=org_id,
-        actor_id=_user["user_id"],
-        action="connector.deleted",
-        resource_type="connector",
-        resource_id=str(connector_id),
-        metadata={"environment": environment_name},
-    )
-    return {"success": True}
+    return await _delete_connector_impl(connector_id, body, _admin, settings)
+
+
+@connectors_router.post("/{connector_id}/delete")
+async def delete_connector_post_route(
+    connector_id: UUID,
+    body: ConnectorDeleteRequest,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """POST alias for delete (avoids DELETE+body issues in some proxies)."""
+    return await _delete_connector_impl(connector_id, body, _admin, settings)
 
 
 @connectors_router.get("/{connector_id}/docs")

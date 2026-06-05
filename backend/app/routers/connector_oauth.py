@@ -128,7 +128,7 @@ class OAuthStartRequest(BaseModel):
     connector_id: str | None = Field(default=None, alias="connectorId")
     redirect_path: str | None = Field(default="/connectors", alias="redirectPath")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True}  # noqa: RUF012 — pydantic model config
 
 
 class OAuthStartResponse(BaseModel):
@@ -272,7 +272,7 @@ def _prepare_oauth_connector(
     created = client.table("connectors").insert(row).execute()
     if not created.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
-    return str(created.data[0]["id"]), False
+    return str(created.data[0]["id"]), False, True
 
 
 @router.get("/{provider}/status", response_model=OAuthProviderStatusResponse)

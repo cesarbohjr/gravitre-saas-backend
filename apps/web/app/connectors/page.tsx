@@ -389,6 +389,14 @@ function ConnectorNode({
                   <Wifi className="h-3.5 w-3.5 mr-2" />
                   Test Connection
                 </DropdownMenuItem>
+                {connector.authType === "oauth" &&
+                  connector.status === "disconnected" &&
+                  onReconnect && (
+                    <DropdownMenuItem onClick={() => void onReconnect(connector)}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                      Complete OAuth
+                    </DropdownMenuItem>
+                  )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
                   <Trash2 className="h-3.5 w-3.5 mr-2" />
@@ -441,6 +449,17 @@ function ConnectorNode({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {connector.authType === "oauth" &&
+                connector.status === "disconnected" &&
+                onReconnect && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                    onClick={() => void onReconnect(connector)}
+                  >
+                    Complete OAuth
+                  </button>
+                )}
               <Link 
                 href={`/connectors/${connector.id}`}
                 className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
@@ -732,10 +751,12 @@ function AddConnectorModal({
   open,
   onClose,
   onCreated,
+  existingConnectors,
 }: {
   open: boolean
   onClose: () => void
   onCreated: () => Promise<void>
+  existingConnectors: Connector[]
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -777,12 +798,17 @@ function AddConnectorModal({
   const handleOAuthConnect = async () => {
     if (!selectedType || !name) return
     const provider = connectorVendorKey(selectedType)
+    const existing = existingConnectors.find(
+      (c) => connectorVendorKey(c.type) === provider
+    )
     setOauthStatus("redirecting")
     try {
-      const { authorizationUrl } = await connectorsApi.startOAuth(provider, {
-        name,
-        redirectPath: "/connectors",
-      })
+      const { authorizationUrl } = existing
+        ? await connectorsApi.reconnectOAuth(provider, existing.id, existing.name)
+        : await connectorsApi.startOAuth(provider, {
+            name,
+            redirectPath: "/connectors",
+          })
       window.location.assign(authorizationUrl)
     } catch (err) {
       console.error("[connectors] OAuth start failed:", err)
@@ -833,6 +859,7 @@ function AddConnectorModal({
         payload.secrets = { token: apiKey.trim() }
       } else if (apiKey) {
         payload.api_key = apiKey
+        ;(payload as { apiKey?: string }).apiKey = apiKey
       }
       await connectorsApi.create(payload)
       toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
@@ -1588,6 +1615,19 @@ function ConnectorsPageContent() {
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
 
+  // Fetch connectors from API with SWR
+  const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
+    user ? "/api/connectors" : null,
+    apiFetcher,
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 30000,
+      onError: (err) => console.error("[connectors] fetch error:", err),
+    }
+  )
+
+  const connectors = normalizeConnectorsResponse(data)
+
   useEffect(() => {
     const oauth = searchParams.get("oauth")
     const provider = searchParams.get("provider")
@@ -1595,6 +1635,7 @@ function ConnectorsPageContent() {
     const selectProperty = searchParams.get("selectProperty")
     if (!oauth) return
     if (oauth === "success") {
+      void mutate()
       if (provider === "google_analytics" && selectProperty === "1" && connectorId) {
         startTransition(() => setGaPropertyPicker({ connectorId }))
         toast.info("Select a GA4 property", {
@@ -1618,19 +1659,8 @@ function ConnectorsPageContent() {
       url.searchParams.delete("selectProperty")
       window.history.replaceState({}, "", url.pathname + url.search)
     }
-  }, [searchParams])
-  // Fetch connectors from API with SWR
-  const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
-    user ? "/api/connectors" : null,
-    apiFetcher,
-    {
-      revalidateOnFocus: true,
-      refreshInterval: 30000,
-      onError: (err) => console.error("[connectors] fetch error:", err),
-    }
-  )
+  }, [searchParams, mutate])
 
-  const connectors = normalizeConnectorsResponse(data)
   const [searchQuery, setSearchQuery] = useState("")
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
@@ -1671,7 +1701,11 @@ function ConnectorsPageContent() {
     )
 
     try {
-      await connectorsApi.update(connectorId, { config })
+      const updatePayload: Record<string, unknown> = {}
+      if (config?.apiKey) updatePayload.apiKey = config.apiKey
+      if (config?.webhookUrl) updatePayload.webhookUrl = config.webhookUrl
+      if (config && Object.keys(config).length > 0) updatePayload.config = config
+      await connectorsApi.update(connectorId, updatePayload)
       toast.success("Configuration saved")
       await mutate()
     } catch (err) {
@@ -1690,14 +1724,16 @@ function ConnectorsPageContent() {
       toast.success("Connector removed")
       await mutate()
     } catch (err) {
-      console.error("[v0] Failed to delete connector:", err)
+      console.error("[connectors] Failed to delete connector:", err)
       await mutate({ connectors: previousConnectors }, false)
-      toast.error("Failed to remove connector")
+      toast.error("Failed to remove connector", {
+        description: err instanceof Error ? err.message : "Please try again",
+      })
     }
   }
 
   const handleReconnectOAuth = async (connector: Connector) => {
-    const provider = connector.type.toLowerCase().replace(/\s+/g, "")
+    const provider = connectorVendorKey(connector.type)
     try {
       const { authorizationUrl } = await connectorsApi.reconnectOAuth(
         provider,
@@ -1707,8 +1743,8 @@ function ConnectorsPageContent() {
       window.location.assign(authorizationUrl)
     } catch (err) {
       console.error("[connectors] OAuth reconnect failed:", err)
-      toast.error("Failed to start reconnect", {
-        description: "HubSpot OAuth may not be configured on the server",
+      toast.error("Failed to start OAuth", {
+        description: err instanceof Error ? err.message : `${connector.type} OAuth may not be configured`,
       })
     }
   }
@@ -2041,6 +2077,7 @@ function ConnectorsPageContent() {
         <AddConnectorModal
           open={addModal}
           onClose={() => setAddModal(false)}
+          existingConnectors={connectors}
           onCreated={async () => {
             await mutate()
           }}

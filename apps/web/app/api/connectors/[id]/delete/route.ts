@@ -30,14 +30,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     )
   }
 
-  const url = new URL(`${baseUrl}/api/connectors/${id}`)
+  const url = new URL(`${baseUrl}/api/connectors/${id}/delete`)
   request.nextUrl.searchParams.forEach((value, key) => {
     url.searchParams.set(key, value)
   })
 
   try {
     const upstream = await fetch(url.toString(), {
-      method: "DELETE",
+      method: "POST",
       headers,
       body: body || undefined,
       cache: "no-store",
