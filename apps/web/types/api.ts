@@ -796,6 +796,8 @@ export interface CreateConnectorRequest {
   webhook_url?: string
   sync_frequency?: string
   environment_id?: string
+  config?: Record<string, unknown>
+  secrets?: Record<string, string>
 }
 
 export interface CreateSourceRequest {

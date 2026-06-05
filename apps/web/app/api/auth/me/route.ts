@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { proxyToFastApi } from "@/lib/backend-proxy"
-import { createClient } from "@/lib/supabase/server"
+import { createSupabaseServerClient } from "@/lib/supabase-server"
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as const
 
@@ -38,7 +38,7 @@ function fallbackMeFromSupabase(user: {
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServerClient()
   const {
     data: { user },
     error: userError,
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const supabase = await createClient()
+  const supabase = await createSupabaseServerClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
