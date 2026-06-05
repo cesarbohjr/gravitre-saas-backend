@@ -1,0 +1,51 @@
+name: Workflow Schedules
+
+# Dispatch due workflow schedules (STA-47).
+# In-process scheduler also runs when WORKFLOW_SCHEDULE_INTERVAL_SECONDS > 0 (default 60).
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+
+concurrency:
+  group: workflow-schedules
+  cancel-in-progress: false
+
+jobs:
+  dispatch-due:
+    name: Dispatch due workflow schedules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger workflow schedule dispatch
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        run: |
+          if [ -z "$INTERNAL_API_SECRET" ]; then
+            echo "INTERNAL_API_SECRET secret is not set; add it in repo Settings → Secrets and variables → Actions." >&2
+            exit 1
+          fi
+          GRAVITRE_BACKEND="https://gravitre-saas-backend-production.up.railway.app"
+          echo "Triggering workflow schedule dispatch at $(date -u)"
+          RESPONSE=$(curl -sf \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 5 \
+            -X POST \
+            "${GRAVITRE_BACKEND}/api/internal/workflows/schedules/dispatch-due" \
+            -H "X-Internal-Secret: ${INTERNAL_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP_STATUS:%{http_code}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS")
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Workflow schedule dispatch failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Workflow schedule dispatch completed successfully"
