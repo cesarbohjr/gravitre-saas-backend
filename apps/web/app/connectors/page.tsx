@@ -494,15 +494,18 @@ function ConfigureModal({
   open,
   onClose,
   onSave,
+  onReconnectOAuth,
 }: {
   connector: Connector
   open: boolean
   onClose: () => void
   onSave: (connectorId: string, config: Connector["config"]) => Promise<void>
+  onReconnectOAuth?: (connector: Connector) => Promise<void>
 }) {
   const [config, setConfig] = useState(connector.config || {})
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const isOAuth = connector.authType === "oauth"
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -527,6 +530,24 @@ function ConfigureModal({
           </div>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {isOAuth ? (
+            <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider
+                to connect.
+              </p>
+              {onReconnectOAuth && (
+                <Button
+                  type="button"
+                  className="w-full gap-2"
+                  onClick={() => void onReconnectOAuth(connector)}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Complete OAuth
+                </Button>
+              )}
+            </div>
+          ) : (
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">API Key</label>
             <div className="relative">
@@ -535,6 +556,7 @@ function ConfigureModal({
                 value={config.apiKey || ""}
                 onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
                 className="pr-10 bg-secondary"
+                placeholder="Enter API key or secret"
               />
               <button
                 type="button"
@@ -545,6 +567,8 @@ function ConfigureModal({
               </button>
             </div>
           </div>
+          )}
+          {!isOAuth && (
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sync Interval</label>
             <select
@@ -559,12 +583,15 @@ function ConfigureModal({
               <option value="1h">Every 1 hour</option>
             </select>
           </div>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button variant="outline" onClick={onClose}>{isOAuth ? "Close" : "Cancel"}</Button>
+          {!isOAuth && (
+          <Button onClick={handleSave} disabled={isSaving || !config.apiKey?.trim()}>
             {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Save Changes"}
           </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1702,16 +1729,20 @@ function ConnectorsPageContent() {
 
     try {
       const updatePayload: Record<string, unknown> = {}
-      if (config?.apiKey) updatePayload.apiKey = config.apiKey
+      if (config?.apiKey?.trim()) updatePayload.apiKey = config.apiKey.trim()
       if (config?.webhookUrl) updatePayload.webhookUrl = config.webhookUrl
-      if (config && Object.keys(config).length > 0) updatePayload.config = config
+      if (config?.syncInterval) updatePayload.syncFrequency = config.syncInterval
+      const { apiKey: _omitKey, syncInterval: _omitSync, ...configRest } = config || {}
+      if (Object.keys(configRest).length > 0) updatePayload.config = configRest
       await connectorsApi.update(connectorId, updatePayload)
       toast.success("Configuration saved")
       await mutate()
     } catch (err) {
       console.error("[v0] Failed to save connector config:", err)
       await mutate({ connectors: previousConnectors }, false)
-      toast.error("Failed to save configuration")
+      toast.error("Failed to save configuration", {
+        description: err instanceof Error ? err.message : "Please try again",
+      })
     }
   }
 
@@ -2064,6 +2095,7 @@ function ConnectorsPageContent() {
             open={!!configureModal}
             onClose={() => setConfigureModal(null)}
             onSave={handleSaveConfig}
+            onReconnectOAuth={handleReconnectOAuth}
           />
         )}
         {deleteModal && (

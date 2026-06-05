@@ -392,7 +392,7 @@ async def start_oauth(
     if connector_id:
         existing = (
             client.table("connectors")
-            .select("id, vendor")
+            .select("id, vendor, type")
             .eq("org_id", org_id)
             .eq("id", connector_id)
             .is_("deleted_at", "null")
@@ -401,8 +401,19 @@ async def start_oauth(
         )
         if not existing.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
-        if normalize_vendor(existing.data[0].get("vendor") or "") != vendor:
+        row = existing.data[0]
+        stored_vendor = normalize_vendor(row.get("vendor") or row.get("type") or "")
+        if stored_vendor != vendor:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connector vendor mismatch")
+        client.table("connectors").update(
+            {
+                "status": "pending_auth",
+                "environment": environment_name,
+                "vendor": vendor,
+                "type": vendor,
+                "config": {"auth_type": "oauth"},
+            }
+        ).eq("id", connector_id).eq("org_id", org_id).execute()
     else:
         try:
             connector_id, oauth_reconnect, is_new = _prepare_oauth_connector(

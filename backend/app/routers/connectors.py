@@ -154,6 +154,49 @@ def _docs_url(vendor: str) -> str | None:
     return mapping.get(vendor)
 
 
+def _store_connector_api_key(
+    client,
+    org_id: str,
+    connector_id: str,
+    api_key: str,
+    settings: Settings,
+) -> str | None:
+    """Persist API key via connector_secrets (preferred) or legacy column encryption."""
+    plain = (api_key or "").strip()
+    if not plain:
+        return None
+    if (settings.connector_secrets_encryption_key or "").strip():
+        set_secret(client, org_id, connector_id, "api_key", plain, settings)
+        return None
+    if (settings.encryption_key or "").strip():
+        return encrypt_value(plain, settings.encryption_key)
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=error_detail(
+            "API key encryption is not configured (set CONNECTOR_SECRETS_ENCRYPTION_KEY)",
+            "INVALID_CONFIG",
+        ),
+    )
+
+
+def _read_masked_api_key(
+    client,
+    connector_id: str,
+    row: dict,
+    settings: Settings,
+) -> str | None:
+    secret = get_decrypted_secret(client, connector_id, "api_key", settings)
+    if secret:
+        return secret
+    encrypted = row.get("api_key_encrypted")
+    if encrypted and (settings.encryption_key or "").strip():
+        try:
+            return decrypt_value(encrypted, settings.encryption_key)
+        except Exception:
+            return None
+    return None
+
+
 def _connector_response_item(
     row: dict,
     *,
@@ -162,14 +205,9 @@ def _connector_response_item(
     client,
     org_id: str,
 ) -> dict:
-    api_key = None
-    if row.get("api_key_encrypted") and settings.encryption_key:
-        try:
-            api_key = decrypt_value(row["api_key_encrypted"], settings.encryption_key)
-        except Exception:
-            api_key = None
-    vendor = row.get("vendor") or row.get("type") or ""
     connector_id = str(row["id"])
+    api_key = _read_masked_api_key(client, connector_id, row, settings)
+    vendor = row.get("vendor") or row.get("type") or ""
     env = row.get("environment") or environment_name
     auth_status = resolve_connector_auth_status(
         client, org_id, connector_id, vendor, settings, environment_name=env
@@ -641,14 +679,6 @@ async def create_connector_route(
     if vendor in ADVANCED_CONNECTORS:
         require_feature(plan, "advanced_connectors")
     _validate_webhook(body.webhook_url)
-    api_key_encrypted = None
-    if body.api_key:
-        if not settings.encryption_key:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=error_detail("ENCRYPTION_KEY not configured", "INVALID_CONFIG"),
-            )
-        api_key_encrypted = encrypt_value(body.api_key, settings.encryption_key)
     docs_url = _docs_url(vendor)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     if connector_limit is not None:
@@ -686,7 +716,6 @@ async def create_connector_route(
         "status": connector_status,
         "environment": environment_name,
         "sync_frequency": body.sync_frequency or "1h",
-        "api_key_encrypted": api_key_encrypted,
         "webhook_url": body.webhook_url,
         "docs_url": docs_url,
         "config": body.config or {},
@@ -723,6 +752,12 @@ async def create_connector_route(
         connector_id = str(existing.data[0]["id"])
         update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
         client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
+    if body.api_key:
+        encrypted = _store_connector_api_key(client, org_id, connector_id, body.api_key, settings)
+        if encrypted:
+            client.table("connectors").update({"api_key_encrypted": encrypted}).eq("id", connector_id).eq(
+                "org_id", org_id
+            ).execute()
     if body.secrets:
         if not settings.connector_secrets_encryption_key:
             raise HTTPException(
@@ -780,25 +815,36 @@ async def update_connector_route(
         if existing_row.data:
             current_config = existing_row.data[0].get("config") or {}
         payload["config"] = {**current_config, **body.config}
-    if body.api_key:
-        if not settings.encryption_key:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=error_detail("ENCRYPTION_KEY not configured", "INVALID_CONFIG"),
-            )
-        payload["api_key_encrypted"] = encrypt_value(body.api_key, settings.encryption_key)
-    if not payload:
+    api_key_plain = (body.api_key or "").strip() or None
+    if api_key_plain:
+        encrypted = _store_connector_api_key(client, org_id, str(connector_id), api_key_plain, settings)
+        if encrypted:
+            payload["api_key_encrypted"] = encrypted
+    if not payload and not api_key_plain:
         return await get_connector_route_alias(connector_id, _admin[0], org_id, environment_name, settings)
-    updated = (
-        client.table("connectors")
-        .update(payload)
-        .eq("org_id", org_id)
-        .eq("id", str(connector_id))
-        .is_("deleted_at", "null")
-        .execute()
-    )
-    if not updated.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    if payload:
+        updated = (
+            client.table("connectors")
+            .update(payload)
+            .eq("org_id", org_id)
+            .eq("id", str(connector_id))
+            .is_("deleted_at", "null")
+            .execute()
+        )
+        if not updated.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    else:
+        exists = (
+            client.table("connectors")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("id", str(connector_id))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        if not exists.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
     write_audit_event(
         client,
         org_id=org_id,
