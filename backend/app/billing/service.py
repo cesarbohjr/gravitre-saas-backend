@@ -37,7 +37,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
             "approvals": False,
             "audit_logs": False,
             "versioning": False,
-            "advanced_connectors": False,
+            "advanced_connectors": True,
         },
         "overage_rates": {"ai_credit": 0.02, "workflow_runs_per_1000": 10},
     },
@@ -96,7 +96,9 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     },
 }
 
-ADVANCED_CONNECTORS = {"salesforce", "hubspot", "microsoft365", "stripe"}
+# CRM connectors (HubSpot, Salesforce) are available on all paid tiers; gate only
+# enterprise payment/infra connectors behind advanced_connectors.
+ADVANCED_CONNECTORS = {"microsoft365", "stripe"}
 
 USAGE_DEFAULTS = {
     "ai_credits": 1,
@@ -149,6 +151,20 @@ def _resolve_plan(plans: dict[str, dict[str, Any]], plan_code: str) -> dict[str,
     if plan_code == "command":
         return plans.get("scale") or plans.get("enterprise")
     return None
+
+
+def _normalize_plan_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Merge DB billing_plans rows with code defaults (features JSON is often partial)."""
+    code = normalize_plan_code(str(row.get("code") or DEFAULT_PLAN_CODE))
+    template = dict(DEFAULT_PLANS.get(code) or DEFAULT_PLANS[DEFAULT_PLAN_CODE])
+    merged = {
+        **template,
+        **{k: v for k, v in row.items() if k not in {"features"} and v is not None},
+    }
+    template_features = dict(template.get("features") or {})
+    db_features = row.get("features") if isinstance(row.get("features"), dict) else {}
+    merged["features"] = {**template_features, **db_features}
+    return merged
 
 
 def get_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
@@ -301,9 +317,9 @@ def get_base_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
     plan_code = normalize_plan_code(billing.get("plan_code") if billing else DEFAULT_PLAN_CODE)
     resolved = _resolve_plan(plans, plan_code)
     if resolved:
-        return resolved
+        return _normalize_plan_row(resolved)
     fallback = _resolve_plan(DEFAULT_PLANS, DEFAULT_PLAN_CODE)
-    return fallback or next(iter(DEFAULT_PLANS.values()))
+    return _normalize_plan_row(fallback or next(iter(DEFAULT_PLANS.values())))
 
 
 def get_or_create_org_billing(client: Client, org_id: str) -> dict:
