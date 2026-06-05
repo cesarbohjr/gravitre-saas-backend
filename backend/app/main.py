@@ -132,6 +132,10 @@ async def lifespan(app: FastAPI):
         stop_knowledge_sync_scheduler,
     )
     from app.operators.agent_jobs import start_agent_job_worker, stop_agent_job_worker
+    from app.workflows.schedule_scheduler import (
+        start_workflow_schedule_scheduler,
+        stop_workflow_schedule_scheduler,
+    )
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
