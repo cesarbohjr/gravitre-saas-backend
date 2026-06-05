@@ -135,8 +135,6 @@ def _build_progress(onboarding_state: dict | None) -> dict:
 
 def _load_org_settings(client, org_id: str) -> dict:
     response = client.table("organizations").select("id, settings").eq("id", org_id).limit(1).execute()
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     if not response.data:
         raise HTTPException(status_code=404, detail="Organization not found")
     settings_value = response.data[0].get("settings") or {}
@@ -146,14 +144,11 @@ def _load_org_settings(client, org_id: str) -> dict:
 
 
 def _save_org_settings(client, org_id: str, settings_value: dict) -> None:
-    response = (
-        client.table("organizations")
-        .update({"settings": settings_value})
-        .eq("id", org_id)
-        .execute()
-    )
-    if response.error and not _is_missing_table_error(response.error):
-        raise HTTPException(status_code=500, detail=str(response.error))
+    try:
+        client.table("organizations").update({"settings": settings_value}).eq("id", org_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        if not _is_missing_table_error(exc):
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("")

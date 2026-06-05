@@ -324,7 +324,13 @@ async def start_oauth(
                 )
             ),
         }
-        created = client.table("connectors").insert(row).execute()
+        try:
+            created = client.table("connectors").insert(row).execute()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),
+            ) from exc
         if not created.data:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
         connector_id = str(created.data[0]["id"])
