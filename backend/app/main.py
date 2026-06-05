@@ -61,6 +61,7 @@ from app.routers import (
     google_analytics,
     pagerduty_triggers,
     salesforce_triggers,
+    workflow_schedules_internal,
 )
 from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
@@ -288,6 +289,7 @@ app.include_router(billing_sync.admin_router)
 app.include_router(knowledge_sync.internal_router)
 app.include_router(knowledge_sync.admin_router)
 app.include_router(knowledge_sync.webhook_router)
+app.include_router(workflow_schedules_internal.internal_router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(connector_oauth.router)
