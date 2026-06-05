@@ -1,38 +1,38 @@
 import type { Provider } from "@supabase/supabase-js"
 
-import { getAuthRedirectUrl } from "@/lib/auth-redirect"
-import { supabaseClient } from "@/lib/supabaseClient"
+import { markAuthTransition } from "@/lib/auth-transition"
+import { getAppOrigin } from "@/lib/auth-session"
+import { createClient } from "@/lib/supabase/client"
 
 type OAuthResult =
   | { ok: true }
   | { ok: false; error: string }
 
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value)
-  } catch {
-    return value
-  }
-}
-
 export async function beginOAuthSignIn(
   provider: Provider,
   redirectPath: string = "/operator",
-  isSignup: boolean = false,
+  isSignup: boolean = false
 ): Promise<OAuthResult> {
-  const redirectTo = getAuthRedirectUrl(redirectPath, isSignup)
-  if (!redirectTo) {
+  if (typeof window === "undefined") {
     return {
       ok: false,
-      error: "Authentication redirect URL is not configured. Please contact support.",
+      error: "Unable to continue OAuth sign-in in this environment.",
     }
   }
 
-  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+  const normalizedDest = redirectPath.startsWith("/")
+    ? redirectPath
+    : `/${redirectPath}`
+  const typeParam = isSignup ? "&type=signup" : ""
+  const origin = getAppOrigin() || window.location.origin
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(normalizedDest)}${typeParam}`
+
+  const supabase = createClient()
+
+  const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo,
-      skipBrowserRedirect: true,
       ...(provider === "azure" && {
         scopes: "email profile openid",
       }),
@@ -43,43 +43,6 @@ export async function beginOAuthSignIn(
     return { ok: false, error: error.message }
   }
 
-  if (!data?.url) {
-    return {
-      ok: false,
-      error: "Unable to start OAuth sign-in. Please try again.",
-    }
-  }
-
-  const expectedOrigin = new URL(redirectTo).origin
-  try {
-    const oauthUrl = new URL(data.url)
-    const redirectParam = oauthUrl.searchParams.get("redirect_to")
-
-    if (redirectParam) {
-      const decodedRedirect = safeDecode(redirectParam)
-      const actualOrigin = new URL(decodedRedirect).origin
-      if (actualOrigin !== expectedOrigin) {
-        return {
-          ok: false,
-          error:
-            "OAuth redirect mismatch detected. Verify NEXT_PUBLIC_APP_URL in Vercel and Site URL/Redirect URLs in Supabase Auth settings.",
-        }
-      }
-    }
-  } catch {
-    return {
-      ok: false,
-      error: "OAuth URL validation failed. Please try again.",
-    }
-  }
-
-  if (typeof window === "undefined") {
-    return {
-      ok: false,
-      error: "Unable to continue OAuth sign-in in this environment.",
-    }
-  }
-
-  window.location.assign(data.url)
+  markAuthTransition()
   return { ok: true }
 }

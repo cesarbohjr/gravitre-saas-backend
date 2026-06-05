@@ -1,7 +1,5 @@
-import { createClient as createSupabaseJsClient, type SupabaseClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import type { NextRequest } from "next/server"
-
-export { createSupabaseServerClient as createClient } from "@/lib/supabase-server"
 
 const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -43,7 +41,7 @@ export function createSupabaseRouteClient(request: NextRequest): SupabaseClient 
   const authHeader = request.headers.get("authorization")
   const serviceRoleKey = getSupabaseServiceRoleKey()
   const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
-  return createSupabaseJsClient(getSupabaseUrl(), accessKey, {
+  return createClient(getSupabaseUrl(), accessKey, {
     global: {
       headers: authHeader ? { Authorization: authHeader } : {},
     },

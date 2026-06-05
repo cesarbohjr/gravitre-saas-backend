@@ -7,74 +7,22 @@
   (no public API). This script enables APIs via gcloud and opens the credentials page.
 
 .PARAMETER ProjectId
-  GCP project ID. If omitted, uses GOOGLE_CLOUD_PROJECT, operator.local, gcloud config, or gravitre-ai.
+  GCP project ID. If omitted, uses gcloud config or prompts.
 
 .PARAMETER SkipBrowser
   Do not open the Cloud Console credentials page.
 #>
 param(
-    [string] $ProjectId,
+    [string] $ProjectId = $env:GOOGLE_CLOUD_PROJECT,
     [string] $ApiPublicUrl = $(if ($env:API_PUBLIC_URL) { $env:API_PUBLIC_URL } else { "https://gravitre-saas-backend-production.up.railway.app" }),
     [string] $SupabaseProjectRef = "smyeexlrqdpymwjmgzqu",
     [switch] $SkipBrowser
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-$DefaultGcpProjectId = "gravitre-ai"
-$OperatorFile = Join-Path $RepoRoot "backend\.env.operator.local"
-
 $gcloud = "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
 if (-not (Test-Path $gcloud)) {
     $gcloud = "gcloud"
-}
-
-function Invoke-GcloudQuiet {
-    param([Parameter(ValueFromRemainingArguments = $true)][string[]] $Args)
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = "SilentlyContinue"
-    try {
-        $output = & $gcloud @Args 2>&1 | ForEach-Object { "$_" }
-        return @{
-            ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n").Trim()
-        }
-    } finally {
-        $ErrorActionPreference = $prev
-    }
-}
-
-function Read-OperatorEnvValue {
-    param([string] $Key)
-    if (-not (Test-Path $OperatorFile)) { return $null }
-    foreach ($line in Get-Content $OperatorFile) {
-        if ($line -match "^\s*$([regex]::Escape($Key))\s*=\s*(.+)$") {
-            return $matches[1].Trim().Trim('"')
-        }
-    }
-    return $null
-}
-
-function Resolve-GcpProjectId {
-    param([string] $ExplicitId)
-
-    if ($ExplicitId) { return $ExplicitId.Trim() }
-    if ($env:GOOGLE_CLOUD_PROJECT) { return $env:GOOGLE_CLOUD_PROJECT.Trim() }
-
-    $fromFile = Read-OperatorEnvValue "GOOGLE_CLOUD_PROJECT"
-    if ($fromFile) { return $fromFile }
-
-    $configured = (Invoke-GcloudQuiet config get-value project).Output
-    if ($configured -and $configured -ne "(unset)") { return $configured }
-
-    $listResult = Invoke-GcloudQuiet projects list --format="value(projectId)"
-    if ($listResult.ExitCode -eq 0 -and $listResult.Output) {
-        $projects = $listResult.Output -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
-        if ($projects -contains $DefaultGcpProjectId) { return $DefaultGcpProjectId }
-        if ($projects.Count -eq 1) { return $projects[0] }
-    }
-
-    return $DefaultGcpProjectId
 }
 
 $api = $ApiPublicUrl.TrimEnd("/")
@@ -102,21 +50,22 @@ Write-Host ""
 Write-Host "Gravitre OAuth - Google Cloud CLI setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
-$authResult = Invoke-GcloudQuiet auth list --filter=status:ACTIVE --format="value(account)"
-if ($authResult.ExitCode -ne 0 -or -not $authResult.Output) {
+$authList = & $gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $authList) {
     Write-Host "gcloud is not logged in. Run:" -ForegroundColor Yellow
     Write-Host "  gcloud auth login" -ForegroundColor White
     Write-Host "Then re-run: npm run google:configure" -ForegroundColor Yellow
     exit 1
 }
-$authAccount = ($authResult.Output -split "`n" | Where-Object { $_ } | Select-Object -First 1)
-Write-Host "Account: $authAccount" -ForegroundColor Green
+Write-Host "Account: $($authList | Select-Object -First 1)" -ForegroundColor Green
 
-$ProjectId = Resolve-GcpProjectId -ExplicitId $ProjectId
+if (-not $ProjectId) {
+    $ProjectId = (& $gcloud config get-value project 2>$null).Trim()
+}
 if (-not $ProjectId) {
     Write-Host ""
     Write-Host "Available projects:" -ForegroundColor Yellow
-    Invoke-GcloudQuiet projects list --format="table(projectId,name)" | Out-Host
+    & $gcloud projects list --format="table(projectId,name)"
     $ProjectId = Read-Host "Enter GCP project ID for Gravitre OAuth"
 }
 if (-not $ProjectId) {
@@ -124,20 +73,14 @@ if (-not $ProjectId) {
     exit 1
 }
 
-$setProject = Invoke-GcloudQuiet config set project $ProjectId
-if ($setProject.ExitCode -ne 0) {
-    Write-Host "Failed to set gcloud project to $ProjectId." -ForegroundColor Red
-    if ($setProject.Output) { Write-Host $setProject.Output -ForegroundColor Red }
-    exit 1
-}
+& $gcloud config set project $ProjectId | Out-Null
 Write-Host "Project: $ProjectId" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "Enabling APIs..." -ForegroundColor Yellow
-$enableResult = Invoke-GcloudQuiet services enable @services --project=$ProjectId
-if ($enableResult.ExitCode -ne 0) {
+& $gcloud services enable @services --project=$ProjectId
+if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to enable one or more APIs." -ForegroundColor Red
-    if ($enableResult.Output) { Write-Host $enableResult.Output -ForegroundColor Red }
     exit 1
 }
 Write-Host "APIs enabled." -ForegroundColor Green

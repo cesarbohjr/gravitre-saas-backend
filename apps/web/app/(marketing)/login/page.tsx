@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Github, ArrowRight, Shield, Sparkles } from "luci
 import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
+import { markAuthTransition } from "@/lib/auth-transition"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
@@ -15,14 +16,6 @@ const features = [
   "Automate complex workflows",
   "Scale with enterprise security",
 ]
-
-const AUTH_ERRORS: Record<string, string> = {
-  session_expired: "Your session has expired. Please sign in again.",
-  auth_callback_failed: "Sign-in was interrupted. Please try again.",
-  oauth_error: "Sign-in failed. Please try a different method.",
-  account_not_found: "No account found. Would you like to get started?",
-  access_denied: "Access was denied. Please try again.",
-}
 
 function LoginPageContent() {
   const router = useRouter()
@@ -45,14 +38,7 @@ function LoginPageContent() {
     searchParams.get("session_expired") === "true"
       ? "Your session has expired. Please sign in again."
       : null
-  const errorKey = searchParams.get("error")
-  const urlAuthError = errorKey
-    ? AUTH_ERRORS[errorKey] ??
-      (errorKey === "oauth_error"
-        ? `Sign-in with ${searchParams.get("provider") ?? "your provider"} failed. Please try again or use email instead.`
-        : "An error occurred. Please try again.")
-    : null
-  const displayedAuthError = authError ?? sessionExpiredMessage ?? urlAuthError
+  const displayedAuthError = authError ?? sessionExpiredMessage
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -60,6 +46,44 @@ function LoginPageContent() {
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  // Clear stale Supabase cookies when redirected with an auth error (breaks OAuth loops).
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (
+      !error ||
+      !["session_expired", "auth_callback_failed", "oauth_error"].includes(error)
+    ) {
+      return
+    }
+
+    let cancelled = false
+    const resetBrokenSession = async () => {
+      if (error === "session_expired") {
+        const { data: { user: liveUser } } = await supabaseClient.auth.getUser()
+        if (liveUser && !cancelled) {
+          markAuthTransition()
+          router.replace(searchParams.get("redirect") || "/operator")
+          return
+        }
+      }
+
+      try {
+        await supabaseClient.auth.signOut({ scope: "local" })
+      } catch {
+        // ignore — cookies may already be invalid
+      }
+      if (cancelled) return
+      window.sessionStorage.removeItem("gravitre_auth_redirecting")
+      window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+      window.sessionStorage.removeItem("gravitre_auth_redirect_until")
+    }
+
+    void resetBrokenSession()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     const resetAuthLoading = () => {
@@ -127,6 +151,7 @@ function LoginPageContent() {
         }
 
         const redirect = searchParams.get("redirect") || "/operator"
+        markAuthTransition()
         router.replace(redirect)
       } catch {
         await supabaseClient.auth.signOut()
@@ -160,6 +185,7 @@ function LoginPageContent() {
     }
 
     const redirect = searchParams.get("redirect") || "/operator"
+    markAuthTransition()
     router.push(redirect)
   }
 
