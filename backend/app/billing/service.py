@@ -54,7 +54,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
             "approvals": True,
             "audit_logs": "basic",
             "versioning": True,
-            "advanced_connectors": False,
+            "advanced_connectors": True,
         },
         "overage_rates": {"ai_credit": 0.015, "workflow_runs_per_1000": 8},
     },
@@ -234,14 +234,21 @@ def get_org_hard_budget_override(client: Client, org_id: str) -> bool | None:
 
 
 def get_org_billing_overrides(client: Client, org_id: str) -> dict | None:
-    row = (
-        client.table("org_billing_overrides")
-        .select("*")
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
-        .data
-    )
+    try:
+        row = (
+            client.table("org_billing_overrides")
+            .select("*")
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+        )
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc).lower()
+        if "org_billing_overrides" in message or "pgrst205" in message:
+            logger.warning("org_billing_overrides lookup skipped org_id=%s error=%s", org_id, exc)
+            return None
+        raise
     if not row:
         return None
     return dict(row[0])

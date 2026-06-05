@@ -84,7 +84,6 @@ from app.connectors.google_vendor_oauth import (
 from app.connectors.google_oauth_common import google_oauth_credentials
 from app.connectors.oauth_state import sign_oauth_state, verify_oauth_state
 from app.core.errors import error_detail
-from app.middleware.entitlements import resolve_entitlements
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
@@ -268,16 +267,15 @@ async def start_oauth(
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    entitlements = resolve_entitlements(settings, org_id)
     if vendor in ADVANCED_CONNECTORS:
-        plan = get_plan_for_org(client, org_id)
-        require_feature(plan, "advanced_connectors")
-        features = plan.get("features") or {}
-        if not features.get("advanced_connectors"):
+        try:
+            plan = get_plan_for_org(client, org_id)
+        except Exception as exc:  # noqa: BLE001
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_detail("Upgrade required", "UNAUTHORIZED", {"feature": "advanced_connectors"}),
-            )
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=error_detail(f"Billing lookup failed: {exc}", "BILLING_LOOKUP_FAILED"),
+            ) from exc
+        require_feature(plan, "advanced_connectors")
 
     connector_id = body.connector_id
     reconnect = bool(body.connector_id)

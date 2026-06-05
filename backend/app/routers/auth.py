@@ -101,17 +101,18 @@ def _load_billing_summary(client, org_id: str | None) -> dict:
 
 
 def _resolve_user_row(client, user_id: str) -> dict:
-    user_resp = (
-        client.table("users")
-        .select("id, email, full_name, avatar_url, role, created_at, updated_at")
-        .eq("id", user_id)
-        .limit(1)
-        .execute()
-    )
-    if _is_missing_error(user_resp.error):
-        return {}
-    if user_resp.error:
-        raise HTTPException(status_code=500, detail=str(user_resp.error))
+    try:
+        user_resp = (
+            client.table("users")
+            .select("id, email, full_name, avatar_url, role, created_at, updated_at")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_error(exc):
+            return {}
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     if not user_resp.data:
         return {}
     return dict(user_resp.data[0])
