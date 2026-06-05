@@ -58,9 +58,9 @@ import {
   PanelRightOpen,
   Sparkles,
   CircleDot,
+  LayoutGrid,
   Activity,
   Link2,
-  LayoutGrid,
   GitBranch,
   Brain,
   MessageSquare,
@@ -2774,14 +2774,17 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     }
   }, [selectedNodeId])
 
-  // Handle connection handle drag start
-  const handleConnectionDragStart = useCallback((nodeId: string, e: React.MouseEvent) => {
+  // Handle connection handle drag start - supports both mouse and touch
+  const handleConnectionDragStart = useCallback((nodeId: string, e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation()
     setIsDraggingConnection(true)
     setDragSourceNodeId(nodeId)
     const rect = canvasRef.current?.getBoundingClientRect()
     if (rect) {
-      setDragMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+      // Get clientX/Y from either mouse or touch event
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+      setDragMousePosition({ x: clientX - rect.left, y: clientY - rect.top })
     }
   }, [])
 
