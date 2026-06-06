@@ -110,7 +110,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Tier 2 status:** Code complete (STA-30–49). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
+**Tier 2 status:** Complete in code and Linear (STA-27–49 Done). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
 
 **Current focus:** Tier 5 Epic A — STA-108 ✅ human-in-the-loop interrupt; next STA-109 autonomous run budgets.
 

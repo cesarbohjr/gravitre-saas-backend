@@ -25,6 +25,13 @@ def _now_iso() -> str:
     return _now().isoformat()
 
 
+def _execute_scheduled_workflow(**kwargs: Any) -> dict[str, Any]:
+    """Lazy wrapper so idempotent skip paths avoid router circular imports."""
+    from app.routers.workflows import _execute_workflow_with_context
+
+    return _execute_workflow_with_context(**kwargs)
+
+
 def _schedule_enabled(schedule: dict[str, Any]) -> bool:
     if schedule.get("enabled") is False:
         return False
@@ -114,8 +121,6 @@ def dispatch_single_schedule(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Dispatch one due schedule with idempotency per fire window."""
-    from app.routers.workflows import _execute_workflow_with_context
-
     now = now or _now()
     schedule_id = str(schedule["id"])
     org_id = str(schedule["org_id"])
@@ -136,7 +141,7 @@ def dispatch_single_schedule(
     run_actor = str(schedule.get("created_by") or actor_id)
     parameters = {"schedule_window": window_key}
     try:
-        response = _execute_workflow_with_context(
+        response = _execute_scheduled_workflow(
             client=client,
             settings=settings,
             org_id=org_id,
