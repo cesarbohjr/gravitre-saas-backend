@@ -21,6 +21,18 @@ from app.services.partner_marketplace_service import (
     list_submissions,
     review_submission,
 )
+from app.services.marketplace_billing_service import (
+    AUDIT_CONNECT_ONBOARDING,
+    AUDIT_PRICING_UPDATED,
+    RESOURCE_TYPE_MARKETPLACE_BILLING,
+    create_partner_onboarding_link,
+    enrich_registry_with_pricing,
+    get_partner_billing_status,
+    list_partner_pricing,
+    list_recent_usage_events,
+    sync_partner_connect_account,
+    upsert_connector_pricing,
+)
 from app.services.marketplace_sandbox_service import (
     AUDIT_SANDBOX_DEMO,
     AUDIT_SANDBOX_PROVISIONED,
@@ -59,6 +71,21 @@ class ReviewSubmissionRequest(BaseModel):
     notes: str | None = None
 
 
+class ConnectorPricingRequest(BaseModel):
+    pricing_model: Literal["free", "flat_monthly", "per_invocation"] = Field(alias="pricingModel")
+    price_cents: int = Field(default=0, alias="priceCents", ge=0)
+    currency: str = "usd"
+
+    model_config = {"populate_by_name": True}
+
+
+class ConnectOnboardRequest(BaseModel):
+    return_url: str = Field(alias="returnUrl")
+    refresh_url: str = Field(alias="refreshUrl")
+
+    model_config = {"populate_by_name": True}
+
+
 @router.get("/registry")
 async def list_marketplace_registry(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -69,7 +96,8 @@ async def list_marketplace_registry(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return {"connectors": list_registry(client)}
+    connectors = enrich_registry_with_pricing(client, list_registry(client))
+    return {"connectors": connectors}
 
 
 @router.get("/submissions")
@@ -289,3 +317,110 @@ async def marketplace_sandbox_demo(
         },
     )
     return result
+
+
+@router.get("/billing/status")
+async def marketplace_billing_status(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Partner Connect account, pricing, and earnings summary (STA-96)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    status_payload = get_partner_billing_status(client, org_id)
+    status_payload["platformFeeBps"] = settings.marketplace_platform_fee_bps
+    status_payload["recentUsage"] = list_recent_usage_events(client, org_id)
+    return status_payload
+
+
+@router.post("/billing/connect/onboard")
+async def marketplace_billing_connect_onboard(
+    body: ConnectOnboardRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Create Stripe Connect onboarding link for partner payouts."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    link = create_partner_onboarding_link(
+        client,
+        settings,
+        org_id=org_id,
+        return_url=body.return_url,
+        refresh_url=body.refresh_url,
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action=AUDIT_CONNECT_ONBOARDING,
+        resource_type=RESOURCE_TYPE_MARKETPLACE_BILLING,
+        resource_id=org_id,
+        metadata={"returnUrl": body.return_url},
+    )
+    return link
+
+
+@router.post("/billing/connect/sync")
+async def marketplace_billing_connect_sync(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Refresh Connect account status from Stripe after onboarding."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    account = sync_partner_connect_account(client, settings, org_id=org_id)
+    return {"account": account}
+
+
+@router.get("/billing/pricing")
+async def marketplace_billing_pricing_list(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return {"pricing": list_partner_pricing(client, org_id)}
+
+
+@router.put("/billing/pricing/{registry_id}")
+async def marketplace_billing_pricing_upsert(
+    registry_id: str,
+    body: ConnectorPricingRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    pricing = upsert_connector_pricing(
+        client,
+        settings,
+        partner_org_id=org_id,
+        registry_id=registry_id,
+        pricing_model=body.pricing_model,
+        price_cents=body.price_cents,
+        currency=body.currency,
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action=AUDIT_PRICING_UPDATED,
+        resource_type=RESOURCE_TYPE_MARKETPLACE_BILLING,
+        resource_id=registry_id,
+        metadata={
+            "pricingModel": pricing.get("pricingModel"),
+            "priceCents": pricing.get("priceCents"),
+        },
+    )
+    return {"pricing": pricing}

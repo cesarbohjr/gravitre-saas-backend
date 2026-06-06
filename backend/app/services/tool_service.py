@@ -2365,6 +2365,23 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 "tool.invoke.completed",
                 {"latency_ms": result.latency_ms, "attempt": attempt + 1},
             )
+            try:
+                from app.services.marketplace_billing_service import (
+                    build_invoke_idempotency_key,
+                    record_marketplace_usage_for_invoke,
+                )
+
+                record_marketplace_usage_for_invoke(
+                    ctx.client,
+                    ctx.settings,
+                    customer_org_id=ctx.org_id,
+                    connector_id=result.connector_id or cid,
+                    vendor=connector_type,
+                    action=action,
+                    idempotency_key=build_invoke_idempotency_key(ctx, action, result.connector_id or cid),
+                )
+            except Exception:
+                pass
             return result
         except Exception as exc:
             tool_exc = _classify_error(exc)

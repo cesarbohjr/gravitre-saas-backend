@@ -925,6 +925,12 @@ export interface MarketplaceSandboxDemoResult {
   auditTrail: MarketplaceSandboxAuditEntry[]
 }
 
+export interface MarketplaceConnectorPricing {
+  model: "free" | "flat_monthly" | "per_invocation"
+  priceCents: number
+  currency: string
+}
+
 export interface MarketplaceRegistryConnector {
   id: string
   submissionId: string
@@ -940,4 +946,59 @@ export interface MarketplaceRegistryConnector {
   publishedBy: string
   publishedAt?: string
   status: string
+  pricing?: MarketplaceConnectorPricing
+}
+
+export interface MarketplacePartnerAccount {
+  connected: boolean
+  connectStatus: string
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  detailsSubmitted: boolean
+  stripeConnectAccountId?: string | null
+  onboardingCompletedAt?: string | null
+}
+
+export interface MarketplaceEarningsSummary {
+  grossCents: number
+  platformFeeCents: number
+  partnerEarningsCents: number
+  transferredCents: number
+  pendingTransferCents: number
+  usageEventCount: number
+  activeInstallCount: number
+}
+
+export interface MarketplaceUsageEvent {
+  id: string
+  action: string
+  grossCents: number
+  partnerEarningsCents: number
+  transferStatus: string
+  customerOrgId: string
+  createdAt?: string
+}
+
+export interface MarketplacePartnerPricing {
+  id: string | null
+  registryId: string
+  partnerOrgId: string
+  pricingModel: "free" | "flat_monthly" | "per_invocation"
+  priceCents: number
+  currency: string
+  platformFeeBps: number
+  stripePriceId?: string | null
+  active: boolean
+  vendor?: string | null
+  connectorName?: string | null
+  updatedAt?: string | null
+}
+
+export interface MarketplaceBillingStatus {
+  partnerOrgId: string
+  account: MarketplacePartnerAccount
+  pricingCount: number
+  earnings: MarketplaceEarningsSummary
+  platformFeeBps: number
+  recentUsage: MarketplaceUsageEvent[]
 }

@@ -735,6 +735,18 @@ async def create_connector_route(
         resource_id=connector_id,
         metadata={"environment": environment_name},
     )
+    if is_published_partner_vendor(client, vendor):
+        try:
+            from app.services.marketplace_billing_service import record_marketplace_install
+
+            record_marketplace_install(
+                client,
+                customer_org_id=org_id,
+                connector_id=connector_id,
+                vendor=vendor,
+            )
+        except Exception:
+            pass
     return {"id": connector_id}
 
 

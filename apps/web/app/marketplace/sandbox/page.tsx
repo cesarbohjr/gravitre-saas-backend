@@ -98,10 +98,17 @@ export default function MarketplaceSandboxPage() {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/marketplace/submit">
-              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-              Submit
-            </Link>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/billing">Billing</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/marketplace/submit">
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                  Submit
+                </Link>
+              </Button>
+            </div>
           </Button>
         </div>
 

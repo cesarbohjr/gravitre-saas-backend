@@ -143,6 +143,8 @@ class Settings(BaseSettings):
     stripe_metered_price_id_node: str = ""
     stripe_metered_price_id_control: str = ""
     stripe_metered_price_id_command: str = ""
+    # Marketplace v2 (STA-96): platform fee on partner connector usage (basis points, 2000 = 20%)
+    marketplace_platform_fee_bps: int = 2000
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
     # In-process knowledge sync scheduler (STA-45). 0 = disabled.

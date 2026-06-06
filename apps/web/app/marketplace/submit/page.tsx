@@ -105,6 +105,7 @@ export default function MarketplaceSubmitPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
+              <Link href="/marketplace/billing">Billing</Link>
               <Link href="/marketplace/sandbox">Sandbox</Link>
             </Button>
             <Button variant="outline" size="sm" asChild>

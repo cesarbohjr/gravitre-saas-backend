@@ -774,6 +774,11 @@ async def handle_webhook(
                 resource_id=str(org_id),
                 metadata={"subscription_id": subscription_id},
             )
+    if event_type == "account.updated":
+        from app.services.marketplace_billing_service import handle_connect_account_updated
+
+        handle_connect_account_updated(client, settings, data if isinstance(data, dict) else {})
+
     client.table("billing_events").insert(
         {"org_id": org_id, "event_type": event_type, "payload": event}
     ).execute()

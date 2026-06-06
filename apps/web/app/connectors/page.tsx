@@ -1905,6 +1905,9 @@ function ConnectorsPageContent() {
                 </Button>
               )}
               <Button variant="outline" size="sm" className="gap-1.5 shrink-0 hidden sm:inline-flex" asChild>
+                <Link href="/marketplace/billing">Partner billing</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0 hidden sm:inline-flex" asChild>
                 <Link href="/marketplace/submit">Partner SDK</Link>
               </Button>
               <Button onClick={() => setAddModal(true)} className="gap-2 shrink-0">

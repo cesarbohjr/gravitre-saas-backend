@@ -71,6 +71,8 @@ import type {
   MetricsOverview,
   MetricInsight,
   MarketplaceRegistryConnector,
+  MarketplaceBillingStatus,
+  MarketplacePartnerPricing,
   MarketplaceSandboxDemoResult,
   MarketplaceSandboxProvisionResult,
   MarketplaceSandboxStatus,
@@ -363,6 +365,27 @@ export const marketplaceApi = {
     postJson<MarketplaceSandboxProvisionResult>(apiUrl("/api/marketplace/sandbox/reset"), {}),
   runSandboxDemo: () =>
     postJson<MarketplaceSandboxDemoResult>(apiUrl("/api/marketplace/sandbox/demo"), {}),
+  billingStatus: () => fetcher<MarketplaceBillingStatus>(apiUrl("/api/marketplace/billing/status")),
+  connectOnboard: (data: { returnUrl: string; refreshUrl: string }) =>
+    postJson<{ url: string; expiresAt?: number }>(
+      apiUrl("/api/marketplace/billing/connect/onboard"),
+      data
+    ),
+  syncConnectAccount: () =>
+    postJson<{ account: MarketplaceBillingStatus["account"] }>(
+      apiUrl("/api/marketplace/billing/connect/sync"),
+      {}
+    ),
+  listPricing: () =>
+    fetcher<{ pricing: MarketplacePartnerPricing[] }>(apiUrl("/api/marketplace/billing/pricing")),
+  upsertPricing: (
+    registryId: string,
+    data: { pricingModel: "free" | "flat_monthly" | "per_invocation"; priceCents: number; currency?: string }
+  ) =>
+    putJson<{ pricing: MarketplacePartnerPricing }>(
+      apiUrl(`/api/marketplace/billing/pricing/${registryId}`),
+      data
+    ),
 }
 
 // ============ Approvals ============
