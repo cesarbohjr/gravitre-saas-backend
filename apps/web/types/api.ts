@@ -408,6 +408,41 @@ export interface CustomInstructionListResponse {
   instructions: CustomInstruction[]
 }
 
+export interface FineTunedModel {
+  id: string
+  name: string
+  status: string
+  baseModel?: string
+  deployedVersion?: number
+  currentVersion?: number
+  fineTunedOpenAiId?: string | null
+  datasetId?: string | null
+  createdAt?: string
+}
+
+export interface FineTunedModelListResponse {
+  models: FineTunedModel[]
+}
+
+export interface WorkflowAgent {
+  id: string
+  name: string
+  role?: string
+  model?: string
+  status?: string
+  trainedModelId?: string | null
+}
+
+export interface WorkflowAgentListResponse {
+  agents: WorkflowAgent[]
+}
+
+export interface AgentFineTunedModelAssignment {
+  agentId: string
+  trainedModelId?: string | null
+  baseModel?: string
+}
+
 // ============ Audit ============
 export type AuditAction =
   | "create" | "update" | "delete"

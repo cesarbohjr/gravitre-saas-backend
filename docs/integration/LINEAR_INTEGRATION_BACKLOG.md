@@ -112,7 +112,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 status:** Code complete (STA-30–49). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
 
-**Current focus:** Tier 4 marketplace scale — STA-98 ✅ private connector runtime, next **STA-99** fine-tuning → agent runtime.
+**Current focus:** Tier 4 marketplace scale — STA-99 ✅ fine-tuning → agent runtime; next Tier 5 / remaining Tier 4 epics.
 
 ---
 

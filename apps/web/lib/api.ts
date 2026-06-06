@@ -48,6 +48,9 @@ import type {
   TrainingDatasetListResponse,
   TrainingJobListResponse,
   CustomInstructionListResponse,
+  FineTunedModelListResponse,
+  WorkflowAgentListResponse,
+  AgentFineTunedModelAssignment,
   AuditLog,
   AuditListResponse,
   AuditSummary,
@@ -527,6 +530,16 @@ export const trainingApi = {
   deleteInstruction: (id: string) => deleteRequest(apiUrl(`/api/training/instructions/${id}`)),
   toggleInstruction: (id: string, isActive: boolean) =>
     patchJson<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`), { is_active: isActive }),
+
+  // Fine-tuned model → agent runtime (STA-99)
+  listWorkflowAgents: () => fetcher<WorkflowAgentListResponse>(apiUrl("/api/training/workflow-agents")),
+  listFineTunedModels: () => fetcher<FineTunedModelListResponse>(apiUrl("/api/training/fine-tuned-models")),
+  getAgentFineTunedModel: (agentId: string) =>
+    fetcher<AgentFineTunedModelAssignment>(apiUrl(`/api/training/agents/${agentId}/fine-tuned-model`)),
+  assignAgentFineTunedModel: (agentId: string, trainedModelId: string | null) =>
+    putJson<AgentFineTunedModelAssignment>(apiUrl(`/api/training/agents/${agentId}/fine-tuned-model`), {
+      trainedModelId,
+    }),
 }
 
 // ============ Audit ============

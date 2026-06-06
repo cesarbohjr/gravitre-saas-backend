@@ -7,13 +7,14 @@ import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { agentsApi, trainingApi } from "@/lib/api"
+import { trainingApi } from "@/lib/api"
 import type {
-  Agent,
   CustomInstruction,
+  FineTunedModel,
   TrainingDataset,
   TrainingDatasetType,
   TrainingJob,
+  WorkflowAgent,
 } from "@/types/api"
 import { cn } from "@/lib/utils"
 
@@ -50,6 +51,9 @@ export default function TrainingPage() {
   const [mutatingDatasetId, setMutatingDatasetId] = useState<string | null>(null)
   const [mutatingJobId, setMutatingJobId] = useState<string | null>(null)
   const [mutatingInstructionId, setMutatingInstructionId] = useState<string | null>(null)
+  const [assignAgentId, setAssignAgentId] = useState<string>("")
+  const [assignModelId, setAssignModelId] = useState<string>("")
+  const [isAssigningModel, setIsAssigningModel] = useState(false)
 
   const { data: datasetsData, error: datasetsError, mutate: mutateDatasets } = useSWR(
     user ? "training/datasets" : null,
@@ -66,18 +70,27 @@ export default function TrainingPage() {
     () => trainingApi.listInstructions(),
     { fallbackData: { instructions: [] as CustomInstruction[] }, revalidateOnFocus: false }
   )
-  const { data: agentsData } = useSWR(
-    user ? "training/agents" : null,
-    () => agentsApi.list(),
-    { fallbackData: { agents: [] as Agent[] }, revalidateOnFocus: false }
+  const { data: workflowAgentsData, mutate: mutateWorkflowAgents } = useSWR(
+    user ? "training/workflow-agents" : null,
+    () => trainingApi.listWorkflowAgents(),
+    { fallbackData: { agents: [] as WorkflowAgent[] }, revalidateOnFocus: false }
+  )
+  const { data: fineTunedModelsData } = useSWR(
+    user ? "training/fine-tuned-models" : null,
+    () => trainingApi.listFineTunedModels(),
+    { fallbackData: { models: [] as FineTunedModel[] }, revalidateOnFocus: false }
   )
 
   const datasets = datasetsData?.datasets ?? []
   const jobs = jobsData?.jobs ?? []
   const instructions = instructionsData?.instructions ?? []
-  const agents = agentsData?.agents ?? []
+  const workflowAgents = workflowAgentsData?.agents ?? []
+  const fineTunedModels = fineTunedModelsData?.models ?? []
 
-  const effectiveSelectedAgentId = selectedAgentId || agents[0]?.id || ""
+  const effectiveSelectedAgentId = selectedAgentId || workflowAgents[0]?.id || ""
+  const effectiveAssignAgentId = assignAgentId || workflowAgents[0]?.id || ""
+  const assignedModelForAgent = workflowAgents.find((a) => a.id === effectiveAssignAgentId)?.trainedModelId
+  const effectiveAssignModelId = assignModelId || assignedModelForAgent || fineTunedModels[0]?.id || ""
 
   const stats = useMemo(() => {
     const readyDatasets = datasets.filter((d) => d.status === "ready").length
@@ -210,6 +223,24 @@ export default function TrainingPage() {
       toast.error("Failed to update instruction")
     } finally {
       setMutatingInstructionId((current) => (current === instruction.id ? null : current))
+    }
+  }
+
+  async function handleAssignFineTunedModel() {
+    if (!effectiveAssignAgentId) return
+    try {
+      setIsAssigningModel(true)
+      await trainingApi.assignAgentFineTunedModel(
+        effectiveAssignAgentId,
+        effectiveAssignModelId ? effectiveAssignModelId : null
+      )
+      toast.success(effectiveAssignModelId ? "Fine-tuned model assigned" : "Fine-tuned model cleared")
+      await mutateWorkflowAgents()
+    } catch (error) {
+      console.error("[v0] Assign fine-tuned model failed:", error)
+      toast.error("Failed to assign fine-tuned model")
+    } finally {
+      setIsAssigningModel(false)
     }
   }
 
@@ -472,7 +503,7 @@ export default function TrainingPage() {
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
               <option value="">All agents</option>
-              {agents.map((agent) => (
+              {workflowAgents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name}
                 </option>
@@ -549,6 +580,78 @@ export default function TrainingPage() {
             </AnimatePresence>
             {instructions.length === 0 && <p className="text-sm text-muted-foreground">No custom instructions yet.</p>}
           </div>
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.24 }}
+          className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm"
+        >
+          <h2 className="text-lg font-semibold text-foreground">Agent Fine-Tuned Models</h2>
+          <p className="text-sm text-muted-foreground">
+            Assign a deployable fine-tuned model to a workflow agent. Inference falls back to the agent base model on provider failure.
+          </p>
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/50 bg-background/40 p-3 md:grid-cols-2">
+            <select
+              value={effectiveAssignAgentId}
+              onChange={(event) => {
+                setAssignAgentId(event.target.value)
+                setAssignModelId("")
+              }}
+              className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            >
+              {workflowAgents.length === 0 && <option value="">No workflow agents</option>}
+              {workflowAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name} {agent.model ? `(${agent.model})` : ""}
+                </option>
+              ))}
+            </select>
+            <select
+              value={effectiveAssignModelId}
+              onChange={(event) => setAssignModelId(event.target.value)}
+              className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            >
+              <option value="">Base model only (clear assignment)</option>
+              {fineTunedModels.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} · v{model.deployedVersion ?? model.currentVersion ?? "?"} · {model.status}
+                </option>
+              ))}
+            </select>
+            <Button
+              className="md:col-span-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+              onClick={() => void handleAssignFineTunedModel()}
+              disabled={isAssigningModel || !effectiveAssignAgentId}
+            >
+              {isAssigningModel ? "Saving..." : "Save Assignment"}
+            </Button>
+          </div>
+          {fineTunedModels.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No deployable fine-tuned models yet. Complete a fine-tuning job first.
+            </p>
+          )}
+          {workflowAgents.some((a) => a.trainedModelId) && (
+            <div className="space-y-2">
+              {workflowAgents
+                .filter((a) => a.trainedModelId)
+                .map((agent) => {
+                  const model = fineTunedModels.find((m) => m.id === agent.trainedModelId)
+                  return (
+                    <div key={agent.id} className="rounded-xl border border-border p-3 bg-background/40 text-sm">
+                      <span className="font-medium text-foreground">{agent.name}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        → {model?.name ?? agent.trainedModelId}
+                        {model?.fineTunedOpenAiId ? ` (${model.fineTunedOpenAiId})` : ""}
+                      </span>
+                    </div>
+                  )
+                })}
+            </div>
+          )}
         </motion.section>
       </div>
     </AppShell>

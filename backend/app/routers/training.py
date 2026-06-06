@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from app.auth.dependencies import get_current_user, get_org_context
+from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.services.agent_finetune_service import assign_trained_model_to_agent, list_deployable_fine_tuned_models
+from app.services.handoff_service import get_agent
 from app.workers.queue import enqueue_training_job
 
 router = APIRouter(prefix="/api/training", tags=["training"])
@@ -40,6 +42,12 @@ class InstructionUpdateRequest(BaseModel):
     content: str | None = None
     agent_id: str | None = None
     is_active: bool | None = None
+
+
+class AgentFineTunedModelRequest(BaseModel):
+    trained_model_id: str | None = Field(default=None, alias="trainedModelId")
+
+    model_config = {"populate_by_name": True}
 
 
 def _is_missing_table_error(error: Exception | None) -> bool:
@@ -456,3 +464,88 @@ async def delete_instruction(
     if response.error:
         raise HTTPException(status_code=500, detail=str(response.error))
     return {"ok": True}
+
+
+@router.get("/workflow-agents")
+async def list_workflow_agents(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Workflow agents from agents table (STA-99 assignment targets)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    response = (
+        client.table("agents")
+        .select("id, name, role, model, status, trained_model_id")
+        .eq("org_id", org_id)
+        .order("name")
+        .execute()
+    )
+    if response.error:
+        raise HTTPException(status_code=500, detail=str(response.error))
+    agents = [
+        {
+            "id": str(row["id"]),
+            "name": row.get("name"),
+            "role": row.get("role"),
+            "model": row.get("model"),
+            "status": row.get("status"),
+            "trainedModelId": row.get("trained_model_id"),
+        }
+        for row in (response.data or [])
+    ]
+    return {"agents": agents}
+
+
+@router.get("/fine-tuned-models")
+async def list_fine_tuned_models_for_agents(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """List deployable fine-tuned LLM models (STA-99)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return {"models": list_deployable_fine_tuned_models(client, org_id)}
+
+
+@router.get("/agents/{agent_id}/fine-tuned-model")
+async def get_agent_fine_tuned_model_assignment(
+    agent_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    agent = get_agent(client, org_id, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {
+        "agentId": agent_id,
+        "trainedModelId": agent.get("trained_model_id"),
+        "baseModel": agent.get("model"),
+    }
+
+
+@router.put("/agents/{agent_id}/fine-tuned-model")
+async def assign_agent_fine_tuned_model(
+    agent_id: str,
+    body: AgentFineTunedModelRequest,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    agent = assign_trained_model_to_agent(
+        client,
+        org_id=org_id,
+        agent_id=agent_id,
+        trained_model_id=body.trained_model_id,
+        actor_id=user["user_id"],
+    )
+    return {"agentId": agent_id, "trainedModelId": agent.get("trained_model_id")}

@@ -67,6 +67,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       : NextResponse.json({ detail: "Instruction not found" }, { status: 404 })
   }
 
+  if (parts[0] === "workflow-agents" && parts.length === 1) {
+    return NextResponse.json({ agents: [] })
+  }
+
+  if (parts[0] === "fine-tuned-models" && parts.length === 1) {
+    return NextResponse.json({ models: [] })
+  }
+
+  if (parts[0] === "agents" && parts[2] === "fine-tuned-model" && parts[1]) {
+    return NextResponse.json({ agentId: parts[1], trainedModelId: null, baseModel: "gpt-4.1-mini" })
+  }
+
   return NextResponse.json({ detail: "Unsupported training path" }, { status: 404 })
 }
 
@@ -158,6 +170,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.is_active !== undefined) instruction.is_active = Boolean(body.is_active)
     instruction.updated_at = new Date().toISOString()
     return NextResponse.json(instruction)
+  }
+
+  return NextResponse.json({ detail: "Unsupported training path" }, { status: 404 })
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  const { path } = await params
+  const target = buildTarget(path)
+  const proxied = await maybeProxy(request, target)
+  if (proxied) return proxied
+
+  const parts = getPath(path)
+  const body = await readJson(request)
+
+  if (parts[0] === "agents" && parts[2] === "fine-tuned-model" && parts[1]) {
+    const trainedModelId = body.trainedModelId === undefined ? null : body.trainedModelId
+    return NextResponse.json({ agentId: parts[1], trainedModelId })
   }
 
   return NextResponse.json({ detail: "Unsupported training path" }, { status: 404 })
