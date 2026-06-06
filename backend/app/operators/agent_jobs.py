@@ -31,7 +31,7 @@ from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
-ACTIVE_STATUSES = ("queued", "running")
+ACTIVE_STATUSES = ("queued", "running", "paused")
 
 
 def _now() -> str:
@@ -169,6 +169,21 @@ def fail_or_requeue_job(client: Any, job: dict[str, Any], error: str) -> None:
         ).eq("id", job["id"]).execute()
 
 
+def pause_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
+    """Pause a queued/running job for this org."""
+    job = get_job(client, org_id, job_id)
+    if not job or job.get("status") not in ("queued", "running"):
+        return None
+    upd = (
+        client.table("agent_jobs")
+        .update({"status": "paused", "updated_at": _now()})
+        .eq("id", job_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    return upd.data[0] if upd.data else None
+
+
 def cancel_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
     """Cancel a queued/running job for this org. Returns the row or None."""
     job = get_job(client, org_id, job_id)
@@ -187,7 +202,7 @@ def cancel_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
 def retry_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
     """Re-enqueue a failed/cancelled job for this org. Returns the row or None."""
     job = get_job(client, org_id, job_id)
-    if not job or job.get("status") not in ("failed", "cancelled"):
+    if not job or job.get("status") not in ("failed", "cancelled", "paused"):
         return None
     upd = (
         client.table("agent_jobs")
@@ -202,6 +217,20 @@ def retry_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
 # ---------------------------------------------------------------------------
 # Operator job handler (governed AI call + result + usage)
 # ---------------------------------------------------------------------------
+
+def _assert_job_runnable(client: Any, org_id: str, job_id: str) -> None:
+    from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
+
+    try:
+        enforce_interrupt(client, org_id, "agent_job", job_id)
+    except AgentExecutionInterrupted:
+        raise
+    job = get_job(client, org_id, job_id)
+    if not job:
+        raise AgentExecutionInterrupted("cancel", "agent_job", job_id)
+    if job.get("status") in ("cancelled", "paused"):
+        raise AgentExecutionInterrupted("pause" if job.get("status") == "paused" else "cancel", "agent_job", job_id)
+
 
 async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str, Any]:
     """Execute an operator_task job: governed completion + result + usage record."""
@@ -218,6 +247,7 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
     )
 
     client = get_supabase_client(settings)
+    await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
     operator_row = None
     operator_id = payload.get("operator_id")
     if operator_id:
@@ -292,12 +322,21 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         return False
     handler = _HANDLERS.get(job.get("kind") or "")
     timeout_s = int((job.get("payload") or {}).get("timeout_seconds") or 300)
+    from app.services.agent_interrupt_service import AgentExecutionInterrupted
+
     try:
         if handler is None:
             raise ValueError(f"no handler for kind={job.get('kind')}")
         result = await asyncio.wait_for(handler(settings, job), timeout=timeout_s)
+        await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
         await asyncio.to_thread(complete_job, client, job["id"], result)
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
+    except AgentExecutionInterrupted as exc:
+        if exc.signal == "pause":
+            await asyncio.to_thread(pause_job, client, job["org_id"], str(job["id"]))
+        else:
+            await asyncio.to_thread(cancel_job, client, job["org_id"], str(job["id"]))
+        logger.info("agent_job_interrupted id=%s signal=%s", job.get("id"), exc.signal)
     except TimeoutError:
         await asyncio.to_thread(fail_or_requeue_job, client, job, "execution_timeout")
         logger.warning("agent_job_timeout id=%s timeout_s=%s", job.get("id"), timeout_s)
@@ -309,6 +348,8 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
 
 async def _process_one(settings: Settings) -> bool:
     """Claim and process a single job. Returns True if a job was handled."""
+    from app.services.agent_interrupt_service import AgentExecutionInterrupted
+
     client = get_supabase_client(settings)
     job = await asyncio.to_thread(claim_next_job, client)
     if not job:
@@ -318,8 +359,15 @@ async def _process_one(settings: Settings) -> bool:
         if handler is None:
             raise ValueError(f"no handler for kind={job.get('kind')}")
         result = await handler(settings, job)
+        await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
         await asyncio.to_thread(complete_job, client, job["id"], result)
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
+    except AgentExecutionInterrupted as exc:
+        if exc.signal == "pause":
+            await asyncio.to_thread(pause_job, client, job["org_id"], str(job["id"]))
+        else:
+            await asyncio.to_thread(cancel_job, client, job["org_id"], str(job["id"]))
+        logger.info("agent_job_interrupted id=%s signal=%s", job.get("id"), exc.signal)
     except Exception as exc:  # noqa: BLE001
         logger.warning("agent_job_failed id=%s error=%s", job.get("id"), str(exc))
         await asyncio.to_thread(fail_or_requeue_job, client, job, str(exc))

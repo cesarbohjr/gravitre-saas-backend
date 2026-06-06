@@ -186,6 +186,8 @@ class Settings(BaseSettings):
     # Redact PII (email/SSN/card/phone) from user + retrieved content before it
     # is sent to an external AI provider.
     ai_pii_redaction_enabled: bool = True
+    slack_signing_secret: str = ""
+    slack_signing_secret: str = ""
 
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)

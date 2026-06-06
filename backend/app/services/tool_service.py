@@ -2342,6 +2342,21 @@ def list_registered_actions() -> list[str]:
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
     """Invoke a registered connector tool with audit, rate limits, retries, and agent permissions."""
     params = params or {}
+    if ctx.run_id:
+        from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
+
+        try:
+            enforce_interrupt(ctx.client, ctx.org_id, "workflow_run", str(ctx.run_id), actor_id=ctx.actor_id)
+        except AgentExecutionInterrupted as exc:
+            raise ToolValidationError(f"Execution interrupted ({exc.signal})") from exc
+    if ctx.task_id:
+        from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
+
+        try:
+            enforce_interrupt(ctx.client, ctx.org_id, "agent_job", str(ctx.task_id), actor_id=ctx.actor_id)
+        except AgentExecutionInterrupted as exc:
+            raise ToolValidationError(f"Execution interrupted ({exc.signal})") from exc
+
     executor = _resolve_tool_executor(action, ctx)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")

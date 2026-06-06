@@ -11,6 +11,7 @@ from app.workflows import handlers as _handlers
 from app.workflows.registry import StepContext, get_handler
 from app.workflows.audit import write_audit_event
 from app.services.council_workflow_service import resolve_active_branch, should_skip_for_branch
+from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
 from app.workflows.constants import (
     ERROR_CODE_EMAIL_FAILED,
     ERROR_CODE_RAG_UNAVAILABLE,
@@ -20,8 +21,10 @@ from app.workflows.constants import (
     ERROR_CODE_WEBHOOK_FAILED,
     ERROR_CODE_VALIDATION,
     RESOURCE_TYPE_WORKFLOW_RUN,
+    RUN_STATUS_CANCELLED,
     RUN_STATUS_COMPLETED,
     RUN_STATUS_FAILED,
+    RUN_STATUS_PAUSED,
     STEP_STATUS_COMPLETED,
     STEP_STATUS_FAILED,
     STEP_STATUS_SKIPPED,
@@ -62,6 +65,8 @@ def execute_workflow_steps(
     step_outputs: dict[str, Any] = {}
     errors: list[str] = []
     run_failed = False
+    run_paused = False
+    run_cancelled = False
     run_error_message: str | None = None
     rate_limited = False
     existing_steps: list[dict] = []
@@ -70,6 +75,18 @@ def execute_workflow_steps(
         existing_steps = (run_with or {}).get("steps", [])
 
     for idx, sdef in enumerate(steps_def):
+        try:
+            enforce_interrupt(client, org_id, "workflow_run", run_id, actor_id=user_id)
+        except AgentExecutionInterrupted as exc:
+            if exc.signal == "pause":
+                run_paused = True
+            else:
+                run_cancelled = True
+                run_failed = True
+                run_error_message = "Interrupted by operator"
+                errors.append(run_error_message)
+            break
+
         step_id = sdef["id"]
         step_name = sdef["name"]
         step_type = sdef["type"]
@@ -291,7 +308,14 @@ def execute_workflow_steps(
             errors.append(run_error_message)
             break
 
-    final_status = RUN_STATUS_FAILED if run_failed else RUN_STATUS_COMPLETED
+    if run_paused:
+        final_status = RUN_STATUS_PAUSED
+    elif run_cancelled:
+        final_status = RUN_STATUS_CANCELLED
+    elif run_failed:
+        final_status = RUN_STATUS_FAILED
+    else:
+        final_status = RUN_STATUS_COMPLETED
     run_with_steps = get_run_with_steps(client, org_id, run_id, environment_name)
     step_rows = run_with_steps["steps"] if run_with_steps else []
     completed_at_iso = datetime.now(timezone.utc).isoformat()

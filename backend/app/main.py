@@ -24,6 +24,7 @@ from app.routers import (
     agent_tool_permissions,
     ai_system,
     agent_council,
+    agent_interrupts,
     agent_jobs,
     assistant,
     auth,
@@ -56,6 +57,7 @@ from app.routers import (
     sources,
     environments,
     settings,
+    slack_commands,
 )
 from app.routers import (
     hubspot_triggers,
@@ -344,7 +346,9 @@ app.include_router(ml_models.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
 app.include_router(conversations.router)
+app.include_router(agent_interrupts.router)
 app.include_router(agent_jobs.router)
+app.include_router(slack_commands.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

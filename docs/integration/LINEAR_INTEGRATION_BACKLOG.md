@@ -112,7 +112,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 status:** Code complete (STA-30–49). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
 
-**Current focus:** Tier 5 Epic A — STA-90 ✅ model allowlist, STA-106 ✅ policy-gated auto-execute; next STA-108 human-in-the-loop interrupt.
+**Current focus:** Tier 5 Epic A — STA-108 ✅ human-in-the-loop interrupt; next STA-109 autonomous run budgets.
 
 ---
 
@@ -210,7 +210,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | Order | Ref | Linear | Title | Blocked by |
 |-------|-----|--------|-------|------------|
 | 1 | T5-001 | [STA-106](https://linear.app/staqbot/issue/STA-106) | Policy-gated auto-execute ✅ | STA-10, STA-11, STA-90 |
-| 2 | T5-003 | [STA-108](https://linear.app/staqbot/issue/STA-108) | Human-in-the-loop interrupt | STA-106 |
+| 2 | T5-003 | [STA-108](https://linear.app/staqbot/issue/STA-108) | Human-in-the-loop interrupt ✅ | STA-106 |
 | 3 | T5-004 | [STA-109](https://linear.app/staqbot/issue/STA-109) | Autonomous run budgets | STA-92, STA-106 |
 | 4 | T5-002 | [STA-107](https://linear.app/staqbot/issue/STA-107) | Compensating transactions / rollback | STA-106, STA-15 |
 | 5 | T5-005 | [STA-110](https://linear.app/staqbot/issue/STA-110) | HIPAA BAA + PHI controls | STA-82, STA-80 |
