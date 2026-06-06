@@ -14,6 +14,7 @@ from app.core.logging import get_logger
 from app.services.ai_guardrails import (
     AIContentFlaggedError,
     AIGuardrailError,
+    AIModelPolicyError,
     AIServiceDisabledError,
     enforce_budget,
     enforce_rate_limit,
@@ -23,6 +24,7 @@ from app.services.ai_guardrails import (
     moderate_output,
     redact_pii,
 )
+from app.services.model_policy_service import assert_model_allowed, load_org_model_policy
 from app.services.providers.anthropic_adapter import AnthropicAdapter
 from app.services.providers.base import (
     AllProvidersFailedError,
@@ -153,6 +155,16 @@ class ModelRouter:
     ) -> ModelResponse:
         complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
         model = model_override or self._resolve_model(task_type)  # primary model, for cache key
+
+        if org_id:
+            try:
+                client = get_supabase_client(self.settings)
+                policy = load_org_model_policy(client, org_id)
+                assert_model_allowed(policy, provider="openai", model=model)
+            except AIModelPolicyError:
+                raise
+            except Exception:  # noqa: BLE001
+                logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
 
         # --- Governance guardrails (chokepoint) ---------------------------------
         # Any guardrail refusal is persisted to guardrail_events (auditable),

@@ -58,6 +58,9 @@ class OperatorVersionSummary(BaseModel):
     created_at: str | None = None
 
 
+ExecutionMode = Literal["plan_only", "auto_with_approval", "auto_trusted_scopes"]
+
+
 class OperatorSummary(BaseModel):
     id: str
     name: str
@@ -70,6 +73,8 @@ class OperatorSummary(BaseModel):
     requires_admin: bool
     requires_approval: bool
     approval_roles: list[str] = []
+    execution_mode: ExecutionMode = "plan_only"
+    auto_execute_trusted_scopes: list[str] = Field(default_factory=list)
     active_version: OperatorVersionSummary | None = None
 
 
@@ -122,6 +127,13 @@ class OperatorCreateRequest(BaseModel):
     connector_ids: list[str] = []
 
 
+class OperatorAutoExecuteRequest(BaseModel):
+    execution_mode: ExecutionMode = "plan_only"
+    trusted_scopes: list[str] = Field(default_factory=list, alias="trustedScopes")
+
+    model_config = {"populate_by_name": True}
+
+
 class OperatorUpdateRequest(BaseModel):
     name: str | None = None
     description: str | None = None
@@ -135,6 +147,8 @@ class OperatorUpdateRequest(BaseModel):
     requires_approval: bool | None = None
     approval_roles: list[str] | None = None
     connector_ids: list[str] | None = None
+    execution_mode: ExecutionMode | None = None
+    auto_execute_trusted_scopes: list[str] | None = None
 
 
 class OperatorSessionSummary(BaseModel):

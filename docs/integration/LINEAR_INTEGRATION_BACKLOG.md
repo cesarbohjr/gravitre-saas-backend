@@ -112,7 +112,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 status:** Code complete (STA-30–49). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
 
-**Current focus:** Tier 4 marketplace scale — STA-99 ✅ fine-tuning → agent runtime; next Tier 5 / remaining Tier 4 epics.
+**Current focus:** Tier 5 Epic A — STA-90 ✅ model allowlist, STA-106 ✅ policy-gated auto-execute; next STA-108 human-in-the-loop interrupt.
 
 ---
 
@@ -174,7 +174,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 3 | T4-001 | [STA-80](https://linear.app/staqbot/issue/STA-80) | Data residency | — |
 | 4 | T4-002 | [STA-81](https://linear.app/staqbot/issue/STA-81) | SOC2 evidence export | STA-10 |
 | 5 | T4-003 | [STA-82](https://linear.app/staqbot/issue/STA-82) | PII redaction in audit | STA-10 |
-| 6 | T4-011 | [STA-90](https://linear.app/staqbot/issue/STA-90) | Model allowlist policy | STA-11 |
+| 6 | T4-011 | [STA-90](https://linear.app/staqbot/issue/STA-90) | Model allowlist policy ✅ | STA-11 |
 | 7 | T4-014 | [STA-93](https://linear.app/staqbot/issue/STA-93) | Multi-region workflow routing | STA-80 |
 | 8 | T4-005 | [STA-84](https://linear.app/staqbot/issue/STA-84) | White-label branding | — |
 | 9 | T4-006 | [STA-85](https://linear.app/staqbot/issue/STA-85) | VPC / Helm deployment | — |
@@ -209,7 +209,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 | Order | Ref | Linear | Title | Blocked by |
 |-------|-----|--------|-------|------------|
-| 1 | T5-001 | [STA-106](https://linear.app/staqbot/issue/STA-106) | Policy-gated auto-execute | STA-10, STA-11, STA-90 |
+| 1 | T5-001 | [STA-106](https://linear.app/staqbot/issue/STA-106) | Policy-gated auto-execute ✅ | STA-10, STA-11, STA-90 |
 | 2 | T5-003 | [STA-108](https://linear.app/staqbot/issue/STA-108) | Human-in-the-loop interrupt | STA-106 |
 | 3 | T5-004 | [STA-109](https://linear.app/staqbot/issue/STA-109) | Autonomous run budgets | STA-92, STA-106 |
 | 4 | T5-002 | [STA-107](https://linear.app/staqbot/issue/STA-107) | Compensating transactions / rollback | STA-106, STA-15 |
