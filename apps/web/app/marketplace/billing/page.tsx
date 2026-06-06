@@ -106,7 +106,7 @@ export default function MarketplaceBillingPage() {
     fetcher
   )
 
-  const { data: pricingData, mutate: mutatePricing } = useSWR(
+  const { data: pricingData, mutate: mutatePricing } = useSWR<{ pricing: MarketplacePartnerPricing[] }>(
     user ? "/api/marketplace/billing/pricing" : null,
     fetcher
   )
