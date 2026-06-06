@@ -73,7 +73,7 @@ function CertificationSummary({ submission }: { submission: PartnerConnectorSubm
       )}
       {(scope?.entries?.length ?? 0) > 0 && (
         <ul className="space-y-1 text-muted-foreground">
-          {scope.entries
+          {(scope?.entries ?? [])
             .flatMap((entry) => entry.issues.map((issue) => ({ actionKey: entry.actionKey, issue })))
             .slice(0, 3)
             .map((item, idx) => (
