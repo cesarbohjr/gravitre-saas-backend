@@ -351,8 +351,16 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/submissions/mine${query}`)
     )
   },
-  submit: (data: { manifest: Record<string, unknown>; securityChecklist: PartnerSecurityChecklist }) =>
-    postJson<{ submission: PartnerConnectorSubmission }>(apiUrl("/api/marketplace/submissions"), data),
+  submit: (data: {
+    manifest: Record<string, unknown>
+    securityChecklist: PartnerSecurityChecklist
+    packageSources?: Record<string, string>
+  }) => postJson<{ submission: PartnerConnectorSubmission }>(apiUrl("/api/marketplace/submissions"), data),
+  rescan: (id: string) =>
+    postJson<{ submission: PartnerConnectorSubmission }>(
+      apiUrl(`/api/marketplace/submissions/${id}/rescan`),
+      {}
+    ),
   review: (id: string, data: { decision: "approve" | "reject"; notes?: string }) =>
     postJson<{
       submission: PartnerConnectorSubmission

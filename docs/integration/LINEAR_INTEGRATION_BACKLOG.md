@@ -112,7 +112,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 status:** Code complete (STA-30–49). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
 
-**Current focus:** Tier 4 marketplace scale — STA-96 ✅, Connect v2 sample ✅ (`/samples/stripe-connect`, `docs/samples/stripe-connect-v2.md`), next **STA-97** certified partner program.
+**Current focus:** Tier 4 marketplace scale — STA-97 ✅ certified partner program, next **STA-98** private connector runtime.
 
 ---
 
@@ -186,7 +186,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 15 | T4-004 | [STA-83](https://linear.app/staqbot/issue/STA-83) | SIEM export | STA-81, STA-82 |
 | 16 | T4-016 | [STA-95](https://linear.app/staqbot/issue/STA-95) | Workflow DR runbook | STA-94 |
 | 17 | T4-017 | [STA-96](https://linear.app/staqbot/issue/STA-96) | Marketplace v2 billing ✅ (`/marketplace/billing`, v1 Express + transfers; v2 reference at `/samples/stripe-connect`) | STA-73 |
-| 18 | T4-018 | [STA-97](https://linear.app/staqbot/issue/STA-97) | Certified partner program | STA-70 |
+| 18 | T4-018 | [STA-97](https://linear.app/staqbot/issue/STA-97) | Certified partner program ✅ (static scan, scope review, registry badge) | STA-70 |
 | 19 | T4-019 | [STA-98](https://linear.app/staqbot/issue/STA-98) | Private connector runtime | STA-70, STA-85 |
 | 20 | T4-020 | [STA-99](https://linear.app/staqbot/issue/STA-99) | Fine-tuning → agent runtime | STA-49 |
 

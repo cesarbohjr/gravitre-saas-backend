@@ -10,6 +10,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.services.partner_marketplace_service import (
+    AUDIT_CERTIFICATION_SCANNED,
     AUDIT_CONNECTOR_PUBLISHED,
     AUDIT_SUBMISSION_CREATED,
     AUDIT_SUBMISSION_REVIEWED,
@@ -19,6 +20,7 @@ from app.services.partner_marketplace_service import (
     get_submission,
     list_registry,
     list_submissions,
+    rescan_submission_certification,
     review_submission,
 )
 from app.services.marketplace_billing_service import (
@@ -62,6 +64,7 @@ class SecurityChecklistRequest(BaseModel):
 class SubmissionCreateRequest(BaseModel):
     manifest: dict[str, Any]
     security_checklist: SecurityChecklistRequest = Field(alias="securityChecklist")
+    package_sources: dict[str, str] = Field(default_factory=dict, alias="packageSources")
 
     model_config = {"populate_by_name": True}
 
@@ -157,6 +160,7 @@ async def submit_partner_connector(
         submitted_by=current_user["user_id"],
         manifest=body.manifest,
         security_checklist=body.security_checklist.model_dump(),
+        package_sources=body.package_sources or None,
     )
     write_audit_event(
         client,
@@ -166,6 +170,18 @@ async def submit_partner_connector(
         resource_type=RESOURCE_TYPE_PARTNER_SUBMISSION,
         resource_id=submission["id"],
         metadata={"vendor": submission["vendor"], "packageId": submission["packageId"]},
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action=AUDIT_CERTIFICATION_SCANNED,
+        resource_type=RESOURCE_TYPE_PARTNER_SUBMISSION,
+        resource_id=submission["id"],
+        metadata={
+            "vendor": submission["vendor"],
+            "certificationStatus": submission.get("certificationStatus"),
+        },
     )
     return {"submission": submission}
 
@@ -179,7 +195,29 @@ async def get_marketplace_submission(
     """Get submission detail (admin)."""
     _user, org_id = admin_ctx
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return {"submission": get_submission(client, submission_id, org_id=org_id, admin=True)}
+    return {"submission": get_submission(client, submission_id, org_id=org_id, admin=True, include_sources=True)}
+
+
+@router.post("/submissions/{submission_id}/rescan")
+async def rescan_marketplace_submission(
+    submission_id: str,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Re-run automated security scan and scope review (admin)."""
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    submission = rescan_submission_certification(client, submission_id)
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action=AUDIT_CERTIFICATION_SCANNED,
+        resource_type=RESOURCE_TYPE_PARTNER_SUBMISSION,
+        resource_id=submission_id,
+        metadata={"certificationStatus": submission.get("certificationStatus")},
+    )
+    return {"submission": submission}
 
 
 @router.post("/submissions/{submission_id}/review")

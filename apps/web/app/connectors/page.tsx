@@ -720,6 +720,7 @@ const availableConnectors = Object.entries(connectorCategories).flatMap(([catego
 type CatalogConnector = (typeof availableConnectors)[number] & {
   vendorKey?: string
   partner?: boolean
+  certified?: boolean
 }
 
 // Add Connector Modal
@@ -739,6 +740,7 @@ function AddConnectorModal({
     vendor: string
     description: string
     authType: "oauth" | "apiKey"
+    certificationBadge?: string | null
   }>
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
@@ -767,6 +769,7 @@ function AddConnectorModal({
       category: "Partner Marketplace",
       vendorKey: entry.vendor,
       partner: true,
+      certified: entry.certificationBadge === "gravitre_certified",
     }))
     return [...availableConnectors, ...partnerEntries]
   }, [publishedConnectors])
@@ -1028,6 +1031,11 @@ function AddConnectorModal({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{connector.type}</span>
+                              {connector.certified && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-400">
+                                  Certified
+                                </span>
+                              )}
                               <span className={cn(
                                 "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
                                 connector.authType === "oauth" ? "bg-blue-500/10 text-blue-400" :
@@ -1620,7 +1628,15 @@ function ConnectorsPageContent() {
     { revalidateOnFocus: true, refreshInterval: 30000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
 
-  const { data: registryData } = useSWR<{ connectors: Array<{ name: string; vendor: string; description: string; authType: "oauth" | "apiKey" }> }>(
+  const { data: registryData } = useSWR<{
+    connectors: Array<{
+      name: string
+      vendor: string
+      description: string
+      authType: "oauth" | "apiKey"
+      certificationBadge?: string | null
+    }>
+  }>(
     user ? "/api/marketplace/registry" : null,
     apiFetcher,
     { revalidateOnFocus: true }

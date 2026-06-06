@@ -46,6 +46,9 @@ const DEFAULT_MANIFEST = `{
 export default function MarketplaceSubmitPage() {
   const { user } = useAuth()
   const [manifestText, setManifestText] = useState(DEFAULT_MANIFEST)
+  const [handlersSource, setHandlersSource] = useState(
+    "# Optional: paste handlers.py for automated static analysis\n\ndef items_list(ctx, params):\n    return {'items': []}\n"
+  )
   const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>({
     noHardcodedSecrets: false,
     oauthRedirectsDocumented: false,
@@ -72,7 +75,11 @@ export default function MarketplaceSubmitPage() {
 
     setIsSubmitting(true)
     try {
-      await marketplaceApi.submit({ manifest, securityChecklist: checklist })
+      const packageSources =
+        handlersSource.trim() && !handlersSource.trim().startsWith("# Optional:")
+          ? { "handlers.py": handlersSource }
+          : undefined
+      await marketplaceApi.submit({ manifest, securityChecklist: checklist, packageSources })
       toast.success("Submission received", {
         description: "Your connector package is in the review queue.",
       })
@@ -139,6 +146,20 @@ export default function MarketplaceSubmitPage() {
         </section>
 
         <section className="rounded-lg border border-border bg-card p-5 space-y-3">
+          <h2 className="text-sm font-medium">handlers.py (optional)</h2>
+          <Textarea
+            value={handlersSource}
+            onChange={(e) => setHandlersSource(e.target.value)}
+            className="font-mono text-xs min-h-[160px] bg-secondary/40"
+            spellCheck={false}
+          />
+          <p className="text-xs text-muted-foreground">
+            Include source for automated static analysis. Packages that pass scan + scope review earn the{" "}
+            <strong>Gravitre Certified</strong> badge when published.
+          </p>
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-5 space-y-3">
           <h2 className="text-sm font-medium">manifest.json</h2>
           <Textarea
             value={manifestText}
@@ -182,9 +203,16 @@ export default function MarketplaceSubmitPage() {
                       {sub.vendor} · v{sub.version}
                     </p>
                   </div>
-                  <span className="text-xs capitalize px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                    {sub.status.replace("_", " ")}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs capitalize px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                      {sub.status.replace("_", " ")}
+                    </span>
+                    {sub.certificationStatus && (
+                      <span className="text-xs text-muted-foreground">
+                        Certification: {sub.certificationStatus}
+                      </span>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

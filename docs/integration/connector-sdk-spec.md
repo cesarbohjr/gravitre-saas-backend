@@ -215,5 +215,6 @@ Declare only capabilities you implement. The platform rejects manifests that cla
 - `LINEAR_INTEGRATION_BACKLOG.md` — Tier 3 execution order
 - STA-71 — Partner submission workflow (`/marketplace/submit`, `/marketplace/admin`)
 - STA-72 — Partner sandbox org (`/marketplace/sandbox`) with Acme Tools demo handlers
+- STA-97 — Certified partner program: automated static analysis + scope review on submit; **Gravitre Certified** badge in registry when scan passes
 - STA-72 — Sandbox org for partner QA
 - STA-73 — Marketplace demo

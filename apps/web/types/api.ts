@@ -859,6 +859,38 @@ export interface PartnerSecurityChecklist {
   errorHandlingDocumented: boolean
 }
 
+export interface PartnerSecurityFinding {
+  code: string
+  severity: "critical" | "warning" | "info"
+  message: string
+  file?: string | null
+  line?: number | null
+}
+
+export interface PartnerSecurityScan {
+  findings: PartnerSecurityFinding[]
+  filesScanned: number
+  passed: boolean
+  criticalCount?: number
+  warningCount?: number
+}
+
+export interface PartnerScopeReviewEntry {
+  actionKey: string
+  declaredScopes: string[]
+  recommendedScopes: string[]
+  issues: string[]
+}
+
+export interface PartnerScopeReview {
+  entries: PartnerScopeReviewEntry[]
+  oauthScopes: string[]
+  passed: boolean
+  issueCount?: number
+}
+
+export type PartnerCertificationStatus = "pending" | "passed" | "failed"
+
 export interface PartnerConnectorSubmission {
   id: string
   orgId: string
@@ -869,6 +901,11 @@ export interface PartnerConnectorSubmission {
   version: string
   manifest: Record<string, unknown>
   securityChecklist: Record<string, boolean>
+  packageSourceFiles?: string[]
+  packageSources?: Record<string, string>
+  securityScan?: PartnerSecurityScan
+  scopeReview?: PartnerScopeReview
+  certificationStatus?: PartnerCertificationStatus
   status: PartnerSubmissionStatus
   reviewerId?: string | null
   reviewNotes?: string | null
@@ -946,6 +983,9 @@ export interface MarketplaceRegistryConnector {
   publishedBy: string
   publishedAt?: string
   status: string
+  certificationBadge?: string | null
+  certifiedAt?: string | null
+  securityScanSummary?: Record<string, unknown>
   pricing?: MarketplaceConnectorPricing
 }
 
