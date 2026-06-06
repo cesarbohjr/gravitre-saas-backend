@@ -6,43 +6,44 @@
 
 :root {
   /* Gravitre Brand - Light theme */
-  /* Background: clean near-white with a subtle cool (blue) tint */
-  --background: oklch(0.99 0.003 250);
-  --foreground: oklch(0.18 0.02 250);
+  /* Primary: Emerald green | Accent: Electric blue */
+  /* Background: clean near-white with a subtle cool (green) tint */
+  --background: oklch(0.99 0.004 160);
+  --foreground: oklch(0.18 0.02 160);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 250);
+  --card-foreground: oklch(0.18 0.02 160);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 250);
-  /* Primary: Electric blue brand accent */
-  --primary: oklch(0.55 0.2 250);
+  --popover-foreground: oklch(0.18 0.02 160);
+  /* Primary: Emerald green brand color */
+  --primary: oklch(0.55 0.16 158);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.005 250);
-  --secondary-foreground: oklch(0.18 0.02 250);
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.48 0.02 250);
-  /* Accent: faint electric-blue wash */
+  --secondary: oklch(0.96 0.006 160);
+  --secondary-foreground: oklch(0.18 0.02 160);
+  --muted: oklch(0.96 0.006 160);
+  --muted-foreground: oklch(0.48 0.02 160);
+  /* Accent: electric blue (secondary accent) */
   --accent: oklch(0.95 0.02 250);
-  --accent-foreground: oklch(0.40 0.12 250);
+  --accent-foreground: oklch(0.45 0.16 250);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.008 250);
-  --input: oklch(0.96 0.005 250);
-  --ring: oklch(0.55 0.2 250);
+  --border: oklch(0.91 0.01 160);
+  --input: oklch(0.96 0.006 160);
+  --ring: oklch(0.55 0.16 158);
   /* Status colors */
   --success: oklch(0.55 0.18 145);
   --warning: oklch(0.65 0.18 75);
   --info: oklch(0.55 0.2 250);
-  /* Chart colors */
-  --chart-1: oklch(0.55 0.2 250);
-  --chart-2: oklch(0.55 0.18 145);
+  /* Chart colors - green primary, blue secondary */
+  --chart-1: oklch(0.55 0.16 158);
+  --chart-2: oklch(0.55 0.2 250);
   --chart-3: oklch(0.65 0.18 75);
   --chart-4: oklch(0.55 0.18 320);
   --chart-5: oklch(0.50 0.22 25);
   --radius: 0.5rem;
-  /* Sidebar: subtle cool surface with electric-blue accents */
-  --sidebar: oklch(0.97 0.006 250);
-  --sidebar-foreground: oklch(0.18 0.02 250);
-  --sidebar-primary: oklch(0.55 0.2 250);
+  /* Sidebar: subtle cool surface with emerald-green accents */
+  --sidebar: oklch(0.97 0.008 160);
+  --sidebar-foreground: oklch(0.18 0.02 160);
+  --sidebar-primary: oklch(0.55 0.16 158);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.94 0.02 250);
   --sidebar-accent-foreground: oklch(0.40 0.12 250);
