@@ -46,6 +46,17 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "quickbooks.bills.list": ["quickbooks:bills:read", "quickbooks:*"],
     "quickbooks.bills.get": ["quickbooks:bills:read", "quickbooks:*"],
     "quickbooks.companyinfo.get": ["quickbooks:company:read", "quickbooks:*"],
+    "netsuite.customers.get": ["netsuite:customers:read", "netsuite:*"],
+    "netsuite.invoices.list": ["netsuite:invoices:read", "netsuite:*"],
+    "netsuite.invoices.get": ["netsuite:invoices:read", "netsuite:*"],
+    "netsuite.salesorders.get": ["netsuite:salesorders:read", "netsuite:*"],
+    "netsuite.items.get": ["netsuite:items:read", "netsuite:*"],
+    "netsuite.journalentries.create": ["netsuite:write", "netsuite:*"],
+    "netsuite.customers.update": ["netsuite:write", "netsuite:*"],
+    "workday.workers.get": ["workday:workers:read", "workday:*"],
+    "workday.orgunits.list": ["workday:orgunits:read", "workday:*"],
+    "workday.timeoff.balance.get": ["workday:timeoff:read", "workday:*"],
+    "workday.positions.list": ["workday:positions:read", "workday:*"],
     "stripe.invoices.list": ["stripe:invoices:read", "stripe:*"],
     "stripe.subscriptions.get": ["stripe:subscriptions:read", "stripe:*"],
     "pagerduty.incidents.acknowledge": ["pagerduty:incidents:write", "pagerduty:*"],
@@ -88,6 +99,15 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "sheets.spreadsheets.get": ["sheets:read", "google_sheets:*", "sheets:*"],
     "sheets.values.get": ["sheets:read", "google_sheets:*", "sheets:*"],
     "docs.documents.get": ["docs:read", "google_docs:*", "docs:*"],
+    "linkedin.prospect.enrich": ["linkedin:prospects:read", "linkedin:*"],
+    "marketo.leads.get": ["marketo:leads:read", "marketo:*"],
+    "marketo.leads.update": ["marketo:leads:write", "marketo:*"],
+    "marketo.campaigns.list": ["marketo:campaigns:read", "marketo:*"],
+    "marketo.programs.status": ["marketo:programs:read", "marketo:*"],
+    "marketo.lists.add_to_static_list": ["marketo:lists:write", "marketo:*"],
+    "segment.identify": ["segment:identify", "segment:write", "segment:*"],
+    "segment.track": ["segment:track", "segment:write", "segment:*"],
+    "segment.group": ["segment:group", "segment:write", "segment:*"],
 }
 
 WILDCARD_SCOPE = "*"
@@ -265,6 +285,15 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "quickbooks:company:read",
             "quickbooks:*",
         ]
+    if system == "netsuite":
+        return [
+            "netsuite:customers:read",
+            "netsuite:invoices:read",
+            "netsuite:salesorders:read",
+            "netsuite:items:read",
+            "netsuite:write",
+            "netsuite:*",
+        ]
     if system == "stripe":
         return [
             "stripe:invoices:read",
@@ -289,4 +318,25 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
         ]
     if system == "slack":
         return ["slack:messages:write", "slack:*"]
+    if system == "linkedin":
+        return ["linkedin:prospects:read", "linkedin:*"]
+    if system == "marketo":
+        return [
+            "marketo:leads:read",
+            "marketo:leads:write",
+            "marketo:campaigns:read",
+            "marketo:programs:read",
+            "marketo:lists:write",
+            "marketo:*",
+        ]
+    if system == "segment":
+        return ["segment:identify", "segment:track", "segment:group", "segment:write", "segment:*"]
+    if system == "workday":
+        return [
+            "workday:workers:read",
+            "workday:orgunits:read",
+            "workday:timeoff:read",
+            "workday:positions:read",
+            "workday:*",
+        ]
     return [f"{system}:*"]

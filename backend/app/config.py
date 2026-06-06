@@ -119,6 +119,11 @@ class Settings(BaseSettings):
     quickbooks_client_secret: str = ""
     quickbooks_sandbox_client_id: str = ""
     quickbooks_sandbox_client_secret: str = ""
+    # NetSuite OAuth (STA-56)
+    netsuite_client_id: str = ""
+    netsuite_client_secret: str = ""
+    netsuite_sandbox_client_id: str = ""
+    netsuite_sandbox_client_secret: str = ""
     # Jira Cloud OAuth (STA-36)
     jira_client_id: str = ""
     jira_client_secret: str = ""
@@ -128,6 +133,14 @@ class Settings(BaseSettings):
     # Notion OAuth (STA-43)
     notion_client_id: str = ""
     notion_client_secret: str = ""
+    # Marketo REST client credentials (STA-64); munchkin_id stored per connector
+    marketo_client_id: str = ""
+    marketo_client_secret: str = ""
+    # Workday OAuth (STA-59)
+    workday_client_id: str = ""
+    workday_client_secret: str = ""
+    workday_sandbox_client_id: str = ""
+    workday_sandbox_client_secret: str = ""
     # Google OAuth — shared "Gravitre OAuth" app (Calendar, GA4, future Gmail/Drive)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""

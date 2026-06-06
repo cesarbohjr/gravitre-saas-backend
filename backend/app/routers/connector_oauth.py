@@ -30,6 +30,14 @@ from app.connectors.quickbooks_oauth import (
     quickbooks_redirect_uri,
     normalize_vendor as normalize_quickbooks_vendor,
 )
+from app.connectors.netsuite_oauth import (
+    complete_netsuite_oauth_connection,
+    netsuite_authorize_url,
+    netsuite_credentials,
+    netsuite_oauth_configured,
+    netsuite_redirect_uri,
+    normalize_vendor as normalize_netsuite_vendor,
+)
 from app.connectors.confluence_oauth import (
     complete_confluence_oauth_connection,
     confluence_authorize_url,
@@ -37,6 +45,13 @@ from app.connectors.confluence_oauth import (
     confluence_oauth_configured,
     confluence_redirect_uri,
     normalize_vendor as normalize_confluence_vendor,
+)
+from app.connectors.workday_oauth import (
+    complete_workday_oauth_connection,
+    persist_workday_tenant_config,
+    workday_oauth_configured,
+    workday_redirect_uri,
+    normalize_vendor as normalize_workday_vendor,
 )
 from app.connectors.jira_oauth import (
     complete_jira_oauth_connection,
@@ -63,6 +78,13 @@ from app.connectors.notion_oauth import (
     notion_redirect_uri,
     normalize_vendor as normalize_notion_vendor,
 )
+from app.connectors.marketo_oauth import (
+    complete_marketo_client_credentials_connection,
+    get_connector_munchkin_id,
+    marketo_oauth_configured,
+    normalize_vendor as normalize_marketo_vendor,
+)
+from app.services.marketo_workflow_service import on_marketo_org_ready
 from app.connectors.pagerduty_webhooks import pagerduty_inbound_webhook_url
 from app.connectors.salesforce_oauth import (
     complete_salesforce_oauth_connection,
@@ -93,10 +115,13 @@ SUPPORTED_OAUTH_PROVIDERS = frozenset(
         "hubspot",
         "salesforce",
         "quickbooks",
+        "netsuite",
         "jira",
         "confluence",
         "pagerduty",
         "notion",
+        "workday",
+        "marketo",
     }
 ) | GOOGLE_OAUTH_VENDORS
 
@@ -112,6 +137,8 @@ def _resolve_oauth_vendor(provider: str) -> str:
         return "salesforce"
     if normalize_quickbooks_vendor(provider) == "quickbooks":
         return "quickbooks"
+    if normalize_netsuite_vendor(provider) == "netsuite":
+        return "netsuite"
     if normalize_jira_vendor(provider) == "jira":
         return "jira"
     if normalize_confluence_vendor(provider) == "confluence":
@@ -120,6 +147,10 @@ def _resolve_oauth_vendor(provider: str) -> str:
         return "pagerduty"
     if normalize_notion_vendor(provider) == "notion":
         return "notion"
+    if normalize_workday_vendor(provider) == "workday":
+        return "workday"
+    if normalize_marketo_vendor(provider) == "marketo":
+        return "marketo"
     return vendor
 
 
@@ -127,6 +158,9 @@ class OAuthStartRequest(BaseModel):
     name: str = Field(..., min_length=1)
     connector_id: str | None = Field(default=None, alias="connectorId")
     redirect_path: str | None = Field(default="/connectors", alias="redirectPath")
+    tenant_url: str | None = Field(default=None, alias="tenantUrl")
+    tenant: str | None = None
+    munchkin_id: str | None = Field(default=None, alias="munchkinId")
 
     model_config = {"populate_by_name": True}  # noqa: RUF012 — pydantic model config
 
@@ -190,6 +224,9 @@ async def oauth_provider_status(
     elif vendor == "quickbooks":
         configured = quickbooks_oauth_configured(settings, environment_name)
         redirect_uri = quickbooks_redirect_uri(settings)
+    elif vendor == "netsuite":
+        configured = netsuite_oauth_configured(settings, environment_name)
+        redirect_uri = netsuite_redirect_uri(settings)
     elif vendor == "jira":
         configured = jira_oauth_configured(settings, environment_name)
         redirect_uri = jira_redirect_uri(settings)
@@ -202,6 +239,12 @@ async def oauth_provider_status(
     elif vendor == "notion":
         configured = notion_oauth_configured(settings, environment_name)
         redirect_uri = notion_redirect_uri(settings)
+    elif vendor == "workday":
+        configured = workday_oauth_configured(settings, environment_name)
+        redirect_uri = workday_redirect_uri(settings)
+    elif vendor == "marketo":
+        configured = marketo_oauth_configured(settings, environment_name)
+        redirect_uri = None
 
     return OAuthProviderStatusResponse(
         provider=vendor,
@@ -240,6 +283,11 @@ async def start_oauth(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("QuickBooks OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
+    if vendor == "netsuite" and not netsuite_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("NetSuite OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
     if vendor == "jira" and not jira_oauth_configured(settings, environment_name):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -260,10 +308,25 @@ async def start_oauth(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Notion OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
+    if vendor == "workday" and not workday_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Workday OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "workday" and (not body.tenant_url or not body.tenant):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Workday tenantUrl and tenant are required", "WORKDAY_TENANT_REQUIRED"),
+        )
     if vendor in GOOGLE_OAUTH_VENDORS and not google_oauth_configured(settings, environment_name):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Google OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "marketo" and not marketo_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Marketo OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -292,7 +355,7 @@ async def start_oauth(
         if not existing.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
         row = existing.data[0]
-        stored_vendor = normalize_vendor(row.get("vendor") or row.get("type") or "")
+        stored_vendor = _resolve_oauth_vendor(str(row.get("vendor") or row.get("type") or ""))
         if stored_vendor != vendor:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connector vendor mismatch")
         mark_connector_pending_oauth(
@@ -347,7 +410,50 @@ async def start_oauth(
     )
 
     auth_url = ""
-    if vendor == "hubspot":
+    if vendor == "marketo":
+        munchkin_id = (body.munchkin_id or "").strip()
+        if not munchkin_id and connector_id:
+            existing_cfg = (
+                client.table("connectors")
+                .select("config")
+                .eq("id", connector_id)
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+            )
+            if existing_cfg.data:
+                munchkin_id = get_connector_munchkin_id(dict(existing_cfg.data[0])) or ""
+        if not munchkin_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_detail("munchkin_id is required for Marketo", "MARKETO_MUNCHKIN_REQUIRED"),
+            )
+        try:
+            complete_marketo_client_credentials_connection(
+                client,
+                org_id,
+                connector_id,
+                settings,
+                munchkin_id=munchkin_id,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+            on_marketo_org_ready(client, org_id, settings)
+        except (httpx.HTTPError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=error_detail(f"Marketo token exchange failed: {exc}", "MARKETO_TOKEN_FAILED"),
+            ) from exc
+        auth_url = _frontend_redirect(
+            settings,
+            body.redirect_path or "/connectors",
+            {
+                "oauth": "success",
+                "provider": vendor,
+                "connectorId": connector_id,
+            },
+        )
+    elif vendor == "hubspot":
         redirect_uri = hubspot_redirect_uri(settings)
         client_id, _secret = hubspot_credentials(settings, environment_name)
         auth_url = hubspot_authorize_url(client_id, redirect_uri, state)
@@ -362,6 +468,34 @@ async def start_oauth(
         client_id, _secret = quickbooks_credentials(settings, environment_name)
         auth_url = quickbooks_authorize_url(
             client_id, redirect_uri, state, environment_name=environment_name
+        )
+    elif vendor == "netsuite":
+        redirect_uri = netsuite_redirect_uri(settings)
+        client_id, _secret = netsuite_credentials(settings, environment_name)
+        connector_row = (
+            client.table("connectors")
+            .select("config")
+            .eq("org_id", org_id)
+            .eq("id", connector_id)
+            .limit(1)
+            .execute()
+        )
+        connector_config = dict((connector_row.data or [{}])[0].get("config") or {})
+        account_id = (connector_config.get("account_id") or connector_config.get("accountId") or "").strip()
+        if not account_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_detail(
+                    "NetSuite account_id is required in connector config before OAuth",
+                    "NETSUITE_ACCOUNT_ID_REQUIRED",
+                ),
+            )
+        auth_url = netsuite_authorize_url(
+            client_id,
+            redirect_uri,
+            state,
+            account_id=account_id,
+            environment_name=environment_name,
         )
     elif vendor == "jira":
         redirect_uri = jira_redirect_uri(settings)
@@ -379,6 +513,41 @@ async def start_oauth(
         redirect_uri = notion_redirect_uri(settings)
         client_id, _secret = notion_credentials(settings, environment_name)
         auth_url = notion_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "workday":
+        persist_workday_tenant_config(
+            client,
+            org_id,
+            str(connector_id),
+            tenant_url=str(body.tenant_url or ""),
+            tenant=str(body.tenant or ""),
+        )
+        try:
+            complete_workday_oauth_connection(
+                client,
+                org_id,
+                str(connector_id),
+                None,
+                settings,
+                tenant_url=str(body.tenant_url or ""),
+                tenant=str(body.tenant or ""),
+                environment_name=environment_name,
+                reconnect=reconnect,
+                use_client_credentials=True,
+            )
+        except (httpx.HTTPError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=error_detail(f"Workday token exchange failed: {exc}", "WORKDAY_TOKEN_EXCHANGE_FAILED"),
+            ) from exc
+        auth_url = _frontend_redirect(
+            settings,
+            body.redirect_path or "/connectors",
+            {
+                "oauth": "success",
+                "provider": vendor,
+                "connectorId": str(connector_id),
+            },
+        )
     elif vendor in GOOGLE_OAUTH_VENDORS:
         redirect_uri = google_vendor_redirect_uri(settings, vendor)
         client_id, _secret = google_oauth_credentials(settings, environment_name)
@@ -405,6 +574,7 @@ async def oauth_callback(
     error: str | None = Query(default=None),
     error_description: str | None = Query(default=None, alias="error_description"),
     realm_id: str | None = Query(default=None, alias="realmId"),
+    account_id: str | None = Query(default=None, alias="accountId"),
 ) -> RedirectResponse:
     """OAuth callback (browser redirect). Exchanges code and stores encrypted tokens."""
     vendor = _resolve_oauth_vendor(provider)
@@ -468,6 +638,17 @@ async def oauth_callback(
                 environment_name=environment_name,
                 reconnect=reconnect,
             )
+        elif vendor == "netsuite":
+            complete_netsuite_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                account_id=account_id,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
         elif vendor == "jira":
             complete_jira_oauth_connection(
                 client,
@@ -510,6 +691,17 @@ async def oauth_callback(
                 settings,
                 environment_name=environment_name,
                 reconnect=reconnect,
+            )
+        elif vendor == "workday":
+            complete_workday_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+                use_client_credentials=not bool(code),
             )
         elif vendor in GOOGLE_OAUTH_VENDORS:
             property_linked = complete_google_vendor_oauth_connection(

@@ -2298,6 +2298,18 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "docs.documents.get": _exec_docs_documents_get,
 }
 
+from app.services.linkedin_tools import LINKEDIN_TOOL_EXECUTORS
+from app.services.marketo_tools import TOOL_EXECUTORS as MARKETO_TOOL_EXECUTORS
+from app.services.netsuite_tools import NETSUITE_TOOL_EXECUTORS
+from app.services.segment_tools import TOOL_EXECUTORS as SEGMENT_TOOL_EXECUTORS
+from app.services.workday_tools import WORKDAY_TOOL_EXECUTORS
+
+_TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MARKETO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(SEGMENT_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(LINKEDIN_TOOL_EXECUTORS)
+
 # Workflow step type → canonical tool action
 STEP_TYPE_TO_ACTION: dict[str, str] = {
     "slack_post_message": "slack.post_message",

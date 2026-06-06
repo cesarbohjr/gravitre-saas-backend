@@ -132,25 +132,27 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | Order | Ref | Linear | Title | Blocked by |
 |-------|-----|--------|-------|------------|
 | 1 | T3-015 | [STA-70](https://linear.app/staqbot/issue/STA-70) | Connector SDK spec ✅ (`connector-sdk-spec.md`, `app/connectors/sdk/`) | STA-10, STA-13, STA-11 |
-| 2 | T3-007 | [STA-62](https://linear.app/staqbot/issue/STA-62) | LinkedIn API evaluation (ADR) | — |
-| 3 | T3-001 | [STA-56](https://linear.app/staqbot/issue/STA-56) | NetSuite OAuth | STA-10, STA-13 |
-| 4 | T3-004 | [STA-59](https://linear.app/staqbot/issue/STA-59) | Workday OAuth | STA-10 |
-| 5 | T3-009 | [STA-64](https://linear.app/staqbot/issue/STA-64) | Marketo OAuth | STA-13, STA-10 |
-| 6 | T3-012 | [STA-67](https://linear.app/staqbot/issue/STA-67) | Segment OAuth | STA-10 |
-| 7 | T3-002 | [STA-57](https://linear.app/staqbot/issue/STA-57) | NetSuite read actions | STA-56 |
-| 8 | T3-005 | [STA-60](https://linear.app/staqbot/issue/STA-60) | Workday read actions | STA-59 |
-| 9 | T3-010 | [STA-65](https://linear.app/staqbot/issue/STA-65) | Marketo v1 actions | STA-64 |
-| 10 | T3-013 | [STA-68](https://linear.app/staqbot/issue/STA-68) | Segment identify/track | STA-67 |
+| 2 | T3-007 | [STA-62](https://linear.app/staqbot/issue/STA-62) | LinkedIn API evaluation (ADR) ✅ (`linkedin-sales-nav.md`) | — |
+| 3 | T3-001 | [STA-56](https://linear.app/staqbot/issue/STA-56) | NetSuite OAuth ✅ | STA-10, STA-13 |
+| 4 | T3-004 | [STA-59](https://linear.app/staqbot/issue/STA-59) | Workday OAuth ✅ | STA-10 |
+| 5 | T3-009 | [STA-64](https://linear.app/staqbot/issue/STA-64) | Marketo OAuth ✅ | STA-13, STA-10 |
+| 6 | T3-012 | [STA-67](https://linear.app/staqbot/issue/STA-67) | Segment write-key linking ✅ | STA-10 |
+| 7 | T3-002 | [STA-57](https://linear.app/staqbot/issue/STA-57) | NetSuite read actions ✅ | STA-56 |
+| 8 | T3-005 | [STA-60](https://linear.app/staqbot/issue/STA-60) | Workday read actions ✅ | STA-59 |
+| 9 | T3-010 | [STA-65](https://linear.app/staqbot/issue/STA-65) | Marketo v1 actions ✅ | STA-64 |
+| 10 | T3-013 | [STA-68](https://linear.app/staqbot/issue/STA-68) | Segment identify/track ✅ | STA-67 |
 | 11 | T3-017 | [STA-72](https://linear.app/staqbot/issue/STA-72) | Marketplace sandbox org ✅ (`/marketplace/sandbox`) | STA-70 |
 | 12 | T3-016 | [STA-71](https://linear.app/staqbot/issue/STA-71) | Partner submission workflow ✅ | STA-70 |
-| 13 | T3-006 | [STA-61](https://linear.app/staqbot/issue/STA-61) | Workday → RAG sync | STA-20, STA-45 |
-| 14 | T3-008 | [STA-63](https://linear.app/staqbot/issue/STA-63) | LinkedIn prospect enrich | STA-62, STA-15 |
-| 15 | T3-003 | [STA-58](https://linear.app/staqbot/issue/STA-58) | NetSuite write (gated) | STA-57, STA-11 |
-| 16 | T3-011 | [STA-66](https://linear.app/staqbot/issue/STA-66) | Marketo nurture templates | STA-65, STA-17 |
-| 17 | T3-014 | [STA-69](https://linear.app/staqbot/issue/STA-69) | Segment → workflows | STA-68, STA-12 |
+| 13 | T3-006 | [STA-61](https://linear.app/staqbot/issue/STA-61) | Workday → RAG sync ✅ | STA-20, STA-45 |
+| 14 | T3-008 | [STA-63](https://linear.app/staqbot/issue/STA-63) | LinkedIn prospect enrich ✅ | STA-62, STA-15 |
+| 15 | T3-003 | [STA-58](https://linear.app/staqbot/issue/STA-58) | NetSuite write (gated) ✅ | STA-57, STA-11 |
+| 16 | T3-011 | [STA-66](https://linear.app/staqbot/issue/STA-66) | Marketo nurture templates ✅ | STA-65, STA-17 |
+| 17 | T3-014 | [STA-69](https://linear.app/staqbot/issue/STA-69) | Segment → workflows ✅ | STA-68, STA-12 |
 | 18 | T3-018 | [STA-73](https://linear.app/staqbot/issue/STA-73) | Marketplace demo ✅ (`POST /api/marketplace/sandbox/demo`) | STA-70–72 |
 
 **Start Tier 3 only after:** Tier 1 platform (STA-10, STA-11, STA-13) and relevant Tier 2 tracks.
+
+**Tier 3 status:** Complete in code and Linear (STA-50–73 Done). Key docs: `connector-sdk-spec.md`, `linkedin-sales-nav.md`.
 
 ---
 

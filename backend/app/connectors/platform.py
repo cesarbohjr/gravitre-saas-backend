@@ -18,10 +18,12 @@ OAUTH_DOCS_URLS: dict[str, str] = {
     "hubspot": "https://developers.hubspot.com/docs",
     "salesforce": "https://developer.salesforce.com/docs",
     "quickbooks": "https://developer.intuit.com/app/developer/qbo/docs",
+    "netsuite": "https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/chapter_1540391670.html",
     "jira": "https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/",
     "confluence": "https://developer.atlassian.com/cloud/confluence/oauth-2-3lo-apps/",
     "pagerduty": "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality",
     "notion": "https://developers.notion.com/docs/authorization",
+    "marketo": "https://developers.marketo.com/rest-api/",
 }
 
 
