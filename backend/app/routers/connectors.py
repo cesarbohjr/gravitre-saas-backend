@@ -23,6 +23,7 @@ from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_f
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
 from app.connectors.platform import masked_api_key_for_response, store_connector_api_key
+from app.services.partner_marketplace_service import is_published_partner_vendor
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
 from app.connectors.salesforce_oauth import ensure_salesforce_access_token, normalize_vendor as normalize_salesforce_vendor
 from app.workflows.audit import write_audit_event
@@ -631,14 +632,14 @@ async def create_connector_route(
     vendor = (body.vendor or "").strip().lower().replace(" ", "")
     if vendor == "googlecalendar":
         vendor = "google_calendar"
-    if vendor not in ALLOWED_CONNECTOR_VENDORS:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if vendor not in ALLOWED_CONNECTOR_VENDORS and not is_published_partner_vendor(client, vendor):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid vendor")
-    plan = get_plan_for_org(create_client(settings.supabase_url, settings.supabase_service_role_key), org_id)
+    plan = get_plan_for_org(client, org_id)
     if vendor in ADVANCED_CONNECTORS:
         require_feature(plan, "advanced_connectors")
     _validate_webhook(body.webhook_url)
     docs_url = _docs_url(vendor)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     if connector_limit is not None:
         connector_count_resp = (
             client.table("connectors")

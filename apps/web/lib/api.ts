@@ -70,6 +70,11 @@ import type {
   SSOInitResponse,
   MetricsOverview,
   MetricInsight,
+  MarketplaceRegistryConnector,
+  MarketplaceSandboxProvisionResult,
+  MarketplaceSandboxStatus,
+  PartnerConnectorSubmission,
+  PartnerSecurityChecklist,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -325,6 +330,36 @@ export const runsApi = {
   get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
   cancel: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/cancel`), {}),
   retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
+}
+
+// ============ Marketplace ============
+export const marketplaceApi = {
+  listRegistry: () =>
+    fetcher<{ connectors: MarketplaceRegistryConnector[] }>(apiUrl("/api/marketplace/registry")),
+  listSubmissions: (status?: string) => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ""
+    return fetcher<{ submissions: PartnerConnectorSubmission[] }>(
+      apiUrl(`/api/marketplace/submissions${query}`)
+    )
+  },
+  listMySubmissions: (status?: string) => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : ""
+    return fetcher<{ submissions: PartnerConnectorSubmission[] }>(
+      apiUrl(`/api/marketplace/submissions/mine${query}`)
+    )
+  },
+  submit: (data: { manifest: Record<string, unknown>; securityChecklist: PartnerSecurityChecklist }) =>
+    postJson<{ submission: PartnerConnectorSubmission }>(apiUrl("/api/marketplace/submissions"), data),
+  review: (id: string, data: { decision: "approve" | "reject"; notes?: string }) =>
+    postJson<{
+      submission: PartnerConnectorSubmission
+      registry: MarketplaceRegistryConnector | null
+    }>(apiUrl(`/api/marketplace/submissions/${id}/review`), data),
+  sandboxStatus: () => fetcher<MarketplaceSandboxStatus>(apiUrl("/api/marketplace/sandbox")),
+  provisionSandbox: () =>
+    postJson<MarketplaceSandboxProvisionResult>(apiUrl("/api/marketplace/sandbox"), {}),
+  resetSandbox: () =>
+    postJson<MarketplaceSandboxProvisionResult>(apiUrl("/api/marketplace/sandbox/reset"), {}),
 }
 
 // ============ Approvals ============
@@ -750,6 +785,7 @@ export const api = {
   runs: runsApi,
   approvals: approvalsApi,
   connectors: connectorsApi,
+  marketplace: marketplaceApi,
   sources: sourcesApi,
   search: searchApi,
   training: trainingApi,

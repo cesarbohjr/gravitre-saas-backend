@@ -2306,14 +2306,26 @@ STEP_TYPE_TO_ACTION: dict[str, str] = {
 }
 
 
+def _resolve_tool_executor(action: str) -> ToolExecutor | None:
+    """Resolve built-in or partner-registered tool executor."""
+    executor = _TOOL_REGISTRY.get(action)
+    if executor:
+        return executor
+    from app.connectors.sdk.registry import get_partner_executor
+
+    return get_partner_executor(action)
+
+
 def list_registered_actions() -> list[str]:
-    return sorted(_TOOL_REGISTRY.keys())
+    from app.connectors.sdk.registry import list_partner_actions
+
+    return sorted(set(_TOOL_REGISTRY.keys()) | set(list_partner_actions()))
 
 
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
     """Invoke a registered connector tool with audit, rate limits, retries, and agent permissions."""
     params = params or {}
-    executor = _TOOL_REGISTRY.get(action)
+    executor = _resolve_tool_executor(action)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")
 

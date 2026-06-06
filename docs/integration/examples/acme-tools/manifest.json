@@ -1,0 +1,63 @@
+{
+  "manifestVersion": "1.0",
+  "id": "com.acme.tools",
+  "name": "Acme Tools",
+  "version": "1.0.0",
+  "vendor": "acme_tools",
+  "description": "Example partner connector for marketplace sandbox demos (STA-73).",
+  "homepageUrl": "https://example.com/acme-tools",
+  "supportEmail": "support@example.com",
+  "minPlatformVersion": "2026.06",
+  "auth": {
+    "type": "apiKey",
+    "headerName": "X-Acme-Api-Key"
+  },
+  "capabilities": ["actions", "triggers"],
+  "actions": [
+    {
+      "id": "tickets.list",
+      "name": "List tickets",
+      "description": "List support tickets from Acme Tools.",
+      "scopes": ["acme_tools:tickets:read", "acme_tools:*"],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["open", "closed", "all"] },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "tickets": { "type": "array" }
+        }
+      },
+      "idempotent": true
+    },
+    {
+      "id": "tickets.create",
+      "name": "Create ticket",
+      "description": "Create a support ticket in Acme Tools.",
+      "scopes": ["acme_tools:tickets:write", "acme_tools:*"],
+      "inputSchema": {
+        "type": "object",
+        "required": ["subject", "body"],
+        "properties": {
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "normal", "high"] }
+        }
+      },
+      "destructive": false
+    }
+  ],
+  "triggers": [
+    {
+      "id": "ticket.created",
+      "name": "Ticket created",
+      "description": "Fires when a new ticket is created in Acme Tools.",
+      "eventType": "webhook",
+      "scopes": ["acme_tools:webhooks:read", "acme_tools:*"]
+    }
+  ]
+}

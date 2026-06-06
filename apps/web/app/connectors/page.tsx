@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, startTransition, useEffect, useState } from "react"
+import { Suspense, startTransition, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
@@ -717,17 +717,29 @@ const availableConnectors = Object.entries(connectorCategories).flatMap(([catego
   data.connectors.map(c => ({ ...c, category }))
 )
 
+type CatalogConnector = (typeof availableConnectors)[number] & {
+  vendorKey?: string
+  partner?: boolean
+}
+
 // Add Connector Modal
 function AddConnectorModal({
   open,
   onClose,
   onCreated,
   existingConnectors,
+  publishedConnectors = [],
 }: {
   open: boolean
   onClose: () => void
   onCreated: () => Promise<void>
   existingConnectors: Connector[]
+  publishedConnectors?: Array<{
+    name: string
+    vendor: string
+    description: string
+    authType: "oauth" | "apiKey"
+  }>
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -747,10 +759,25 @@ function AddConnectorModal({
   const [githubOwner, setGithubOwner] = useState("")
   const [githubRepo, setGithubRepo] = useState("")
 
+  const catalogConnectors = useMemo<CatalogConnector[]>(() => {
+    const partnerEntries: CatalogConnector[] = publishedConnectors.map((entry) => ({
+      type: entry.name,
+      description: entry.description || `Partner connector · ${entry.vendor}`,
+      authType: entry.authType,
+      category: "Partner Marketplace",
+      vendorKey: entry.vendor,
+      partner: true,
+    }))
+    return [...availableConnectors, ...partnerEntries]
+  }, [publishedConnectors])
+
+  const resolveVendor = (connector: CatalogConnector | undefined, type: string) =>
+    connector?.vendorKey || connectorVendorKey(type)
+
   // Webhook URL for webhook-based connectors
   const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
 
-  const filteredModalConnectors = availableConnectors.filter((c) => {
+  const filteredModalConnectors = catalogConnectors.filter((c) => {
     const matchesSearch = c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -762,13 +789,13 @@ function AddConnectorModal({
     if (!acc[c.category]) acc[c.category] = []
     acc[c.category].push(c)
     return acc
-  }, {} as Record<string, typeof availableConnectors>)
+  }, {} as Record<string, CatalogConnector[]>)
 
-  const getSelectedConnector = () => availableConnectors.find((c) => c.type === selectedType)
+  const getSelectedConnector = () => catalogConnectors.find((c) => c.type === selectedType)
 
   const handleOAuthConnect = async () => {
     if (!selectedType || !name) return
-    const provider = connectorVendorKey(selectedType)
+    const provider = resolveVendor(getSelectedConnector(), selectedType)
     const existing = existingConnectors.find(
       (c) => connectorVendorKey(c.type) === provider
     )
@@ -812,7 +839,7 @@ function AddConnectorModal({
     if (!selectedType || !name) return
     setIsCreating(true)
     try {
-      const vendor = connectorVendorKey(selectedType)
+      const vendor = resolveVendor(getSelectedConnector(), selectedType)
       const payload: import("@/types/api").CreateConnectorRequest = {
         name,
         vendor,
@@ -871,13 +898,13 @@ function AddConnectorModal({
     onClose()
   }
 
-  const handleSelectConnector = (connector: typeof availableConnectors[0]) => {
+  const handleSelectConnector = (connector: CatalogConnector) => {
     setSelectedType(connector.type)
     setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
-    setName(connector.type.toLowerCase().replace(/\s+/g, "-"))
+    setName((connector.vendorKey || connector.type).toLowerCase().replace(/\s+/g, "-"))
 
     // Route to appropriate auth flow
-    if (OAUTH_CONNECTOR_TYPE_SET.has(connector.type)) {
+    if (connector.authType === "oauth") {
       setStep("oauth")
     } else if (connector.authType === "webhook") {
       setStep("webhook")
@@ -1590,14 +1617,18 @@ function ConnectorsPageContent() {
   const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
     user ? "/api/connectors" : null,
     apiFetcher,
-    {
-      revalidateOnFocus: true,
-      refreshInterval: 30000,
-      onError: (err) => console.error("[connectors] fetch error:", err),
-    }
+    { revalidateOnFocus: true, refreshInterval: 30000, onError: (err) => console.error("[connectors] fetch error:", err) }
+  )
+
+  const { data: registryData } = useSWR<{ connectors: Array<{ name: string; vendor: string; description: string; authType: "oauth" | "apiKey" }> }>(
+    user ? "/api/marketplace/registry" : null,
+    apiFetcher,
+    { revalidateOnFocus: true }
   )
 
   const connectors = normalizeConnectorsResponse(data)
+  const publishedConnectors = registryData?.connectors ?? []
+  const isAdmin = user?.role === "admin" || user?.role === "owner"
 
   useEffect(() => {
     const oauth = searchParams.get("oauth")
@@ -1868,6 +1899,14 @@ function ConnectorsPageContent() {
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               </div>
+              {isAdmin && (
+                <Button variant="outline" size="sm" className="gap-1.5 shrink-0" asChild>
+                  <Link href="/marketplace/admin">Review</Link>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0 hidden sm:inline-flex" asChild>
+                <Link href="/marketplace/submit">Partner SDK</Link>
+              </Button>
               <Button onClick={() => setAddModal(true)} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Connector</span>
@@ -2054,6 +2093,7 @@ function ConnectorsPageContent() {
           open={addModal}
           onClose={() => setAddModal(false)}
           existingConnectors={connectors}
+          publishedConnectors={publishedConnectors}
           onCreated={async () => {
             await mutate()
           }}

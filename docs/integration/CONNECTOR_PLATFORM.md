@@ -51,3 +51,7 @@ OAuth connectors: **Complete OAuth** (not API key in Configure).
 - Test connection passes; delete with name confirmation works
 
 See `TIER1_PRODUCTION_SMOKE.md` and `TIER2_PRODUCTION_SMOKE.md`.
+
+## Partner connectors (Tier 3+)
+
+Third-party packages use the Connector SDK: `docs/integration/connector-sdk-spec.md`.

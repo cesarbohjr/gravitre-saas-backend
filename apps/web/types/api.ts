@@ -841,3 +841,80 @@ export interface CreateAgentRequest {
   capabilities?: string[]
   permissions?: string[]
 }
+
+// ============ Marketplace (STA-71) ============
+export type PartnerSubmissionStatus =
+  | "pending"
+  | "in_review"
+  | "approved"
+  | "rejected"
+  | "withdrawn"
+
+export interface PartnerSecurityChecklist {
+  noHardcodedSecrets: boolean
+  oauthRedirectsDocumented: boolean
+  scopesMinimized: boolean
+  dataResidencyDocumented: boolean
+  auditLoggingCompatible: boolean
+  errorHandlingDocumented: boolean
+}
+
+export interface PartnerConnectorSubmission {
+  id: string
+  orgId: string
+  submittedBy: string
+  packageId: string
+  vendor: string
+  name: string
+  version: string
+  manifest: Record<string, unknown>
+  securityChecklist: Record<string, boolean>
+  status: PartnerSubmissionStatus
+  reviewerId?: string | null
+  reviewNotes?: string | null
+  reviewedAt?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface MarketplaceSandboxStatus {
+  provisioned: boolean
+  publisherOrgId: string
+  sandboxOrgId?: string
+  sandboxOrgName?: string
+  sandboxOrgSlug?: string
+  seededAt?: string | null
+  welcomeMessage?: string
+  createdAt?: string
+}
+
+export interface MarketplaceSandboxProvisionResult {
+  provisioned: boolean
+  created?: boolean
+  reset?: boolean
+  publisherOrgId: string
+  sandboxOrgId: string
+  sandboxOrgName?: string
+  sandboxOrgSlug?: string
+  welcomeMessage?: string
+  agentsCreated?: number
+  workflowsCreated?: number
+  connectorsCreated?: number
+}
+
+export interface MarketplaceRegistryConnector {
+  id: string
+  submissionId: string
+  orgId: string
+  packageId: string
+  vendor: string
+  name: string
+  version: string
+  manifest: Record<string, unknown>
+  authType: "oauth" | "apiKey"
+  description: string
+  capabilities: string[]
+  publishedBy: string
+  publishedAt?: string
+  status: string
+}

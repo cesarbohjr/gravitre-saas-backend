@@ -32,6 +32,7 @@ from app.routers import (
     billing_sync,
     connector_oauth,
     connectors,
+    marketplace,
     conversations,
     decisions,
     execution,
@@ -302,6 +303,7 @@ app.include_router(workflow_schedules_internal.router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(connector_oauth.router)
+app.include_router(marketplace.router)
 app.include_router(rag.router)
 app.include_router(rag_admin.router)
 app.include_router(search.router)
