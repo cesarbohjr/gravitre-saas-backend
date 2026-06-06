@@ -18,6 +18,9 @@ from app.services.org_seed_service import _seed_uuid
 RESOURCE_TYPE_MARKETPLACE_SANDBOX = "marketplace_sandbox"
 AUDIT_SANDBOX_PROVISIONED = "marketplace.sandbox.provisioned"
 AUDIT_SANDBOX_RESET = "marketplace.sandbox.reset"
+AUDIT_SANDBOX_DEMO = "marketplace.sandbox.demo_ran"
+
+DEMO_INVOKE_ACTION = "acme_tools.tickets.list"
 
 SANDBOX_WELCOME = (
     "This is your isolated partner sandbox. Demo agents, mock connectors, and sample workflows "
@@ -356,6 +359,110 @@ def reset_sandbox(client: Any, settings: Settings, *, publisher_org_id: str) -> 
     if not org.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sandbox org not found")
     return _normalize_status(mapping, org.data[0], seed_stats, created=False, reset=True)
+
+
+def _normalize_audit_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(row.get("id")),
+        "action": row.get("action"),
+        "resourceType": row.get("resource_type"),
+        "resourceId": str(row.get("resource_id")) if row.get("resource_id") else None,
+        "metadata": row.get("metadata") or {},
+        "createdAt": row.get("created_at"),
+    }
+
+
+def _fetch_recent_audit_trail(client: Any, org_id: str, *, limit: int = 12) -> list[dict[str, Any]]:
+    """Return recent tool-invoke and marketplace demo audit rows for sandbox org."""
+    actions = [
+        "tool.invoke.requested",
+        "tool.invoke.completed",
+        "tool.invoke.failed",
+        AUDIT_SANDBOX_DEMO,
+    ]
+    result = (
+        client.table("audit_events")
+        .select("id, action, resource_type, resource_id, metadata, created_at")
+        .eq("org_id", org_id)
+        .in_("action", actions)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return [_normalize_audit_row(row) for row in (result.data or [])]
+
+
+def run_sandbox_demo(
+    client: Any,
+    settings: Settings,
+    *,
+    publisher_org_id: str,
+    actor_id: str,
+) -> dict[str, Any]:
+    """STA-73: Invoke Acme Tools in sandbox as Integration QA Agent and return audit trail."""
+    from app.connectors.partners.acme_tools_demo import ensure_acme_tools_demo_registered
+    from app.services.tool_service import invoke_tool
+    from app.services.tool_types import ToolContext
+    from app.workflows.audit import write_audit_event
+
+    mapping = get_sandbox_mapping(client, publisher_org_id)
+    if not mapping:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=error_detail("Sandbox not provisioned for this organization", "SANDBOX_NOT_FOUND"),
+        )
+
+    sandbox_org_id = str(mapping["sandbox_org_id"])
+    qa_agent_id = _seed_uuid(sandbox_org_id, "agent:integration-qa")
+    acme_connector_id = _seed_uuid(sandbox_org_id, "connector:acme-tools")
+
+    ensure_acme_tools_demo_registered()
+
+    ctx = ToolContext(
+        settings=settings,
+        client=client,
+        org_id=sandbox_org_id,
+        actor_id=actor_id,
+        agent_id=qa_agent_id,
+        connector_id=acme_connector_id,
+        environment_name="staging",
+    )
+    invoke_result = invoke_tool(
+        ctx,
+        DEMO_INVOKE_ACTION,
+        {"connector_id": acme_connector_id, "status": "open", "limit": 3},
+    )
+
+    ticket_count = len(invoke_result.data.get("tickets") or []) if invoke_result.success else 0
+    write_audit_event(
+        client,
+        org_id=sandbox_org_id,
+        actor_id=actor_id,
+        action=AUDIT_SANDBOX_DEMO,
+        resource_type=RESOURCE_TYPE_MARKETPLACE_SANDBOX,
+        resource_id=acme_connector_id,
+        metadata={
+            "action": DEMO_INVOKE_ACTION,
+            "agentId": qa_agent_id,
+            "connectorId": acme_connector_id,
+            "success": invoke_result.success,
+            "ticketCount": ticket_count,
+        },
+    )
+
+    return {
+        "sandboxOrgId": sandbox_org_id,
+        "agentId": qa_agent_id,
+        "agentName": "Integration QA Agent",
+        "connectorId": acme_connector_id,
+        "connectorName": "Acme Tools (sandbox demo)",
+        "action": DEMO_INVOKE_ACTION,
+        "success": invoke_result.success,
+        "tickets": invoke_result.data.get("tickets") or [] if invoke_result.success else [],
+        "errorCode": invoke_result.error_code,
+        "errorMessage": invoke_result.error_message,
+        "auditTrail": _fetch_recent_audit_trail(client, sandbox_org_id),
+    }
 
 
 def get_sandbox_status(client: Any, publisher_org_id: str) -> dict[str, Any]:

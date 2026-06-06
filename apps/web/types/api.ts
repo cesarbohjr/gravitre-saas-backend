@@ -902,6 +902,29 @@ export interface MarketplaceSandboxProvisionResult {
   connectorsCreated?: number
 }
 
+export interface MarketplaceSandboxAuditEntry {
+  id: string
+  action: string
+  resourceType?: string | null
+  resourceId?: string | null
+  metadata?: Record<string, unknown>
+  createdAt?: string
+}
+
+export interface MarketplaceSandboxDemoResult {
+  sandboxOrgId: string
+  agentId: string
+  agentName: string
+  connectorId: string
+  connectorName: string
+  action: string
+  success: boolean
+  tickets: Array<Record<string, unknown>>
+  errorCode?: string | null
+  errorMessage?: string | null
+  auditTrail: MarketplaceSandboxAuditEntry[]
+}
+
 export interface MarketplaceRegistryConnector {
   id: string
   submissionId: string

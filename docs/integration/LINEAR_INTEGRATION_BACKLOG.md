@@ -112,7 +112,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 status:** Code complete (STA-30–49). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
 
-**Current focus:** Tier 3 marketplace — STA-70–72 ✅, next STA-73 marketplace demo.
+**Current focus:** Tier 3 marketplace — STA-70–73 ✅, next Tier 4 ecosystem epics.
 
 ---
 
@@ -148,7 +148,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 15 | T3-003 | [STA-58](https://linear.app/staqbot/issue/STA-58) | NetSuite write (gated) | STA-57, STA-11 |
 | 16 | T3-011 | [STA-66](https://linear.app/staqbot/issue/STA-66) | Marketo nurture templates | STA-65, STA-17 |
 | 17 | T3-014 | [STA-69](https://linear.app/staqbot/issue/STA-69) | Segment → workflows | STA-68, STA-12 |
-| 18 | T3-018 | [STA-73](https://linear.app/staqbot/issue/STA-73) | Marketplace demo | STA-70–72 |
+| 18 | T3-018 | [STA-73](https://linear.app/staqbot/issue/STA-73) | Marketplace demo ✅ (`POST /api/marketplace/sandbox/demo`) | STA-70–72 |
 
 **Start Tier 3 only after:** Tier 1 platform (STA-10, STA-11, STA-13) and relevant Tier 2 tracks.
 

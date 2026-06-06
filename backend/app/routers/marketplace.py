@@ -22,12 +22,14 @@ from app.services.partner_marketplace_service import (
     review_submission,
 )
 from app.services.marketplace_sandbox_service import (
+    AUDIT_SANDBOX_DEMO,
     AUDIT_SANDBOX_PROVISIONED,
     AUDIT_SANDBOX_RESET,
     RESOURCE_TYPE_MARKETPLACE_SANDBOX,
     get_sandbox_status,
     provision_sandbox,
     reset_sandbox,
+    run_sandbox_demo,
 )
 from app.workflows.audit import write_audit_event
 
@@ -253,5 +255,37 @@ async def marketplace_sandbox_reset(
         resource_type=RESOURCE_TYPE_MARKETPLACE_SANDBOX,
         resource_id=result["sandboxOrgId"],
         metadata={"sandboxOrgId": result["sandboxOrgId"]},
+    )
+    return result
+
+
+@router.post("/sandbox/demo")
+async def marketplace_sandbox_demo(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """STA-73: Run Acme Tools demo invoke in sandbox and return audit trail."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    result = run_sandbox_demo(
+        client,
+        settings,
+        publisher_org_id=org_id,
+        actor_id=current_user["user_id"],
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action=AUDIT_SANDBOX_DEMO,
+        resource_type=RESOURCE_TYPE_MARKETPLACE_SANDBOX,
+        resource_id=result["sandboxOrgId"],
+        metadata={
+            "sandboxOrgId": result["sandboxOrgId"],
+            "action": result["action"],
+            "success": result["success"],
+        },
     )
     return result

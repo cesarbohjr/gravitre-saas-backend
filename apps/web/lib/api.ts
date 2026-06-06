@@ -71,6 +71,7 @@ import type {
   MetricsOverview,
   MetricInsight,
   MarketplaceRegistryConnector,
+  MarketplaceSandboxDemoResult,
   MarketplaceSandboxProvisionResult,
   MarketplaceSandboxStatus,
   PartnerConnectorSubmission,
@@ -360,6 +361,8 @@ export const marketplaceApi = {
     postJson<MarketplaceSandboxProvisionResult>(apiUrl("/api/marketplace/sandbox"), {}),
   resetSandbox: () =>
     postJson<MarketplaceSandboxProvisionResult>(apiUrl("/api/marketplace/sandbox/reset"), {}),
+  runSandboxDemo: () =>
+    postJson<MarketplaceSandboxDemoResult>(apiUrl("/api/marketplace/sandbox/demo"), {}),
 }
 
 // ============ Approvals ============
