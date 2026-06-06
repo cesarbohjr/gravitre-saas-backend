@@ -78,6 +78,7 @@ import type {
   MarketplaceSandboxStatus,
   PartnerConnectorSubmission,
   PartnerSecurityChecklist,
+  PrivateConnectorBundle,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -359,6 +360,25 @@ export const marketplaceApi = {
   rescan: (id: string) =>
     postJson<{ submission: PartnerConnectorSubmission }>(
       apiUrl(`/api/marketplace/submissions/${id}/rescan`),
+      {}
+    ),
+  listPrivateBundles: () =>
+    fetcher<{ bundles: PrivateConnectorBundle[] }>(apiUrl("/api/marketplace/private-bundles")),
+  uploadPrivateBundle: (data: {
+    name: string
+    manifest: Record<string, unknown>
+    packageSources: Record<string, string>
+    signingPublicKeyPem: string
+    signature: string
+  }) => postJson<{ bundle: PrivateConnectorBundle }>(apiUrl("/api/marketplace/private-bundles"), data),
+  activatePrivateBundle: (id: string) =>
+    postJson<{ bundle: PrivateConnectorBundle }>(
+      apiUrl(`/api/marketplace/private-bundles/${id}/activate`),
+      {}
+    ),
+  disablePrivateBundle: (id: string) =>
+    postJson<{ bundle: PrivateConnectorBundle }>(
+      apiUrl(`/api/marketplace/private-bundles/${id}/disable`),
       {}
     ),
   review: (id: string, data: { decision: "approve" | "reject"; notes?: string }) =>

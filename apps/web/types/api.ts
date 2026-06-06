@@ -968,6 +968,33 @@ export interface MarketplaceConnectorPricing {
   currency: string
 }
 
+export type PrivateBundleStatus = "draft" | "active" | "disabled"
+
+export interface PrivateConnectorBundle {
+  id: string
+  orgId: string
+  createdBy: string
+  name: string
+  packageId: string
+  vendor: string
+  version: string
+  manifest: Record<string, unknown>
+  packageSourceFiles?: string[]
+  signingPublicKeyPem?: string
+  signatureAlgorithm?: string
+  securityScan?: PartnerSecurityScan
+  scopeReview?: PartnerScopeReview
+  certificationStatus?: PartnerCertificationStatus
+  status: PrivateBundleStatus
+  activatedAt?: string | null
+  activatedBy?: string | null
+  createdAt?: string
+  updatedAt?: string
+  authType?: "oauth" | "apiKey"
+  capabilities?: string[]
+  runtime?: string
+}
+
 export interface MarketplaceRegistryConnector {
   id: string
   submissionId: string

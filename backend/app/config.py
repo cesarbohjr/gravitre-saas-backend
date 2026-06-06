@@ -145,6 +145,9 @@ class Settings(BaseSettings):
     stripe_metered_price_id_command: str = ""
     # Marketplace v2 (STA-96): platform fee on partner connector usage (basis points, 2000 = 20%)
     marketplace_platform_fee_bps: int = 2000
+    # Private connector runtime (STA-98): signed org bundles executed in subprocess sandbox
+    private_connector_runtime_enabled: bool = True
+    private_connector_sandbox_timeout_sec: int = 10
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
     # In-process knowledge sync scheduler (STA-45). 0 = disabled.

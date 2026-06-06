@@ -2306,11 +2306,28 @@ STEP_TYPE_TO_ACTION: dict[str, str] = {
 }
 
 
-def _resolve_tool_executor(action: str) -> ToolExecutor | None:
-    """Resolve built-in or partner-registered tool executor."""
+def _resolve_tool_executor(action: str, ctx: ToolContext | None = None) -> ToolExecutor | None:
+    """Resolve built-in, org-private sandbox, or public partner tool executor."""
     executor = _TOOL_REGISTRY.get(action)
     if executor:
         return executor
+    if ctx and ctx.client and ctx.org_id and ctx.settings.private_connector_runtime_enabled:
+        vendor = action.split(".", 1)[0] if "." in action else ""
+        if vendor:
+            from app.connectors.private.runtime import make_private_executor
+            from app.connectors.sdk.manifest import parse_manifest
+            from app.services.private_connector_bundle_service import (
+                ensure_private_scopes_registered,
+                get_active_bundle_for_vendor,
+            )
+
+            bundle = get_active_bundle_for_vendor(ctx.client, ctx.org_id, vendor)
+            if bundle:
+                sources = bundle.get("package_sources") or {}
+                handler_source = sources.get("handlers.py") if isinstance(sources, dict) else None
+                if handler_source:
+                    ensure_private_scopes_registered(parse_manifest(bundle.get("manifest") or {}))
+                    return make_private_executor(handler_source, action, ctx.settings)
     from app.connectors.sdk.registry import get_partner_executor
 
     return get_partner_executor(action)
@@ -2325,7 +2342,7 @@ def list_registered_actions() -> list[str]:
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
     """Invoke a registered connector tool with audit, rate limits, retries, and agent permissions."""
     params = params or {}
-    executor = _resolve_tool_executor(action)
+    executor = _resolve_tool_executor(action, ctx)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")
 
