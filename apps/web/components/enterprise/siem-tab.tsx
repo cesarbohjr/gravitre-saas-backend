@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { Shield, KeyRound, Send, Lock, CheckCircle2, XCircle } from "lucide-react"
@@ -24,22 +24,36 @@ export function SiemTab({ isAdmin }: { isAdmin: boolean }) {
     { revalidateOnFocus: false },
   )
 
-  const [enabled, setEnabled] = useState(false)
-  const [endpoint, setEndpoint] = useState("")
+  if (isLoading) return <TabSkeleton rows={3} />
+  if (!data) return null
+
+  return (
+    <SiemTabForm
+      key={`${data.enabled}-${data.endpoint ?? ""}-${data.hasSecret ?? false}`}
+      isAdmin={isAdmin}
+      data={data}
+      mutate={mutate}
+    />
+  )
+}
+
+function SiemTabForm({
+  isAdmin,
+  data,
+  mutate,
+}: {
+  isAdmin: boolean
+  data: EnterpriseSiemConfig
+  mutate: ReturnType<typeof useSWR<EnterpriseSiemConfig>>["mutate"]
+}) {
+  const [enabled, setEnabled] = useState(Boolean(data.enabled))
+  const [endpoint, setEndpoint] = useState(data.endpoint ?? "")
   const [secret, setSecret] = useState("")
   const [rotating, setRotating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
 
-  useEffect(() => {
-    if (!data) return
-    setEnabled(Boolean(data.enabled))
-    setEndpoint(data.endpoint ?? "")
-  }, [data])
-
-  if (isLoading) return <TabSkeleton rows={3} />
-
-  const hasSecret = data?.hasSecret ?? false
+  const hasSecret = data.hasSecret ?? false
   const showSecretInput = !hasSecret || rotating
 
   const handleSave = async () => {
@@ -223,7 +237,7 @@ export function SiemTab({ isAdmin }: { isAdmin: boolean }) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-sm">
-            {enabled && (data?.endpoint || endpoint) ? (
+            {enabled && (data.endpoint || endpoint) ? (
               <>
                 <CheckCircle2 className="h-4 w-4 text-success" />
                 <span className="text-foreground">Forwarding active</span>

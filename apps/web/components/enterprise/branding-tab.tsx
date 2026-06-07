@@ -209,11 +209,48 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
     { revalidateOnFocus: false },
   )
 
-  const [logoUrl, setLogoUrl] = useState("")
-  const [primaryColor, setPrimaryColor] = useState(DEFAULT_COLOR)
-  const [hidePoweredBy, setHidePoweredBy] = useState(false)
-  const [emailFromName, setEmailFromName] = useState("")
-  const [domain, setDomain] = useState("")
+  if (isLoading) return <TabSkeleton rows={4} />
+  if (!data) return null
+
+  return (
+    <BrandingTabForm
+      key={[
+        data.logoUrl,
+        data.primaryColor,
+        data.hidePoweredBy,
+        data.emailFromName,
+        data.customDomain,
+        data.customDomainVerified,
+      ].join("|")}
+      isAdmin={isAdmin}
+      data={data}
+      mutate={mutate}
+      setPreview={setPreview}
+      refresh={refresh}
+    />
+  )
+}
+
+function BrandingTabForm({
+  isAdmin,
+  data,
+  mutate,
+  setPreview,
+  refresh,
+}: {
+  isAdmin: boolean
+  data: EnterpriseBranding
+  mutate: ReturnType<typeof useSWR<EnterpriseBranding>>["mutate"]
+  setPreview: ReturnType<typeof useEnterpriseBranding>["setPreview"]
+  refresh: ReturnType<typeof useEnterpriseBranding>["refresh"]
+}) {
+  const [logoUrl, setLogoUrl] = useState(data.logoUrl ?? "")
+  const [primaryColor, setPrimaryColor] = useState(
+    data.primaryColor && HEX_RE.test(data.primaryColor) ? data.primaryColor : DEFAULT_COLOR,
+  )
+  const [hidePoweredBy, setHidePoweredBy] = useState(Boolean(data.hidePoweredBy))
+  const [emailFromName, setEmailFromName] = useState(data.emailFromName ?? "")
+  const [domain, setDomain] = useState(data.customDomain ?? "")
   const [saving, setSaving] = useState(false)
 
   // DNS verification state
@@ -221,16 +258,6 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
   const [loadingDns, setLoadingDns] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<EnterpriseDomainVerifyResult | null>(null)
-
-  // Seed local form state from fetched data
-  useEffect(() => {
-    if (!data) return
-    setLogoUrl(data.logoUrl ?? "")
-    setPrimaryColor(data.primaryColor && HEX_RE.test(data.primaryColor) ? data.primaryColor : DEFAULT_COLOR)
-    setHidePoweredBy(Boolean(data.hidePoweredBy))
-    setEmailFromName(data.emailFromName ?? "")
-    setDomain(data.customDomain ?? "")
-  }, [data])
 
   // Push live preview to the global provider; clear on unmount.
   useEffect(() => {
@@ -243,15 +270,13 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
   }, [logoUrl, primaryColor, hidePoweredBy, setPreview])
 
   const colorValid = HEX_RE.test(primaryColor)
-  const domainVerified = data?.customDomainVerified ?? false
+  const domainVerified = data.customDomainVerified ?? false
 
   const currentStep = useMemo(() => {
     if (domainVerified) return 3
     if (instructions) return 2
     return 1
   }, [domainVerified, instructions])
-
-  if (isLoading) return <TabSkeleton rows={4} />
 
   const handleSave = async () => {
     if (!isAdmin) return
@@ -547,7 +572,7 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
                 <ShieldCheck className="h-4 w-4 text-success" />
                 <AlertTitle>Domain verified</AlertTitle>
                 <AlertDescription>
-                  {data?.customDomain} is verified and serving your dashboard.
+                  {data.customDomain} is verified and serving your dashboard.
                 </AlertDescription>
               </Alert>
             )}
