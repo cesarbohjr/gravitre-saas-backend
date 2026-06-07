@@ -1,0 +1,83 @@
+"""Connector action catalog — v1/v2/v3 tools and demo workflows."""
+from __future__ import annotations
+
+import pytest
+
+from app.connectors.action_catalog import (
+    connector_actions_for_goal_service,
+    demo_workflows_for_vendor,
+    get_vendor_catalog_dict,
+    get_vendor_spec,
+    list_catalog_vendors,
+    list_full_catalog,
+    read_tools_for_vendor,
+)
+from app.services.goal_service import CONNECTOR_ACTIONS
+from app.services.tool_service import list_registered_actions
+
+
+@pytest.fixture(scope="module")
+def catalog() -> dict:
+    return list_full_catalog()
+
+
+def test_catalog_covers_all_vendors(catalog: dict) -> None:
+    vendors = {v["vendor"] for v in catalog["vendors"]}
+    assert len(vendors) >= 57
+    assert "hubspot" in vendors
+    assert "salesforce" in vendors
+    assert "mailchimp" in vendors
+
+
+def test_each_vendor_has_three_tiers_and_four_workflows(catalog: dict) -> None:
+    for entry in catalog["vendors"]:
+        tiers = entry["tiers"]
+        assert len(tiers["v1"]["actions"]) >= 1, entry["vendor"]
+        assert len(tiers["v2"]["actions"]) >= 1, entry["vendor"]
+        assert len(tiers["v3"]["actions"]) >= 1, entry["vendor"]
+        assert len(entry["demoWorkflows"]) == 4, entry["vendor"]
+        assert len(entry["readTools"]) >= 1, entry["vendor"]
+
+
+def test_hubspot_v1_read_tools_implemented(catalog: dict) -> None:
+    hubspot = next(v for v in catalog["vendors"] if v["vendor"] == "hubspot")
+    implemented_reads = [a for a in hubspot["tiers"]["v1"]["actions"] if a["implemented"]]
+    tools = {a["tool"] for a in implemented_reads}
+    assert "hubspot.contacts.get" in tools
+    assert "hubspot.contacts.search" in tools
+
+
+def test_implemented_flag_matches_registry(catalog: dict) -> None:
+    registered = set(list_registered_actions())
+    hubspot = next(v for v in catalog["vendors"] if v["vendor"] == "hubspot")
+    for tier in ("v1", "v2", "v3"):
+        for action in hubspot["tiers"][tier]["actions"]:
+            if action["tool"] in registered:
+                assert action["implemented"] is True
+
+
+def test_goal_service_uses_catalog() -> None:
+    assert "hubspot" in CONNECTOR_ACTIONS
+    assert "contacts_get" in CONNECTOR_ACTIONS["hubspot"] or "contacts.get" in str(CONNECTOR_ACTIONS["hubspot"])
+
+
+def test_demo_workflow_shapes() -> None:
+    workflows = demo_workflows_for_vendor("stripe")
+    assert len(workflows) == 4
+    assert workflows[0]["id"] == "stripe-inbound-triage"
+    assert any(step["type"] == "invoke_tool" for step in workflows[0]["steps"])
+
+
+def test_read_tools_for_vendor() -> None:
+    reads = read_tools_for_vendor("jira")
+    assert "jira.issues.get" in reads
+
+
+def test_unknown_vendor_returns_none() -> None:
+    assert get_vendor_spec("not_a_vendor") is None
+    assert get_vendor_catalog_dict("not_a_vendor") is None
+
+
+def test_connector_actions_for_goal_service_keys() -> None:
+    actions = connector_actions_for_goal_service()
+    assert len(actions) == len(list_catalog_vendors())

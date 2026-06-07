@@ -14,6 +14,7 @@ from app.core.logging import get_logger
 from app.services.ai_guardrails import (
     AIContentFlaggedError,
     AIGuardrailError,
+    AIModelPolicyError,
     AIServiceDisabledError,
     enforce_budget,
     enforce_rate_limit,
@@ -23,6 +24,7 @@ from app.services.ai_guardrails import (
     moderate_output,
     redact_pii,
 )
+from app.services.model_policy_service import assert_model_allowed, load_org_model_policy
 from app.services.providers.anthropic_adapter import AnthropicAdapter
 from app.services.providers.base import (
     AllProvidersFailedError,
@@ -145,9 +147,24 @@ class ModelRouter:
         use_cache: bool = False,
         context: list[dict] | None = None,
         org_id: str | None = None,
+        model_override: str | None = None,
+        agent_id: str | None = None,
+        trained_model_id: str | None = None,
+        trained_model_version: int | None = None,
+        used_fallback: bool = False,
     ) -> ModelResponse:
         complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
-        model = self._resolve_model(task_type)  # primary (openai) model, for cache key
+        model = model_override or self._resolve_model(task_type)  # primary model, for cache key
+
+        if org_id:
+            try:
+                client = get_supabase_client(self.settings)
+                policy = load_org_model_policy(client, org_id)
+                assert_model_allowed(policy, provider="openai", model=model)
+            except AIModelPolicyError:
+                raise
+            except Exception:  # noqa: BLE001
+                logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
 
         # --- Governance guardrails (chokepoint) ---------------------------------
         # Any guardrail refusal is persisted to guardrail_events (auditable),
@@ -167,9 +184,17 @@ class ModelRouter:
             raise
 
         cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
-        if use_cache and cache_key in self._cache:
+        if use_cache and not model_override and cache_key in self._cache:
             cached = self._cache[cache_key].model_copy(update={"cache_hit": True})
-            cached.model_call_id = await self._log_model_call(org_id=org_id, task_type=task_type, response=cached)
+            cached.model_call_id = await self._log_model_call(
+                org_id=org_id,
+                task_type=task_type,
+                response=cached,
+                agent_id=agent_id,
+                trained_model_id=trained_model_id,
+                trained_model_version=trained_model_version,
+                used_fallback=used_fallback,
+            )
             return cached
 
         # Canonical messages with safety hardening + untrusted-input fencing.
@@ -192,7 +217,9 @@ class ModelRouter:
         messages.append({"role": "user", "content": fence_untrusted(user_prompt)})
 
         # Build the failover priority chain.
-        if getattr(self.settings, "ai_failover_enabled", True):
+        if model_override:
+            priority = [("openai", model_override)]
+        elif getattr(self.settings, "ai_failover_enabled", True):
             priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
         else:
             priority = [("openai", MODEL_TIERS[complexity]["openai"])]
@@ -263,7 +290,15 @@ class ModelRouter:
             latency_ms,
             result.attempts,
         )
-        final.model_call_id = await self._log_model_call(org_id=org_id, task_type=task_type, response=final)
+        final.model_call_id = await self._log_model_call(
+            org_id=org_id,
+            task_type=task_type,
+            response=final,
+            agent_id=agent_id,
+            trained_model_id=trained_model_id,
+            trained_model_version=trained_model_version,
+            used_fallback=used_fallback,
+        )
         # Output moderation (after cost is logged so spend is still accounted).
         try:
             await moderate_output(resp.content, self.settings, self._openai)
@@ -378,7 +413,17 @@ class ModelRouter:
             6,
         )
 
-    async def _log_model_call(self, org_id: str | None, task_type: TaskType, response: ModelResponse) -> str | None:
+    async def _log_model_call(
+        self,
+        org_id: str | None,
+        task_type: TaskType,
+        response: ModelResponse,
+        *,
+        agent_id: str | None = None,
+        trained_model_id: str | None = None,
+        trained_model_version: int | None = None,
+        used_fallback: bool = False,
+    ) -> str | None:
         """Write the model_calls row and return its id (billing idempotency anchor)."""
         if not org_id:
             return None
@@ -394,6 +439,10 @@ class ModelRouter:
                 "latency_ms": response.latency_ms,
                 "cost_usd": response.cost_usd,
                 "cache_hit": response.cache_hit,
+                "agent_id": agent_id,
+                "trained_model_id": trained_model_id,
+                "trained_model_version": trained_model_version,
+                "used_fallback": used_fallback,
             }
             resp = client.table("model_calls").insert(row).execute()
             if resp.data:

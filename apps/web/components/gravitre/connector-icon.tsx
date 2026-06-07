@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { connectorVendorKey } from "@/lib/connectors"
 import { Plug } from "lucide-react"
 
 // ============================================================================
@@ -324,6 +325,26 @@ export const connectorBrandTokens = {
     border: "border-[#0098D7]/20",
     text: "text-[#0098D7]",
   },
+  marketo: {
+    bg: "bg-[#5C4C9F]/10 dark:bg-[#5C4C9F]/15",
+    border: "border-[#5C4C9F]/20",
+    text: "text-[#5C4C9F]",
+  },
+  linkedin: {
+    bg: "bg-[#0A66C2]/10 dark:bg-[#0A66C2]/15",
+    border: "border-[#0A66C2]/20",
+    text: "text-[#0A66C2]",
+  },
+  pagerduty: {
+    bg: "bg-[#06AC38]/10 dark:bg-[#06AC38]/15",
+    border: "border-[#06AC38]/20",
+    text: "text-[#06AC38]",
+  },
+  confluence: {
+    bg: "bg-[#2684FF]/10 dark:bg-[#2684FF]/15",
+    border: "border-[#2684FF]/20",
+    text: "text-[#2684FF]",
+  },
   "aws s3": {
     bg: "bg-[#FF9900]/10 dark:bg-[#FF9900]/15",
     border: "border-[#FF9900]/20",
@@ -586,6 +607,26 @@ const logos: Record<string, React.ReactNode> = {
       <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm4.5 16.5h-9v-9h9v9z"/>
     </svg>
   ),
+  marketo: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#5C4C9F]">
+      <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1.2 5.6v8.8h2.4V7.6H10.8zm4.8 0L12 12l3.6 4.4h-2.7l-2.1-2.6 2.1-2.6h2.7z"/>
+    </svg>
+  ),
+  linkedin: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0A66C2]">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452z"/>
+    </svg>
+  ),
+  pagerduty: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#06AC38]">
+      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 5h2v6h-2V7zm0 8h2v2h-2v-2z"/>
+    </svg>
+  ),
+  confluence: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#2684FF]">
+      <path d="M4.955 10.604a4.44 4.44 0 010-6.28l1.28-1.28a4.44 4.44 0 016.28 0l1.28 1.28a4.44 4.44 0 010 6.28l-1.28 1.28a4.44 4.44 0 01-6.28 0l-1.28-1.28zm14.09 2.792a4.44 4.44 0 010 6.28l-1.28 1.28a4.44 4.44 0 01-6.28 0l-1.28-1.28a4.44 4.44 0 010-6.28l1.28-1.28a4.44 4.44 0 016.28 0l1.28 1.28z"/>
+    </svg>
+  ),
 }
 
 // ============================================================================
@@ -616,20 +657,27 @@ interface ConnectorIconProps {
 }
 
 // Helper to normalize vendor names to brand keys
-function getBrandKey(vendor?: string): ConnectorBrand {
-  if (!vendor) return "default"
+function resolveVendorLogoKey(vendor?: string): string {
+  if (!vendor) return ""
+  const slug = connectorVendorKey(vendor)
+  if (slug in logos) return slug
   const normalized = vendor.toLowerCase().trim()
-  if (normalized in connectorBrandTokens) {
-    return normalized as ConnectorBrand
+  if (normalized in logos) return normalized
+  return slug
+}
+
+function getBrandKey(vendor?: string): ConnectorBrand {
+  const key = resolveVendorLogoKey(vendor)
+  if (key && key in connectorBrandTokens) {
+    return key as ConnectorBrand
   }
   return "default"
 }
 
 // Helper to get logo for vendor
 function getVendorLogo(vendor?: string): React.ReactNode | null {
-  if (!vendor) return null
-  const normalized = vendor.toLowerCase().trim()
-  return logos[normalized] || null
+  const key = resolveVendorLogoKey(vendor)
+  return key ? logos[key] || null : null
 }
 
 export function ConnectorIcon({

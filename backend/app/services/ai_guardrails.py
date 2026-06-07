@@ -57,6 +57,16 @@ class AIContentFlaggedError(AIGuardrailError):
         super().__init__(message)
 
 
+class AIModelPolicyError(AIGuardrailError):
+    code = "AI_MODEL_POLICY"
+
+    def __init__(self, *, provider: str, model: str, mode: str) -> None:
+        self.provider = provider
+        self.model = model
+        self.mode = mode
+        super().__init__(f"Model {model!r} from provider {provider!r} is not permitted ({mode} policy)")
+
+
 # ---------------------------------------------------------------------------
 # Prompt-injection hardening
 # ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.config import Settings
 from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
+from app.services.agent_finetune_service import complete_for_agent
 from app.services.model_router import TaskType, get_model_router
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
@@ -93,7 +94,7 @@ def build_handoff_briefing(
 def get_agent(client: Any, org_id: str, agent_id: str) -> dict[str, Any] | None:
     result = (
         client.table("agents")
-        .select("id,org_id,name,purpose,role,model,systems,status,config")
+        .select("id,org_id,name,purpose,role,model,systems,status,config,trained_model_id")
         .eq("id", agent_id)
         .eq("org_id", org_id)
         .limit(1)
@@ -182,6 +183,8 @@ async def run_agent_task(
     task: str,
     briefing: dict[str, Any] | None = None,
     parameters: dict[str, Any] | None = None,
+    actor_id: str | None = None,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute an agent task with optional handoff briefing in the prompt."""
     agent_name = str(agent.get("name") or "Agent")
@@ -212,8 +215,10 @@ async def run_agent_task(
     except Exception:  # noqa: BLE001
         logger.debug("agent memory retrieval skipped", exc_info=True)
 
+    client = get_supabase_client(settings)
     router = get_model_router()
-    ai_result = await router.complete(
+    ai_result = await complete_for_agent(
+        router,
         task_type=TaskType.WORKFLOW_PLANNING,
         prompt=prompt,
         system_prompt=(
@@ -223,6 +228,10 @@ async def run_agent_task(
         ),
         response_format=AgentTaskResult,
         org_id=org_id,
+        agent=agent,
+        client=client,
+        actor_id=actor_id,
+        run_id=run_id,
     )
     parsed = ai_result.parsed or {}
     result = AgentTaskResult.model_validate(parsed if isinstance(parsed, dict) else {})
@@ -234,6 +243,8 @@ async def run_agent_task(
         "recommended_actions": result.recommended_actions,
         "confidence": result.confidence,
         "briefing_received": bool(briefing),
+        "model": ai_result.model,
+        "provider": ai_result.provider,
     }
     if result.decision:
         output["decision"] = result.decision
@@ -284,6 +295,8 @@ async def execute_agent_step_with_handoff(
         task=task,
         briefing=source_briefing,
         parameters=parameters,
+        actor_id=user_id,
+        run_id=run_id,
     )
 
     output: dict[str, Any] = {
@@ -331,6 +344,8 @@ async def execute_agent_step_with_handoff(
             task=str(receiver_task),
             briefing=briefing,
             parameters=parameters,
+            actor_id=user_id,
+            run_id=run_id,
         )
         complete_handoff(
             client,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.operator_module.services.action_plans import build_action_plan
+from app.operators.services.auto_execute_service import apply_auto_execute_guardrails
 
 
 def _merge_permissions(base: list[str], requires_admin: bool, approval_roles: list[str]) -> list[str]:
@@ -44,7 +45,7 @@ def apply_operator_guardrails(plan: dict, operator: dict) -> dict:
     if "No auto-execution. Confirmation required for any action." not in guardrails["execution_restrictions"]:
         guardrails["execution_restrictions"].append("No auto-execution. Confirmation required for any action.")
     plan["guardrails"] = guardrails
-    return plan
+    return apply_auto_execute_guardrails(plan, operator)
 
 
 def build_operator_action_plan(

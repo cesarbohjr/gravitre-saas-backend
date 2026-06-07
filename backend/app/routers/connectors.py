@@ -77,6 +77,11 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "salesforce",
         "hubspot",
         "quickbooks",
+        "netsuite",
+        "workday",
+        "marketo",
+        "segment",
+        "linkedin",
         "jira",
         "confluence",
         "pagerduty",
@@ -86,13 +91,47 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "google_drive",
         "google_docs",
         "google_sheets",
+        "google_calendar",
         "slack",
         "postgresql",
         "stripe",
         "microsoft365",
+        "microsoft_teams",
+        "outlook",
         "zendesk",
         "github",
-        "google_calendar",
+        "email",
+        "mailchimp",
+        "mixpanel",
+        "xero",
+        "plaid",
+        "twilio",
+        "sendgrid",
+        "airtable",
+        "asana",
+        "monday",
+        "clickup",
+        "zapier",
+        "intercom",
+        "freshdesk",
+        "gorgias",
+        "bamboohr",
+        "gusto",
+        "adp",
+        "aws_s3",
+        "mongodb",
+        "snowflake",
+        "motion",
+        "constant_contact",
+        "hootsuite",
+        "n8n",
+        "claude",
+        "semrush",
+        "stackadapt",
+        "odoo",
+        "absorb_lms",
+        "canva",
+        "apollo",
     }
 )
 
@@ -415,6 +454,30 @@ async def list_connectors_route_alias(
     return {"connectors": items}
 
 
+@connectors_router.get("/catalog/actions")
+async def list_connector_action_catalog(
+    _user: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    """Full v1/v2/v3 action catalog and demo workflows for all connectors."""
+    from app.connectors.action_catalog import list_full_catalog
+
+    return list_full_catalog()
+
+
+@connectors_router.get("/catalog/actions/{vendor}")
+async def get_connector_action_catalog_vendor(
+    vendor: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    """Per-vendor v1 read, v2 write, v3 advanced tools and demo workflows."""
+    from app.connectors.action_catalog import get_vendor_catalog_dict
+
+    payload = get_vendor_catalog_dict(vendor)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown vendor")
+    return payload
+
+
 @connectors_router.get("/{connector_id}")
 async def get_connector_route_alias(
     connector_id: UUID,
@@ -507,16 +570,27 @@ async def test_connector_route(
         if not conn:
             return {"success": False, "message": "Connector not found"}
         if vendor == "zendesk":
+            from app.connectors.connector_tool_auth import resolve_zendesk_auth
+
             cfg = conn.get("config") or {}
-            if not cfg.get("subdomain"):
+            if not cfg.get("subdomain") and not cfg.get("zendesk_subdomain"):
                 return {"success": False, "message": "Missing subdomain in config"}
-            if not get_decrypted_secret(client, str(connector_id), "email", settings):
-                return {"success": False, "message": "Missing email secret"}
-            if not get_decrypted_secret(client, str(connector_id), "api_token", settings):
-                return {"success": False, "message": "Missing api_token secret"}
+            try:
+                _sub, _email, api_tok, oauth_tok = resolve_zendesk_auth(
+                    client, org_id, conn, settings, environment_name=environment_name
+                )
+            except ValueError as exc:
+                return {"success": False, "message": str(exc)}
+            if not oauth_tok and not (api_tok):
+                return {"success": False, "message": "Missing Zendesk OAuth or api_token credentials"}
         if vendor == "github":
-            if not get_decrypted_secret(client, str(connector_id), "token", settings):
-                return {"success": False, "message": "Missing token secret"}
+            from app.connectors.connector_tool_auth import resolve_github_access_token
+
+            token = resolve_github_access_token(
+                client, org_id, str(connector_id), settings, environment_name=environment_name
+            )
+            if not token:
+                return {"success": False, "message": "Missing GitHub OAuth or PAT"}
         if vendor in {"google_calendar", "gmail", "google_drive", "google_docs", "google_sheets", "google_analytics"}:
             from app.connectors.google_vendor_oauth import ensure_google_vendor_session
 
@@ -635,6 +709,15 @@ async def create_connector_route(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     if vendor not in ALLOWED_CONNECTOR_VENDORS and not is_published_partner_vendor(client, vendor):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid vendor")
+    if vendor == "snowflake":
+        from app.connectors.snowflake_config import validate_snowflake_config
+
+        sf_errors = validate_snowflake_config(body.config)
+        if sf_errors:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_detail("; ".join(sf_errors), "SNOWFLAKE_CONFIG_INVALID"),
+            )
     plan = get_plan_for_org(client, org_id)
     if vendor in ADVANCED_CONNECTORS:
         require_feature(plan, "advanced_connectors")

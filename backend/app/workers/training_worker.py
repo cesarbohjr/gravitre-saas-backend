@@ -101,12 +101,15 @@ class TrainingWorker:
                 await registry.add_version(
                     model_id=model_id, artifact_data=model_artifact, metrics=metrics, created_by=job["created_by"]
                 )
+            if model_type == ModelType.FINE_TUNED_LLM:
+                await registry.deploy_version(model_id)
 
             client.table("training_jobs").update(
                 {
                     "status": "completed",
                     "progress": 100,
                     "metrics": metrics.model_dump() if metrics else {},
+                    "trained_model_id": model_id,
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                 }
             ).eq("id", job_id).execute()

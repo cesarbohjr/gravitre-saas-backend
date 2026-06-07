@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { 
   Eye, Play, Search, FileCode, RefreshCw,
   CheckCircle, Sparkles, Loader2, ArrowRight,
-  Activity, X, Trash2, AlertCircle, RotateCcw
+  Activity, X, Trash2, AlertCircle, RotateCcw, Pause
 } from "lucide-react"
 import {
   Dialog,
@@ -363,6 +363,7 @@ export default function OperatorPage() {
     isWorking: isAsyncWorking,
     error: asyncError,
     submitJob,
+    pauseJob,
     cancelJob,
     retryJob,
     reset: resetAsyncJob,
@@ -430,6 +431,11 @@ export default function OperatorPage() {
     }, []),
     onCancelled: useCallback(() => {
       toast.info("Job cancelled")
+    }, []),
+    onPaused: useCallback(() => {
+      toast.info("Job paused — resume by retrying when ready")
+      setCurrentFlowStep("task")
+      setPendingTaskText("")
     }, []),
   })
 
@@ -538,6 +544,14 @@ export default function OperatorPage() {
       // Error is handled by the hook and displayed via toast
       setCurrentFlowStep("task")
       setPendingTaskText("")
+    }
+  }
+
+  const handlePauseJob = async () => {
+    try {
+      await pauseJob()
+    } catch {
+      // Error toast is shown by the hook
     }
   }
 
@@ -934,16 +948,26 @@ export default function OperatorPage() {
                           )}
                         </div>
                         
-                        {/* Cancel button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleCancelJob}
-                          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          Cancel
-                        </Button>
+                        <div className="flex flex-shrink-0 gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handlePauseJob}
+                            className="text-muted-foreground hover:text-amber-500"
+                          >
+                            <Pause className="h-4 w-4 mr-1" />
+                            Pause
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCancelJob}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
                       
                       {/* Progress indicator */}

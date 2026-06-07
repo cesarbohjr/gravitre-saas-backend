@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { apiFetch } from "@/lib/fetcher"
 
-export type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled"
+export type JobStatus = "queued" | "running" | "paused" | "completed" | "failed" | "cancelled"
 
 export interface AgentJobResult {
   task: {
@@ -35,6 +35,7 @@ interface UseAsyncJobOptions {
   onCompleted?: (job: AgentJob) => void
   onFailed?: (job: AgentJob) => void
   onCancelled?: (job: AgentJob) => void
+  onPaused?: (job: AgentJob) => void
 }
 
 const POLL_INTERVAL_BASE = 1500 // 1.5 seconds
@@ -108,6 +109,12 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
         return
       }
 
+      if (data.status === "paused") {
+        stopPolling()
+        options.onPaused?.(data)
+        return
+      }
+
       if (data.status === "cancelled") {
         stopPolling()
         options.onCancelled?.(data)
@@ -177,6 +184,32 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
       setIsSubmitting(false)
     }
   }, [startPolling])
+
+  const pauseJob = useCallback(async () => {
+    if (!job) return
+
+    try {
+      const response = await apiFetch(`/api/agent-jobs/${job.jobId}/pause`, {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          throw new Error("Job cannot be paused in its current state")
+        }
+        throw new Error("Failed to pause job")
+      }
+
+      const data: AgentJob = await response.json()
+      stopPolling()
+      setJob(data)
+      return data
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to pause job"
+      setError(message)
+      throw err
+    }
+  }, [job, stopPolling])
 
   const cancelJob = useCallback(async () => {
     if (!job) return
@@ -253,6 +286,7 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
     isWorking: isSubmitting || isPolling,
     error,
     submitJob,
+    pauseJob,
     cancelJob,
     retryJob,
     reset,

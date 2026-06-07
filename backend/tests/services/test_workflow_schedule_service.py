@@ -81,7 +81,10 @@ def test_dispatch_single_schedule_executes_workflow():
         "app.services.workflow_schedule_service.schedule_run_exists_for_window",
         return_value=False,
     ):
-        with patch("app.routers.workflows._execute_workflow_with_context", return_value={"run_id": "run-9", "status": "running"}):
+        with patch(
+            "app.services.workflow_schedule_service._execute_scheduled_workflow",
+            return_value={"run_id": "run-9", "status": "running"},
+        ):
             with patch("app.services.workflow_schedule_service._advance_schedule") as advance:
                 result = dispatch_single_schedule(
                     client,

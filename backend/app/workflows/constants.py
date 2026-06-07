@@ -29,6 +29,7 @@ RUN_STATUS_COMPLETED = "completed"
 RUN_STATUS_FAILED = "failed"
 RUN_STATUS_PENDING_APPROVAL = "pending_approval"
 RUN_STATUS_CANCELLED = "cancelled"
+RUN_STATUS_PAUSED = "paused"
 
 # BE-20 + IN-10/11/12: execute-allowed (approval-gated external actions)
 EXECUTE_ALLOWED_STEP_TYPES = frozenset({

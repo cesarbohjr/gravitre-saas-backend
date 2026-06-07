@@ -16,6 +16,7 @@ from app.core.logging import get_logger
 from app.operators.schemas import (
     OperatorActionPlanRequest,
     OperatorActionPlanResponse,
+    OperatorAutoExecuteRequest,
     OperatorCreateRequest,
     OperatorDetail,
     OperatorLinkCreateRequest,
@@ -74,6 +75,11 @@ from app.billing.service import (
 )
 from app.middleware.entitlements import resolve_entitlements
 from app.operators.services.execution import execute_operator_workflow, resolve_execution_target
+from app.operators.services.auto_execute_service import (
+    get_operator_system_prompt,
+    try_auto_execute_plan_step,
+    update_operator_auto_execute,
+)
 from app.operators.services.plans import build_operator_action_plan
 from app.workflows.audit import write_audit_event
 from app.workflows.policy import PolicyResolutionError, get_user_role
@@ -288,6 +294,8 @@ def _operator_summary(operator: dict) -> dict:
         "requires_admin": bool(operator.get("requires_admin")),
         "requires_approval": bool(operator.get("requires_approval")),
         "approval_roles": list(operator.get("approval_roles") or []),
+        "execution_mode": operator.get("execution_mode") or "plan_only",
+        "auto_execute_trusted_scopes": list(operator.get("auto_execute_trusted_scopes") or []),
         "active_version": None,
     }
 
@@ -553,10 +561,25 @@ async def update_operator_route(
             "requires_admin": body.requires_admin,
             "requires_approval": body.requires_approval,
             "approval_roles": body.approval_roles,
+            "execution_mode": body.execution_mode,
+            "auto_execute_trusted_scopes": body.auto_execute_trusted_scopes,
         },
     )
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
+    if body.execution_mode is not None and body.execution_mode != "plan_only":
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=current_user["user_id"],
+            action="operator.auto_execute.enabled",
+            resource_type="operator",
+            resource_id=str(operator_id),
+            metadata={
+                "executionMode": body.execution_mode,
+                "trustedScopes": body.auto_execute_trusted_scopes or [],
+            },
+        )
     write_audit_event(
         client,
         org_id=org_id,
@@ -1030,6 +1053,16 @@ async def create_operator_action_plan_route(
         resource_type="operator_action_plan",
         resource_id=str(stored["id"]),
         metadata={"operator_id": str(operator_id), "environment": environment},
+    )
+    auto_result = await try_auto_execute_plan_step(
+        client=client,
+        settings=settings,
+        org_id=org_id,
+        environment=environment,
+        operator=operator,
+        stored_plan=stored,
+        session=session,
+        current_user=current_user,
     )
     billing_plan = get_plan_for_org(client, org_id)
     period_start, period_end = get_current_period()
@@ -1579,6 +1612,39 @@ async def start_agent_route(
     return {"agent": detail}
 
 
+@agents_router.put("/{agent_id}/auto-execute")
+async def configure_agent_auto_execute_route(
+    agent_id: UUID,
+    body: OperatorAutoExecuteRequest,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Configure policy-gated auto-execute for an agent/operator (STA-106)."""
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        updated = update_operator_auto_execute(
+            client,
+            org_id=org_id,
+            operator_id=str(agent_id),
+            execution_mode=body.execution_mode,
+            trusted_scopes=body.trusted_scopes,
+            actor_id=user["user_id"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    bindings = list_operator_bindings(client, org_id, [str(agent_id)])
+    connector_ids = [str(b["connector_id"]) for b in bindings if b.get("connector_id")]
+    connectors = list_connectors_by_ids(client, org_id, connector_ids, environment)
+    detail = _operator_detail(updated, connectors, get_active_operator_version(client, org_id, str(agent_id), environment))
+    return {
+        "agent": detail,
+        "executionMode": updated.get("execution_mode"),
+        "trustedScopes": list(updated.get("auto_execute_trusted_scopes") or []),
+    }
+
+
 @agents_router.post("/{agent_id}/stop")
 async def stop_agent_route(
     agent_id: UUID,
@@ -1829,16 +1895,16 @@ async def submit_session_task(
             f"<task>{summary}</task>\n"
             f"<context>{body.context or {}}</context>"
         )
+        operator_for_prompt: dict = {}
+        ctx = body.context or {}
+        if isinstance(ctx, dict) and ctx.get("operator_id"):
+            op_row = get_operator(client, org_id, str(ctx["operator_id"]))
+            if op_row:
+                operator_for_prompt = op_row
         ai_result = await model_router.complete(
             task_type=TaskType.WORKFLOW_PLANNING,
             prompt=ai_prompt,
-            system_prompt=(
-                "You are the Gravitre AI Operator, an enterprise automation planner. "
-                "Convert the task into a safe, concrete plan proposal that touches only the "
-                "user's connected systems. Never auto-execute; plans require human approval. "
-                "If the task is empty, ambiguous, or out of scope, state what is missing in "
-                "analysis_summary and use a low confidence value."
-            ),
+            system_prompt=get_operator_system_prompt(operator_for_prompt),
             response_format=OperatorTaskPlan,
             org_id=org_id,
         )

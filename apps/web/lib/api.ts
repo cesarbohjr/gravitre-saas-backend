@@ -48,6 +48,9 @@ import type {
   TrainingDatasetListResponse,
   TrainingJobListResponse,
   CustomInstructionListResponse,
+  FineTunedModelListResponse,
+  WorkflowAgentListResponse,
+  AgentFineTunedModelAssignment,
   AuditLog,
   AuditListResponse,
   AuditSummary,
@@ -86,6 +89,7 @@ import type {
   EnterpriseCostAttribution,
   EnterpriseSiemConfig,
   EnterpriseSiemTestResult,
+  PrivateConnectorBundle,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -359,8 +363,35 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/submissions/mine${query}`)
     )
   },
-  submit: (data: { manifest: Record<string, unknown>; securityChecklist: PartnerSecurityChecklist }) =>
-    postJson<{ submission: PartnerConnectorSubmission }>(apiUrl("/api/marketplace/submissions"), data),
+  submit: (data: {
+    manifest: Record<string, unknown>
+    securityChecklist: PartnerSecurityChecklist
+    packageSources?: Record<string, string>
+  }) => postJson<{ submission: PartnerConnectorSubmission }>(apiUrl("/api/marketplace/submissions"), data),
+  rescan: (id: string) =>
+    postJson<{ submission: PartnerConnectorSubmission }>(
+      apiUrl(`/api/marketplace/submissions/${id}/rescan`),
+      {}
+    ),
+  listPrivateBundles: () =>
+    fetcher<{ bundles: PrivateConnectorBundle[] }>(apiUrl("/api/marketplace/private-bundles")),
+  uploadPrivateBundle: (data: {
+    name: string
+    manifest: Record<string, unknown>
+    packageSources: Record<string, string>
+    signingPublicKeyPem: string
+    signature: string
+  }) => postJson<{ bundle: PrivateConnectorBundle }>(apiUrl("/api/marketplace/private-bundles"), data),
+  activatePrivateBundle: (id: string) =>
+    postJson<{ bundle: PrivateConnectorBundle }>(
+      apiUrl(`/api/marketplace/private-bundles/${id}/activate`),
+      {}
+    ),
+  disablePrivateBundle: (id: string) =>
+    postJson<{ bundle: PrivateConnectorBundle }>(
+      apiUrl(`/api/marketplace/private-bundles/${id}/disable`),
+      {}
+    ),
   review: (id: string, data: { decision: "approve" | "reject"; notes?: string }) =>
     postJson<{
       submission: PartnerConnectorSubmission
@@ -408,6 +439,14 @@ export const approvalsApi = {
 // ============ Connectors ============
 export const connectorsApi = {
   list: () => fetcher<ConnectorListResponse>(apiUrl("/api/connectors")),
+  actionCatalog: () =>
+    fetcher<import("@/lib/connector-actions").ConnectorActionCatalogResponse>(
+      apiUrl("/api/connectors/catalog/actions")
+    ),
+  actionCatalogForVendor: (vendor: string) =>
+    fetcher<import("@/lib/connector-actions").VendorActionCatalog>(
+      apiUrl(`/api/connectors/catalog/actions/${encodeURIComponent(vendor)}`)
+    ),
   get: (id: string) => fetcher<Connector>(apiUrl(`/api/connectors/${id}`)),
   create: (data: CreateConnectorRequest) => postJson<Connector>(apiUrl("/api/connectors"), data),
   update: (id: string, data: Partial<Connector>) =>
@@ -418,15 +457,32 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
-  startOAuth: (provider: string, data: { name: string; connectorId?: string; redirectPath?: string }) =>
+  startOAuth: (
+    provider: string,
+    data: {
+      name: string
+      connectorId?: string
+      redirectPath?: string
+      subdomain?: string
+      instanceUrl?: string
+      tenantUrl?: string
+      tenant?: string
+      munchkinId?: string
+    }
+  ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
       data
     ),
-  reconnectOAuth: (provider: string, connectorId: string, name: string) =>
+  reconnectOAuth: (
+    provider: string,
+    connectorId: string,
+    name: string,
+    extra?: { subdomain?: string; instanceUrl?: string }
+  ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
-      { name, connectorId, redirectPath: "/connectors" }
+      { name, connectorId, redirectPath: "/connectors", ...extra }
     ),
   listGoogleAnalyticsProperties: (connectorId: string) =>
     fetcher<{
@@ -507,6 +563,16 @@ export const trainingApi = {
   deleteInstruction: (id: string) => deleteRequest(apiUrl(`/api/training/instructions/${id}`)),
   toggleInstruction: (id: string, isActive: boolean) =>
     patchJson<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`), { is_active: isActive }),
+
+  // Fine-tuned model → agent runtime (STA-99)
+  listWorkflowAgents: () => fetcher<WorkflowAgentListResponse>(apiUrl("/api/training/workflow-agents")),
+  listFineTunedModels: () => fetcher<FineTunedModelListResponse>(apiUrl("/api/training/fine-tuned-models")),
+  getAgentFineTunedModel: (agentId: string) =>
+    fetcher<AgentFineTunedModelAssignment>(apiUrl(`/api/training/agents/${agentId}/fine-tuned-model`)),
+  assignAgentFineTunedModel: (agentId: string, trainedModelId: string | null) =>
+    putJson<AgentFineTunedModelAssignment>(apiUrl(`/api/training/agents/${agentId}/fine-tuned-model`), {
+      trainedModelId,
+    }),
 }
 
 // ============ Audit ============

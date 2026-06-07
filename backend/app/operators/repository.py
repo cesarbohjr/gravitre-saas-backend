@@ -103,6 +103,10 @@ def update_operator(
         "environment_id",
         "icon",
         "avatar_color",
+        "execution_mode",
+        "auto_execute_trusted_scopes",
+        "auto_execute_enabled_at",
+        "auto_execute_enabled_by",
     ):
         if key in payload and (payload[key] is not None or key in nullable_fields):
             update[key] = payload[key]

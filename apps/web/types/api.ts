@@ -408,6 +408,41 @@ export interface CustomInstructionListResponse {
   instructions: CustomInstruction[]
 }
 
+export interface FineTunedModel {
+  id: string
+  name: string
+  status: string
+  baseModel?: string
+  deployedVersion?: number
+  currentVersion?: number
+  fineTunedOpenAiId?: string | null
+  datasetId?: string | null
+  createdAt?: string
+}
+
+export interface FineTunedModelListResponse {
+  models: FineTunedModel[]
+}
+
+export interface WorkflowAgent {
+  id: string
+  name: string
+  role?: string
+  model?: string
+  status?: string
+  trainedModelId?: string | null
+}
+
+export interface WorkflowAgentListResponse {
+  agents: WorkflowAgent[]
+}
+
+export interface AgentFineTunedModelAssignment {
+  agentId: string
+  trainedModelId?: string | null
+  baseModel?: string
+}
+
 // ============ Audit ============
 export type AuditAction =
   | "create" | "update" | "delete"
@@ -859,6 +894,38 @@ export interface PartnerSecurityChecklist {
   errorHandlingDocumented: boolean
 }
 
+export interface PartnerSecurityFinding {
+  code: string
+  severity: "critical" | "warning" | "info"
+  message: string
+  file?: string | null
+  line?: number | null
+}
+
+export interface PartnerSecurityScan {
+  findings: PartnerSecurityFinding[]
+  filesScanned: number
+  passed: boolean
+  criticalCount?: number
+  warningCount?: number
+}
+
+export interface PartnerScopeReviewEntry {
+  actionKey: string
+  declaredScopes: string[]
+  recommendedScopes: string[]
+  issues: string[]
+}
+
+export interface PartnerScopeReview {
+  entries: PartnerScopeReviewEntry[]
+  oauthScopes: string[]
+  passed: boolean
+  issueCount?: number
+}
+
+export type PartnerCertificationStatus = "pending" | "passed" | "failed"
+
 export interface PartnerConnectorSubmission {
   id: string
   orgId: string
@@ -869,6 +936,11 @@ export interface PartnerConnectorSubmission {
   version: string
   manifest: Record<string, unknown>
   securityChecklist: Record<string, boolean>
+  packageSourceFiles?: string[]
+  packageSources?: Record<string, string>
+  securityScan?: PartnerSecurityScan
+  scopeReview?: PartnerScopeReview
+  certificationStatus?: PartnerCertificationStatus
   status: PartnerSubmissionStatus
   reviewerId?: string | null
   reviewNotes?: string | null
@@ -931,6 +1003,33 @@ export interface MarketplaceConnectorPricing {
   currency: string
 }
 
+export type PrivateBundleStatus = "draft" | "active" | "disabled"
+
+export interface PrivateConnectorBundle {
+  id: string
+  orgId: string
+  createdBy: string
+  name: string
+  packageId: string
+  vendor: string
+  version: string
+  manifest: Record<string, unknown>
+  packageSourceFiles?: string[]
+  signingPublicKeyPem?: string
+  signatureAlgorithm?: string
+  securityScan?: PartnerSecurityScan
+  scopeReview?: PartnerScopeReview
+  certificationStatus?: PartnerCertificationStatus
+  status: PrivateBundleStatus
+  activatedAt?: string | null
+  activatedBy?: string | null
+  createdAt?: string
+  updatedAt?: string
+  authType?: "oauth" | "apiKey"
+  capabilities?: string[]
+  runtime?: string
+}
+
 export interface MarketplaceRegistryConnector {
   id: string
   submissionId: string
@@ -946,6 +1045,9 @@ export interface MarketplaceRegistryConnector {
   publishedBy: string
   publishedAt?: string
   status: string
+  certificationBadge?: string | null
+  certifiedAt?: string | null
+  securityScanSummary?: Record<string, unknown>
   pricing?: MarketplaceConnectorPricing
 }
 

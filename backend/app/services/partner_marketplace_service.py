@@ -8,6 +8,10 @@ from fastapi import HTTPException, status
 
 from app.connectors.sdk.manifest import ConnectorManifest, parse_manifest
 from app.core.errors import error_detail
+from app.services.partner_security_review_service import (
+    build_registry_scan_summary,
+    run_certification_review,
+)
 
 RESOURCE_TYPE_PARTNER_SUBMISSION = "partner_connector_submission"
 RESOURCE_TYPE_PARTNER_REGISTRY = "partner_connector_registry"
@@ -15,6 +19,9 @@ RESOURCE_TYPE_PARTNER_REGISTRY = "partner_connector_registry"
 AUDIT_SUBMISSION_CREATED = "marketplace.submission.created"
 AUDIT_SUBMISSION_REVIEWED = "marketplace.submission.reviewed"
 AUDIT_CONNECTOR_PUBLISHED = "marketplace.connector.published"
+AUDIT_CERTIFICATION_SCANNED = "marketplace.certification.scanned"
+
+CERTIFICATION_BADGE = "gravitre_certified"
 
 SECURITY_CHECKLIST_KEYS = (
     "no_hardcoded_secrets",
@@ -58,8 +65,15 @@ def validate_manifest_payload(manifest: dict[str, Any]) -> ConnectorManifest:
         ) from exc
 
 
-def _normalize_submission(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+def _package_source_files(row: dict[str, Any]) -> list[str]:
+    sources = row.get("package_sources") or {}
+    if not isinstance(sources, dict):
+        return []
+    return sorted(str(name) for name in sources.keys())
+
+
+def _normalize_submission(row: dict[str, Any], *, include_sources: bool = False) -> dict[str, Any]:
+    payload = {
         "id": str(row["id"]),
         "orgId": str(row["org_id"]),
         "submittedBy": str(row["submitted_by"]),
@@ -69,6 +83,10 @@ def _normalize_submission(row: dict[str, Any]) -> dict[str, Any]:
         "version": row.get("version"),
         "manifest": row.get("manifest") or {},
         "securityChecklist": row.get("security_checklist") or {},
+        "packageSourceFiles": _package_source_files(row),
+        "securityScan": row.get("security_scan") or {},
+        "scopeReview": row.get("scope_review") or {},
+        "certificationStatus": row.get("certification_status") or "pending",
         "status": row.get("status"),
         "reviewerId": str(row["reviewer_id"]) if row.get("reviewer_id") else None,
         "reviewNotes": row.get("review_notes"),
@@ -76,6 +94,9 @@ def _normalize_submission(row: dict[str, Any]) -> dict[str, Any]:
         "createdAt": row.get("created_at"),
         "updatedAt": row.get("updated_at"),
     }
+    if include_sources:
+        payload["packageSources"] = row.get("package_sources") or {}
+    return payload
 
 
 def _normalize_registry(row: dict[str, Any]) -> dict[str, Any]:
@@ -97,6 +118,9 @@ def _normalize_registry(row: dict[str, Any]) -> dict[str, Any]:
         "publishedBy": str(row["published_by"]),
         "publishedAt": row.get("published_at"),
         "status": row.get("status"),
+        "certificationBadge": row.get("certification_badge"),
+        "certifiedAt": row.get("certified_at"),
+        "securityScanSummary": row.get("security_scan_summary") or {},
     }
 
 
@@ -123,10 +147,12 @@ def create_submission(
     submitted_by: str,
     manifest: dict[str, Any],
     security_checklist: dict[str, Any],
+    package_sources: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Create a pending partner connector submission."""
     parsed = validate_manifest_payload(manifest)
     checklist = validate_security_checklist(security_checklist)
+    certification = run_certification_review(parsed, package_sources=package_sources)
 
     conflict = (
         client.table("partner_connector_submissions")
@@ -162,6 +188,7 @@ def create_submission(
             ),
         )
 
+    cert_dict = certification.to_dict()
     row = {
         "org_id": org_id,
         "submitted_by": submitted_by,
@@ -171,6 +198,10 @@ def create_submission(
         "version": parsed.version,
         "manifest": parsed.model_dump(by_alias=True),
         "security_checklist": checklist,
+        "package_sources": package_sources or {},
+        "security_scan": cert_dict["securityScan"],
+        "scope_review": cert_dict["scopeReview"],
+        "certification_status": certification.certification_status,
         "status": "pending",
         "updated_at": _now_iso(),
     }
@@ -197,7 +228,14 @@ def list_submissions(
     return [_normalize_submission(row) for row in (result.data or [])]
 
 
-def get_submission(client: Any, submission_id: str, *, org_id: str, admin: bool) -> dict[str, Any]:
+def get_submission(
+    client: Any,
+    submission_id: str,
+    *,
+    org_id: str,
+    admin: bool,
+    include_sources: bool = False,
+) -> dict[str, Any]:
     """Fetch a single submission with org scoping."""
     query = (
         client.table("partner_connector_submissions")
@@ -210,7 +248,7 @@ def get_submission(client: Any, submission_id: str, *, org_id: str, admin: bool)
     result = query.execute()
     if not result.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
-    return _normalize_submission(result.data[0])
+    return _normalize_submission(result.data[0], include_sources=include_sources or admin)
 
 
 def review_submission(
@@ -266,6 +304,11 @@ def review_submission(
     if decision == "approve":
         manifest = row.get("manifest") or {}
         parsed = validate_manifest_payload(manifest)
+        certification = run_certification_review(
+            parsed,
+            package_sources=row.get("package_sources") or {},
+        )
+        badge: str | None = CERTIFICATION_BADGE if certification.badge_eligible else None
         registry_row = {
             "submission_id": submission_id,
             "org_id": row["org_id"],
@@ -277,6 +320,9 @@ def review_submission(
             "published_by": reviewer_id,
             "published_at": reviewed_at,
             "status": "published",
+            "certification_badge": badge,
+            "certified_at": reviewed_at if badge else None,
+            "security_scan_summary": build_registry_scan_summary(certification),
             "updated_at": reviewed_at,
         }
         created = client.table("partner_connector_registry").insert(registry_row).execute()
@@ -285,6 +331,48 @@ def review_submission(
         registry_entry = _normalize_registry(created.data[0])
 
     return {"submission": submission, "registry": registry_entry}
+
+
+def rescan_submission_certification(client: Any, submission_id: str) -> dict[str, Any]:
+    """Re-run automated certification on a pending submission (admin)."""
+    existing = (
+        client.table("partner_connector_submissions")
+        .select("*")
+        .eq("id", submission_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    row = existing.data[0]
+    if row.get("status") not in {"pending", "in_review"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error_detail("Only open submissions can be rescanned", "SUBMISSION_NOT_SCANNABLE"),
+        )
+
+    parsed = validate_manifest_payload(row.get("manifest") or {})
+    certification = run_certification_review(
+        parsed,
+        package_sources=row.get("package_sources") or {},
+    )
+    cert_dict = certification.to_dict()
+    updated = (
+        client.table("partner_connector_submissions")
+        .update(
+            {
+                "security_scan": cert_dict["securityScan"],
+                "scope_review": cert_dict["scopeReview"],
+                "certification_status": certification.certification_status,
+                "updated_at": _now_iso(),
+            }
+        )
+        .eq("id", submission_id)
+        .execute()
+    )
+    if not updated.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Rescan update failed")
+    return _normalize_submission(updated.data[0])
 
 
 def list_registry(client: Any, *, status: str = "published") -> list[dict[str, Any]]:

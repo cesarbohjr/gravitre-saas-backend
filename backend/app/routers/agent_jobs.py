@@ -106,6 +106,36 @@ async def get_job_status(
     return _public(job)
 
 
+@router.post("/{job_id}/pause")
+async def pause(
+    job_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.agent_interrupt_service import request_interrupt
+
+    client = _client(settings)
+    try:
+        request_interrupt(
+            client,
+            org_id=org_id,
+            target_type="agent_job",
+            target_id=job_id,
+            signal="pause",
+            actor_id=current_user.get("user_id"),
+            source="ui",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    job = jobs.get_job(client, org_id, job_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return _public(job)
+
+
 @router.post("/{job_id}/cancel")
 async def cancel(
     job_id: str,
@@ -115,12 +145,24 @@ async def cancel(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    job = jobs.cancel_job(_client(settings), org_id, job_id)
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Job not found or not cancellable (must be queued/running)",
+    from app.services.agent_interrupt_service import request_interrupt
+
+    client = _client(settings)
+    try:
+        request_interrupt(
+            client,
+            org_id=org_id,
+            target_type="agent_job",
+            target_id=job_id,
+            signal="cancel",
+            actor_id=current_user.get("user_id"),
+            source="ui",
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    job = jobs.get_job(client, org_id, job_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return _public(job)
 
 

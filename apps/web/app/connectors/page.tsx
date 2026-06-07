@@ -63,10 +63,12 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { connectorsApi } from "@/lib/api"
 import {
+  CONNECTOR_CATEGORIES,
   OAUTH_CONNECTOR_TYPE_SET,
   OAUTH_VENDOR_KEYS,
   connectorVendorKey,
   formatVendorLabel,
+  isShippedConnector,
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
@@ -627,99 +629,21 @@ function DeleteModal({
   )
 }
 
-// Department-based connector categories
-const connectorCategories = {
-  "CRM / Marketing": {
-    color: "emerald",
-    connectors: [
-      { type: "Salesforce", description: "CRM and sales automation", authType: "oauth" as const },
-      { type: "HubSpot", description: "Marketing, sales, and service", authType: "oauth" },
-      { type: "Google Analytics", description: "GA4 campaign and conversion analytics", authType: "oauth" },
-      { type: "Marketo", description: "Marketing automation", authType: "apiKey" },
-      { type: "Mailchimp", description: "Email marketing campaigns", authType: "apiKey" },
-      { type: "Segment", description: "Customer data platform", authType: "apiKey" },
-    ]
-  },
-  "Payments / Finance": {
-    color: "blue",
-    connectors: [
-      { type: "Stripe", description: "Payment processing", authType: "apiKey" },
-      { type: "QuickBooks", description: "Accounting software", authType: "oauth" },
-      { type: "Xero", description: "Cloud accounting", authType: "oauth" },
-      { type: "NetSuite", description: "Enterprise ERP", authType: "oauth" },
-      { type: "Plaid", description: "Financial data API", authType: "apiKey" },
-    ]
-  },
-  "Communication": {
-    color: "violet",
-    connectors: [
-      { type: "Slack", description: "Team messaging", authType: "oauth" },
-      { type: "Microsoft Teams", description: "Collaboration hub", authType: "oauth" },
-      { type: "Gmail", description: "Email integration", authType: "oauth" },
-      { type: "Google Calendar", description: "Calendar availability and events", authType: "oauth" },
-      { type: "Outlook", description: "Microsoft email", authType: "oauth" },
-      { type: "Twilio", description: "SMS and voice API", authType: "apiKey" },
-    ]
-  },
-  "DevOps / Incidents": {
-    color: "rose",
-    connectors: [
-      { type: "PagerDuty", description: "Incident management and on-call", authType: "oauth" },
-    ],
-  },
-  "Operations / Workflow": {
-    color: "amber",
-    connectors: [
-      { type: "Notion", description: "All-in-one workspace", authType: "oauth" },
-      { type: "Airtable", description: "Database spreadsheets", authType: "apiKey" },
-      { type: "Jira", description: "Issue tracking and DevOps", authType: "oauth" },
-      { type: "Confluence", description: "Team documentation wiki", authType: "oauth" },
-      { type: "Asana", description: "Project management", authType: "oauth" },
-      { type: "Monday.com", description: "Work OS", authType: "oauth" },
-      { type: "ClickUp", description: "Productivity platform", authType: "apiKey" },
-    ]
-  },
-  "Customer Support": {
-    color: "pink",
-    connectors: [
-      { type: "Zendesk", description: "Customer service", authType: "apiKey" },
-      { type: "Intercom", description: "Customer messaging", authType: "oauth" },
-      { type: "Freshdesk", description: "Help desk software", authType: "apiKey" },
-      { type: "Gorgias", description: "E-commerce helpdesk", authType: "apiKey" },
-    ]
-  },
-  "HR / People": {
-    color: "cyan",
-    connectors: [
-      { type: "Workday", description: "HR management", authType: "oauth" },
-      { type: "BambooHR", description: "HR software", authType: "apiKey" },
-      { type: "Gusto", description: "Payroll and benefits", authType: "oauth" },
-      { type: "ADP", description: "HR and payroll", authType: "oauth" },
-    ]
-  },
-  "Storage / Dev / Infra": {
-    color: "orange",
-    connectors: [
-      { type: "AWS S3", description: "Cloud object storage", authType: "apiKey" },
-      { type: "GitHub", description: "Code repository", authType: "apiKey" },
-      { type: "PostgreSQL", description: "SQL database", authType: "apiKey" },
-      { type: "MongoDB", description: "NoSQL database", authType: "apiKey" },
-      { type: "Snowflake", description: "Data warehouse", authType: "apiKey" },
-      { type: "Google Drive", description: "File storage", authType: "oauth" },
-      { type: "Google Docs", description: "Documents", authType: "oauth" },
-      { type: "Google Sheets", description: "Spreadsheets", authType: "oauth" },
-    ]
-  },
-}
+const connectorCategories = CONNECTOR_CATEGORIES
 
 // Flatten for search
 const availableConnectors = Object.entries(connectorCategories).flatMap(([category, data]) =>
-  data.connectors.map(c => ({ ...c, category }))
+  data.connectors.map((c) => ({ ...c, category }))
 )
 
 type CatalogConnector = (typeof availableConnectors)[number] & {
   vendorKey?: string
+  shipped?: boolean
+  oauthReady?: boolean
+  requiresSubdomain?: boolean
+  requiresInstanceUrl?: boolean
   partner?: boolean
+  certified?: boolean
 }
 
 // Add Connector Modal
@@ -739,6 +663,7 @@ function AddConnectorModal({
     vendor: string
     description: string
     authType: "oauth" | "apiKey"
+    certificationBadge?: string | null
   }>
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
@@ -758,6 +683,8 @@ function AddConnectorModal({
   const [zendeskEmail, setZendeskEmail] = useState("")
   const [githubOwner, setGithubOwner] = useState("")
   const [githubRepo, setGithubRepo] = useState("")
+  const [oauthSubdomain, setOauthSubdomain] = useState("")
+  const [oauthInstanceUrl, setOauthInstanceUrl] = useState("")
 
   const catalogConnectors = useMemo<CatalogConnector[]>(() => {
     const partnerEntries: CatalogConnector[] = publishedConnectors.map((entry) => ({
@@ -767,6 +694,7 @@ function AddConnectorModal({
       category: "Partner Marketplace",
       vendorKey: entry.vendor,
       partner: true,
+      certified: entry.certificationBadge === "gravitre_certified",
     }))
     return [...availableConnectors, ...partnerEntries]
   }, [publishedConnectors])
@@ -793,19 +721,43 @@ function AddConnectorModal({
 
   const getSelectedConnector = () => catalogConnectors.find((c) => c.type === selectedType)
 
+  const selectedConnectorMeta = () => getSelectedConnector()
+
+  const oauthExtraFields = () => {
+    const connector = selectedConnectorMeta()
+    const extra: { subdomain?: string; instanceUrl?: string } = {}
+    if (connector?.requiresSubdomain && oauthSubdomain.trim()) {
+      extra.subdomain = oauthSubdomain.trim()
+    }
+    if (connector?.requiresInstanceUrl && oauthInstanceUrl.trim()) {
+      extra.instanceUrl = oauthInstanceUrl.trim()
+    }
+    return extra
+  }
+
+  const canStartOAuth = (): boolean => {
+    if (!name.trim()) return false
+    const connector = selectedConnectorMeta()
+    if (connector?.requiresSubdomain && !oauthSubdomain.trim()) return false
+    if (connector?.requiresInstanceUrl && !oauthInstanceUrl.trim()) return false
+    return true
+  }
+
   const handleOAuthConnect = async () => {
-    if (!selectedType || !name) return
+    if (!selectedType || !canStartOAuth()) return
     const provider = resolveVendor(getSelectedConnector(), selectedType)
     const existing = existingConnectors.find(
       (c) => connectorVendorKey(c.type) === provider
     )
+    const extra = oauthExtraFields()
     setOauthStatus("redirecting")
     try {
       const { authorizationUrl } = existing
-        ? await connectorsApi.reconnectOAuth(provider, existing.id, existing.name)
+        ? await connectorsApi.reconnectOAuth(provider, existing.id, existing.name, extra)
         : await connectorsApi.startOAuth(provider, {
             name,
             redirectPath: "/connectors",
+            ...extra,
           })
       window.location.assign(authorizationUrl)
     } catch (err) {
@@ -895,10 +847,18 @@ function AddConnectorModal({
     setZendeskEmail("")
     setGithubOwner("")
     setGithubRepo("")
+    setOauthSubdomain("")
+    setOauthInstanceUrl("")
     onClose()
   }
 
   const handleSelectConnector = (connector: CatalogConnector) => {
+    if (!connector.partner && !isShippedConnector(connector)) {
+      toast.message(`${connector.type} is coming soon`, {
+        description: "This integration is listed for planning; connect shipped apps marked Available.",
+      })
+      return
+    }
     setSelectedType(connector.type)
     setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
     setName((connector.vendorKey || connector.type).toLowerCase().replace(/\s+/g, "-"))
@@ -1028,16 +988,33 @@ function AddConnectorModal({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{connector.type}</span>
+                              {connector.certified && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-400">
+                                  Certified
+                                </span>
+                              )}
+                              {!connector.partner && isShippedConnector(connector) && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-500">
+                                  Available
+                                </span>
+                              )}
                               <span className={cn(
                                 "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
-                                connector.authType === "oauth" ? "bg-blue-500/10 text-blue-400" :
-                                connector.authType === "planned" ? "bg-zinc-500/10 text-zinc-400" :
-                                connector.authType === "webhook" ? "bg-violet-500/10 text-violet-400" :
-                                "bg-amber-500/10 text-amber-400"
+                                !connector.partner && !isShippedConnector(connector)
+                                  ? "bg-zinc-500/10 text-zinc-400"
+                                  : connector.authType === "oauth"
+                                    ? "bg-blue-500/10 text-blue-400"
+                                    : connector.authType === "webhook"
+                                      ? "bg-violet-500/10 text-violet-400"
+                                      : "bg-amber-500/10 text-amber-400"
                               )}>
-                                {connector.authType === "oauth" ? "OAuth" :
-                                 connector.authType === "planned" ? "Planned" :
-                                 connector.authType === "webhook" ? "Webhook" : "API Key"}
+                                {!connector.partner && !isShippedConnector(connector)
+                                  ? "Coming soon"
+                                  : connector.authType === "oauth"
+                                    ? "OAuth"
+                                    : connector.authType === "webhook"
+                                      ? "Webhook"
+                                      : "API Key"}
                               </span>
                             </div>
                             <div className="text-xs text-muted-foreground truncate">{connector.description}</div>
@@ -1095,7 +1072,35 @@ function AddConnectorModal({
                         You&apos;ll be redirected to {selectedType} to authorize Gravitre
                       </p>
                     </div>
-                    <Button onClick={handleOAuthConnect} className="gap-2">
+                    <div className="space-y-3 text-left max-w-sm mx-auto">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Connector name</label>
+                        <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 bg-secondary" />
+                      </div>
+                      {selectedConnectorMeta()?.requiresSubdomain && (
+                        <div>
+                          <label className="text-xs text-muted-foreground">Subdomain / account</label>
+                          <Input
+                            value={oauthSubdomain}
+                            onChange={(e) => setOauthSubdomain(e.target.value)}
+                            placeholder="e.g. acme"
+                            className="mt-1 bg-secondary"
+                          />
+                        </div>
+                      )}
+                      {selectedConnectorMeta()?.requiresInstanceUrl && (
+                        <div>
+                          <label className="text-xs text-muted-foreground">Instance URL</label>
+                          <Input
+                            value={oauthInstanceUrl}
+                            onChange={(e) => setOauthInstanceUrl(e.target.value)}
+                            placeholder="https://mycompany.odoo.com"
+                            className="mt-1 bg-secondary"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <Button onClick={handleOAuthConnect} className="gap-2" disabled={!canStartOAuth()}>
                       <ExternalLink className="h-4 w-4" />
                       Connect with {selectedType}
                     </Button>
@@ -1620,7 +1625,15 @@ function ConnectorsPageContent() {
     { revalidateOnFocus: true, refreshInterval: 30000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
 
-  const { data: registryData } = useSWR<{ connectors: Array<{ name: string; vendor: string; description: string; authType: "oauth" | "apiKey" }> }>(
+  const { data: registryData } = useSWR<{
+    connectors: Array<{
+      name: string
+      vendor: string
+      description: string
+      authType: "oauth" | "apiKey"
+      certificationBadge?: string | null
+    }>
+  }>(
     user ? "/api/marketplace/registry" : null,
     apiFetcher,
     { revalidateOnFocus: true }

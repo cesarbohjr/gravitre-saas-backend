@@ -18,9 +18,9 @@ import { StatusBadge } from "@/components/gravitre/status-badge"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { CheckCircle2, Loader2, Shield, XCircle, ArrowLeft } from "lucide-react"
+import { CheckCircle2, Loader2, RefreshCw, Shield, ShieldCheck, XCircle, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
-import type { PartnerConnectorSubmission } from "@/types/api"
+import type { MarketplaceRegistryConnector, PartnerConnectorSubmission } from "@/types/api"
 
 const STATUS_VARIANT: Record<string, "success" | "error" | "warning" | "muted"> = {
   pending: "warning",
@@ -30,6 +30,63 @@ const STATUS_VARIANT: Record<string, "success" | "error" | "warning" | "muted"> 
   withdrawn: "muted",
 }
 
+const CERT_VARIANT: Record<string, "success" | "error" | "warning" | "muted"> = {
+  passed: "success",
+  failed: "error",
+  pending: "warning",
+}
+
+function CertificationSummary({ submission }: { submission: PartnerConnectorSubmission }) {
+  const scan = submission.securityScan
+  const scope = submission.scopeReview
+  if (!scan && !scope) return null
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-secondary/30 p-3 text-xs space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {submission.certificationStatus && (
+          <StatusBadge variant={CERT_VARIANT[submission.certificationStatus] ?? "muted"}>
+            cert {submission.certificationStatus}
+          </StatusBadge>
+        )}
+        {scan && (
+          <span className="text-muted-foreground">
+            {scan.filesScanned} file(s) scanned · {scan.criticalCount ?? 0} critical ·{" "}
+            {scan.warningCount ?? 0} warning
+          </span>
+        )}
+        {(submission.packageSourceFiles?.length ?? 0) > 0 && (
+          <span className="text-muted-foreground">Sources: {submission.packageSourceFiles?.join(", ")}</span>
+        )}
+      </div>
+      {(scan?.findings?.length ?? 0) > 0 && (
+        <ul className="space-y-1 text-muted-foreground">
+          {scan!.findings.slice(0, 4).map((finding, idx) => (
+            <li key={`${finding.code}-${idx}`}>
+              <span className={finding.severity === "critical" ? "text-destructive" : ""}>
+                [{finding.severity}] {finding.message}
+                {finding.file ? ` (${finding.file}${finding.line ? `:${finding.line}` : ""})` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(scope?.entries?.length ?? 0) > 0 && (
+        <ul className="space-y-1 text-muted-foreground">
+          {(scope?.entries ?? [])
+            .flatMap((entry) => entry.issues.map((issue) => ({ actionKey: entry.actionKey, issue })))
+            .slice(0, 3)
+            .map((item, idx) => (
+              <li key={`${item.actionKey}-${idx}`}>
+                {item.actionKey}: {item.issue}
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function MarketplaceAdminPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === "admin" || user?.role === "owner"
@@ -37,16 +94,32 @@ export default function MarketplaceAdminPage() {
   const [decision, setDecision] = useState<"approve" | "reject" | null>(null)
   const [notes, setNotes] = useState("")
   const [isReviewing, setIsReviewing] = useState(false)
+  const [rescanningId, setRescanningId] = useState<string | null>(null)
 
   const { data, error, isLoading, mutate } = useSWR<{ submissions: PartnerConnectorSubmission[] }>(
     user && isAdmin ? "/api/marketplace/submissions" : null,
     fetcher
   )
 
-  const { data: registry, mutate: mutateRegistry } = useSWR(
+  const { data: registry, mutate: mutateRegistry } = useSWR<{ connectors: MarketplaceRegistryConnector[] }>(
     user && isAdmin ? "/api/marketplace/registry" : null,
     fetcher
   )
+
+  const rescanSubmission = async (submissionId: string) => {
+    setRescanningId(submissionId)
+    try {
+      await marketplaceApi.rescan(submissionId)
+      toast.success("Certification scan complete")
+      await mutate()
+    } catch (err) {
+      toast.error("Rescan failed", {
+        description: err instanceof Error ? err.message : "Please try again",
+      })
+    } finally {
+      setRescanningId(null)
+    }
+  }
 
   const openReview = (submission: PartnerConnectorSubmission, next: "approve" | "reject") => {
     setReviewTarget(submission)
@@ -91,8 +164,7 @@ export default function MarketplaceAdminPage() {
 
   const submissions = data?.submissions ?? []
   const pending = submissions.filter((s) => s.status === "pending" || s.status === "in_review")
-  const published = (registry as { connectors?: { name: string; vendor: string; version: string }[] } | undefined)
-    ?.connectors ?? []
+  const published = registry?.connectors ?? []
 
   return (
     <AppShell title="Marketplace review">
@@ -109,6 +181,9 @@ export default function MarketplaceAdminPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/marketplace/private">Private</Link>
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href="/marketplace/billing">Billing</Link>
               <Link href="/marketplace/sandbox">Sandbox</Link>
@@ -158,8 +233,23 @@ export default function MarketplaceAdminPage() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Submitted {sub.createdAt ? new Date(sub.createdAt).toLocaleString() : "—"}
                     </p>
+                    <CertificationSummary submission={sub} />
                   </div>
                   <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      disabled={rescanningId === sub.id}
+                      onClick={() => void rescanSubmission(sub.id)}
+                    >
+                      {rescanningId === sub.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      Rescan
+                    </Button>
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={() => openReview(sub, "reject")}>
                       <XCircle className="h-3.5 w-3.5" />
                       Reject
@@ -184,9 +274,17 @@ export default function MarketplaceAdminPage() {
           ) : (
             <ul className="divide-y divide-border">
               {published.map((entry) => (
-                <li key={entry.vendor} className="px-4 py-3 text-sm flex justify-between">
-                  <span className="font-medium">{entry.name}</span>
-                  <span className="text-muted-foreground">
+                <li key={entry.vendor} className="px-4 py-3 text-sm flex justify-between items-center gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium">{entry.name}</span>
+                    {entry.certificationBadge === "gravitre_certified" && (
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+                        <ShieldCheck className="h-3 w-3" />
+                        Certified
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground shrink-0">
                     {entry.vendor} · v{entry.version}
                   </span>
                 </li>
@@ -225,8 +323,14 @@ export default function MarketplaceAdminPage() {
             <DialogTitle>{decision === "approve" ? "Approve" : "Reject"} submission</DialogTitle>
             <DialogDescription>
               {reviewTarget?.name} ({reviewTarget?.vendor})
+              {reviewTarget?.certificationStatus === "passed"
+                ? " — eligible for Gravitre Certified badge"
+                : reviewTarget?.certificationStatus === "failed"
+                  ? " — certification failed; badge will not be applied"
+                  : " — certification pending (no source or incomplete scan)"}
             </DialogDescription>
           </DialogHeader>
+          {reviewTarget && <CertificationSummary submission={reviewTarget} />}
           <Textarea
             placeholder="Reviewer notes (optional for approve, recommended for reject)"
             value={notes}

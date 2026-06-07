@@ -24,6 +24,7 @@ from app.routers import (
     agent_tool_permissions,
     ai_system,
     agent_council,
+    agent_interrupts,
     agent_jobs,
     assistant,
     auth,
@@ -55,7 +56,9 @@ from app.routers import (
     workflows,
     sources,
     environments,
+    enterprise,
     settings,
+    slack_commands,
 )
 from app.routers import (
     hubspot_triggers,
@@ -66,9 +69,12 @@ from app.routers import (
     google_analytics,
     pagerduty_triggers,
     salesforce_triggers,
+    segment_triggers,
+    workday_sync,
 )
-from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound
+from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound, segment_inbound
 from app.routers.webhooks import stripe as stripe_webhooks
+from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
 
 print("Gravitre backend booting...")
@@ -320,7 +326,9 @@ app.include_router(lite.router)
 app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
+app.include_router(enterprise.router)
 app.include_router(stripe_webhooks.router)
+app.include_router(stripe_connect_sample_router)
 app.include_router(hubspot_inbound.router)
 app.include_router(salesforce_inbound.router)
 app.include_router(pagerduty_inbound.router)
@@ -330,7 +338,10 @@ app.include_router(salesforce_triggers.router)
 app.include_router(pagerduty_triggers.router)
 app.include_router(notion_sync.router)
 app.include_router(confluence_sync.router)
+app.include_router(workday_sync.router)
 app.include_router(google_analytics.router)
+app.include_router(segment_triggers.router)
+app.include_router(segment_inbound.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(execution.router)
@@ -342,7 +353,9 @@ app.include_router(ml_models.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
 app.include_router(conversations.router)
+app.include_router(agent_interrupts.router)
 app.include_router(agent_jobs.router)
+app.include_router(slack_commands.router)
 app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)

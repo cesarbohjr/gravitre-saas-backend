@@ -119,15 +119,46 @@ class Settings(BaseSettings):
     quickbooks_client_secret: str = ""
     quickbooks_sandbox_client_id: str = ""
     quickbooks_sandbox_client_secret: str = ""
+    # NetSuite OAuth (STA-56)
+    netsuite_client_id: str = ""
+    netsuite_client_secret: str = ""
+    netsuite_sandbox_client_id: str = ""
+    netsuite_sandbox_client_secret: str = ""
     # Jira Cloud OAuth (STA-36)
     jira_client_id: str = ""
     jira_client_secret: str = ""
+    # Generic OAuth — Xero (PKCE)
+    xero_client_id: str = ""
+    xero_client_secret: str = ""
+    # Generic OAuth — Mailchimp
+    mailchimp_client_id: str = ""
+    mailchimp_client_secret: str = ""
+    # Generic OAuth — Airtable (PKCE)
+    airtable_client_id: str = ""
+    airtable_client_secret: str = ""
+    # Generic OAuth — Asana
+    asana_client_id: str = ""
+    asana_client_secret: str = ""
+    # Generic OAuth — Freshdesk (subdomain per connector at connect)
+    freshdesk_client_id: str = ""
+    freshdesk_client_secret: str = ""
+    # Generic OAuth — Microsoft 365 / Graph (multitenant via /common/)
+    microsoft365_client_id: str = ""
+    microsoft365_client_secret: str = ""
     # PagerDuty OAuth (STA-37)
     pagerduty_client_id: str = ""
     pagerduty_client_secret: str = ""
     # Notion OAuth (STA-43)
     notion_client_id: str = ""
     notion_client_secret: str = ""
+    # Marketo REST client credentials (STA-64); munchkin_id stored per connector
+    marketo_client_id: str = ""
+    marketo_client_secret: str = ""
+    # Workday OAuth (STA-59)
+    workday_client_id: str = ""
+    workday_client_secret: str = ""
+    workday_sandbox_client_id: str = ""
+    workday_sandbox_client_secret: str = ""
     # Google OAuth — shared "Gravitre OAuth" app (Calendar, GA4, future Gmail/Drive)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
@@ -145,6 +176,9 @@ class Settings(BaseSettings):
     stripe_metered_price_id_command: str = ""
     # Marketplace v2 (STA-96): platform fee on partner connector usage (basis points, 2000 = 20%)
     marketplace_platform_fee_bps: int = 2000
+    # Private connector runtime (STA-98): signed org bundles executed in subprocess sandbox
+    private_connector_runtime_enabled: bool = True
+    private_connector_sandbox_timeout_sec: int = 10
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
     # In-process knowledge sync scheduler (STA-45). 0 = disabled.
@@ -183,6 +217,10 @@ class Settings(BaseSettings):
     # Redact PII (email/SSN/card/phone) from user + retrieved content before it
     # is sent to an external AI provider.
     ai_pii_redaction_enabled: bool = True
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+    slack_app_id: str = ""
+    slack_signing_secret: str = ""
 
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)

@@ -10,6 +10,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.services.partner_marketplace_service import (
+    AUDIT_CERTIFICATION_SCANNED,
     AUDIT_CONNECTOR_PUBLISHED,
     AUDIT_SUBMISSION_CREATED,
     AUDIT_SUBMISSION_REVIEWED,
@@ -19,6 +20,7 @@ from app.services.partner_marketplace_service import (
     get_submission,
     list_registry,
     list_submissions,
+    rescan_submission_certification,
     review_submission,
 )
 from app.services.marketplace_billing_service import (
@@ -32,6 +34,17 @@ from app.services.marketplace_billing_service import (
     list_recent_usage_events,
     sync_partner_connect_account,
     upsert_connector_pricing,
+)
+from app.services.private_connector_bundle_service import (
+    AUDIT_PRIVATE_BUNDLE_ACTIVATED,
+    AUDIT_PRIVATE_BUNDLE_DISABLED,
+    AUDIT_PRIVATE_BUNDLE_UPLOADED,
+    RESOURCE_TYPE_PRIVATE_BUNDLE,
+    activate_private_bundle,
+    disable_private_bundle,
+    get_private_bundle,
+    list_private_bundles,
+    upload_private_bundle,
 )
 from app.services.marketplace_sandbox_service import (
     AUDIT_SANDBOX_DEMO,
@@ -62,6 +75,7 @@ class SecurityChecklistRequest(BaseModel):
 class SubmissionCreateRequest(BaseModel):
     manifest: dict[str, Any]
     security_checklist: SecurityChecklistRequest = Field(alias="securityChecklist")
+    package_sources: dict[str, str] = Field(default_factory=dict, alias="packageSources")
 
     model_config = {"populate_by_name": True}
 
@@ -82,6 +96,16 @@ class ConnectorPricingRequest(BaseModel):
 class ConnectOnboardRequest(BaseModel):
     return_url: str = Field(alias="returnUrl")
     refresh_url: str = Field(alias="refreshUrl")
+
+    model_config = {"populate_by_name": True}
+
+
+class PrivateBundleUploadRequest(BaseModel):
+    name: str
+    manifest: dict[str, Any]
+    package_sources: dict[str, str] = Field(alias="packageSources")
+    signing_public_key_pem: str = Field(alias="signingPublicKeyPem")
+    signature: str
 
     model_config = {"populate_by_name": True}
 
@@ -157,6 +181,7 @@ async def submit_partner_connector(
         submitted_by=current_user["user_id"],
         manifest=body.manifest,
         security_checklist=body.security_checklist.model_dump(),
+        package_sources=body.package_sources or None,
     )
     write_audit_event(
         client,
@@ -166,6 +191,18 @@ async def submit_partner_connector(
         resource_type=RESOURCE_TYPE_PARTNER_SUBMISSION,
         resource_id=submission["id"],
         metadata={"vendor": submission["vendor"], "packageId": submission["packageId"]},
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action=AUDIT_CERTIFICATION_SCANNED,
+        resource_type=RESOURCE_TYPE_PARTNER_SUBMISSION,
+        resource_id=submission["id"],
+        metadata={
+            "vendor": submission["vendor"],
+            "certificationStatus": submission.get("certificationStatus"),
+        },
     )
     return {"submission": submission}
 
@@ -179,7 +216,29 @@ async def get_marketplace_submission(
     """Get submission detail (admin)."""
     _user, org_id = admin_ctx
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return {"submission": get_submission(client, submission_id, org_id=org_id, admin=True)}
+    return {"submission": get_submission(client, submission_id, org_id=org_id, admin=True, include_sources=True)}
+
+
+@router.post("/submissions/{submission_id}/rescan")
+async def rescan_marketplace_submission(
+    submission_id: str,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Re-run automated security scan and scope review (admin)."""
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    submission = rescan_submission_certification(client, submission_id)
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action=AUDIT_CERTIFICATION_SCANNED,
+        resource_type=RESOURCE_TYPE_PARTNER_SUBMISSION,
+        resource_id=submission_id,
+        metadata={"certificationStatus": submission.get("certificationStatus")},
+    )
+    return {"submission": submission}
 
 
 @router.post("/submissions/{submission_id}/review")
@@ -424,3 +483,110 @@ async def marketplace_billing_pricing_upsert(
         },
     )
     return {"pricing": pricing}
+
+
+@router.get("/private-bundles")
+async def marketplace_private_bundles_list(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """List org-scoped private connector bundles (STA-98)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return {"bundles": list_private_bundles(client, org_id=org_id)}
+
+
+@router.get("/private-bundles/{bundle_id}")
+async def marketplace_private_bundle_get(
+    bundle_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return {"bundle": get_private_bundle(client, org_id=org_id, bundle_id=bundle_id)}
+
+
+@router.post("/private-bundles", status_code=status.HTTP_201_CREATED)
+async def marketplace_private_bundle_upload(
+    body: PrivateBundleUploadRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Upload a signed private connector bundle (draft)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    bundle = upload_private_bundle(
+        client,
+        org_id=org_id,
+        created_by=current_user["user_id"],
+        name=body.name,
+        manifest=body.manifest,
+        package_sources=body.package_sources,
+        signing_public_key_pem=body.signing_public_key_pem,
+        signature=body.signature,
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action=AUDIT_PRIVATE_BUNDLE_UPLOADED,
+        resource_type=RESOURCE_TYPE_PRIVATE_BUNDLE,
+        resource_id=bundle["id"],
+        metadata={"vendor": bundle["vendor"], "version": bundle["version"]},
+    )
+    return {"bundle": bundle}
+
+
+@router.post("/private-bundles/{bundle_id}/activate")
+async def marketplace_private_bundle_activate(
+    bundle_id: str,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Activate a signed private bundle for sandbox invoke_tool execution."""
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    bundle = activate_private_bundle(
+        client,
+        org_id=org_id,
+        bundle_id=bundle_id,
+        actor_id=user["user_id"],
+    )
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action=AUDIT_PRIVATE_BUNDLE_ACTIVATED,
+        resource_type=RESOURCE_TYPE_PRIVATE_BUNDLE,
+        resource_id=bundle_id,
+        metadata={"vendor": bundle["vendor"], "runtime": "sandbox"},
+    )
+    return {"bundle": bundle}
+
+
+@router.post("/private-bundles/{bundle_id}/disable")
+async def marketplace_private_bundle_disable(
+    bundle_id: str,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    bundle = disable_private_bundle(client, org_id=org_id, bundle_id=bundle_id)
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action=AUDIT_PRIVATE_BUNDLE_DISABLED,
+        resource_type=RESOURCE_TYPE_PRIVATE_BUNDLE,
+        resource_id=bundle_id,
+        metadata={"vendor": bundle["vendor"]},
+    )
+    return {"bundle": bundle}
