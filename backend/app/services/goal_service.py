@@ -10,18 +10,13 @@ from app.services.model_router import ModelRouter, TaskType, get_model_router
 
 logger = get_logger(__name__)
 
-CONNECTOR_ACTIONS = {
-    "hubspot": ["read_contacts", "update_contacts", "create_deals", "send_email", "read_lists"],
-    "salesforce": ["read_leads", "update_leads", "create_opportunities", "read_accounts"],
-    "slack": ["send_message", "create_channel", "read_messages"],
-    "stripe": ["read_invoices", "read_subscriptions", "read_customers"],
-    "gmail": ["send_email", "read_emails", "search_emails"],
-    "zendesk": ["read_tickets", "create_tickets", "update_tickets", "add_tags"],
-    "github": ["list_pull_requests", "create_issue", "comment", "request_reviewer"],
-    "google_calendar": ["check_availability", "create_event"],
-    "notion": ["read_pages", "create_pages", "update_pages"],
-    "quickbooks": ["read_invoices", "create_invoices", "read_customers"],
-}
+def _connector_actions() -> dict[str, list[str]]:
+    from app.connectors.action_catalog import connector_actions_for_goal_service
+
+    return connector_actions_for_goal_service()
+
+
+CONNECTOR_ACTIONS = _connector_actions()
 
 
 class GoalAnalysis(BaseModel):

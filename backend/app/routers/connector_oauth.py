@@ -103,7 +103,27 @@ from app.connectors.google_vendor_oauth import (
     normalize_google_vendor,
 )
 from app.connectors.google_oauth_common import google_oauth_credentials
-from app.connectors.oauth_state import sign_oauth_state, verify_oauth_state
+from app.connectors.generic_oauth import (
+    complete_generic_oauth_connection,
+    generic_authorize_url,
+    generic_credentials,
+    generic_oauth_configured,
+    generic_redirect_uri,
+    persist_generic_oauth_connector_config,
+    validate_generic_oauth_prerequisites,
+)
+from app.connectors.oauth_pkce import code_challenge_s256, generate_code_verifier
+from app.connectors.oauth_provider_registry import (
+    GENERIC_OAUTH_VENDORS,
+    OAUTH_PROVIDER_REGISTRY,
+    normalize_generic_vendor,
+)
+from app.connectors.oauth_state import (
+    new_oauth_state_jti,
+    new_oauth_state_nonce,
+    sign_oauth_state,
+    verify_oauth_state,
+)
 from app.connectors.platform import mark_connector_pending_oauth, prepare_oauth_connector
 from app.core.errors import error_detail
 from app.workflows.audit import write_audit_event
@@ -123,7 +143,7 @@ SUPPORTED_OAUTH_PROVIDERS = frozenset(
         "workday",
         "marketo",
     }
-) | GOOGLE_OAUTH_VENDORS
+) | GOOGLE_OAUTH_VENDORS | GENERIC_OAUTH_VENDORS
 
 
 def _resolve_oauth_vendor(provider: str) -> str:
@@ -151,6 +171,9 @@ def _resolve_oauth_vendor(provider: str) -> str:
         return "workday"
     if normalize_marketo_vendor(provider) == "marketo":
         return "marketo"
+    generic = normalize_generic_vendor(provider)
+    if generic:
+        return generic
     return vendor
 
 
@@ -161,6 +184,8 @@ class OAuthStartRequest(BaseModel):
     tenant_url: str | None = Field(default=None, alias="tenantUrl")
     tenant: str | None = None
     munchkin_id: str | None = Field(default=None, alias="munchkinId")
+    subdomain: str | None = None
+    instance_url: str | None = Field(default=None, alias="instanceUrl")
 
     model_config = {"populate_by_name": True}  # noqa: RUF012 — pydantic model config
 
@@ -245,6 +270,9 @@ async def oauth_provider_status(
     elif vendor == "marketo":
         configured = marketo_oauth_configured(settings, environment_name)
         redirect_uri = None
+    elif vendor in GENERIC_OAUTH_VENDORS:
+        configured = generic_oauth_configured(settings, vendor, environment_name)
+        redirect_uri = generic_redirect_uri(settings, vendor)
 
     return OAuthProviderStatusResponse(
         provider=vendor,
@@ -328,6 +356,24 @@ async def start_oauth(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Marketo OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
+    if vendor in GENERIC_OAUTH_VENDORS and not generic_oauth_configured(settings, vendor, environment_name):
+        label = vendor.replace("_", " ").title()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail(f"{label} OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor in GENERIC_OAUTH_VENDORS:
+        try:
+            validate_generic_oauth_prerequisites(
+                OAUTH_PROVIDER_REGISTRY[vendor],
+                subdomain=body.subdomain,
+                instance_url=body.instance_url,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_detail(str(exc), "OAUTH_PREREQUISITE_REQUIRED"),
+            ) from exc
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     if vendor in ADVANCED_CONNECTORS:
@@ -393,7 +439,23 @@ async def start_oauth(
                 metadata={"environment": environment_name, "auth": "oauth"},
             )
 
+    if vendor in GENERIC_OAUTH_VENDORS and (body.subdomain or body.instance_url):
+        persist_generic_oauth_connector_config(
+            client,
+            org_id,
+            str(connector_id),
+            vendor=vendor,
+            subdomain=body.subdomain,
+            instance_url=body.instance_url,
+        )
+
     now = time.time()
+    pkce_verifier: str | None = None
+    pkce_challenge: str | None = None
+    if vendor in GENERIC_OAUTH_VENDORS and OAUTH_PROVIDER_REGISTRY[vendor].requires_pkce:
+        pkce_verifier = generate_code_verifier()
+        pkce_challenge = code_challenge_s256(pkce_verifier)
+
     state = sign_oauth_state(
         {
             "org_id": org_id,
@@ -405,6 +467,9 @@ async def start_oauth(
             "reconnect": reconnect,
             "iat": now,
             "exp": now + 600,
+            "jti": new_oauth_state_jti(),
+            "nonce": new_oauth_state_nonce(),
+            "pkce_verifier": pkce_verifier,
         },
         _oauth_state_secret(settings),
     )
@@ -552,6 +617,35 @@ async def start_oauth(
         redirect_uri = google_vendor_redirect_uri(settings, vendor)
         client_id, _secret = google_oauth_credentials(settings, environment_name)
         auth_url = google_vendor_authorize_url(vendor, client_id, redirect_uri, state)
+    elif vendor in GENERIC_OAUTH_VENDORS:
+        spec = OAUTH_PROVIDER_REGISTRY[vendor]
+        redirect_uri = generic_redirect_uri(settings, vendor)
+        client_id, _secret = generic_credentials(settings, vendor)
+        ctx_subdomain = (body.subdomain or "").strip()
+        ctx_instance = (body.instance_url or "").strip()
+        if not ctx_subdomain or not ctx_instance:
+            connector_row = (
+                client.table("connectors")
+                .select("config")
+                .eq("org_id", org_id)
+                .eq("id", connector_id)
+                .limit(1)
+                .execute()
+            )
+            connector_config = dict((connector_row.data or [{}])[0].get("config") or {})
+            if not ctx_subdomain:
+                ctx_subdomain = str(connector_config.get("subdomain") or "").strip()
+            if not ctx_instance:
+                ctx_instance = str(connector_config.get("instance_url") or "").strip()
+        auth_url = generic_authorize_url(
+            spec,
+            client_id=client_id,
+            redirect_uri=redirect_uri,
+            state=state,
+            subdomain=ctx_subdomain,
+            instance_url=ctx_instance,
+            code_challenge=pkce_challenge,
+        )
 
     write_audit_event(
         client,
@@ -588,15 +682,16 @@ async def oauth_callback(
         return RedirectResponse(default_fail, status_code=302)
 
     try:
-        payload = verify_oauth_state(state, _oauth_state_secret(settings))
+        payload = verify_oauth_state(
+            state,
+            _oauth_state_secret(settings),
+            expected_provider=vendor,
+        )
     except ValueError as exc:
         return RedirectResponse(
             _frontend_redirect(settings, "/connectors", {"oauth": "error", "message": str(exc)}),
             status_code=302,
         )
-
-    if payload.get("provider") != vendor:
-        return RedirectResponse(default_fail, status_code=302)
 
     org_id = str(payload["org_id"])
     connector_id = str(payload["connector_id"])
@@ -713,6 +808,19 @@ async def oauth_callback(
                 settings,
                 environment_name=environment_name,
                 reconnect=reconnect,
+            )
+        elif vendor in GENERIC_OAUTH_VENDORS:
+            complete_generic_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                vendor=vendor,
+                environment_name=environment_name,
+                reconnect=reconnect,
+                code_verifier=str(payload.get("pkce_verifier") or "") or None,
+                user_id=str(payload.get("user_id") or "") or None,
             )
     except (httpx.HTTPError, ValueError):
         return RedirectResponse(

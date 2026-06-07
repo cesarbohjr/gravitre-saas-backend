@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { CONNECTOR_CATALOG } from "@/lib/connectors"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -141,20 +142,25 @@ const goalCategories: GoalCategory[] = [
   },
 ]
 
-const availableConnectors: Connector[] = [
-  { id: "hubspot", name: "HubSpot", icon: "H", category: "crm", connected: true },
-  { id: "salesforce", name: "Salesforce", icon: "S", category: "crm", connected: false },
-  { id: "stripe", name: "Stripe", icon: "$", category: "finance", connected: true },
-  { id: "quickbooks", name: "QuickBooks", icon: "Q", category: "finance", connected: false },
-  { id: "zendesk", name: "Zendesk", icon: "Z", category: "support", connected: true },
-  { id: "intercom", name: "Intercom", icon: "I", category: "support", connected: false },
-  { id: "slack", name: "Slack", icon: "#", category: "comms", connected: true },
-  { id: "gmail", name: "Gmail", icon: "G", category: "comms", connected: true },
-  { id: "notion", name: "Notion", icon: "N", category: "knowledge", connected: false },
-  { id: "confluence", name: "Confluence", icon: "C", category: "knowledge", connected: false },
-  { id: "google-analytics", name: "Google Analytics", icon: "A", category: "analytics", connected: true },
-  { id: "mixpanel", name: "Mixpanel", icon: "M", category: "analytics", connected: false },
-]
+const WIZARD_CATEGORY_MAP: Record<string, Connector["category"]> = {
+  "CRM / Marketing": "crm",
+  "Sales / Prospecting": "crm",
+  "Payments / Finance": "finance",
+  "Communication": "comms",
+  "DevOps / Incidents": "knowledge",
+  "Operations / Workflow": "knowledge",
+  "Customer Support": "support",
+  "HR / People": "knowledge",
+  "Storage / Dev / Infra": "analytics",
+}
+
+const availableConnectors: Connector[] = CONNECTOR_CATALOG.map((entry) => ({
+  id: entry.vendorKey,
+  name: entry.type,
+  icon: entry.type.slice(0, 1).toUpperCase(),
+  category: WIZARD_CATEGORY_MAP[entry.category] ?? "knowledge",
+  connected: entry.shipped === true,
+}))
 
 const planningStages = [
   { id: "understanding", label: "Understanding goal", icon: Brain },

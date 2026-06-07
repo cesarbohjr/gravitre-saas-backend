@@ -21,19 +21,37 @@ def _auth_header(email: str, api_token: str) -> str:
     return "Basic " + base64.b64encode(raw.encode()).decode()
 
 
+def _authorization_header(
+    *,
+    email: str | None,
+    api_token: str | None,
+    oauth_access_token: str | None,
+) -> str:
+    if oauth_access_token:
+        return f"Bearer {oauth_access_token}"
+    if email and api_token:
+        return _auth_header(email, api_token)
+    raise ZendeskAPIError("Zendesk credentials missing (OAuth token or email/api_token)")
+
+
 def _request(
     subdomain: str,
-    email: str,
-    api_token: str,
+    email: str | None,
+    api_token: str | None,
     method: str,
     path: str,
     *,
+    oauth_access_token: str | None = None,
     json_body: dict[str, Any] | None = None,
     params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     url = f"https://{subdomain}.zendesk.com/api/v2{path}"
     headers = {
-        "Authorization": _auth_header(email, api_token),
+        "Authorization": _authorization_header(
+            email=email,
+            api_token=api_token,
+            oauth_access_token=oauth_access_token,
+        ),
         "Content-Type": "application/json",
     }
     with httpx.Client(timeout=TIMEOUT_SEC) as client:
@@ -54,21 +72,36 @@ def _request(
     return response.json()
 
 
-def get_ticket(subdomain: str, email: str, api_token: str, ticket_id: int | str) -> dict[str, Any]:
-    data = _request(subdomain, email, api_token, "GET", f"/tickets/{ticket_id}.json")
+def get_ticket(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    ticket_id: int | str,
+    *,
+    oauth_access_token: str | None = None,
+) -> dict[str, Any]:
+    data = _request(
+        subdomain,
+        email,
+        api_token,
+        "GET",
+        f"/tickets/{ticket_id}.json",
+        oauth_access_token=oauth_access_token,
+    )
     return data.get("ticket") or data
 
 
 def create_ticket(
     subdomain: str,
-    email: str,
-    api_token: str,
+    email: str | None,
+    api_token: str | None,
     *,
     subject: str,
     comment: str,
     requester_email: str | None = None,
     priority: str | None = None,
     tags: list[str] | None = None,
+    oauth_access_token: str | None = None,
 ) -> dict[str, Any]:
     ticket: dict[str, Any] = {
         "subject": subject,
@@ -80,20 +113,29 @@ def create_ticket(
         ticket["priority"] = priority
     if tags:
         ticket["tags"] = tags
-    data = _request(subdomain, email, api_token, "POST", "/tickets.json", json_body={"ticket": ticket})
+    data = _request(
+        subdomain,
+        email,
+        api_token,
+        "POST",
+        "/tickets.json",
+        oauth_access_token=oauth_access_token,
+        json_body={"ticket": ticket},
+    )
     return data.get("ticket") or data
 
 
 def update_ticket(
     subdomain: str,
-    email: str,
-    api_token: str,
+    email: str | None,
+    api_token: str | None,
     ticket_id: int | str,
     *,
     status: str | None = None,
     priority: str | None = None,
     comment: str | None = None,
     tags: list[str] | None = None,
+    oauth_access_token: str | None = None,
 ) -> dict[str, Any]:
     ticket: dict[str, Any] = {}
     if status:
@@ -110,6 +152,7 @@ def update_ticket(
         api_token,
         "PUT",
         f"/tickets/{ticket_id}.json",
+        oauth_access_token=oauth_access_token,
         json_body={"ticket": ticket},
     )
     return data.get("ticket") or data
@@ -117,11 +160,12 @@ def update_ticket(
 
 def search_tickets(
     subdomain: str,
-    email: str,
-    api_token: str,
+    email: str | None,
+    api_token: str | None,
     *,
     query: str,
     limit: int = 100,
+    oauth_access_token: str | None = None,
 ) -> list[dict[str, Any]]:
     """Zendesk search API — e.g. type:ticket status:solved updated>YYYY-MM-DD."""
     if not query.strip():
@@ -133,6 +177,7 @@ def search_tickets(
         api_token,
         "GET",
         "/search.json",
+        oauth_access_token=oauth_access_token,
         params={"query": query, "per_page": per_page},
     )
     tickets: list[dict[str, Any]] = []
@@ -147,23 +192,33 @@ def search_tickets(
 
 def list_resolved_tickets_since(
     subdomain: str,
-    email: str,
-    api_token: str,
+    email: str | None,
+    api_token: str | None,
     *,
     since_date: str,
     limit: int = 100,
+    oauth_access_token: str | None = None,
 ) -> list[dict[str, Any]]:
     """Resolved/solved tickets updated on or after since_date (YYYY-MM-DD)."""
     q = f"type:ticket status:solved updated>={since_date}"
-    return search_tickets(subdomain, email, api_token, query=q, limit=limit)
+    return search_tickets(
+        subdomain,
+        email,
+        api_token,
+        query=q,
+        limit=limit,
+        oauth_access_token=oauth_access_token,
+    )
 
 
 def add_ticket_tags(
     subdomain: str,
-    email: str,
-    api_token: str,
+    email: str | None,
+    api_token: str | None,
     ticket_id: int | str,
     tags: list[str],
+    *,
+    oauth_access_token: str | None = None,
 ) -> dict[str, Any]:
     data = _request(
         subdomain,
@@ -171,6 +226,7 @@ def add_ticket_tags(
         api_token,
         "PUT",
         f"/tickets/{ticket_id}/tags.json",
+        oauth_access_token=oauth_access_token,
         json_body={"tags": tags},
     )
     return data.get("tags") or data

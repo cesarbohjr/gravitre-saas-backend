@@ -1803,28 +1803,46 @@ def _connector_by_type(ctx: ToolContext, connector_type: str, params: dict[str, 
     return conn
 
 
-def _zendesk_credentials(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str, str, str]:
+def _zendesk_credentials(
+    ctx: ToolContext, params: dict[str, Any]
+) -> tuple[str, str, str | None, str | None, str | None]:
+    from app.connectors.connector_tool_auth import resolve_zendesk_auth
+
     conn = _connector_by_type(ctx, "zendesk", params)
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "zendesk", cid)
-    cfg = conn.get("config") or {}
-    subdomain = str(cfg.get("subdomain") or cfg.get("zendesk_subdomain") or "").strip()
-    if not subdomain:
-        raise ToolValidationError("Zendesk connector missing subdomain in config")
-    email = get_decrypted_secret(ctx.client, cid, "email", ctx.settings)
-    token = get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
-    if not email or not token:
-        raise ToolAuthExpiredError("Zendesk email/api_token secrets not configured")
-    return cid, subdomain, email, token
+    try:
+        subdomain, email, api_token, oauth_token = resolve_zendesk_auth(
+            ctx.client,
+            ctx.org_id,
+            conn,
+            ctx.settings,
+            environment_name=ctx.environment_name,
+        )
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    if oauth_token:
+        return cid, subdomain, None, None, oauth_token
+    if not email or not api_token:
+        raise ToolAuthExpiredError("Zendesk OAuth or email/api_token secrets not configured")
+    return cid, subdomain, email, api_token, None
 
 
 def _github_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    from app.connectors.connector_tool_auth import resolve_github_access_token
+
     conn = _connector_by_type(ctx, "github", params)
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "github", cid)
-    token = get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
+    token = resolve_github_access_token(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=ctx.environment_name,
+    )
     if not token:
-        raise ToolAuthExpiredError("GitHub token secret not configured")
+        raise ToolAuthExpiredError("GitHub OAuth or PAT not configured")
     return cid, token
 
 
@@ -1871,19 +1889,25 @@ def _vendor_api_error(exc: Exception, vendor: str) -> ToolError:
 
 
 def _exec_zendesk_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
     ticket_id = params.get("ticket_id") or params.get("ticketId")
     if not ticket_id:
         raise ToolValidationError("zendesk.tickets.get requires ticket_id")
     try:
-        ticket = get_ticket(subdomain, email, token, ticket_id)
+        ticket = get_ticket(
+            subdomain,
+            email,
+            token,
+            ticket_id,
+            oauth_access_token=oauth_token,
+        )
     except ZendeskAPIError as exc:
         raise _vendor_api_error(exc, "zendesk") from exc
     return NormalizedResult(success=True, action="zendesk.tickets.get", connector_id=cid, data={"ticket": ticket})
 
 
 def _exec_zendesk_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
     subject = params.get("subject")
     comment = params.get("comment") or params.get("body")
     if not subject or not comment:
@@ -1898,6 +1922,7 @@ def _exec_zendesk_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
             requester_email=params.get("requester_email") or params.get("requesterEmail"),
             priority=params.get("priority"),
             tags=params.get("tags"),
+            oauth_access_token=oauth_token,
         )
     except ZendeskAPIError as exc:
         raise _vendor_api_error(exc, "zendesk") from exc
@@ -1905,7 +1930,7 @@ def _exec_zendesk_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
 
 
 def _exec_zendesk_tickets_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
     ticket_id = params.get("ticket_id") or params.get("ticketId")
     if not ticket_id:
         raise ToolValidationError("zendesk.tickets.update requires ticket_id")
@@ -1919,6 +1944,7 @@ def _exec_zendesk_tickets_update(ctx: ToolContext, params: dict[str, Any]) -> No
             priority=params.get("priority"),
             comment=params.get("comment"),
             tags=params.get("tags"),
+            oauth_access_token=oauth_token,
         )
     except ZendeskAPIError as exc:
         raise _vendor_api_error(exc, "zendesk") from exc
@@ -1926,13 +1952,20 @@ def _exec_zendesk_tickets_update(ctx: ToolContext, params: dict[str, Any]) -> No
 
 
 def _exec_zendesk_tickets_add_tags(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    cid, subdomain, email, token = _zendesk_credentials(ctx, params)
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
     ticket_id = params.get("ticket_id") or params.get("ticketId")
     tags = params.get("tags")
     if not ticket_id or not isinstance(tags, list) or not tags:
         raise ToolValidationError("zendesk.tickets.add_tags requires ticket_id and tags[]")
     try:
-        result = add_ticket_tags(subdomain, email, token, ticket_id, [str(t) for t in tags])
+        result = add_ticket_tags(
+            subdomain,
+            email,
+            token,
+            ticket_id,
+            [str(t) for t in tags],
+            oauth_access_token=oauth_token,
+        )
     except ZendeskAPIError as exc:
         raise _vendor_api_error(exc, "zendesk") from exc
     return NormalizedResult(success=True, action="zendesk.tickets.add_tags", connector_id=cid, data={"tags": result})

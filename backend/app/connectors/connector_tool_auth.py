@@ -1,0 +1,73 @@
+"""Resolve connector credentials for agent tools (OAuth with API-key fallback)."""
+from __future__ import annotations
+
+from typing import Any
+
+from app.config import Settings
+from app.connectors.generic_oauth import ensure_generic_session
+from app.connectors.repository import get_decrypted_secret
+from app.connectors.hubspot_oauth import load_oauth_tokens
+
+
+def resolve_github_access_token(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Settings,
+    *,
+    environment_name: str | None = None,
+) -> str | None:
+    """OAuth access token first, then stored PAT."""
+    token, _err = ensure_generic_session(
+        client,
+        org_id,
+        connector_id,
+        settings,
+        vendor="github",
+        environment_name=environment_name,
+    )
+    if token:
+        return token
+    tokens = load_oauth_tokens(client, connector_id, settings)
+    if tokens and tokens.get("access_token"):
+        return str(tokens["access_token"])
+    pat = get_decrypted_secret(client, connector_id, "token", settings)
+    return (pat or "").strip() or None
+
+
+def resolve_zendesk_auth(
+    client: Any,
+    org_id: str,
+    connector: dict[str, Any],
+    settings: Settings,
+    *,
+    environment_name: str | None = None,
+) -> tuple[str, str | None, str | None, str | None]:
+    """
+    Returns (subdomain, email, api_token, oauth_access_token).
+    OAuth token is preferred by callers when present.
+    """
+    cid = str(connector["id"])
+    cfg = connector.get("config") or {}
+    subdomain = str(cfg.get("subdomain") or cfg.get("zendesk_subdomain") or "").strip()
+    if not subdomain:
+        raise ValueError("Zendesk connector missing subdomain in config")
+
+    oauth_token, _err = ensure_generic_session(
+        client,
+        org_id,
+        cid,
+        settings,
+        vendor="zendesk",
+        environment_name=environment_name,
+    )
+    if oauth_token:
+        return subdomain, None, None, oauth_token
+
+    tokens = load_oauth_tokens(client, cid, settings)
+    if tokens and tokens.get("access_token"):
+        return subdomain, None, None, str(tokens["access_token"])
+
+    email = get_decrypted_secret(client, cid, "email", settings)
+    api_token = get_decrypted_secret(client, cid, "api_token", settings)
+    return subdomain, (email or "").strip() or None, (api_token or "").strip() or None, None

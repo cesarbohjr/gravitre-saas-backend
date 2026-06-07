@@ -28,7 +28,9 @@ import {
   Play
 } from "lucide-react"
 import { IntegrationsGrid } from "@/components/gravitre/platform-logos"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { VendorLogo } from "@/components/gravitre/vendor-logo"
+import { MARKETING_INTEGRATION_APPS } from "@/lib/connectors"
 import { TestimonialsCarouselFull, SocialProofBanner } from "@/components/marketing/testimonials"
 
 // Bento card component - Light theme
@@ -902,7 +904,7 @@ export default function FeaturesPage() {
                   className="flex flex-col items-center"
                 >
                   <div className="grid grid-cols-2 gap-2">
-                    {['Salesforce', 'Slack', 'HubSpot', 'Google'].map((tool, i) => (
+                    {MARKETING_INTEGRATION_APPS.slice(0, 4).map((tool, i) => (
                       <motion.div
                         key={tool}
                         initial={{ opacity: 0, scale: 0.8 }}
@@ -1316,14 +1318,10 @@ export default function FeaturesPage() {
                   </div>
                   <div className="p-5 bg-zinc-50/50 min-h-[280px]">
                     <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { name: "Salesforce", status: "connected" },
-                        { name: "Slack", status: "connected" },
-                        { name: "HubSpot", status: "connected" },
-                        { name: "Google", status: "connected" },
-                        { name: "Notion", status: "connected" },
-                        { name: "Jira", status: "available" },
-                      ].map((app, i) => (
+                      {MARKETING_INTEGRATION_APPS.slice(0, 6).map((name, i) => ({
+                        name,
+                        status: i < 5 ? "connected" as const : "available" as const,
+                      })).map((app, i) => (
                         <motion.div
                           key={app.name}
                           initial={{ opacity: 0, scale: 0.9 }}
@@ -1337,7 +1335,7 @@ export default function FeaturesPage() {
                           }`}
                         >
                           <div className="mx-auto mb-2">
-                            <VendorLogo vendor={app.name} size="sm" variant="light" />
+                            <ConnectorIcon vendor={app.name} size="sm" />
                           </div>
                           <div className="text-[10px] font-medium text-zinc-700">{app.name}</div>
                           <div className={`text-[8px] mt-0.5 ${

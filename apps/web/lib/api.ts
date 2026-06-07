@@ -431,6 +431,14 @@ export const approvalsApi = {
 // ============ Connectors ============
 export const connectorsApi = {
   list: () => fetcher<ConnectorListResponse>(apiUrl("/api/connectors")),
+  actionCatalog: () =>
+    fetcher<import("@/lib/connector-actions").ConnectorActionCatalogResponse>(
+      apiUrl("/api/connectors/catalog/actions")
+    ),
+  actionCatalogForVendor: (vendor: string) =>
+    fetcher<import("@/lib/connector-actions").VendorActionCatalog>(
+      apiUrl(`/api/connectors/catalog/actions/${encodeURIComponent(vendor)}`)
+    ),
   get: (id: string) => fetcher<Connector>(apiUrl(`/api/connectors/${id}`)),
   create: (data: CreateConnectorRequest) => postJson<Connector>(apiUrl("/api/connectors"), data),
   update: (id: string, data: Partial<Connector>) =>
@@ -441,15 +449,32 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
-  startOAuth: (provider: string, data: { name: string; connectorId?: string; redirectPath?: string }) =>
+  startOAuth: (
+    provider: string,
+    data: {
+      name: string
+      connectorId?: string
+      redirectPath?: string
+      subdomain?: string
+      instanceUrl?: string
+      tenantUrl?: string
+      tenant?: string
+      munchkinId?: string
+    }
+  ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
       data
     ),
-  reconnectOAuth: (provider: string, connectorId: string, name: string) =>
+  reconnectOAuth: (
+    provider: string,
+    connectorId: string,
+    name: string,
+    extra?: { subdomain?: string; instanceUrl?: string }
+  ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
-      { name, connectorId, redirectPath: "/connectors" }
+      { name, connectorId, redirectPath: "/connectors", ...extra }
     ),
   listGoogleAnalyticsProperties: (connectorId: string) =>
     fetcher<{

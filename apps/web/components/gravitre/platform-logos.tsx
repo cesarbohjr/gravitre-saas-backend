@@ -1,6 +1,8 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { MARKETING_INTEGRATION_APPS } from "@/lib/connectors"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 
 // Real brand logos as SVG components
 export const PlatformLogos = {
@@ -140,35 +142,33 @@ export function PlatformLogoCard({ name, delay = 0, className = "" }: PlatformLo
 
 // Integration grid component for marketing pages
 export function IntegrationsGrid({ theme = "light" }: { theme?: "light" | "dark" }) {
-  const integrations: (keyof typeof PlatformLogos)[] = [
-    "Salesforce", "HubSpot", "Slack", "PostgreSQL", 
-    "Stripe", "Google", "Microsoft", "Snowflake",
-    "AWS", "GitHub", "Jira", "Notion", 
-    "Zapier", "Twilio", "SendGrid", "Zendesk"
-  ]
-
   return (
-    <div className="grid grid-cols-4 gap-3 sm:gap-4 md:grid-cols-8">
-      {integrations.map((name, i) => {
-        const LogoComponent = PlatformLogos[name]
-        return (
-          <motion.div
-            key={name}
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.03 }}
-            whileHover={{ scale: 1.08, y: -3 }}
-            className={`flex h-16 sm:h-20 items-center justify-center rounded-xl sm:rounded-2xl border transition-all ${
-              theme === "light" 
-                ? "border-zinc-200 bg-white shadow-sm hover:shadow-md hover:border-zinc-300" 
-                : "border-white/10 bg-zinc-900/50 hover:border-white/20"
+    <div className="grid grid-cols-4 gap-3 sm:gap-4 md:grid-cols-6 lg:grid-cols-8">
+      {MARKETING_INTEGRATION_APPS.map((name, i) => (
+        <motion.div
+          key={name}
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.02 }}
+          whileHover={{ scale: 1.08, y: -3 }}
+          title={name}
+          className={`flex h-16 sm:h-20 flex-col items-center justify-center gap-1 rounded-xl sm:rounded-2xl border px-1 transition-all ${
+            theme === "light"
+              ? "border-zinc-200 bg-white shadow-sm hover:shadow-md hover:border-zinc-300"
+              : "border-white/10 bg-zinc-900/50 hover:border-white/20"
+          }`}
+        >
+          <ConnectorIcon vendor={name} size="sm" showStatusIndicator={false} />
+          <span
+            className={`hidden sm:block max-w-full truncate px-1 text-[9px] font-medium ${
+              theme === "light" ? "text-zinc-500" : "text-zinc-400"
             }`}
           >
-            <LogoComponent />
-          </motion.div>
-        )
-      })}
+            {name}
+          </span>
+        </motion.div>
+      ))}
     </div>
   )
 }

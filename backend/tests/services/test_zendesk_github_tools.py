@@ -43,7 +43,10 @@ def test_zendesk_create_ticket(tool_ctx: ToolContext):
     conn = {"id": "zd-1", "type": "zendesk", "config": {"subdomain": "acme"}, "environment": "production"}
     with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
-            with patch("app.services.tool_service.get_decrypted_secret", side_effect=["a@b.com", "token"]):
+            with patch(
+                "app.connectors.connector_tool_auth.resolve_zendesk_auth",
+                return_value=("acme", "a@b.com", "token", None),
+            ):
                 with patch(
                     "app.services.tool_service.create_ticket",
                     return_value={"id": 99, "subject": "Help"},
@@ -66,7 +69,10 @@ def test_github_list_prs_requires_owner_repo(tool_ctx: ToolContext):
     conn = {"id": "gh-1", "type": "github", "config": {}, "environment": "production"}
     with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
-            with patch("app.services.tool_service.get_decrypted_secret", return_value="ghp_test"):
+            with patch(
+                "app.connectors.connector_tool_auth.resolve_github_access_token",
+                return_value="ghp_test",
+            ):
                 with patch("app.services.tool_service.write_audit_event"):
                     with patch(
                         "app.services.agent_tool_permissions.list_agent_tool_permissions",

@@ -7,7 +7,7 @@ from typing import Any
 from app.services.tool_types import ToolContext, ToolPermissionDeniedError
 
 # Canonical tool action → required scopes (any one match grants access).
-ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
+_BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "slack.post_message": ["slack:messages:write", "slack:*"],
     "email.send": ["email:send", "email:*"],
     "webhook.post": ["webhook:post", "webhook:*"],
@@ -109,6 +109,18 @@ ACTION_REQUIRED_SCOPES: dict[str, list[str]] = {
     "segment.track": ["segment:track", "segment:write", "segment:*"],
     "segment.group": ["segment:group", "segment:write", "segment:*"],
 }
+
+# Catalog-declared scopes for planned v1/v2/v3 connector tools (merged at import).
+def _merge_catalog_scopes() -> dict[str, list[str]]:
+    from app.connectors.action_catalog import catalog_scopes_by_tool
+
+    merged = dict(_BUILTIN_ACTION_SCOPES)
+    for tool, scopes in catalog_scopes_by_tool().items():
+        merged.setdefault(tool, scopes)
+    return merged
+
+
+ACTION_REQUIRED_SCOPES: dict[str, list[str]] = _merge_catalog_scopes()
 
 WILDCARD_SCOPE = "*"
 
@@ -339,4 +351,13 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
             "workday:positions:read",
             "workday:*",
         ]
+    from app.connectors.action_catalog import get_vendor_spec
+
+    spec = get_vendor_spec(system)
+    if spec:
+        scopes: set[str] = set()
+        for action in spec.all_actions():
+            scopes.update(action.scopes)
+        scopes.add(f"{system}:*")
+        return sorted(scopes)
     return [f"{system}:*"]
