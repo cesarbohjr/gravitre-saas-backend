@@ -13,7 +13,12 @@ from app.billing.service import get_plan_for_org, require_feature
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
 from app.services.agent_cost_service import aggregate_agent_costs
-from app.services.branding_service import get_org_branding, merge_branding
+from app.services.branding_service import (
+    ensure_domain_verification_token,
+    get_org_branding,
+    mark_domain_verified,
+    merge_branding,
+)
 from app.services.compliance_service import build_soc2_evidence_bundle
 from app.services.data_residency_service import (
     get_org_data_region,
@@ -21,6 +26,8 @@ from app.services.data_residency_service import (
     resolve_execution_region,
     storage_prefix,
 )
+from app.services.domain_verification_service import build_verification_instructions, verify_custom_domain
+from app.services.enterprise_secrets_service import encrypt_enterprise_secret, resolve_siem_secret
 from app.services.siem_export_service import build_siem_event, dispatch_siem_event
 from app.services.workforce_analytics_service import build_workforce_analytics
 from app.workers.queue import is_queue_available
@@ -43,7 +50,7 @@ class BrandingUpdate(BaseModel):
 
 class SiemConfigUpdate(BaseModel):
     endpoint: str
-    secret: str
+    secret: str | None = None
     enabled: bool = True
 
 
@@ -53,15 +60,26 @@ class SiemTestRequest(BaseModel):
 
 
 def _org_settings(client: Any, org_id: str) -> dict[str, Any]:
-    row = client.table("organizations").select("settings").eq("id", org_id).limit(1).execute()
+    row = client.table("organizations").select("settings,data_region").eq("id", org_id).limit(1).execute()
     if not row.data:
         raise HTTPException(status_code=404, detail="Organization not found")
     settings = row.data[0].get("settings") or {}
     return settings if isinstance(settings, dict) else {}
 
 
-def _save_org_settings(client: Any, org_id: str, settings: dict[str, Any]) -> dict[str, Any]:
-    updated = client.table("organizations").update({"settings": settings}).eq("id", org_id).execute()
+def _org_data_region_column(client: Any, org_id: str) -> str | None:
+    row = client.table("organizations").select("data_region").eq("id", org_id).limit(1).execute()
+    if not row.data:
+        return None
+    value = row.data[0].get("data_region")
+    return str(value) if value else None
+
+
+def _save_org_settings(client: Any, org_id: str, settings: dict[str, Any], *, data_region: str | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {"settings": settings}
+    if data_region is not None:
+        payload["data_region"] = data_region
+    updated = client.table("organizations").update(payload).eq("id", org_id).execute()
     if not updated.data:
         raise HTTPException(status_code=404, detail="Organization not found")
     return updated.data[0].get("settings") or {}
@@ -69,6 +87,20 @@ def _save_org_settings(client: Any, org_id: str, settings: dict[str, Any]) -> di
 
 def _parse_window(from_ts: str | None, to_ts: str | None) -> tuple[str | None, str | None]:
     return from_ts, to_ts
+
+
+def _filter_rows_by_window(rows: list[dict[str, Any]], from_ts: str | None, to_ts: str | None) -> list[dict[str, Any]]:
+    if not from_ts and not to_ts:
+        return rows
+    filtered: list[dict[str, Any]] = []
+    for row in rows:
+        created_at = str(row.get("created_at") or "")
+        if from_ts and created_at and created_at < from_ts:
+            continue
+        if to_ts and created_at and created_at > to_ts:
+            continue
+        filtered.append(row)
+    return filtered
 
 
 @router.get("/data-region")
@@ -81,7 +113,8 @@ async def get_data_region(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     org_settings = _org_settings(client, org_id)
-    region = get_org_data_region(org_settings)
+    column_region = _org_data_region_column(client, org_id)
+    region = get_org_data_region(org_settings, data_region=column_region)
     return {"region": region, "storagePrefix": storage_prefix(org_id, region)}
 
 
@@ -99,7 +132,7 @@ async def update_data_region(
     enterprise["dataResidency"] = {"region": region}
     org_settings["enterprise"] = enterprise
     org_settings["data_region"] = region
-    saved = _save_org_settings(client, org_id, org_settings)
+    saved = _save_org_settings(client, org_id, org_settings, data_region=region)
     write_audit_event(
         client,
         org_id=org_id,
@@ -121,7 +154,8 @@ async def get_execution_region(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    region = resolve_execution_region(_org_settings(client, org_id))
+    org_settings = _org_settings(client, org_id)
+    region = resolve_execution_region(org_settings, data_region=_org_data_region_column(client, org_id))
     return {"region": region, "queueAvailable": is_queue_available()}
 
 
@@ -138,6 +172,7 @@ async def export_soc2_bundle(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     audit_logs = client.table("audit_logs").select("*").eq("org_id", org_id).execute().data or []
+    audit_logs = _filter_rows_by_window(audit_logs, from_ts, to_ts)
     tool_events = [row for row in audit_logs if str(row.get("action") or "").startswith("tool.invoke")]
     connector_events = [row for row in audit_logs if "connector" in str(row.get("action") or "")]
     admin_events = [row for row in audit_logs if str(row.get("action") or "").startswith(("settings.", "enterprise.", "sso."))]
@@ -161,7 +196,79 @@ async def get_branding(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return get_org_branding(_org_settings(client, org_id))
+    raw_settings = _org_settings(client, org_id)
+    org_settings = ensure_domain_verification_token(raw_settings)
+    if org_settings != raw_settings:
+        _save_org_settings(client, org_id, org_settings)
+    branding = get_org_branding(org_settings)
+    token = branding.get("domainVerificationToken")
+    domain = branding.get("customDomain")
+    if domain and token:
+        branding["domainVerification"] = build_verification_instructions(
+            domain=str(domain),
+            token=str(token),
+            cname_target=settings.enterprise_custom_domain_cname_target,
+        )
+    return branding
+
+
+@router.get("/branding/domain-instructions")
+async def get_domain_verification_instructions(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    raw_settings = _org_settings(client, org_id)
+    org_settings = ensure_domain_verification_token(raw_settings)
+    if org_settings != raw_settings:
+        _save_org_settings(client, org_id, org_settings)
+    branding = get_org_branding(org_settings)
+    domain = branding.get("customDomain")
+    token = branding.get("domainVerificationToken")
+    if not domain or not token:
+        raise HTTPException(status_code=400, detail="Set a custom domain before requesting verification instructions")
+    return build_verification_instructions(
+        domain=str(domain),
+        token=str(token),
+        cname_target=settings.enterprise_custom_domain_cname_target,
+    )
+
+
+@router.post("/branding/verify-domain")
+async def verify_branding_domain(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    raw_settings = _org_settings(client, org_id)
+    org_settings = ensure_domain_verification_token(raw_settings)
+    if org_settings != raw_settings:
+        _save_org_settings(client, org_id, org_settings)
+    branding = get_org_branding(org_settings)
+    domain = branding.get("customDomain")
+    token = branding.get("domainVerificationToken")
+    if not domain or not token:
+        raise HTTPException(status_code=400, detail="Custom domain and verification token required")
+    result = verify_custom_domain(
+        domain=str(domain),
+        token=str(token),
+        cname_target=settings.enterprise_custom_domain_cname_target,
+    )
+    if result.get("verified"):
+        saved = mark_domain_verified(org_settings, verified_at=datetime.now(timezone.utc).isoformat())
+        _save_org_settings(client, org_id, saved)
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=_user["user_id"],
+            action="enterprise.branding.domain_verified",
+            resource_type="organization",
+            resource_id=org_id,
+            metadata={"domain": domain, "method": result.get("method")},
+        )
+    return result
 
 
 @router.put("/branding")
@@ -174,7 +281,8 @@ async def update_branding(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     org_settings = _org_settings(client, org_id)
     updates = body.model_dump(by_alias=True, exclude_none=True)
-    saved = _save_org_settings(client, org_id, merge_branding(org_settings, updates))
+    merged = ensure_domain_verification_token(merge_branding(org_settings, updates))
+    _save_org_settings(client, org_id, merged)
     write_audit_event(
         client,
         org_id=org_id,
@@ -184,7 +292,7 @@ async def update_branding(
         resource_id=org_id,
         metadata={"keys": sorted(updates.keys())},
     )
-    return get_org_branding(saved)
+    return get_org_branding(merged)
 
 
 @router.get("/workforce-analytics")
@@ -234,10 +342,11 @@ async def get_siem_config(
     org_settings = _org_settings(client, org_id)
     enterprise = org_settings.get("enterprise") if isinstance(org_settings.get("enterprise"), dict) else {}
     siem = enterprise.get("siem") if isinstance(enterprise.get("siem"), dict) else {}
+    has_secret = bool(resolve_siem_secret(siem, settings) or siem.get("secretEnc") or siem.get("secret"))
     return {
         "enabled": bool(siem.get("enabled")),
         "endpoint": siem.get("endpoint"),
-        "hasSecret": bool(siem.get("secret")),
+        "hasSecret": has_secret,
     }
 
 
@@ -251,10 +360,16 @@ async def update_siem_config(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     org_settings = _org_settings(client, org_id)
     enterprise = dict(org_settings.get("enterprise") or {})
+    existing_siem = enterprise.get("siem") if isinstance(enterprise.get("siem"), dict) else {}
+    secret_plain = (body.secret or "").strip()
+    if not secret_plain:
+        secret_plain = resolve_siem_secret(existing_siem, settings) or ""
+    if not secret_plain:
+        raise HTTPException(status_code=400, detail="SIEM signing secret is required")
     enterprise["siem"] = {
         "enabled": body.enabled,
         "endpoint": body.endpoint.strip(),
-        "secret": body.secret.strip(),
+        "secretEnc": encrypt_enterprise_secret(secret_plain, settings),
     }
     org_settings["enterprise"] = enterprise
     _save_org_settings(client, org_id, org_settings)

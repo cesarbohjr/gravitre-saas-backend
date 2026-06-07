@@ -143,11 +143,13 @@ async def lifespan(app: FastAPI):
         start_workflow_schedule_scheduler,
         stop_workflow_schedule_scheduler,
     )
+    from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
+    app.state.workflow_run_task = start_workflow_run_worker()
     _log_billing_startup_config()
     try:
         yield
@@ -156,6 +158,7 @@ async def lifespan(app: FastAPI):
         await stop_knowledge_sync_scheduler(getattr(app.state, "knowledge_sync_task", None))
         await stop_workflow_schedule_scheduler(getattr(app.state, "workflow_schedule_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
+        await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 
 
 app = FastAPI(

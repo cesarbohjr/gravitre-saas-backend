@@ -13,7 +13,16 @@ def normalize_region(value: str | None) -> str:
     return region
 
 
-def get_org_data_region(org_settings: dict[str, Any] | None) -> str:
+def get_org_data_region(
+    org_settings: dict[str, Any] | None,
+    *,
+    data_region: str | None = None,
+) -> str:
+    if data_region:
+        try:
+            return normalize_region(data_region)
+        except ValueError:
+            pass
     settings = org_settings or {}
     enterprise = settings.get("enterprise") if isinstance(settings.get("enterprise"), dict) else {}
     residency = enterprise.get("dataResidency") if isinstance(enterprise.get("dataResidency"), dict) else {}
@@ -29,6 +38,10 @@ def enforce_region_for_connector_tokens(region: str, connector_region: str | Non
         raise PermissionError("Connector tokens cannot be replicated across data regions")
 
 
-def resolve_execution_region(org_settings: dict[str, Any] | None) -> str:
+def resolve_execution_region(
+    org_settings: dict[str, Any] | None,
+    *,
+    data_region: str | None = None,
+) -> str:
     """Resolve workflow/agent execution region from org settings (STA-93)."""
-    return get_org_data_region(org_settings)
+    return get_org_data_region(org_settings, data_region=data_region)

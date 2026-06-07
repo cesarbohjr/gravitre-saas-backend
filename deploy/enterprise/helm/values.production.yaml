@@ -1,0 +1,14 @@
+api:
+  replicaCount: 3
+
+web:
+  replicaCount: 2
+
+worker:
+  replicaCount: 2
+
+redis:
+  enabled: false
+
+env:
+  redisUrl: ""  # set managed Redis URL via secrets
