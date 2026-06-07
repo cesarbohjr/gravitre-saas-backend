@@ -142,6 +142,9 @@ class Settings(BaseSettings):
     # Generic OAuth — Freshdesk (subdomain per connector at connect)
     freshdesk_client_id: str = ""
     freshdesk_client_secret: str = ""
+    # Generic OAuth — Microsoft 365 / Graph (multitenant via /common/)
+    microsoft365_client_id: str = ""
+    microsoft365_client_secret: str = ""
     # PagerDuty OAuth (STA-37)
     pagerduty_client_id: str = ""
     pagerduty_client_secret: str = ""
