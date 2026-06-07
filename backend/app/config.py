@@ -136,6 +136,9 @@ class Settings(BaseSettings):
     # Generic OAuth — Airtable (PKCE)
     airtable_client_id: str = ""
     airtable_client_secret: str = ""
+    # Generic OAuth — Asana
+    asana_client_id: str = ""
+    asana_client_secret: str = ""
     # PagerDuty OAuth (STA-37)
     pagerduty_client_id: str = ""
     pagerduty_client_secret: str = ""
