@@ -860,32 +860,6 @@ export const liteApi = {
   },
 }
 
-// ============ Enterprise (Tier 4) ============
-export const enterpriseApi = {
-  getDataRegion: () =>
-    fetcher<{ region: string; storagePrefix: string }>(apiUrl("/api/enterprise/data-region")),
-  updateDataRegion: (region: "us" | "eu") =>
-    putJson<{ region: string; storagePrefix: string }>(apiUrl("/api/enterprise/data-region"), { region }),
-  getBranding: () => fetcher<Record<string, unknown>>(apiUrl("/api/enterprise/branding")),
-  updateBranding: (data: Record<string, unknown>) =>
-    putJson<Record<string, unknown>>(apiUrl("/api/enterprise/branding"), data),
-  getDomainInstructions: () =>
-    fetcher<Record<string, unknown>>(apiUrl("/api/enterprise/branding/domain-instructions")),
-  verifyDomain: () =>
-    postJson<Record<string, unknown>>(apiUrl("/api/enterprise/branding/verify-domain"), {}),
-  getWorkforceAnalytics: () => fetcher<Record<string, unknown>>(apiUrl("/api/enterprise/workforce-analytics")),
-  getCostAttribution: () => fetcher<Record<string, unknown>>(apiUrl("/api/enterprise/cost-attribution")),
-  getSiemConfig: () =>
-    fetcher<{ enabled: boolean; endpoint?: string; hasSecret?: boolean }>(apiUrl("/api/enterprise/siem")),
-  updateSiemConfig: (data: { endpoint: string; secret?: string; enabled: boolean }) =>
-    putJson<{ enabled: boolean; endpoint: string; hasSecret: boolean }>(apiUrl("/api/enterprise/siem"), data),
-  testSiem: (data: { endpoint: string; secret: string }) =>
-    postJson<{ delivered: boolean; statusCode?: number; error?: string }>(
-      apiUrl("/api/enterprise/siem/test"),
-      data
-    ),
-}
-
 // ============ SSO ============
 export const ssoApi = {
   getConfig: () =>
@@ -955,7 +929,6 @@ export const api = {
   notifications: notificationsApi,
   onboarding: onboardingApi,
   lite: liteApi,
-  enterprise: enterpriseApi,
   sso: ssoApi,
   enterprise: enterpriseApi,
 }
