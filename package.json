@@ -20,6 +20,7 @@
     "quickbooks:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-quickbooks-operator-env.ps1",
     "quickbooks:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-quickbooks-oauth.ps1",
     "jira:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-jira-oauth.ps1",
+    "slack:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-slack-oauth.ps1",
     "pagerduty:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-pagerduty-oauth.ps1",
     "google:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-google-oauth.ps1",
     "google:configure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/configure-google-cloud.ps1",

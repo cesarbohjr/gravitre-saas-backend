@@ -199,7 +199,9 @@ class Settings(BaseSettings):
     # Redact PII (email/SSN/card/phone) from user + retrieved content before it
     # is sent to an external AI provider.
     ai_pii_redaction_enabled: bool = True
-    slack_signing_secret: str = ""
+    slack_client_id: str = ""
+    slack_client_secret: str = ""
+    slack_app_id: str = ""
     slack_signing_secret: str = ""
 
     # Multi-provider failover

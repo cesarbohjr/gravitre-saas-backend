@@ -94,6 +94,14 @@ from app.connectors.salesforce_oauth import (
     salesforce_redirect_uri,
     normalize_vendor as normalize_salesforce_vendor,
 )
+from app.connectors.slack_oauth import (
+    complete_slack_oauth_connection,
+    slack_authorize_url,
+    slack_credentials,
+    slack_oauth_configured,
+    slack_redirect_uri,
+    normalize_vendor as normalize_slack_vendor,
+)
 from app.connectors.google_vendor_oauth import (
     GOOGLE_OAUTH_VENDORS,
     complete_google_vendor_oauth_connection,
@@ -140,6 +148,7 @@ SUPPORTED_OAUTH_PROVIDERS = frozenset(
         "confluence",
         "pagerduty",
         "notion",
+        "slack",
         "workday",
         "marketo",
     }
@@ -167,6 +176,8 @@ def _resolve_oauth_vendor(provider: str) -> str:
         return "pagerduty"
     if normalize_notion_vendor(provider) == "notion":
         return "notion"
+    if normalize_slack_vendor(provider) == "slack":
+        return "slack"
     if normalize_workday_vendor(provider) == "workday":
         return "workday"
     if normalize_marketo_vendor(provider) == "marketo":
@@ -264,6 +275,9 @@ async def oauth_provider_status(
     elif vendor == "notion":
         configured = notion_oauth_configured(settings, environment_name)
         redirect_uri = notion_redirect_uri(settings)
+    elif vendor == "slack":
+        configured = slack_oauth_configured(settings, environment_name)
+        redirect_uri = slack_redirect_uri(settings)
     elif vendor == "workday":
         configured = workday_oauth_configured(settings, environment_name)
         redirect_uri = workday_redirect_uri(settings)
@@ -335,6 +349,11 @@ async def start_oauth(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Notion OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
+        )
+    if vendor == "slack" and not slack_oauth_configured(settings, environment_name):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Slack OAuth is not configured", "OAUTH_NOT_CONFIGURED"),
         )
     if vendor == "workday" and not workday_oauth_configured(settings, environment_name):
         raise HTTPException(
@@ -578,6 +597,10 @@ async def start_oauth(
         redirect_uri = notion_redirect_uri(settings)
         client_id, _secret = notion_credentials(settings, environment_name)
         auth_url = notion_authorize_url(client_id, redirect_uri, state)
+    elif vendor == "slack":
+        redirect_uri = slack_redirect_uri(settings)
+        client_id, _secret = slack_credentials(settings, environment_name)
+        auth_url = slack_authorize_url(client_id, redirect_uri, state)
     elif vendor == "workday":
         persist_workday_tenant_config(
             client,
@@ -779,6 +802,16 @@ async def oauth_callback(
             on_pagerduty_connector_connected(client, org_id, connector_id, settings)
         elif vendor == "notion":
             complete_notion_oauth_connection(
+                client,
+                org_id,
+                connector_id,
+                code,
+                settings,
+                environment_name=environment_name,
+                reconnect=reconnect,
+            )
+        elif vendor == "slack":
+            complete_slack_oauth_connection(
                 client,
                 org_id,
                 connector_id,

@@ -29,6 +29,10 @@ from app.connectors.salesforce_oauth import (
     normalize_vendor as normalize_salesforce_vendor,
     salesforce_connection_auth_status,
 )
+from app.connectors.slack_oauth import (
+    normalize_vendor as normalize_slack_vendor,
+    slack_connection_auth_status,
+)
 from app.connectors.google_vendor_oauth import (
     GOOGLE_OAUTH_VENDORS,
     google_vendor_connection_auth_status,
@@ -83,6 +87,10 @@ def resolve_connector_auth_status(
             google_vendor,
             settings,
             environment_name=environment_name,
+        )
+    if normalize_slack_vendor(vendor) == "slack":
+        return slack_connection_auth_status(
+            client, org_id, connector_id, settings, environment_name=environment_name
         )
     return None
 

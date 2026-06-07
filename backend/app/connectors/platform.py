@@ -24,6 +24,7 @@ OAUTH_DOCS_URLS: dict[str, str] = {
     "pagerduty": "https://developer.pagerduty.com/docs/72d3b724589e3-oauth-functionality",
     "notion": "https://developers.notion.com/docs/authorization",
     "marketo": "https://developers.marketo.com/rest-api/",
+    "slack": "https://api.slack.com/authentication/oauth-v2",
 }
 
 
