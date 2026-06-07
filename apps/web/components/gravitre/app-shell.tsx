@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi } from "@/lib/api"
+import { EnterpriseBrandingProvider, useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -56,6 +57,15 @@ function daysLeft(isoDate: string): number {
 }
 
 export function AppShell({ children, title }: AppShellProps) {
+  return (
+    <EnterpriseBrandingProvider>
+      <AppShellContent title={title}>{children}</AppShellContent>
+    </EnterpriseBrandingProvider>
+  )
+}
+
+function AppShellContent({ children, title }: AppShellProps) {
+  const { branding } = useEnterpriseBranding()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
@@ -241,7 +251,14 @@ export function AppShell({ children, title }: AppShellProps) {
             </div>
           )}
 
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto">
+            {children}
+            {!branding.hidePoweredBy && (
+              <div className="border-t border-border px-4 py-2 text-center text-[11px] text-muted-foreground">
+                Powered by Gravitre
+              </div>
+            )}
+          </main>
         </div>
       </div>
       

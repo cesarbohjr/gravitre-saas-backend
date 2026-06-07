@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
+import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import {
   Tooltip,
   TooltipContent,
@@ -101,6 +102,7 @@ const adminNavigation: NavGroup[] = [
     items: [
       { name: "Workspaces", href: "/environments", icon: "boxes" },
       { name: "Settings", href: "/settings", icon: "sliders" },
+      { name: "Enterprise", href: "/settings/enterprise", icon: "globe" },
     ],
   },
 ]
@@ -139,6 +141,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
+  const { branding } = useEnterpriseBranding()
+
+  const logoFull = branding.logoUrl || "/images/gravitre-logo-black.png"
+  const logoFullDark = branding.logoUrl || "/images/gravitre-logo-white.png"
+  const logoIcon = branding.logoUrl || "/images/gravitre-icon-black.png"
+  const logoIconDark = branding.logoUrl || "/images/gravitre-icon-white.png"
   
   // Use the appropriate navigation based on mode
   const navigation = isLite ? liteNavigation : adminNavigation
@@ -180,29 +188,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Icon only - tablet collapsed mode */}
             <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
               <img
-                src="/images/gravitre-icon-black.png"
-                alt="Gravitre"
+                src={logoIcon}
+                alt="Organization"
                 className="h-16 w-16 object-contain dark:hidden"
               />
               <img
-                src="/images/gravitre-icon-white.png"
-                alt="Gravitre"
+                src={logoIconDark}
+                alt="Organization"
                 className="h-16 w-16 object-contain hidden dark:block"
               />
             </div>
             {/* Full logo on mobile drawer and desktop */}
             <div className="md:hidden xl:block">
               <img
-                src="/images/gravitre-logo-black.png"
-                alt="Gravitre"
-                className="dark:hidden"
-                style={{ height: '40px', width: 'auto' }}
+                src={logoFull}
+                alt="Organization"
+                className="dark:hidden max-h-10 w-auto object-contain"
               />
               <img
-                src="/images/gravitre-logo-white.png"
-                alt="Gravitre"
-                className="hidden dark:block"
-                style={{ height: '40px', width: 'auto' }}
+                src={logoFullDark}
+                alt="Organization"
+                className="hidden dark:block max-h-10 w-auto object-contain"
               />
             </div>
           </Link>
