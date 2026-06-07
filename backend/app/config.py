@@ -127,6 +127,12 @@ class Settings(BaseSettings):
     # Jira Cloud OAuth (STA-36)
     jira_client_id: str = ""
     jira_client_secret: str = ""
+    # Generic OAuth — Xero (PKCE)
+    xero_client_id: str = ""
+    xero_client_secret: str = ""
+    # Generic OAuth — Mailchimp
+    mailchimp_client_id: str = ""
+    mailchimp_client_secret: str = ""
     # PagerDuty OAuth (STA-37)
     pagerduty_client_id: str = ""
     pagerduty_client_secret: str = ""

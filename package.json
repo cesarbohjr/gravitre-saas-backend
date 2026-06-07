@@ -16,6 +16,8 @@
     "oauth:check-all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-all-oauth-status.ps1",
     "operator:init": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/init-operator-platform.ps1",
     "jira:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-jira-operator-env.ps1",
+    "xero:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-xero-operator-env.ps1",
+    "xero:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-xero-oauth.ps1",
     "quickbooks:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
     "quickbooks:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-quickbooks-operator-env.ps1",
     "quickbooks:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-quickbooks-oauth.ps1",
