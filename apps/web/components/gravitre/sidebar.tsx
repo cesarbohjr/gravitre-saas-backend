@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
+import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import {
   Tooltip,
   TooltipContent,
@@ -139,6 +140,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
+  const { effectiveLogoUrl } = useEnterpriseBranding()
   
   // Use the appropriate navigation based on mode
   const navigation = isLite ? liteNavigation : adminNavigation
@@ -177,34 +179,59 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="flex h-16 xl:h-20 items-center justify-between border-b border-sidebar-border px-3 xl:px-4">
           <Link href="/" className="flex items-center" onClick={onClose}>
-            {/* Icon only - tablet collapsed mode */}
-            <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
-              <img
-                src="/images/gravitre-icon-black.png"
-                alt="Gravitre"
-                className="h-16 w-16 object-contain dark:hidden"
-              />
-              <img
-                src="/images/gravitre-icon-white.png"
-                alt="Gravitre"
-                className="h-16 w-16 object-contain hidden dark:block"
-              />
-            </div>
-            {/* Full logo on mobile drawer and desktop */}
-            <div className="md:hidden xl:block">
-              <img
-                src="/images/gravitre-logo-black.png"
-                alt="Gravitre"
-                className="dark:hidden"
-                style={{ height: '40px', width: 'auto' }}
-              />
-              <img
-                src="/images/gravitre-logo-white.png"
-                alt="Gravitre"
-                className="hidden dark:block"
-                style={{ height: '40px', width: 'auto' }}
-              />
-            </div>
+            {effectiveLogoUrl ? (
+              <>
+                {/* Custom white-label logo - icon size on tablet rail */}
+                <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
+                  <img
+                    src={effectiveLogoUrl || "/placeholder.svg"}
+                    alt="Workspace logo"
+                    className="h-10 w-10 object-contain"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+                <div className="md:hidden xl:block">
+                  <img
+                    src={effectiveLogoUrl || "/placeholder.svg"}
+                    alt="Workspace logo"
+                    className="object-contain"
+                    style={{ height: "40px", width: "auto", maxWidth: "180px" }}
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Icon only - tablet collapsed mode */}
+                <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
+                  <img
+                    src="/images/gravitre-icon-black.png"
+                    alt="Gravitre"
+                    className="h-16 w-16 object-contain dark:hidden"
+                  />
+                  <img
+                    src="/images/gravitre-icon-white.png"
+                    alt="Gravitre"
+                    className="h-16 w-16 object-contain hidden dark:block"
+                  />
+                </div>
+                {/* Full logo on mobile drawer and desktop */}
+                <div className="md:hidden xl:block">
+                  <img
+                    src="/images/gravitre-logo-black.png"
+                    alt="Gravitre"
+                    className="dark:hidden"
+                    style={{ height: '40px', width: 'auto' }}
+                  />
+                  <img
+                    src="/images/gravitre-logo-white.png"
+                    alt="Gravitre"
+                    className="hidden dark:block"
+                    style={{ height: '40px', width: 'auto' }}
+                  />
+                </div>
+              </>
+            )}
           </Link>
           <Button
             variant="ghost"

@@ -1002,3 +1002,78 @@ export interface MarketplaceBillingStatus {
   platformFeeBps: number
   recentUsage: MarketplaceUsageEvent[]
 }
+
+// ============ Enterprise Admin ============
+
+export type EnterpriseRegion = "us" | "eu"
+
+export interface EnterpriseDataRegion {
+  region: EnterpriseRegion
+  storagePrefix: string
+}
+
+export interface EnterpriseBranding {
+  logoUrl: string | null
+  primaryColor: string | null
+  customDomain: string | null
+  customDomainVerified: boolean
+  hidePoweredBy: boolean
+  emailFromName: string | null
+}
+
+export interface EnterpriseDnsRecord {
+  type: "CNAME" | "TXT"
+  host: string
+  value: string
+  ttl?: number | null
+}
+
+export interface EnterpriseDomainInstructions {
+  domain: string | null
+  records: EnterpriseDnsRecord[]
+}
+
+export interface EnterpriseDomainVerifyCheck {
+  ok: boolean
+  expected?: string | null
+  found?: string | null
+  message?: string | null
+}
+
+export interface EnterpriseDomainVerifyResult {
+  verified: boolean
+  method: string
+  checks: {
+    cname?: EnterpriseDomainVerifyCheck
+    txt?: EnterpriseDomainVerifyCheck
+  }
+}
+
+export interface EnterpriseWorkforceAnalytics {
+  tasksCompleted: number
+  tasksFailed: number
+  tasksRunning: number
+  handoffs: number
+  toolSuccessRate: number
+  approvalWaitEvents: number
+  slaBreaches: number
+}
+
+export interface EnterpriseCostAttribution {
+  totalCostUsd: number
+  byAgent: Record<string, number>
+  byDepartment: Record<string, number>
+  byWorkflow: Record<string, number>
+}
+
+export interface EnterpriseSiemConfig {
+  enabled: boolean
+  endpoint: string | null
+  hasSecret: boolean
+}
+
+export interface EnterpriseSiemTestResult {
+  ok: boolean
+  status?: number | null
+  message?: string | null
+}

@@ -78,6 +78,14 @@ import type {
   MarketplaceSandboxStatus,
   PartnerConnectorSubmission,
   PartnerSecurityChecklist,
+  EnterpriseDataRegion,
+  EnterpriseBranding,
+  EnterpriseDomainInstructions,
+  EnterpriseDomainVerifyResult,
+  EnterpriseWorkforceAnalytics,
+  EnterpriseCostAttribution,
+  EnterpriseSiemConfig,
+  EnterpriseSiemTestResult,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -803,6 +811,37 @@ export const ssoApi = {
 }
 
 // Convenience export for all APIs
+// ============ Enterprise Admin ============
+export const enterpriseApi = {
+  // Data residency
+  getDataRegion: () => fetcher<EnterpriseDataRegion>(apiUrl("/api/enterprise/data-region")),
+  updateDataRegion: (data: { region: EnterpriseDataRegion["region"] }) =>
+    putJson<EnterpriseDataRegion>(apiUrl("/api/enterprise/data-region"), data),
+
+  // Branding
+  getBranding: () => fetcher<EnterpriseBranding>(apiUrl("/api/enterprise/branding")),
+  updateBranding: (data: Partial<EnterpriseBranding>) =>
+    putJson<EnterpriseBranding>(apiUrl("/api/enterprise/branding"), data),
+  getDomainInstructions: () =>
+    fetcher<EnterpriseDomainInstructions>(apiUrl("/api/enterprise/branding/domain-instructions")),
+  verifyDomain: () =>
+    postJson<EnterpriseDomainVerifyResult>(apiUrl("/api/enterprise/branding/verify-domain"), {}),
+
+  // Workforce analytics
+  getWorkforceAnalytics: () =>
+    fetcher<EnterpriseWorkforceAnalytics>(apiUrl("/api/enterprise/workforce-analytics")),
+
+  // Cost attribution
+  getCostAttribution: () =>
+    fetcher<EnterpriseCostAttribution>(apiUrl("/api/enterprise/cost-attribution")),
+
+  // SIEM
+  getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
+  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
+    putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
+  testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
+}
+
 export const api = {
   auth: authApi,
   operators: operatorsApi,
@@ -825,6 +864,7 @@ export const api = {
   onboarding: onboardingApi,
   lite: liteApi,
   sso: ssoApi,
+  enterprise: enterpriseApi,
 }
 
 export default api
