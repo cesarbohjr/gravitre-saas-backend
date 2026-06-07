@@ -139,6 +139,9 @@ class Settings(BaseSettings):
     # Generic OAuth — Asana
     asana_client_id: str = ""
     asana_client_secret: str = ""
+    # Generic OAuth — Freshdesk (subdomain per connector at connect)
+    freshdesk_client_id: str = ""
+    freshdesk_client_secret: str = ""
     # PagerDuty OAuth (STA-37)
     pagerduty_client_id: str = ""
     pagerduty_client_secret: str = ""

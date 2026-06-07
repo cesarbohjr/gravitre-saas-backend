@@ -22,6 +22,8 @@
     "airtable:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-airtable-oauth.ps1",
     "asana:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-asana-operator-env.ps1",
     "asana:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-asana-oauth.ps1",
+    "freshdesk:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-freshdesk-operator-env.ps1",
+    "freshdesk:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-freshdesk-oauth.ps1",
     "quickbooks:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
     "quickbooks:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-quickbooks-operator-env.ps1",
     "quickbooks:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-quickbooks-oauth.ps1",
