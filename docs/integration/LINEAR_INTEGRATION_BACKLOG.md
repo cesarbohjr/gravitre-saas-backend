@@ -110,8 +110,6 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Tier 2 status:** Complete in code and Linear (STA-27–49 Done). Production smoke optional — see `TIER2_PRODUCTION_SMOKE.md`.
-
 **Current focus:** Tier 5 Epic A — STA-108 ✅ human-in-the-loop interrupt; next STA-109 autonomous run budgets.
 
 ---
@@ -152,7 +150,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Start Tier 3 only after:** Tier 1 platform (STA-10, STA-11, STA-13) and relevant Tier 2 tracks.
 
-**Tier 3 status:** Complete in code and Linear (STA-50–73 Done). Key docs: `connector-sdk-spec.md`, `linkedin-sales-nav.md`.
+**Tier 3 status:** Complete in code and Linear (STA-50–73 Done). Production smoke: `TIER3_PRODUCTION_SMOKE.md`. Operator scripts: `netsuite:*`, `workday:*`, `marketo:*`.
 
 ---
 
@@ -171,26 +169,28 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 | Order | Ref | Linear | Title | Blocked by |
 |-------|-----|--------|-------|------------|
-| 1 | T4-015 | [STA-94](https://linear.app/staqbot/issue/STA-94) | Durable workflow run queue (HA) | STA-12, STA-47 |
-| 2 | T4-007 | [STA-86](https://linear.app/staqbot/issue/STA-86) | Enterprise SSO (SAML/OIDC) | — |
-| 3 | T4-001 | [STA-80](https://linear.app/staqbot/issue/STA-80) | Data residency | — |
-| 4 | T4-002 | [STA-81](https://linear.app/staqbot/issue/STA-81) | SOC2 evidence export | STA-10 |
-| 5 | T4-003 | [STA-82](https://linear.app/staqbot/issue/STA-82) | PII redaction in audit | STA-10 |
+| 1 | T4-015 | [STA-94](https://linear.app/staqbot/issue/STA-94) | Durable workflow run queue (HA) ✅ (`app/workers/workflow_queue.py`, Redis) | STA-12, STA-47 |
+| 2 | T4-007 | [STA-86](https://linear.app/staqbot/issue/STA-86) | Enterprise SSO (SAML/OIDC) ✅ (`app/routers/sso.py`, SCIM) | — |
+| 3 | T4-001 | [STA-80](https://linear.app/staqbot/issue/STA-80) | Data residency ✅ (`GET/PUT /api/enterprise/data-region`) | — |
+| 4 | T4-002 | [STA-81](https://linear.app/staqbot/issue/STA-81) | SOC2 evidence export ✅ (`GET /api/enterprise/compliance/soc2-export`) | STA-10 |
+| 5 | T4-003 | [STA-82](https://linear.app/staqbot/issue/STA-82) | PII redaction in audit ✅ (`app/services/compliance_service.py`) | STA-10 |
 | 6 | T4-011 | [STA-90](https://linear.app/staqbot/issue/STA-90) | Model allowlist policy ✅ | STA-11 |
-| 7 | T4-014 | [STA-93](https://linear.app/staqbot/issue/STA-93) | Multi-region workflow routing | STA-80 |
-| 8 | T4-005 | [STA-84](https://linear.app/staqbot/issue/STA-84) | White-label branding | — |
-| 9 | T4-006 | [STA-85](https://linear.app/staqbot/issue/STA-85) | VPC / Helm deployment | — |
-| 10 | T4-012 | [STA-91](https://linear.app/staqbot/issue/STA-91) | Workforce analytics dashboard | STA-10, STA-17 |
-| 11 | T4-013 | [STA-92](https://linear.app/staqbot/issue/STA-92) | Per-agent cost attribution | STA-10 |
-| 12 | T4-008 | [STA-87](https://linear.app/staqbot/issue/STA-87) | BambooHR connector | STA-10, STA-13 |
-| 13 | T4-009 | [STA-88](https://linear.app/staqbot/issue/STA-88) | Greenhouse connector | STA-10, STA-13 |
-| 14 | T4-010 | [STA-89](https://linear.app/staqbot/issue/STA-89) | Xero connector | STA-33, STA-34 |
-| 15 | T4-004 | [STA-83](https://linear.app/staqbot/issue/STA-83) | SIEM export | STA-81, STA-82 |
-| 16 | T4-016 | [STA-95](https://linear.app/staqbot/issue/STA-95) | Workflow DR runbook | STA-94 |
+| 7 | T4-014 | [STA-93](https://linear.app/staqbot/issue/STA-93) | Multi-region workflow routing ✅ (`GET /api/enterprise/execution-region`) | STA-80 |
+| 8 | T4-005 | [STA-84](https://linear.app/staqbot/issue/STA-84) | White-label branding ✅ (`GET/PUT /api/enterprise/branding`) | — |
+| 9 | T4-006 | [STA-85](https://linear.app/staqbot/issue/STA-85) | VPC / Helm deployment ✅ (`deploy/enterprise/`) | — |
+| 10 | T4-012 | [STA-91](https://linear.app/staqbot/issue/STA-91) | Workforce analytics dashboard ✅ (`GET /api/enterprise/workforce-analytics`) | STA-10, STA-17 |
+| 11 | T4-013 | [STA-92](https://linear.app/staqbot/issue/STA-92) | Per-agent cost attribution ✅ (`GET /api/enterprise/cost-attribution`) | STA-10 |
+| 12 | T4-008 | [STA-87](https://linear.app/staqbot/issue/STA-87) | BambooHR connector ✅ (`bamboohr.*` tools) | STA-10, STA-13 |
+| 13 | T4-009 | [STA-88](https://linear.app/staqbot/issue/STA-88) | Greenhouse connector ✅ (`greenhouse.*` tools) | STA-10, STA-13 |
+| 14 | T4-010 | [STA-89](https://linear.app/staqbot/issue/STA-89) | Xero connector ✅ (`xero.*` read tools) | STA-33, STA-34 |
+| 15 | T4-004 | [STA-83](https://linear.app/staqbot/issue/STA-83) | SIEM export ✅ (`GET/PUT/POST /api/enterprise/siem`) | STA-81, STA-82 |
+| 16 | T4-016 | [STA-95](https://linear.app/staqbot/issue/STA-95) | Workflow DR runbook ✅ (`workflow-dr-runbook.md`) | STA-94 |
 | 17 | T4-017 | [STA-96](https://linear.app/staqbot/issue/STA-96) | Marketplace v2 billing ✅ (`/marketplace/billing`, v1 Express + transfers; v2 reference at `/samples/stripe-connect`) | STA-73 |
 | 18 | T4-018 | [STA-97](https://linear.app/staqbot/issue/STA-97) | Certified partner program ✅ (static scan, scope review, registry badge) | STA-70 |
 | 19 | T4-019 | [STA-98](https://linear.app/staqbot/issue/STA-98) | Private connector runtime ✅ (`/marketplace/private`, signed bundles + sandbox) | STA-70, STA-85 |
-| 20 | T4-020 | [STA-99](https://linear.app/staqbot/issue/STA-99) | Fine-tuning → agent runtime | STA-49 |
+| 20 | T4-020 | [STA-99](https://linear.app/staqbot/issue/STA-99) | Fine-tuning → agent runtime ✅ (`agent_finetune_service.py`) | STA-49 |
+
+**Tier 4 status:** Complete in code (STA-74–99 Done). Production smoke: `TIER4_PRODUCTION_SMOKE.md`.
 
 **Start Tier 4 only after:** Tier 1 platform complete; Tier 3 marketplace (STA-70, STA-73) for ecosystem epics.
 

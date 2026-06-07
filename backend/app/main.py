@@ -56,6 +56,7 @@ from app.routers import (
     workflows,
     sources,
     environments,
+    enterprise,
     settings,
     slack_commands,
 )
@@ -325,6 +326,7 @@ app.include_router(lite.router)
 app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
+app.include_router(enterprise.router)
 app.include_router(stripe_webhooks.router)
 app.include_router(stripe_connect_sample_router)
 app.include_router(hubspot_inbound.router)

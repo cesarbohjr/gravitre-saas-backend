@@ -374,7 +374,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Xero",
         "Payments / Finance",
         "https://developer.xero.com/documentation/api/accounting/overview",
-        shipped=False,
+        shipped=True,
         department="finance",
         v1=(
             action("xero", "contacts.list", "List contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
@@ -1027,7 +1027,7 @@ VENDOR_DEFINITIONS: tuple = (
         "BambooHR",
         "HR / People",
         "https://documentation.bamboohr.com/reference",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("bamboohr", "employees.get", "Get employee", tier="v1", kind="read", scope_suffix="employees:read", idempotent=True),
@@ -1042,6 +1042,25 @@ VENDOR_DEFINITIONS: tuple = (
             action("bamboohr", "onboarding.tasks.assign", "Assign onboarding tasks", tier="v3", kind="advanced", scope_suffix="onboarding:write"),
             action("bamboohr", "reports.run", "Run custom report", tier="v3", kind="advanced", scope_suffix="reports:read"),
             action("bamboohr", "webhooks.create", "Create webhook", tier="v3", kind="advanced", scope_suffix="webhooks:write"),
+        ),
+    ),
+    build_vendor(
+        "greenhouse",
+        "Greenhouse",
+        "HR / People",
+        "https://developers.greenhouse.io/harvest.html",
+        shipped=True,
+        department="operations",
+        v1=(
+            action("greenhouse", "candidates.get", "Get candidate", tier="v1", kind="read", scope_suffix="candidates:read", idempotent=True),
+            action("greenhouse", "applications.list", "List applications", tier="v1", kind="read", scope_suffix="applications:read", idempotent=True),
+            action("greenhouse", "jobs.list", "List open jobs", tier="v1", kind="read", scope_suffix="jobs:read", idempotent=True),
+        ),
+        v2=(
+            action("greenhouse", "candidates.create", "Create candidate", tier="v2", kind="write", scope_suffix="candidates:write", destructive=True),
+        ),
+        v3=(
+            action("greenhouse", "offers.create", "Create offer", tier="v3", kind="advanced", scope_suffix="offers:write"),
         ),
     ),
     build_vendor(
