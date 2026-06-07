@@ -5,6 +5,41 @@ from supabase import Client
 
 from app.connectors.crypto import decrypt_secret, encrypt_secret
 from app.config import Settings
+from app.services.data_residency_service import enforce_region_for_connector_tokens, get_org_data_region
+
+
+def _org_residency(client: Client, org_id: str) -> str:
+    row = (
+        client.table("organizations")
+        .select("settings,data_region")
+        .eq("id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if not row.data:
+        return "us"
+    org_row = row.data[0]
+    settings = org_row.get("settings") or {}
+    org_settings = settings if isinstance(settings, dict) else {}
+    return get_org_data_region(org_settings, data_region=org_row.get("data_region"))
+
+
+def _connector_data_region(client: Client, org_id: str, connector_id: str) -> str | None:
+    row = (
+        client.table("connectors")
+        .select("config")
+        .eq("org_id", org_id)
+        .eq("id", connector_id)
+        .limit(1)
+        .execute()
+    )
+    if not row.data:
+        return None
+    config = row.data[0].get("config") or {}
+    if not isinstance(config, dict):
+        return None
+    region = config.get("dataRegion") or config.get("data_region")
+    return str(region) if region else None
 
 
 def list_connectors(client: Client, org_id: str, environment_name: str = "default") -> list[dict]:
@@ -126,6 +161,22 @@ def set_secret(
     settings: Settings,
 ) -> None:
     """Upsert secret. Encrypted at rest."""
+    org_region = _org_residency(client, org_id)
+    connector_region = _connector_data_region(client, org_id, connector_id)
+    enforce_region_for_connector_tokens(org_region, connector_region)
+    if connector_region is None:
+        connector = (
+            client.table("connectors")
+            .select("config")
+            .eq("org_id", org_id)
+            .eq("id", connector_id)
+            .limit(1)
+            .execute()
+        )
+        if connector.data:
+            config = dict(connector.data[0].get("config") or {})
+            config["dataRegion"] = org_region
+            client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
     enc = encrypt_secret(plaintext_value, settings.connector_secrets_encryption_key)
     existing = (
         client.table("connector_secrets")

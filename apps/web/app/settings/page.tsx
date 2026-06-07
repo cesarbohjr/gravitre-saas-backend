@@ -41,7 +41,7 @@ import {
   Trash2,
   DollarSign,
 } from "lucide-react"
-import { ModelSelector } from "@/components/gravitre/model-selector"
+import Link from "next/link"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { settingsApi, ssoApi } from "@/lib/api"
@@ -67,6 +67,7 @@ const sections: SettingSection[] = [
   { id: "meson-addons", title: "Meson Addons", description: "Enable premium AI addon capabilities", icon: Sparkles },
   { id: "billing-usage", title: "Billing Usage", description: "Review outputs and overage usage", icon: DollarSign },
   { id: "webhooks", title: "Webhooks", description: "Configure outbound webhooks", icon: Webhook },
+  { id: "enterprise", title: "Enterprise", description: "Data region, branding, analytics, SIEM", icon: Globe },
 ]
 
 function OrganizationSettings({
@@ -1516,6 +1517,7 @@ function SettingsContent() {
     "lite-seats",
     "meson-addons",
     "billing-usage",
+    "enterprise",
   ])
 
   if (authLoading) {
@@ -1567,6 +1569,20 @@ function SettingsContent() {
       case "billing-usage":
         return <BillingUsageSettings />
       case "webhooks": return <WebhooksSettings />
+      case "enterprise":
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Configure data residency, white-label branding, workforce analytics, and SIEM export.
+            </p>
+            <Link href="/settings/enterprise">
+              <Button size="sm" variant="outline" className="gap-2">
+                <Globe className="h-3.5 w-3.5" />
+                Open Enterprise settings
+              </Button>
+            </Link>
+          </div>
+        )
       default:
         return (
           <OrganizationSettings

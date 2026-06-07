@@ -103,6 +103,7 @@ const adminNavigation: NavGroup[] = [
       { name: "Workspaces", href: "/environments", icon: "boxes" },
       { name: "Enterprise", href: "/settings/enterprise", icon: "building" },
       { name: "Settings", href: "/settings", icon: "sliders" },
+      { name: "Enterprise", href: "/settings/enterprise", icon: "globe" },
     ],
   },
 ]
@@ -141,7 +142,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
+<<<<<<< HEAD
   const { effectiveLogoUrl } = useEnterpriseBranding()
+=======
+  const { branding } = useEnterpriseBranding()
+
+  const logoFull = branding.logoUrl || "/images/gravitre-logo-black.png"
+  const logoFullDark = branding.logoUrl || "/images/gravitre-logo-white.png"
+  const logoIcon = branding.logoUrl || "/images/gravitre-icon-black.png"
+  const logoIconDark = branding.logoUrl || "/images/gravitre-icon-white.png"
+>>>>>>> eac2b609fbbcbbd202990b3258ff11c9e2f0003c
   
   // Use the appropriate navigation based on mode
   const navigation = isLite ? liteNavigation : adminNavigation
@@ -180,6 +190,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="flex h-16 xl:h-20 items-center justify-between border-b border-sidebar-border px-3 xl:px-4">
           <Link href="/" className="flex items-center" onClick={onClose}>
+<<<<<<< HEAD
             {effectiveLogoUrl ? (
               <>
                 {/* Custom white-label logo - icon size on tablet rail */}
@@ -233,6 +244,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </div>
               </>
             )}
+=======
+            {/* Icon only - tablet collapsed mode */}
+            <div className="hidden md:flex xl:hidden h-16 w-16 items-center justify-center">
+              <img
+                src={logoIcon}
+                alt="Organization"
+                className="h-16 w-16 object-contain dark:hidden"
+              />
+              <img
+                src={logoIconDark}
+                alt="Organization"
+                className="h-16 w-16 object-contain hidden dark:block"
+              />
+            </div>
+            {/* Full logo on mobile drawer and desktop */}
+            <div className="md:hidden xl:block">
+              <img
+                src={logoFull}
+                alt="Organization"
+                className="dark:hidden max-h-10 w-auto object-contain"
+              />
+              <img
+                src={logoFullDark}
+                alt="Organization"
+                className="hidden dark:block max-h-10 w-auto object-contain"
+              />
+            </div>
+>>>>>>> eac2b609fbbcbbd202990b3258ff11c9e2f0003c
           </Link>
           <Button
             variant="ghost"

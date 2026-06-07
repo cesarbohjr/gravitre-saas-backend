@@ -12,7 +12,7 @@ Single-tenant / VPC deployment chart for web + API + workers.
 ## Install
 
 ```bash
-helm upgrade --install gravitre ./helm \
+helm upgrade --install gravitre ./deploy/enterprise/helm \
   --namespace gravitre \
   --create-namespace \
   -f values.production.yaml

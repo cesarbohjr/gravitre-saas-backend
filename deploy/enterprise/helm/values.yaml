@@ -1,0 +1,39 @@
+global:
+  imagePullPolicy: IfNotPresent
+
+api:
+  replicaCount: 2
+  image:
+    repository: gravitre/api
+    tag: latest
+  service:
+    port: 8000
+  resources: {}
+
+web:
+  replicaCount: 2
+  image:
+    repository: gravitre/web
+    tag: latest
+  service:
+    port: 3000
+  resources: {}
+
+worker:
+  replicaCount: 1
+  image:
+    repository: gravitre/api
+    tag: latest
+  resources: {}
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+
+secrets:
+  existingSecret: gravitre-secrets
+
+env:
+  redisUrl: redis://gravitre-redis:6379/0
+  workflowQueueEnabled: "true"
+  agentJobWorkerEnabled: "true"

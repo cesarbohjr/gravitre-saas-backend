@@ -30,6 +30,7 @@ from app.workflows.constants import (
 )
 from app.workflows.dry_run import execute_dry_run
 from app.workflows.execute import execute_workflow_steps
+from app.workers.workflow_dispatch import try_enqueue_workflow_run, try_enqueue_workflow_run_sync
 from app.policy.engine import (
     PolicyContext,
     can_activate_workflow_version,
@@ -1446,6 +1447,26 @@ async def execute_workflow(
         _record_workflow_run_usage(client, org_id, environment_name, plan)
         emit_execute_created(client, org_id, current_user["user_id"], run_id, workflow_id)
         emit_execute_started(client, org_id, current_user["user_id"], run_id)
+        if await try_enqueue_workflow_run(
+            settings,
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            run_id=run_id,
+        ):
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.info(
+                "workflow_execute_queued request_id=%s org_id=%s workflow_id=%s run_id=%s latency_ms=%s",
+                request_id_ctx.get(), org_id, workflow_id, run_id, latency_ms,
+            )
+            return {
+                "run_id": run_id,
+                "status": RUN_STATUS_RUNNING,
+                "approval_required": False,
+                "queued": True,
+                "steps": [],
+                "errors": [],
+            }
         final_status, step_rows, errors, rate_limited = execute_workflow_steps(
             settings=settings,
             org_id=org_id,
@@ -1680,6 +1701,26 @@ def _execute_workflow_with_context(
         _record_workflow_run_usage(client, org_id, environment_name, plan)
         emit_execute_created(client, org_id, actor_id, run_id, workflow_id)
         emit_execute_started(client, org_id, actor_id, run_id)
+        if try_enqueue_workflow_run_sync(
+            settings,
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            run_id=run_id,
+        ):
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            logger.info(
+                "workflow_execute_queued org_id=%s workflow_id=%s run_id=%s latency_ms=%s trigger=%s",
+                org_id, workflow_id, run_id, latency_ms, trigger_type,
+            )
+            return {
+                "run_id": run_id,
+                "status": RUN_STATUS_RUNNING,
+                "approval_required": False,
+                "queued": True,
+                "steps": [],
+                "errors": [],
+            }
         final_status, step_rows, errors, rate_limited = execute_workflow_steps(
             settings=settings,
             org_id=org_id,

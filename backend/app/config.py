@@ -191,6 +191,13 @@ class Settings(BaseSettings):
     # In-process async agent-job worker (durable operator/agent execution).
     agent_job_worker_enabled: bool = True
     agent_job_poll_seconds: int = 5
+    # Durable workflow run queue consumer (STA-94). Requires REDIS_URL.
+    workflow_queue_enabled: bool = True
+    workflow_queue_poll_seconds: int = 5
+    # White-label custom domain CNAME target (STA-84)
+    enterprise_custom_domain_cname_target: str = "cname.gravitre.app"
+    # Deployment region for RLS enforcement (us|eu). Set per regional Supabase/API deployment.
+    deployment_data_region: str = "us"
 
     # Phase 6: kill switches (default off)
     disable_execute: bool = False
