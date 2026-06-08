@@ -1275,3 +1275,83 @@ export interface WorkflowFailureAlertsResponse {
   alerts: WorkflowFailureAlert[]
   count: number
 }
+
+// Autonomous run budgets (enterprise budgets tab)
+export interface AutonomousRunBudgetLimits {
+  maxActionsPerDay: number | null
+  maxTokensPerDay: number | null
+  maxSpendUsdPerDay: number | null
+}
+
+export interface AutonomousRunBudgetUsage {
+  actions: number
+  tokens: number
+  spendUsd: number
+}
+
+export interface AgentAutonomousRunBudgetStatus {
+  agentId: string
+  name: string
+  executionMode: string
+  limits: AutonomousRunBudgetLimits
+  usageToday: AutonomousRunBudgetUsage
+  usageDate: string
+}
+
+export interface EnterpriseAutonomousRunBudgets {
+  orgDefaults: AutonomousRunBudgetLimits
+  agents: AgentAutonomousRunBudgetStatus[]
+}
+
+// HIPAA compliance status (enterprise hipaa tab)
+export interface EnterpriseHipaaStatus {
+  enabled: boolean
+  baaAccepted: boolean
+  baaVersion: string | null
+  baaAcceptedAt: string | null
+  baaAcceptedBy: string | null
+  requiredBaaVersion: string
+  dataRegion: string
+  hipaaReady: boolean
+  phiCapableConnectorCount: number
+  blockedActionsWhenInactive: string[]
+}
+
+// Decision transparency logs (enterprise transparency tab)
+export interface EnterpriseTransparencyLog {
+  id: string
+  createdAt: string
+  updatedAt: string
+  decisionSource: string
+  operatorId: string | null
+  operatorSessionId: string | null
+  actionPlanId: string | null
+  workflowRunId: string | null
+  actorId: string | null
+  inputContext: Record<string, unknown>
+  modelInfo: Record<string, unknown>
+  toolsInvoked: Array<Record<string, unknown>>
+  humanOverride: Record<string, unknown> | null
+  outcome: Record<string, unknown>
+  status: string
+}
+
+export interface EnterpriseTransparencyLogsResponse {
+  decisions: EnterpriseTransparencyLog[]
+  count: number
+}
+
+export interface EnterpriseTransparencyExport {
+  orgId: string
+  generatedAt: string
+  window: { from: string | null; to: string | null }
+  regulation: string
+  decisions: EnterpriseTransparencyLog[]
+  summary: {
+    decisionCount: number
+    completed: number
+    failed: number
+    pendingApproval: number
+    withHumanOverride: number
+  }
+}
