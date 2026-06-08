@@ -184,66 +184,10 @@ async def try_auto_execute_plan_step(
     if not step:
         return None
 
-    from app.services.autonomous_budget_service import (
-        AUDIT_BUDGET_BLOCKED,
-        AutonomousBudgetExceededError,
-        check_autonomous_budget,
-        record_autonomous_usage,
-    )
-
-    try:
-        check_autonomous_budget(client, org_id, operator, projected_actions=1)
-    except AutonomousBudgetExceededError as exc:
-        write_audit_event(
-            client,
-            org_id=org_id,
-            actor_id=current_user["user_id"],
-            action=AUDIT_BUDGET_BLOCKED,
-            resource_type="operator",
-            resource_id=str(operator["id"]),
-            metadata={
-                "dimension": exc.dimension,
-                "limit": exc.limit,
-                "used": exc.used,
-                "planId": str(stored_plan["id"]),
-                "source": "auto_execute",
-            },
-        )
-        return {"status": "budget_blocked", "dimension": exc.dimension}
-
     explanation = step.get("explanation") or {}
     plan_id = str(stored_plan["id"])
     step_id = str(step["id"])
     approval_required = bool(explanation.get("approval_required"))
-
-    from app.services.transparency_service import (
-        build_input_context,
-        create_decision_log,
-        model_info_from_plan,
-        update_decision_log,
-    )
-
-    execution_mode = get_execution_mode(operator)
-    transparency_log = create_decision_log(
-        client,
-        org_id=org_id,
-        actor_id=current_user["user_id"],
-        decision_source="operator_auto_execute",
-        operator_id=str(operator["id"]),
-        operator_session_id=str(session["id"]),
-        action_plan_id=plan_id,
-        input_context=build_input_context(
-            operator=operator,
-            stored_plan=stored_plan,
-            step=step,
-            session=session,
-            execution_mode=execution_mode,
-        ),
-        model_info=model_info_from_plan(stored_plan),
-        human_override={"required": approval_required, "awaiting": approval_required} if approval_required else None,
-        status="pending_approval" if approval_required else "in_progress",
-    )
-    transparency_log_id = transparency_log["id"]
 
     write_audit_event(
         client,
@@ -263,13 +207,7 @@ async def try_auto_execute_plan_step(
     if approval_required:
         update_action_plan_status(client, org_id, plan_id, "pending_approval")
         update_operator_session_status(client, org_id, str(session["id"]), "awaiting_approval")
-        update_decision_log(
-            client,
-            org_id=org_id,
-            log_id=transparency_log_id,
-            outcome={"status": "pending_approval", "stepId": step_id},
-        )
-        return {"status": "pending_approval", "step_id": step_id, "transparency_log_id": transparency_log_id}
+        return {"status": "pending_approval", "step_id": step_id}
 
     try:
         role = get_user_role(client, org_id, current_user["user_id"])
@@ -285,13 +223,6 @@ async def try_auto_execute_plan_step(
         stored_plan.get("primary_context") or session.get("primary_context") or {},
         None,
     )
-    parameters = {
-        **(parameters or {}),
-        "operator_id": str(operator["id"]),
-        "operator_session_id": str(session["id"]),
-        "_autonomous_run": True,
-        "_transparency_log_id": transparency_log_id,
-    }
     result = await execute_operator_workflow(
         workflow_id=workflow_id,
         parameters=parameters,
@@ -305,36 +236,9 @@ async def try_auto_execute_plan_step(
         action_status = "pending_approval"
         update_action_plan_status(client, org_id, plan_id, "pending_approval")
         update_operator_session_status(client, org_id, str(session["id"]), "awaiting_approval")
-        update_decision_log(
-            client,
-            org_id=org_id,
-            log_id=transparency_log_id,
-            workflow_run_id=result.get("run_id"),
-            status="pending_approval",
-            outcome={"status": "pending_approval", "workflowRunId": result.get("run_id")},
-        )
     else:
         update_action_plan_status(client, org_id, plan_id, "executing")
         update_operator_session_status(client, org_id, str(session["id"]), "executing")
-        if result.get("status") in {"completed", "failed", "cancelled"}:
-            update_decision_log(
-                client,
-                org_id=org_id,
-                log_id=transparency_log_id,
-                workflow_run_id=result.get("run_id"),
-                status="completed" if result.get("status") == "completed" else "failed",
-                outcome={
-                    "status": result.get("status"),
-                    "workflowRunId": result.get("run_id"),
-                },
-            )
-        elif result.get("run_id"):
-            update_decision_log(
-                client,
-                org_id=org_id,
-                log_id=transparency_log_id,
-                workflow_run_id=result.get("run_id"),
-            )
 
     create_operator_action(
         client,
@@ -349,10 +253,4 @@ async def try_auto_execute_plan_step(
         workflow_run_id=result.get("run_id"),
         created_by=current_user["user_id"],
     )
-    record_autonomous_usage(client, org_id, str(operator["id"]), actions=1)
-    return {
-        "status": action_status,
-        "step_id": step_id,
-        "workflow_run_id": result.get("run_id"),
-        "transparency_log_id": transparency_log_id,
-    }
+    return {"status": action_status, "step_id": step_id, "workflow_run_id": result.get("run_id")}

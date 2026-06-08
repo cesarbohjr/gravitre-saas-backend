@@ -80,7 +80,6 @@ const adminNavigation: NavGroup[] = [
       { name: "Automations", href: "/workflows", icon: "waypoints" },
       { name: "Training", href: "/training", icon: "brain" },
       { name: "Apps", href: "/connectors", icon: "blocks" },
-      { name: "Role packs", href: "/marketplace/role-packs", icon: "package" },
       { name: "Data", href: "/sources", icon: "database" },
     ],
   },

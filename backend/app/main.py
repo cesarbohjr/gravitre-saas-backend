@@ -26,7 +26,6 @@ from app.routers import (
     agent_council,
     agent_interrupts,
     agent_jobs,
-    agent_swarm,
     assistant,
     auth,
     audit,
@@ -58,12 +57,8 @@ from app.routers import (
     sources,
     environments,
     enterprise,
-    federation,
     settings,
     slack_commands,
-    verticals_healthcare,
-    verticals_legal,
-    verticals_real_estate,
 )
 from app.routers import (
     hubspot_triggers,
@@ -242,20 +237,18 @@ async def api_versioning(request: Request, call_next):
     path_version: str | None = None
 
     if path.startswith("/api/v"):
-        remainder = path[len("/api/"):]  # v1/... or verticals/...
+        remainder = path[len("/api/"):]  # v1/...
         segment = remainder.split("/", 1)[0]
-        # Only /api/v1/... is versioned — not /api/verticals, /api/vendors, etc.
-        if len(segment) >= 2 and segment[0] == "v" and segment[1].isdigit():
-            path_version = _normalize_version(segment)
-            if not path_version or path_version not in supported_versions:
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content={"detail": "Unsupported API version"},
-                )
-            suffix = remainder[len(segment):]  # includes leading "/" if present
-            new_path = "/api" + suffix
-            request.scope["path"] = new_path
-            request.scope["raw_path"] = new_path.encode("utf-8")
+        path_version = _normalize_version(segment)
+        if not path_version or path_version not in supported_versions:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "Unsupported API version"},
+            )
+        suffix = remainder[len(segment):]  # includes leading "/" if present
+        new_path = "/api" + suffix
+        request.scope["path"] = new_path
+        request.scope["raw_path"] = new_path.encode("utf-8")
 
     header_version = _normalize_version(
         request.headers.get("x-api-version") or request.headers.get("accept-version")
@@ -337,10 +330,6 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(enterprise.router)
-app.include_router(federation.router)
-app.include_router(verticals_healthcare.router)
-app.include_router(verticals_legal.router)
-app.include_router(verticals_real_estate.router)
 app.include_router(stripe_webhooks.router)
 app.include_router(stripe_connect_sample_router)
 app.include_router(hubspot_inbound.router)
@@ -358,7 +347,6 @@ app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
-app.include_router(agent_swarm.router)
 app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)

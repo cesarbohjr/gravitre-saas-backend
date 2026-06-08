@@ -149,8 +149,6 @@ class ModelRouter:
         org_id: str | None = None,
         model_override: str | None = None,
         agent_id: str | None = None,
-        operator_id: str | None = None,
-        autonomous_run: bool = False,
         trained_model_id: str | None = None,
         trained_model_version: int | None = None,
         used_fallback: bool = False,
@@ -167,41 +165,6 @@ class ModelRouter:
                 raise
             except Exception:  # noqa: BLE001
                 logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
-
-        if autonomous_run and operator_id and org_id:
-            try:
-                from app.services.autonomous_budget_service import (
-                    AutonomousBudgetExceededError,
-                    check_autonomous_llm_budget,
-                    is_autonomous_operator,
-                )
-
-                client = get_supabase_client(self.settings)
-                op_resp = (
-                    client.table("operators")
-                    .select("*")
-                    .eq("org_id", org_id)
-                    .eq("id", operator_id)
-                    .limit(1)
-                    .execute()
-                )
-                operator_row = op_resp.data[0] if op_resp.data else None
-                if operator_row and is_autonomous_operator(operator_row):
-                    est_in = self._estimate_tokens(prompt + (system_prompt or ""))
-                    est_out = max(int(max_tokens or 0), est_in)
-                    est_model = model_override or self._resolve_model(task_type)
-                    est_spend = self._estimate_cost(est_model, est_in, est_out)
-                    check_autonomous_llm_budget(
-                        client,
-                        org_id,
-                        operator_row,
-                        projected_tokens=est_in + est_out,
-                        projected_spend_usd=est_spend,
-                    )
-            except AutonomousBudgetExceededError:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("autonomous budget pre-check skipped org_id=%s error=%s", org_id, str(exc))
 
         # --- Governance guardrails (chokepoint) ---------------------------------
         # Any guardrail refusal is persisted to guardrail_events (auditable),
@@ -232,8 +195,6 @@ class ModelRouter:
                 trained_model_version=trained_model_version,
                 used_fallback=used_fallback,
             )
-            if autonomous_run and operator_id and org_id:
-                await self._record_autonomous_llm(org_id, operator_id, cached)
             return cached
 
         # Canonical messages with safety hardening + untrusted-input fencing.
@@ -338,8 +299,6 @@ class ModelRouter:
             trained_model_version=trained_model_version,
             used_fallback=used_fallback,
         )
-        if autonomous_run and operator_id and org_id:
-            await self._record_autonomous_llm(org_id, operator_id, final)
         # Output moderation (after cost is logged so spend is still accounted).
         try:
             await moderate_output(resp.content, self.settings, self._openai)
@@ -435,41 +394,6 @@ class ModelRouter:
         if not text:
             return 0
         return max(1, len(text) // 4)
-
-    async def _record_autonomous_llm(self, org_id: str, operator_id: str, response: ModelResponse) -> None:
-        try:
-            from app.services.autonomous_budget_service import (
-                is_autonomous_operator,
-                record_autonomous_llm_usage,
-            )
-
-            client = get_supabase_client(self.settings)
-            op_resp = (
-                client.table("operators")
-                .select("*")
-                .eq("org_id", org_id)
-                .eq("id", operator_id)
-                .limit(1)
-                .execute()
-            )
-            operator_row = op_resp.data[0] if op_resp.data else None
-            if not operator_row or not is_autonomous_operator(operator_row):
-                return
-            record_autonomous_llm_usage(
-                client,
-                org_id,
-                operator_id,
-                input_tokens=response.input_tokens,
-                output_tokens=response.output_tokens,
-                spend_usd=response.cost_usd,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "autonomous llm usage record skipped org_id=%s operator_id=%s error=%s",
-                org_id,
-                operator_id,
-                str(exc),
-            )
 
     def _estimate_cost(
         self,

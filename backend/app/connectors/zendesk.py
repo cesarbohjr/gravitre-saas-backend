@@ -230,23 +230,3 @@ def add_ticket_tags(
         json_body={"tags": tags},
     )
     return data.get("tags") or data
-
-
-def close_ticket(
-    subdomain: str,
-    email: str | None,
-    api_token: str | None,
-    ticket_id: int | str,
-    *,
-    comment: str | None = None,
-    oauth_access_token: str | None = None,
-) -> dict[str, Any]:
-    return update_ticket(
-        subdomain,
-        email,
-        api_token,
-        ticket_id,
-        status="closed",
-        comment=comment or "Compensated by Gravitre (workflow rollback)",
-        oauth_access_token=oauth_access_token,
-    )

@@ -69,8 +69,6 @@ TOOL_CONNECTOR_VENDORS = frozenset(
         "zendesk",
         "github",
         "google_calendar",
-        "fhir",
-        "clio",
     }
 )
 
@@ -134,8 +132,6 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "absorb_lms",
         "canva",
         "apollo",
-        "fhir",
-        "clio",
     }
 )
 
@@ -162,7 +158,6 @@ class ConnectorUpdateRequest(BaseModel):
     sync_frequency: str | None = Field(default=None, alias="syncFrequency")
     status: str | None = None
     config: dict | None = None
-    phi_capable: bool | None = Field(default=None, alias="phiCapable")
 
     model_config = {"populate_by_name": True}
 
@@ -233,7 +228,6 @@ def _connector_response_item(
             "authType": (row.get("config") or {}).get("auth_type"),
         },
         "docsUrl": row.get("docs_url"),
-        "phiCapable": bool(row.get("phi_capable")),
     }
 
 
@@ -768,15 +762,6 @@ async def create_connector_route(
         "docs_url": docs_url,
         "config": body.config or {},
     }
-    if vendor == "fhir":
-        row["phi_capable"] = True
-        row["config"] = {
-            **(row["config"] or {}),
-            "sandbox": bool((row["config"] or {}).get("sandbox", True)),
-            "base_url": (row["config"] or {}).get("base_url")
-            or (row["config"] or {}).get("baseUrl")
-            or "https://hapi.fhir.org/baseR4",
-        }
     connector_id: str
     try:
         r = client.table("connectors").insert(row).execute()
@@ -867,16 +852,6 @@ async def update_connector_route(
         payload["sync_frequency"] = body.sync_frequency
     if body.status is not None:
         payload["status"] = body.status
-    if body.phi_capable is not None:
-        from app.services.hipaa_service import set_connector_phi_capable
-
-        set_connector_phi_capable(
-            client,
-            org_id=org_id,
-            connector_id=str(connector_id),
-            phi_capable=body.phi_capable,
-            actor_id=_user["user_id"],
-        )
     if body.webhook_url is not None:
         payload["webhook_url"] = body.webhook_url
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)

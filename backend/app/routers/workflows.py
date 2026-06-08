@@ -18,18 +18,7 @@ from app.billing.service import (
     require_feature,
     require_limit,
 )
-from app.services.connector_fixture_service import (
-    ConnectorFixtureError,
-    delete_connector_fixture,
-    list_connector_fixtures,
-    upsert_connector_fixture,
-)
-from app.services.workflow_failure_prediction_service import (
-    FailurePredictionError,
-    dismiss_failure_alert,
-    list_failure_alerts,
-    scan_workflow_failure_predictions,
-)
+from app.middleware.entitlements import resolve_entitlements
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
 from app.workflows.constants import (
@@ -40,7 +29,6 @@ from app.workflows.constants import (
     SCHEMA_VERSION,
 )
 from app.workflows.dry_run import execute_dry_run
-from app.workflows.digital_twin import execute_digital_twin
 from app.workflows.execute import execute_workflow_steps
 from app.workers.workflow_dispatch import try_enqueue_workflow_run, try_enqueue_workflow_run_sync
 from app.policy.engine import (
@@ -101,7 +89,6 @@ from app.connectors.repository import get_connector
 from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
-from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
 from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
 from app.workflows.cron import compute_next_run_at
 from app.services.workflow_schedule_service import dispatch_org_workflow_schedules
@@ -431,26 +418,6 @@ class DryRunResponse(BaseModel):
     plan: list[dict]
     steps: list[StepOut]
     errors: list[str] = []
-
-
-class DigitalTwinResponse(DryRunResponse):
-    simulation_mode: str = Field(default="digital_twin", alias="simulationMode")
-    fixture_hits: int = Field(default=0, alias="fixtureHits")
-    llm_predictions: int = Field(default=0, alias="llmPredictions")
-    rag_reads: int = Field(default=0, alias="ragReads")
-
-    model_config = {"populate_by_name": True}
-
-
-class ConnectorFixtureRequest(BaseModel):
-    connector_type: str = Field(..., alias="connectorType")
-    action: str
-    response: dict
-    label: str | None = None
-    request_fingerprint: dict | None = Field(default=None, alias="requestFingerprint")
-    source_run_id: str | None = Field(default=None, alias="sourceRunId")
-
-    model_config = {"populate_by_name": True}
 
 
 class WorkflowVersionListResponse(BaseModel):
@@ -1037,231 +1004,6 @@ async def dry_run(
     )
 
 
-def _resolve_workflow_definition_for_simulation(
-    body: DryRunRequest,
-    org_id: str,
-    environment_name: str,
-    settings: Settings,
-) -> tuple[dict, str | None, str | None]:
-    definition: dict | None = body.definition
-    workflow_id: str | None = str(body.workflow_id) if body.workflow_id else None
-    workflow_version_id: str | None = None
-    if workflow_id:
-        client = get_supabase_client(settings)
-        wf = get_workflow_def(client, org_id, workflow_id)
-        if not wf:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
-        active = get_active_workflow_version(client, org_id, workflow_id, environment_name)
-        if not active:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="No active workflow version. Create and activate a version first.",
-            )
-        definition = active.get("definition")
-        if not definition:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active workflow definition missing")
-        workflow_version_id = str(active["id"])
-    if not definition:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide workflow_id or definition")
-    return definition, workflow_id, workflow_version_id
-
-
-@router.post("/digital-twin", response_model=DigitalTwinResponse)
-async def digital_twin(
-    body: DryRunRequest,
-    current_user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    environment_name: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> DigitalTwinResponse:
-    """Simulate workflow with connector fixtures + LLM predictions; no live side effects."""
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    if settings.disable_execute:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
-    start = time.perf_counter()
-    definition, workflow_id, workflow_version_id = _resolve_workflow_definition_for_simulation(
-        body, org_id, environment_name, settings
-    )
-    try:
-        run_id, run_status, step_rows, plan, errors, stats = await execute_digital_twin(
-            settings=settings,
-            org_id=org_id,
-            user_id=current_user["user_id"],
-            definition=definition,
-            parameters=body.parameters,
-            workflow_id=workflow_id,
-            environment_name=environment_name,
-            workflow_version_id=workflow_version_id,
-        )
-    except WorkflowValidationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message) from e
-    latency_ms = int((time.perf_counter() - start) * 1000)
-    logger.info(
-        "workflow_digital_twin request_id=%s org_id=%s run_id=%s latency_ms=%s fixture_hits=%s llm_predictions=%s status=%s",
-        request_id_ctx.get(),
-        org_id,
-        run_id,
-        latency_ms,
-        stats.get("fixtureHits", 0),
-        stats.get("llmPredictions", 0),
-        run_status,
-    )
-    return DigitalTwinResponse(
-        run_id=run_id,
-        status=run_status,
-        plan=plan,
-        steps=[_step_to_out(s) for s in step_rows],
-        errors=errors,
-        fixtureHits=stats.get("fixtureHits", 0),
-        llmPredictions=stats.get("llmPredictions", 0),
-        ragReads=stats.get("ragReads", 0),
-    )
-
-
-class FailurePredictionScanResponse(BaseModel):
-    workflow_id: str = Field(alias="workflowId")
-    alert_count: int = Field(alias="alertCount")
-    risk_score: int = Field(alias="riskScore")
-    alerts: list[dict]
-    scanned_at: str = Field(alias="scannedAt")
-    environment: str
-
-    model_config = {"populate_by_name": True}
-
-
-@router.get("/failure-predictions")
-async def list_workflow_failure_predictions(
-    _user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    workflow_id: str | None = Query(default=None, alias="workflowId"),
-    status: str = Query(default="open"),
-) -> dict:
-    """List predictive failure alerts for the org or a single workflow (STA-122)."""
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    if status not in {"open", "dismissed", "resolved"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status filter")
-    client = get_supabase_client(settings)
-    alerts = list_failure_alerts(
-        client,
-        org_id,
-        workflow_id=workflow_id,
-        status=status,
-    )
-    return {"alerts": alerts, "count": len(alerts)}
-
-
-@router.post("/{workflow_id}/failure-predictions/scan", response_model=FailurePredictionScanResponse)
-async def scan_workflow_failure_predictions_route(
-    workflow_id: str,
-    current_user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    environment_name: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> FailurePredictionScanResponse:
-    """Run heuristic pre-failure scan for a workflow and persist open alerts (STA-122)."""
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = get_supabase_client(settings)
-    try:
-        summary = scan_workflow_failure_predictions(
-            client,
-            settings,
-            org_id,
-            workflow_id,
-            environment_name=environment_name,
-            actor_id=current_user["user_id"],
-        )
-    except FailurePredictionError as exc:
-        code = status.HTTP_404_NOT_FOUND if exc.code == "WORKFLOW_NOT_FOUND" else status.HTTP_400_BAD_REQUEST
-        raise HTTPException(status_code=code, detail=str(exc)) from exc
-    return FailurePredictionScanResponse(**summary)
-
-
-@router.post("/failure-predictions/{alert_id}/dismiss")
-async def dismiss_workflow_failure_prediction(
-    alert_id: str,
-    _user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    """Dismiss a predictive failure alert (STA-122)."""
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = get_supabase_client(settings)
-    try:
-        alert = dismiss_failure_alert(client, org_id, alert_id)
-    except FailurePredictionError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return {"alert": alert}
-
-
-@router.get("/connector-fixtures")
-async def get_connector_fixtures_route(
-    _user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    environment_name: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    connector_type: str | None = Query(default=None, alias="connectorType"),
-) -> dict:
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = get_supabase_client(settings)
-    return {
-        "fixtures": list_connector_fixtures(
-            client,
-            org_id,
-            environment=environment_name,
-            connector_type=connector_type,
-        )
-    }
-
-
-@router.post("/connector-fixtures", status_code=status.HTTP_201_CREATED)
-async def post_connector_fixture_route(
-    body: ConnectorFixtureRequest,
-    admin: Annotated[tuple, Depends(require_admin)],
-    environment: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    user, org_id = admin
-    client = get_supabase_client(settings)
-    try:
-        fixture = upsert_connector_fixture(
-            client,
-            org_id=org_id,
-            connector_type=body.connector_type,
-            action=body.action,
-            response=body.response,
-            actor_id=user["user_id"],
-            environment=environment,
-            label=body.label,
-            request_fingerprint=body.request_fingerprint,
-            source_run_id=body.source_run_id,
-        )
-    except ConnectorFixtureError as exc:
-        code = status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST
-        raise HTTPException(status_code=code, detail=str(exc)) from exc
-    return fixture
-
-
-@router.delete("/connector-fixtures/{fixture_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_connector_fixture_route(
-    fixture_id: str,
-    _admin: Annotated[tuple, Depends(require_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> None:
-    _user, org_id = _admin
-    client = get_supabase_client(settings)
-    try:
-        delete_connector_fixture(client, org_id, fixture_id)
-    except ConnectorFixtureError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return None
-
-
 @router.post("/{workflow_id}/versions")
 async def create_workflow_version_route(
     workflow_id: UUID,
@@ -1552,7 +1294,6 @@ async def execute_workflow(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     parameters = validate_parameters(body.parameters)
-    parameters = enrich_vertical_workflow_parameters(org_id, workflow_id, parameters, wf)
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 
@@ -1804,7 +1545,6 @@ def _execute_workflow_with_context(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     parameters = validate_parameters(parameters)
-    parameters = enrich_vertical_workflow_parameters(org_id, workflow_id, parameters, wf)
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 
@@ -2252,44 +1992,6 @@ async def rollback_run(
     )
 
 
-@router.post("/runs/{run_id}/compensate")
-async def compensate_run(
-    run_id: UUID,
-    current_user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    environment_name: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    """Run compensating tool actions recorded for a failed workflow run (STA-107)."""
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = get_supabase_client(settings)
-    run = get_run_with_steps(client, org_id, str(run_id), environment_name)
-    if not run:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    from app.services.compensation_service import execute_compensations, notify_compensation_webhook
-
-    summary = execute_compensations(
-        client,
-        settings,
-        org_id=org_id,
-        run_id=str(run_id),
-        actor_id=current_user["user_id"],
-        environment_name=environment_name,
-    )
-    if summary["compensated"] or summary["failed"]:
-        notify_compensation_webhook(
-            client,
-            settings,
-            org_id=org_id,
-            run_id=str(run_id),
-            actor_id=current_user["user_id"],
-            summary=summary,
-            environment_name=environment_name,
-        )
-    return summary
-
-
 @router.post("/runs/{run_id}/approve")
 async def approve_run(
     run_id: UUID,
@@ -2345,19 +2047,6 @@ async def approve_run(
         comment=body.comment,
     )
     emit_execute_approval_recorded(client, org_id, current_user["user_id"], run_id_str, "approved")
-    try:
-        from app.services.transparency_service import record_human_override
-
-        record_human_override(
-            client,
-            org_id=org_id,
-            actor_id=current_user["user_id"],
-            decision="approved",
-            comment=body.comment,
-            workflow_run_id=run_id_str,
-        )
-    except Exception:
-        pass
     approved_count, has_rejected = get_approval_counts(client, run_id_str)
     required = run.get("required_approvals") or 1
     if has_rejected:
@@ -2504,19 +2193,6 @@ async def reject_run(
     update_run(client, run_id_str, status="cancelled", approval_status="rejected")
     emit_execute_rejected(client, org_id, current_user["user_id"], run_id_str)
     emit_execute_cancelled(client, org_id, current_user["user_id"], run_id_str)
-    try:
-        from app.services.transparency_service import record_human_override
-
-        record_human_override(
-            client,
-            org_id=org_id,
-            actor_id=current_user["user_id"],
-            decision="rejected",
-            comment=body.comment,
-            workflow_run_id=run_id_str,
-        )
-    except Exception:
-        pass
     return {
         "run_id": run_id_str,
         "status": "cancelled",
@@ -2971,17 +2647,6 @@ async def rollback_run_alias(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     return await rollback_run(run_id, _admin, environment_name, settings)
-
-
-@runs_router.post("/{run_id}/compensate")
-async def compensate_run_alias(
-    run_id: UUID,
-    current_user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    environment_name: Annotated[str, Depends(get_environment_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    return await compensate_run(run_id, current_user, org_id, environment_name, settings)
 
 
 @router.get("")

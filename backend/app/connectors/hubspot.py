@@ -291,24 +291,6 @@ def update_deal(access_token: str, deal_id: str, properties: dict[str, Any]) -> 
     )
 
 
-def delete_contact(access_token: str, contact_id: str) -> dict[str, Any]:
-    if not contact_id:
-        raise HubSpotAPIError("contact_id is required")
-    return _request("DELETE", f"/crm/v3/objects/contacts/{contact_id}", access_token)
-
-
-def delete_deal(access_token: str, deal_id: str) -> dict[str, Any]:
-    if not deal_id:
-        raise HubSpotAPIError("deal_id is required")
-    return _request("DELETE", f"/crm/v3/objects/deals/{deal_id}", access_token)
-
-
-def delete_note(access_token: str, note_id: str) -> dict[str, Any]:
-    if not note_id:
-        raise HubSpotAPIError("note_id is required")
-    return _request("DELETE", f"/crm/v3/objects/notes/{note_id}", access_token)
-
-
 def add_contact_to_list(access_token: str, list_id: str, contact_id: str) -> dict[str, Any]:
     if not list_id or not contact_id:
         raise HubSpotAPIError("list_id and contact_id are required")

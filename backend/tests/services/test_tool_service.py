@@ -17,11 +17,7 @@ from app.services.tool_types import (
 
 @pytest.fixture
 def tool_ctx() -> ToolContext:
-    settings = SimpleNamespace(
-        disable_connectors=False,
-        connector_secrets_encryption_key="k" * 32,
-        private_connector_runtime_enabled=True,
-    )
+    settings = SimpleNamespace(disable_connectors=False, connector_secrets_encryption_key="k" * 32)
     client = MagicMock()
     return ToolContext(
         settings=settings,
@@ -43,7 +39,7 @@ def test_list_registered_actions():
 
 def test_invoke_unknown_action(tool_ctx: ToolContext):
     with pytest.raises(ToolNotFoundError):
-        invoke_tool(tool_ctx, "hubspot.contacts.archive", {})
+        invoke_tool(tool_ctx, "hubspot.contacts.delete", {})
 
 
 def test_invoke_slack_success(tool_ctx: ToolContext):

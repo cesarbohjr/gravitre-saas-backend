@@ -86,28 +86,10 @@ import type {
   EnterpriseDomainInstructions,
   EnterpriseDomainVerifyResult,
   EnterpriseWorkforceAnalytics,
-  IntegrationHealthScore,
-  IntegrationHealthSnapshot,
-  IntegrationHealthHistoryResponse,
-  IntegrationSuggestion,
-  IntegrationSuggestionsResponse,
-  IntegrationSuggestionScanResponse,
-  WorkflowFailureAlert,
-  WorkflowFailureAlertsResponse,
-  WorkflowFailurePredictionScanResponse,
-  WorkflowDigitalTwinResponse,
   EnterpriseCostAttribution,
-  EnterpriseAutonomousRunBudgets,
-  EnterpriseHipaaStatus,
-  EnterpriseTransparencyLogsResponse,
-  EnterpriseTransparencyExport,
-  AutonomousRunBudgetLimits,
-  AutonomousRunBudgetUsage,
   EnterpriseSiemConfig,
   EnterpriseSiemTestResult,
   PrivateConnectorBundle,
-  DepartmentRolePack,
-  DepartmentRolePackInstallResult,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -347,27 +329,6 @@ export const workflowsApi = {
   execute: (data: ExecuteWorkflowRequest) => postJson<Run>(apiUrl("/api/workflows/execute"), data),
   dryRun: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
     postJson<{ run_id: string; result: unknown }>(apiUrl("/api/workflows/dry-run"), data),
-
-  // Predictive failure alerts (STA-122)
-  listFailurePredictions: (params?: { workflowId?: string; status?: string }) => {
-    const query = new URLSearchParams()
-    if (params?.workflowId) query.set("workflowId", params.workflowId)
-    if (params?.status) query.set("status", params.status)
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<WorkflowFailureAlertsResponse>(apiUrl(`/api/workflows/failure-predictions${suffix}`))
-  },
-  dismissFailurePrediction: (alertId: string) =>
-    postJson<{ alert: WorkflowFailureAlert }>(
-      apiUrl(`/api/workflows/failure-predictions/${alertId}/dismiss`),
-      {},
-    ),
-  scanFailurePredictions: (workflowId: string) =>
-    postJson<WorkflowFailurePredictionScanResponse>(
-      apiUrl(`/api/workflows/${workflowId}/failure-predictions/scan`),
-      {},
-    ),
-  digitalTwin: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
-    postJson<WorkflowDigitalTwinResponse>(apiUrl("/api/workflows/digital-twin"), data),
 }
 
 // ============ Runs ============
@@ -463,17 +424,6 @@ export const marketplaceApi = {
     putJson<{ pricing: MarketplacePartnerPricing }>(
       apiUrl(`/api/marketplace/billing/pricing/${registryId}`),
       data
-    ),
-
-  // Department role packs (STA-121)
-  listRolePacks: () =>
-    fetcher<{ packs: DepartmentRolePack[] }>(apiUrl("/api/marketplace/role-packs")),
-  getRolePack: (packId: string) =>
-    fetcher<DepartmentRolePack>(apiUrl(`/api/marketplace/role-packs/${packId}`)),
-  installRolePack: (packId: string) =>
-    postJson<DepartmentRolePackInstallResult>(
-      apiUrl(`/api/marketplace/role-packs/${packId}/install`),
-      {},
     ),
 }
 
@@ -947,156 +897,15 @@ export const enterpriseApi = {
   getWorkforceAnalytics: () =>
     fetcher<EnterpriseWorkforceAnalytics>(apiUrl("/api/enterprise/workforce-analytics")),
 
-  // CS dashboard — integration health (STA-124)
-  getIntegrationHealth: (lookbackDays = 30) =>
-    fetcher<IntegrationHealthScore>(
-      apiUrl(`/api/enterprise/integration-health?lookbackDays=${lookbackDays}`),
-    ),
-  recordIntegrationHealthSnapshot: (lookbackDays = 30) =>
-    postJson<{ snapshot: IntegrationHealthSnapshot; health: IntegrationHealthScore }>(
-      apiUrl(`/api/enterprise/integration-health/snapshot?lookbackDays=${lookbackDays}`),
-      {},
-    ),
-  getIntegrationHealthHistory: (limit = 30) =>
-    fetcher<IntegrationHealthHistoryResponse>(
-      apiUrl(`/api/enterprise/integration-health/history?limit=${limit}`),
-    ),
-
-  // CS dashboard — integration suggestions (STA-123)
-  getIntegrationSuggestions: (params?: { status?: string; connectorType?: string }) => {
-    const query = new URLSearchParams()
-    if (params?.status) query.set("status", params.status)
-    if (params?.connectorType) query.set("connectorType", params.connectorType)
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<IntegrationSuggestionsResponse>(apiUrl(`/api/enterprise/integration-suggestions${suffix}`))
-  },
-  scanIntegrationSuggestions: (lookbackDays = 30) =>
-    postJson<IntegrationSuggestionScanResponse>(
-      apiUrl(`/api/enterprise/integration-suggestions/scan?lookbackDays=${lookbackDays}`),
-      {},
-    ),
-  dismissIntegrationSuggestion: (suggestionId: string) =>
-    postJson<{ suggestion: IntegrationSuggestion }>(
-      apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/dismiss`),
-      {},
-    ),
-
   // Cost attribution
   getCostAttribution: () =>
     fetcher<EnterpriseCostAttribution>(apiUrl("/api/enterprise/cost-attribution")),
-
-  // Autonomous run budgets (STA-109)
-  getAutonomousRunBudgets: () =>
-    fetcher<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets")),
-  updateAutonomousRunBudgets: (data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] }) =>
-    putJson<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets"), data),
-  updateAgentRunBudgets: (
-    agentId: string,
-    data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] },
-  ) => putJson<{ agent: unknown; limits: AutonomousRunBudgetLimits; usageToday: AutonomousRunBudgetUsage; usageDate: string }>(
-    apiUrl(`/api/agents/${agentId}/run-budgets`),
-    data,
-  ),
 
   // SIEM
   getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
   updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
     putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
   testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
-
-  // HIPAA (STA-110)
-  getHipaa: () => fetcher<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa")),
-  acceptHipaaBaa: (data?: { baaVersion?: string }) =>
-    postJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa/accept-baa"), data ?? {}),
-  updateHipaa: (data: { enabled: boolean }) =>
-    putJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa"), data),
-  updateConnectorPhi: (connectorId: string, data: { phiCapable: boolean }) =>
-    putJson<Connector>(apiUrl(`/api/enterprise/connectors/${connectorId}/phi`), data),
-
-  // EU AI Act transparency (STA-112)
-  getTransparencyLogs: (params?: { from?: string; to?: string; limit?: number }) => {
-    const query = new URLSearchParams()
-    if (params?.from) query.set("from", params.from)
-    if (params?.to) query.set("to", params.to)
-    if (params?.limit) query.set("limit", String(params.limit))
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<EnterpriseTransparencyLogsResponse>(
-      apiUrl(`/api/enterprise/transparency-logs${suffix}`),
-    )
-  },
-  exportTransparencyLogs: (params?: { from?: string; to?: string }) => {
-    const query = new URLSearchParams()
-    if (params?.from) query.set("from", params.from)
-    if (params?.to) query.set("to", params.to)
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<EnterpriseTransparencyExport>(
-      apiUrl(`/api/enterprise/transparency-logs/export${suffix}`),
-    )
-  },
-}
-
-// ============ B2B Federation (STA-116–118) ============
-export const federationApi = {
-  listPartnerships: () => fetcher<{ partnerships: Record<string, unknown>[] }>(apiUrl("/api/federation/partnerships")),
-  createPartnership: (data: { partnerOrgId: string; scopes?: string[]; notes?: string }) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl("/api/federation/partnerships"), data),
-  acceptPartnership: (partnershipId: string) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/accept`), {}),
-  rejectPartnership: (partnershipId: string) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/reject`), {}),
-  revokePartnership: (partnershipId: string) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/revoke`), {}),
-  listHandoffs: (params?: { status?: string }) => {
-    const suffix = params?.status ? `?status=${encodeURIComponent(params.status)}` : ""
-    return fetcher<{ handoffs: Record<string, unknown>[] }>(apiUrl(`/api/federation/handoffs${suffix}`))
-  },
-  getHandoff: (handoffId: string) =>
-    fetcher<{ handoff: Record<string, unknown> }>(apiUrl(`/api/federation/handoffs/${handoffId}`)),
-  createHandoff: (data: Record<string, unknown>) =>
-    postJson<{ handoff: Record<string, unknown> }>(apiUrl("/api/federation/handoffs"), data),
-  listConnectorGrants: () =>
-    fetcher<{ grants: Record<string, unknown>[] }>(apiUrl("/api/federation/connector-grants")),
-  createConnectorGrant: (data: Record<string, unknown>) =>
-    postJson<{ grant: Record<string, unknown> }>(apiUrl("/api/federation/connector-grants"), data),
-  listDelegatedTasks: (params?: { status?: string }) => {
-    const suffix = params?.status ? `?status=${encodeURIComponent(params.status)}` : ""
-    return fetcher<{ tasks: Record<string, unknown>[] }>(apiUrl(`/api/federation/delegated-tasks${suffix}`))
-  },
-  createDelegatedTask: (data: Record<string, unknown>) =>
-    postJson<{ task: Record<string, unknown> }>(apiUrl("/api/federation/delegated-tasks"), data),
-}
-
-// ============ Agent swarm (STA-119) ============
-export const agentSwarmApi = {
-  list: (params?: { status?: string; limit?: number }) => {
-    const query = new URLSearchParams()
-    if (params?.status) query.set("status", params.status)
-    if (params?.limit) query.set("limit", String(params.limit))
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<{ runs: Record<string, unknown>[] }>(apiUrl(`/api/agent-swarm${suffix}`))
-  },
-  get: (swarmRunId: string) =>
-    fetcher<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}`)),
-  start: (data: {
-    parentAgentId: string
-    objective: string
-    subtasks: Record<string, unknown>[]
-    decisionMethod?: string
-  }) => postJson<{ run: Record<string, unknown> }>(apiUrl("/api/agent-swarm/start"), data),
-  aggregate: (swarmRunId: string) =>
-    postJson<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}/aggregate`), {}),
-  cancel: (swarmRunId: string) =>
-    postJson<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}/cancel`), {}),
-}
-
-// ============ Vertical industry packs (STA-113–115) ============
-export const verticalsApi = {
-  getHealthcare: () => fetcher<Record<string, unknown>>(apiUrl("/api/verticals/healthcare")),
-  installHealthcare: () => postJson<Record<string, unknown>>(apiUrl("/api/verticals/healthcare/install"), {}),
-  getLegal: () => fetcher<Record<string, unknown>>(apiUrl("/api/verticals/legal")),
-  installLegal: () => postJson<Record<string, unknown>>(apiUrl("/api/verticals/legal/install"), {}),
-  getRealEstate: () => fetcher<Record<string, unknown>>(apiUrl("/api/verticals/real-estate")),
-  installRealEstate: () => postJson<Record<string, unknown>>(apiUrl("/api/verticals/real-estate/install"), {}),
 }
 
 export const api = {
@@ -1122,9 +931,6 @@ export const api = {
   lite: liteApi,
   sso: ssoApi,
   enterprise: enterpriseApi,
-  federation: federationApi,
-  agentSwarm: agentSwarmApi,
-  verticals: verticalsApi,
 }
 
 export default api

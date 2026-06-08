@@ -110,9 +110,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Current focus:** Post–Tier 5 — CS dashboard UI, role packs UI, platform smoke (`POST_TIER5_BACKLOG.md`).
-
-**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — `npm run smoke:tier5` + `npm run smoke:post-tier5`. Post–Tier 5: `docs/integration/POST_TIER5_BACKLOG.md`.
+**Current focus:** Tier 5 Epic A — STA-108 ✅ human-in-the-loop interrupt; next STA-109 autonomous run budgets.
 
 ---
 
@@ -215,27 +213,25 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 |-------|-----|--------|-------|------------|
 | 1 | T5-001 | [STA-106](https://linear.app/staqbot/issue/STA-106) | Policy-gated auto-execute ✅ | STA-10, STA-11, STA-90 |
 | 2 | T5-003 | [STA-108](https://linear.app/staqbot/issue/STA-108) | Human-in-the-loop interrupt ✅ | STA-106 |
-| 3 | T5-004 | [STA-109](https://linear.app/staqbot/issue/STA-109) | Autonomous run budgets ✅ | STA-92, STA-106 |
-| 4 | T5-002 | [STA-107](https://linear.app/staqbot/issue/STA-107) | Compensating transactions / rollback ✅ | STA-106, STA-15 |
-| 5 | T5-005 | [STA-110](https://linear.app/staqbot/issue/STA-110) | HIPAA BAA + PHI controls ✅ | STA-82, STA-80 |
-| 6 | T5-007 | [STA-112](https://linear.app/staqbot/issue/STA-112) | EU AI Act transparency logs ✅ | STA-106, STA-81 |
-| 7 | T5-006 | [STA-111](https://linear.app/staqbot/issue/STA-111) | FedRAMP gap assessment ✅ | STA-81 |
-| 8 | T5-008 | [STA-113](https://linear.app/staqbot/issue/STA-113) | Healthcare vertical pack ✅ | STA-110 |
-| 9 | T5-009 | [STA-114](https://linear.app/staqbot/issue/STA-114) | Legal vertical pack (Clio) ✅ | STA-10, STA-13 |
-| 10 | T5-010 | [STA-115](https://linear.app/staqbot/issue/STA-115) | Real estate vertical pack ✅ | STA-15 |
-| 11 | T5-011 | [STA-116](https://linear.app/staqbot/issue/STA-116) | Cross-org B2B handoff protocol ✅ | STA-17, STA-86 |
-| 12 | T5-012 | [STA-117](https://linear.app/staqbot/issue/STA-117) | Federated connector consent ✅ | STA-116 |
-| 13 | T5-013 | [STA-118](https://linear.app/staqbot/issue/STA-118) | Delegate task to external org ✅ | STA-116 |
-| 14 | T5-014 | [STA-119](https://linear.app/staqbot/issue/STA-119) | Multi-agent swarm coordinator ✅ | STA-106, STA-48 |
-| 15 | T5-015 | [STA-120](https://linear.app/staqbot/issue/STA-120) | Workflow digital twin (simulate) ✅ | STA-12, dry_run |
-| 16 | T5-016 | [STA-121](https://linear.app/staqbot/issue/STA-121) | Agent role marketplace ✅ | STA-73 |
-| 17 | T5-017 | [STA-122](https://linear.app/staqbot/issue/STA-122) | Predictive workflow failure ✅ | STA-91, STA-94 |
-| 18 | T5-018 | [STA-123](https://linear.app/staqbot/issue/STA-123) | Auto-suggest connectors/workflows ✅ | STA-91 |
-| 19 | T5-019 | [STA-124](https://linear.app/staqbot/issue/STA-124) | Customer integration health score ✅ | STA-91 |
+| 3 | T5-004 | [STA-109](https://linear.app/staqbot/issue/STA-109) | Autonomous run budgets | STA-92, STA-106 |
+| 4 | T5-002 | [STA-107](https://linear.app/staqbot/issue/STA-107) | Compensating transactions / rollback | STA-106, STA-15 |
+| 5 | T5-005 | [STA-110](https://linear.app/staqbot/issue/STA-110) | HIPAA BAA + PHI controls | STA-82, STA-80 |
+| 6 | T5-007 | [STA-112](https://linear.app/staqbot/issue/STA-112) | EU AI Act transparency logs | STA-106, STA-81 |
+| 7 | T5-006 | [STA-111](https://linear.app/staqbot/issue/STA-111) | FedRAMP gap assessment | STA-81 |
+| 8 | T5-008 | [STA-113](https://linear.app/staqbot/issue/STA-113) | Healthcare vertical pack | STA-110 |
+| 9 | T5-009 | [STA-114](https://linear.app/staqbot/issue/STA-114) | Legal vertical pack (Clio) | STA-10, STA-13 |
+| 10 | T5-010 | [STA-115](https://linear.app/staqbot/issue/STA-115) | Real estate vertical pack | STA-15 |
+| 11 | T5-011 | [STA-116](https://linear.app/staqbot/issue/STA-116) | Cross-org B2B handoff protocol | STA-17, STA-86 |
+| 12 | T5-012 | [STA-117](https://linear.app/staqbot/issue/STA-117) | Federated connector consent | STA-116 |
+| 13 | T5-013 | [STA-118](https://linear.app/staqbot/issue/STA-118) | Delegate task to external org | STA-116 |
+| 14 | T5-014 | [STA-119](https://linear.app/staqbot/issue/STA-119) | Multi-agent swarm coordinator | STA-106, STA-48 |
+| 15 | T5-015 | [STA-120](https://linear.app/staqbot/issue/STA-120) | Workflow digital twin (simulate) | STA-12, dry_run |
+| 16 | T5-016 | [STA-121](https://linear.app/staqbot/issue/STA-121) | Agent role marketplace | STA-73 |
+| 17 | T5-017 | [STA-122](https://linear.app/staqbot/issue/STA-122) | Predictive workflow failure | STA-91, STA-94 |
+| 18 | T5-018 | [STA-123](https://linear.app/staqbot/issue/STA-123) | Auto-suggest connectors/workflows | STA-91 |
+| 19 | T5-019 | [STA-124](https://linear.app/staqbot/issue/STA-124) | Customer integration health score | STA-91 |
 
 **Start Tier 5 Epic A only after:** STA-10, STA-11, STA-82, STA-90 (guardrails first).
-
-**Tier 5 Epic C status:** STA-113–115 shipped (healthcare, legal/Clio, real estate). Production smoke: `npm run smoke:tier5`.
 
 ---
 

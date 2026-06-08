@@ -108,17 +108,6 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "segment.identify": ["segment:identify", "segment:write", "segment:*"],
     "segment.track": ["segment:track", "segment:write", "segment:*"],
     "segment.group": ["segment:group", "segment:write", "segment:*"],
-    "fhir.patients.get": ["fhir:patients:read", "fhir:*"],
-    "fhir.patients.search": ["fhir:patients:read", "fhir:*"],
-    "fhir.appointments.search": ["fhir:appointments:read", "fhir:*"],
-    "fhir.prior_auth.checklist": ["fhir:prior_auth:write", "fhir:*"],
-    "clio.contacts.search": ["clio:contacts:read", "clio:*"],
-    "clio.contacts.get": ["clio:contacts:read", "clio:*"],
-    "clio.matters.search": ["clio:matters:read", "clio:*"],
-    "clio.conflict.checklist": ["clio:conflicts:write", "clio:*"],
-    "clio.intake.tasks": ["clio:tasks:write", "clio:*"],
-    "real_estate.mls.note": ["real_estate:mls:write", "real_estate:*"],
-    "real_estate.handoff.brief": ["real_estate:handoff:write", "real_estate:*"],
 }
 
 # Catalog-declared scopes for planned v1/v2/v3 connector tools (merged at import).
@@ -354,27 +343,6 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
         ]
     if system == "segment":
         return ["segment:identify", "segment:track", "segment:group", "segment:write", "segment:*"]
-    if system == "fhir":
-        return [
-            "fhir:patients:read",
-            "fhir:appointments:read",
-            "fhir:prior_auth:write",
-            "fhir:*",
-        ]
-    if system == "clio":
-        return [
-            "clio:contacts:read",
-            "clio:matters:read",
-            "clio:conflicts:write",
-            "clio:tasks:write",
-            "clio:*",
-        ]
-    if system == "real_estate":
-        return [
-            "real_estate:mls:write",
-            "real_estate:handoff:write",
-            "real_estate:*",
-        ]
     if system == "workday":
         return [
             "workday:workers:read",

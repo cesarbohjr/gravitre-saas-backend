@@ -393,46 +393,6 @@ VENDOR_DEFINITIONS: tuple = (
         ),
     ),
     build_vendor(
-        "clio",
-        "Clio",
-        "Legal",
-        "https://docs.developers.clio.com/",
-        shipped=True,
-        department="legal",
-        v1=(
-            action("clio", "contacts.search", "Search contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
-            action("clio", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
-            action("clio", "matters.search", "Search matters", tier="v1", kind="read", scope_suffix="matters:read", idempotent=True),
-            action("clio", "conflict.checklist", "Conflict screening checklist", tier="v1", kind="write", scope_suffix="conflicts:write"),
-            action("clio", "intake.tasks", "Intake task assignment template", tier="v1", kind="write", scope_suffix="tasks:write"),
-        ),
-        v2=(
-            action("clio", "matters.create", "Create matter", tier="v2", kind="write", scope_suffix="matters:write", destructive=True),
-            action("clio", "tasks.create", "Create task", tier="v2", kind="write", scope_suffix="tasks:write", destructive=True),
-        ),
-        v3=(
-            action("clio", "calendar_entries.list", "List calendar entries", tier="v3", kind="advanced", scope_suffix="calendar:read"),
-        ),
-    ),
-    build_vendor(
-        "real_estate",
-        "Real Estate",
-        "Real Estate",
-        "https://gravitre.app/docs/integration/real-estate-vertical-pack",
-        shipped=True,
-        department="real_estate",
-        v1=(
-            action("real_estate", "mls.note", "Draft MLS listing note", tier="v1", kind="write", scope_suffix="mls:write"),
-            action("real_estate", "handoff.brief", "Buyer agent handoff brief", tier="v1", kind="write", scope_suffix="handoff:write"),
-        ),
-        v2=(
-            action("real_estate", "listing.publish", "Publish listing", tier="v2", kind="write", scope_suffix="listings:write", destructive=True),
-        ),
-        v3=(
-            action("real_estate", "mls.sync", "Sync MLS feed", tier="v3", kind="advanced", scope_suffix="mls:read"),
-        ),
-    ),
-    build_vendor(
         "plaid",
         "Plaid",
         "Payments / Finance",
