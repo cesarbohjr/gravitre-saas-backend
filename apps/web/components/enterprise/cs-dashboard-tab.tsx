@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
@@ -114,11 +114,12 @@ function ScoreRing({ score, grade }: { score: number; grade: IntegrationHealthGr
   const color = scoreColor(clamped)
 
   const [display, setDisplay] = useState(0)
-  useMemo(() => {
-    let frame: number
-    const start = performance.now()
+  useEffect(() => {
+    let frame = 0
+    let start = 0
     const duration = 1100
     const tick = (now: number) => {
+      if (!start) start = now
       const p = Math.min((now - start) / duration, 1)
       const eased = 1 - Math.pow(1 - p, 3)
       setDisplay(Math.round(eased * clamped))

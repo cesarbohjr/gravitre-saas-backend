@@ -15,7 +15,6 @@ import {
   Send,
 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { PageHeader } from "@/components/gravitre/page-header"
 import { Button } from "@/components/ui/button"
 import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { federationApi } from "@/lib/api"
@@ -63,8 +62,11 @@ function FederationContent() {
     mutate: mutateHandoffs,
   } = useSWR("federation/handoffs", () => federationApi.listHandoffs({ direction: "all" }))
 
-  const partnerships = partnershipsData?.partnerships ?? []
-  const handoffs = handoffsData?.handoffs ?? []
+  const partnerships = useMemo(
+    () => partnershipsData?.partnerships ?? [],
+    [partnershipsData],
+  )
+  const handoffs = useMemo(() => handoffsData?.handoffs ?? [], [handoffsData])
 
   const stats = useMemo(() => {
     const active = partnerships.filter((p) => p.status === "active").length

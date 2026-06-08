@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
@@ -40,20 +40,11 @@ function EnterprisePageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const tabParam = searchParams.get("tab")
-  const initialTab: TabId = TAB_IDS.includes(tabParam as TabId) ? (tabParam as TabId) : "cs"
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+  // The URL is the single source of truth for the active tab (supports deep links).
+  const activeTab: TabId = TAB_IDS.includes(tabParam as TabId) ? (tabParam as TabId) : "cs"
   const { user, loading } = useAuth()
 
-  // Keep state in sync if the URL param changes (e.g. deep links from suggestions).
-  useEffect(() => {
-    if (tabParam && TAB_IDS.includes(tabParam as TabId) && tabParam !== activeTab) {
-      setActiveTab(tabParam as TabId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabParam])
-
   const selectTab = (id: TabId) => {
-    setActiveTab(id)
     const params = new URLSearchParams(Array.from(searchParams.entries()))
     params.set("tab", id)
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
