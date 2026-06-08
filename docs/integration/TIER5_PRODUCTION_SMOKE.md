@@ -52,6 +52,52 @@ Optional: set `BACKEND_URL` to target a non-production host.
 
 ---
 
+## Epic D — Multi-org federation (STA-116–118)
+
+| Step | Action | Pass |
+|------|--------|------|
+| D.1 | `POST /api/federation/partnerships` creates B2B partnership | ☐ |
+| D.2 | Federated connector consent flow completes | ☐ |
+| D.3 | `POST /api/federation/delegated-tasks` queues cross-org task | ☐ |
+
+**Docs:** `docs/integration/b2b-handoff-protocol.md`, `docs/integration/delegated-external-tasks.md`
+
+## Epic E — Advanced AI workforce (STA-119–121)
+
+| Step | Action | Pass |
+|------|--------|------|
+| E.1 | `POST /api/agent-swarm` coordinates multi-agent run | ☐ |
+| E.2 | `POST /api/workflows/digital-twin` simulates without side effects | ☐ |
+| E.3 | `GET /api/marketplace/role-packs` lists department packs | ☐ |
+| E.4 | `POST /api/marketplace/role-packs/sales-ops/install` (admin) | ☐ |
+| E.5 | `/marketplace/role-packs` UI install flow | ☐ |
+
+**Docs:** `docs/integration/multi-agent-swarm-coordinator.md`, `docs/integration/workflow-digital-twin.md`, `docs/integration/agent-role-marketplace.md`
+
+## Epic F — Platform intelligence (STA-122–124)
+
+| Step | Action | Pass |
+|------|--------|------|
+| F.1 | `POST /api/workflows/{id}/failure-predictions/scan` persists alerts | ☐ |
+| F.2 | `POST /api/enterprise/integration-suggestions/scan` persists suggestions | ☐ |
+| F.3 | `GET /api/enterprise/integration-health` returns composite score | ☐ |
+| F.4 | `POST /api/enterprise/integration-health/snapshot` records trend point | ☐ |
+| F.5 | `/settings/enterprise?tab=cs` CS dashboard loads all panels | ☐ |
+
+**Docs:** `docs/integration/predictive-workflow-failure.md`, `docs/integration/auto-suggest-connectors-workflows.md`, `docs/integration/integration-health-score.md`
+
+---
+
+## Post–Tier 5 automated smoke
+
+```bash
+npm run smoke:post-tier5   # STA-121–124 APIs + role packs catalog
+```
+
+See `docs/integration/POST_TIER5_BACKLOG.md` for UI and Tier 6 planning.
+
+---
+
 ## Operator env scripts
 
 | Vertical | Railway env | Check |

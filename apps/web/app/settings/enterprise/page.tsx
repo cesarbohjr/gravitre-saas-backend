@@ -1,11 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
-import { HeartPulse, Globe, Palette, Users, DollarSign, ShieldAlert, Lock, Gauge, ScrollText } from "lucide-react"
+import {
+  HeartPulse,
+  Globe,
+  Palette,
+  Users,
+  DollarSign,
+  ShieldAlert,
+  Lock,
+  Gauge,
+  ScrollText,
+  LayoutDashboard,
+} from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
 import { BrandingTab } from "@/components/enterprise/branding-tab"
 import { WorkforceTab } from "@/components/enterprise/workforce-tab"
@@ -14,10 +26,26 @@ import { BudgetsTab } from "@/components/enterprise/budgets-tab"
 import { HipaaTab } from "@/components/enterprise/hipaa-tab"
 import { TransparencyTab } from "@/components/enterprise/transparency-tab"
 import { SiemTab } from "@/components/enterprise/siem-tab"
+import { CsDashboardTab } from "@/components/enterprise/cs-dashboard-tab"
 
-type TabId = "region" | "branding" | "workforce" | "cost" | "budgets" | "hipaa" | "transparency" | "siem"
+type TabId =
+  | "cs"
+  | "region"
+  | "branding"
+  | "workforce"
+  | "cost"
+  | "budgets"
+  | "hipaa"
+  | "transparency"
+  | "siem"
 
 const TABS: { id: TabId; label: string; icon: typeof Globe; description: string }[] = [
+  {
+    id: "cs",
+    label: "CS Dashboard",
+    icon: LayoutDashboard,
+    description: "Integration health score and recommendations",
+  },
   { id: "region", label: "Data Residency", icon: Globe, description: "Control where your data is stored" },
   { id: "branding", label: "White Label", icon: Palette, description: "Custom logo, color, and domain" },
   { id: "workforce", label: "Workforce", icon: Users, description: "Agent task analytics" },
@@ -29,8 +57,38 @@ const TABS: { id: TabId; label: string; icon: typeof Globe; description: string 
 ]
 
 export default function EnterprisePage() {
-  const [activeTab, setActiveTab] = useState<TabId>("region")
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get("tab")
+  const initialTab: TabId =
+    tabParam === "cs" ||
+    tabParam === "region" ||
+    tabParam === "branding" ||
+    tabParam === "workforce" ||
+    tabParam === "cost" ||
+    tabParam === "budgets" ||
+    tabParam === "hipaa" ||
+    tabParam === "transparency" ||
+    tabParam === "siem"
+      ? tabParam
+      : "cs"
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
   const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (
+      tabParam === "cs" ||
+      tabParam === "region" ||
+      tabParam === "branding" ||
+      tabParam === "workforce" ||
+      tabParam === "cost" ||
+      tabParam === "budgets" ||
+      tabParam === "hipaa" ||
+      tabParam === "transparency" ||
+      tabParam === "siem"
+    ) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
 
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
@@ -92,6 +150,7 @@ export default function EnterprisePage() {
 
             {/* Tab content */}
             <div className="min-w-0 flex-1">
+              {activeTab === "cs" && <CsDashboardTab />}
               {activeTab === "region" && <RegionTab isAdmin={isAdmin} />}
               {activeTab === "branding" && <BrandingTab isAdmin={isAdmin} />}
               {activeTab === "workforce" && <WorkforceTab />}

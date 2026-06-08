@@ -110,9 +110,9 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Current focus:** Tier 5 Epic F complete ✅ (STA-100–STA-124). Run `npm run smoke:tier5` for production verification.
+**Current focus:** Post–Tier 5 — CS dashboard UI, role packs UI, platform smoke (`POST_TIER5_BACKLOG.md`).
 
-**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5`. Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`, digital twin: `docs/integration/workflow-digital-twin.md`, role marketplace: `docs/integration/agent-role-marketplace.md`, failure prediction: `docs/integration/predictive-workflow-failure.md`, integration suggestions: `docs/integration/auto-suggest-connectors-workflows.md`, health score: `docs/integration/integration-health-score.md`.
+**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — `npm run smoke:tier5` + `npm run smoke:post-tier5`. Post–Tier 5: `docs/integration/POST_TIER5_BACKLOG.md`.
 
 ---
 
