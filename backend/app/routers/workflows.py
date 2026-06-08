@@ -24,6 +24,12 @@ from app.services.connector_fixture_service import (
     list_connector_fixtures,
     upsert_connector_fixture,
 )
+from app.services.workflow_failure_prediction_service import (
+    FailurePredictionError,
+    dismiss_failure_alert,
+    list_failure_alerts,
+    scan_workflow_failure_predictions,
+)
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
 from app.workflows.constants import (
@@ -1111,6 +1117,85 @@ async def digital_twin(
         llmPredictions=stats.get("llmPredictions", 0),
         ragReads=stats.get("ragReads", 0),
     )
+
+
+class FailurePredictionScanResponse(BaseModel):
+    workflow_id: str = Field(alias="workflowId")
+    alert_count: int = Field(alias="alertCount")
+    risk_score: int = Field(alias="riskScore")
+    alerts: list[dict]
+    scanned_at: str = Field(alias="scannedAt")
+    environment: str
+
+    model_config = {"populate_by_name": True}
+
+
+@router.get("/failure-predictions")
+async def list_workflow_failure_predictions(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    workflow_id: str | None = Query(default=None, alias="workflowId"),
+    status: str = Query(default="open"),
+) -> dict:
+    """List predictive failure alerts for the org or a single workflow (STA-122)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    if status not in {"open", "dismissed", "resolved"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status filter")
+    client = get_supabase_client(settings)
+    alerts = list_failure_alerts(
+        client,
+        org_id,
+        workflow_id=workflow_id,
+        status=status,
+    )
+    return {"alerts": alerts, "count": len(alerts)}
+
+
+@router.post("/{workflow_id}/failure-predictions/scan", response_model=FailurePredictionScanResponse)
+async def scan_workflow_failure_predictions_route(
+    workflow_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> FailurePredictionScanResponse:
+    """Run heuristic pre-failure scan for a workflow and persist open alerts (STA-122)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    try:
+        summary = scan_workflow_failure_predictions(
+            client,
+            settings,
+            org_id,
+            workflow_id,
+            environment_name=environment_name,
+            actor_id=current_user["user_id"],
+        )
+    except FailurePredictionError as exc:
+        code = status.HTTP_404_NOT_FOUND if exc.code == "WORKFLOW_NOT_FOUND" else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
+    return FailurePredictionScanResponse(**summary)
+
+
+@router.post("/failure-predictions/{alert_id}/dismiss")
+async def dismiss_workflow_failure_prediction(
+    alert_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Dismiss a predictive failure alert (STA-122)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    try:
+        alert = dismiss_failure_alert(client, org_id, alert_id)
+    except FailurePredictionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"alert": alert}
 
 
 @router.get("/connector-fixtures")
