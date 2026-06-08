@@ -53,7 +53,7 @@ Only actions listed in `allowedActions` are permitted. Write/create/update tools
 ## Related
 
 - [B2B handoff protocol](./b2b-handoff-protocol.md) — partnership prerequisite
-- STA-118 delegate task to external org — builds on grants + handoffs
+- STA-118 delegate task to external org — `docs/integration/delegated-external-tasks.md`
 
 ## Key files
 

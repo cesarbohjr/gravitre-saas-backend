@@ -1,4 +1,4 @@
-"""B2B federation API — cross-org partnerships and handoffs (STA-116)."""
+"""B2B federation API — partnerships, handoffs, grants, delegated tasks (STA-116–118)."""
 from __future__ import annotations
 
 from typing import Annotated, Any
@@ -23,6 +23,18 @@ from app.services.b2b_handoff_service import (
     reject_cross_org_handoff,
     reject_partnership,
     revoke_partnership,
+)
+from app.services.cross_org_delegated_task_service import (
+    DelegatedTaskError,
+    accept_delegated_task,
+    cancel_delegated_task,
+    complete_delegated_task,
+    delegate_task_to_partner,
+    fail_delegated_task,
+    get_delegated_task,
+    list_delegated_tasks,
+    reject_delegated_task,
+    start_delegated_task,
 )
 from app.services.federated_connector_service import (
     FederatedConnectorError,
@@ -69,6 +81,33 @@ class FederatedGrantRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class DelegatedTaskRequest(BaseModel):
+    delegate_org_id: str = Field(..., alias="delegateOrgId")
+    title: str = Field(..., min_length=1)
+    instructions: str | None = None
+    payload: dict[str, Any] | None = None
+    parent_reference: dict[str, Any] | None = Field(default=None, alias="parentReference")
+    delegator_agent_id: str | None = Field(default=None, alias="delegatorAgentId")
+    delegate_agent_id: str | None = Field(default=None, alias="delegateAgentId")
+
+    model_config = {"populate_by_name": True}
+
+
+class DelegatedTaskAcceptRequest(BaseModel):
+    delegate_agent_id: str | None = Field(default=None, alias="delegateAgentId")
+    spawn_agent_job: bool = Field(default=False, alias="spawnAgentJob")
+
+    model_config = {"populate_by_name": True}
+
+
+class DelegatedTaskCompleteRequest(BaseModel):
+    result: dict[str, Any] | None = None
+
+
+class DelegatedTaskReasonRequest(BaseModel):
+    reason: str | None = None
+
+
 def _client(settings: Settings):
     return create_client(settings.supabase_url, settings.supabase_service_role_key)
 
@@ -89,6 +128,20 @@ def _raise_b2b(exc: B2BHandoffError) -> None:
 
 def _raise_federated(exc: FederatedConnectorError) -> None:
     _raise_b2b(exc)
+
+
+def _raise_delegated(exc: DelegatedTaskError) -> None:
+    code_map = {
+        "NOT_FOUND": status.HTTP_404_NOT_FOUND,
+        "FORBIDDEN": status.HTTP_403_FORBIDDEN,
+        "CONFLICT": status.HTTP_409_CONFLICT,
+        "PARTNERSHIP_REQUIRED": status.HTTP_409_CONFLICT,
+        "VALIDATION_ERROR": status.HTTP_400_BAD_REQUEST,
+    }
+    raise HTTPException(
+        status_code=code_map.get(exc.code, status.HTTP_400_BAD_REQUEST),
+        detail=error_detail(str(exc), exc.code),
+    ) from exc
 
 
 @router.get("/partnerships")
@@ -407,3 +460,190 @@ async def post_connector_grant_revoke(
         )
     except FederatedConnectorError as exc:
         _raise_federated(exc)
+
+
+@router.get("/delegated-tasks")
+async def get_delegated_tasks(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    direction: str = Query(default="all", pattern="^(all|inbound|outbound)$"),
+    status_filter: str | None = Query(default=None, alias="status"),
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = _client(settings)
+    return {
+        "tasks": list_delegated_tasks(
+            client,
+            org_id,
+            direction=direction,
+            status=status_filter,
+        )
+    }
+
+
+@router.get("/delegated-tasks/{task_id}")
+async def get_delegated_task_route(
+    task_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = _client(settings)
+    try:
+        return get_delegated_task(client, org_id, task_id)
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks")
+async def post_delegated_task(
+    body: DelegatedTaskRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return delegate_task_to_partner(
+            client,
+            delegator_org_id=org_id,
+            delegate_org_id=body.delegate_org_id,
+            title=body.title,
+            delegator_user_id=user["user_id"],
+            instructions=body.instructions,
+            payload=body.payload,
+            parent_reference=body.parent_reference,
+            delegator_agent_id=body.delegator_agent_id,
+            delegate_agent_id=body.delegate_agent_id,
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks/{task_id}/accept")
+async def post_delegated_task_accept(
+    task_id: str,
+    body: DelegatedTaskAcceptRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return accept_delegated_task(
+            client,
+            org_id=org_id,
+            task_id=task_id,
+            actor_id=user["user_id"],
+            delegate_agent_id=body.delegate_agent_id,
+            spawn_agent_job=body.spawn_agent_job,
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks/{task_id}/reject")
+async def post_delegated_task_reject(
+    task_id: str,
+    body: DelegatedTaskReasonRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return reject_delegated_task(
+            client,
+            org_id=org_id,
+            task_id=task_id,
+            actor_id=user["user_id"],
+            reason=body.reason,
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks/{task_id}/start")
+async def post_delegated_task_start(
+    task_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return start_delegated_task(
+            client,
+            org_id=org_id,
+            task_id=task_id,
+            actor_id=user["user_id"],
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks/{task_id}/complete")
+async def post_delegated_task_complete(
+    task_id: str,
+    body: DelegatedTaskCompleteRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return complete_delegated_task(
+            client,
+            org_id=org_id,
+            task_id=task_id,
+            actor_id=user["user_id"],
+            result=body.result,
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks/{task_id}/fail")
+async def post_delegated_task_fail(
+    task_id: str,
+    body: DelegatedTaskReasonRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return fail_delegated_task(
+            client,
+            org_id=org_id,
+            task_id=task_id,
+            actor_id=user["user_id"],
+            reason=body.reason,
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)
+
+
+@router.post("/delegated-tasks/{task_id}/cancel")
+async def post_delegated_task_cancel(
+    task_id: str,
+    body: DelegatedTaskReasonRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return cancel_delegated_task(
+            client,
+            org_id=org_id,
+            task_id=task_id,
+            actor_id=user["user_id"],
+            reason=body.reason,
+        )
+    except DelegatedTaskError as exc:
+        _raise_delegated(exc)

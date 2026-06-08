@@ -111,14 +111,25 @@ def main() -> None:
     if not workflow_id:
         raise SystemExit("legal install missing intakeWorkflowId")
 
-    execute = _request(
-        "POST",
-        "/api/workflows/execute",
-        token,
-        org_id,
-        {"workflow_id": workflow_id, "parameters": {}},
-    )
-    print("legal_execute:", json.dumps({k: execute.get(k) for k in ("run_id", "status", "queued", "errors")}, indent=2))
+    try:
+        execute = _request(
+            "POST",
+            "/api/workflows/execute",
+            token,
+            org_id,
+            {"workflow_id": workflow_id, "parameters": {}},
+        )
+        print(
+            "legal_execute:",
+            json.dumps({k: execute.get(k) for k in ("run_id", "status", "queued", "errors")}, indent=2),
+        )
+    except urllib.error.HTTPError as exc:
+        if exc.code == 409:
+            body = exc.read().decode("utf-8", errors="replace")
+            print("legal_execute: skipped (workflow already has an active run)")
+            print(body)
+        else:
+            raise
 
     re_install = _request("POST", "/api/verticals/real-estate/install", token, org_id, {})
     print("real_estate_install:", json.dumps(re_install, indent=2))
