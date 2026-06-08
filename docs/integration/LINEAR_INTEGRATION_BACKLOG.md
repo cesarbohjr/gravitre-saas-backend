@@ -110,9 +110,9 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Current focus:** Tier 5 Epic E — STA-121 Agent role marketplace (STA-120 workflow digital twin ✅).
+**Current focus:** Tier 5 Epic F — STA-122 Predictive workflow failure detection (STA-121 agent role marketplace ✅).
 
-**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5`. Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`, digital twin: `docs/integration/workflow-digital-twin.md`.
+**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5`. Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`, digital twin: `docs/integration/workflow-digital-twin.md`, role marketplace: `docs/integration/agent-role-marketplace.md`.
 
 ---
 
@@ -228,7 +228,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 13 | T5-013 | [STA-118](https://linear.app/staqbot/issue/STA-118) | Delegate task to external org ✅ | STA-116 |
 | 14 | T5-014 | [STA-119](https://linear.app/staqbot/issue/STA-119) | Multi-agent swarm coordinator ✅ | STA-106, STA-48 |
 | 15 | T5-015 | [STA-120](https://linear.app/staqbot/issue/STA-120) | Workflow digital twin (simulate) ✅ | STA-12, dry_run |
-| 16 | T5-016 | [STA-121](https://linear.app/staqbot/issue/STA-121) | Agent role marketplace | STA-73 |
+| 16 | T5-016 | [STA-121](https://linear.app/staqbot/issue/STA-121) | Agent role marketplace ✅ | STA-73 |
 | 17 | T5-017 | [STA-122](https://linear.app/staqbot/issue/STA-122) | Predictive workflow failure | STA-91, STA-94 |
 | 18 | T5-018 | [STA-123](https://linear.app/staqbot/issue/STA-123) | Auto-suggest connectors/workflows | STA-91 |
 | 19 | T5-019 | [STA-124](https://linear.app/staqbot/issue/STA-124) | Customer integration health score | STA-91 |
