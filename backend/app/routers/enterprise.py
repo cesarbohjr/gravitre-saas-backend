@@ -42,6 +42,11 @@ from app.services.integration_suggestion_service import (
     list_integration_suggestions,
     scan_integration_suggestions,
 )
+from app.services.integration_health_score_service import (
+    get_integration_health_score,
+    list_integration_health_history,
+    record_integration_health_snapshot,
+)
 from app.services.hipaa_service import accept_baa, get_hipaa_status, set_hipaa_enabled, set_connector_phi_capable
 from app.services.transparency_service import build_transparency_export_bundle, list_decision_logs
 from app.workers.queue import is_queue_available
@@ -424,6 +429,67 @@ async def dismiss_integration_suggestion_route(
     except IntegrationSuggestionError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"suggestion": suggestion}
+
+
+class IntegrationHealthResponse(BaseModel):
+    score: int
+    grade: str
+    dimensions: dict[str, Any]
+    risks: list[dict[str, Any]]
+    weights: dict[str, float]
+    lookback_days: int = Field(alias="lookbackDays")
+    computed_at: str = Field(alias="computedAt")
+
+    model_config = {"populate_by_name": True}
+
+
+@router.get("/integration-health", response_model=IntegrationHealthResponse)
+async def get_integration_health_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    lookback_days: int = Query(default=30, ge=7, le=90, alias="lookbackDays"),
+) -> IntegrationHealthResponse:
+    """Composite integration health score for CS dashboards (STA-124)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    health = get_integration_health_score(client, org_id, lookback_days=lookback_days)
+    return IntegrationHealthResponse(**health)
+
+
+@router.post("/integration-health/snapshot")
+async def record_integration_health_snapshot_route(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    lookback_days: int = Query(default=30, ge=7, le=90, alias="lookbackDays"),
+) -> dict[str, Any]:
+    """Persist an integration health snapshot for trend charts (STA-124)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return record_integration_health_snapshot(
+        client,
+        org_id,
+        lookback_days=lookback_days,
+        actor_id=current_user["user_id"],
+    )
+
+
+@router.get("/integration-health/history")
+async def list_integration_health_history_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=30, ge=1, le=365),
+) -> dict[str, Any]:
+    """List recorded integration health snapshots (STA-124)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    snapshots = list_integration_health_history(client, org_id, limit=limit)
+    return {"snapshots": snapshots, "count": len(snapshots)}
 
 
 @router.get("/cost-attribution")
