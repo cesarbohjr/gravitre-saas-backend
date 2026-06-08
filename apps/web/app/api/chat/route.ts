@@ -20,18 +20,8 @@ function jsonError(message: string, status: number, extra?: Record<string, strin
   })
 }
 
-function resolveOrgId(req: NextRequest, bodyText: string): string {
-  // Priority: request body → x-org-id header → query string.
-  if (bodyText) {
-    try {
-      const parsed = JSON.parse(bodyText) as { org_id?: string }
-      const fromBody = parsed.org_id?.trim()
-      if (fromBody) return fromBody
-    } catch {
-      // Body may not be JSON during malformed requests.
-    }
-  }
-
+function resolveOrgId(req: NextRequest): string {
+  // Only trust explicit headers/query — never body org_id (client hint may be stale demo org).
   const fromHeader = req.headers.get("x-org-id")?.trim()
   if (fromHeader) return fromHeader
 
@@ -49,17 +39,14 @@ export async function POST(req: NextRequest) {
 
   const body = await req.text()
   const auth = req.headers.get("authorization")
-  const orgId = resolveOrgId(req, body)
-
-  if (!orgId) {
-    return jsonError("org_id is required", 400)
-  }
+  const orgId = resolveOrgId(req)
 
   const headers: Record<string, string> = {
     "content-type": "application/json",
     accept: "text/event-stream",
-    "x-org-id": orgId,
   }
+  // Omit x-org-id when unknown — backend resolves org from JWT membership.
+  if (orgId) headers["x-org-id"] = orgId
   if (auth) headers.authorization = auth
 
   let upstream: Response

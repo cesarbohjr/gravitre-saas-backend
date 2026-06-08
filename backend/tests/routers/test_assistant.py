@@ -97,16 +97,19 @@ async def test_authenticated_request_returns_streaming_response(async_client, mo
     assert '"type":"text-delta"' in body
 
 
-async def test_wrong_org_id_returns_403(async_client, monkeypatch):
+async def test_stale_body_org_id_uses_validated_org(async_client, monkeypatch):
+    """Client body org_id is a hint only; JWT-validated org wins (no 403)."""
     _authenticate(org_id="org-1")
-    _mock_completion(monkeypatch)
+    monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
+    _mock_completion(monkeypatch, content="ok")
 
     resp = await async_client.post(
         "/api/assistant/chat",
         headers={"Authorization": "Bearer token"},
         json={"messages": [{"role": "user", "content": "hi"}], "org_id": "org-2"},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert "ok" in resp.text
 
 
 async def test_killswitch_active_returns_503(async_client, monkeypatch):

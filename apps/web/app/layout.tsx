@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { NotificationProvider } from '@/components/gravitre/notification-center'
 import { OnboardingProvider, OnboardingChecklist } from '@/components/gravitre/onboarding-checklist'
 import { AuthProvider } from '@/lib/auth-context'
+import { OrgSyncBootstrap } from '@/components/gravitre/org-sync-bootstrap'
 import { EnterpriseBrandingProvider } from '@/lib/enterprise-branding-context'
 import { EntitlementsProvider } from '@/lib/entitlements-context'
 import { UserProfileProvider } from '@/lib/user-profile-context'
@@ -52,6 +53,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <OrgSyncBootstrap />
             <EnterpriseBrandingProvider>
               <EntitlementsProvider>
                 <UserProfileProvider>

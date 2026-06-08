@@ -1,4 +1,4 @@
-import { getSelectedOrgFromStorage } from "@/lib/org-context"
+import { getSelectedOrgFromStorage, DEFAULT_DEMO_ORG_ID, SECONDARY_DEMO_ORG_ID } from "@/lib/org-context"
 import { getAccessToken } from "@/lib/auth-context"
 import { isAuthTransitionActive } from "@/lib/auth-transition"
 import { createClient } from "@/lib/supabase/client"
@@ -6,7 +6,14 @@ import { createClient } from "@/lib/supabase/client"
 function withSelectedOrg(url: string): string {
   if (typeof window === "undefined" || !url.startsWith("/api/")) return url
   const selected = getSelectedOrgFromStorage()
-  if (!selected?.id) return url
+  // Skip demo org ids in query params — they cause org context mismatches server-side.
+  if (
+    !selected?.id ||
+    selected.id === DEFAULT_DEMO_ORG_ID ||
+    selected.id === SECONDARY_DEMO_ORG_ID
+  ) {
+    return url
+  }
   const requestUrl = new URL(url, window.location.origin)
   if (!requestUrl.searchParams.get("org_id")) {
     requestUrl.searchParams.set("org_id", selected.id)
@@ -25,6 +32,15 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     token = await getAccessToken()
     if (token && !headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${token}`)
+    }
+    const selectedOrg = getSelectedOrgFromStorage()
+    if (
+      selectedOrg?.id &&
+      selectedOrg.id !== DEFAULT_DEMO_ORG_ID &&
+      selectedOrg.id !== SECONDARY_DEMO_ORG_ID &&
+      !headers.has("x-org-id")
+    ) {
+      headers.set("x-org-id", selectedOrg.id)
     }
   }
 

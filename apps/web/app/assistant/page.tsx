@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
-import { getSelectedOrgFromStorage, DEFAULT_DEMO_ORG_ID } from "@/lib/org-context"
+import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { parseChatError } from "@/lib/chat-errors"
+import { conversationMessageToUI } from "@/lib/chat-messages"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
@@ -96,56 +98,6 @@ const samplePrompts = [
   { icon: Sparkles, label: "How do I create a new automation?", category: "Help" },
   { icon: Plug, label: "Which connectors have sync errors?", category: "Connectors" },
 ] as const
-
-function parseChatError(error: Error): string {
-  const raw = error.message?.trim() ?? ""
-  if (!raw) return "Failed to send message"
-
-  const fromBody = (() => {
-    try {
-      const parsed = JSON.parse(raw) as { detail?: unknown; error?: unknown }
-      if (typeof parsed.detail === "string" && parsed.detail) return parsed.detail
-      if (typeof parsed.error === "string" && parsed.error) return parsed.error
-    } catch {
-      // Response body is plain text, not JSON.
-    }
-    return ""
-  })()
-
-  if (fromBody) {
-    if (/payment required|budget|usage limit|402/i.test(fromBody)) {
-      return "AI usage limit reached - check billing settings"
-    }
-    if (/too many|rate limit|429/i.test(fromBody)) {
-      return "Too many requests - please wait a moment"
-    }
-    if (/disabled|killswitch|unavailable|503/i.test(fromBody)) {
-      return "AI assistant is currently unavailable"
-    }
-    if (/organization|org_id|forbidden|403/i.test(fromBody)) {
-      return "You don&apos;t have access to this organization"
-    }
-    if (/unauthorized|401/i.test(fromBody)) {
-      return "Please sign in again to continue"
-    }
-    if (/FASTAPI_BASE_URL|not configured/i.test(fromBody)) {
-      return "AI assistant is not configured"
-    }
-    if (/unreachable|502|connection/i.test(fromBody)) {
-      return "Could not reach the AI backend"
-    }
-    return fromBody.length <= 180 ? fromBody : `${fromBody.slice(0, 177)}...`
-  }
-
-  if (/401|unauthorized/i.test(raw)) return "Please sign in again"
-  if (/402|payment required/i.test(raw)) return "Usage limit reached"
-  if (/403|forbidden/i.test(raw)) return "Access denied"
-  if (/429|too many requests/i.test(raw)) return "Rate limited - wait a moment"
-  if (/502|unreachable|fetch failed|ECONNREFUSED|connection/i.test(raw)) return "Backend unreachable"
-  if (/503|disabled|killswitch|unavailable/i.test(raw)) return "Service unavailable"
-
-  return raw.length <= 180 ? raw : "Failed to send message"
-}
 
 // Tool icons mapping
 const toolIcons: Record<string, typeof Database> = {
@@ -760,8 +712,12 @@ export default function AssistantPage() {
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const activeConversationIdRef = useRef<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+    return localStorage.getItem(CONVERSATION_ID_KEY)
+  })
 
   // Intelligence mode state
   const [mode, setMode] = useState<IntelligenceMode>(() => {
@@ -774,6 +730,11 @@ export default function AssistantPage() {
     localStorage.setItem(MODE_KEY, mode)
   }, [mode])
 
+  // Resolve org from membership before first chat request (replaces stale demo org in storage).
+  useEffect(() => {
+    if (user) void ensureSelectedOrg(true)
+  }, [user])
+
   // Fetch conversations list
   const { data: conversationsData, mutate: mutateConversations } = useSWR(
     user ? "conversations" : null,
@@ -782,9 +743,10 @@ export default function AssistantPage() {
   )
   const conversations = conversationsData?.conversations ?? []
 
-  // Hydrate once from localStorage
+  // Hydrate once from localStorage (only for ad-hoc sessions without a saved conversation id)
   const [initialMessages] = useState<UIMessage[]>(() => {
     if (typeof window === "undefined") return []
+    if (localStorage.getItem(CONVERSATION_ID_KEY)) return []
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
@@ -804,23 +766,20 @@ export default function AssistantPage() {
         api: "/api/chat",
         headers: async () => {
           const token = await getAccessToken()
-          const org = getSelectedOrgFromStorage()
+          const orgId = await ensureSelectedOrg()
           return {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            "x-org-id": org?.id ?? DEFAULT_DEMO_ORG_ID,
+            ...(orgId ? { "x-org-id": orgId } : {}),
           }
         },
-        body: () => {
-          const org = getSelectedOrgFromStorage()
-          return {
-            org_id: org?.id ?? DEFAULT_DEMO_ORG_ID,
-            mode,
-            conversation_id: activeConversationId,
-            tools: ["knowledge_base", "agent_status", "connector_status"],
-          }
-        },
+        body: () => ({
+          ...buildChatOrgPayload(),
+          mode,
+          conversation_id: activeConversationIdRef.current,
+          tools: ["knowledge_base", "agent_status", "connector_status"],
+        }),
       }),
-    [mode, activeConversationId]
+    [mode]
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -830,6 +789,9 @@ export default function AssistantPage() {
       console.error("[v0] Chat error:", error)
       toast.error(parseChatError(error))
     },
+    onFinish: () => {
+      void mutateConversations()
+    },
   })
 
   const isLoading = status === "submitted" || status === "streaming"
@@ -837,8 +799,29 @@ export default function AssistantPage() {
   const hasSentMessage = messages.some((m) => m.role === "user")
   const currentModeConfig = intelligenceModes.find((m) => m.id === mode) || intelligenceModes[1]
 
-  // Persist messages to localStorage
+  // Keep ref in sync for transport body closure.
   useEffect(() => {
+    activeConversationIdRef.current = activeConversationId
+  }, [activeConversationId])
+
+  // Hydrate active conversation messages from API when restoring last session.
+  useEffect(() => {
+    if (!user || !activeConversationId || messages.length > 0) return
+    let cancelled = false
+    void conversationsApi.getMessages(activeConversationId).then(({ messages: stored }) => {
+      if (cancelled || stored.length === 0) return
+      setMessages(stored.map(conversationMessageToUI))
+    }).catch(() => {
+      // Ignore — user can start a fresh thread.
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user, activeConversationId, messages.length, setMessages])
+
+  // Persist ad-hoc sessions to localStorage (conversation threads are stored via API)
+  useEffect(() => {
+    if (activeConversationId) return
     if (messages.length > 0) {
       try {
         const toStore = messages.slice(-MAX_STORED_MESSAGES)
@@ -847,7 +830,7 @@ export default function AssistantPage() {
         // Ignore storage errors
       }
     }
-  }, [messages])
+  }, [messages, activeConversationId])
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -858,6 +841,7 @@ export default function AssistantPage() {
   const handleNewConversation = useCallback(() => {
     setMessages([])
     setActiveConversationId(null)
+    activeConversationIdRef.current = null
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(CONVERSATION_ID_KEY)
     inputRef.current?.focus()
@@ -867,8 +851,17 @@ export default function AssistantPage() {
   // Handle selecting a conversation from sidebar
   const handleSelectConversation = useCallback(async (id: string) => {
     setActiveConversationId(id)
+    activeConversationIdRef.current = id
     localStorage.setItem(CONVERSATION_ID_KEY, id)
-    setMessages([])
+    localStorage.removeItem(STORAGE_KEY)
+    try {
+      const { messages: stored } = await conversationsApi.getMessages(id)
+      setMessages(stored.map(conversationMessageToUI))
+    } catch (error) {
+      console.error("[v0] Load conversation failed:", error)
+      setMessages([])
+      toast.error("Failed to load conversation")
+    }
   }, [setMessages])
 
   // Handle deleting a conversation
@@ -902,12 +895,26 @@ export default function AssistantPage() {
     }
   }, [messages, setMessages, sendMessage])
 
-  const submitText = (text: string) => {
+  const submitText = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || isLoading) return
+
+    if (!activeConversationIdRef.current) {
+      try {
+        const created = await conversationsApi.create({ title: trimmed.slice(0, 80) })
+        activeConversationIdRef.current = created.id
+        setActiveConversationId(created.id)
+        localStorage.setItem(CONVERSATION_ID_KEY, created.id)
+        await mutateConversations()
+      } catch (error) {
+        console.error("[v0] Create conversation failed:", error)
+        toast.error("Could not start a new conversation")
+        return
+      }
+    }
+
     sendMessage({ text: trimmed })
     setInput("")
-    void mutateConversations()
   }
 
   const onSubmit = (e: React.FormEvent) => {

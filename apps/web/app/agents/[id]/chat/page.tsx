@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, use, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
-import { getSelectedOrgFromStorage, DEFAULT_DEMO_ORG_ID } from "@/lib/org-context"
+import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { parseChatError } from "@/lib/chat-errors"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -27,32 +28,13 @@ import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
-import { agentsApi } from "@/lib/api"
 import type { Agent } from "@/types/api"
-import { Icon } from "@/lib/icons"
+import { agentsApi } from "@/lib/api"
 
 // localStorage key for agent chat persistence
 const getStorageKey = (agentId: string) => `gravitre_agent_chat_${agentId}`
 
-// Mock agent data
-const mockAgent: Agent = {
-  id: "agent-001",
-  name: "Atlas",
-  role: "Marketing Agent",
-  department: "Marketing",
-  description: "Marketing campaign orchestration",
-  status: "active",
-  personality: { color: "#10B981", gradient: "from-emerald-500 to-teal-500", glow: "emerald-500/20" },
-  stats: { tasksToday: 12, successRate: 95, avgResponseTime: "2.4s", workflowsUsing: 3 },
-  capabilities: ["campaign_management", "content_creation", "analytics"],
-  permissions: ["read", "write", "execute"],
-  lastAction: "Generated campaign report",
-  lastActionTime: new Date().toISOString(),
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}
-
-// Agent personality colors
+// Agent personality colors — keyed by status/role fallback when no custom gradient
 const agentColors: Record<string, { gradient: string; accent: string; glow: string }> = {
   "agent-001": { gradient: "from-emerald-500 to-teal-500", accent: "emerald", glow: "emerald-500/20" },
   "agent-002": { gradient: "from-blue-500 to-cyan-500", accent: "blue", glow: "blue-500/20" },
@@ -287,13 +269,13 @@ export default function AgentChatPage({
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Fetch agent data
-  const { data: agentData } = useSWR(
+  const { data: agent, isLoading: agentLoading } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
-    () => agentsApi.get(agentId),
-    { fallbackData: mockAgent }
+    () => agentsApi.get(agentId)
   )
-  const agent = agentData || mockAgent
   const agentColor = agentColors[agentId] || agentColors.default
+  const agentName = agent?.name ?? "Agent"
+  const agentInitials = agentName.slice(0, 2).toUpperCase()
 
   // Hydrate messages from localStorage
   const [initialMessages] = useState<UIMessage[]>(() => {
@@ -309,6 +291,10 @@ export default function AgentChatPage({
     return []
   })
 
+  useEffect(() => {
+    if (user) void ensureSelectedOrg(true)
+  }, [user])
+
   // Transport with agent context
   const transport = useMemo(
     () =>
@@ -316,21 +302,18 @@ export default function AgentChatPage({
         api: "/api/chat",
         headers: async () => {
           const token = await getAccessToken()
-          const org = getSelectedOrgFromStorage()
+          const orgId = await ensureSelectedOrg()
           return {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            "x-org-id": org?.id ?? DEFAULT_DEMO_ORG_ID,
+            ...(orgId ? { "x-org-id": orgId } : {}),
           }
         },
-        body: () => {
-          const org = getSelectedOrgFromStorage()
-          return {
-            org_id: org?.id ?? DEFAULT_DEMO_ORG_ID,
-            agent_id: agentId,
-            mode: "agent",
-            tools: ["knowledge_base", "agent_status", "connector_status"],
-          }
-        },
+        body: () => ({
+          ...buildChatOrgPayload(),
+          agent_id: agentId,
+          mode: "agent",
+          tools: ["knowledge_base", "agent_status", "connector_status"],
+        }),
       }),
     [agentId]
   )
@@ -340,7 +323,7 @@ export default function AgentChatPage({
     messages: initialMessages,
     onError: (error) => {
       console.error("[v0] Agent chat error:", error)
-      toast.error("Failed to send message. Please try again.")
+      toast.error(parseChatError(error))
     },
   })
 
@@ -406,8 +389,31 @@ export default function AgentChatPage({
     }
   }
 
+  if (agentLoading && !agent) {
+    return (
+      <AppShell title="Agent chat">
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (!agent) {
+    return (
+      <AppShell title="Agent chat">
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
+          <p className="text-sm text-zinc-600">Agent not found or you don&apos;t have access.</p>
+          <Link href="/agents">
+            <Button variant="outline" size="sm">Back to AI Team</Button>
+          </Link>
+        </div>
+      </AppShell>
+    )
+  }
+
   return (
-    <AppShell title={`Chat with ${agent.name}`}>
+    <AppShell title={`Chat with ${agentName}`}>
       <div className="flex h-full flex-col bg-zinc-50">
         {/* Header */}
         <div className="border-b border-zinc-200 px-6 py-4 bg-white">

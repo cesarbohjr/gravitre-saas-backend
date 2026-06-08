@@ -26,7 +26,9 @@ import { useAuth } from "@/lib/auth-context"
 import {
   DEFAULT_DEMO_ORG_ID,
   SECONDARY_DEMO_ORG_ID,
+  ensureSelectedOrg,
   getSelectedOrgFromStorage,
+  invalidateOrgCache,
   setSelectedOrgInStorage,
 } from "@/lib/org-context"
 
@@ -49,14 +51,17 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
     userEmail.split("@")[0]
 
   useEffect(() => {
-    if (!getSelectedOrgFromStorage()) {
-      setSelectedOrgInStorage({ id: DEFAULT_DEMO_ORG_ID, name: "Acme Corp" })
-    }
+    void ensureSelectedOrg().then((orgId) => {
+      const stored = getSelectedOrgFromStorage()
+      if (stored?.name) setOrg(stored.name)
+      else if (orgId) setOrg("Organization")
+    })
   }, [])
 
   const handleOrgChange = (nextOrgId: string, nextOrgName: string) => {
     setOrg(nextOrgName)
     setSelectedOrgInStorage({ id: nextOrgId, name: nextOrgName })
+    invalidateOrgCache()
     window.location.reload()
   }
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -47,6 +48,9 @@ from app.services.providers.base import (
     AllProvidersFailedError,
     ProviderInvalidResponseError,
 )
+from app.operators.agent_intelligence import load_org_context as load_agent_org_context, resolve_agent_record
+from app.operators.agent_prompts import build_agent_system_prompt
+
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -89,6 +93,9 @@ class AssistantChatRequest(BaseModel):
     messages: list[dict[str, Any]]
     org_id: str | None = None
     tools: list[str] | None = None
+    conversation_id: str | None = None
+    agent_id: str | None = None
+    mode: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -305,6 +312,150 @@ def _sse(chunk: dict[str, Any]) -> str:
     return f"data: {json.dumps(chunk, separators=(',', ':'))}\n\n"
 
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _is_missing_table_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return (
+        "does not exist" in message
+        or "relation" in message and "does not exist" in message
+        or "undefined_table" in message
+    )
+
+
+def _persist_conversation_turn(
+    settings: Settings,
+    *,
+    org_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    user_text: str,
+    assistant_text: str,
+    tool_results: list[dict[str, Any]],
+) -> str | None:
+    """Append user/assistant messages to an owned conversation (best-effort)."""
+    try:
+        client = get_supabase_client(settings)
+        now = _now_iso()
+        conv_id = (conversation_id or "").strip() or None
+
+        if conv_id:
+            owned = (
+                client.table("conversations")
+                .select("id, message_count")
+                .eq("id", conv_id)
+                .eq("org_id", org_id)
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if _is_missing_table_error(getattr(owned, "error", None)):
+                return None
+            if not owned.data:
+                conv_id = None
+            else:
+                current_count = int((owned.data[0] or {}).get("message_count") or 0)
+        else:
+            current_count = 0
+
+        if not conv_id:
+            title = user_text.strip()[:80] or "New conversation"
+            insert = (
+                client.table("conversations")
+                .insert(
+                    {
+                        "org_id": org_id,
+                        "user_id": user_id,
+                        "title": title,
+                        "preview": assistant_text[:200] or user_text[:200],
+                        "message_count": 0,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                )
+                .execute()
+            )
+            if _is_missing_table_error(getattr(insert, "error", None)):
+                return None
+            if insert.error or not insert.data:
+                return None
+            conv_id = str(insert.data[0]["id"])
+            current_count = 0
+
+        tool_calls = (
+            [
+                {
+                    "name": tool.get("name"),
+                    "displayName": tool.get("displayName"),
+                    "input": tool.get("input"),
+                    "output": tool.get("output"),
+                }
+                for tool in tool_results
+            ]
+            if tool_results
+            else None
+        )
+        client.table("conversation_messages").insert(
+            [
+                {
+                    "conversation_id": conv_id,
+                    "role": "user",
+                    "content": user_text,
+                    "created_at": now,
+                },
+                {
+                    "conversation_id": conv_id,
+                    "role": "assistant",
+                    "content": assistant_text,
+                    "tool_calls": tool_calls,
+                    "created_at": now,
+                },
+            ]
+        ).execute()
+
+        client.table("conversations").update(
+            {
+                "preview": assistant_text[:200] or user_text[:200],
+                "message_count": current_count + 2,
+                "updated_at": now,
+            }
+        ).eq("id", conv_id).eq("org_id", org_id).eq("user_id", user_id).execute()
+        return conv_id
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "assistant conversation persist failed org_id=%s user_id=%s error=%s",
+            org_id,
+            user_id,
+            str(exc),
+        )
+        return conversation_id
+
+
+def _resolve_system_prompt(
+    settings: Settings,
+    org_id: str,
+    agent_id: str | None,
+) -> str:
+    if not agent_id:
+        return ASSISTANT_SYSTEM_PROMPT
+    client = get_supabase_client(settings)
+    agent = resolve_agent_record(client, org_id, agent_id)
+    if not agent:
+        return ASSISTANT_SYSTEM_PROMPT
+    org_context = load_agent_org_context(client, org_id)
+    connected = org_context.get("connectedIntegrations") or []
+    return build_agent_system_prompt(
+        agent,
+        org_context=org_context,
+        connected_integrations=list(connected),
+        rag_available=True,
+    )
+
+
 def _build_stream(tool_results: list[dict[str, Any]], answer: str):
     """Yield the AI SDK UI message stream (text/event-stream) for the response.
 
@@ -386,18 +537,17 @@ async def assistant_chat(
             detail="AI assistant is temporarily disabled",
         )
 
-    # Org isolation: org_id from JWT-validated membership is authoritative; a
-    # body org_id that disagrees with the caller's validated org is rejected.
+    # Org isolation: JWT-validated membership is authoritative. Body org_id is an
+    # optional client hint only — a mismatch is logged but does not block the request.
     if not org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     if body.org_id and body.org_id != org_id:
         logger.warning(
-            "assistant org mismatch user_id=%s body_org=%s ctx_org=%s",
+            "assistant org mismatch user_id=%s body_org=%s ctx_org=%s using_ctx_org=true",
             current_user.get("user_id"),
             body.org_id,
             org_id,
         )
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="org_id does not match authenticated user")
 
     if not body.messages:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="messages is required")
@@ -413,6 +563,8 @@ async def assistant_chat(
 
     requested_tools = body.tools if body.tools is not None else _DEFAULT_TOOLS
     tool_results = await _run_tools(requested_tools, org_id, last_user, settings)
+
+    system_prompt = _resolve_system_prompt(settings, org_id, body.agent_id)
 
     # Build the model context: prior conversation turns + FENCED tool results.
     # Every tool result is wrapped by fence_untrusted before injection so it is
@@ -433,7 +585,7 @@ async def assistant_chat(
         result = await router_.complete(
             task_type=TaskType.RAG_ANSWERING,
             prompt=last_user,
-            system_prompt=ASSISTANT_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             context=context,
             org_id=org_id,
         )
@@ -456,6 +608,16 @@ async def assistant_chat(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
 
     asyncio.create_task(_record_assistant_billing(settings, org_id, result))
+
+    _persist_conversation_turn(
+        settings,
+        org_id=org_id,
+        user_id=str(current_user.get("user_id") or ""),
+        conversation_id=body.conversation_id,
+        user_text=last_user,
+        assistant_text=answer,
+        tool_results=tool_results,
+    )
 
     return StreamingResponse(
         _build_stream(tool_results, answer),
