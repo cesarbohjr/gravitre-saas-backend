@@ -18,7 +18,12 @@ from app.billing.service import (
     require_feature,
     require_limit,
 )
-from app.middleware.entitlements import resolve_entitlements
+from app.services.connector_fixture_service import (
+    ConnectorFixtureError,
+    delete_connector_fixture,
+    list_connector_fixtures,
+    upsert_connector_fixture,
+)
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
 from app.workflows.constants import (
@@ -29,6 +34,7 @@ from app.workflows.constants import (
     SCHEMA_VERSION,
 )
 from app.workflows.dry_run import execute_dry_run
+from app.workflows.digital_twin import execute_digital_twin
 from app.workflows.execute import execute_workflow_steps
 from app.workers.workflow_dispatch import try_enqueue_workflow_run, try_enqueue_workflow_run_sync
 from app.policy.engine import (
@@ -419,6 +425,26 @@ class DryRunResponse(BaseModel):
     plan: list[dict]
     steps: list[StepOut]
     errors: list[str] = []
+
+
+class DigitalTwinResponse(DryRunResponse):
+    simulation_mode: str = Field(default="digital_twin", alias="simulationMode")
+    fixture_hits: int = Field(default=0, alias="fixtureHits")
+    llm_predictions: int = Field(default=0, alias="llmPredictions")
+    rag_reads: int = Field(default=0, alias="ragReads")
+
+    model_config = {"populate_by_name": True}
+
+
+class ConnectorFixtureRequest(BaseModel):
+    connector_type: str = Field(..., alias="connectorType")
+    action: str
+    response: dict
+    label: str | None = None
+    request_fingerprint: dict | None = Field(default=None, alias="requestFingerprint")
+    source_run_id: str | None = Field(default=None, alias="sourceRunId")
+
+    model_config = {"populate_by_name": True}
 
 
 class WorkflowVersionListResponse(BaseModel):
@@ -1003,6 +1029,152 @@ async def dry_run(
         steps=steps_out,
         errors=errors,
     )
+
+
+def _resolve_workflow_definition_for_simulation(
+    body: DryRunRequest,
+    org_id: str,
+    environment_name: str,
+    settings: Settings,
+) -> tuple[dict, str | None, str | None]:
+    definition: dict | None = body.definition
+    workflow_id: str | None = str(body.workflow_id) if body.workflow_id else None
+    workflow_version_id: str | None = None
+    if workflow_id:
+        client = get_supabase_client(settings)
+        wf = get_workflow_def(client, org_id, workflow_id)
+        if not wf:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+        active = get_active_workflow_version(client, org_id, workflow_id, environment_name)
+        if not active:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No active workflow version. Create and activate a version first.",
+            )
+        definition = active.get("definition")
+        if not definition:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active workflow definition missing")
+        workflow_version_id = str(active["id"])
+    if not definition:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide workflow_id or definition")
+    return definition, workflow_id, workflow_version_id
+
+
+@router.post("/digital-twin", response_model=DigitalTwinResponse)
+async def digital_twin(
+    body: DryRunRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> DigitalTwinResponse:
+    """Simulate workflow with connector fixtures + LLM predictions; no live side effects."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    if settings.disable_execute:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
+    start = time.perf_counter()
+    definition, workflow_id, workflow_version_id = _resolve_workflow_definition_for_simulation(
+        body, org_id, environment_name, settings
+    )
+    try:
+        run_id, run_status, step_rows, plan, errors, stats = await execute_digital_twin(
+            settings=settings,
+            org_id=org_id,
+            user_id=current_user["user_id"],
+            definition=definition,
+            parameters=body.parameters,
+            workflow_id=workflow_id,
+            environment_name=environment_name,
+            workflow_version_id=workflow_version_id,
+        )
+    except WorkflowValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message) from e
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    logger.info(
+        "workflow_digital_twin request_id=%s org_id=%s run_id=%s latency_ms=%s fixture_hits=%s llm_predictions=%s status=%s",
+        request_id_ctx.get(),
+        org_id,
+        run_id,
+        latency_ms,
+        stats.get("fixtureHits", 0),
+        stats.get("llmPredictions", 0),
+        run_status,
+    )
+    return DigitalTwinResponse(
+        run_id=run_id,
+        status=run_status,
+        plan=plan,
+        steps=[_step_to_out(s) for s in step_rows],
+        errors=errors,
+        fixtureHits=stats.get("fixtureHits", 0),
+        llmPredictions=stats.get("llmPredictions", 0),
+        ragReads=stats.get("ragReads", 0),
+    )
+
+
+@router.get("/connector-fixtures")
+async def get_connector_fixtures_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    connector_type: str | None = Query(default=None, alias="connectorType"),
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    return {
+        "fixtures": list_connector_fixtures(
+            client,
+            org_id,
+            environment=environment_name,
+            connector_type=connector_type,
+        )
+    }
+
+
+@router.post("/connector-fixtures", status_code=status.HTTP_201_CREATED)
+async def post_connector_fixture_route(
+    body: ConnectorFixtureRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    try:
+        fixture = upsert_connector_fixture(
+            client,
+            org_id=org_id,
+            connector_type=body.connector_type,
+            action=body.action,
+            response=body.response,
+            actor_id=user["user_id"],
+            environment=environment,
+            label=body.label,
+            request_fingerprint=body.request_fingerprint,
+            source_run_id=body.source_run_id,
+        )
+    except ConnectorFixtureError as exc:
+        code = status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
+    return fixture
+
+
+@router.delete("/connector-fixtures/{fixture_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_connector_fixture_route(
+    fixture_id: str,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    _user, org_id = _admin
+    client = get_supabase_client(settings)
+    try:
+        delete_connector_fixture(client, org_id, fixture_id)
+    except ConnectorFixtureError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return None
 
 
 @router.post("/{workflow_id}/versions")

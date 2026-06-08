@@ -110,9 +110,9 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Current focus:** Tier 5 Epic E — STA-120 Workflow digital twin (STA-119 multi-agent swarm coordinator ✅).
+**Current focus:** Tier 5 Epic E — STA-121 Agent role marketplace (STA-120 workflow digital twin ✅).
 
-**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5` (Clio env: `npm run clio:fill-env` / `clio:check`). Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`.
+**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5`. Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`, digital twin: `docs/integration/workflow-digital-twin.md`.
 
 ---
 
@@ -227,7 +227,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 12 | T5-012 | [STA-117](https://linear.app/staqbot/issue/STA-117) | Federated connector consent ✅ | STA-116 |
 | 13 | T5-013 | [STA-118](https://linear.app/staqbot/issue/STA-118) | Delegate task to external org ✅ | STA-116 |
 | 14 | T5-014 | [STA-119](https://linear.app/staqbot/issue/STA-119) | Multi-agent swarm coordinator ✅ | STA-106, STA-48 |
-| 15 | T5-015 | [STA-120](https://linear.app/staqbot/issue/STA-120) | Workflow digital twin (simulate) | STA-12, dry_run |
+| 15 | T5-015 | [STA-120](https://linear.app/staqbot/issue/STA-120) | Workflow digital twin (simulate) ✅ | STA-12, dry_run |
 | 16 | T5-016 | [STA-121](https://linear.app/staqbot/issue/STA-121) | Agent role marketplace | STA-73 |
 | 17 | T5-017 | [STA-122](https://linear.app/staqbot/issue/STA-122) | Predictive workflow failure | STA-91, STA-94 |
 | 18 | T5-018 | [STA-123](https://linear.app/staqbot/issue/STA-123) | Auto-suggest connectors/workflows | STA-91 |

@@ -217,11 +217,12 @@ def create_run(
     environment_name: str = "default",
     workflow_version_id: str | None = None,
     trigger_type: str = "manual",
+    run_type: str = "dry_run",
 ) -> dict:
     row = {
         "org_id": org_id,
         "workflow_id": workflow_id,
-        "run_type": "dry_run",
+        "run_type": run_type,
         "status": "running",
         "triggered_by": triggered_by,
         "definition_snapshot": definition_snapshot,
