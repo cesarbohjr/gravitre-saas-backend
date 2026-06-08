@@ -32,6 +32,9 @@ from app.connectors.hubspot import (
     create_contact,
     create_deal,
     create_note,
+    delete_contact,
+    delete_deal,
+    delete_note,
     enroll_contact_in_sequence,
     get_contact,
     get_deal,
@@ -124,6 +127,7 @@ from app.connectors.hubspot_oauth import ensure_hubspot_access_token
 from app.connectors.zendesk import (
     ZendeskAPIError,
     add_ticket_tags,
+    close_ticket,
     create_ticket,
     get_ticket,
     update_ticket,
@@ -309,6 +313,23 @@ def _exec_hubspot_notes_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
     )
 
 
+def _exec_hubspot_notes_delete(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    note_id = params.get("note_id") or params.get("noteId")
+    if not note_id:
+        raise ToolValidationError("hubspot.notes.delete requires note_id")
+    try:
+        delete_note(token, str(note_id))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.notes.delete",
+        connector_id=cid,
+        data={"note_id": str(note_id), "deleted": True},
+    )
+
+
 def _exec_hubspot_deals_update_stage(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
     deal_id = params.get("deal_id") or params.get("dealId")
@@ -339,6 +360,23 @@ def _exec_hubspot_contacts_create(ctx: ToolContext, params: dict[str, Any]) -> N
         action="hubspot.contacts.create",
         connector_id=cid,
         data={"contact": data},
+    )
+
+
+def _exec_hubspot_contacts_delete(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    contact_id = params.get("contact_id") or params.get("contactId")
+    if not contact_id:
+        raise ToolValidationError("hubspot.contacts.delete requires contact_id")
+    try:
+        delete_contact(token, str(contact_id))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.contacts.delete",
+        connector_id=cid,
+        data={"contact_id": str(contact_id), "deleted": True},
     )
 
 
@@ -399,6 +437,23 @@ def _exec_hubspot_deals_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
         action="hubspot.deals.create",
         connector_id=cid,
         data={"deal": data},
+    )
+
+
+def _exec_hubspot_deals_delete(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    deal_id = params.get("deal_id") or params.get("dealId")
+    if not deal_id:
+        raise ToolValidationError("hubspot.deals.delete requires deal_id")
+    try:
+        delete_deal(token, str(deal_id))
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.deals.delete",
+        connector_id=cid,
+        data={"deal_id": str(deal_id), "deleted": True},
     )
 
 
@@ -1951,6 +2006,25 @@ def _exec_zendesk_tickets_update(ctx: ToolContext, params: dict[str, Any]) -> No
     return NormalizedResult(success=True, action="zendesk.tickets.update", connector_id=cid, data={"ticket": ticket})
 
 
+def _exec_zendesk_tickets_close(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
+    ticket_id = params.get("ticket_id") or params.get("ticketId")
+    if not ticket_id:
+        raise ToolValidationError("zendesk.tickets.close requires ticket_id")
+    try:
+        ticket = close_ticket(
+            subdomain,
+            email,
+            token,
+            ticket_id,
+            comment=params.get("comment"),
+            oauth_access_token=oauth_token,
+        )
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(success=True, action="zendesk.tickets.close", connector_id=cid, data={"ticket": ticket})
+
+
 def _exec_zendesk_tickets_add_tags(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
     ticket_id = params.get("ticket_id") or params.get("ticketId")
@@ -2255,12 +2329,15 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.contacts.get": _exec_hubspot_contacts_get,
     "hubspot.contacts.update": _exec_hubspot_contacts_update,
     "hubspot.notes.create": _exec_hubspot_notes_create,
+    "hubspot.notes.delete": _exec_hubspot_notes_delete,
     "hubspot.deals.update_stage": _exec_hubspot_deals_update_stage,
     "hubspot.sequences.enroll": _exec_hubspot_sequences_enroll,
     "hubspot.contacts.create": _exec_hubspot_contacts_create,
+    "hubspot.contacts.delete": _exec_hubspot_contacts_delete,
     "hubspot.contacts.search": _exec_hubspot_contacts_search,
     "hubspot.deals.get": _exec_hubspot_deals_get,
     "hubspot.deals.create": _exec_hubspot_deals_create,
+    "hubspot.deals.delete": _exec_hubspot_deals_delete,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
     "salesforce.leads.get": _exec_salesforce_leads_get,
@@ -2311,6 +2388,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "jira.users.search": _exec_jira_users_search,
     "zendesk.tickets.get": _exec_zendesk_tickets_get,
     "zendesk.tickets.create": _exec_zendesk_tickets_create,
+    "zendesk.tickets.close": _exec_zendesk_tickets_close,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,
     "zendesk.tickets.add_tags": _exec_zendesk_tickets_add_tags,
     "github.pulls.list": _exec_github_pulls_list,
@@ -2338,6 +2416,9 @@ from app.services.segment_tools import TOOL_EXECUTORS as SEGMENT_TOOL_EXECUTORS
 from app.services.workday_tools import WORKDAY_TOOL_EXECUTORS
 from app.services.xero_tools import XERO_TOOL_EXECUTORS
 from app.services.bamboohr_tools import BAMBOOHR_TOOL_EXECUTORS
+from app.services.fhir_tools import FHIR_TOOL_EXECUTORS
+from app.services.clio_tools import CLIO_TOOL_EXECUTORS
+from app.services.real_estate_tools import REAL_ESTATE_TOOL_EXECUTORS
 from app.services.greenhouse_tools import GREENHOUSE_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
@@ -2347,6 +2428,9 @@ _TOOL_REGISTRY.update(SEGMENT_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(LINKEDIN_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(XERO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(BAMBOOHR_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(FHIR_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CLIO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(REAL_ESTATE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GREENHOUSE_TOOL_EXECUTORS)
 
 # Workflow step type → canonical tool action
@@ -2407,6 +2491,18 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             enforce_interrupt(ctx.client, ctx.org_id, "agent_job", str(ctx.task_id), actor_id=ctx.actor_id)
         except AgentExecutionInterrupted as exc:
             raise ToolValidationError(f"Execution interrupted ({exc.signal})") from exc
+    if ctx.operator_id:
+        from app.services.autonomous_budget_service import AutonomousBudgetExceededError, enforce_autonomous_tool_budget
+
+        try:
+            enforce_autonomous_tool_budget(
+                ctx.client,
+                ctx.org_id,
+                str(ctx.operator_id),
+                actor_id=ctx.actor_id or None,
+            )
+        except AutonomousBudgetExceededError as exc:
+            raise ToolValidationError(str(exc), code=exc.code) from exc
 
     executor = _resolve_tool_executor(action, ctx)
     if not executor:
@@ -2415,6 +2511,19 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     connector_id = params.get("connector_id") or ctx.connector_id
     connector_type = action.split(".", 1)[0] if "." in action else action
     cid = str(connector_id) if connector_id else None
+    try:
+        from app.services.hipaa_service import HipaaComplianceError, enforce_hipaa_for_tool_invoke
+
+        enforce_hipaa_for_tool_invoke(ctx.client, ctx.org_id, action, cid)
+    except HipaaComplianceError as exc:
+        _write_tool_audit(
+            ctx,
+            action,
+            cid,
+            "tool.invoke.failed",
+            {"error_code": exc.code, "error": str(exc)[:200]},
+        )
+        raise ToolValidationError(str(exc), code=exc.code) from exc
     try:
         assert_agent_tool_permission(ctx, action, cid, connector_type)
     except ToolPermissionDeniedError as exc:
@@ -2434,6 +2543,13 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         )
     _write_tool_audit(ctx, action, cid, "tool.invoke.requested")
 
+    compensation_snapshot = None
+    if ctx.run_id:
+        from app.services.compensation_service import prepare_forward_snapshot, record_compensatable_action, should_track_compensation
+
+        if should_track_compensation(ctx, action):
+            compensation_snapshot = prepare_forward_snapshot(ctx, action, params)
+
     last_error: ToolError | None = None
     attempts = _MAX_RETRIES + 1
     for attempt in range(attempts):
@@ -2448,6 +2564,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 "tool.invoke.completed",
                 {"latency_ms": result.latency_ms, "attempt": attempt + 1},
             )
+            if ctx.transparency_log_id:
+                try:
+                    from app.services.transparency_service import append_tool_invocation
+
+                    append_tool_invocation(
+                        ctx.client,
+                        org_id=ctx.org_id,
+                        log_id=ctx.transparency_log_id,
+                        action=action,
+                        connector_id=result.connector_id or cid,
+                        success=True,
+                        latency_ms=result.latency_ms,
+                    )
+                except Exception:
+                    pass
             try:
                 from app.services.marketplace_billing_service import (
                     build_invoke_idempotency_key,
@@ -2465,6 +2596,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 )
             except Exception:
                 pass
+            if ctx.run_id:
+                from app.services.compensation_service import record_compensatable_action, should_track_compensation
+
+                if should_track_compensation(ctx, action):
+                    record_compensatable_action(
+                        ctx.client,
+                        org_id=ctx.org_id,
+                        run_id=str(ctx.run_id),
+                        step_id=ctx.step_id,
+                        forward_action=action,
+                        forward_params=params,
+                        forward_result=result.data,
+                        connector_id=result.connector_id or cid,
+                        snapshot=compensation_snapshot,
+                    )
             return result
         except Exception as exc:
             tool_exc = _classify_error(exc)
@@ -2486,6 +2632,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         "tool.invoke.failed",
         {"error_code": last_error.code, "error": str(last_error)[:200]},
     )
+    if ctx.transparency_log_id:
+        try:
+            from app.services.transparency_service import append_tool_invocation
+
+            append_tool_invocation(
+                ctx.client,
+                org_id=ctx.org_id,
+                log_id=ctx.transparency_log_id,
+                action=action,
+                connector_id=str(connector_id) if connector_id else None,
+                success=False,
+                error_code=last_error.code,
+            )
+        except Exception:
+            pass
     return NormalizedResult(
         success=False,
         action=action,
@@ -2497,6 +2658,13 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
 def tool_context_from_step(context: Any) -> ToolContext:
     """Build ToolContext from workflows StepContext."""
+    params = context.parameters if isinstance(context.parameters, dict) else {}
+    operator_id = None
+    transparency_log_id = None
+    if params.get("_transparency_log_id"):
+        transparency_log_id = str(params["_transparency_log_id"])
+    if params.get("_autonomous_run") and params.get("operator_id"):
+        operator_id = str(params["operator_id"])
     return ToolContext(
         settings=context.settings,
         client=context.client,
@@ -2506,6 +2674,8 @@ def tool_context_from_step(context: Any) -> ToolContext:
         run_id=context.run_id,
         step_id=context.step_id,
         step_type=context.step_type,
+        operator_id=operator_id,
+        transparency_log_id=transparency_log_id,
         connector_id=(context.config or {}).get("connector_id"),
     )
 

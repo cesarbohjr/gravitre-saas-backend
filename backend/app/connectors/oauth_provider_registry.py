@@ -68,6 +68,13 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             requires_pkce=True,
         ),
         OAuthProviderSpec(
+            vendor="clio",
+            authorize_url="https://app.clio.com/oauth/authorize",
+            token_url="https://app.clio.com/oauth/token",
+            scopes="contacts_read matters_read",
+            notes="Clio Manage API v4 read scopes for intake and conflict workflows",
+        ),
+        OAuthProviderSpec(
             vendor="airtable",
             authorize_url="https://airtable.com/oauth2/v1/authorize",
             token_url="https://airtable.com/oauth2/v1/token",

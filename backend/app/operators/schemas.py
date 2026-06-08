@@ -134,6 +134,15 @@ class OperatorAutoExecuteRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class OperatorRunBudgetRequest(BaseModel):
+    max_actions_per_day: int | None = Field(default=None, ge=0, alias="maxActionsPerDay")
+    max_tokens_per_day: int | None = Field(default=None, ge=0, alias="maxTokensPerDay")
+    max_spend_usd_per_day: float | None = Field(default=None, ge=0, alias="maxSpendUsdPerDay")
+    unset: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
 class OperatorUpdateRequest(BaseModel):
     name: str | None = None
     description: str | None = None

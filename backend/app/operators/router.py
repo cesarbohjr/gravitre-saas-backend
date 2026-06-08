@@ -24,6 +24,7 @@ from app.operators.schemas import (
     OperatorLinkSummary,
     OperatorListResponse,
     OperatorRunRequest,
+    OperatorRunBudgetRequest,
     OperatorRunResponse,
     OperatorSessionCreateRequest,
     OperatorSessionDetail,
@@ -80,6 +81,7 @@ from app.operators.services.auto_execute_service import (
     try_auto_execute_plan_step,
     update_operator_auto_execute,
 )
+from app.services.autonomous_budget_service import build_budget_status, update_operator_run_budgets
 from app.operators.services.plans import build_operator_action_plan
 from app.workflows.audit import write_audit_event
 from app.workflows.policy import PolicyResolutionError, get_user_role
@@ -296,6 +298,9 @@ def _operator_summary(operator: dict) -> dict:
         "approval_roles": list(operator.get("approval_roles") or []),
         "execution_mode": operator.get("execution_mode") or "plan_only",
         "auto_execute_trusted_scopes": list(operator.get("auto_execute_trusted_scopes") or []),
+        "auto_run_max_actions_per_day": operator.get("auto_run_max_actions_per_day"),
+        "auto_run_max_tokens_per_day": operator.get("auto_run_max_tokens_per_day"),
+        "auto_run_max_spend_usd_per_day": operator.get("auto_run_max_spend_usd_per_day"),
         "active_version": None,
     }
 
@@ -1645,6 +1650,55 @@ async def configure_agent_auto_execute_route(
     }
 
 
+@agents_router.get("/{agent_id}/run-budgets")
+async def get_agent_run_budgets_route(
+    agent_id: UUID,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Read autonomous run budget limits and today's usage (STA-109)."""
+    _user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    operator = get_operator(client, org_id, str(agent_id))
+    if not operator:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    status_payload = build_budget_status(client, org_id, operator)
+    return {"agentId": str(agent_id), "environment": environment, **status_payload}
+
+
+@agents_router.put("/{agent_id}/run-budgets")
+async def configure_agent_run_budgets_route(
+    agent_id: UUID,
+    body: OperatorRunBudgetRequest,
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    environment: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Configure per-agent autonomous run budgets (STA-109)."""
+    user, org_id = admin_ctx
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        updated = update_operator_run_budgets(
+            client,
+            org_id=org_id,
+            operator_id=str(agent_id),
+            max_actions_per_day=body.max_actions_per_day,
+            max_tokens_per_day=body.max_tokens_per_day,
+            max_spend_usd_per_day=body.max_spend_usd_per_day,
+            actor_id=user["user_id"],
+            unset=set(body.unset or []),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    bindings = list_operator_bindings(client, org_id, [str(agent_id)])
+    connector_ids = [str(b["connector_id"]) for b in bindings if b.get("connector_id")]
+    connectors = list_connectors_by_ids(client, org_id, connector_ids, environment)
+    detail = _operator_detail(updated, connectors, get_active_operator_version(client, org_id, str(agent_id), environment))
+    budget_status = build_budget_status(client, org_id, updated)
+    return {"agent": detail, **budget_status}
+
+
 @agents_router.post("/{agent_id}/stop")
 async def stop_agent_route(
     agent_id: UUID,
@@ -1907,6 +1961,11 @@ async def submit_session_task(
             system_prompt=get_operator_system_prompt(operator_for_prompt),
             response_format=OperatorTaskPlan,
             org_id=org_id,
+            operator_id=str(operator_for_prompt["id"]) if operator_for_prompt.get("id") else None,
+            autonomous_run=bool(
+                operator_for_prompt.get("id")
+                and str(operator_for_prompt.get("execution_mode") or "plan_only") != "plan_only"
+            ),
         )
         # response_format guarantees a validated dict in `parsed`.
         parsed: dict = ai_result.parsed or {}

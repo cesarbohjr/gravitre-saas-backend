@@ -51,6 +51,8 @@ class ToolContext:
     run_id: str | None = None
     task_id: str | None = None
     agent_id: str | None = None
+    operator_id: str | None = None
+    transparency_log_id: str | None = None
     connector_id: str | None = None
     step_id: str | None = None
     step_type: str | None = None

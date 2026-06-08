@@ -328,6 +328,45 @@ def execute_workflow_steps(
     )
     if run_failed:
         emit_execute_failed(client, org_id, user_id, run_id, run_error_message)
+        try:
+            from app.services.compensation_service import compensate_failed_autonomous_run
+
+            compensate_failed_autonomous_run(
+                client,
+                settings,
+                org_id=org_id,
+                run_id=run_id,
+                actor_id=user_id,
+                parameters=parameters,
+                environment_name=environment_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "workflow compensation skipped org_id=%s run_id=%s error=%s",
+                org_id,
+                run_id,
+                str(exc),
+            )
     else:
         emit_execute_completed(client, org_id, user_id, run_id, final_status)
+    transparency_log_id = parameters.get("_transparency_log_id")
+    if transparency_log_id:
+        try:
+            from app.services.transparency_service import finalize_decision_log_from_run
+
+            finalize_decision_log_from_run(
+                client,
+                org_id=org_id,
+                log_id=str(transparency_log_id),
+                workflow_run_id=run_id,
+                final_status=final_status,
+                errors=errors,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "transparency log finalize skipped org_id=%s run_id=%s error=%s",
+                org_id,
+                run_id,
+                str(exc),
+            )
     return final_status, step_rows, errors, rate_limited

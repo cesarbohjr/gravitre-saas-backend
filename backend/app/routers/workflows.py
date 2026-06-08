@@ -89,6 +89,7 @@ from app.connectors.repository import get_connector
 from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
+from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
 from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
 from app.workflows.cron import compute_next_run_at
 from app.services.workflow_schedule_service import dispatch_org_workflow_schedules
@@ -1294,6 +1295,7 @@ async def execute_workflow(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     parameters = validate_parameters(body.parameters)
+    parameters = enrich_vertical_workflow_parameters(org_id, workflow_id, parameters, wf)
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 
@@ -1545,6 +1547,7 @@ def _execute_workflow_with_context(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     parameters = validate_parameters(parameters)
+    parameters = enrich_vertical_workflow_parameters(org_id, workflow_id, parameters, wf)
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 
@@ -1992,6 +1995,44 @@ async def rollback_run(
     )
 
 
+@router.post("/runs/{run_id}/compensate")
+async def compensate_run(
+    run_id: UUID,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Run compensating tool actions recorded for a failed workflow run (STA-107)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    run = get_run_with_steps(client, org_id, str(run_id), environment_name)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    from app.services.compensation_service import execute_compensations, notify_compensation_webhook
+
+    summary = execute_compensations(
+        client,
+        settings,
+        org_id=org_id,
+        run_id=str(run_id),
+        actor_id=current_user["user_id"],
+        environment_name=environment_name,
+    )
+    if summary["compensated"] or summary["failed"]:
+        notify_compensation_webhook(
+            client,
+            settings,
+            org_id=org_id,
+            run_id=str(run_id),
+            actor_id=current_user["user_id"],
+            summary=summary,
+            environment_name=environment_name,
+        )
+    return summary
+
+
 @router.post("/runs/{run_id}/approve")
 async def approve_run(
     run_id: UUID,
@@ -2047,6 +2088,19 @@ async def approve_run(
         comment=body.comment,
     )
     emit_execute_approval_recorded(client, org_id, current_user["user_id"], run_id_str, "approved")
+    try:
+        from app.services.transparency_service import record_human_override
+
+        record_human_override(
+            client,
+            org_id=org_id,
+            actor_id=current_user["user_id"],
+            decision="approved",
+            comment=body.comment,
+            workflow_run_id=run_id_str,
+        )
+    except Exception:
+        pass
     approved_count, has_rejected = get_approval_counts(client, run_id_str)
     required = run.get("required_approvals") or 1
     if has_rejected:
@@ -2193,6 +2247,19 @@ async def reject_run(
     update_run(client, run_id_str, status="cancelled", approval_status="rejected")
     emit_execute_rejected(client, org_id, current_user["user_id"], run_id_str)
     emit_execute_cancelled(client, org_id, current_user["user_id"], run_id_str)
+    try:
+        from app.services.transparency_service import record_human_override
+
+        record_human_override(
+            client,
+            org_id=org_id,
+            actor_id=current_user["user_id"],
+            decision="rejected",
+            comment=body.comment,
+            workflow_run_id=run_id_str,
+        )
+    except Exception:
+        pass
     return {
         "run_id": run_id_str,
         "status": "cancelled",
@@ -2647,6 +2714,17 @@ async def rollback_run_alias(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     return await rollback_run(run_id, _admin, environment_name, settings)
+
+
+@runs_router.post("/{run_id}/compensate")
+async def compensate_run_alias(
+    run_id: UUID,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    return await compensate_run(run_id, current_user, org_id, environment_name, settings)
 
 
 @router.get("")

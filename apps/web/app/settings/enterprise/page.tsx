@@ -5,20 +5,26 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
-import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock } from "lucide-react"
+import { HeartPulse, Globe, Palette, Users, DollarSign, ShieldAlert, Lock, Gauge, ScrollText } from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
 import { BrandingTab } from "@/components/enterprise/branding-tab"
 import { WorkforceTab } from "@/components/enterprise/workforce-tab"
 import { CostTab } from "@/components/enterprise/cost-tab"
+import { BudgetsTab } from "@/components/enterprise/budgets-tab"
+import { HipaaTab } from "@/components/enterprise/hipaa-tab"
+import { TransparencyTab } from "@/components/enterprise/transparency-tab"
 import { SiemTab } from "@/components/enterprise/siem-tab"
 
-type TabId = "region" | "branding" | "workforce" | "cost" | "siem"
+type TabId = "region" | "branding" | "workforce" | "cost" | "budgets" | "hipaa" | "transparency" | "siem"
 
 const TABS: { id: TabId; label: string; icon: typeof Globe; description: string }[] = [
   { id: "region", label: "Data Residency", icon: Globe, description: "Control where your data is stored" },
   { id: "branding", label: "White Label", icon: Palette, description: "Custom logo, color, and domain" },
   { id: "workforce", label: "Workforce", icon: Users, description: "Agent task analytics" },
   { id: "cost", label: "Cost Attribution", icon: DollarSign, description: "Spend by agent and department" },
+  { id: "budgets", label: "Run Budgets", icon: Gauge, description: "Daily caps on autonomous execution" },
+  { id: "hipaa", label: "HIPAA", icon: HeartPulse, description: "BAA acceptance and PHI controls" },
+  { id: "transparency", label: "AI Transparency", icon: ScrollText, description: "EU AI Act decision logs" },
   { id: "siem", label: "SIEM Export", icon: ShieldAlert, description: "Stream audit logs to your SIEM" },
 ]
 
@@ -90,6 +96,9 @@ export default function EnterprisePage() {
               {activeTab === "branding" && <BrandingTab isAdmin={isAdmin} />}
               {activeTab === "workforce" && <WorkforceTab />}
               {activeTab === "cost" && <CostTab />}
+              {activeTab === "budgets" && <BudgetsTab isAdmin={isAdmin} />}
+              {activeTab === "hipaa" && <HipaaTab isAdmin={isAdmin} />}
+              {activeTab === "transparency" && <TransparencyTab isAdmin={isAdmin} />}
               {activeTab === "siem" && <SiemTab isAdmin={isAdmin} />}
             </div>
           </div>

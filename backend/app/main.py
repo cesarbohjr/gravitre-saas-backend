@@ -59,6 +59,9 @@ from app.routers import (
     enterprise,
     settings,
     slack_commands,
+    verticals_healthcare,
+    verticals_legal,
+    verticals_real_estate,
 )
 from app.routers import (
     hubspot_triggers,
@@ -330,6 +333,9 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(enterprise.router)
+app.include_router(verticals_healthcare.router)
+app.include_router(verticals_legal.router)
+app.include_router(verticals_real_estate.router)
 app.include_router(stripe_webhooks.router)
 app.include_router(stripe_connect_sample_router)
 app.include_router(hubspot_inbound.router)

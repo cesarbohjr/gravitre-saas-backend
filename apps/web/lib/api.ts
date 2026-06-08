@@ -87,6 +87,12 @@ import type {
   EnterpriseDomainVerifyResult,
   EnterpriseWorkforceAnalytics,
   EnterpriseCostAttribution,
+  EnterpriseAutonomousRunBudgets,
+  EnterpriseHipaaStatus,
+  EnterpriseTransparencyLogsResponse,
+  EnterpriseTransparencyExport,
+  AutonomousRunBudgetLimits,
+  AutonomousRunBudgetUsage,
   EnterpriseSiemConfig,
   EnterpriseSiemTestResult,
   PrivateConnectorBundle,
@@ -901,11 +907,54 @@ export const enterpriseApi = {
   getCostAttribution: () =>
     fetcher<EnterpriseCostAttribution>(apiUrl("/api/enterprise/cost-attribution")),
 
+  // Autonomous run budgets (STA-109)
+  getAutonomousRunBudgets: () =>
+    fetcher<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets")),
+  updateAutonomousRunBudgets: (data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] }) =>
+    putJson<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets"), data),
+  updateAgentRunBudgets: (
+    agentId: string,
+    data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] },
+  ) => putJson<{ agent: unknown; limits: AutonomousRunBudgetLimits; usageToday: AutonomousRunBudgetUsage; usageDate: string }>(
+    apiUrl(`/api/agents/${agentId}/run-budgets`),
+    data,
+  ),
+
   // SIEM
   getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
   updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
     putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
   testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
+
+  // HIPAA (STA-110)
+  getHipaa: () => fetcher<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa")),
+  acceptHipaaBaa: (data?: { baaVersion?: string }) =>
+    postJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa/accept-baa"), data ?? {}),
+  updateHipaa: (data: { enabled: boolean }) =>
+    putJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa"), data),
+  updateConnectorPhi: (connectorId: string, data: { phiCapable: boolean }) =>
+    putJson<Connector>(apiUrl(`/api/enterprise/connectors/${connectorId}/phi`), data),
+
+  // EU AI Act transparency (STA-112)
+  getTransparencyLogs: (params?: { from?: string; to?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.from) query.set("from", params.from)
+    if (params?.to) query.set("to", params.to)
+    if (params?.limit) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<EnterpriseTransparencyLogsResponse>(
+      apiUrl(`/api/enterprise/transparency-logs${suffix}`),
+    )
+  },
+  exportTransparencyLogs: (params?: { from?: string; to?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.from) query.set("from", params.from)
+    if (params?.to) query.set("to", params.to)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<EnterpriseTransparencyExport>(
+      apiUrl(`/api/enterprise/transparency-logs/export${suffix}`),
+    )
+  },
 }
 
 export const api = {

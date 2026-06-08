@@ -18,6 +18,8 @@
     "jira:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-jira-operator-env.ps1",
     "xero:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-xero-operator-env.ps1",
     "xero:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-xero-oauth.ps1",
+    "clio:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-clio-operator-env.ps1",
+    "clio:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-clio-oauth.ps1",
     "airtable:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-airtable-operator-env.ps1",
     "airtable:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-airtable-oauth.ps1",
     "asana:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-asana-operator-env.ps1",

@@ -45,6 +45,8 @@ export const CONNECTOR_CATEGORY_META: Record<string, { color: string; label: str
   "Operations / Workflow": { color: "amber", label: "Operations / Workflow" },
   "Customer Support": { color: "pink", label: "Customer Support" },
   "HR / People": { color: "cyan", label: "HR / People" },
+  Healthcare: { color: "teal", label: "Healthcare" },
+  Legal: { color: "slate", label: "Legal" },
   "Storage / Dev / Infra": { color: "orange", label: "Storage / Dev / Infra" },
   "Learning / Creative": { color: "indigo", label: "Learning / Creative" },
 }
@@ -71,6 +73,7 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Mailchimp",
   "Constant Contact",
   "Xero",
+  "Clio",
   "Airtable",
   "Asana",
   "ClickUp",
@@ -111,6 +114,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "constant_contact",
   "hootsuite",
   "xero",
+  "clio",
   "airtable",
   "asana",
   "clickup",
@@ -265,6 +269,27 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Greenhouse", vendorKey: "greenhouse", description: "Recruiting and applicant tracking", authType: "apiKey", credentialModel: "api_key", category: "HR / People", shipped: true },
   { type: "Gusto", vendorKey: "gusto", description: "Payroll and benefits", authType: "oauth", credentialModel: "partner_oauth", category: "HR / People", requiresPartnerApproval: true, setupComplexity: "enterprise" },
   { type: "ADP", vendorKey: "adp", description: "HR and payroll", authType: "apiKey", credentialModel: "partner_oauth", category: "HR / People", requiresPartnerApproval: true, setupComplexity: "enterprise" },
+  // Healthcare
+  {
+    type: "FHIR",
+    vendorKey: "fhir",
+    description: "FHIR R4 patient and appointment read (sandbox or EHR)",
+    authType: "apiKey",
+    credentialModel: "api_key",
+    category: "Healthcare",
+    shipped: true,
+  },
+  // Legal
+  {
+    type: "Clio",
+    vendorKey: "clio",
+    description: "Clio Manage contacts and matters (OAuth or demo sandbox)",
+    authType: "oauth",
+    credentialModel: "oauth2",
+    category: "Legal",
+    oauthReady: true,
+    shipped: true,
+  },
   // Storage / Dev / Infra
   { type: "AWS S3", vendorKey: "aws_s3", description: "Cloud object storage", authType: "apiKey", credentialModel: "iam", category: "Storage / Dev / Infra" },
   { type: "PostgreSQL", vendorKey: "postgresql", description: "SQL database", authType: "apiKey", credentialModel: "connection_string", category: "Storage / Dev / Infra", shipped: true },

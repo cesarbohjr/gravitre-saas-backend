@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.operators.services.auto_execute_service import get_operator_system_prompt
+from app.services.autonomous_budget_service import is_autonomous_operator
 from app.billing.service import (
     apply_usage_with_overage,
     build_ai_usage_metadata,
@@ -262,12 +263,15 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
         operator_row = op_resp.data[0] if op_resp.data else None
 
     router = get_model_router()
+    autonomous_run = bool(operator_row and is_autonomous_operator(operator_row))
     ai_result = await router.complete(
         task_type=TaskType.WORKFLOW_PLANNING,
         prompt=prompt,
         system_prompt=get_operator_system_prompt(operator_row or {}),
         response_format=OperatorTaskPlan,
         org_id=org_id,
+        operator_id=str(operator_id) if operator_id else None,
+        autonomous_run=autonomous_run,
     )
     parsed: dict = ai_result.parsed or {}
     result = {

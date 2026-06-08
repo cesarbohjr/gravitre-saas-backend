@@ -4,6 +4,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
@@ -12,7 +14,11 @@ from app.auth.dependencies import get_current_user, get_org_context, require_adm
 from app.billing.service import get_plan_for_org, require_feature
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
-from app.services.agent_cost_service import aggregate_agent_costs
+from app.services.autonomous_budget_service import (
+    get_org_autonomous_budget_defaults,
+    list_operator_budget_statuses,
+    update_org_autonomous_budget_defaults,
+)
 from app.services.branding_service import (
     ensure_domain_verification_token,
     get_org_branding,
@@ -30,6 +36,8 @@ from app.services.domain_verification_service import build_verification_instruct
 from app.services.enterprise_secrets_service import encrypt_enterprise_secret, resolve_siem_secret
 from app.services.siem_export_service import build_siem_event, dispatch_siem_event
 from app.services.workforce_analytics_service import build_workforce_analytics
+from app.services.hipaa_service import accept_baa, get_hipaa_status, set_hipaa_enabled, set_connector_phi_capable
+from app.services.transparency_service import build_transparency_export_bundle, list_decision_logs
 from app.workers.queue import is_queue_available
 from app.workflows.audit import write_audit_event
 
@@ -57,6 +65,37 @@ class SiemConfigUpdate(BaseModel):
 class SiemTestRequest(BaseModel):
     endpoint: str
     secret: str
+
+
+class AutonomousRunBudgetUpdate(BaseModel):
+    max_actions_per_day: int | None = Field(default=None, ge=0, alias="maxActionsPerDay")
+    max_tokens_per_day: int | None = Field(default=None, ge=0, alias="maxTokensPerDay")
+    max_spend_usd_per_day: float | None = Field(default=None, ge=0, alias="maxSpendUsdPerDay")
+    unset: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class AgentRunBudgetUpdate(AutonomousRunBudgetUpdate):
+    agent_id: str = Field(alias="agentId")
+
+    model_config = {"populate_by_name": True}
+
+
+class HipaaAcceptBaaRequest(BaseModel):
+    baa_version: str | None = Field(default=None, alias="baaVersion")
+
+    model_config = {"populate_by_name": True}
+
+
+class HipaaModeUpdate(BaseModel):
+    enabled: bool
+
+
+class ConnectorPhiUpdate(BaseModel):
+    phi_capable: bool = Field(alias="phiCapable")
+
+    model_config = {"populate_by_name": True}
 
 
 def _org_settings(client: Any, org_id: str) -> dict[str, Any]:
@@ -330,6 +369,138 @@ async def cost_attribution(
         or []
     )
     return aggregate_agent_costs(usage_rows=usage)
+
+
+@router.get("/autonomous-run-budgets")
+async def get_autonomous_run_budgets(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return {
+        "orgDefaults": get_org_autonomous_budget_defaults(client, org_id),
+        "agents": list_operator_budget_statuses(client, org_id),
+    }
+
+
+@router.put("/autonomous-run-budgets")
+async def update_autonomous_run_budgets(
+    body: AutonomousRunBudgetUpdate,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    org_defaults = update_org_autonomous_budget_defaults(
+        client,
+        org_id=org_id,
+        max_actions_per_day=body.max_actions_per_day,
+        max_tokens_per_day=body.max_tokens_per_day,
+        max_spend_usd_per_day=body.max_spend_usd_per_day,
+        actor_id=user["user_id"],
+        unset=set(body.unset or []),
+    )
+    return {
+        "orgDefaults": org_defaults,
+        "agents": list_operator_budget_statuses(client, org_id),
+    }
+
+
+@router.get("/hipaa")
+async def get_hipaa_status_route(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return get_hipaa_status(client, org_id)
+
+
+@router.post("/hipaa/accept-baa")
+async def accept_hipaa_baa_route(
+    body: HipaaAcceptBaaRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return accept_baa(client, org_id=org_id, actor_id=user["user_id"], baa_version=body.baa_version)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.put("/hipaa")
+async def update_hipaa_mode_route(
+    body: HipaaModeUpdate,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return set_hipaa_enabled(client, org_id=org_id, actor_id=user["user_id"], enabled=body.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.put("/connectors/{connector_id}/phi")
+async def update_connector_phi_route(
+    connector_id: UUID,
+    body: ConnectorPhiUpdate,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        row = set_connector_phi_capable(
+            client,
+            org_id=org_id,
+            connector_id=str(connector_id),
+            phi_capable=body.phi_capable,
+            actor_id=user["user_id"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"connectorId": str(connector_id), "phiCapable": bool(row.get("phi_capable"))}
+
+
+@router.get("/transparency-logs")
+async def get_transparency_logs_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    from_ts: Annotated[str | None, Query(alias="from")] = None,
+    to_ts: Annotated[str | None, Query(alias="to")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    require_feature(get_plan_for_org(client, org_id), "audit_logs")
+    logs = list_decision_logs(client, org_id, from_ts=from_ts, to_ts=to_ts, limit=limit)
+    return {"decisions": logs, "count": len(logs)}
+
+
+@router.get("/transparency-logs/export")
+async def export_transparency_logs_route(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    from_ts: Annotated[str | None, Query(alias="from")] = None,
+    to_ts: Annotated[str | None, Query(alias="to")] = None,
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    require_feature(get_plan_for_org(client, org_id), "audit_logs")
+    return build_transparency_export_bundle(
+        client,
+        org_id,
+        actor_id=user["user_id"],
+        from_ts=from_ts,
+        to_ts=to_ts,
+    )
 
 
 @router.get("/siem")

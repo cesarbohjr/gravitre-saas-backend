@@ -43,7 +43,7 @@ def test_list_registered_actions():
 
 def test_invoke_unknown_action(tool_ctx: ToolContext):
     with pytest.raises(ToolNotFoundError):
-        invoke_tool(tool_ctx, "hubspot.contacts.delete", {})
+        invoke_tool(tool_ctx, "hubspot.contacts.archive", {})
 
 
 def test_invoke_slack_success(tool_ctx: ToolContext):
