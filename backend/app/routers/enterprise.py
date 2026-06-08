@@ -36,6 +36,12 @@ from app.services.domain_verification_service import build_verification_instruct
 from app.services.enterprise_secrets_service import encrypt_enterprise_secret, resolve_siem_secret
 from app.services.siem_export_service import build_siem_event, dispatch_siem_event
 from app.services.workforce_analytics_service import build_workforce_analytics
+from app.services.integration_suggestion_service import (
+    IntegrationSuggestionError,
+    dismiss_integration_suggestion,
+    list_integration_suggestions,
+    scan_integration_suggestions,
+)
 from app.services.hipaa_service import accept_baa, get_hipaa_status, set_hipaa_enabled, set_connector_phi_capable
 from app.services.transparency_service import build_transparency_export_bundle, list_decision_logs
 from app.workers.queue import is_queue_available
@@ -347,6 +353,77 @@ async def workforce_analytics(
     audit_logs = client.table("audit_logs").select("action,details,created_at").eq("org_id", org_id).execute().data or []
     handoffs = [row for row in audit_logs if "handoff" in str(row.get("action") or "")]
     return build_workforce_analytics(agent_jobs=jobs, audit_logs=audit_logs, handoff_events=handoffs)
+
+
+class IntegrationSuggestionScanResponse(BaseModel):
+    lookback_days: int = Field(alias="lookbackDays")
+    usage: dict[str, Any]
+    suggestion_count: int = Field(alias="suggestionCount")
+    suggestions: list[dict[str, Any]]
+    scanned_at: str = Field(alias="scannedAt")
+
+    model_config = {"populate_by_name": True}
+
+
+@router.get("/integration-suggestions")
+async def get_integration_suggestions(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    status: str = Query(default="open"),
+    connector_type: str | None = Query(default=None, alias="connectorType"),
+) -> dict[str, Any]:
+    """List audit-driven connector and workflow suggestions (STA-123)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    if status not in {"open", "dismissed", "applied"}:
+        raise HTTPException(status_code=400, detail="Invalid status filter")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    suggestions = list_integration_suggestions(
+        client,
+        org_id,
+        status=status,
+        connector_type=connector_type,
+    )
+    return {"suggestions": suggestions, "count": len(suggestions)}
+
+
+@router.post("/integration-suggestions/scan", response_model=IntegrationSuggestionScanResponse)
+async def scan_integration_suggestions_route(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    lookback_days: int = Query(default=30, ge=7, le=90, alias="lookbackDays"),
+) -> IntegrationSuggestionScanResponse:
+    """Analyze audit tool usage and persist integration suggestions (STA-123)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    summary = scan_integration_suggestions(
+        client,
+        org_id,
+        lookback_days=lookback_days,
+        actor_id=current_user["user_id"],
+    )
+    return IntegrationSuggestionScanResponse(**summary)
+
+
+@router.post("/integration-suggestions/{suggestion_id}/dismiss")
+async def dismiss_integration_suggestion_route(
+    suggestion_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Dismiss an integration suggestion (STA-123)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        suggestion = dismiss_integration_suggestion(client, org_id, suggestion_id)
+    except IntegrationSuggestionError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"suggestion": suggestion}
 
 
 @router.get("/cost-attribution")

@@ -110,9 +110,9 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Current focus:** Tier 5 Epic F — STA-123 Auto-suggest connectors & workflows from audit data (STA-122 predictive workflow failure ✅).
+**Current focus:** Tier 5 Epic F — STA-124 Customer integration health score (STA-123 auto-suggest connectors & workflows ✅).
 
-**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5`. Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`, digital twin: `docs/integration/workflow-digital-twin.md`, role marketplace: `docs/integration/agent-role-marketplace.md`, failure prediction: `docs/integration/predictive-workflow-failure.md`.
+**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5`. Federation: `docs/integration/b2b-handoff-protocol.md`, delegated tasks: `docs/integration/delegated-external-tasks.md`, swarm: `docs/integration/multi-agent-swarm-coordinator.md`, digital twin: `docs/integration/workflow-digital-twin.md`, role marketplace: `docs/integration/agent-role-marketplace.md`, failure prediction: `docs/integration/predictive-workflow-failure.md`, integration suggestions: `docs/integration/auto-suggest-connectors-workflows.md`.
 
 ---
 
@@ -230,7 +230,7 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 15 | T5-015 | [STA-120](https://linear.app/staqbot/issue/STA-120) | Workflow digital twin (simulate) ✅ | STA-12, dry_run |
 | 16 | T5-016 | [STA-121](https://linear.app/staqbot/issue/STA-121) | Agent role marketplace ✅ | STA-73 |
 | 17 | T5-017 | [STA-122](https://linear.app/staqbot/issue/STA-122) | Predictive workflow failure ✅ | STA-91, STA-94 |
-| 18 | T5-018 | [STA-123](https://linear.app/staqbot/issue/STA-123) | Auto-suggest connectors/workflows | STA-91 |
+| 18 | T5-018 | [STA-123](https://linear.app/staqbot/issue/STA-123) | Auto-suggest connectors/workflows ✅ | STA-91 |
 | 19 | T5-019 | [STA-124](https://linear.app/staqbot/issue/STA-124) | Customer integration health score | STA-91 |
 
 **Start Tier 5 Epic A only after:** STA-10, STA-11, STA-82, STA-90 (guardrails first).
