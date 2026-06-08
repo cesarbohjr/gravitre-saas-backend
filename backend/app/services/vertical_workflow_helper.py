@@ -1,6 +1,7 @@
 """Shared helpers for vertical-pack workflows — active versions + execute params."""
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from app.workflows.constants import SCHEMA_VERSION
@@ -9,6 +10,36 @@ from app.workflows.repository import (
     get_next_workflow_version_number,
     set_active_workflow_version,
 )
+
+
+def _demo_approval_policy_id(org_id: str, workflow_id: str) -> str:
+    try:
+        namespace = uuid.UUID(org_id)
+    except ValueError:
+        namespace = uuid.uuid5(uuid.NAMESPACE_DNS, f"gravitre-org:{org_id}")
+    return str(uuid.uuid5(namespace, f"approval-policy:{workflow_id}"))
+
+
+def ensure_demo_execute_policy(
+    client: Any,
+    org_id: str,
+    workflow_id: str,
+    *,
+    actor_id: str | None = None,
+) -> None:
+    """Let vertical-pack demo workflows execute without the paid approvals feature."""
+    client.table("approval_policies").upsert(
+        {
+            "id": _demo_approval_policy_id(org_id, workflow_id),
+            "org_id": org_id,
+            "workflow_id": workflow_id,
+            "run_types": ["execute"],
+            "required_approvals": 0,
+            "approver_roles": ["admin"],
+            "created_by": actor_id,
+        },
+        on_conflict="org_id,workflow_id",
+    ).execute()
 
 
 def ensure_active_workflow_version(
@@ -41,6 +72,7 @@ def ensure_active_workflow_version(
         version_id=version_id,
         updated_by=actor_id,
     )
+    ensure_demo_execute_policy(client, org_id, workflow_id, actor_id=actor_id)
     return version_id
 
 
