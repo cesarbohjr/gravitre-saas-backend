@@ -110,7 +110,9 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 **Tier 2 production verification:** `docs/integration/TIER2_PRODUCTION_SMOKE.md` (OAuth + API key flows use shared `app/connectors/platform.py`).
 
-**Current focus:** Tier 5 Epic C — STA-115 ✅ Real estate vertical pack; next STA-116+ platform items.
+**Current focus:** Tier 5 Epic D — STA-117 Federated connector consent (STA-116 B2B handoff protocol ✅).
+
+**Tier 5 production verification:** `docs/integration/TIER5_PRODUCTION_SMOKE.md` — run `npm run smoke:tier5` (Clio env: `npm run clio:fill-env` / `clio:check`). Federation API: `docs/integration/b2b-handoff-protocol.md`.
 
 ---
 
@@ -219,9 +221,9 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 6 | T5-007 | [STA-112](https://linear.app/staqbot/issue/STA-112) | EU AI Act transparency logs ✅ | STA-106, STA-81 |
 | 7 | T5-006 | [STA-111](https://linear.app/staqbot/issue/STA-111) | FedRAMP gap assessment ✅ | STA-81 |
 | 8 | T5-008 | [STA-113](https://linear.app/staqbot/issue/STA-113) | Healthcare vertical pack ✅ | STA-110 |
-| 9 | T5-009 | [STA-114](https://linear.app/staqbot/issue/STA-114) | Legal vertical pack (Clio) | STA-10, STA-13 |
-| 10 | T5-010 | [STA-115](https://linear.app/staqbot/issue/STA-115) | Real estate vertical pack | STA-15 |
-| 11 | T5-011 | [STA-116](https://linear.app/staqbot/issue/STA-116) | Cross-org B2B handoff protocol | STA-17, STA-86 |
+| 9 | T5-009 | [STA-114](https://linear.app/staqbot/issue/STA-114) | Legal vertical pack (Clio) ✅ | STA-10, STA-13 |
+| 10 | T5-010 | [STA-115](https://linear.app/staqbot/issue/STA-115) | Real estate vertical pack ✅ | STA-15 |
+| 11 | T5-011 | [STA-116](https://linear.app/staqbot/issue/STA-116) | Cross-org B2B handoff protocol ✅ | STA-17, STA-86 |
 | 12 | T5-012 | [STA-117](https://linear.app/staqbot/issue/STA-117) | Federated connector consent | STA-116 |
 | 13 | T5-013 | [STA-118](https://linear.app/staqbot/issue/STA-118) | Delegate task to external org | STA-116 |
 | 14 | T5-014 | [STA-119](https://linear.app/staqbot/issue/STA-119) | Multi-agent swarm coordinator | STA-106, STA-48 |
@@ -232,6 +234,8 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 19 | T5-019 | [STA-124](https://linear.app/staqbot/issue/STA-124) | Customer integration health score | STA-91 |
 
 **Start Tier 5 Epic A only after:** STA-10, STA-11, STA-82, STA-90 (guardrails first).
+
+**Tier 5 Epic C status:** STA-113–115 shipped (healthcare, legal/Clio, real estate). Production smoke: `npm run smoke:tier5`.
 
 ---
 

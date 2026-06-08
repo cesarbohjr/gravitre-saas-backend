@@ -57,6 +57,7 @@ from app.routers import (
     sources,
     environments,
     enterprise,
+    federation,
     settings,
     slack_commands,
     verticals_healthcare,
@@ -335,6 +336,7 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(enterprise.router)
+app.include_router(federation.router)
 app.include_router(verticals_healthcare.router)
 app.include_router(verticals_legal.router)
 app.include_router(verticals_real_estate.router)
