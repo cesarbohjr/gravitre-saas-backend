@@ -240,18 +240,20 @@ async def api_versioning(request: Request, call_next):
     path_version: str | None = None
 
     if path.startswith("/api/v"):
-        remainder = path[len("/api/"):]  # v1/...
+        remainder = path[len("/api/"):]  # v1/... or verticals/...
         segment = remainder.split("/", 1)[0]
-        path_version = _normalize_version(segment)
-        if not path_version or path_version not in supported_versions:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"detail": "Unsupported API version"},
-            )
-        suffix = remainder[len(segment):]  # includes leading "/" if present
-        new_path = "/api" + suffix
-        request.scope["path"] = new_path
-        request.scope["raw_path"] = new_path.encode("utf-8")
+        # Only /api/v1/... is versioned — not /api/verticals, /api/vendors, etc.
+        if len(segment) >= 2 and segment[0] == "v" and segment[1].isdigit():
+            path_version = _normalize_version(segment)
+            if not path_version or path_version not in supported_versions:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": "Unsupported API version"},
+                )
+            suffix = remainder[len(segment):]  # includes leading "/" if present
+            new_path = "/api" + suffix
+            request.scope["path"] = new_path
+            request.scope["raw_path"] = new_path.encode("utf-8")
 
     header_version = _normalize_version(
         request.headers.get("x-api-version") or request.headers.get("accept-version")

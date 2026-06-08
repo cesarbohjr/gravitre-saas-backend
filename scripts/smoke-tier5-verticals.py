@@ -14,6 +14,7 @@ from dotenv import dotenv_values
 
 REPO = Path(__file__).resolve().parent.parent
 ENV_FILE = REPO / "backend" / ".env.operator.local"
+ENV_BACKEND = REPO / "backend" / ".env"
 API_BASE = os.environ.get(
     "BACKEND_URL",
     "https://gravitre-saas-backend-production.up.railway.app",
@@ -21,9 +22,11 @@ API_BASE = os.environ.get(
 
 
 def _load_env() -> dict[str, str]:
-    if ENV_FILE.is_file():
-        return {k: v for k, v in dotenv_values(ENV_FILE).items() if v}
-    return {}
+    merged: dict[str, str] = {}
+    for path in (ENV_BACKEND, ENV_FILE):
+        if path.is_file():
+            merged.update({k: v for k, v in dotenv_values(path).items() if v})
+    return merged
 
 
 def _request(method: str, path: str, token: str, org_id: str, body: dict | None = None) -> dict:
