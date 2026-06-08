@@ -26,6 +26,7 @@ from app.routers import (
     agent_council,
     agent_interrupts,
     agent_jobs,
+    agent_swarm,
     assistant,
     auth,
     audit,
@@ -357,6 +358,7 @@ app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
+app.include_router(agent_swarm.router)
 app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)

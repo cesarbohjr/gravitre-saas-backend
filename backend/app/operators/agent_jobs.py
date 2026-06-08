@@ -310,7 +310,22 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
     return result
 
 
-_HANDLERS = {"operator_task": run_operator_job}
+async def _notify_swarm_job_finished(settings: Settings, client: Any, job: dict[str, Any]) -> None:
+    try:
+        from app.services.swarm_coordinator_service import handle_swarm_subtask_job_completed
+
+        refreshed = get_job(client, job["org_id"], str(job["id"])) or job
+        await handle_swarm_subtask_job_completed(client, refreshed)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("swarm job notify failed job_id=%s error=%s", job.get("id"), str(exc))
+
+
+from app.services.swarm_coordinator_service import run_swarm_subtask_job
+
+_HANDLERS = {
+    "operator_task": run_operator_job,
+    "swarm_subtask": run_swarm_subtask_job,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +349,7 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         result = await asyncio.wait_for(handler(settings, job), timeout=timeout_s)
         await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
         await asyncio.to_thread(complete_job, client, job["id"], result)
+        await _notify_swarm_job_finished(settings, client, job)
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
     except AgentExecutionInterrupted as exc:
         if exc.signal == "pause":
@@ -343,10 +359,16 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         logger.info("agent_job_interrupted id=%s signal=%s", job.get("id"), exc.signal)
     except TimeoutError:
         await asyncio.to_thread(fail_or_requeue_job, client, job, "execution_timeout")
+        refreshed = get_job(client, job["org_id"], str(job["id"])) or job
+        if refreshed.get("status") == "failed":
+            await _notify_swarm_job_finished(settings, client, refreshed)
         logger.warning("agent_job_timeout id=%s timeout_s=%s", job.get("id"), timeout_s)
     except Exception as exc:  # noqa: BLE001
         logger.warning("agent_job_failed id=%s error=%s", job.get("id"), str(exc))
         await asyncio.to_thread(fail_or_requeue_job, client, job, str(exc))
+        refreshed = get_job(client, job["org_id"], str(job["id"])) or job
+        if refreshed.get("status") == "failed":
+            await _notify_swarm_job_finished(settings, client, refreshed)
     return True
 
 
@@ -365,6 +387,7 @@ async def _process_one(settings: Settings) -> bool:
         result = await handler(settings, job)
         await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
         await asyncio.to_thread(complete_job, client, job["id"], result)
+        await _notify_swarm_job_finished(settings, client, job)
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
     except AgentExecutionInterrupted as exc:
         if exc.signal == "pause":
@@ -375,6 +398,9 @@ async def _process_one(settings: Settings) -> bool:
     except Exception as exc:  # noqa: BLE001
         logger.warning("agent_job_failed id=%s error=%s", job.get("id"), str(exc))
         await asyncio.to_thread(fail_or_requeue_job, client, job, str(exc))
+        refreshed = get_job(client, job["org_id"], str(job["id"])) or job
+        if refreshed.get("status") == "failed":
+            await _notify_swarm_job_finished(settings, client, refreshed)
     return True
 
 
