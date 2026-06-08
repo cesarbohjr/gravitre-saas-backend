@@ -281,7 +281,6 @@ export interface Connector {
   updated_at?: string
   config?: Record<string, unknown>
   docs_url?: string
-  phiCapable?: boolean
 }
 
 // ============ Sources ============
@@ -1162,6 +1161,26 @@ export interface EnterpriseWorkforceAnalytics {
   slaBreaches: number
 }
 
+export interface EnterpriseCostAttribution {
+  totalCostUsd: number
+  byAgent: Record<string, number>
+  byDepartment: Record<string, number>
+  byWorkflow: Record<string, number>
+}
+
+export interface EnterpriseSiemConfig {
+  enabled: boolean
+  endpoint: string | null
+  hasSecret: boolean
+}
+
+export interface EnterpriseSiemTestResult {
+  ok: boolean
+  status?: number | null
+  message?: string | null
+}
+
+// CS Command Center — integration health (STA-124)
 export type IntegrationHealthGrade = "healthy" | "at_risk" | "critical"
 
 export interface IntegrationHealthDimension {
@@ -1278,61 +1297,7 @@ export interface WorkflowDigitalTwinResponse {
   ragReads?: number
 }
 
-export interface DepartmentRolePackConnectorChecklistItem {
-  connectorType: string
-  label: string
-  required: boolean
-  connected: boolean
-  connectPath: string
-  ready: boolean
-}
-
-export interface DepartmentRolePack {
-  packId: string
-  name: string
-  department: string
-  description: string
-  tags: string[]
-  installed: boolean
-  installedAt?: string | null
-  agentIds?: string[]
-  workflowIds?: string[]
-  ragSourceIds?: string[]
-  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
-  connectorsReady: boolean
-  requiredConnectorsConnected: number
-  requiredConnectorsTotal: number
-}
-
-export interface DepartmentRolePackInstallResult {
-  packId: string
-  department: string
-  installed: boolean
-  agentIds: string[]
-  workflowIds: string[]
-  ragSourceIds: string[]
-  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
-}
-
-export interface EnterpriseCostAttribution {
-  totalCostUsd: number
-  byAgent: Record<string, number>
-  byDepartment: Record<string, number>
-  byWorkflow: Record<string, number>
-}
-
-export interface EnterpriseSiemConfig {
-  enabled: boolean
-  endpoint: string | null
-  hasSecret: boolean
-}
-
-export interface EnterpriseSiemTestResult {
-  ok: boolean
-  status?: number | null
-  message?: string | null
-}
-
+// Autonomous run budgets (enterprise budgets tab)
 export interface AutonomousRunBudgetLimits {
   maxActionsPerDay: number | null
   maxTokensPerDay: number | null
@@ -1359,6 +1324,7 @@ export interface EnterpriseAutonomousRunBudgets {
   agents: AgentAutonomousRunBudgetStatus[]
 }
 
+// HIPAA compliance status (enterprise hipaa tab)
 export interface EnterpriseHipaaStatus {
   enabled: boolean
   baaAccepted: boolean
@@ -1372,6 +1338,7 @@ export interface EnterpriseHipaaStatus {
   blockedActionsWhenInactive: string[]
 }
 
+// Decision transparency logs (enterprise transparency tab)
 export interface EnterpriseTransparencyLog {
   id: string
   createdAt: string
@@ -1408,4 +1375,107 @@ export interface EnterpriseTransparencyExport {
     pendingApproval: number
     withHumanOverride: number
   }
+}
+
+// Department role packs (STA-121)
+export interface DepartmentRolePackConnectorChecklistItem {
+  connectorType: string
+  label: string
+  required: boolean
+  connected: boolean
+  connectPath: string
+  ready: boolean
+}
+
+export interface DepartmentRolePack {
+  packId: string
+  name: string
+  department: string
+  description: string
+  tags: string[]
+  installed: boolean
+  installedAt?: string | null
+  agentIds?: string[]
+  workflowIds?: string[]
+  ragSourceIds?: string[]
+  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
+  connectorsReady: boolean
+  requiredConnectorsConnected: number
+  requiredConnectorsTotal: number
+}
+
+export interface DepartmentRolePackInstallResult {
+  packId: string
+  department: string
+  installed: boolean
+  agentIds: string[]
+  workflowIds: string[]
+  ragSourceIds: string[]
+  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
+}
+
+// Federation & B2B (STA-115/116/117/118)
+export type FederationPartnershipStatus =
+  | "pending"
+  | "active"
+  | "rejected"
+  | "revoked"
+
+export interface FederationPartnership {
+  id: string
+  orgAId: string
+  orgBId: string
+  partnerOrgId: string
+  invitedByOrgId: string
+  status: FederationPartnershipStatus
+  initiatorConsentAt: string | null
+  partnerConsentAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type FederationHandoffStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "completed"
+  | "failed"
+
+export interface FederationHandoff {
+  id: string
+  partnershipId: string
+  senderOrgId: string
+  receiverOrgId: string
+  fromAgentId: string | null
+  toAgentId: string | null
+  briefing: Record<string, unknown>
+  message: string | null
+  status: FederationHandoffStatus
+  createdAt: string | null
+  acceptedAt: string | null
+  completedAt: string | null
+}
+
+export interface FederationConnectorGrant {
+  id: string
+  partnershipId?: string | null
+  grantorOrgId: string
+  granteeOrgId: string
+  connectorId: string
+  label: string | null
+  allowedActions: string[]
+  status: string
+  expiresAt: string | null
+  createdAt: string | null
+}
+
+export interface FederationDelegatedTask {
+  id: string
+  delegatorOrgId: string
+  delegateOrgId: string
+  title: string
+  instructions: string | null
+  status: string
+  createdAt: string | null
+  completedAt: string | null
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { Globe, Copy, Check, AlertTriangle, ShieldCheck, Lock } from "lucide-react"
@@ -33,10 +33,15 @@ export function RegionTab({ isAdmin }: { isAdmin: boolean }) {
     { revalidateOnFocus: false },
   )
 
+  const [selected, setSelected] = useState<EnterpriseRegion | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingRegion, setPendingRegion] = useState<EnterpriseRegion | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (data?.region) setSelected(data.region)
+  }, [data?.region])
 
   if (isLoading) return <TabSkeleton rows={2} />
 
@@ -61,6 +66,7 @@ export function RegionTab({ isAdmin }: { isAdmin: boolean }) {
     try {
       const updated = await enterpriseApi.updateDataRegion({ region: pendingRegion })
       await mutate(updated, { revalidate: false })
+      setSelected(pendingRegion)
       toast.success(`Data region updated to ${pendingRegion.toUpperCase()}`)
       setConfirmOpen(false)
     } catch (err) {
@@ -86,7 +92,7 @@ export function RegionTab({ isAdmin }: { isAdmin: boolean }) {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             {REGIONS.map((region) => {
-              const active = currentRegion === region.id
+              const active = (selected ?? currentRegion) === region.id
               return (
                 <button
                   key={region.id}

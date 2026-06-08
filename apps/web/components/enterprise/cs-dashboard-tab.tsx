@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import { AnimatePresence, motion } from "framer-motion"
 import {
   Activity,
   AlertTriangle,
@@ -12,9 +13,20 @@ import {
   Plug,
   RefreshCw,
   ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  TrendingDown,
   TrendingUp,
   X,
 } from "lucide-react"
+import {
+  Area,
+  AreaChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,6 +40,7 @@ import type {
   IntegrationSuggestion,
   WorkflowFailureAlert,
 } from "@/types/api"
+import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { TabSkeleton } from "./enterprise-skeletons"
 
 const LOOKBACK_DAYS = 30
@@ -37,6 +50,25 @@ const DIMENSION_LABELS: Record<string, string> = {
   workflowSuccessRate: "Workflow success",
   agentUtilization: "Agent utilization",
   approvalLatency: "Approval latency",
+}
+
+const DIMENSION_ICONS: Record<string, typeof Plug> = {
+  connectorsLive: Plug,
+  workflowSuccessRate: Activity,
+  agentUtilization: Sparkles,
+  approvalLatency: CheckCircle2,
+}
+
+const SEVERITY_ORDER: WorkflowFailureAlert["severity"][] = ["critical", "high", "medium", "low"]
+
+const SEVERITY_META: Record<
+  WorkflowFailureAlert["severity"],
+  { label: string; dot: string; text: string; ring: string }
+> = {
+  critical: { label: "Critical", dot: "bg-destructive", text: "text-destructive", ring: "border-destructive/30 bg-destructive/5" },
+  high: { label: "High", dot: "bg-amber-500", text: "text-amber-500", ring: "border-amber-500/30 bg-amber-500/5" },
+  medium: { label: "Medium", dot: "bg-primary", text: "text-primary", ring: "border-primary/30 bg-primary/5" },
+  low: { label: "Low", dot: "bg-muted-foreground", text: "text-muted-foreground", ring: "border-border bg-card/50" },
 }
 
 function gradeBadgeClass(grade: IntegrationHealthGrade): string {
@@ -51,118 +83,235 @@ function gradeLabel(grade: IntegrationHealthGrade): string {
   return "Critical"
 }
 
-function scoreRingColor(score: number): string {
+function gradeBeaconStatus(grade: IntegrationHealthGrade): "active" | "warning" | "error" {
+  if (grade === "healthy") return "active"
+  if (grade === "at_risk") return "warning"
+  return "error"
+}
+
+function scoreColor(score: number): string {
   if (score >= 85) return "var(--success)"
   if (score >= 65) return "#f59e0b"
   return "var(--destructive)"
 }
 
-function HealthScoreHero({ health }: { health: IntegrationHealthScore }) {
-  const ringPct = Math.min(100, Math.max(0, health.score))
+function barColor(score: number): string {
+  if (score >= 85) return "bg-success"
+  if (score >= 65) return "bg-amber-500"
+  return "bg-destructive"
+}
+
+/* ----------------------------------------------------------------------------
+ * Animated score ring — sweeps from 0 to the live score with a count-up label.
+ * -------------------------------------------------------------------------- */
+function ScoreRing({ score, grade }: { score: number; grade: IntegrationHealthGrade }) {
+  const size = 132
+  const stroke = 10
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const clamped = Math.min(100, Math.max(0, score))
+  const offset = circumference - (clamped / 100) * circumference
+  const color = scoreColor(clamped)
+
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    let frame = 0
+    let start = 0
+    const duration = 1100
+    const tick = (now: number) => {
+      if (!start) start = now
+      const p = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setDisplay(Math.round(eased * clamped))
+      if (p < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [clamped])
+
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-5">
-          <div
-            className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: `conic-gradient(${scoreRingColor(health.score)} ${ringPct * 3.6}deg, var(--secondary) 0deg)`,
-            }}
-            aria-hidden
-          >
-            <div className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center rounded-full bg-card">
-              <span className="text-3xl font-semibold tabular-nums text-foreground">{health.score}</span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Score</span>
-            </div>
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <motion.div
+        className="absolute inset-0 rounded-full"
+        style={{ background: `radial-gradient(circle, ${color}22 0%, transparent 70%)` }}
+        animate={{ opacity: [0.5, 0.9, 0.5], scale: [0.95, 1.05, 0.95] }}
+        transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        aria-hidden
+      />
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--secondary)" strokeWidth={stroke} />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.1, ease: "easeOut" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-semibold tabular-nums text-foreground">{display}</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{gradeLabel(grade)}</span>
+      </div>
+    </div>
+  )
+}
+
+function HealthScoreHero({ health }: { health: IntegrationHealthScore }) {
+  return (
+    <Card className="relative overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, var(--foreground) 1px, transparent 0)",
+          backgroundSize: "22px 22px",
+        }}
+        aria-hidden
+      />
+      <CardContent className="relative flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-center sm:gap-8">
+        <ScoreRing score={health.score} grade={health.grade} />
+        <div className="space-y-2.5 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <StatusBeacon status={gradeBeaconStatus(health.grade)} size="md" />
+            <h3 className="text-lg font-semibold text-foreground">Integration health</h3>
+            <Badge variant="outline" className={cn("capitalize", gradeBadgeClass(health.grade))}>
+              {gradeLabel(health.grade)}
+            </Badge>
           </div>
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-semibold text-foreground">Integration health</h3>
-              <Badge variant="outline" className={cn("capitalize", gradeBadgeClass(health.grade))}>
-                {gradeLabel(health.grade)}
-              </Badge>
-            </div>
-            <p className="max-w-md text-sm text-muted-foreground text-pretty">
-              Composite score from connectors, workflow success, agent utilization, and approval latency over the last{" "}
-              {health.lookbackDays} days.
-            </p>
-            <p className="text-xs text-muted-foreground/70">
-              Updated {new Date(health.computedAt).toLocaleString()}
-            </p>
-          </div>
+          <p className="mx-auto max-w-md text-sm text-muted-foreground text-pretty sm:mx-0">
+            Composite score from connectors, workflow success, agent utilization, and approval latency over the last{" "}
+            {health.lookbackDays} days.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            Updated {new Date(health.computedAt).toLocaleString()}
+          </p>
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function DimensionBar({ name, dim }: { name: string; dim: IntegrationHealthDimension }) {
+function DimensionCard({ name, dim, index }: { name: string; dim: IntegrationHealthDimension; index: number }) {
   const label = DIMENSION_LABELS[name] ?? dim.label ?? name
+  const Icon = DIMENSION_ICONS[name] ?? Activity
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="tabular-nums text-muted-foreground">{dim.score}/100</span>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.06 }}
+      className="rounded-xl border border-border bg-card/60 p-4"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+            <Icon className="h-3.5 w-3.5 text-primary" aria-hidden />
+          </span>
+          {label}
+        </span>
+        <span className="text-lg font-semibold tabular-nums text-foreground">{dim.score}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-secondary">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-300",
-            dim.score >= 85 ? "bg-success" : dim.score >= 65 ? "bg-amber-500" : "bg-destructive",
-          )}
-          style={{ width: `${dim.score}%` }}
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+        <motion.div
+          className={cn("h-full rounded-full", barColor(dim.score))}
+          initial={{ width: 0 }}
+          animate={{ width: `${dim.score}%` }}
+          transition={{ duration: 0.8, delay: index * 0.06 + 0.1, ease: "easeOut" }}
         />
       </div>
-      <p className="text-xs text-muted-foreground">{dim.summary}</p>
-    </div>
+      <p className="mt-2 text-xs text-muted-foreground text-pretty">{dim.summary}</p>
+    </motion.div>
   )
 }
 
 function HealthTrendChart({ snapshots }: { snapshots: IntegrationHealthSnapshot[] }) {
-  const points = useMemo(() => {
+  const data = useMemo(() => {
     const ordered = [...snapshots].reverse()
-    if (ordered.length < 2) return null
-    const w = 280
-    const h = 64
-    const scores = ordered.map((s) => s.score)
-    const max = 100
-    const min = 0
-    const step = w / Math.max(1, scores.length - 1)
-    const d = scores
-      .map((score, i) => {
-        const x = i * step
-        const y = h - ((score - min) / (max - min)) * h
-        return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`
-      })
-      .join(" ")
-    return { d, w, h, latest: scores[scores.length - 1], delta: scores[scores.length - 1] - scores[0] }
+    return ordered.map((s) => ({
+      date: new Date(s.recordedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      score: s.score,
+    }))
   }, [snapshots])
 
-  if (!points) {
+  const delta = data.length >= 2 ? data[data.length - 1].score - data[0].score : 0
+
+  if (data.length < 2) {
     return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        Record snapshots to see health trends over time.
-      </p>
+      <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+          <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden />
+        </div>
+        <p className="text-sm text-muted-foreground text-pretty">
+          Record at least two snapshots to chart health trends for QBRs.
+        </p>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-baseline justify-between text-sm">
-        <span className="text-muted-foreground">Trend ({snapshots.length} snapshots)</span>
+        <span className="text-muted-foreground">{snapshots.length} snapshots</span>
         <span
           className={cn(
-            "font-medium tabular-nums",
-            points.delta >= 0 ? "text-success" : "text-destructive",
+            "flex items-center gap-1 font-medium tabular-nums",
+            delta >= 0 ? "text-success" : "text-destructive",
           )}
         >
-          {points.delta >= 0 ? "+" : ""}
-          {points.delta} pts
+          {delta >= 0 ? <TrendingUp className="h-3.5 w-3.5" aria-hidden /> : <TrendingDown className="h-3.5 w-3.5" aria-hidden />}
+          {delta >= 0 ? "+" : ""}
+          {delta} pts
         </span>
       </div>
-      <svg viewBox={`0 0 ${points.w} ${points.h}`} className="h-16 w-full" preserveAspectRatio="none" aria-hidden>
-        <path d={points.d} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" />
-      </svg>
+      <div className="h-40 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="cs-health-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={24}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+              width={36}
+            />
+            <RechartsTooltip
+              cursor={{ stroke: "var(--border)" }}
+              contentStyle={{
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 12,
+                color: "var(--popover-foreground)",
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke="var(--primary)"
+              strokeWidth={2}
+              fill="url(#cs-health-gradient)"
+              animationDuration={900}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
@@ -187,7 +336,14 @@ function SuggestionCard({
     suggestion.suggestionType === "install_department_pack" ? "/marketplace/role-packs" : null
 
   return (
-    <div className="flex gap-3 rounded-lg border border-border bg-card/50 p-4">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -16 }}
+      transition={{ duration: 0.25 }}
+      className="flex gap-3 rounded-lg border border-border bg-card/50 p-4 transition-colors hover:border-primary/30"
+    >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
         <Icon className="h-4 w-4 text-primary" aria-hidden />
       </span>
@@ -207,7 +363,7 @@ function SuggestionCard({
           ) : null}
           {suggestion.connectorType ? (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/connectors?type=${suggestion.connectorType}`}>Connectors</Link>
+              <Link href={`/connectors?type=${suggestion.connectorType}`}>Open connectors</Link>
             </Button>
           ) : null}
           <Button
@@ -221,7 +377,7 @@ function SuggestionCard({
           </Button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -234,35 +390,44 @@ function FailureAlertRow({
   onDismiss: (id: string) => void
   dismissing: string | null
 }) {
-  const severityClass =
-    alert.severity === "critical"
-      ? "text-destructive"
-      : alert.severity === "high"
-        ? "text-amber-500"
-        : "text-muted-foreground"
-
+  const meta = SEVERITY_META[alert.severity]
   return (
-    <div className="flex gap-3 rounded-lg border border-border/80 p-3">
-      <ShieldAlert className={cn("mt-0.5 h-4 w-4 shrink-0", severityClass)} aria-hidden />
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -16 }}
+      transition={{ duration: 0.25 }}
+      className={cn("flex gap-3 rounded-lg border p-3", meta.ring)}
+    >
+      <span className="relative mt-1 flex h-2.5 w-2.5 shrink-0">
+        <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", meta.dot)} />
+        <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", meta.dot)} />
+      </span>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-foreground">{alert.title}</p>
-          <Badge variant="outline" className="capitalize">
-            {alert.severity}
+          <Badge variant="outline" className={cn("capitalize", meta.text)}>
+            {meta.label}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">{alert.message}</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-muted-foreground"
-          disabled={dismissing === alert.id}
-          onClick={() => onDismiss(alert.id)}
-        >
-          Dismiss
-        </Button>
+        <p className="text-xs text-muted-foreground text-pretty">{alert.message}</p>
+        <div className="flex items-center gap-3 pt-0.5">
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground" asChild>
+            <Link href={`/workflows/${alert.workflowId}/builder`}>Open workflow</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-muted-foreground"
+            disabled={dismissing === alert.id}
+            onClick={() => onDismiss(alert.id)}
+          >
+            Dismiss
+          </Button>
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -301,7 +466,12 @@ export function CsDashboardTab() {
   }, [])
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([mutateHealth(), mutateHistory(), mutateSuggestions(), mutateFailures()])
+    setBusy("refresh")
+    try {
+      await Promise.all([mutateHealth(), mutateHistory(), mutateSuggestions(), mutateFailures()])
+    } finally {
+      setBusy(null)
+    }
   }, [mutateHealth, mutateHistory, mutateSuggestions, mutateFailures])
 
   const recordSnapshot = async () => {
@@ -358,22 +528,32 @@ export function CsDashboardTab() {
   const dimensions = health?.dimensions ?? {}
   const risks = health?.risks ?? []
 
+  const groupedFailures = SEVERITY_ORDER.map((sev) => ({
+    severity: sev,
+    items: failures.filter((f) => f.severity === sev),
+  })).filter((g) => g.items.length > 0)
+
   return (
     <div className="space-y-6">
-      {toast ? (
-        <div
-          className="flex items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-2 text-sm text-foreground"
-          role="status"
-        >
-          <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
-            {toast}
-          </span>
-          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      ) : null}
+      <AnimatePresence>
+        {toast ? (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-2 text-sm text-foreground"
+            role="status"
+          >
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
+              {toast}
+            </span>
+            <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
@@ -385,7 +565,7 @@ export function CsDashboardTab() {
             Refresh
           </Button>
           <Button variant="outline" size="sm" disabled={!!busy} onClick={() => void recordSnapshot()}>
-            <Camera className="mr-1.5 h-4 w-4" aria-hidden />
+            <Camera className={cn("mr-1.5 h-4 w-4", busy === "snapshot" && "animate-pulse")} aria-hidden />
             Record snapshot
           </Button>
         </div>
@@ -402,9 +582,9 @@ export function CsDashboardTab() {
             </div>
             <CardDescription>Four weighted signals that drive the composite score.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries(dimensions).map(([key, dim]) => (
-              <DimensionBar key={key} name={key} dim={dim} />
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {Object.entries(dimensions).map(([key, dim], i) => (
+              <DimensionCard key={key} name={key} dim={dim} index={i} />
             ))}
           </CardContent>
         </Card>
@@ -444,9 +624,7 @@ export function CsDashboardTab() {
                   </p>
                   <p className="text-muted-foreground">{risk.summary}</p>
                 </div>
-                <Badge variant={risk.severity === "high" ? "destructive" : "outline"}>
-                  {risk.score}/100
-                </Badge>
+                <Badge variant={risk.severity === "high" ? "destructive" : "outline"}>{risk.score}/100</Badge>
               </div>
             ))}
           </CardContent>
@@ -460,28 +638,35 @@ export function CsDashboardTab() {
               <Lightbulb className="h-4 w-4 text-primary" aria-hidden />
               <CardTitle className="text-base">Integration recommendations</CardTitle>
             </div>
-            <CardDescription>
-              Suggested connectors and workflows from audit usage patterns.
-            </CardDescription>
+            <CardDescription>Suggested connectors and workflows from audit usage patterns.</CardDescription>
           </div>
           <Button size="sm" disabled={!!busy} onClick={() => void scanSuggestions()}>
+            <Sparkles className={cn("mr-1.5 h-4 w-4", busy === "scan" && "animate-pulse")} aria-hidden />
             Scan audit data
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {suggestions.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No open recommendations. Run a scan after agents and operators use connectors.
-            </p>
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Lightbulb className="h-5 w-5 text-primary" aria-hidden />
+              </div>
+              <p className="text-sm font-medium text-foreground">No open recommendations</p>
+              <p className="max-w-sm text-sm text-muted-foreground text-pretty">
+                Run a scan after agents and operators use connectors to surface tailored next steps.
+              </p>
+            </div>
           ) : (
-            suggestions.map((s) => (
-              <SuggestionCard
-                key={s.id}
-                suggestion={s}
-                onDismiss={(id) => void dismissSuggestion(id)}
-                dismissing={busy}
-              />
-            ))
+            <AnimatePresence initial={false}>
+              {suggestions.map((s) => (
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  onDismiss={(id) => void dismissSuggestion(id)}
+                  dismissing={busy}
+                />
+              ))}
+            </AnimatePresence>
           )}
         </CardContent>
       </Card>
@@ -492,23 +677,40 @@ export function CsDashboardTab() {
             <ShieldAlert className="h-4 w-4 text-destructive" aria-hidden />
             <CardTitle className="text-base">Workflow failure predictions</CardTitle>
           </div>
-          <CardDescription>
-            Pre-failure alerts from auth expiry, rate limits, and missing scopes.
-          </CardDescription>
+          <CardDescription>Pre-failure alerts from auth expiry, rate limits, and missing scopes.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-4">
           {failures.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No open workflow failure alerts. Scan workflows from the workflow builder to generate predictions.
-            </p>
+            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
+                <ShieldCheck className="h-5 w-5 text-success" aria-hidden />
+              </div>
+              <p className="text-sm font-medium text-foreground">No open failure alerts</p>
+              <p className="max-w-sm text-sm text-muted-foreground text-pretty">
+                Scan workflows from the builder risk panel to generate pre-failure predictions.
+              </p>
+            </div>
           ) : (
-            failures.map((alert) => (
-              <FailureAlertRow
-                key={alert.id}
-                alert={alert}
-                onDismiss={(id) => void dismissFailure(id)}
-                dismissing={dismissingFailureId}
-              />
+            groupedFailures.map((group) => (
+              <div key={group.severity} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", SEVERITY_META[group.severity].dot)} aria-hidden />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {SEVERITY_META[group.severity].label}
+                  </span>
+                  <span className="text-xs tabular-nums text-muted-foreground/70">{group.items.length}</span>
+                </div>
+                <AnimatePresence initial={false}>
+                  {group.items.map((alert) => (
+                    <FailureAlertRow
+                      key={alert.id}
+                      alert={alert}
+                      onDismiss={(id) => void dismissFailure(id)}
+                      dismissing={dismissingFailureId}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
             ))
           )}
         </CardContent>

@@ -76,6 +76,12 @@ import type {
   MarketplaceRegistryConnector,
   MarketplaceBillingStatus,
   MarketplacePartnerPricing,
+  DepartmentRolePack,
+  DepartmentRolePackInstallResult,
+  FederationPartnership,
+  FederationHandoff,
+  FederationConnectorGrant,
+  FederationDelegatedTask,
   MarketplaceSandboxDemoResult,
   MarketplaceSandboxProvisionResult,
   MarketplaceSandboxStatus,
@@ -86,6 +92,10 @@ import type {
   EnterpriseDomainInstructions,
   EnterpriseDomainVerifyResult,
   EnterpriseWorkforceAnalytics,
+  EnterpriseCostAttribution,
+  EnterpriseSiemConfig,
+  EnterpriseSiemTestResult,
+  PrivateConnectorBundle,
   IntegrationHealthScore,
   IntegrationHealthSnapshot,
   IntegrationHealthHistoryResponse,
@@ -96,18 +106,12 @@ import type {
   WorkflowFailureAlertsResponse,
   WorkflowFailurePredictionScanResponse,
   WorkflowDigitalTwinResponse,
-  EnterpriseCostAttribution,
+  AutonomousRunBudgetLimits,
+  AutonomousRunBudgetUsage,
   EnterpriseAutonomousRunBudgets,
   EnterpriseHipaaStatus,
   EnterpriseTransparencyLogsResponse,
   EnterpriseTransparencyExport,
-  AutonomousRunBudgetLimits,
-  AutonomousRunBudgetUsage,
-  EnterpriseSiemConfig,
-  EnterpriseSiemTestResult,
-  PrivateConnectorBundle,
-  DepartmentRolePack,
-  DepartmentRolePackInstallResult,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -947,6 +951,60 @@ export const enterpriseApi = {
   getWorkforceAnalytics: () =>
     fetcher<EnterpriseWorkforceAnalytics>(apiUrl("/api/enterprise/workforce-analytics")),
 
+  // Cost attribution
+  getCostAttribution: () =>
+    fetcher<EnterpriseCostAttribution>(apiUrl("/api/enterprise/cost-attribution")),
+
+  // Autonomous run budgets (STA-109)
+  getAutonomousRunBudgets: () =>
+    fetcher<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets")),
+  updateAutonomousRunBudgets: (data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] }) =>
+    putJson<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets"), data),
+  updateAgentRunBudgets: (
+    agentId: string,
+    data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] },
+  ) =>
+    putJson<{
+      agent: unknown
+      limits: AutonomousRunBudgetLimits
+      usageToday: AutonomousRunBudgetUsage
+      usageDate: string
+    }>(apiUrl(`/api/agents/${agentId}/run-budgets`), data),
+
+  // HIPAA (STA-110)
+  getHipaa: () => fetcher<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa")),
+  acceptHipaaBaa: (data?: { baaVersion?: string }) =>
+    postJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa/accept-baa"), data ?? {}),
+  updateHipaa: (data: { enabled: boolean }) =>
+    putJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa"), data),
+
+  // EU AI Act transparency (STA-112)
+  getTransparencyLogs: (params?: { from?: string; to?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.from) query.set("from", params.from)
+    if (params?.to) query.set("to", params.to)
+    if (params?.limit) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<EnterpriseTransparencyLogsResponse>(
+      apiUrl(`/api/enterprise/transparency-logs${suffix}`),
+    )
+  },
+  exportTransparencyLogs: (params?: { from?: string; to?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.from) query.set("from", params.from)
+    if (params?.to) query.set("to", params.to)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<EnterpriseTransparencyExport>(
+      apiUrl(`/api/enterprise/transparency-logs/export${suffix}`),
+    )
+  },
+
+  // SIEM
+  getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
+  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
+    putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
+  testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
+
   // CS dashboard — integration health (STA-124)
   getIntegrationHealth: (lookbackDays = 30) =>
     fetcher<IntegrationHealthScore>(
@@ -980,90 +1038,65 @@ export const enterpriseApi = {
       apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/dismiss`),
       {},
     ),
-
-  // Cost attribution
-  getCostAttribution: () =>
-    fetcher<EnterpriseCostAttribution>(apiUrl("/api/enterprise/cost-attribution")),
-
-  // Autonomous run budgets (STA-109)
-  getAutonomousRunBudgets: () =>
-    fetcher<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets")),
-  updateAutonomousRunBudgets: (data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] }) =>
-    putJson<EnterpriseAutonomousRunBudgets>(apiUrl("/api/enterprise/autonomous-run-budgets"), data),
-  updateAgentRunBudgets: (
-    agentId: string,
-    data: Partial<AutonomousRunBudgetLimits> & { unset?: string[] },
-  ) => putJson<{ agent: unknown; limits: AutonomousRunBudgetLimits; usageToday: AutonomousRunBudgetUsage; usageDate: string }>(
-    apiUrl(`/api/agents/${agentId}/run-budgets`),
-    data,
-  ),
-
-  // SIEM
-  getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
-  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
-    putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
-  testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
-
-  // HIPAA (STA-110)
-  getHipaa: () => fetcher<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa")),
-  acceptHipaaBaa: (data?: { baaVersion?: string }) =>
-    postJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa/accept-baa"), data ?? {}),
-  updateHipaa: (data: { enabled: boolean }) =>
-    putJson<EnterpriseHipaaStatus>(apiUrl("/api/enterprise/hipaa"), data),
-  updateConnectorPhi: (connectorId: string, data: { phiCapable: boolean }) =>
-    putJson<Connector>(apiUrl(`/api/enterprise/connectors/${connectorId}/phi`), data),
-
-  // EU AI Act transparency (STA-112)
-  getTransparencyLogs: (params?: { from?: string; to?: string; limit?: number }) => {
-    const query = new URLSearchParams()
-    if (params?.from) query.set("from", params.from)
-    if (params?.to) query.set("to", params.to)
-    if (params?.limit) query.set("limit", String(params.limit))
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<EnterpriseTransparencyLogsResponse>(
-      apiUrl(`/api/enterprise/transparency-logs${suffix}`),
-    )
-  },
-  exportTransparencyLogs: (params?: { from?: string; to?: string }) => {
-    const query = new URLSearchParams()
-    if (params?.from) query.set("from", params.from)
-    if (params?.to) query.set("to", params.to)
-    const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<EnterpriseTransparencyExport>(
-      apiUrl(`/api/enterprise/transparency-logs/export${suffix}`),
-    )
-  },
 }
 
-// ============ B2B Federation (STA-116–118) ============
 export const federationApi = {
-  listPartnerships: () => fetcher<{ partnerships: Record<string, unknown>[] }>(apiUrl("/api/federation/partnerships")),
-  createPartnership: (data: { partnerOrgId: string; scopes?: string[]; notes?: string }) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl("/api/federation/partnerships"), data),
+  // Partnerships
+  listPartnerships: () =>
+    fetcher<{ partnerships: FederationPartnership[] }>(apiUrl("/api/federation/partnerships")),
+  invitePartner: (partnerOrgId: string) =>
+    postJson<{ partnership: FederationPartnership }>(apiUrl("/api/federation/partnerships"), {
+      partnerOrgId,
+    }),
   acceptPartnership: (partnershipId: string) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/accept`), {}),
+    postJson<{ partnership: FederationPartnership }>(
+      apiUrl(`/api/federation/partnerships/${partnershipId}/accept`),
+      {},
+    ),
   rejectPartnership: (partnershipId: string) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/reject`), {}),
+    postJson<{ partnership: FederationPartnership }>(
+      apiUrl(`/api/federation/partnerships/${partnershipId}/reject`),
+      {},
+    ),
   revokePartnership: (partnershipId: string) =>
-    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/revoke`), {}),
-  listHandoffs: (params?: { status?: string }) => {
-    const suffix = params?.status ? `?status=${encodeURIComponent(params.status)}` : ""
-    return fetcher<{ handoffs: Record<string, unknown>[] }>(apiUrl(`/api/federation/handoffs${suffix}`))
+    postJson<{ partnership: FederationPartnership }>(
+      apiUrl(`/api/federation/partnerships/${partnershipId}/revoke`),
+      {},
+    ),
+
+  // Handoffs
+  listHandoffs: (params?: { direction?: "all" | "inbound" | "outbound"; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.direction) query.set("direction", params.direction)
+    if (params?.status) query.set("status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ handoffs: FederationHandoff[] }>(apiUrl(`/api/federation/handoffs${suffix}`))
   },
-  getHandoff: (handoffId: string) =>
-    fetcher<{ handoff: Record<string, unknown> }>(apiUrl(`/api/federation/handoffs/${handoffId}`)),
-  createHandoff: (data: Record<string, unknown>) =>
-    postJson<{ handoff: Record<string, unknown> }>(apiUrl("/api/federation/handoffs"), data),
+  createHandoff: (data: {
+    receiverOrgId: string
+    fromAgentId?: string
+    toAgentId?: string
+    message?: string
+    briefing?: Record<string, unknown>
+  }) => postJson<{ handoff: FederationHandoff }>(apiUrl("/api/federation/handoffs"), data),
+  acceptHandoff: (handoffId: string) =>
+    postJson<{ handoff: FederationHandoff }>(
+      apiUrl(`/api/federation/handoffs/${handoffId}/accept`),
+      {},
+    ),
+  rejectHandoff: (handoffId: string, reason?: string) =>
+    postJson<{ handoff: FederationHandoff }>(
+      apiUrl(`/api/federation/handoffs/${handoffId}/reject`),
+      { reason },
+    ),
+
+  // Connector grants
   listConnectorGrants: () =>
-    fetcher<{ grants: Record<string, unknown>[] }>(apiUrl("/api/federation/connector-grants")),
-  createConnectorGrant: (data: Record<string, unknown>) =>
-    postJson<{ grant: Record<string, unknown> }>(apiUrl("/api/federation/connector-grants"), data),
-  listDelegatedTasks: (params?: { status?: string }) => {
-    const suffix = params?.status ? `?status=${encodeURIComponent(params.status)}` : ""
-    return fetcher<{ tasks: Record<string, unknown>[] }>(apiUrl(`/api/federation/delegated-tasks${suffix}`))
-  },
-  createDelegatedTask: (data: Record<string, unknown>) =>
-    postJson<{ task: Record<string, unknown> }>(apiUrl("/api/federation/delegated-tasks"), data),
+    fetcher<{ grants: FederationConnectorGrant[] }>(apiUrl("/api/federation/connector-grants")),
+
+  // Delegated tasks
+  listDelegatedTasks: () =>
+    fetcher<{ tasks: FederationDelegatedTask[] }>(apiUrl("/api/federation/delegated-tasks")),
 }
 
 // ============ Agent swarm (STA-119) ============

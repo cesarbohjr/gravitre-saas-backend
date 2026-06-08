@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
+import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -1960,6 +1961,14 @@ function ConnectorsPageContent() {
             </div>
           </div>
         </div>
+
+        {/* Recommended connectors (AI-driven, from usage signals) */}
+        <ConnectorRecommendations
+          onConnect={(connectorType) => {
+            if (connectorType) setSearchQuery(connectorType)
+            setAddModal(true)
+          }}
+        />
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">

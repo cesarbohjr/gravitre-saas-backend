@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect, useRef, useMemo, use, startTransition
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-drawer"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { ModelSelector, ModelInheritanceChain } from "@/components/gravitre/model-selector"
@@ -2649,6 +2650,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   // Persistence state
   const canPersist = isPersistableWorkflowId(id)
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [isLoadingGraph, setIsLoadingGraph] = useState(canPersist)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [workflowMeta, setWorkflowMeta] = useState<WorkflowMeta>(defaultWorkflowMeta)
@@ -3500,6 +3502,17 @@ const handleRun = useCallback(async () => {
               >
                 <Settings className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Settings</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => setIntelligenceOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={intelligenceOpen}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Intelligence</span>
               </Button>
               <Button 
                 variant="outline" 
@@ -4957,6 +4970,13 @@ const handleRun = useCallback(async () => {
         </>
         )}
       </div>
+      <WorkflowIntelligenceDrawer
+        open={intelligenceOpen}
+        onClose={() => setIntelligenceOpen(false)}
+        workflowId={id}
+        isPersisted={canPersist}
+        nodes={nodes.map((n) => ({ id: n.id, name: n.name, type: n.type }))}
+      />
     </AppShell>
   )
 }
