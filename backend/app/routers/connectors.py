@@ -17,7 +17,7 @@ from app.connectors.repository import (
     set_secret,
     update_connector,
 )
-from app.core.crypto import decrypt_value, encrypt_value, mask_value
+from app.core.crypto import decrypt_value, encrypt_value
 from app.core.errors import error_detail
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
@@ -209,7 +209,7 @@ def _connector_response_item(
     org_id: str,
 ) -> dict:
     connector_id = str(row["id"])
-    api_key = _read_masked_api_key(client, connector_id, row, settings)
+    api_key = masked_api_key_for_response(client, connector_id, row, settings)
     vendor = row.get("vendor") or row.get("type") or ""
     env = row.get("environment") or environment_name
     auth_status = resolve_connector_auth_status(
@@ -228,7 +228,7 @@ def _connector_response_item(
         "recordsSynced": row.get("records_synced") or 0,
         "syncFrequency": row.get("sync_frequency") or "1h",
         "config": {
-            "apiKey": mask_value(api_key),
+            "apiKey": api_key,
             "webhookUrl": row.get("webhook_url"),
             "authType": (row.get("config") or {}).get("auth_type"),
         },
