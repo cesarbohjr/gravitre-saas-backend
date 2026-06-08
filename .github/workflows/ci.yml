@@ -85,6 +85,11 @@ jobs:
             fi
             sleep 1
           done
+          if ! curl -sf "http://127.0.0.1:8765/health" >/dev/null; then
+            echo "Backend failed to start on port 8765"
+            wait $SERVER_PID || true
+            exit 1
+          fi
           export BACKEND_URL="http://127.0.0.1:8765"
           chmod +x ../scripts/test-integration.sh
           bash ../scripts/test-integration.sh
