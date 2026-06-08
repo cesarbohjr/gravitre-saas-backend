@@ -1,20 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
-import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock } from "lucide-react"
+import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse } from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
 import { BrandingTab } from "@/components/enterprise/branding-tab"
 import { WorkforceTab } from "@/components/enterprise/workforce-tab"
 import { CostTab } from "@/components/enterprise/cost-tab"
 import { SiemTab } from "@/components/enterprise/siem-tab"
+import { CsDashboardTab } from "@/components/enterprise/cs-dashboard-tab"
 
-type TabId = "region" | "branding" | "workforce" | "cost" | "siem"
+type TabId = "cs" | "region" | "branding" | "workforce" | "cost" | "siem"
 
 const TABS: { id: TabId; label: string; icon: typeof Globe; description: string }[] = [
+  { id: "cs", label: "Command Center", icon: HeartPulse, description: "Integration health and recommendations" },
   { id: "region", label: "Data Residency", icon: Globe, description: "Control where your data is stored" },
   { id: "branding", label: "White Label", icon: Palette, description: "Custom logo, color, and domain" },
   { id: "workforce", label: "Workforce", icon: Users, description: "Agent task analytics" },
@@ -22,9 +25,39 @@ const TABS: { id: TabId; label: string; icon: typeof Globe; description: string 
   { id: "siem", label: "SIEM Export", icon: ShieldAlert, description: "Stream audit logs to your SIEM" },
 ]
 
+const TAB_IDS = TABS.map((t) => t.id)
+
 export default function EnterprisePage() {
-  const [activeTab, setActiveTab] = useState<TabId>("region")
+  return (
+    <Suspense fallback={null}>
+      <EnterprisePageContent />
+    </Suspense>
+  )
+}
+
+function EnterprisePageContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const tabParam = searchParams.get("tab")
+  const initialTab: TabId = TAB_IDS.includes(tabParam as TabId) ? (tabParam as TabId) : "cs"
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
   const { user, loading } = useAuth()
+
+  // Keep state in sync if the URL param changes (e.g. deep links from suggestions).
+  useEffect(() => {
+    if (tabParam && TAB_IDS.includes(tabParam as TabId) && tabParam !== activeTab) {
+      setActiveTab(tabParam as TabId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam])
+
+  const selectTab = (id: TabId) => {
+    setActiveTab(id)
+    const params = new URLSearchParams(Array.from(searchParams.entries()))
+    params.set("tab", id)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
 
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
@@ -61,7 +94,7 @@ export default function EnterprisePage() {
                     <button
                       key={tab.id}
                       type="button"
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => selectTab(tab.id)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "flex shrink-0 items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors lg:w-full",
@@ -86,6 +119,7 @@ export default function EnterprisePage() {
 
             {/* Tab content */}
             <div className="min-w-0 flex-1">
+              {activeTab === "cs" && <CsDashboardTab />}
               {activeTab === "region" && <RegionTab isAdmin={isAdmin} />}
               {activeTab === "branding" && <BrandingTab isAdmin={isAdmin} />}
               {activeTab === "workforce" && <WorkforceTab />}

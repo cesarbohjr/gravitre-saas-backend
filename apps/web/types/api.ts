@@ -1179,3 +1179,99 @@ export interface EnterpriseSiemTestResult {
   status?: number | null
   message?: string | null
 }
+
+// CS Command Center — integration health (STA-124)
+export type IntegrationHealthGrade = "healthy" | "at_risk" | "critical"
+
+export interface IntegrationHealthDimension {
+  score: number
+  label: string
+  summary: string
+  activeConnectors?: number
+  totalConnectors?: number
+  activePct?: number
+  successRate?: number | null
+  utilizationRate?: number | null
+  avgLatencyMinutes?: number | null
+  p95LatencyMinutes?: number | null
+  pendingApprovals?: number
+}
+
+export interface IntegrationHealthRisk {
+  dimension: string
+  score: number
+  summary?: string
+  severity: "high" | "medium"
+}
+
+export interface IntegrationHealthScore {
+  score: number
+  grade: IntegrationHealthGrade
+  dimensions: Record<string, IntegrationHealthDimension>
+  risks: IntegrationHealthRisk[]
+  weights: Record<string, number>
+  lookbackDays: number
+  computedAt: string
+}
+
+export interface IntegrationHealthSnapshot {
+  id: string
+  orgId: string
+  score: number
+  grade: IntegrationHealthGrade
+  dimensions: Record<string, IntegrationHealthDimension>
+  risks: IntegrationHealthRisk[]
+  lookbackDays: number
+  recordedAt: string
+}
+
+export interface IntegrationHealthHistoryResponse {
+  snapshots: IntegrationHealthSnapshot[]
+  count: number
+}
+
+export interface IntegrationSuggestion {
+  id: string
+  suggestionType: "connect_connector" | "install_department_pack" | "automate_workflow"
+  connectorType?: string | null
+  packId?: string | null
+  title: string
+  message: string
+  evidence: Record<string, unknown>
+  confidence: number
+  priority: number
+  status: string
+  suggestedAt?: string
+}
+
+export interface IntegrationSuggestionsResponse {
+  suggestions: IntegrationSuggestion[]
+  count: number
+}
+
+export interface IntegrationSuggestionScanResponse {
+  lookbackDays: number
+  usage: Record<string, unknown>
+  suggestionCount: number
+  suggestions: IntegrationSuggestion[]
+  scannedAt: string
+}
+
+export interface WorkflowFailureAlert {
+  id: string
+  workflowId: string
+  stepId?: string | null
+  connectorId?: string | null
+  alertType: string
+  severity: "low" | "medium" | "high" | "critical"
+  title: string
+  message: string
+  confidence: number
+  status: string
+  predictedAt?: string
+}
+
+export interface WorkflowFailureAlertsResponse {
+  alerts: WorkflowFailureAlert[]
+  count: number
+}

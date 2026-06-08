@@ -90,6 +90,14 @@ import type {
   EnterpriseSiemConfig,
   EnterpriseSiemTestResult,
   PrivateConnectorBundle,
+  IntegrationHealthScore,
+  IntegrationHealthSnapshot,
+  IntegrationHealthHistoryResponse,
+  IntegrationSuggestion,
+  IntegrationSuggestionsResponse,
+  IntegrationSuggestionScanResponse,
+  WorkflowFailureAlert,
+  WorkflowFailureAlertsResponse,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -329,6 +337,20 @@ export const workflowsApi = {
   execute: (data: ExecuteWorkflowRequest) => postJson<Run>(apiUrl("/api/workflows/execute"), data),
   dryRun: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
     postJson<{ run_id: string; result: unknown }>(apiUrl("/api/workflows/dry-run"), data),
+
+  // Predictive failure alerts (STA-122)
+  listFailurePredictions: (params?: { workflowId?: string; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.workflowId) query.set("workflowId", params.workflowId)
+    if (params?.status) query.set("status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<WorkflowFailureAlertsResponse>(apiUrl(`/api/workflows/failure-predictions${suffix}`))
+  },
+  dismissFailurePrediction: (alertId: string) =>
+    postJson<{ alert: WorkflowFailureAlert }>(
+      apiUrl(`/api/workflows/failure-predictions/${alertId}/dismiss`),
+      {},
+    ),
 }
 
 // ============ Runs ============
@@ -906,6 +928,40 @@ export const enterpriseApi = {
   updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
     putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
   testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
+
+  // CS dashboard — integration health (STA-124)
+  getIntegrationHealth: (lookbackDays = 30) =>
+    fetcher<IntegrationHealthScore>(
+      apiUrl(`/api/enterprise/integration-health?lookbackDays=${lookbackDays}`),
+    ),
+  recordIntegrationHealthSnapshot: (lookbackDays = 30) =>
+    postJson<{ snapshot: IntegrationHealthSnapshot; health: IntegrationHealthScore }>(
+      apiUrl(`/api/enterprise/integration-health/snapshot?lookbackDays=${lookbackDays}`),
+      {},
+    ),
+  getIntegrationHealthHistory: (limit = 30) =>
+    fetcher<IntegrationHealthHistoryResponse>(
+      apiUrl(`/api/enterprise/integration-health/history?limit=${limit}`),
+    ),
+
+  // CS dashboard — integration suggestions (STA-123)
+  getIntegrationSuggestions: (params?: { status?: string; connectorType?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set("status", params.status)
+    if (params?.connectorType) query.set("connectorType", params.connectorType)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<IntegrationSuggestionsResponse>(apiUrl(`/api/enterprise/integration-suggestions${suffix}`))
+  },
+  scanIntegrationSuggestions: (lookbackDays = 30) =>
+    postJson<IntegrationSuggestionScanResponse>(
+      apiUrl(`/api/enterprise/integration-suggestions/scan?lookbackDays=${lookbackDays}`),
+      {},
+    ),
+  dismissIntegrationSuggestion: (suggestionId: string) =>
+    postJson<{ suggestion: IntegrationSuggestion }>(
+      apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/dismiss`),
+      {},
+    ),
 }
 
 export const api = {
