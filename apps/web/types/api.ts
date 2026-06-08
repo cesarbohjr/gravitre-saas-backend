@@ -1355,3 +1355,40 @@ export interface EnterpriseTransparencyExport {
     withHumanOverride: number
   }
 }
+
+// Department role packs (STA-121)
+export interface DepartmentRolePackConnectorChecklistItem {
+  connectorType: string
+  label: string
+  required: boolean
+  connected: boolean
+  connectPath: string
+  ready: boolean
+}
+
+export interface DepartmentRolePack {
+  packId: string
+  name: string
+  department: string
+  description: string
+  tags: string[]
+  installed: boolean
+  installedAt?: string | null
+  agentIds?: string[]
+  workflowIds?: string[]
+  ragSourceIds?: string[]
+  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
+  connectorsReady: boolean
+  requiredConnectorsConnected: number
+  requiredConnectorsTotal: number
+}
+
+export interface DepartmentRolePackInstallResult {
+  packId: string
+  department: string
+  installed: boolean
+  agentIds: string[]
+  workflowIds: string[]
+  ragSourceIds: string[]
+  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
+}

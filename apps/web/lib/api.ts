@@ -76,6 +76,8 @@ import type {
   MarketplaceRegistryConnector,
   MarketplaceBillingStatus,
   MarketplacePartnerPricing,
+  DepartmentRolePack,
+  DepartmentRolePackInstallResult,
   MarketplaceSandboxDemoResult,
   MarketplaceSandboxProvisionResult,
   MarketplaceSandboxStatus,
@@ -452,6 +454,17 @@ export const marketplaceApi = {
     putJson<{ pricing: MarketplacePartnerPricing }>(
       apiUrl(`/api/marketplace/billing/pricing/${registryId}`),
       data
+    ),
+
+  // Department role packs (STA-121)
+  listRolePacks: () =>
+    fetcher<{ packs: DepartmentRolePack[] }>(apiUrl("/api/marketplace/role-packs")),
+  getRolePack: (packId: string) =>
+    fetcher<DepartmentRolePack>(apiUrl(`/api/marketplace/role-packs/${packId}`)),
+  installRolePack: (packId: string) =>
+    postJson<DepartmentRolePackInstallResult>(
+      apiUrl(`/api/marketplace/role-packs/${packId}/install`),
+      {},
     ),
 }
 
