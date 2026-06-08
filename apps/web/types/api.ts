@@ -1392,3 +1392,69 @@ export interface DepartmentRolePackInstallResult {
   ragSourceIds: string[]
   connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
 }
+
+// Federation & B2B (STA-115/116/117/118)
+export type FederationPartnershipStatus =
+  | "pending"
+  | "active"
+  | "rejected"
+  | "revoked"
+
+export interface FederationPartnership {
+  id: string
+  orgAId: string
+  orgBId: string
+  partnerOrgId: string
+  invitedByOrgId: string
+  status: FederationPartnershipStatus
+  initiatorConsentAt: string | null
+  partnerConsentAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type FederationHandoffStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "completed"
+  | "failed"
+
+export interface FederationHandoff {
+  id: string
+  partnershipId: string
+  senderOrgId: string
+  receiverOrgId: string
+  fromAgentId: string | null
+  toAgentId: string | null
+  briefing: Record<string, unknown>
+  message: string | null
+  status: FederationHandoffStatus
+  createdAt: string | null
+  acceptedAt: string | null
+  completedAt: string | null
+}
+
+export interface FederationConnectorGrant {
+  id: string
+  partnershipId?: string | null
+  grantorOrgId: string
+  granteeOrgId: string
+  connectorId: string
+  label: string | null
+  allowedActions: string[]
+  status: string
+  expiresAt: string | null
+  createdAt: string | null
+}
+
+export interface FederationDelegatedTask {
+  id: string
+  delegatorOrgId: string
+  delegateOrgId: string
+  title: string
+  instructions: string | null
+  status: string
+  createdAt: string | null
+  completedAt: string | null
+}

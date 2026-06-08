@@ -78,6 +78,10 @@ import type {
   MarketplacePartnerPricing,
   DepartmentRolePack,
   DepartmentRolePackInstallResult,
+  FederationPartnership,
+  FederationHandoff,
+  FederationConnectorGrant,
+  FederationDelegatedTask,
   MarketplaceSandboxDemoResult,
   MarketplaceSandboxProvisionResult,
   MarketplaceSandboxStatus,
@@ -1025,6 +1029,65 @@ export const enterpriseApi = {
       apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/dismiss`),
       {},
     ),
+}
+
+export const federationApi = {
+  // Partnerships
+  listPartnerships: () =>
+    fetcher<{ partnerships: FederationPartnership[] }>(apiUrl("/api/federation/partnerships")),
+  invitePartner: (partnerOrgId: string) =>
+    postJson<{ partnership: FederationPartnership }>(apiUrl("/api/federation/partnerships"), {
+      partnerOrgId,
+    }),
+  acceptPartnership: (partnershipId: string) =>
+    postJson<{ partnership: FederationPartnership }>(
+      apiUrl(`/api/federation/partnerships/${partnershipId}/accept`),
+      {},
+    ),
+  rejectPartnership: (partnershipId: string) =>
+    postJson<{ partnership: FederationPartnership }>(
+      apiUrl(`/api/federation/partnerships/${partnershipId}/reject`),
+      {},
+    ),
+  revokePartnership: (partnershipId: string) =>
+    postJson<{ partnership: FederationPartnership }>(
+      apiUrl(`/api/federation/partnerships/${partnershipId}/revoke`),
+      {},
+    ),
+
+  // Handoffs
+  listHandoffs: (params?: { direction?: "all" | "inbound" | "outbound"; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.direction) query.set("direction", params.direction)
+    if (params?.status) query.set("status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ handoffs: FederationHandoff[] }>(apiUrl(`/api/federation/handoffs${suffix}`))
+  },
+  createHandoff: (data: {
+    receiverOrgId: string
+    fromAgentId?: string
+    toAgentId?: string
+    message?: string
+    briefing?: Record<string, unknown>
+  }) => postJson<{ handoff: FederationHandoff }>(apiUrl("/api/federation/handoffs"), data),
+  acceptHandoff: (handoffId: string) =>
+    postJson<{ handoff: FederationHandoff }>(
+      apiUrl(`/api/federation/handoffs/${handoffId}/accept`),
+      {},
+    ),
+  rejectHandoff: (handoffId: string, reason?: string) =>
+    postJson<{ handoff: FederationHandoff }>(
+      apiUrl(`/api/federation/handoffs/${handoffId}/reject`),
+      { reason },
+    ),
+
+  // Connector grants
+  listConnectorGrants: () =>
+    fetcher<{ grants: FederationConnectorGrant[] }>(apiUrl("/api/federation/connector-grants")),
+
+  // Delegated tasks
+  listDelegatedTasks: () =>
+    fetcher<{ tasks: FederationDelegatedTask[] }>(apiUrl("/api/federation/delegated-tasks")),
 }
 
 export const api = {

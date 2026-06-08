@@ -102,6 +102,7 @@ const adminNavigation: NavGroup[] = [
     items: [
       { name: "Workspaces", href: "/environments", icon: "boxes" },
       { name: "Enterprise", href: "/settings/enterprise", icon: "building" },
+      { name: "Federation", href: "/settings/federation", icon: "handshake" },
       { name: "Settings", href: "/settings", icon: "sliders" },
     ],
   },

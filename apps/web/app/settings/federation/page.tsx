@@ -1,0 +1,282 @@
+"use client"
+
+import { Suspense, useMemo, useState } from "react"
+import useSWR from "swr"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
+import {
+  Handshake,
+  Plus,
+  ArrowLeftRight,
+  ShieldCheck,
+  Network,
+  Clock,
+  Inbox,
+  Send,
+} from "lucide-react"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { PageHeader } from "@/components/gravitre/page-header"
+import { Button } from "@/components/ui/button"
+import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { federationApi } from "@/lib/api"
+import type {
+  FederationPartnership,
+  FederationHandoff,
+} from "@/types/api"
+import { PartnerCard } from "@/components/federation/partner-card"
+import { HandoffTimeline } from "@/components/federation/handoff-timeline"
+import { InvitePartnerDialog } from "@/components/federation/invite-partner-dialog"
+import { FederationEmptyState } from "@/components/federation/federation-empty-state"
+import { cn } from "@/lib/utils"
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
+  }),
+}
+
+export default function FederationPage() {
+  return (
+    <AppShell title="Federation">
+      <Suspense fallback={null}>
+        <FederationContent />
+      </Suspense>
+    </AppShell>
+  )
+}
+
+function FederationContent() {
+  const [inviteOpen, setInviteOpen] = useState(false)
+
+  const {
+    data: partnershipsData,
+    isLoading: loadingPartners,
+    mutate: mutatePartners,
+  } = useSWR("federation/partnerships", () => federationApi.listPartnerships())
+
+  const {
+    data: handoffsData,
+    isLoading: loadingHandoffs,
+    mutate: mutateHandoffs,
+  } = useSWR("federation/handoffs", () => federationApi.listHandoffs({ direction: "all" }))
+
+  const partnerships = partnershipsData?.partnerships ?? []
+  const handoffs = handoffsData?.handoffs ?? []
+
+  const stats = useMemo(() => {
+    const active = partnerships.filter((p) => p.status === "active").length
+    const pending = partnerships.filter((p) => p.status === "pending").length
+    const openHandoffs = handoffs.filter(
+      (h) => h.status === "pending" || h.status === "accepted",
+    ).length
+    return { active, pending, openHandoffs, total: partnerships.length }
+  }, [partnerships, handoffs])
+
+  async function handlePartnerAction(
+    action: "accept" | "reject" | "revoke",
+    partnership: FederationPartnership,
+  ) {
+    try {
+      if (action === "accept") await federationApi.acceptPartnership(partnership.id)
+      if (action === "reject") await federationApi.rejectPartnership(partnership.id)
+      if (action === "revoke") await federationApi.revokePartnership(partnership.id)
+      toast.success(
+        action === "accept"
+          ? "Partnership activated"
+          : action === "reject"
+            ? "Invitation declined"
+            : "Partnership revoked",
+      )
+      await mutatePartners()
+    } catch {
+      toast.error("Action failed. Please try again.")
+    }
+  }
+
+  async function handleHandoffAction(action: "accept" | "reject", handoff: FederationHandoff) {
+    try {
+      if (action === "accept") await federationApi.acceptHandoff(handoff.id)
+      if (action === "reject") await federationApi.rejectHandoff(handoff.id)
+      toast.success(action === "accept" ? "Handoff accepted" : "Handoff declined")
+      await mutateHandoffs()
+    } catch {
+      toast.error("Action failed. Please try again.")
+    }
+  }
+
+  const pendingInvites = partnerships.filter(
+    (p) => p.status === "pending" && p.invitedByOrgId !== p.partnerOrgId,
+  )
+
+  const statCards = [
+    { label: "Active partners", value: stats.active, icon: Network, accent: "text-chart-1" },
+    { label: "Pending invites", value: stats.pending, icon: Clock, accent: "text-chart-3" },
+    { label: "Open handoffs", value: stats.openHandoffs, icon: ArrowLeftRight, accent: "text-chart-2" },
+    { label: "Total partnerships", value: stats.total, icon: ShieldCheck, accent: "text-chart-4" },
+  ]
+
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Hero */}
+      <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-card">
+        <GridPattern className="absolute inset-0 opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent" />
+        <div className="relative flex flex-col gap-6 p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                <Handshake className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-balance text-2xl font-semibold tracking-tight">
+                  Federation &amp; B2B
+                </h1>
+                <p className="mt-1 max-w-xl text-pretty text-sm leading-relaxed text-muted-foreground">
+                  Securely connect with partner organizations. Both sides must consent before any
+                  agent handoff, connector grant, or delegated task can flow across org boundaries.
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => setInviteOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Invite partner
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {statCards.map((s, i) => (
+              <motion.div
+                key={s.label}
+                custom={i}
+                initial="hidden"
+                animate="show"
+                variants={fadeUp}
+                className="rounded-xl border border-border/60 bg-background/60 p-4 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <s.icon className={cn("h-4 w-4", s.accent)} />
+                  <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+                </div>
+                <div className="mt-2 text-2xl font-semibold tabular-nums">
+                  <AnimatedCounter value={s.value} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Pending invites callout */}
+      {pendingInvites.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex items-center gap-3 rounded-xl border border-chart-3/30 bg-chart-3/5 p-4"
+        >
+          <Inbox className="h-5 w-5 shrink-0 text-chart-3" />
+          <p className="text-sm">
+            <span className="font-medium">{pendingInvites.length}</span> partner{" "}
+            {pendingInvites.length === 1 ? "invitation needs" : "invitations need"} your consent.
+          </p>
+        </motion.div>
+      )}
+
+      <div className="grid gap-8 lg:grid-cols-5">
+        {/* Partners */}
+        <section className="lg:col-span-3">
+          <div className="mb-4 flex items-center gap-2">
+            <Network className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Partner organizations
+            </h2>
+          </div>
+
+          <PageHeaderlessSection
+            loading={loadingPartners}
+            empty={partnerships.length === 0}
+            emptyState={
+              <FederationEmptyState
+                icon={Handshake}
+                title="No partner organizations yet"
+                description="Invite a partner organization to start exchanging agent handoffs, connector grants, and delegated tasks under mutual consent."
+                action={
+                  <Button onClick={() => setInviteOpen(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Invite your first partner
+                  </Button>
+                }
+              />
+            }
+          >
+            <div className="grid gap-4">
+              {partnerships.map((p, i) => (
+                <motion.div key={p.id} custom={i} initial="hidden" animate="show" variants={fadeUp}>
+                  <PartnerCard partnership={p} onAction={handlePartnerAction} />
+                </motion.div>
+              ))}
+            </div>
+          </PageHeaderlessSection>
+        </section>
+
+        {/* Handoffs */}
+        <section className="lg:col-span-2">
+          <div className="mb-4 flex items-center gap-2">
+            <Send className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Cross-org handoffs
+            </h2>
+          </div>
+          <PageHeaderlessSection
+            loading={loadingHandoffs}
+            empty={handoffs.length === 0}
+            emptyState={
+              <FederationEmptyState
+                icon={ArrowLeftRight}
+                title="No handoffs yet"
+                description="When agents pass work to a partner org, the exchange appears here as a consent-gated timeline."
+              />
+            }
+          >
+            <HandoffTimeline handoffs={handoffs} onAction={handleHandoffAction} />
+          </PageHeaderlessSection>
+        </section>
+      </div>
+
+      <InvitePartnerDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        onInvited={() => mutatePartners()}
+      />
+    </div>
+  )
+}
+
+function PageHeaderlessSection({
+  loading,
+  empty,
+  emptyState,
+  children,
+}: {
+  loading: boolean
+  empty: boolean
+  emptyState: React.ReactNode
+  children: React.ReactNode
+}) {
+  if (loading) {
+    return (
+      <div className="grid gap-4">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="h-28 animate-pulse rounded-xl border border-border/60 bg-muted/40"
+          />
+        ))}
+      </div>
+    )
+  }
+  if (empty) return <>{emptyState}</>
+  return <>{children}</>
+}
