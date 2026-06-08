@@ -1,0 +1,718 @@
+"""Central registry of agent-facing tools mapped to invoke_tool actions (STA-159 / AI-025).
+
+Bridges LLM tool calls (OpenAI function format) to the unified connector layer in
+``tool_service.invoke_tool``. ReAct and AgentIntelligence use this module.
+"""
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
+from app.connectors.repository import list_connectors
+from app.core.logging import get_logger
+from app.services.tool_service import invoke_tool, list_registered_actions
+from app.services.tool_types import ToolContext, ToolError, ToolNotFoundError
+
+logger = get_logger(__name__)
+
+ParamMapper = Callable[[dict[str, Any]], dict[str, Any]]
+
+_ACTIVE_CONNECTOR_STATUSES = frozenset({"active", "connected", "syncing"})
+
+
+def _hubspot_search_from_query(args: dict[str, Any]) -> dict[str, Any]:
+    """Map a simple text query to HubSpot filter_groups."""
+    query = str(args.get("query") or "").strip()
+    if not query:
+        raise ValueError("query is required")
+    limit = int(args.get("limit") or 10)
+    return {
+        "filter_groups": [
+            {
+                "filters": [
+                    {
+                        "propertyName": "email",
+                        "operator": "CONTAINS_TOKEN",
+                        "value": query,
+                    }
+                ]
+            }
+        ],
+        "limit": limit,
+    }
+
+
+def _hubspot_contact_create(args: dict[str, Any]) -> dict[str, Any]:
+    properties: dict[str, Any] = {}
+    if args.get("properties") and isinstance(args["properties"], dict):
+        properties.update(args["properties"])
+    for src, dest in (
+        ("email", "email"),
+        ("firstname", "firstname"),
+        ("lastname", "lastname"),
+        ("company", "company"),
+        ("phone", "phone"),
+    ):
+        if args.get(src):
+            properties[dest] = args[src]
+    if not properties:
+        raise ValueError("At least one contact property is required")
+    return {"properties": properties}
+
+
+def _hubspot_deal_update(args: dict[str, Any]) -> dict[str, Any]:
+    deal_id = args.get("deal_id")
+    if not deal_id:
+        raise ValueError("deal_id is required")
+    properties: dict[str, Any] = {}
+    if args.get("properties") and isinstance(args["properties"], dict):
+        properties.update(args["properties"])
+    if args.get("stage"):
+        properties["dealstage"] = args["stage"]
+    if args.get("amount") is not None:
+        properties["amount"] = str(args["amount"])
+    if args.get("close_date"):
+        properties["closedate"] = args["close_date"]
+    if not properties:
+        raise ValueError("At least one deal property is required")
+    return {"deal_id": deal_id, "properties": properties}
+
+
+def _hubspot_note_activity(args: dict[str, Any]) -> dict[str, Any]:
+    body = args.get("body") or args.get("note") or args.get("message")
+    if not body:
+        raise ValueError("body is required")
+    mapped: dict[str, Any] = {"body": body}
+    if args.get("contact_id"):
+        mapped["contact_id"] = args["contact_id"]
+    if args.get("deal_id"):
+        mapped["deal_id"] = args["deal_id"]
+    return mapped
+
+
+def _salesforce_soql_query(args: dict[str, Any]) -> dict[str, Any]:
+    soql = args.get("soql")
+    if not soql:
+        raise ValueError("soql is required")
+    return {"soql": soql}
+
+
+def _salesforce_update_record(args: dict[str, Any]) -> dict[str, Any]:
+    object_type = str(args.get("object_type") or "Lead").lower()
+    record_id = args.get("record_id")
+    fields = args.get("fields")
+    if not record_id:
+        raise ValueError("record_id is required")
+    if not isinstance(fields, dict) or not fields:
+        raise ValueError("fields object is required")
+    if object_type in {"lead", "leads"}:
+        return {"lead_id": record_id, "fields": fields, "_object_type": object_type}
+    if object_type in {"opportunity", "opportunities", "opp"}:
+        return {"opportunity_id": record_id, "fields": fields, "_object_type": object_type}
+    if object_type in {"account", "accounts"}:
+        return {"account_id": record_id, "fields": fields, "_object_type": object_type}
+    raise ValueError(f"Unsupported object_type for update: {object_type}")
+
+
+def _slack_message(args: dict[str, Any]) -> dict[str, Any]:
+    channel = args.get("channel")
+    message = args.get("message")
+    if not channel or not message:
+        raise ValueError("channel and message are required")
+    mapped: dict[str, Any] = {"channel": channel, "message": message}
+    if args.get("blocks"):
+        mapped["blocks"] = args["blocks"]
+    return mapped
+
+
+def _parse_github_repo(args: dict[str, Any]) -> tuple[str, str]:
+    """Parse owner/repo from repo string or explicit owner + repo fields."""
+    owner = args.get("owner")
+    repo = args.get("repo")
+    if owner and repo and "/" not in str(repo):
+        return str(owner), str(repo)
+    combined = str(repo or "")
+    if "/" in combined:
+        parts = combined.split("/", 1)
+        return parts[0], parts[1]
+    if owner:
+        return str(owner), str(repo or "")
+    raise ValueError("repo must be owner/repo or provide owner and repo")
+
+
+def _dict_from_github_repo(args: dict[str, Any]) -> dict[str, str]:
+    owner, repo = _parse_github_repo(args)
+    return {"owner": owner, "repo": repo}
+
+
+def _github_issue_create(args: dict[str, Any]) -> dict[str, Any]:
+    title = args.get("title")
+    if not title:
+        raise ValueError("title is required")
+    owner, repo = _parse_github_repo(args)
+    mapped: dict[str, Any] = {"owner": owner, "repo": repo, "title": title}
+    if args.get("body"):
+        mapped["body"] = args["body"]
+    if args.get("labels"):
+        mapped["labels"] = args["labels"]
+    if args.get("assignees"):
+        mapped["assignees"] = args["assignees"]
+    return mapped
+
+
+def _jira_ticket_create(args: dict[str, Any]) -> dict[str, Any]:
+    project = args.get("project") or args.get("project_key")
+    summary = args.get("summary")
+    if not project or not summary:
+        raise ValueError("project and summary are required")
+    mapped: dict[str, Any] = {
+        "project_key": project,
+        "summary": summary,
+    }
+    if args.get("description"):
+        mapped["description"] = args["description"]
+    if args.get("issue_type"):
+        mapped["issue_type"] = args["issue_type"]
+    if args.get("priority"):
+        mapped["priority"] = args["priority"]
+    if args.get("assignee"):
+        mapped["assignee"] = args["assignee"]
+    return mapped
+
+
+def _zendesk_ticket_update(args: dict[str, Any]) -> dict[str, Any]:
+    ticket_id = args.get("ticket_id")
+    if not ticket_id:
+        raise ValueError("ticket_id is required")
+    mapped: dict[str, Any] = {"ticket_id": ticket_id}
+    if args.get("status"):
+        mapped["status"] = args["status"]
+    if args.get("priority"):
+        mapped["priority"] = args["priority"]
+    if args.get("comment"):
+        mapped["comment"] = args["comment"]
+    if args.get("assignee_id"):
+        mapped["assignee_id"] = args["assignee_id"]
+    return mapped
+
+
+@dataclass(frozen=True)
+class AgentToolSpec:
+    """LLM-visible tool mapped to a canonical invoke_tool action."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    invoke_action: str
+    integration: str
+    map_params: ParamMapper | None = None
+    always_available: bool = False
+
+    def to_openai_tool(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
+    """Register agent tools that map to implemented invoke_tool actions."""
+    specs: list[AgentToolSpec] = [
+        AgentToolSpec(
+            name="hubspot_search_contacts",
+            description=(
+                "Search HubSpot CRM contacts by name, email, company, or keyword. "
+                "Use when the agent needs to find or look up customer or prospect records."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search term"},
+                    "limit": {"type": "integer", "default": 10},
+                },
+                "required": ["query"],
+            },
+            invoke_action="hubspot.contacts.search",
+            integration="hubspot",
+            map_params=_hubspot_search_from_query,
+        ),
+        AgentToolSpec(
+            name="hubspot_update_deal",
+            description="Update a HubSpot deal's stage, amount, close date, or other properties.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "deal_id": {"type": "string"},
+                    "stage": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "close_date": {"type": "string"},
+                    "properties": {"type": "object"},
+                },
+                "required": ["deal_id"],
+            },
+            invoke_action="hubspot.deals.update",
+            integration="hubspot",
+            map_params=_hubspot_deal_update,
+        ),
+        AgentToolSpec(
+            name="hubspot_create_contact",
+            description="Create a new contact in HubSpot CRM.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "email": {"type": "string"},
+                    "firstname": {"type": "string"},
+                    "lastname": {"type": "string"},
+                    "company": {"type": "string"},
+                    "phone": {"type": "string"},
+                    "properties": {"type": "object"},
+                },
+                "required": ["email"],
+            },
+            invoke_action="hubspot.contacts.create",
+            integration="hubspot",
+            map_params=_hubspot_contact_create,
+        ),
+        AgentToolSpec(
+            name="hubspot_log_activity",
+            description="Log a call, email, meeting, or note on a HubSpot contact or deal.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "body": {"type": "string"},
+                    "contact_id": {"type": "string"},
+                    "deal_id": {"type": "string"},
+                    "type": {
+                        "type": "string",
+                        "enum": ["call", "email", "meeting", "note"],
+                    },
+                },
+                "required": ["body"],
+            },
+            invoke_action="hubspot.notes.create",
+            integration="hubspot",
+            map_params=_hubspot_note_activity,
+        ),
+        AgentToolSpec(
+            name="salesforce_query",
+            description=(
+                "Query Salesforce using SOQL. Use for leads, opportunities, accounts, "
+                "contacts, cases, or custom objects."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "soql": {"type": "string", "description": "SOQL query string"},
+                },
+                "required": ["soql"],
+            },
+            invoke_action="salesforce.leads.search",
+            integration="salesforce",
+            map_params=_salesforce_soql_query,
+        ),
+        AgentToolSpec(
+            name="salesforce_update_record",
+            description="Update a Salesforce record by ID (Lead, Opportunity, or Account).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "object_type": {"type": "string"},
+                    "record_id": {"type": "string"},
+                    "fields": {"type": "object"},
+                },
+                "required": ["object_type", "record_id", "fields"],
+            },
+            invoke_action="salesforce.leads.update",
+            integration="salesforce",
+            map_params=_salesforce_update_record,
+        ),
+        AgentToolSpec(
+            name="slack_send_message",
+            description=(
+                "Send a message to a Slack channel or user. Use for notifications, "
+                "alerts, status updates, or handoffs that require human awareness."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "channel": {"type": "string"},
+                    "message": {"type": "string"},
+                    "blocks": {"type": "array"},
+                },
+                "required": ["channel", "message"],
+            },
+            invoke_action="slack.post_message",
+            integration="slack",
+            map_params=_slack_message,
+        ),
+        AgentToolSpec(
+            name="github_create_issue",
+            description="Create a GitHub issue in a repository.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {"type": "string", "description": "owner/repo"},
+                    "title": {"type": "string"},
+                    "body": {"type": "string"},
+                    "labels": {"type": "array", "items": {"type": "string"}},
+                    "assignees": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["repo", "title"],
+            },
+            invoke_action="github.issues.create",
+            integration="github",
+            map_params=_github_issue_create,
+        ),
+        AgentToolSpec(
+            name="github_search_issues",
+            description="Search GitHub pull requests in a repository (read-only discovery).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {"type": "string", "description": "owner/repo"},
+                    "state": {"type": "string", "enum": ["open", "closed", "all"]},
+                    "limit": {"type": "integer"},
+                },
+                "required": ["repo"],
+            },
+            invoke_action="github.pulls.list",
+            integration="github",
+            map_params=lambda args: {
+                **_dict_from_github_repo(args),
+                **{k: v for k, v in args.items() if k in ("state", "limit")},
+            },
+        ),
+        AgentToolSpec(
+            name="jira_create_ticket",
+            description="Create a Jira issue or ticket.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "project": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "description": {"type": "string"},
+                    "issue_type": {"type": "string"},
+                    "priority": {"type": "string"},
+                    "assignee": {"type": "string"},
+                },
+                "required": ["project", "summary"],
+            },
+            invoke_action="jira.issues.create",
+            integration="jira",
+            map_params=_jira_ticket_create,
+        ),
+        AgentToolSpec(
+            name="jira_search_issues",
+            description="Search Jira issues using JQL or project/status filters.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "jql": {"type": "string"},
+                    "project_key": {"type": "string"},
+                    "status": {"type": "string"},
+                    "assignee": {"type": "string"},
+                    "limit": {"type": "integer"},
+                },
+            },
+            invoke_action="jira.issues.search",
+            integration="jira",
+        ),
+        AgentToolSpec(
+            name="pagerduty_list_incidents",
+            description="List recent PagerDuty incidents for triage and on-call response.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "statuses": {"type": "array", "items": {"type": "string"}},
+                    "limit": {"type": "integer"},
+                },
+            },
+            invoke_action="pagerduty.incidents.list",
+            integration="pagerduty",
+        ),
+        AgentToolSpec(
+            name="quickbooks_list_invoices",
+            description="List invoices from QuickBooks (read-only).",
+            parameters={
+                "type": "object",
+                "properties": {"limit": {"type": "integer"}},
+            },
+            invoke_action="quickbooks.invoices.list",
+            integration="quickbooks",
+        ),
+        AgentToolSpec(
+            name="stripe_list_invoices",
+            description="List Stripe invoices for a customer or account (read-only).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer"},
+                    "customer_id": {"type": "string"},
+                },
+            },
+            invoke_action="stripe.invoices.list",
+            integration="stripe",
+        ),
+        AgentToolSpec(
+            name="zendesk_get_ticket",
+            description="Get a Zendesk support ticket by ID.",
+            parameters={
+                "type": "object",
+                "properties": {"ticket_id": {"type": "string"}},
+                "required": ["ticket_id"],
+            },
+            invoke_action="zendesk.tickets.get",
+            integration="zendesk",
+        ),
+        AgentToolSpec(
+            name="zendesk_update_ticket",
+            description="Update a Zendesk ticket status, priority, assignee, or add a comment.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {"type": "string"},
+                    "status": {"type": "string"},
+                    "priority": {"type": "string"},
+                    "comment": {"type": "string"},
+                    "assignee_id": {"type": "string"},
+                },
+                "required": ["ticket_id"],
+            },
+            invoke_action="zendesk.tickets.update",
+            integration="zendesk",
+            map_params=_zendesk_ticket_update,
+        ),
+        AgentToolSpec(
+            name="web_search",
+            description=(
+                "Search the web for current information not in the knowledge base. "
+                "Returns not-configured until Tavily is wired (AI-016)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            },
+            invoke_action="web.search",
+            integration="web",
+            always_available=True,
+        ),
+    ]
+    return {spec.name: spec for spec in specs}
+
+
+_SALESFORCE_UPDATE_ACTIONS: dict[str, str] = {
+    "lead": "salesforce.leads.update",
+    "leads": "salesforce.leads.update",
+    "opportunity": "salesforce.opportunities.update",
+    "opportunities": "salesforce.opportunities.update",
+    "opp": "salesforce.opportunities.update",
+    "account": "salesforce.accounts.update",
+    "accounts": "salesforce.accounts.update",
+}
+
+
+class ToolRegistry:
+    """
+    Central registry of LLM tool definitions backed by invoke_tool.
+
+    Agents receive tools that are both permitted for the agent and connected
+    for the organization.
+    """
+
+    def __init__(self) -> None:
+        self._specs = _build_agent_tool_specs()
+        self._registered = set(list_registered_actions())
+
+    def list_tool_names(self) -> list[str]:
+        """All agent tool names defined in this registry."""
+        return sorted(self._specs.keys())
+
+    def get_spec(self, tool_name: str) -> AgentToolSpec | None:
+        return self._specs.get(tool_name)
+
+    def resolve_invoke_action(self, spec: AgentToolSpec, mapped_params: dict[str, Any]) -> str:
+        """Resolve invoke_tool action; salesforce_update_record varies by object type."""
+        if spec.name == "salesforce_update_record":
+            object_type = str(mapped_params.get("_object_type") or "lead").lower()
+            action = _SALESFORCE_UPDATE_ACTIONS.get(object_type)
+            if not action:
+                raise ValueError(f"Unsupported Salesforce object_type: {object_type}")
+            return action
+        return spec.invoke_action
+
+    @staticmethod
+    def list_connected_integrations(
+        client: Any,
+        org_id: str,
+        environment_name: str = "default",
+    ) -> list[str]:
+        """Return connector types with an active connection for the org."""
+        types: set[str] = set()
+        for row in list_connectors(client, org_id, environment_name=environment_name):
+            status = str(row.get("status") or "").lower()
+            if status not in _ACTIVE_CONNECTOR_STATUSES:
+                continue
+            ctype = str(row.get("type") or "").strip().lower()
+            if ctype:
+                types.add(ctype)
+        return sorted(types)
+
+    def _permitted(self, spec: AgentToolSpec, permitted_tools: list[str]) -> bool:
+        if spec.always_available:
+            return True
+        if not permitted_tools:
+            return True
+        normalized = {str(t).strip().lower() for t in permitted_tools}
+        if "all" in normalized or "*" in normalized:
+            return True
+        if spec.name in normalized:
+            return True
+        if spec.integration in normalized:
+            return True
+        prefix = spec.name.split("_", 1)[0]
+        if prefix in normalized:
+            return True
+        return False
+
+    def _connected(self, spec: AgentToolSpec, connected_integrations: list[str]) -> bool:
+        if spec.always_available:
+            return True
+        connected = {str(c).strip().lower() for c in connected_integrations}
+        return spec.integration in connected
+
+    def _action_implemented(self, spec: AgentToolSpec, invoke_action: str) -> bool:
+        if spec.always_available:
+            return True
+        return invoke_action in self._registered
+
+    def get_tools_for_agent(
+        self,
+        permitted_tools: list[str],
+        connected_integrations: list[str],
+    ) -> list[dict[str, Any]]:
+        """
+        Return OpenAI-format tool definitions for tools that are permitted,
+        connected, and backed by invoke_tool (except always_available stubs).
+        """
+        tools: list[dict[str, Any]] = []
+        for spec in self._specs.values():
+            if not self._permitted(spec, permitted_tools):
+                continue
+            if not self._connected(spec, connected_integrations):
+                continue
+            invoke_action = spec.invoke_action
+            if spec.name == "salesforce_update_record":
+                invoke_action = "salesforce.leads.update"
+            if not self._action_implemented(spec, invoke_action):
+                continue
+            tools.append(spec.to_openai_tool())
+        return tools
+
+    def get_handler(self, tool_name: str) -> Callable[..., Any] | None:
+        """Return async handler for a tool name, or None if unknown."""
+        if tool_name not in self._specs:
+            return None
+        return self.execute_tool
+
+    async def execute_tool(
+        self,
+        *,
+        ctx: ToolContext,
+        tool_name: str,
+        args: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Execute an agent tool call via invoke_tool.
+
+        Returns a normalized dict suitable for injection into the LLM as a tool result.
+        """
+        spec = self._specs.get(tool_name)
+        if not spec:
+            return {"success": False, "error": f"Unknown tool: {tool_name}", "tool": tool_name}
+
+        if spec.always_available and tool_name == "web_search":
+            query = str((args or {}).get("query") or "")
+            return {
+                "success": False,
+                "tool": tool_name,
+                "error": "web_search is not configured; add Tavily in AI-016",
+                "query": query,
+            }
+
+        raw_args = dict(args or {})
+        try:
+            mapped = spec.map_params(raw_args) if spec.map_params else raw_args
+        except (TypeError, ValueError) as exc:
+            return {"success": False, "tool": tool_name, "error": str(exc)}
+
+        try:
+            invoke_action = self.resolve_invoke_action(spec, mapped)
+        except ValueError as exc:
+            return {"success": False, "tool": tool_name, "error": str(exc)}
+
+        invoke_params = {k: v for k, v in mapped.items() if not k.startswith("_")}
+
+        if invoke_action not in self._registered:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "error": f"Backend action not implemented: {invoke_action}",
+            }
+
+        try:
+            result = await asyncio.to_thread(invoke_tool, ctx, invoke_action, invoke_params)
+        except ToolNotFoundError as exc:
+            return {"success": False, "tool": tool_name, "error": str(exc)}
+        except ToolError as exc:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_action,
+                "error": str(exc),
+                "error_code": exc.code,
+            }
+        except Exception as exc:
+            logger.exception(
+                "tool_registry_execute_failed tool=%s action=%s",
+                tool_name,
+                invoke_action,
+            )
+            return {"success": False, "tool": tool_name, "error": str(exc)}
+
+        if result.success:
+            return {
+                "success": True,
+                "tool": tool_name,
+                "action": invoke_action,
+                "result": result.data,
+                "connector_id": result.connector_id,
+            }
+        return {
+            "success": False,
+            "tool": tool_name,
+            "action": invoke_action,
+            "error": result.error_message or "Tool invocation failed",
+            "error_code": result.error_code,
+        }
+
+
+_tool_registry_singleton: ToolRegistry | None = None
+
+
+def get_tool_registry() -> ToolRegistry:
+    global _tool_registry_singleton
+    if _tool_registry_singleton is None:
+        _tool_registry_singleton = ToolRegistry()
+    return _tool_registry_singleton
+
+
+def tool_registry() -> ToolRegistry:
+    """Alias for get_tool_registry()."""
+    return get_tool_registry()

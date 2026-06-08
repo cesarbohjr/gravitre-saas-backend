@@ -48,9 +48,6 @@ from app.services.providers.base import (
     AllProvidersFailedError,
     ProviderInvalidResponseError,
 )
-from app.operators.agent_intelligence import load_org_context as load_agent_org_context, resolve_agent_record
-from app.operators.agent_prompts import build_agent_system_prompt
-
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -441,6 +438,12 @@ def _resolve_system_prompt(
     agent_id: str | None,
 ) -> str:
     if not agent_id:
+        return ASSISTANT_SYSTEM_PROMPT
+    try:
+        from app.operators.agent_intelligence import load_org_context as load_agent_org_context, resolve_agent_record
+        from app.operators.agent_prompts import build_agent_system_prompt
+    except ImportError as exc:
+        logger.warning("agent prompt modules unavailable agent_id=%s error=%s", agent_id, exc)
         return ASSISTANT_SYSTEM_PROMPT
     client = get_supabase_client(settings)
     agent = resolve_agent_record(client, org_id, agent_id)
