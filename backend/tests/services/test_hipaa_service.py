@@ -131,9 +131,16 @@ def test_set_hipaa_enabled_requires_baa(mock_audit):
 
 @patch("app.services.hipaa_service.write_audit_event")
 def test_enforce_blocks_phi_sensitive_action_when_not_ready(mock_audit):
-    client = _org_client(settings={})
+    client = _org_client(settings={"enterprise": {"hipaa": {"enabled": True}}})
     with pytest.raises(HipaaComplianceError, match="email.send"):
         enforce_hipaa_for_tool_invoke(client, "org-1", "email.send", None)
+    mock_audit.assert_not_called()
+
+
+@patch("app.services.hipaa_service.write_audit_event")
+def test_enforce_allows_sensitive_action_when_hipaa_not_enabled(mock_audit):
+    client = _org_client(settings={})
+    enforce_hipaa_for_tool_invoke(client, "org-1", "email.send", None)
     mock_audit.assert_not_called()
 
 

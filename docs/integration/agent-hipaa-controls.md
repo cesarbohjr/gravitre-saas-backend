@@ -10,12 +10,14 @@ Organizations that handle protected health information (PHI) must accept a Busin
 2. Current BAA version is **accepted** (`CURRENT_BAA_VERSION`, stored in `org_hipaa_baa_acceptances`)
 3. Organization **data region** is `us`
 
-## Blocked when not HIPAA ready
+## Blocked when HIPAA mode is enabled (or PHI connectors exist) but not HIPAA ready
 
 | Control | Behavior |
 |---------|----------|
 | PHI-sensitive tool actions | `email.send`, `webhook.post`, `slack.post_message` raise `HIPAA_REQUIRED` |
 | PHI-capable connectors | Any tool using a connector with `phi_capable = true` is blocked |
+
+Orgs that have not enabled HIPAA mode and have no PHI-capable connectors are not restricted.
 
 Tag connectors via `PUT /api/enterprise/connectors/{id}/phi` or `PATCH /api/connectors/{id}` with `phiCapable`.
 
