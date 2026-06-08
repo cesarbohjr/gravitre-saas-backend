@@ -94,6 +94,8 @@ import type {
   IntegrationSuggestionScanResponse,
   WorkflowFailureAlert,
   WorkflowFailureAlertsResponse,
+  WorkflowFailurePredictionScanResponse,
+  WorkflowDigitalTwinResponse,
   EnterpriseCostAttribution,
   EnterpriseAutonomousRunBudgets,
   EnterpriseHipaaStatus,
@@ -359,6 +361,13 @@ export const workflowsApi = {
       apiUrl(`/api/workflows/failure-predictions/${alertId}/dismiss`),
       {},
     ),
+  scanFailurePredictions: (workflowId: string) =>
+    postJson<WorkflowFailurePredictionScanResponse>(
+      apiUrl(`/api/workflows/${workflowId}/failure-predictions/scan`),
+      {},
+    ),
+  digitalTwin: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
+    postJson<WorkflowDigitalTwinResponse>(apiUrl("/api/workflows/digital-twin"), data),
 }
 
 // ============ Runs ============
@@ -1026,6 +1035,70 @@ export const enterpriseApi = {
   },
 }
 
+// ============ B2B Federation (STA-116–118) ============
+export const federationApi = {
+  listPartnerships: () => fetcher<{ partnerships: Record<string, unknown>[] }>(apiUrl("/api/federation/partnerships")),
+  createPartnership: (data: { partnerOrgId: string; scopes?: string[]; notes?: string }) =>
+    postJson<{ partnership: Record<string, unknown> }>(apiUrl("/api/federation/partnerships"), data),
+  acceptPartnership: (partnershipId: string) =>
+    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/accept`), {}),
+  rejectPartnership: (partnershipId: string) =>
+    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/reject`), {}),
+  revokePartnership: (partnershipId: string) =>
+    postJson<{ partnership: Record<string, unknown> }>(apiUrl(`/api/federation/partnerships/${partnershipId}/revoke`), {}),
+  listHandoffs: (params?: { status?: string }) => {
+    const suffix = params?.status ? `?status=${encodeURIComponent(params.status)}` : ""
+    return fetcher<{ handoffs: Record<string, unknown>[] }>(apiUrl(`/api/federation/handoffs${suffix}`))
+  },
+  getHandoff: (handoffId: string) =>
+    fetcher<{ handoff: Record<string, unknown> }>(apiUrl(`/api/federation/handoffs/${handoffId}`)),
+  createHandoff: (data: Record<string, unknown>) =>
+    postJson<{ handoff: Record<string, unknown> }>(apiUrl("/api/federation/handoffs"), data),
+  listConnectorGrants: () =>
+    fetcher<{ grants: Record<string, unknown>[] }>(apiUrl("/api/federation/connector-grants")),
+  createConnectorGrant: (data: Record<string, unknown>) =>
+    postJson<{ grant: Record<string, unknown> }>(apiUrl("/api/federation/connector-grants"), data),
+  listDelegatedTasks: (params?: { status?: string }) => {
+    const suffix = params?.status ? `?status=${encodeURIComponent(params.status)}` : ""
+    return fetcher<{ tasks: Record<string, unknown>[] }>(apiUrl(`/api/federation/delegated-tasks${suffix}`))
+  },
+  createDelegatedTask: (data: Record<string, unknown>) =>
+    postJson<{ task: Record<string, unknown> }>(apiUrl("/api/federation/delegated-tasks"), data),
+}
+
+// ============ Agent swarm (STA-119) ============
+export const agentSwarmApi = {
+  list: (params?: { status?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set("status", params.status)
+    if (params?.limit) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ runs: Record<string, unknown>[] }>(apiUrl(`/api/agent-swarm${suffix}`))
+  },
+  get: (swarmRunId: string) =>
+    fetcher<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}`)),
+  start: (data: {
+    parentAgentId: string
+    objective: string
+    subtasks: Record<string, unknown>[]
+    decisionMethod?: string
+  }) => postJson<{ run: Record<string, unknown> }>(apiUrl("/api/agent-swarm/start"), data),
+  aggregate: (swarmRunId: string) =>
+    postJson<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}/aggregate`), {}),
+  cancel: (swarmRunId: string) =>
+    postJson<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}/cancel`), {}),
+}
+
+// ============ Vertical industry packs (STA-113–115) ============
+export const verticalsApi = {
+  getHealthcare: () => fetcher<Record<string, unknown>>(apiUrl("/api/verticals/healthcare")),
+  installHealthcare: () => postJson<Record<string, unknown>>(apiUrl("/api/verticals/healthcare/install"), {}),
+  getLegal: () => fetcher<Record<string, unknown>>(apiUrl("/api/verticals/legal")),
+  installLegal: () => postJson<Record<string, unknown>>(apiUrl("/api/verticals/legal/install"), {}),
+  getRealEstate: () => fetcher<Record<string, unknown>>(apiUrl("/api/verticals/real-estate")),
+  installRealEstate: () => postJson<Record<string, unknown>>(apiUrl("/api/verticals/real-estate/install"), {}),
+}
+
 export const api = {
   auth: authApi,
   operators: operatorsApi,
@@ -1049,6 +1122,9 @@ export const api = {
   lite: liteApi,
   sso: ssoApi,
   enterprise: enterpriseApi,
+  federation: federationApi,
+  agentSwarm: agentSwarmApi,
+  verticals: verticalsApi,
 }
 
 export default api

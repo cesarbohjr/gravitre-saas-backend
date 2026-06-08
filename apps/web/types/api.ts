@@ -1257,6 +1257,27 @@ export interface WorkflowFailureAlertsResponse {
   count: number
 }
 
+export interface WorkflowFailurePredictionScanResponse {
+  workflowId: string
+  alertCount: number
+  riskScore: number
+  alerts: WorkflowFailureAlert[]
+  scannedAt: string
+  environment: string
+}
+
+export interface WorkflowDigitalTwinResponse {
+  run_id: string
+  status: string
+  plan: Record<string, unknown>[]
+  steps: Record<string, unknown>[]
+  errors: string[]
+  simulationMode?: string
+  fixtureHits?: number
+  llmPredictions?: number
+  ragReads?: number
+}
+
 export interface DepartmentRolePackConnectorChecklistItem {
   connectorType: string
   label: string
