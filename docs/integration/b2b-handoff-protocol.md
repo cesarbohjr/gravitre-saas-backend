@@ -51,7 +51,7 @@ Briefings reuse the STA-17 shape: `{ contact?, deal?, decision?, artifacts[] }` 
 ## Related
 
 - STA-17 intra-org handoff bus — `backend/app/services/handoff_service.py`
-- STA-117 federated connector consent — builds on active partnerships
+- STA-117 federated connector consent — `docs/integration/federated-connector-consent.md`
 - STA-118 delegate task to external org — builds on accepted handoffs
 
 ## Key files

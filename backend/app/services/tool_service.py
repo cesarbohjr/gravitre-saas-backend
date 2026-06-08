@@ -2476,7 +2476,34 @@ def list_registered_actions() -> list[str]:
 
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
     """Invoke a registered connector tool with audit, rate limits, retries, and agent permissions."""
-    params = params or {}
+    from dataclasses import replace
+
+    params = dict(params or {})
+    federation_token = params.pop("federation_token", None) or params.pop("federationToken", None)
+    federation_grant_id = params.pop("federation_grant_id", None) or params.pop("federationGrantId", None)
+    federated_grant = None
+    if federation_token or federation_grant_id:
+        from app.services.federated_connector_service import (
+            FederatedConnectorError,
+            resolve_federated_tool_context,
+        )
+
+        try:
+            federated_grant = resolve_federated_tool_context(
+                ctx.client,
+                grantee_org_id=ctx.org_id,
+                action=action,
+                federation_token=str(federation_token) if federation_token else None,
+                federation_grant_id=str(federation_grant_id) if federation_grant_id else None,
+            )
+        except FederatedConnectorError as exc:
+            raise ToolValidationError(str(exc), code=exc.code) from exc
+        params["connector_id"] = federated_grant.connector_id
+        ctx = replace(
+            ctx,
+            org_id=federated_grant.grantor_org_id,
+            connector_id=federated_grant.connector_id,
+        )
     if ctx.run_id:
         from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
 
@@ -2524,23 +2551,24 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             {"error_code": exc.code, "error": str(exc)[:200]},
         )
         raise ToolValidationError(str(exc), code=exc.code) from exc
-    try:
-        assert_agent_tool_permission(ctx, action, cid, connector_type)
-    except ToolPermissionDeniedError as exc:
-        _write_tool_audit(
-            ctx,
-            action,
-            cid,
-            "tool.invoke.failed",
-            {"error_code": exc.code, "error": str(exc)[:200]},
-        )
-        return NormalizedResult(
-            success=False,
-            action=action,
-            error_code=exc.code,
-            error_message=str(exc),
-            connector_id=cid,
-        )
+    if federated_grant is None:
+        try:
+            assert_agent_tool_permission(ctx, action, cid, connector_type)
+        except ToolPermissionDeniedError as exc:
+            _write_tool_audit(
+                ctx,
+                action,
+                cid,
+                "tool.invoke.failed",
+                {"error_code": exc.code, "error": str(exc)[:200]},
+            )
+            return NormalizedResult(
+                success=False,
+                action=action,
+                error_code=exc.code,
+                error_message=str(exc),
+                connector_id=cid,
+            )
     _write_tool_audit(ctx, action, cid, "tool.invoke.requested")
 
     compensation_snapshot = None
@@ -2564,6 +2592,16 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 "tool.invoke.completed",
                 {"latency_ms": result.latency_ms, "attempt": attempt + 1},
             )
+            if federated_grant:
+                from app.services.federated_connector_service import audit_federated_tool_invoke
+
+                audit_federated_tool_invoke(
+                    ctx.client,
+                    grant=federated_grant,
+                    action=action,
+                    actor_id=ctx.actor_id,
+                    success=True,
+                )
             if ctx.transparency_log_id:
                 try:
                     from app.services.transparency_service import append_tool_invocation

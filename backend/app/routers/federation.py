@@ -24,6 +24,15 @@ from app.services.b2b_handoff_service import (
     reject_partnership,
     revoke_partnership,
 )
+from app.services.federated_connector_service import (
+    FederatedConnectorError,
+    accept_federated_grant,
+    get_federated_grant,
+    list_federated_grants,
+    propose_federated_grant,
+    reject_federated_grant,
+    revoke_federated_grant,
+)
 
 router = APIRouter(prefix="/api/federation", tags=["federation"])
 
@@ -50,6 +59,16 @@ class HandoffRejectRequest(BaseModel):
     reason: str | None = None
 
 
+class FederatedGrantRequest(BaseModel):
+    grantee_org_id: str = Field(..., alias="granteeOrgId")
+    connector_id: str = Field(..., alias="connectorId")
+    allowed_actions: list[str] = Field(..., alias="allowedActions", min_length=1)
+    label: str | None = None
+    expires_in_hours: int = Field(default=24, alias="expiresInHours", ge=1, le=168)
+
+    model_config = {"populate_by_name": True}
+
+
 def _client(settings: Settings):
     return create_client(settings.supabase_url, settings.supabase_service_role_key)
 
@@ -66,6 +85,10 @@ def _raise_b2b(exc: B2BHandoffError) -> None:
         status_code=code_map.get(exc.code, status.HTTP_400_BAD_REQUEST),
         detail=error_detail(str(exc), exc.code),
     ) from exc
+
+
+def _raise_federated(exc: FederatedConnectorError) -> None:
+    _raise_b2b(exc)
 
 
 @router.get("/partnerships")
@@ -276,3 +299,111 @@ async def post_handoff_complete(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+
+
+@router.get("/connector-grants")
+async def get_connector_grants(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = _client(settings)
+    return {"grants": list_federated_grants(client, org_id)}
+
+
+@router.get("/connector-grants/{grant_id}")
+async def get_connector_grant(
+    grant_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = _client(settings)
+    try:
+        return get_federated_grant(client, org_id, grant_id)
+    except FederatedConnectorError as exc:
+        _raise_federated(exc)
+
+
+@router.post("/connector-grants")
+async def post_connector_grant(
+    body: FederatedGrantRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return propose_federated_grant(
+            client,
+            grantor_org_id=org_id,
+            grantee_org_id=body.grantee_org_id,
+            connector_id=body.connector_id,
+            allowed_actions=body.allowed_actions,
+            actor_id=user["user_id"],
+            label=body.label,
+            expires_in_hours=body.expires_in_hours,
+        )
+    except FederatedConnectorError as exc:
+        _raise_federated(exc)
+
+
+@router.post("/connector-grants/{grant_id}/accept")
+async def post_connector_grant_accept(
+    grant_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return accept_federated_grant(
+            client,
+            org_id=org_id,
+            grant_id=grant_id,
+            actor_id=user["user_id"],
+        )
+    except FederatedConnectorError as exc:
+        _raise_federated(exc)
+
+
+@router.post("/connector-grants/{grant_id}/reject")
+async def post_connector_grant_reject(
+    grant_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return reject_federated_grant(
+            client,
+            org_id=org_id,
+            grant_id=grant_id,
+            actor_id=user["user_id"],
+        )
+    except FederatedConnectorError as exc:
+        _raise_federated(exc)
+
+
+@router.post("/connector-grants/{grant_id}/revoke")
+async def post_connector_grant_revoke(
+    grant_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = _client(settings)
+    try:
+        return revoke_federated_grant(
+            client,
+            org_id=org_id,
+            grant_id=grant_id,
+            actor_id=user["user_id"],
+        )
+    except FederatedConnectorError as exc:
+        _raise_federated(exc)
