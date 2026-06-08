@@ -1,106 +1,171 @@
 "use client"
 
+import useSWR from "swr"
+import { DollarSign, Bot, Building2, Workflow } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { cn } from "@/lib/utils"
+import { enterpriseApi } from "@/lib/api"
+import type { EnterpriseCostAttribution } from "@/types/api"
+import { TabSkeleton } from "./enterprise-skeletons"
 
-interface CostTabProps {
-  isLoading: boolean
-  cost?: Record<string, unknown>
+function formatUsd(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n || 0)
 }
 
-export function CostTab({ isLoading, cost }: CostTabProps) {
-  if (isLoading) {
-    return <Skeleton className="h-64 w-full" />
+function toSortedEntries(record: Record<string, number> | undefined): [string, number][] {
+  if (!record) return []
+  return Object.entries(record).sort((a, b) => b[1] - a[1])
+}
+
+function BarBreakdown({ entries, total }: { entries: [string, number][]; total: number }) {
+  const max = entries.length ? Math.max(...entries.map(([, v]) => v)) : 0
+  if (!entries.length) {
+    return <p className="py-4 text-sm text-muted-foreground">No cost data for this dimension yet.</p>
   }
-
-  const total = Number(cost?.totalCostUsd ?? 0)
-  const byAgent = (cost?.byAgent ?? {}) as Record<string, { totalCostUsd?: number }>
-  const byDepartment = (cost?.byDepartment ?? {}) as Record<string, { totalCostUsd?: number }>
-  const byWorkflow = (cost?.byWorkflow ?? {}) as Record<string, { totalCostUsd?: number }>
-
-  const agentEntries = Object.entries(byAgent)
-    .sort(([, a], [, b]) => Number(b.totalCostUsd ?? 0) - Number(a.totalCostUsd ?? 0))
-    .slice(0, 8)
-  const maxAgentCost = Math.max(...agentEntries.map(([, r]) => Number(r.totalCostUsd ?? 0)), 1)
-
-  if (total === 0 && agentEntries.length === 0) {
-    return (
-      <Empty className="border border-dashed">
-        <EmptyHeader>
-          <EmptyTitle>No cost data this month</EmptyTitle>
-          <EmptyDescription>Usage attribution appears when agents consume billable resources.</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardHeader>
-          <CardDescription>Month-to-date spend</CardDescription>
-          <CardTitle className="text-3xl font-semibold tabular-nums">${total.toFixed(2)}</CardTitle>
-        </CardHeader>
-      </Card>
-
-      {agentEntries.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top agents</CardTitle>
-            <CardDescription>Cost attribution by agent</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {agentEntries.map(([agentId, row]) => {
-              const amount = Number(row.totalCostUsd ?? 0)
-              const pct = (amount / maxAgentCost) * 100
-              return (
-                <div key={agentId} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="truncate text-muted-foreground">{agentId}</span>
-                    <span className="font-medium tabular-nums">${amount.toFixed(2)}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <BreakdownList title="By department" items={byDepartment} />
-        <BreakdownList title="By workflow" items={byWorkflow} />
-      </div>
+    <div className="space-y-3">
+      {entries.map(([label, value]) => {
+        const pct = max > 0 ? (value / max) * 100 : 0
+        const share = total > 0 ? (value / total) * 100 : 0
+        return (
+          <div key={label} className="space-y-1">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="truncate font-medium text-foreground">{label}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {formatUsd(value)}
+                <span className="ml-1.5 text-xs text-muted-foreground/60">{share.toFixed(0)}%</span>
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function BreakdownList({
+function CompactList({
+  entries,
+  total,
+  icon: Icon,
   title,
-  items,
+  description,
 }: {
+  entries: [string, number][]
+  total: number
+  icon: typeof Building2
   title: string
-  items: Record<string, { totalCostUsd?: number }>
+  description: string
 }) {
-  const entries = Object.entries(items).slice(0, 6)
-  if (entries.length === 0) return null
-
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-primary" />
+          <CardTitle className="text-base">{title}</CardTitle>
+        </div>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {entries.map(([id, row]) => (
-          <div key={id} className="flex justify-between text-sm">
-            <span className="truncate text-muted-foreground">{id}</span>
-            <span className="tabular-nums">${Number(row.totalCostUsd ?? 0).toFixed(2)}</span>
-          </div>
-        ))}
+      <CardContent>
+        {entries.length ? (
+          <ul className="divide-y divide-border">
+            {entries.map(([label, value]) => {
+              const share = total > 0 ? (value / total) * 100 : 0
+              return (
+                <li key={label} className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                  <span className="truncate text-sm text-foreground">{label}</span>
+                  <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                    {formatUsd(value)}
+                    <span className="ml-1.5 text-xs text-muted-foreground/60">{share.toFixed(0)}%</span>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No data yet.</p>
+        )}
       </CardContent>
     </Card>
+  )
+}
+
+export function CostTab() {
+  const { data, isLoading } = useSWR<EnterpriseCostAttribution>(
+    "enterprise-cost",
+    () => enterpriseApi.getCostAttribution(),
+    { revalidateOnFocus: false },
+  )
+
+  if (isLoading) return <TabSkeleton rows={4} />
+
+  const total = data?.totalCostUsd ?? 0
+  const byAgent = toSortedEntries(data?.byAgent).slice(0, 8)
+  const byDepartment = toSortedEntries(data?.byDepartment)
+  const byWorkflow = toSortedEntries(data?.byWorkflow)
+
+  return (
+    <div className="space-y-4">
+      {/* Hero metric */}
+      <Card>
+        <CardContent className="flex flex-col gap-1 p-6">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <DollarSign className="h-4 w-4" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">
+              Month-to-date spend
+            </span>
+          </div>
+          <span className="text-4xl font-semibold tabular-nums text-foreground">
+            {formatUsd(total)}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            Attributed across {byAgent.length} agents, {byDepartment.length} departments,{" "}
+            {byWorkflow.length} workflows
+          </span>
+        </CardContent>
+      </Card>
+
+      {/* Top agents */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">Cost by agent</CardTitle>
+          </div>
+          <CardDescription>Top agents by spend in the current period.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BarBreakdown entries={byAgent} total={total} />
+        </CardContent>
+      </Card>
+
+      {/* Department + workflow lists */}
+      <div className={cn("grid gap-4", "md:grid-cols-2")}>
+        <CompactList
+          entries={byDepartment}
+          total={total}
+          icon={Building2}
+          title="By department"
+          description="Spend grouped by department."
+        />
+        <CompactList
+          entries={byWorkflow}
+          total={total}
+          icon={Workflow}
+          title="By workflow"
+          description="Spend grouped by automation."
+        />
+      </div>
+    </div>
   )
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { ModelSelector } from "@/components/gravitre/model-selector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {

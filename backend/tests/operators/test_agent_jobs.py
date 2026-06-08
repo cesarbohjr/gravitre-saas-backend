@@ -43,6 +43,10 @@ class _Query:
         self._filters.append((col, val))
         return self
 
+    def in_(self, col, vals):
+        self._filters.append((col, "__in__", tuple(vals)))
+        return self
+
     def order(self, col, desc=False):
         self._order = col
         self._desc = desc
@@ -53,7 +57,16 @@ class _Query:
         return self
 
     def _match(self, row):
-        return all(row.get(c) == v for c, v in self._filters)
+        for filt in self._filters:
+            if len(filt) == 3 and filt[1] == "__in__":
+                col, _, vals = filt
+                if row.get(col) not in vals:
+                    return False
+            else:
+                col, val = filt
+                if row.get(col) != val:
+                    return False
+        return True
 
     def execute(self):
         rows = self.store.setdefault(self.table, [])

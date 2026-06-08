@@ -17,7 +17,11 @@ from app.services.tool_types import (
 
 @pytest.fixture
 def tool_ctx() -> ToolContext:
-    settings = SimpleNamespace(disable_connectors=False, connector_secrets_encryption_key="k" * 32)
+    settings = SimpleNamespace(
+        disable_connectors=False,
+        connector_secrets_encryption_key="k" * 32,
+        private_connector_runtime_enabled=True,
+    )
     client = MagicMock()
     return ToolContext(
         settings=settings,
