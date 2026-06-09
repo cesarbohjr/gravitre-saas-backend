@@ -603,13 +603,13 @@ async def list_role_packs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
-    environment: Annotated[str, Depends(get_environment_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
 ) -> dict:
     """List installable department role packs with connector readiness checklist."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return {"packs": list_department_packs(client, org_id, environment_name=environment)}
+    return {"packs": list_department_packs(client, org_id, environment_name=environment_name)}
 
 
 @router.get("/role-packs/{pack_id}")
@@ -618,13 +618,13 @@ async def get_role_pack(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
-    environment: Annotated[str, Depends(get_environment_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     try:
-        return get_department_pack(client, org_id, pack_id, environment_name=environment)
+        return get_department_pack(client, org_id, pack_id, environment_name=environment_name)
     except RoleMarketplaceError as exc:
         status_code = status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST
         if exc.code == "CONNECTORS_NOT_READY":
@@ -637,7 +637,7 @@ async def install_role_pack(
     pack_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
-    environment: Annotated[str, Depends(get_environment_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
 ) -> dict:
     """One-click install: agents + RAG sources + workflow + connector checklist."""
     user, org_id = admin
@@ -648,7 +648,7 @@ async def install_role_pack(
             org_id,
             pack_id,
             actor_id=user["user_id"],
-            environment_name=environment,
+            environment_name=environment_name,
         )
     except RoleMarketplaceError as exc:
         status_code = status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST
