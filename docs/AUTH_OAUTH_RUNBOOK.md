@@ -118,5 +118,5 @@ curl.exe -sI "https://gravitre.app/auth/callback?code=invalid-test"
 
 - `apps/web/lib/oauth.ts` — starts OAuth
 - `apps/web/app/auth/callback/route.ts` — PKCE `exchangeCodeForSession`
-- `apps/web/middleware.ts` — protects app routes
+- `apps/web/proxy.ts` — protects app routes (Next.js 16 proxy; replaces deprecated `middleware.ts`)
 - `apps/web/lib/auth-session.ts` — canonical origin + cookie cleanup
