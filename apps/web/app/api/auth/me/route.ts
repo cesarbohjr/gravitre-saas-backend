@@ -75,10 +75,9 @@ export async function GET(request: NextRequest) {
     "/api/auth/me",
   )
 
-  if (proxied.status === 401) {
+  if (proxied.status === 401 || proxied.status === 500 || proxied.status === 502) {
     console.warn(
-      "[api/auth/me] Backend rejected JWT for user=%s — returning Supabase fallback",
-      user.email ?? user.id,
+      `[api/auth/me] Backend unavailable for user=${user.email ?? user.id} status=${proxied.status} — returning Supabase fallback`,
     )
     return NextResponse.json(fallbackMeFromSupabase(user), {
       status: 200,

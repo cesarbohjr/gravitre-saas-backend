@@ -110,19 +110,21 @@ async def test_execute_task_needs_human_input(agent_row: dict, intelligence: Age
 
 def test_load_org_context(monkeypatch: pytest.MonkeyPatch):
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[{"id": "org-1", "name": "Acme Corp"}]
-    )
+    mock_service = MagicMock()
+    mock_service.get_snapshot.return_value = {
+        "orgId": "org-1",
+        "orgName": "Acme Corp",
+        "connectedIntegrations": ["hubspot"],
+        "connectorCount": 1,
+    }
     monkeypatch.setattr(
-        "app.operators.agent_intelligence.list_connectors",
-        lambda *_a, **_k: [
-            {"type": "hubspot", "status": "active"},
-            {"type": "slack", "status": "disconnected"},
-        ],
+        "app.operators.agent_intelligence.get_org_context_service",
+        lambda: mock_service,
     )
     ctx = load_org_context(client, "org-1")
     assert ctx["orgName"] == "Acme Corp"
     assert ctx["connectedIntegrations"] == ["hubspot"]
+    mock_service.get_snapshot.assert_called_once()
 
 
 def test_select_model_for_agent_uses_agent_model(agent_row: dict):

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     "/api/billing/status",
   )
 
-  if (proxied.status === 401 || proxied.status === 502) {
+  if (proxied.status === 401 || proxied.status === 500 || proxied.status === 502) {
     console.warn(
       "[api/billing/status] Backend unavailable for user=%s status=%s — returning fallback",
       user.email ?? user.id,

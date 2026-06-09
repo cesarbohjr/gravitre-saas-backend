@@ -44,6 +44,7 @@ from app.services.ai_guardrails import (
     fence_untrusted,
 )
 from app.services.model_router import ModelResponse, TaskType, get_model_router
+from app.services.org_context_service import get_org_context_service
 from app.services.providers.base import (
     AllProvidersFailedError,
     ProviderInvalidResponseError,
@@ -432,15 +433,17 @@ def _persist_conversation_turn(
         return conversation_id
 
 
-def _resolve_system_prompt(
+def _resolve_base_system_prompt(
     settings: Settings,
     org_id: str,
     agent_id: str | None,
+    *,
+    org_context: dict[str, Any] | None = None,
 ) -> str:
     if not agent_id:
         return ASSISTANT_SYSTEM_PROMPT
     try:
-        from app.operators.agent_intelligence import load_org_context as load_agent_org_context, resolve_agent_record
+        from app.operators.agent_intelligence import resolve_agent_record
         from app.operators.agent_prompts import build_agent_system_prompt
     except ImportError as exc:
         logger.warning("agent prompt modules unavailable agent_id=%s error=%s", agent_id, exc)
@@ -449,14 +452,34 @@ def _resolve_system_prompt(
     agent = resolve_agent_record(client, org_id, agent_id)
     if not agent:
         return ASSISTANT_SYSTEM_PROMPT
-    org_context = load_agent_org_context(client, org_id)
-    connected = org_context.get("connectedIntegrations") or []
+    snapshot = org_context or {}
+    connected = snapshot.get("connectedIntegrations") or []
     return build_agent_system_prompt(
         agent,
-        org_context=org_context,
+        org_context=snapshot,
         connected_integrations=list(connected),
         rag_available=True,
     )
+
+
+def _build_assistant_system_prompt(
+    settings: Settings,
+    org_id: str,
+    *,
+    user_id: str | None = None,
+    agent_id: str | None = None,
+    depth: str = "standard",
+) -> str:
+    client = get_supabase_client(settings)
+    service = get_org_context_service()
+    snapshot, org_block = service.get_context_bundle(
+        client,
+        org_id,
+        user_id=user_id,
+        depth=depth,
+    )
+    base = _resolve_base_system_prompt(settings, org_id, agent_id, org_context=snapshot)
+    return f"{base}\n\n{org_block}"
 
 
 def _build_stream(tool_results: list[dict[str, Any]], answer: str):
@@ -567,7 +590,12 @@ async def assistant_chat(
     requested_tools = body.tools if body.tools is not None else _DEFAULT_TOOLS
     tool_results = await _run_tools(requested_tools, org_id, last_user, settings)
 
-    system_prompt = _resolve_system_prompt(settings, org_id, body.agent_id)
+    system_prompt = _build_assistant_system_prompt(
+        settings,
+        org_id,
+        user_id=str(current_user.get("user_id") or "") or None,
+        agent_id=body.agent_id,
+    )
 
     # Build the model context: prior conversation turns + FENCED tool results.
     # Every tool result is wrapped by fence_untrusted before injection so it is

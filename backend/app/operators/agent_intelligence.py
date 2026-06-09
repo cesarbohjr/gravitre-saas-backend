@@ -11,21 +11,18 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import MODEL_TIERS, Settings, get_settings
-from app.connectors.repository import list_connectors
 from app.core.logging import get_logger
 from app.operators.agent_prompts import build_agent_system_prompt, get_agent_persona
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine
 from app.services.agent_finetune_service import resolve_agent_inference_model
 from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
+from app.services.org_context_service import get_org_context_service
 from app.services.rag_service import RAGService
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import ToolContext
 from app.workflows.audit import write_audit_event
 
 logger = get_logger(__name__)
-
-_ACTIVE_CONNECTOR_STATUSES = frozenset({"active", "connected", "syncing"})
-
 
 class AgentResult(BaseModel):
     """Structured agent output for handoffs, jobs, and UI."""
@@ -124,30 +121,22 @@ def resolve_agent_record(
     }
 
 
-def load_org_context(client: Any, org_id: str, environment_name: str = "default") -> dict[str, Any]:
-    """Lightweight org snapshot until OrgContextService (STA-147) lands."""
-    org_name: str | None = None
-    try:
-        row = client.table("organizations").select("id,name").eq("id", org_id).limit(1).execute()
-        if row.data:
-            org_name = row.data[0].get("name")
-    except Exception:  # noqa: BLE001
-        logger.debug("org_context_name_lookup_failed org_id=%s", org_id, exc_info=True)
-
-    connected: list[str] = []
-    for conn in list_connectors(client, org_id, environment_name=environment_name):
-        status = str(conn.get("status") or "").lower()
-        if status not in _ACTIVE_CONNECTOR_STATUSES:
-            continue
-        ctype = str(conn.get("type") or "").strip()
-        if ctype:
-            connected.append(ctype)
-    return {
-        "orgId": org_id,
-        "orgName": org_name,
-        "connectedIntegrations": sorted(set(connected)),
-        "connectorCount": len(connected),
-    }
+def load_org_context(
+    client: Any,
+    org_id: str,
+    environment_name: str = "default",
+    *,
+    user_id: str | None = None,
+    depth: str = "standard",
+) -> dict[str, Any]:
+    """Org snapshot for agent prompts via OrgContextService (STA-147)."""
+    return get_org_context_service().get_snapshot(
+        client,
+        org_id,
+        environment_name=environment_name,
+        depth=depth,
+        user_id=user_id,
+    )
 
 
 def select_model_for_agent(agent: dict[str, Any], client: Any, org_id: str, task: str) -> str:
