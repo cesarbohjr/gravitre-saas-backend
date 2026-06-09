@@ -61,6 +61,25 @@ def _now_iso() -> str:
     return _now().isoformat()
 
 
+def _is_missing_table_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "does not exist" in message or ("relation" in message and "does not exist" in message)
+
+
+def _select_rows(client: Any, table: str, build_query) -> list[dict[str, Any]]:
+    try:
+        result = build_query(client.table(table)).execute()
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
+    if _is_missing_table_error(getattr(result, "error", None)):
+        return []
+    return list(result.data or [])
+
+
 def _connector_label(connector_type: str) -> str:
     return CONNECTOR_LABELS.get(connector_type, connector_type.replace("_", " ").title())
 
@@ -388,19 +407,21 @@ def list_integration_suggestions(
     connector_type: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
-    query = (
-        client.table("integration_suggestions")
-        .select("*")
-        .eq("org_id", org_id)
-        .eq("status", status)
-        .order("priority", desc=True)
-        .order("suggested_at", desc=True)
-        .limit(limit)
-    )
-    if connector_type:
-        query = query.eq("connector_type", connector_type)
-    result = query.execute()
-    return [_serialize_suggestion(row) for row in (result.data or [])]
+    def build_query(table):
+        query = (
+            table.select("*")
+            .eq("org_id", org_id)
+            .eq("status", status)
+            .order("priority", desc=True)
+            .order("suggested_at", desc=True)
+            .limit(limit)
+        )
+        if connector_type:
+            query = query.eq("connector_type", connector_type)
+        return query
+
+    rows = _select_rows(client, "integration_suggestions", build_query)
+    return [_serialize_suggestion(row) for row in rows]
 
 
 def dismiss_integration_suggestion(client: Any, org_id: str, suggestion_id: str) -> dict[str, Any]:
@@ -438,12 +459,25 @@ def scan_integration_suggestions(
     usage = aggregate_tool_usage(events)
     suggestions = build_integration_suggestions(client, org_id, usage)
 
-    client.table("integration_suggestions").delete().eq("org_id", org_id).eq("status", "open").execute()
+    try:
+        client.table("integration_suggestions").delete().eq("org_id", org_id).eq("status", "open").execute()
+    except Exception as exc:
+        if not _is_missing_table_error(exc):
+            raise
 
     persisted: list[dict[str, Any]] = []
     if suggestions:
-        insert_result = client.table("integration_suggestions").insert(suggestions).execute()
-        persisted = [_serialize_suggestion(row) for row in (insert_result.data or suggestions)]
+        try:
+            insert_result = client.table("integration_suggestions").insert(suggestions).execute()
+            if _is_missing_table_error(getattr(insert_result, "error", None)):
+                persisted = [_serialize_suggestion(row) for row in suggestions]
+            else:
+                persisted = [_serialize_suggestion(row) for row in (insert_result.data or suggestions)]
+        except Exception as exc:
+            if _is_missing_table_error(exc):
+                persisted = [_serialize_suggestion(row) for row in suggestions]
+            else:
+                raise
 
     summary = {
         "lookbackDays": lookback_days,

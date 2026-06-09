@@ -30,6 +30,14 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import {
+  applyRunStepsToNodes,
+  countActiveRunSteps,
+  isTerminalRunStatus,
+  mapExecuteSteps,
+  pollWorkflowRun,
+  type RunMonitorSnapshot,
+} from "@/lib/workflows/run-monitor"
+import {
   ArrowLeft,
   Plus,
   Play,
@@ -2651,6 +2659,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   // Persistence state
   const canPersist = isPersistableWorkflowId(id)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
+  const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
+  const [dryRunTrigger, setDryRunTrigger] = useState(0)
   const [isLoadingGraph, setIsLoadingGraph] = useState(canPersist)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [workflowMeta, setWorkflowMeta] = useState<WorkflowMeta>(defaultWorkflowMeta)
@@ -3105,62 +3115,106 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     }
   }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description])
 
-  // Handle run workflow with execution simulation
-const handleRun = useCallback(async () => {
-  // For UUID workflows, save first then execute via API
-  if (canPersist) {
-    setIsRunning(true)
+  // Handle dry-run preview via intelligence drawer (STA-166)
+  const handlePreview = useCallback(async () => {
+    if (!canPersist) {
+      toast.info("Demo mode", {
+        description: "Create a saved workflow to run a backend dry-run preview.",
+      })
+      return
+    }
+
+    setIsSaving(true)
     try {
-      // Save current state first
       await saveBuilderGraph(id, nodes, {
         name: settingsName || workflowMeta.name,
         description: settingsDescription || workflowMeta.description,
       })
       setLastSavedAt(new Date())
-      
-      // Execute via API
+      setIntelligenceInitialTab("dryrun")
+      setDryRunTrigger((value) => value + 1)
+      setIntelligenceOpen(true)
+    } catch (err) {
+      console.error("[WorkflowBuilder] Preview save failed:", err)
+      toast.error("Preview failed", {
+        description: err instanceof Error ? err.message : "Could not save workflow before preview",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description])
+
+  // Handle run workflow with live run polling (STA-166)
+const handleRun = useCallback(async () => {
+  const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
+    setIsExecuting(false)
+    setIsRunning(false)
+    const failed =
+      snapshot.status.toLowerCase() === "failed" ||
+      snapshot.steps.some((step) => step.status.toLowerCase() === "failed")
+    if (failed) {
+      setExecutionStatus("error")
+      setExecutionError(snapshot.errorMessage ?? "Workflow run failed")
+      toast.error("Workflow run failed", {
+        description: snapshot.errorMessage ?? `Run ID: ${runId}`,
+      })
+      return
+    }
+    setExecutionStatus("completed")
+    toast.success("Workflow executed successfully", {
+      description: `Run ID: ${runId}`,
+      action: {
+        label: "View Run",
+        onClick: () => router.push(`/runs/${runId}`),
+      },
+    })
+  }
+
+  // For UUID workflows, save first then execute via API
+  if (canPersist) {
+    setIsRunning(true)
+    try {
+      await saveBuilderGraph(id, nodes, {
+        name: settingsName || workflowMeta.name,
+        description: settingsDescription || workflowMeta.description,
+      })
+      setLastSavedAt(new Date())
+
       const response = await executeWorkflow(id)
       setLastRunId(response.run_id)
-      
-      // Start local execution visualization
+
       setIsExecuting(true)
       setExecutionStatus("running")
       setExecutionStartTime(Date.now())
       setExecutionStep(0)
       setExecutionError(null)
-      
-      // Simulate progress through nodes (in real implementation, poll API for step status)
-      const orderedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x)
-      for (let i = 0; i < orderedNodes.length; i++) {
-        const currentNode = orderedNodes[i]
-        setExecutionStep(i + 1)
-        
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === currentNode.id ? { ...n, state: "running" as NodeState } : n
-          )
-        )
-        
-        await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400))
-        
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === currentNode.id ? { ...n, state: "success" as NodeState } : n
-          )
-        )
+      setNodes((prev) => prev.map((node) => ({ ...node, state: "idle" as NodeState })))
+
+      const inlineSteps = mapExecuteSteps((response.steps ?? []) as Array<Record<string, unknown>>)
+      if (inlineSteps.length > 0 && isTerminalRunStatus(response.status)) {
+        const snapshot: RunMonitorSnapshot = {
+          runId: response.run_id,
+          status: response.status,
+          steps: inlineSteps,
+        }
+        setNodes((prev) => applyRunStepsToNodes(prev, inlineSteps))
+        setExecutionStep(countActiveRunSteps(inlineSteps))
+        finishExecution(snapshot, response.run_id)
+        return
       }
-      
-      setIsExecuting(false)
-      setIsRunning(false)
-      setExecutionStatus("completed")
-      
-      toast.success("Workflow executed successfully", {
-        description: `Run ID: ${response.run_id}`,
-        action: {
-          label: "View Run",
-          onClick: () => router.push(`/runs/${response.run_id}`),
+
+      const snapshot = await pollWorkflowRun(
+        response.run_id,
+        (update) => {
+          setNodes((prev) => applyRunStepsToNodes(prev, update.steps))
+          setExecutionStep(Math.max(1, countActiveRunSteps(update.steps)))
+          if (update.status.toLowerCase() === "failed") {
+            setExecutionError(update.errorMessage ?? "Workflow run failed")
+          }
         },
-      })
+        { intervalMs: 1500, timeoutMs: 120000 }
+      )
+      finishExecution(snapshot, response.run_id)
     } catch (err) {
       console.error("[WorkflowBuilder] Execute failed:", err)
       setIsExecuting(false)
@@ -3528,6 +3582,16 @@ const handleRun = useCallback(async () => {
                   <Save className="h-3.5 w-3.5" />
                 )}
                 <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 gap-2"
+                onClick={handlePreview}
+                disabled={isSaving || isLoadingGraph || isRunning}
+              >
+                <FileSearch className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Preview</span>
               </Button>
               <Button 
                 size="sm" 
@@ -4578,12 +4642,16 @@ const handleRun = useCallback(async () => {
                 {nodes.length} nodes
               </Button>
               <div className="w-px h-6 bg-border" />
-              <Link href={`/workflows/${id}`}>
-                <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5 text-xs">
-                  Preview
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-3 gap-1.5 text-xs"
+                onClick={handlePreview}
+                disabled={isSaving || isLoadingGraph || isRunning}
+              >
+                <FileSearch className="h-3.5 w-3.5" />
+                Preview
+              </Button>
             </div>
 
             {/* Floating add button when library is closed */}
@@ -4976,6 +5044,8 @@ const handleRun = useCallback(async () => {
         workflowId={id}
         isPersisted={canPersist}
         nodes={nodes.map((n) => ({ id: n.id, name: n.name, type: n.type }))}
+        initialTab={intelligenceInitialTab}
+        dryRunTrigger={dryRunTrigger}
       />
     </AppShell>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Sparkles,
@@ -39,6 +39,9 @@ interface IntelligenceDrawerProps {
   /** Whether the workflow id is a persisted UUID (vs a local/demo draft). */
   isPersisted: boolean
   nodes: IntelligenceDrawerNode[]
+  initialTab?: DrawerTab
+  /** Increment to trigger a dry run when the drawer opens. */
+  dryRunTrigger?: number
 }
 
 interface SimulatedStep {
@@ -125,8 +128,10 @@ export function WorkflowIntelligenceDrawer({
   workflowId,
   isPersisted,
   nodes,
+  initialTab,
+  dryRunTrigger = 0,
 }: IntelligenceDrawerProps) {
-  const [activeTab, setActiveTab] = useState<DrawerTab>("simulate")
+  const [activeTab, setActiveTab] = useState<DrawerTab>(initialTab ?? "simulate")
 
   // Simulate
   const [simSteps, setSimSteps] = useState<SimulatedStep[] | null>(null)
@@ -190,26 +195,35 @@ export function WorkflowIntelligenceDrawer({
     setDryRunStatus(null)
     try {
       const res = await workflowsApi.dryRun({ workflow_id: workflowId })
-      const result = res.result as
-        | { status?: string; steps?: unknown[]; errors?: string[] }
-        | undefined
-      const raw = (result?.steps ?? []) as Array<Record<string, unknown>>
+      const raw = (res.steps ?? []) as Array<Record<string, unknown>>
       const steps: DryRunStep[] = raw.map((s, i) => ({
         id: String(s.id ?? s.step_id ?? `step-${i}`),
         name: String(s.step_name ?? s.name ?? `Step ${i + 1}`),
         type: String(s.step_type ?? "task"),
         status: String(s.status ?? "completed"),
-        error: (s.error_message as string) ?? null,
+        error: (s.error_message as string) ?? (s.errorMessage as string) ?? null,
       }))
       setDryRunSteps(steps)
-      setDryRunErrors(result?.errors ?? [])
-      setDryRunStatus(result?.status ?? "completed")
+      setDryRunErrors(res.errors ?? [])
+      setDryRunStatus(res.status ?? "completed")
     } catch (err) {
       setDryRunError(err instanceof Error ? err.message : "Dry run failed")
     } finally {
       setDryRunLoading(false)
     }
   }, [workflowId])
+
+  useEffect(() => {
+    if (open && initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [open, initialTab])
+
+  useEffect(() => {
+    if (open && dryRunTrigger > 0 && isPersisted) {
+      void runDryRun()
+    }
+  }, [open, dryRunTrigger, isPersisted, runDryRun])
 
   const totalPredictedMs = simSteps?.reduce((sum, s) => sum + s.predictedMs, 0) ?? 0
 

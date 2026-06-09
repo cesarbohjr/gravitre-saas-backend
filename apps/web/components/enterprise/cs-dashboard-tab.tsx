@@ -436,25 +436,28 @@ export function CsDashboardTab() {
   const [dismissingFailureId, setDismissingFailureId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const { data: health, isLoading: healthLoading, mutate: mutateHealth } = useSWR(
-    "enterprise-integration-health",
-    () => enterpriseApi.getIntegrationHealth(LOOKBACK_DAYS),
-    { revalidateOnFocus: false },
-  )
+  const {
+    data: health,
+    error: healthError,
+    isLoading: healthLoading,
+    mutate: mutateHealth,
+  } = useSWR("enterprise-integration-health", () => enterpriseApi.getIntegrationHealth(LOOKBACK_DAYS), {
+    revalidateOnFocus: false,
+  })
 
-  const { data: history, mutate: mutateHistory } = useSWR(
+  const { data: history, error: historyError, mutate: mutateHistory } = useSWR(
     "enterprise-integration-health-history",
     () => enterpriseApi.getIntegrationHealthHistory(30),
     { revalidateOnFocus: false },
   )
 
-  const { data: suggestionsData, mutate: mutateSuggestions } = useSWR(
+  const { data: suggestionsData, error: suggestionsError, mutate: mutateSuggestions } = useSWR(
     "enterprise-integration-suggestions",
     () => enterpriseApi.getIntegrationSuggestions({ status: "open" }),
     { revalidateOnFocus: false },
   )
 
-  const { data: failureData, mutate: mutateFailures } = useSWR(
+  const { data: failureData, error: failuresError, mutate: mutateFailures } = useSWR(
     "workflow-failure-predictions",
     () => workflowsApi.listFailurePredictions({ status: "open" }),
     { revalidateOnFocus: false },
@@ -500,6 +503,20 @@ export function CsDashboardTab() {
     }
   }
 
+  const scanFailures = async () => {
+    setBusy("failure-scan")
+    try {
+      const result = await workflowsApi.scanAllFailurePredictions()
+      await mutateFailures()
+      const suffix = result.errors.length > 0 ? ` (${result.errors.length} skipped)` : ""
+      showToast(`Scanned ${result.scannedCount} workflows — ${result.alertCount} alerts${suffix}`)
+    } catch {
+      showToast("Failed to scan workflows")
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const dismissSuggestion = async (id: string) => {
     setBusy(id)
     try {
@@ -520,13 +537,19 @@ export function CsDashboardTab() {
     }
   }
 
-  if (healthLoading) return <TabSkeleton rows={4} />
+  if (healthLoading && !health && !healthError) return <TabSkeleton rows={4} />
 
   const suggestions = suggestionsData?.suggestions ?? []
   const failures = failureData?.alerts ?? []
   const snapshots = history?.snapshots ?? []
   const dimensions = health?.dimensions ?? {}
   const risks = health?.risks ?? []
+  const loadErrors = [
+    healthError ? "Integration health" : null,
+    historyError ? "Health history" : null,
+    suggestionsError ? "Recommendations" : null,
+    failuresError ? "Failure predictions" : null,
+  ].filter(Boolean) as string[]
 
   const groupedFailures = SEVERITY_ORDER.map((sev) => ({
     severity: sev,
@@ -554,6 +577,30 @@ export function CsDashboardTab() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {loadErrors.length > 0 ? (
+        <div
+          className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          role="alert"
+        >
+          <div className="space-y-1">
+            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
+              Some CS data failed to load
+            </p>
+            <p className="text-sm text-muted-foreground text-pretty">
+              {loadErrors.join(", ")} — check backend connectivity and run pending migrations.
+            </p>
+            {healthError ? (
+              <p className="text-xs text-muted-foreground/80">{String(healthError.message || healthError)}</p>
+            ) : null}
+          </div>
+          <Button variant="outline" size="sm" disabled={!!busy} onClick={() => void refreshAll()}>
+            <RefreshCw className={cn("mr-1.5 h-4 w-4", busy === "refresh" && "animate-spin")} aria-hidden />
+            Retry
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
@@ -672,12 +719,18 @@ export function CsDashboardTab() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-destructive" aria-hidden />
-            <CardTitle className="text-base">Workflow failure predictions</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-destructive" aria-hidden />
+              <CardTitle className="text-base">Workflow failure predictions</CardTitle>
+            </div>
+            <CardDescription>Pre-failure alerts from auth expiry, rate limits, and missing scopes.</CardDescription>
           </div>
-          <CardDescription>Pre-failure alerts from auth expiry, rate limits, and missing scopes.</CardDescription>
+          <Button size="sm" disabled={!!busy} onClick={() => void scanFailures()}>
+            <ShieldAlert className={cn("mr-1.5 h-4 w-4", busy === "failure-scan" && "animate-pulse")} aria-hidden />
+            Scan workflows
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {failures.length === 0 ? (
@@ -687,7 +740,7 @@ export function CsDashboardTab() {
               </div>
               <p className="text-sm font-medium text-foreground">No open failure alerts</p>
               <p className="max-w-sm text-sm text-muted-foreground text-pretty">
-                Scan workflows from the builder risk panel to generate pre-failure predictions.
+                Scan all workflows to generate pre-failure predictions from connector auth, scopes, and run history.
               </p>
             </div>
           ) : (

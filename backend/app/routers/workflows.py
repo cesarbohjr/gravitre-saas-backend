@@ -28,6 +28,7 @@ from app.services.workflow_failure_prediction_service import (
     FailurePredictionError,
     dismiss_failure_alert,
     list_failure_alerts,
+    scan_org_failure_predictions,
     scan_workflow_failure_predictions,
 )
 from app.config import Settings, get_settings
@@ -1130,6 +1131,20 @@ class FailurePredictionScanResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class OrgFailurePredictionScanResponse(BaseModel):
+    workflow_count: int = Field(alias="workflowCount")
+    scanned_count: int = Field(alias="scannedCount")
+    alert_count: int = Field(alias="alertCount")
+    risk_score: int = Field(alias="riskScore")
+    workflows: list[dict]
+    alerts: list[dict]
+    errors: list[dict]
+    scanned_at: str = Field(alias="scannedAt")
+    environment: str
+
+    model_config = {"populate_by_name": True}
+
+
 @router.get("/failure-predictions")
 async def list_workflow_failure_predictions(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -1151,6 +1166,31 @@ async def list_workflow_failure_predictions(
         status=status,
     )
     return {"alerts": alerts, "count": len(alerts)}
+
+
+@router.post(
+    "/failure-predictions/scan",
+    response_model=OrgFailurePredictionScanResponse,
+    response_model_by_alias=True,
+)
+async def scan_org_failure_predictions_route(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> OrgFailurePredictionScanResponse:
+    """Run heuristic pre-failure scans for all org workflows (STA-167)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    summary = scan_org_failure_predictions(
+        client,
+        settings,
+        org_id,
+        environment_name=environment_name,
+        actor_id=current_user["user_id"],
+    )
+    return OrgFailurePredictionScanResponse(**summary)
 
 
 @router.post("/{workflow_id}/failure-predictions/scan", response_model=FailurePredictionScanResponse)

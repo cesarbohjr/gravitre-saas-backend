@@ -12,6 +12,7 @@ from app.services.workflow_failure_prediction_service import (
     dismiss_failure_alert,
     extract_step_requirements,
     list_failure_alerts,
+    scan_org_failure_predictions,
     scan_workflow_failure_predictions,
 )
 
@@ -224,3 +225,48 @@ def test_build_predictive_alerts_auth_expiry(mock_auth_status, mock_tokens):
     )
     types = {alert["alert_type"] for alert in alerts}
     assert "auth_expiry" in types
+
+
+def test_list_failure_alerts_missing_table_returns_empty():
+    alerts_table = _table([])
+    alerts_table.execute.side_effect = Exception('relation "workflow_failure_alerts" does not exist')
+    client = MagicMock()
+    client.table.return_value = alerts_table
+    assert list_failure_alerts(client, "org-1") == []
+
+
+@patch("app.services.workflow_failure_prediction_service.write_audit_event")
+@patch("app.services.workflow_failure_prediction_service.scan_workflow_failure_predictions")
+@patch("app.services.workflow_failure_prediction_service.list_workflows")
+def test_scan_org_failure_predictions_aggregates_workflows(mock_list, mock_scan, mock_audit):
+    mock_list.return_value = [
+        {"id": "wf-1", "name": "Onboarding", "status": "active"},
+        {"id": "wf-2", "name": "Archived", "status": "archived"},
+    ]
+    mock_scan.side_effect = [
+        {
+            "workflowId": "wf-1",
+            "alertCount": 1,
+            "riskScore": 25,
+            "alerts": [{"severity": "high", "alertType": "auth_expiry"}],
+            "scannedAt": "2026-06-09T00:00:00+00:00",
+            "environment": "production",
+        }
+    ]
+
+    client = MagicMock()
+    settings = Settings()
+    summary = scan_org_failure_predictions(
+        client,
+        settings,
+        "org-1",
+        environment_name="production",
+        actor_id="user-1",
+    )
+
+    assert summary["workflowCount"] == 1
+    assert summary["scannedCount"] == 1
+    assert summary["alertCount"] == 1
+    assert summary["workflows"][0]["workflowName"] == "Onboarding"
+    mock_scan.assert_called_once()
+    mock_audit.assert_called_once()

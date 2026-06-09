@@ -250,18 +250,57 @@ export interface Run {
   id: string
   workflow_id: string
   workflow_name?: string
+  workflowId?: string
+  workflowName?: string
   version_id?: string
   status: RunStatus
   run_type?: string
   parameters?: Record<string, unknown>
   result?: Record<string, unknown>
   error?: string
+  errorMessage?: string
   started_at?: string
+  startedAt?: string
   completed_at?: string
+  completedAt?: string
   created_at?: string
   created_by?: string
   environment?: string
   steps?: RunStep[]
+  approvalStatus?: string
+  approvalRequired?: boolean
+}
+
+export interface RunDetailResponse {
+  run: Run
+  steps: Array<{
+    id: string
+    nodeId?: string | null
+    name?: string
+    status: string
+    startedAt?: string | null
+    completedAt?: string | null
+    errorMessage?: string | null
+    orderIndex?: number
+  }>
+}
+
+export interface WorkflowDryRunResponse {
+  run_id: string
+  status: string
+  plan: Record<string, unknown>[]
+  steps: Array<Record<string, unknown>>
+  errors: string[]
+}
+
+export interface ExecuteWorkflowResponse {
+  run_id: string
+  id?: string
+  status: string
+  approval_required?: boolean
+  queued?: boolean
+  steps?: Array<Record<string, unknown>>
+  errors?: string[]
 }
 
 // ============ Connectors ============
@@ -1281,6 +1320,28 @@ export interface WorkflowFailurePredictionScanResponse {
   alertCount: number
   riskScore: number
   alerts: WorkflowFailureAlert[]
+  scannedAt: string
+  environment: string
+}
+
+export interface OrgFailurePredictionScanResponse {
+  workflowCount: number
+  scannedCount: number
+  alertCount: number
+  riskScore: number
+  workflows: Array<{
+    workflowId: string
+    workflowName?: string | null
+    alertCount: number
+    riskScore: number
+  }>
+  alerts: WorkflowFailureAlert[]
+  errors: Array<{
+    workflowId: string
+    workflowName?: string | null
+    code?: string
+    message: string
+  }>
   scannedAt: string
   environment: string
 }

@@ -18,7 +18,7 @@ from app.services.agent_tool_permissions import (
 )
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 from app.workflows.audit import write_audit_event
-from app.workflows.repository import get_active_workflow_version, get_workflow_def
+from app.workflows.repository import get_active_workflow_version, get_workflow_def, list_workflows
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,13 @@ class FailurePredictionError(Exception):
         super().__init__(message)
         if code:
             self.code = code
+
+
+def _is_missing_table_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "does not exist" in message or ("relation" in message and "does not exist" in message)
 
 
 def _now() -> datetime:
@@ -590,7 +597,14 @@ def list_failure_alerts(
     )
     if workflow_id:
         query = query.eq("workflow_id", workflow_id)
-    result = query.execute()
+    try:
+        result = query.execute()
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
+    if _is_missing_table_error(getattr(result, "error", None)):
+        return []
     return [_serialize_alert(row) for row in (result.data or [])]
 
 
@@ -677,5 +691,101 @@ def scan_workflow_failure_predictions(
         workflow_id,
         len(persisted),
         risk_score,
+    )
+    return summary
+
+
+def scan_org_failure_predictions(
+    client: Any,
+    settings: Settings,
+    org_id: str,
+    *,
+    environment_name: str = "production",
+    actor_id: str | None = None,
+) -> dict[str, Any]:
+    """Run heuristic pre-failure scans for every org workflow (STA-167)."""
+    workflows = list_workflows(client, org_id)
+    candidates = [
+        row
+        for row in workflows
+        if str(row.get("status") or "").lower() not in {"archived", "deleted"}
+    ]
+
+    workflow_summaries: list[dict[str, Any]] = []
+    all_alerts: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for workflow in candidates:
+        workflow_id = str(workflow.get("id") or "")
+        if not workflow_id:
+            continue
+        try:
+            summary = scan_workflow_failure_predictions(
+                client,
+                settings,
+                org_id,
+                workflow_id,
+                environment_name=environment_name,
+            )
+        except FailurePredictionError as exc:
+            errors.append(
+                {
+                    "workflowId": workflow_id,
+                    "workflowName": workflow.get("name"),
+                    "code": exc.code,
+                    "message": str(exc),
+                }
+            )
+            continue
+
+        alerts = summary.get("alerts") or []
+        workflow_summaries.append(
+            {
+                "workflowId": workflow_id,
+                "workflowName": workflow.get("name"),
+                "alertCount": summary.get("alertCount", len(alerts)),
+                "riskScore": summary.get("riskScore", 0),
+            }
+        )
+        all_alerts.extend(alerts)
+
+    risk_score = _compute_risk_score(all_alerts)
+    summary = {
+        "workflowCount": len(candidates),
+        "scannedCount": len(workflow_summaries),
+        "alertCount": len(all_alerts),
+        "riskScore": risk_score,
+        "workflows": workflow_summaries,
+        "alerts": all_alerts,
+        "errors": errors,
+        "scannedAt": _now_iso(),
+        "environment": environment_name,
+    }
+
+    if actor_id:
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            AUDIT_FAILURE_PREDICTION_SCANNED,
+            RESOURCE_TYPE_WORKFLOW_FAILURE_ALERT,
+            org_id,
+            metadata={
+                "scope": "org",
+                "workflowCount": len(candidates),
+                "scannedCount": len(workflow_summaries),
+                "alertCount": len(all_alerts),
+                "riskScore": risk_score,
+                "errorCount": len(errors),
+            },
+        )
+
+    logger.info(
+        "workflow_failure_prediction_org_scan org_id=%s workflows=%s alerts=%s risk=%s errors=%s",
+        org_id,
+        len(workflow_summaries),
+        len(all_alerts),
+        risk_score,
+        len(errors),
     )
     return summary

@@ -175,3 +175,11 @@ def test_list_integration_health_history():
     client.table.return_value = table
     rows = list_integration_health_history(client, "org-1")
     assert rows[0]["grade"] == "at_risk"
+
+
+def test_list_integration_health_history_missing_table():
+    table = _table([])
+    table.execute.side_effect = Exception('relation "integration_health_snapshots" does not exist')
+    client = MagicMock()
+    client.table.return_value = table
+    assert list_integration_health_history(client, "org-1") == []

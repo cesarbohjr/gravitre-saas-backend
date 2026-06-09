@@ -2,6 +2,7 @@
  * STA-19: Map workflow builder canvas ↔ API builder graph (GET/PUT /api/workflows/{id}/builder).
  */
 import { workflowsApi } from "@/lib/api"
+import type { WorkflowDryRunResponse } from "@/types/api"
 
 export type CanvasNodeType =
   | "agent"
@@ -255,12 +256,36 @@ export async function executeWorkflow(
   if (!isPersistableWorkflowId(workflowId)) {
     throw new Error("Cannot execute non-UUID workflow. Create a real workflow first.")
   }
-  const run = await workflowsApi.execute({
+  const response = await workflowsApi.execute({
     workflow_id: workflowId,
     parameters: parameters ?? {},
   })
-  return {
-    run_id: run.id,
-    status: run.status as ExecuteResponse["status"],
+  const runId = response.run_id || response.id
+  if (!runId) {
+    throw new Error("Execute response missing run_id")
   }
+  return {
+    run_id: runId,
+    status: response.status as ExecuteResponse["status"],
+    steps: (response.steps ?? []).map((step) => ({
+      node_id: String(step.nodeId ?? step.node_id ?? step.step_id ?? step.stepId ?? ""),
+      status: String(step.status ?? "pending") as "pending" | "running" | "completed" | "failed",
+      started_at: (step.started_at as string | undefined) ?? (step.startedAt as string | undefined),
+      completed_at: (step.completed_at as string | undefined) ?? (step.completedAt as string | undefined),
+      error: (step.error_message as string | undefined) ?? (step.errorMessage as string | undefined),
+    })),
+  }
+}
+
+export async function previewWorkflow(
+  workflowId: string,
+  parameters?: Record<string, unknown>
+): Promise<WorkflowDryRunResponse> {
+  if (!isPersistableWorkflowId(workflowId)) {
+    throw new Error("Cannot preview non-UUID workflow. Create a real workflow first.")
+  }
+  return workflowsApi.dryRun({
+    workflow_id: workflowId,
+    parameters: parameters ?? {},
+  })
 }

@@ -393,7 +393,7 @@ async def get_integration_suggestions(
     return {"suggestions": suggestions, "count": len(suggestions)}
 
 
-@router.post("/integration-suggestions/scan", response_model=IntegrationSuggestionScanResponse)
+@router.post("/integration-suggestions/scan", response_model=IntegrationSuggestionScanResponse, response_model_by_alias=True)
 async def scan_integration_suggestions_route(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -443,7 +443,7 @@ class IntegrationHealthResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-@router.get("/integration-health", response_model=IntegrationHealthResponse)
+@router.get("/integration-health", response_model=IntegrationHealthResponse, response_model_by_alias=True)
 async def get_integration_health_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],

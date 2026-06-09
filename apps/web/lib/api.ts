@@ -28,8 +28,11 @@ import type {
   CreateWorkflowRequest,
   UpdateWorkflowRequest,
   Run,
+  RunDetailResponse,
   RunListResponse,
   ExecuteWorkflowRequest,
+  ExecuteWorkflowResponse,
+  WorkflowDryRunResponse,
   ApproveRejectRequest,
   Connector,
   ConnectorListResponse,
@@ -105,6 +108,7 @@ import type {
   WorkflowFailureAlert,
   WorkflowFailureAlertsResponse,
   WorkflowFailurePredictionScanResponse,
+  OrgFailurePredictionScanResponse,
   WorkflowDigitalTwinResponse,
   AutonomousRunBudgetLimits,
   AutonomousRunBudgetUsage,
@@ -389,9 +393,10 @@ export const workflowsApi = {
     }),
 
   // Execution
-  execute: (data: ExecuteWorkflowRequest) => postJson<Run>(apiUrl("/api/workflows/execute"), data),
+  execute: (data: ExecuteWorkflowRequest) =>
+    postJson<ExecuteWorkflowResponse>(apiUrl("/api/workflows/execute"), data),
   dryRun: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
-    postJson<{ run_id: string; result: unknown }>(apiUrl("/api/workflows/dry-run"), data),
+    postJson<WorkflowDryRunResponse>(apiUrl("/api/workflows/dry-run"), data),
 
   // Predictive failure alerts (STA-122)
   listFailurePredictions: (params?: { workflowId?: string; status?: string }) => {
@@ -411,6 +416,11 @@ export const workflowsApi = {
       apiUrl(`/api/workflows/${workflowId}/failure-predictions/scan`),
       {},
     ),
+  scanAllFailurePredictions: () =>
+    postJson<OrgFailurePredictionScanResponse>(
+      apiUrl("/api/workflows/failure-predictions/scan"),
+      {},
+    ),
   digitalTwin: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
     postJson<WorkflowDigitalTwinResponse>(apiUrl("/api/workflows/digital-twin"), data),
 }
@@ -427,6 +437,7 @@ export const runsApi = {
     return fetcher<RunListResponse>(apiUrl(`/api/runs${query ? `?${query}` : ""}`))
   },
   get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
+  getWithSteps: (id: string) => fetcher<RunDetailResponse>(apiUrl(`/api/runs/${id}`)),
   cancel: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/cancel`), {}),
   retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
 }

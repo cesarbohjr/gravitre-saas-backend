@@ -44,6 +44,25 @@ def _now_iso() -> str:
     return _now().isoformat()
 
 
+def _is_missing_table_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "does not exist" in message or ("relation" in message and "does not exist" in message)
+
+
+def _select_rows(client: Any, table: str, build_query) -> list[dict[str, Any]]:
+    try:
+        result = build_query(client.table(table)).execute()
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
+    if _is_missing_table_error(getattr(result, "error", None)):
+        return []
+    return list(result.data or [])
+
+
 def _parse_time(value: Any) -> datetime | None:
     if not value:
         return None
@@ -306,41 +325,28 @@ def fetch_health_inputs(
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
 ) -> dict[str, Any]:
     since = (_now() - timedelta(days=lookback_days)).isoformat()
-    connectors = (
-        client.table("connectors")
-        .select("id,type,status,vendor,environment")
-        .eq("org_id", org_id)
-        .execute()
-        .data
-        or []
+    connectors = _select_rows(
+        client,
+        "connectors",
+        lambda table: table.select("id,type,status,vendor,environment").eq("org_id", org_id),
     )
-    exec_runs = (
-        client.table("workflow_runs")
-        .select("id,status,run_type,created_at,completed_at,approval_status")
+    exec_runs = _select_rows(
+        client,
+        "workflow_runs",
+        lambda table: table.select("id,status,run_type,created_at,completed_at,approval_status")
         .eq("org_id", org_id)
         .eq("run_type", "execute")
-        .gte("created_at", since)
-        .execute()
-        .data
-        or []
+        .gte("created_at", since),
     )
-    agent_jobs = (
-        client.table("agent_jobs")
-        .select("status,kind,created_at")
-        .eq("org_id", org_id)
-        .gte("created_at", since)
-        .execute()
-        .data
-        or []
+    agent_jobs = _select_rows(
+        client,
+        "agent_jobs",
+        lambda table: table.select("status,kind,created_at").eq("org_id", org_id).gte("created_at", since),
     )
-    approvals = (
-        client.table("run_approvals")
-        .select("run_id,status,created_at")
-        .eq("org_id", org_id)
-        .gte("created_at", since)
-        .execute()
-        .data
-        or []
+    approvals = _select_rows(
+        client,
+        "run_approvals",
+        lambda table: table.select("run_id,status,created_at").eq("org_id", org_id).gte("created_at", since),
     )
     return {
         "connectors": connectors,
@@ -388,8 +394,18 @@ def record_integration_health_snapshot(
         "lookback_days": lookback_days,
         "recorded_at": _now_iso(),
     }
-    insert = client.table("integration_health_snapshots").insert(row).execute()
-    persisted = (insert.data or [row])[0]
+    insert = client.table("integration_health_snapshots").insert(row)
+    try:
+        persisted_result = insert.execute()
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            logger.warning("integration_health_snapshots table missing; returning computed health only")
+            return {"snapshot": None, "health": health}
+        raise
+    if _is_missing_table_error(getattr(persisted_result, "error", None)):
+        logger.warning("integration_health_snapshots table missing; returning computed health only")
+        return {"snapshot": None, "health": health}
+    persisted = (persisted_result.data or [row])[0]
     snapshot = _serialize_snapshot(persisted)
 
     if actor_id:
@@ -418,12 +434,12 @@ def list_integration_health_history(
     *,
     limit: int = 30,
 ) -> list[dict[str, Any]]:
-    result = (
-        client.table("integration_health_snapshots")
-        .select("*")
+    rows = _select_rows(
+        client,
+        "integration_health_snapshots",
+        lambda table: table.select("*")
         .eq("org_id", org_id)
         .order("recorded_at", desc=True)
-        .limit(limit)
-        .execute()
+        .limit(limit),
     )
-    return [_serialize_snapshot(row) for row in (result.data or [])]
+    return [_serialize_snapshot(row) for row in rows]
