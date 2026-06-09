@@ -53,15 +53,21 @@ def _active_connector_types(client: Any, org_id: str, *, environment_name: str) 
     )
     types = {str(row["type"]) for row in (result.data or []) if row.get("type")}
     if environment_name:
-        env_result = (
-            client.table("connectors")
-            .select("type")
-            .eq("org_id", org_id)
-            .eq("status", "active")
-            .eq("environment", environment_name)
-            .execute()
-        )
-        types.update(str(row["type"]) for row in (env_result.data or []) if row.get("type"))
+        try:
+            env_result = (
+                client.table("connectors")
+                .select("type")
+                .eq("org_id", org_id)
+                .eq("status", "active")
+                .eq("environment", environment_name)
+                .execute()
+            )
+            types.update(str(row["type"]) for row in (env_result.data or []) if row.get("type"))
+        except Exception as exc:
+            if not _is_missing_table_error(exc):
+                message = str(exc).lower()
+                if "42703" not in message and "environment" not in message:
+                    raise
     return types
 
 

@@ -53,6 +53,32 @@ class TestOpenAIAdapter:
         assert r.model_used == "gpt-5.5"
 
     @pytest.mark.asyncio
+    async def test_gpt5_omits_custom_temperature(self):
+        client = AsyncMock()
+        client.chat.completions.create = AsyncMock(return_value=_openai_resp("hello"))
+        adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
+        await adapter.complete(
+            [{"role": "user", "content": "hi"}],
+            "gpt-5.5",
+            CompletionOptions(temperature=0.2),
+        )
+        kwargs = client.chat.completions.create.await_args.kwargs
+        assert "temperature" not in kwargs
+
+    @pytest.mark.asyncio
+    async def test_gpt41_passes_temperature(self):
+        client = AsyncMock()
+        client.chat.completions.create = AsyncMock(return_value=_openai_resp("hello"))
+        adapter = OpenAIAdapter(client_getter=lambda: client, api_key_getter=lambda: "sk")
+        await adapter.complete(
+            [{"role": "user", "content": "hi"}],
+            "gpt-4.1",
+            CompletionOptions(temperature=0.2),
+        )
+        kwargs = client.chat.completions.create.await_args.kwargs
+        assert kwargs["temperature"] == 0.2
+
+    @pytest.mark.asyncio
     async def test_generic_error_maps_to_unavailable_after_retries(self):
         client = AsyncMock()
         client.chat.completions.create = AsyncMock(side_effect=RuntimeError("boom"))

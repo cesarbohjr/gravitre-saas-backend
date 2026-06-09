@@ -651,14 +651,37 @@ def scan_workflow_failure_predictions(
         environment_name=environment_name,
     )
 
-    client.table("workflow_failure_alerts").delete().eq("org_id", org_id).eq(
-        "workflow_id", workflow_id
-    ).eq("status", "open").execute()
+    try:
+        client.table("workflow_failure_alerts").delete().eq("org_id", org_id).eq(
+            "workflow_id", workflow_id
+        ).eq("status", "open").execute()
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            logger.warning(
+                "workflow_failure_alerts missing; skipping persist org_id=%s workflow_id=%s",
+                org_id,
+                workflow_id,
+            )
+            return {
+                "workflowId": workflow_id,
+                "alertCount": len(alerts),
+                "riskScore": _compute_risk_score(alerts),
+                "alerts": alerts,
+                "scannedAt": _now_iso(),
+                "environment": environment_name,
+            }
+        raise
 
     persisted: list[dict[str, Any]] = []
     if alerts:
-        insert_result = client.table("workflow_failure_alerts").insert(alerts).execute()
-        persisted = [_serialize_alert(row) for row in (insert_result.data or alerts)]
+        try:
+            insert_result = client.table("workflow_failure_alerts").insert(alerts).execute()
+            persisted = [_serialize_alert(row) for row in (insert_result.data or alerts)]
+        except Exception as exc:
+            if _is_missing_table_error(exc):
+                persisted = alerts
+            else:
+                raise
 
     risk_score = _compute_risk_score(alerts)
     summary = {

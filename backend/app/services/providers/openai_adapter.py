@@ -32,6 +32,14 @@ logger = get_logger(__name__)
 _MAX_ATTEMPTS = 3
 
 
+def _supports_custom_temperature(model: str) -> bool:
+    """GPT-5 / o-series models reject non-default temperature."""
+    lowered = model.lower()
+    if lowered.startswith(("gpt-5", "o1", "o3", "o4")):
+        return False
+    return True
+
+
 class OpenAIAdapter(ProviderAdapter):
     provider_name = "openai"
     supported_models = ["gpt-5.5", "gpt-5.4-mini", "gpt-4.1", "text-embedding-3-small"]
@@ -70,8 +78,11 @@ class OpenAIAdapter(ProviderAdapter):
                 kwargs: dict[str, Any] = {
                     "model": model,
                     "messages": payload,
-                    "temperature": options.temperature if options.temperature is not None else 0.2,
                 }
+                if _supports_custom_temperature(model):
+                    kwargs["temperature"] = (
+                        options.temperature if options.temperature is not None else 0.2
+                    )
                 if options.max_tokens is not None:
                     kwargs["max_tokens"] = options.max_tokens
                 resp = await client.chat.completions.create(**kwargs)

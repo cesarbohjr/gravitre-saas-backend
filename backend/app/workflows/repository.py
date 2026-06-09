@@ -49,17 +49,27 @@ def get_workflow_def(client: Client, org_id: str, workflow_id: str) -> dict | No
 
 
 def list_workflows(client: Client, org_id: str) -> list[dict]:
-    r = (
-        client.table("workflow_defs")
-        .select(
-            "id, name, goal, description, status, stage, version, schema_version, "
-            "run_count, success_rate, last_run_at, next_run_at, updated_at"
-        )
-        .eq("org_id", org_id)
-        .order("updated_at", desc=True)
-        .execute()
+    base_columns = (
+        "id, name, description, status, version, schema_version, "
+        "run_count, success_rate, last_run_at, updated_at"
     )
-    return list(r.data) if r.data else []
+    extended_columns = f"{base_columns}, goal, stage, next_run_at"
+    for columns in (extended_columns, base_columns):
+        try:
+            r = (
+                client.table("workflow_defs")
+                .select(columns)
+                .eq("org_id", org_id)
+                .order("updated_at", desc=True)
+                .execute()
+            )
+            return list(r.data) if r.data else []
+        except Exception as exc:
+            message = str(exc).lower()
+            if "42703" in message or ("column" in message and "does not exist" in message):
+                continue
+            raise
+    return []
 
 
 def list_workflow_versions(
