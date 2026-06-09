@@ -8,6 +8,7 @@ import pytest
 import app.operators.agent_jobs as jobs
 import app.routers.agent_jobs as jobs_router
 from app.auth.dependencies import get_current_user, get_org_context
+from app.config import get_settings
 from app.main import app
 
 
@@ -221,3 +222,35 @@ async def test_cancel_then_retry_flow(async_client, monkeypatch):
     # retry on a queued job is a 409 (not failed/cancelled)
     again = await async_client.post(f"/api/agent-jobs/{job_id}/retry", headers={"Authorization": "Bearer t"})
     assert again.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_run_operator_job_falls_back_when_ai_unavailable(monkeypatch):
+    async def _boom(**kwargs):
+        raise RuntimeError("All AI providers failed")
+
+    monkeypatch.setattr("app.operators.agent_jobs.get_model_router", lambda: type("R", (), {"complete": _boom})())
+    monkeypatch.setattr(
+        "app.operators.agent_jobs.get_supabase_client",
+        lambda settings: type("C", (), {"table": lambda self, name: type("Q", (), {"select": lambda *a, **k: self, "eq": lambda *a, **k: self, "limit": lambda *a, **k: self, "execute": lambda *a, **k: type("R", (), {"data": []})()})()})(),
+    )
+    monkeypatch.setattr("app.operators.agent_jobs._assert_job_runnable", lambda *a, **k: None)
+    monkeypatch.setattr("app.operators.agent_jobs.apply_usage_with_overage", lambda **kwargs: None)
+    monkeypatch.setattr("app.operators.agent_jobs.get_plan_for_org", lambda *a, **k: {})
+    monkeypatch.setattr("app.operators.agent_jobs.get_current_period", lambda: ("2026-01-01", "2026-02-01"))
+    monkeypatch.setattr(
+        "app.operators.agent_jobs.build_ai_usage_metadata",
+        lambda *a, **k: {"credits": 1},
+    )
+
+    job = {
+        "id": "job-1",
+        "org_id": "org-1",
+        "environment": "production",
+        "payload": {"task": "Monitor overdue invoices", "context": {"smoke": True}},
+    }
+    result = await jobs.run_operator_job(get_settings(), job)
+    assert result["aiStatus"] == "degraded"
+    assert result["finding_description"]
+    assert result["action_title"]
+    assert result["task"]["status"] == "planned"

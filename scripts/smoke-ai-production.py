@@ -228,7 +228,12 @@ def main() -> None:
             "/api/agent-jobs",
             token,
             org_id,
-            {"task": "Reply with exactly: smoke-ok", "context": {"smoke": "sta-173"}},
+            {
+                "task": (
+                    "Plan weekly monitoring of overdue invoices and notify finance when totals exceed threshold."
+                ),
+                "context": {"smoke": "sta-173", "source": "smoke-ai-production"},
+            },
         )
         job_id = result.get("jobId") or result.get("job_id")
         if not job_id:
@@ -242,11 +247,16 @@ def main() -> None:
                 print(f"  agent_job_note: {msg}")
                 return
             raise
-        print(f"  agent_job_finished: status={finished.get('status')}")
-        if finished.get("status") not in {"completed", "failed", "cancelled", "canceled"}:
-            raise SystemExit(f"unexpected agent job terminal status: {finished.get('status')}")
-        if finished.get("status") == "failed":
-            print(f"  agent_job_note: job failed (worker wiring ok): {str(finished.get('error') or '')[:120]}")
+        status = str(finished.get("status") or "")
+        job_result = finished.get("result") or {}
+        ai_status = job_result.get("aiStatus") if isinstance(job_result, dict) else None
+        print(f"  agent_job_finished: status={status} aiStatus={ai_status}")
+        if status != "completed":
+            raise SystemExit(
+                f"agent job expected completed, got {status}: {str(finished.get('error') or '')[:160]}"
+            )
+        if ai_status not in {"ok", "degraded"}:
+            raise SystemExit(f"agent job missing aiStatus in result: {job_result!r}"[:200])
 
     def assistant_chat() -> None:
         try:

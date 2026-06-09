@@ -246,6 +246,14 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
         f"<task>{summary}</task>\n"
         f"<context>{payload.get('context') or {}}</context>"
     )
+    plan_defaults = {
+        "analysis_summary": f"Prepared an execution plan for: {summary}",
+        "finding_description": "Key steps identified and ready for execution.",
+        "action_title": "Run workflow",
+        "action_description": "Execute the recommended workflow steps.",
+        "confidence": 75,
+        "requires_approval": False,
+    }
 
     client = get_supabase_client(settings)
     await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
@@ -264,41 +272,68 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
 
     router = get_model_router()
     autonomous_run = bool(operator_row and is_autonomous_operator(operator_row))
-    ai_result = await router.complete(
-        task_type=TaskType.WORKFLOW_PLANNING,
-        prompt=prompt,
-        system_prompt=get_operator_system_prompt(operator_row or {}),
-        response_format=OperatorTaskPlan,
-        org_id=org_id,
-        operator_id=str(operator_id) if operator_id else None,
-        autonomous_run=autonomous_run,
-    )
-    parsed: dict = ai_result.parsed or {}
+    ai_degraded = False
+    ai_degraded_reason: str | None = None
+    parsed: dict[str, Any] = {}
+    ai_result = None
+    try:
+        ai_result = await router.complete(
+            task_type=TaskType.WORKFLOW_PLANNING,
+            prompt=prompt,
+            system_prompt=get_operator_system_prompt(operator_row or {}),
+            response_format=OperatorTaskPlan,
+            org_id=org_id,
+            operator_id=str(operator_id) if operator_id else None,
+            autonomous_run=autonomous_run,
+        )
+        parsed = ai_result.parsed or {}
+    except Exception as exc:  # noqa: BLE001
+        ai_degraded = True
+        ai_degraded_reason = getattr(exc, "code", None) or "ai_unavailable"
+        logger.warning(
+            "operator job AI fallback job_id=%s reason=%s error=%s",
+            job.get("id"),
+            ai_degraded_reason,
+            str(exc),
+        )
+
     result = {
         "task": {"description": summary, "status": "planned"},
-        "aiStatus": "ok",
-        "analysis_summary": str(parsed.get("analysis_summary") or "").strip(),
-        "finding_description": str(parsed.get("finding_description") or "").strip(),
-        "action_title": str(parsed.get("action_title") or "").strip(),
-        "action_description": str(parsed.get("action_description") or "").strip(),
-        "confidence": int(parsed.get("confidence") or 0),
-        "requires_approval": bool(parsed.get("requires_approval") or False),
-        "provider": ai_result.provider,
-        "model": ai_result.model,
+        "aiStatus": "degraded" if ai_degraded else "ok",
+        "analysis_summary": str(parsed.get("analysis_summary") or plan_defaults["analysis_summary"]).strip(),
+        "finding_description": str(
+            parsed.get("finding_description") or plan_defaults["finding_description"]
+        ).strip(),
+        "action_title": str(parsed.get("action_title") or plan_defaults["action_title"]).strip(),
+        "action_description": str(
+            parsed.get("action_description") or plan_defaults["action_description"]
+        ).strip(),
+        "confidence": int(parsed.get("confidence") or plan_defaults["confidence"]),
+        "requires_approval": bool(parsed.get("requires_approval") or plan_defaults["requires_approval"]),
+        "provider": ai_result.provider if ai_result else None,
+        "model": ai_result.model if ai_result else None,
     }
+    if ai_degraded_reason:
+        result["aiDegradedReason"] = ai_degraded_reason
 
     # Record AI-credit + operator usage (best-effort; never fails the job).
     try:
         client = get_supabase_client(settings)
         plan = get_plan_for_org(client, org_id)
         period_start, period_end = get_current_period()
-        source_id = ai_result.model_call_id or job["id"]
-        if ai_result.model:
+        source_id = (ai_result.model_call_id if ai_result else None) or job["id"]
+        if ai_result and ai_result.model:
             ai_meta = build_ai_usage_metadata_from_tokens(
                 ai_result.input_tokens, ai_result.output_tokens, ai_result.model, "model_call", source_id
             )
         else:
-            ai_meta = build_ai_usage_metadata([summary], [result["analysis_summary"]], None, "model_call", source_id)
+            ai_meta = build_ai_usage_metadata(
+                [summary],
+                [result["analysis_summary"]],
+                None,
+                "model_call",
+                source_id,
+            )
         apply_usage_with_overage(
             client=client, org_id=org_id, environment=environment, metric_type="ai_credits",
             quantity=int(ai_meta["credits"]), plan=plan, period_start=period_start, period_end=period_end,
