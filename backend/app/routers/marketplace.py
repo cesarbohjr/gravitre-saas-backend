@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from app.auth.dependencies import get_current_user, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.services.partner_marketplace_service import (
     AUDIT_CERTIFICATION_SCANNED,
