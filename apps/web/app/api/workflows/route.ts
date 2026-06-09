@@ -1,68 +1,92 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
-const workflows = [
-  {
-    id: "1",
-    name: "sync-customers",
-    description: "Synchronize customer data from Salesforce",
-    status: "active",
-    environment: "production",
-    lastRun: "2 minutes ago",
-    successRate: "98.5%",
-    runCount: 1247,
-  },
-  {
-    id: "2",
-    name: "etl-main-pipeline",
-    description: "Main ETL pipeline for data warehouse",
-    status: "active",
-    environment: "production",
-    lastRun: "5 minutes ago",
-    successRate: "99.2%",
-    runCount: 856,
-  },
-  {
-    id: "3",
-    name: "invoice-processing",
-    description: "Process and validate incoming invoices",
-    status: "paused",
-    environment: "staging",
-    lastRun: "1 hour ago",
-    successRate: "94.1%",
-    runCount: 432,
-  },
-  {
-    id: "4",
-    name: "user-onboarding",
-    description: "Handle new user registration workflow",
-    status: "active",
-    environment: "production",
-    lastRun: "15 minutes ago",
-    successRate: "99.8%",
-    runCount: 2103,
-  },
-  {
-    id: "5",
-    name: "data-cleanup",
-    description: "Scheduled data cleanup and archival",
-    status: "draft",
-    environment: "staging",
+function mapWorkflowRow(input: Record<string, unknown>) {
+  const model = snakeToCamel<Record<string, unknown>>(input)
+  return {
+    id: String(model.id),
+    name: String(model.name ?? "workflow"),
+    description: String(model.description ?? ""),
+    status: String(model.status ?? "draft"),
+    environment: String(model.environment ?? "production"),
     lastRun: "Never",
     successRate: "-",
     runCount: 0,
-  },
-  {
-    id: "6",
-    name: "report-generation",
-    description: "Generate and distribute weekly reports",
-    status: "active",
-    environment: "production",
-    lastRun: "3 hours ago",
-    successRate: "100%",
-    runCount: 52,
-  },
-]
+    nodes: Array.isArray(model.nodes) ? model.nodes : undefined,
+    isRunning: false,
+    createdAt: model.createdAt ?? model.created_at,
+    updatedAt: model.updatedAt ?? model.updated_at,
+  }
+}
 
-export async function GET() {
-  return NextResponse.json({ workflows })
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createSupabaseRouteClient(request)
+    const orgId = await resolveOrgId(supabase, request)
+    if (!orgId) {
+      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    }
+
+    const { data, error } = await supabase
+      .from("workflows")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      return NextResponse.json({ error: error.message, workflows: [] }, { status: 500 })
+    }
+
+    const workflows = (data ?? []).map((row) => mapWorkflowRow(row as Record<string, unknown>))
+    return NextResponse.json({ workflows })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error", workflows: [] },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createSupabaseRouteClient(request)
+    const orgId = await resolveOrgId(supabase, request)
+    if (!orgId) {
+      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const snake = camelToSnake(body as Record<string, unknown>)
+    const { data: userData } = await supabase.auth.getUser()
+
+    const insertPayload = {
+      org_id: orgId,
+      name: String(snake.name ?? "New Workflow"),
+      description: (snake.description as string | undefined) ?? null,
+      status: "draft",
+      environment: (snake.environment as string | undefined) ?? "production",
+      nodes: Array.isArray(snake.nodes) ? snake.nodes : [],
+      edges: Array.isArray(snake.edges) ? snake.edges : [],
+      config: snake.config && typeof snake.config === "object" ? snake.config : {},
+      created_by: userData.user?.id ?? null,
+    }
+
+    const { data, error } = await supabase
+      .from("workflows")
+      .insert(insertPayload)
+      .select("*")
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(mapWorkflowRow(data as Record<string, unknown>), { status: 201 })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    )
+  }
 }

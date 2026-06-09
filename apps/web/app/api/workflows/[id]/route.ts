@@ -6,6 +6,56 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+async function updateWorkflow(
+  request: NextRequest,
+  id: string
+): Promise<NextResponse> {
+  const supabase = createSupabaseRouteClient(request)
+  const orgId = await resolveOrgId(supabase, request)
+  if (!orgId) {
+    return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const snake = camelToSnake(body as Record<string, unknown>)
+  const payload: Record<string, unknown> = {}
+
+  if (snake.name !== undefined) payload.name = snake.name
+  if (snake.description !== undefined) payload.description = snake.description
+  if (snake.status !== undefined) payload.status = snake.status
+  if (snake.environment !== undefined) payload.environment = snake.environment
+  if (snake.nodes !== undefined) payload.nodes = snake.nodes
+  if (snake.edges !== undefined) payload.edges = snake.edges
+  if (snake.config !== undefined) payload.config = snake.config
+  if (snake.definition && typeof snake.definition === "object") {
+    const definition = snake.definition as Record<string, unknown>
+    if (definition.nodes !== undefined) payload.nodes = definition.nodes
+    if (definition.edges !== undefined) payload.edges = definition.edges
+    if (definition.config !== undefined) payload.config = definition.config
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
+  }
+
+  payload.updated_at = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from("workflows")
+    .update(payload)
+    .eq("org_id", orgId)
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error) {
+    const status = error.code === "PGRST116" ? 404 : 500
+    return NextResponse.json({ error: error.message }, { status })
+  }
+
+  return NextResponse.json(snakeToCamel<Record<string, unknown>>(data))
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
@@ -41,7 +91,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params
+    return updateWorkflow(request, id)
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "Failed to update workflow",
+        detail: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params
+    return updateWorkflow(request, id)
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "Failed to update workflow",
+        detail: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
     const supabase = createSupabaseRouteClient(request)
@@ -50,43 +130,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
 
-    const body = await request.json()
-    const snake = camelToSnake(body as Record<string, unknown>)
-    const payload: Record<string, unknown> = {}
-
-    if (snake.name !== undefined) payload.name = snake.name
-    if (snake.description !== undefined) payload.description = snake.description
-    if (snake.status !== undefined) payload.status = snake.status
-    if (snake.environment !== undefined) payload.environment = snake.environment
-    if (snake.nodes !== undefined) payload.nodes = snake.nodes
-    if (snake.edges !== undefined) payload.edges = snake.edges
-    if (snake.config !== undefined) payload.config = snake.config
-    if (snake.definition && typeof snake.definition === "object") {
-      const definition = snake.definition as Record<string, unknown>
-      if (definition.nodes !== undefined) payload.nodes = definition.nodes
-      if (definition.edges !== undefined) payload.edges = definition.edges
-      if (definition.config !== undefined) payload.config = definition.config
-    }
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("workflows")
-      .update(payload)
+      .delete()
       .eq("org_id", orgId)
       .eq("id", id)
-      .select("*")
-      .single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(snakeToCamel<Record<string, unknown>>(data))
+    return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json(
-      {
-        error: "Failed to update workflow",
-        detail: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     )
   }

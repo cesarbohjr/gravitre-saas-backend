@@ -153,7 +153,7 @@ export interface Agent {
 }
 
 // ============ Workflows ============
-export type WorkflowStatus = "draft" | "active" | "inactive" | "archived"
+export type WorkflowStatus = "draft" | "active" | "paused" | "inactive" | "archived" | "error"
 export type RunStatus = 
   | "pending"
   | "pending_approval"

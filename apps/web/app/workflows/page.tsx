@@ -59,6 +59,16 @@ interface Workflow {
   isRunning?: boolean
 }
 
+function normalizeWorkflowStatus(raw: string): Workflow["status"] {
+  if (raw === "active" || raw === "paused" || raw === "draft" || raw === "error") {
+    return raw
+  }
+  if (raw === "inactive" || raw === "archived") {
+    return "paused"
+  }
+  return "draft"
+}
+
 function normalizeWorkflow(input: Record<string, unknown>): Workflow {
   const status = String(input.status ?? "draft")
   const environment = String(input.environment ?? "staging")
@@ -66,10 +76,7 @@ function normalizeWorkflow(input: Record<string, unknown>): Workflow {
     id: String(input.id ?? ""),
     name: String(input.name ?? "workflow"),
     description: String(input.description ?? ""),
-    status:
-      status === "active" || status === "paused" || status === "error"
-        ? status
-        : "draft",
+    status: normalizeWorkflowStatus(status),
     environment: environment === "production" ? "production" : "staging",
     lastRun: String(input.lastRun ?? input.last_run ?? "Never"),
     successRate: String(input.successRate ?? input.success_rate ?? "-"),
@@ -80,118 +87,18 @@ function normalizeWorkflow(input: Record<string, unknown>): Workflow {
 }
 
 function normalizeWorkflowsResponse(payload: unknown): Workflow[] {
-  if (!payload || typeof payload !== "object") return fallbackWorkflows
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw =
     (Array.isArray(model.workflows) ? model.workflows : null) ??
     (Array.isArray(model.data) ? model.data : null) ??
     (Array.isArray(model.items) ? model.items : null)
-  if (!raw) return fallbackWorkflows
-  const normalized = raw
+  if (!raw) return []
+  return raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeWorkflow(item))
     .filter((item) => item.id.length > 0)
-  return normalized.length > 0 ? normalized : fallbackWorkflows
 }
-
-// Fallback mock data with workflow nodes
-const fallbackWorkflows: Workflow[] = [
-  {
-    id: "1",
-    name: "sync-customers",
-    description: "Synchronize customer data from Salesforce",
-    status: "active",
-    environment: "production",
-    lastRun: "2 minutes ago",
-    successRate: "98.5%",
-    runCount: 1247,
-    isRunning: true,
-    nodes: [
-      { id: "n1", type: "source", name: "Salesforce", status: "success" },
-      { id: "n2", type: "agent", name: "Validator", status: "success" },
-      { id: "n3", type: "task", name: "Transform", status: "running" },
-      { id: "n4", type: "connector", name: "PostgreSQL", status: "pending" },
-    ],
-  },
-  {
-    id: "2",
-    name: "etl-main-pipeline",
-    description: "Main ETL pipeline for data warehouse",
-    status: "active",
-    environment: "production",
-    lastRun: "5 minutes ago",
-    successRate: "99.2%",
-    runCount: 856,
-    nodes: [
-      { id: "n1", type: "source", name: "S3 Bucket", status: "success" },
-      { id: "n2", type: "task", name: "Parse CSV", status: "success" },
-      { id: "n3", type: "agent", name: "Enricher", status: "success" },
-      { id: "n4", type: "approval", name: "QA Check", status: "success" },
-      { id: "n5", type: "connector", name: "Snowflake", status: "success" },
-    ],
-  },
-  {
-    id: "3",
-    name: "invoice-processing",
-    description: "Process and validate incoming invoices",
-    status: "paused",
-    environment: "staging",
-    lastRun: "1 hour ago",
-    successRate: "94.1%",
-    runCount: 432,
-    nodes: [
-      { id: "n1", type: "source", name: "Email", status: "success" },
-      { id: "n2", type: "agent", name: "OCR Agent", status: "success" },
-      { id: "n3", type: "task", name: "Validate", status: "success" },
-      { id: "n4", type: "connector", name: "QuickBooks" },
-    ],
-  },
-  {
-    id: "4",
-    name: "user-onboarding",
-    description: "Handle new user registration workflow",
-    status: "active",
-    environment: "production",
-    lastRun: "15 minutes ago",
-    successRate: "99.8%",
-    runCount: 2103,
-    nodes: [
-      { id: "n1", type: "source", name: "API Webhook", status: "success" },
-      { id: "n2", type: "agent", name: "Profile Builder", status: "success" },
-      { id: "n3", type: "connector", name: "SendGrid", status: "success" },
-    ],
-  },
-  {
-    id: "5",
-    name: "data-cleanup",
-    description: "Scheduled data cleanup and archival",
-    status: "draft",
-    environment: "staging",
-    lastRun: "Never",
-    successRate: "-",
-    runCount: 0,
-    nodes: [
-      { id: "n1", type: "source", name: "Database" },
-      { id: "n2", type: "task", name: "Filter Old" },
-      { id: "n3", type: "connector", name: "Archive" },
-    ],
-  },
-  {
-    id: "6",
-    name: "report-generation",
-    description: "Generate and distribute weekly reports",
-    status: "active",
-    environment: "production",
-    lastRun: "3 hours ago",
-    successRate: "100%",
-    runCount: 52,
-    nodes: [
-      { id: "n1", type: "source", name: "Analytics", status: "success" },
-      { id: "n2", type: "agent", name: "Report Writer", status: "success" },
-      { id: "n3", type: "connector", name: "Slack", status: "success" },
-    ],
-  },
-]
 
 const statusVariants: Record<string, "success" | "warning" | "muted"> = {
   active: "success",
@@ -279,14 +186,14 @@ export default function WorkflowsPage() {
   
   // Fetch workflows - only when user is authenticated
   const { data, error, isLoading, mutate } = useSWR(
-    user ? "/api/workflows" : null, 
-    apiFetcher, 
+    user ? "/api/workflows" : null,
+    apiFetcher,
     {
-      fallbackData: { workflows: fallbackWorkflows },
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
       onError: (err) => {
         console.error("[v0] Workflows fetch error:", err)
-      }
+      },
     }
   )
 
@@ -347,7 +254,8 @@ export default function WorkflowsPage() {
   }
 
   const handleToggleStatus = async (workflow: Workflow) => {
-    const newStatus = workflow.status === "active" ? "paused" : "active"
+    const newStatus: Workflow["status"] = workflow.status === "active" ? "paused" : "active"
+    const previousWorkflows = workflows
     const optimistic = workflows.map((w) =>
       w.id === workflow.id ? { ...w, status: newStatus } : w
     )
@@ -359,8 +267,9 @@ export default function WorkflowsPage() {
       toast.success(`Workflow ${newStatus === "active" ? "activated" : "paused"}`)
     } catch (err) {
       console.error("[v0] Failed to toggle workflow status:", err)
-      mutate({ workflows }, false)
-      toast.error("Unable to update workflow status")
+      mutate({ workflows: previousWorkflows }, false)
+      const message = err instanceof Error ? err.message : "Unable to update workflow status"
+      toast.error(message)
     }
   }
 
@@ -566,10 +475,36 @@ export default function WorkflowsPage() {
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               <Icon name="error" size="sm" emphasis />
-              Failed to load from API. Showing cached data.
+              Failed to load workflows. Check your organization context and try again.
             </div>
           )}
 
+          {isLoading && workflows.length === 0 && (
+            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+              Loading workflows...
+            </div>
+          )}
+
+          {!isLoading && !error && workflows.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+              <Workflow className="h-10 w-10 text-muted-foreground/60" />
+              <div>
+                <p className="text-sm font-medium text-foreground">No workflows yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create your first workflow to automate work across your systems.
+                </p>
+              </div>
+              <Link href="/workflows/new/builder">
+                <Button size="sm" className="gap-2">
+                  <Icon name="add" size="sm" />
+                  New Workflow
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {workflows.length > 0 && (
+          <>
           {/* Search and View Toggle */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 sm:max-w-xs md:max-w-sm">
@@ -681,6 +616,8 @@ export default function WorkflowsPage() {
               </motion.div>
             )}
           </AnimatePresence>
+          </>
+          )}
         </div>
 
         {/* Meson Wizard */}
