@@ -84,7 +84,7 @@ function normalizeStepStatus(status: string): StepStatus {
 }
 
 function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: RunView; steps: StepView[] } {
-  const rawRun = payload.run as Record<string, unknown>
+  const rawRun = payload.run
   const steps = (payload.steps ?? []).map((step) => {
     const started = step.startedAt ?? null
     const completed = step.completedAt ?? null
@@ -106,10 +106,7 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
   })
 
   const stepsCompleted = steps.filter((s) => s.status === "completed" || s.status === "skipped").length
-  const durationMs =
-    (rawRun.durationMs as number | undefined) ??
-    (rawRun.duration_ms as number | undefined) ??
-    null
+  const durationMs = rawRun.durationMs ?? rawRun.duration_ms ?? null
 
   return {
     run: {
@@ -124,11 +121,7 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
       stepsCompleted,
       stepsTotal: steps.length,
       errorMessage: String(rawRun.errorMessage ?? rawRun.error ?? rawRun.error_message ?? "") || undefined,
-      startedAt: formatTimestamp(
-        (rawRun.startedAt as string | undefined) ??
-          (rawRun.started_at as string | undefined) ??
-          (rawRun.created_at as string | undefined),
-      ),
+      startedAt: formatTimestamp(rawRun.startedAt ?? rawRun.started_at ?? rawRun.created_at),
     },
     steps,
   }

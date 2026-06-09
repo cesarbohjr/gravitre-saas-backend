@@ -34,7 +34,8 @@ import {
   Zap,
   Activity,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Pause,
 } from "lucide-react"
 
 interface Run {
@@ -213,8 +214,9 @@ const statusConfig = {
   completed: { color: "text-emerald-400", bg: "bg-emerald-500/20", glow: "", icon: CheckCircle2 },
   failed: { color: "text-red-400", bg: "bg-red-500/20", glow: "shadow-[0_0_20px_rgba(239,68,68,0.3)]", icon: XCircle },
   pending: { color: "text-amber-400", bg: "bg-amber-500/20", glow: "", icon: Clock },
+  paused: { color: "text-violet-400", bg: "bg-violet-500/20", glow: "", icon: Pause },
   cancelled: { color: "text-zinc-400", bg: "bg-zinc-500/20", glow: "", icon: XCircle },
-}
+} satisfies Record<Run["status"], { color: string; bg: string; glow: string; icon: typeof Activity }>
 
 // Summary stats helper
 function getSummaryStats(runs: Run[]) {

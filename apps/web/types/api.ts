@@ -270,6 +270,13 @@ export interface Run {
   steps?: RunStep[]
   approvalStatus?: string
   approvalRequired?: boolean
+  duration_ms?: number
+  durationMs?: number
+  triggered_by?: string
+  triggeredBy?: string
+  records_processed?: number
+  recordsProcessed?: number
+  error_message?: string
 }
 
 export interface RunDetailResponse {
