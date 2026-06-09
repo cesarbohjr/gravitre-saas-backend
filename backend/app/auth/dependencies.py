@@ -94,42 +94,36 @@ async def get_org_context(
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> str | None:
-    """Resolve org_id from membership rows, optional x-org-id header, or demo fallbacks.
+    """Resolve org_id from membership rows, optional x-org-id header, or auto-provision.
 
     Multi-org users are supported (STA-72). When several memberships exist and no
-    valid org is requested, the first membership row is used instead of failing.
+    valid org is requested, the user's primary org (public.users.org_id) or first
+    non-demo membership is used. Authenticated users without any membership get a
+    personal workspace auto-created so AI chat and core flows remain usable.
     """
     from supabase import create_client
+
+    from app.services.org_membership import (
+        ensure_user_workspace,
+        list_member_org_ids,
+        load_user_primary_org_id,
+        pick_default_org_id,
+    )
 
     client: Client = create_client(
         settings.supabase_url,
         settings.supabase_service_role_key,
     )
+    user_id = current_user["user_id"]
     requested_org_id = (request.headers.get("x-org-id") or request.query_params.get("org_id") or "").strip()
-    platform_admin = is_platform_admin(client, current_user["user_id"])
-    try:
-        r = (
-            client.table("organization_members")
-            .select("org_id")
-            .eq("user_id", current_user["user_id"])
-            .limit(100)
-            .execute()
-        )
-    except Exception as exc:  # noqa: BLE001
-        if requested_org_id:
-            org_id_ctx.set(requested_org_id)
-            logger.warning(
-                "org_lookup_failed_fallback user_id=%s org_id=%s error=%s",
-                current_user["user_id"],
-                requested_org_id,
-                str(exc),
-            )
-            return requested_org_id
-        org_id_ctx.set("")
-        logger.warning("org_lookup_failed user_id=%s error=%s", current_user["user_id"], str(exc))
-        return None
+    platform_admin = is_platform_admin(client, user_id)
 
-    member_org_ids = [str(row.get("org_id")) for row in (r.data or []) if row.get("org_id")]
+    try:
+        member_org_ids = list_member_org_ids(client, user_id)
+    except Exception as exc:  # noqa: BLE001
+        member_org_ids = []
+        logger.warning("org_lookup_failed user_id=%s error=%s", user_id, str(exc))
+
     if requested_org_id:
         if requested_org_id in member_org_ids:
             org_id_ctx.set(requested_org_id)
@@ -137,76 +131,69 @@ async def get_org_context(
         if platform_admin:
             org_id_ctx.set(requested_org_id)
             return requested_org_id
-        logger.warning(
-            "org_context_requested_not_member user_id=%s org_id=%s",
-            current_user["user_id"],
-            requested_org_id,
-        )
-
-    if len(member_org_ids) == 1:
-        org_id = member_org_ids[0]
-        org_id_ctx.set(org_id)
-        return org_id
-
-    if len(member_org_ids) > 1:
-        org_id = member_org_ids[0]
-        org_id_ctx.set(org_id)
-        logger.info(
-            "org_context_multi_org_default user_id=%s org_id=%s membership_count=%s",
-            current_user["user_id"],
-            org_id,
-            len(member_org_ids),
-        )
-        return org_id
-
-    if not r.data or len(r.data) == 0:
-        # Compatibility fallback for preview/demo environments where memberships are not yet backfilled.
-        if requested_org_id:
-            try:
-                org_exists = (
-                    client.table("organizations")
-                    .select("id")
-                    .eq("id", requested_org_id)
-                    .limit(1)
-                    .execute()
-                )
-            except Exception as exc:  # noqa: BLE001
-                org_id_ctx.set(requested_org_id)
-                logger.warning(
-                    "org_exists_lookup_failed_fallback user_id=%s org_id=%s error=%s",
-                    current_user["user_id"],
-                    requested_org_id,
-                    str(exc),
-                )
-                return requested_org_id
-            if org_exists.data:
-                org_id_ctx.set(requested_org_id)
-                logger.warning(
-                    "org_membership_missing_fallback user_id=%s org_id=%s source=requested_org_id",
-                    current_user["user_id"],
-                    requested_org_id,
-                )
-                return requested_org_id
-        try:
-            fallback_org = client.table("organizations").select("id").limit(1).execute()
-        except Exception as exc:  # noqa: BLE001
-            org_id_ctx.set("")
-            logger.warning("org_fallback_lookup_failed user_id=%s error=%s", current_user["user_id"], str(exc))
-            return None
-        if fallback_org.data:
-            org_id = str(fallback_org.data[0]["id"])
-            org_id_ctx.set(org_id)
+        if member_org_ids:
             logger.warning(
-                "org_membership_missing_fallback user_id=%s org_id=%s source=first_organization",
-                current_user["user_id"],
-                org_id,
+                "org_context_requested_not_member user_id=%s org_id=%s",
+                user_id,
+                requested_org_id,
             )
+
+    if member_org_ids:
+        primary_org_id = load_user_primary_org_id(client, user_id)
+        org_id = pick_default_org_id(
+            member_org_ids,
+            primary_org_id=primary_org_id,
+            requested_org_id=None,
+        )
+        if org_id:
+            org_id_ctx.set(org_id)
+            if len(member_org_ids) > 1:
+                logger.info(
+                    "org_context_multi_org_default user_id=%s org_id=%s membership_count=%s",
+                    user_id,
+                    org_id,
+                    len(member_org_ids),
+                )
             return org_id
-        org_id_ctx.set("")
-        logger.warning("org_membership_missing user_id=%s", current_user["user_id"])
-        return None
+
+    if requested_org_id:
+        try:
+            org_exists = (
+                client.table("organizations")
+                .select("id")
+                .eq("id", requested_org_id)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            org_id_ctx.set(requested_org_id)
+            logger.warning(
+                "org_exists_lookup_failed_fallback user_id=%s org_id=%s error=%s",
+                user_id,
+                requested_org_id,
+                str(exc),
+            )
+            return requested_org_id
+        if org_exists.data:
+            org_id_ctx.set(requested_org_id)
+            logger.warning(
+                "org_membership_missing_fallback user_id=%s org_id=%s source=requested_org_id",
+                user_id,
+                requested_org_id,
+            )
+            return requested_org_id
+
+    org_id = ensure_user_workspace(
+        client,
+        user_id,
+        email=current_user.get("email"),
+    )
+    if org_id:
+        org_id_ctx.set(org_id)
+        return org_id
 
     org_id_ctx.set("")
+    logger.warning("org_membership_missing user_id=%s", user_id)
     return None
 
 

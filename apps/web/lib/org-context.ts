@@ -10,24 +10,23 @@ export interface SelectedOrg {
 
 let cachedOrgId: string | null | undefined
 
-/** Remove demo org ids left by older builds — they cause assistant chat 403s. */
-export function purgeStaleDemoOrgFromStorage(): boolean {
+/** Legacy demo org ids — only purge when they are not in the user's membership list. */
+export function purgeStaleDemoOrgFromStorage(validMembershipIds?: Set<string>): boolean {
   if (typeof window === "undefined") return false
   const stored = getSelectedOrgFromStorage()
-  if (
-    stored?.id === DEFAULT_DEMO_ORG_ID ||
-    stored?.id === SECONDARY_DEMO_ORG_ID
-  ) {
-    window.localStorage.removeItem(ORG_STORAGE_KEY)
-    cachedOrgId = undefined
-    return true
-  }
-  return false
-}
+  if (!stored?.id) return false
 
-// Purge immediately when this module loads in the browser (before React mounts).
-if (typeof window !== "undefined") {
-  purgeStaleDemoOrgFromStorage()
+  const isLegacyDemo =
+    stored.id === DEFAULT_DEMO_ORG_ID || stored.id === SECONDARY_DEMO_ORG_ID
+  if (!isLegacyDemo) return false
+
+  if (validMembershipIds?.has(stored.id)) {
+    return false
+  }
+
+  window.localStorage.removeItem(ORG_STORAGE_KEY)
+  cachedOrgId = undefined
+  return true
 }
 
 export function invalidateOrgCache() {
@@ -53,11 +52,49 @@ export function setSelectedOrgInStorage(org: SelectedOrg) {
   cachedOrgId = org.id
 }
 
+function pickPreferredOrg(
+  rows: Array<{ id: string; name?: string | null }>,
+  preferredOrgId?: string | null,
+): SelectedOrg | null {
+  if (rows.length === 0) return null
+
+  if (preferredOrgId) {
+    const match = rows.find((org) => org.id === preferredOrgId)
+    if (match?.id) {
+      return { id: match.id, name: match.name || "Organization" }
+    }
+  }
+
+  const nonDemo = rows.find(
+    (org) => org.id !== DEFAULT_DEMO_ORG_ID && org.id !== SECONDARY_DEMO_ORG_ID,
+  )
+  const chosen = nonDemo ?? rows[0]
+  if (!chosen?.id) return null
+  return { id: chosen.id, name: chosen.name || "Organization" }
+}
+
+async function resolveOrgFromAuthMe(): Promise<string | null> {
+  try {
+    const { authApi } = await import("@/lib/api")
+    const me = await authApi.me()
+    const orgRows =
+      (me as { organizations?: Array<{ id: string; name?: string | null }> }).organizations ?? []
+    const preferredOrgId = (me as { org_id?: string | null }).org_id ?? null
+    const selected = pickPreferredOrg(orgRows, preferredOrgId)
+    if (!selected) return null
+    setSelectedOrgInStorage(selected)
+    cachedOrgId = selected.id
+    return selected.id
+  } catch {
+    return null
+  }
+}
+
 let syncInFlight: Promise<string | null> | null = null
 
 /**
  * Resolve org id from the user's memberships (authoritative).
- * Replaces stale demo-org entries in localStorage that cause chat 403s.
+ * Falls back to /api/auth/me when the backend organizations list is unavailable.
  */
 export async function ensureSelectedOrg(force = false): Promise<string | null> {
   if (typeof window === "undefined") return null
@@ -71,10 +108,12 @@ export async function ensureSelectedOrg(force = false): Promise<string | null> {
       const rows = organizations ?? []
       const membershipIds = new Set(rows.map((org) => org.id))
 
+      purgeStaleDemoOrgFromStorage(membershipIds)
+
       if (membershipIds.size === 0) {
-        window.localStorage.removeItem(ORG_STORAGE_KEY)
-        cachedOrgId = null
-        return null
+        const fromMe = await resolveOrgFromAuthMe()
+        cachedOrgId = fromMe
+        return fromMe
       }
 
       const stored = getSelectedOrgFromStorage()
@@ -83,9 +122,9 @@ export async function ensureSelectedOrg(force = false): Promise<string | null> {
         return stored.id
       }
 
-      const first = rows[0]
-      if (first?.id && first?.name) {
-        setSelectedOrgInStorage({ id: first.id, name: first.name })
+      const first = pickPreferredOrg(rows)
+      if (first) {
+        setSelectedOrgInStorage(first)
         cachedOrgId = first.id
         return first.id
       }
@@ -93,6 +132,11 @@ export async function ensureSelectedOrg(force = false): Promise<string | null> {
       cachedOrgId = null
       return null
     } catch {
+      const fromMe = await resolveOrgFromAuthMe()
+      if (fromMe) {
+        cachedOrgId = fromMe
+        return fromMe
+      }
       purgeStaleDemoOrgFromStorage()
       cachedOrgId = null
       return null

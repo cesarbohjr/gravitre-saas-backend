@@ -901,8 +901,7 @@ export default function AssistantPage() {
 
     const orgId = await ensureSelectedOrg(true)
     if (!orgId) {
-      toast.error("Organization required — complete onboarding or contact your admin")
-      return
+      console.warn("[assistant] No org in client cache — backend will resolve from JWT membership")
     }
 
     if (!activeConversationIdRef.current) {

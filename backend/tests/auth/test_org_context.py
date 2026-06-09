@@ -37,46 +37,88 @@ def _request(*, org_id: str | None = None) -> Request:
 @pytest.mark.asyncio
 async def test_get_org_context_uses_requested_membership():
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[{"org_id": "org-a"}, {"org_id": "org-b"}]
-    )
     with patch("supabase.create_client", return_value=client):
         with patch("app.auth.dependencies.is_platform_admin", return_value=False):
-            org_id = await get_org_context(
-                _request(org_id="org-b"),
-                {"user_id": "user-1", "email": "u@example.com"},
-                _settings(),
-            )
+            with patch(
+                "app.services.org_membership.list_member_org_ids",
+                return_value=["org-a", "org-b"],
+            ):
+                with patch("app.services.org_membership.load_user_primary_org_id", return_value=None):
+                    org_id = await get_org_context(
+                        _request(org_id="org-b"),
+                        {"user_id": "user-1", "email": "u@example.com"},
+                        _settings(),
+                    )
     assert org_id == "org-b"
 
 
 @pytest.mark.asyncio
 async def test_get_org_context_multi_org_defaults_without_500():
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[{"org_id": "org-a"}, {"org_id": "org-b"}]
-    )
     with patch("supabase.create_client", return_value=client):
         with patch("app.auth.dependencies.is_platform_admin", return_value=False):
-            org_id = await get_org_context(
-                _request(),
-                {"user_id": "user-1", "email": "u@example.com"},
-                _settings(),
-            )
+            with patch(
+                "app.services.org_membership.list_member_org_ids",
+                return_value=["org-a", "org-b"],
+            ):
+                with patch("app.services.org_membership.load_user_primary_org_id", return_value=None):
+                    org_id = await get_org_context(
+                        _request(),
+                        {"user_id": "user-1", "email": "u@example.com"},
+                        _settings(),
+                    )
     assert org_id == "org-a"
+
+
+@pytest.mark.asyncio
+async def test_get_org_context_prefers_primary_org():
+    client = MagicMock()
+    with patch("supabase.create_client", return_value=client):
+        with patch("app.auth.dependencies.is_platform_admin", return_value=False):
+            with patch(
+                "app.services.org_membership.list_member_org_ids",
+                return_value=["org-a", "org-b"],
+            ):
+                with patch("app.services.org_membership.load_user_primary_org_id", return_value="org-b"):
+                    org_id = await get_org_context(
+                        _request(),
+                        {"user_id": "user-1", "email": "u@example.com"},
+                        _settings(),
+                    )
+    assert org_id == "org-b"
 
 
 @pytest.mark.asyncio
 async def test_get_org_context_platform_admin_can_use_any_requested_org():
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[{"org_id": "org-a"}]
-    )
     with patch("supabase.create_client", return_value=client):
         with patch("app.auth.dependencies.is_platform_admin", return_value=True):
-            org_id = await get_org_context(
-                _request(org_id="org-other"),
-                {"user_id": "user-1", "email": "admin@example.com"},
-                _settings(),
-            )
+            with patch(
+                "app.services.org_membership.list_member_org_ids",
+                return_value=["org-a"],
+            ):
+                org_id = await get_org_context(
+                    _request(org_id="org-other"),
+                    {"user_id": "user-1", "email": "admin@example.com"},
+                    _settings(),
+                )
     assert org_id == "org-other"
+
+
+@pytest.mark.asyncio
+async def test_get_org_context_auto_provisions_workspace():
+    client = MagicMock()
+    with patch("supabase.create_client", return_value=client):
+        with patch("app.auth.dependencies.is_platform_admin", return_value=False):
+            with patch("app.services.org_membership.list_member_org_ids", return_value=[]):
+                with patch(
+                    "app.services.org_membership.ensure_user_workspace",
+                    return_value="org-new",
+                ) as ensure_mock:
+                    org_id = await get_org_context(
+                        _request(),
+                        {"user_id": "user-1", "email": "u@example.com"},
+                        _settings(),
+                    )
+    ensure_mock.assert_called_once()
+    assert org_id == "org-new"

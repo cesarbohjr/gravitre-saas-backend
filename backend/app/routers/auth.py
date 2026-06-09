@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user, get_org_context
 from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import DEFAULT_PLAN_CODE, get_org_billing
 from app.config import Settings, get_settings
+from app.services.org_membership import load_user_organizations, pick_default_org_id, load_user_primary_org_id
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -100,12 +101,12 @@ def _load_billing_summary(client, org_id: str | None) -> dict:
     }
 
 
-def _resolve_user_row(client, user_id: str) -> dict:
+def _resolve_user_row(client, auth_user_id: str) -> dict:
     try:
         user_resp = (
             client.table("users")
-            .select("id, email, full_name, avatar_url, role, created_at, updated_at")
-            .eq("id", user_id)
+            .select("id, org_id, email, full_name, avatar_url, role, created_at, updated_at")
+            .eq("auth_user_id", auth_user_id)
             .limit(1)
             .execute()
         )
@@ -126,11 +127,17 @@ async def me(
 ) -> dict:
     """GET /api/auth/me — returns backwards-compatible + structured user payload."""
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    role = _resolve_role(client, org_id, current_user["user_id"])
-    user_row = _resolve_user_row(client, current_user["user_id"])
+    auth_user_id = current_user["user_id"]
+    user_row = _resolve_user_row(client, auth_user_id)
+    organizations = load_user_organizations(client, auth_user_id)
+    resolved_org_id = org_id or pick_default_org_id(
+        [org["id"] for org in organizations],
+        primary_org_id=str(user_row.get("org_id")) if user_row.get("org_id") else load_user_primary_org_id(client, auth_user_id),
+    )
+    role = _resolve_role(client, resolved_org_id, auth_user_id)
 
     merged_user = {
-        "id": current_user["user_id"],
+        "id": auth_user_id,
         "email": user_row.get("email") or current_user.get("email"),
         "full_name": user_row.get("full_name"),
         "avatar_url": user_row.get("avatar_url"),
@@ -139,17 +146,25 @@ async def me(
         "updated_at": user_row.get("updated_at"),
     }
 
-    current_org = {"id": org_id, "name": "Current Organization"} if org_id else None
-    onboarding = _load_onboarding_summary(client, org_id)
-    billing = _load_billing_summary(client, org_id)
+    org_name_by_id = {org["id"]: org.get("name") for org in organizations}
+    current_org = (
+        {"id": resolved_org_id, "name": org_name_by_id.get(resolved_org_id) or "Current Organization"}
+        if resolved_org_id
+        else None
+    )
+    onboarding = _load_onboarding_summary(client, resolved_org_id)
+    billing = _load_billing_summary(client, resolved_org_id)
 
     return {
-        "user_id": current_user["user_id"],
-        "org_id": org_id,
+        "user_id": auth_user_id,
+        "org_id": resolved_org_id,
         "email": current_user.get("email"),
         "role": role,
         "user": merged_user,
-        "organizations": [current_org] if current_org else [],
+        "organizations": [
+            {"id": org["id"], "name": org.get("name"), "role": org.get("role")}
+            for org in organizations
+        ],
         "current_org": current_org,
         "onboarding": onboarding,
         "billing": billing,
@@ -170,7 +185,7 @@ async def update_me(
     update_resp = (
         client.table("users")
         .update(payload)
-        .eq("id", current_user["user_id"])
+        .eq("auth_user_id", current_user["user_id"])
         .select("id, email, full_name, avatar_url, role, created_at, updated_at")
         .limit(1)
         .execute()
@@ -312,7 +327,7 @@ async def upload_avatar(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     try:
         client.table("users").update({"avatar_url": avatar_data_url}).eq(
-            "id", current_user["user_id"]
+            "auth_user_id", current_user["user_id"]
         ).execute()
     except Exception:
         pass
