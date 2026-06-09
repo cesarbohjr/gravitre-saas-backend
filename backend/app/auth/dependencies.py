@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
 from app.auth.jwt_verify import decode_supabase_jwt
+from app.auth.platform_admin import is_org_admin_role, is_platform_admin
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, org_id_ctx, user_id_ctx
 
@@ -102,6 +103,11 @@ async def get_org_context(
         settings.supabase_url,
         settings.supabase_service_role_key,
     )
+    if is_platform_admin(client, current_user["user_id"]):
+        requested_org_id = (request.headers.get("x-org-id") or request.query_params.get("org_id") or "").strip()
+        if requested_org_id:
+            org_id_ctx.set(requested_org_id)
+            return requested_org_id
     requested_org_id = (request.headers.get("x-org-id") or request.query_params.get("org_id") or "").strip()
     try:
         r = (
@@ -204,6 +210,8 @@ async def require_admin(
     from supabase import create_client
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if is_platform_admin(client, current_user["user_id"]):
+        return current_user, org_id
     r = (
         client.table("organization_members")
         .select("role")
@@ -218,7 +226,7 @@ async def require_admin(
             detail="Not a member of this organization",
         )
     role = (r.data[0].get("role") or "").strip().lower()
-    if role != "admin":
+    if not is_org_admin_role(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required",

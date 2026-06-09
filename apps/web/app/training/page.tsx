@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import useSWR from "swr"
 import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "sonner"
@@ -8,6 +8,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { trainingApi } from "@/lib/api"
+import { ensureSelectedOrg } from "@/lib/org-context"
 import type {
   CustomInstruction,
   FineTunedModel,
@@ -40,6 +41,8 @@ function formatDate(value?: string): string {
 
 export default function TrainingPage() {
   const { user } = useAuth()
+  const [orgReady, setOrgReady] = useState(false)
+  const [orgError, setOrgError] = useState<string | null>(null)
   const [datasetName, setDatasetName] = useState("")
   const [datasetDescription, setDatasetDescription] = useState("")
   const [datasetType, setDatasetType] = useState<TrainingDatasetType>("examples")
@@ -55,28 +58,43 @@ export default function TrainingPage() {
   const [assignModelId, setAssignModelId] = useState<string>("")
   const [isAssigningModel, setIsAssigningModel] = useState(false)
 
+  useEffect(() => {
+    if (!user) return
+    void ensureSelectedOrg(true).then((orgId) => {
+      if (!orgId) {
+        setOrgError("Organization membership required to load training data.")
+        setOrgReady(false)
+        return
+      }
+      setOrgError(null)
+      setOrgReady(true)
+    })
+  }, [user])
+
+  const swrKey = user && orgReady ? "training" : null
+
   const { data: datasetsData, error: datasetsError, mutate: mutateDatasets } = useSWR(
-    user ? "training/datasets" : null,
+    swrKey ? "training/datasets" : null,
     () => trainingApi.listDatasets(),
     { fallbackData: { datasets: [] as TrainingDataset[] }, revalidateOnFocus: false }
   )
   const { data: jobsData, error: jobsError, mutate: mutateJobs } = useSWR(
-    user ? "training/jobs" : null,
+    swrKey ? "training/jobs" : null,
     () => trainingApi.listJobs(),
     { fallbackData: { jobs: [] as TrainingJob[] }, revalidateOnFocus: false }
   )
   const { data: instructionsData, error: instructionsError, mutate: mutateInstructions } = useSWR(
-    user ? "training/instructions" : null,
+    swrKey ? "training/instructions" : null,
     () => trainingApi.listInstructions(),
     { fallbackData: { instructions: [] as CustomInstruction[] }, revalidateOnFocus: false }
   )
   const { data: workflowAgentsData, mutate: mutateWorkflowAgents } = useSWR(
-    user ? "training/workflow-agents" : null,
+    swrKey ? "training/workflow-agents" : null,
     () => trainingApi.listWorkflowAgents(),
     { fallbackData: { agents: [] as WorkflowAgent[] }, revalidateOnFocus: false }
   )
   const { data: fineTunedModelsData } = useSWR(
-    user ? "training/fine-tuned-models" : null,
+    swrKey ? "training/fine-tuned-models" : null,
     () => trainingApi.listFineTunedModels(),
     { fallbackData: { models: [] as FineTunedModel[] }, revalidateOnFocus: false }
   )
@@ -264,11 +282,37 @@ export default function TrainingPage() {
       <div className="relative p-6 space-y-6 overflow-hidden">
         <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
-        {(datasetsError || jobsError || instructionsError) && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-            Failed to load some training data. Retry or refresh.
+        {(orgError || datasetsError || jobsError || instructionsError) && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {orgError ??
+                datasetsError?.message ??
+                jobsError?.message ??
+                instructionsError?.message ??
+                "Failed to load some training data."}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                void mutateDatasets()
+                void mutateJobs()
+                void mutateInstructions()
+                void mutateWorkflowAgents()
+              }}
+            >
+              Retry
+            </Button>
           </div>
         )}
+
+        {!orgError && orgReady && !datasetsError && !jobsError && !instructionsError &&
+          datasets.length === 0 && jobs.length === 0 && instructions.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
+            No training datasets, jobs, or instructions yet. Create a dataset below to get started.
+          </div>
+        ) : null}
 
         <div className="relative grid grid-cols-2 md:grid-cols-6 gap-3">
           <motion.div

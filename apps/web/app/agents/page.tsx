@@ -1,8 +1,8 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { useState } from "react"
-import useSWR from "swr"
+import { useState, useEffect } from "react"
+import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -36,6 +36,8 @@ import {
   Pause,
   Settings,
   ChevronRight,
+  PanelRightClose,
+  PanelRightOpen,
   Circle,
   Workflow,
   Shield,
@@ -52,124 +54,7 @@ import { toast } from "sonner"
 
 type Agent = ApiAgent
 
-// Fallback agents for when API is empty or loading
-const fallbackAgents: Agent[] = [
-  {
-    id: "agent-001",
-    name: "Atlas",
-    role: "Marketing Operator",
-    department: "Marketing",
-    description: "Orchestrates marketing campaigns and analyzes performance metrics",
-    status: "active",
-    personality: {
-      color: "emerald",
-      gradient: "from-emerald-500 to-teal-500",
-      glow: "shadow-emerald-500/30",
-    },
-    stats: {
-      tasksToday: 147,
-      successRate: 98.2,
-      avgResponseTime: "1.2s",
-      workflowsUsing: 4,
-    },
-    capabilities: ["Campaign analysis", "Report generation", "A/B testing", "Email sequences", "Content creation"],
-    permissions: ["HubSpot", "Google Analytics", "Mailchimp", "LinkedIn Ads"],
-    lastAction: "Generated weekly performance report",
-    lastActionTime: "2 minutes ago",
-  },
-  {
-    id: "agent-002",
-    name: "Nexus",
-    role: "Sales Assistant",
-    department: "Sales",
-    description: "Syncs customer data and provides real-time sales insights",
-    status: "processing",
-    personality: {
-      color: "blue",
-      gradient: "from-blue-500 to-indigo-500",
-      glow: "shadow-blue-500/30",
-    },
-    stats: {
-      tasksToday: 234,
-      successRate: 99.1,
-      avgResponseTime: "0.8s",
-      workflowsUsing: 6,
-    },
-    capabilities: ["Contact sync", "Deal tracking", "Forecast modeling", "Lead scoring", "Outreach sequences"],
-    permissions: ["Salesforce", "HubSpot CRM", "LinkedIn Sales Nav", "Outreach.io"],
-    lastAction: "Syncing 1,247 contacts from Salesforce",
-    lastActionTime: "Now",
-  },
-  {
-    id: "agent-003",
-    name: "Sentinel",
-    role: "Data Quality Agent",
-    department: "Operations",
-    description: "Monitors data integrity and detects anomalies in real-time",
-    status: "idle",
-    personality: {
-      color: "amber",
-      gradient: "from-amber-500 to-orange-500",
-      glow: "shadow-amber-500/30",
-    },
-    stats: {
-      tasksToday: 56,
-      successRate: 100,
-      avgResponseTime: "2.1s",
-      workflowsUsing: 2,
-    },
-    capabilities: ["Anomaly detection", "Schema validation", "Deduplication", "Data enrichment"],
-    permissions: ["Snowflake", "BigQuery", "PostgreSQL", "AWS S3"],
-    lastAction: "Validated 50,000 records",
-    lastActionTime: "15 minutes ago",
-  },
-  {
-    id: "agent-004",
-    name: "Oracle",
-    role: "Finance Reporter",
-    department: "Finance",
-    description: "Generates financial reports and tracks budget metrics",
-    status: "active",
-    personality: {
-      color: "violet",
-      gradient: "from-violet-500 to-purple-500",
-      glow: "shadow-violet-500/30",
-    },
-    stats: {
-      tasksToday: 23,
-      successRate: 100,
-      avgResponseTime: "3.4s",
-      workflowsUsing: 2,
-    },
-    capabilities: ["Report generation", "Budget analysis", "Trend forecasting", "Expense tracking"],
-    permissions: ["QuickBooks", "NetSuite", "Excel", "Tableau"],
-    lastAction: "Compiled Q4 expense summary",
-    lastActionTime: "1 hour ago",
-  },
-  {
-    id: "agent-005",
-    name: "Harbor",
-    role: "Support Coordinator",
-    department: "Support",
-    description: "Routes tickets and tracks SLA compliance",
-    status: "error",
-    personality: {
-      color: "rose",
-      gradient: "from-rose-500 to-pink-500",
-      glow: "shadow-rose-500/30",
-    },
-    stats: {
-      tasksToday: 0,
-      successRate: 0,
-      avgResponseTime: "-",
-      workflowsUsing: 3,
-    },
-    capabilities: ["Ticket routing", "SLA tracking", "Escalation handling", "Customer sentiment"],
-    permissions: ["Zendesk", "Intercom", "Freshdesk", "Slack"],
-    lastAction: "Connection to Zendesk failed",
-    lastActionTime: "30 minutes ago",
-  },
-]
+const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
 
 function normalizeAgent(input: Record<string, unknown>): Agent {
   const personality = (input.personality ?? {}) as Record<string, unknown>
@@ -217,18 +102,17 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
 }
 
 function normalizeAgentsResponse(payload: unknown): Agent[] {
-  if (!payload || typeof payload !== "object") return fallbackAgents
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw =
     (Array.isArray(model.agents) ? model.agents : null) ??
     (Array.isArray(model.operators) ? model.operators : null) ??
     (Array.isArray(model.data) ? model.data : null)
-  if (!raw) return fallbackAgents
-  const normalized = raw
+  if (!raw) return []
+  return raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeAgent(item))
     .filter((item) => item.id.length > 0)
-  return normalized.length > 0 ? normalized : fallbackAgents
 }
 
 const roleIcons: Record<string, LucideIcon> = {
@@ -632,21 +516,34 @@ export default function AgentsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [isMutatingAgent, setIsMutatingAgent] = useState<string | null>(null)
+  const [detailPanelOpen, setDetailPanelOpen] = useState(true)
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(AGENT_DETAIL_PANEL_KEY)
+    if (stored === "0") setDetailPanelOpen(false)
+  }, [])
+
+  const toggleDetailPanel = () => {
+    setDetailPanelOpen((open) => {
+      const next = !open
+      window.localStorage.setItem(AGENT_DETAIL_PANEL_KEY, next ? "1" : "0")
+      return next
+    })
+  }
   
   // Fetch agents from API with SWR
   const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
     user ? "/api/agents" : null,
     apiFetcher,
     {
-      fallbackData: { agents: fallbackAgents },
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
       onError: (err) => {
         console.error("[v0] Agents fetch error:", err)
       },
     }
   )
   
-  // Use API data or fallback
   const agents = normalizeAgentsResponse(data)
   
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
@@ -735,6 +632,15 @@ export default function AgentsPage() {
                   <Plus className="h-4 w-4" />
                   New Agent
                 </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleDetailPanel}
+                  aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
+                  className="hidden lg:inline-flex"
+                >
+                  {detailPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                </Button>
               </>
             }
           >
@@ -787,15 +693,42 @@ export default function AgentsPage() {
               
               {/* Orb constellation - extra bottom padding for status badges */}
               <div className="relative flex flex-wrap gap-10 sm:gap-14 lg:gap-20 justify-center items-center pt-8 sm:pt-12 pb-8">
-                {filteredAgents.map((agent, index) => (
-                  <AgentOrb
-                    key={agent.id}
-                    agent={agent}
-                    index={index}
-                    isSelected={selectedAgentOrDefault?.id === agent.id}
-                    onClick={() => setSelectedAgent(agent)}
-                  />
-                ))}
+                {error ? (
+                  <div className="text-center space-y-3 px-4">
+                    <p className="text-sm text-destructive">Could not load agents.</p>
+                    <Button variant="outline" size="sm" onClick={() => void mutate()}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Retry
+                    </Button>
+                  </div>
+                ) : isLoading && agents.length === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Loading agents…
+                  </div>
+                ) : filteredAgents.length === 0 ? (
+                  <div className="text-center space-y-3 px-4">
+                    <p className="text-sm text-muted-foreground">
+                      {searchQuery ? "No agents match your search." : "No agents yet. Create your first AI teammate."}
+                    </p>
+                    {!searchQuery ? (
+                      <Button onClick={() => router.push("/agents/new")} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        New Agent
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  filteredAgents.map((agent, index) => (
+                    <AgentOrb
+                      key={agent.id}
+                      agent={agent}
+                      index={index}
+                      isSelected={selectedAgentOrDefault?.id === agent.id}
+                      onClick={() => setSelectedAgent(agent)}
+                    />
+                  ))
+                )}
               </div>
             </div>
             
@@ -840,28 +773,39 @@ export default function AgentsPage() {
         </div>
 
 {/* Right - Agent Detail Panel - Premium glassmorphism */}
-        <div className="relative z-10 lg:w-[420px] bg-card/40 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-border/50 shadow-2xl">
-          {/* Gradient accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
-          <AnimatePresence mode="wait">
-            {selectedAgentOrDefault && (
-              <AgentDetailPanel
-                key={selectedAgentOrDefault.id}
-                agent={selectedAgentOrDefault}
-                onStart={handleStartAgent}
-                onStop={handleStopAgent}
-                isMutating={isMutatingAgent === selectedAgentOrDefault.id}
-              />
-            )}
-          </AnimatePresence>
-        </div>
+        <AnimatePresence initial={false}>
+          {detailPanelOpen ? (
+            <motion.div
+              key="agent-detail-panel"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 420, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative z-10 hidden lg:block overflow-hidden bg-card/40 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-border/50 shadow-2xl shrink-0"
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
+              <AnimatePresence mode="wait">
+                {selectedAgentOrDefault && (
+                  <AgentDetailPanel
+                    key={selectedAgentOrDefault.id}
+                    agent={selectedAgentOrDefault}
+                    onStart={handleStartAgent}
+                    onStop={handleStopAgent}
+                    isMutating={isMutatingAgent === selectedAgentOrDefault.id}
+                  />
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       {/* Meson Wizard */}
       <MesonWizard 
         open={mesonWizardOpen} 
         onClose={() => setMesonWizardOpen(false)}
-        onComplete={(result) => {
+        onComplete={async (result) => {
+          await globalMutate("/api/agents")
           if (result.agentId) {
             router.push(`/agents/${result.agentId}`)
             return

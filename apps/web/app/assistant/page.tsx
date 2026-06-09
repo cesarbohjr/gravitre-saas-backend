@@ -899,6 +899,12 @@ export default function AssistantPage() {
     const trimmed = text.trim()
     if (!trimmed || isLoading) return
 
+    const orgId = await ensureSelectedOrg(true)
+    if (!orgId) {
+      toast.error("Organization required — complete onboarding or contact your admin")
+      return
+    }
+
     if (!activeConversationIdRef.current) {
       try {
         const created = await conversationsApi.create({ title: trimmed.slice(0, 80) })
@@ -908,7 +914,9 @@ export default function AssistantPage() {
         await mutateConversations()
       } catch (error) {
         console.error("[v0] Create conversation failed:", error)
-        toast.error("Could not start a new conversation")
+        toast.error(
+          parseChatError(error instanceof Error ? error : new Error("Could not start a new conversation"))
+        )
         return
       }
     }

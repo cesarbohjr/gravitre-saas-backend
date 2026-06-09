@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { apiFetch } from "@/lib/fetcher"
+import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 
 const steps = [
@@ -166,6 +167,7 @@ export default function NewAgentPage() {
       }
 
       toast.success("Agent created")
+      await globalMutate("/api/agents")
       const agentPayload =
         payload.agent && typeof payload.agent === "object"
           ? (payload.agent as Record<string, unknown>)

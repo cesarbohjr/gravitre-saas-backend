@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
-import { ensureDemoDataForOrg, getDemoRowsForOrg } from "@/lib/supabase/demo-bootstrap"
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
@@ -46,8 +45,6 @@ export async function GET(request: NextRequest) {
     if (!orgId) {
       return NextResponse.json({ error: "Organization context required" }, { status: 403 })
     }
-    await ensureDemoDataForOrg(supabase, orgId)
-    const demoRows = getDemoRowsForOrg(orgId)
 
     const diagnostics = await getOrgCountDiagnostics(supabase, "agents", orgId)
     const { data, error } = await supabase
@@ -57,11 +54,11 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      const fallbackAgents = (demoRows?.agents ?? []).map((row) => mapAgentRow(row as Record<string, unknown>))
-
       return NextResponse.json(
         {
-          ...(fallbackAgents.length > 0 ? { agents: fallbackAgents, operators: fallbackAgents } : { error: error.message }),
+          error: error.message,
+          agents: [],
+          operators: [],
           ...(debugEnabled
             ? {
                 _debug: {
@@ -69,34 +66,20 @@ export async function GET(request: NextRequest) {
                   table: "agents",
                   ...diagnostics,
                   queryError: error.message,
-                  fallbackUsed: fallbackAgents.length > 0,
                   authMode,
                 },
               }
             : {}),
         },
-        { status: fallbackAgents.length > 0 ? 200 : 500 }
+        { status: 500 }
       )
     }
 
     const agents = (data ?? []).map((row) => mapAgentRow(row as Record<string, unknown>))
 
-    if ((data ?? []).length === 0) {
-      console.warn("Agents route returned empty result", {
-        orgId,
-        diagnostics,
-        authMode,
-      })
-    }
-
-    const safeAgents =
-      agents.length > 0
-        ? agents
-        : (demoRows?.agents ?? []).map((row) => mapAgentRow(row as Record<string, unknown>))
-
     return NextResponse.json({
-      agents: safeAgents,
-      operators: safeAgents,
+      agents,
+      operators: agents,
       ...(debugEnabled
         ? {
             _debug: {
@@ -104,7 +87,6 @@ export async function GET(request: NextRequest) {
               table: "agents",
               ...diagnostics,
               queryError: null,
-              fallbackUsed: agents.length === 0 && safeAgents.length > 0,
               authMode,
             },
           }
@@ -112,7 +94,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: error instanceof Error ? error.message : "Unknown error", agents: [], operators: [] },
       { status: 500 }
     )
   }

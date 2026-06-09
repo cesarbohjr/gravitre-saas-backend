@@ -1,8 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import type { NextRequest } from "next/server"
 
-const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
-
 function getSupabaseUrl() {
   const value = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
   if (!value) {
@@ -69,7 +67,7 @@ export async function resolveOrgId(
   const { data: userData } = await supabase.auth.getUser()
   const userId = userData.user?.id
   if (!userId) {
-    return DEMO_ORG_ID
+    return null
   }
 
   const { data, error } = await supabase
@@ -80,8 +78,9 @@ export async function resolveOrgId(
     .maybeSingle()
 
   if (error) {
-    return DEMO_ORG_ID
+    console.warn("resolveOrgId membership lookup failed", { userId, message: error.message })
+    return null
   }
 
-  return data?.org_id ?? DEMO_ORG_ID
+  return data?.org_id ?? null
 }
