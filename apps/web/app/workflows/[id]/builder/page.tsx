@@ -19,6 +19,7 @@ import {
   loadBuilderGraph,
   saveBuilderGraph,
   executeWorkflow,
+  previewWorkflow,
   isPersistableWorkflowId,
   type CanvasWorkflowNode,
   type WorkflowMeta,
@@ -29,6 +30,7 @@ import {
   type CouncilAgent,
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
+import type { WorkflowDryRunResponse } from "@/types/api"
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
@@ -2660,7 +2662,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const canPersist = isPersistableWorkflowId(id)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
-  const [dryRunTrigger, setDryRunTrigger] = useState(0)
+  const [prefetchedDryRun, setPrefetchedDryRun] = useState<WorkflowDryRunResponse | null>(null)
+  const [intelligenceSession, setIntelligenceSession] = useState(0)
   const [isLoadingGraph, setIsLoadingGraph] = useState(canPersist)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [workflowMeta, setWorkflowMeta] = useState<WorkflowMeta>(defaultWorkflowMeta)
@@ -3131,8 +3134,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         description: settingsDescription || workflowMeta.description,
       })
       setLastSavedAt(new Date())
+      const dryRun = await previewWorkflow(id)
+      setPrefetchedDryRun(dryRun)
       setIntelligenceInitialTab("dryrun")
-      setDryRunTrigger((value) => value + 1)
+      setIntelligenceSession((value) => value + 1)
       setIntelligenceOpen(true)
     } catch (err) {
       console.error("[WorkflowBuilder] Preview save failed:", err)
@@ -5038,15 +5043,18 @@ const handleRun = useCallback(async () => {
         </>
         )}
       </div>
-      <WorkflowIntelligenceDrawer
-        open={intelligenceOpen}
-        onClose={() => setIntelligenceOpen(false)}
-        workflowId={id}
-        isPersisted={canPersist}
-        nodes={nodes.map((n) => ({ id: n.id, name: n.name, type: n.type }))}
-        initialTab={intelligenceInitialTab}
-        dryRunTrigger={dryRunTrigger}
-      />
+      {intelligenceOpen ? (
+        <WorkflowIntelligenceDrawer
+          key={`intelligence-${intelligenceSession}`}
+          open
+          onClose={() => setIntelligenceOpen(false)}
+          workflowId={id}
+          isPersisted={canPersist}
+          nodes={nodes.map((n) => ({ id: n.id, name: n.name, type: n.type }))}
+          initialTab={intelligenceInitialTab}
+          prefetchedDryRun={prefetchedDryRun}
+        />
+      ) : null}
     </AppShell>
   )
 }

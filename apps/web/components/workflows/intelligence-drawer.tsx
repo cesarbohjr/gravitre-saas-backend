@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Sparkles,
@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { workflowsApi } from "@/lib/api"
-import type { WorkflowFailureAlert } from "@/types/api"
+import type { WorkflowDryRunResponse, WorkflowFailureAlert } from "@/types/api"
 
 type DrawerTab = "simulate" | "risk" | "dryrun"
 
@@ -40,8 +40,8 @@ interface IntelligenceDrawerProps {
   isPersisted: boolean
   nodes: IntelligenceDrawerNode[]
   initialTab?: DrawerTab
-  /** Increment to trigger a dry run when the drawer opens. */
-  dryRunTrigger?: number
+  /** Prefetched dry-run result (e.g. from Preview) — avoids auto-run effects. */
+  prefetchedDryRun?: WorkflowDryRunResponse | null
 }
 
 interface SimulatedStep {
@@ -116,10 +116,36 @@ function profileFor(type: string) {
   return TYPE_PROFILE[type] ?? { ms: 500, source: "llm" as const, note: "LLM estimate" }
 }
 
+function mapDryRunSteps(raw: Array<Record<string, unknown>>): DryRunStep[] {
+  return raw.map((s, i) => ({
+    id: String(s.id ?? s.step_id ?? `step-${i}`),
+    name: String(s.step_name ?? s.name ?? `Step ${i + 1}`),
+    type: String(s.step_type ?? "task"),
+    status: String(s.status ?? "completed"),
+    error: (s.error_message as string) ?? (s.errorMessage as string) ?? null,
+  }))
+}
+
 function formatMs(ms: number): string {
   if (ms === 0) return "—"
   if (ms < 1000) return `${ms}ms`
   return `${(ms / 1000).toFixed(1)}s`
+}
+
+function dryRunStateFromResponse(res: WorkflowDryRunResponse | null | undefined) {
+  if (!res) {
+    return {
+      steps: null as DryRunStep[] | null,
+      errors: [] as string[],
+      status: null as string | null,
+    }
+  }
+  const raw = (res.steps ?? []) as Array<Record<string, unknown>>
+  return {
+    steps: mapDryRunSteps(raw),
+    errors: res.errors ?? [],
+    status: res.status ?? "completed",
+  }
 }
 
 export function WorkflowIntelligenceDrawer({
@@ -128,10 +154,11 @@ export function WorkflowIntelligenceDrawer({
   workflowId,
   isPersisted,
   nodes,
-  initialTab,
-  dryRunTrigger = 0,
+  initialTab = "simulate",
+  prefetchedDryRun = null,
 }: IntelligenceDrawerProps) {
-  const [activeTab, setActiveTab] = useState<DrawerTab>(initialTab ?? "simulate")
+  const prefetchedDryRunState = dryRunStateFromResponse(prefetchedDryRun)
+  const [activeTab, setActiveTab] = useState<DrawerTab>(initialTab)
 
   // Simulate
   const [simSteps, setSimSteps] = useState<SimulatedStep[] | null>(null)
@@ -143,11 +170,11 @@ export function WorkflowIntelligenceDrawer({
   const [riskError, setRiskError] = useState<string | null>(null)
 
   // Dry run
-  const [dryRunSteps, setDryRunSteps] = useState<DryRunStep[] | null>(null)
-  const [dryRunErrors, setDryRunErrors] = useState<string[]>([])
+  const [dryRunSteps, setDryRunSteps] = useState<DryRunStep[] | null>(prefetchedDryRunState.steps)
+  const [dryRunErrors, setDryRunErrors] = useState<string[]>(prefetchedDryRunState.errors)
   const [dryRunLoading, setDryRunLoading] = useState(false)
   const [dryRunError, setDryRunError] = useState<string | null>(null)
-  const [dryRunStatus, setDryRunStatus] = useState<string | null>(null)
+  const [dryRunStatus, setDryRunStatus] = useState<string | null>(prefetchedDryRunState.status)
 
   const runSimulation = useCallback(() => {
     setSimRunning(true)
@@ -195,35 +222,16 @@ export function WorkflowIntelligenceDrawer({
     setDryRunStatus(null)
     try {
       const res = await workflowsApi.dryRun({ workflow_id: workflowId })
-      const raw = (res.steps ?? []) as Array<Record<string, unknown>>
-      const steps: DryRunStep[] = raw.map((s, i) => ({
-        id: String(s.id ?? s.step_id ?? `step-${i}`),
-        name: String(s.step_name ?? s.name ?? `Step ${i + 1}`),
-        type: String(s.step_type ?? "task"),
-        status: String(s.status ?? "completed"),
-        error: (s.error_message as string) ?? (s.errorMessage as string) ?? null,
-      }))
-      setDryRunSteps(steps)
-      setDryRunErrors(res.errors ?? [])
-      setDryRunStatus(res.status ?? "completed")
+      const mapped = dryRunStateFromResponse(res)
+      setDryRunSteps(mapped.steps)
+      setDryRunErrors(mapped.errors)
+      setDryRunStatus(mapped.status)
     } catch (err) {
       setDryRunError(err instanceof Error ? err.message : "Dry run failed")
     } finally {
       setDryRunLoading(false)
     }
   }, [workflowId])
-
-  useEffect(() => {
-    if (open && initialTab) {
-      setActiveTab(initialTab)
-    }
-  }, [open, initialTab])
-
-  useEffect(() => {
-    if (open && dryRunTrigger > 0 && isPersisted) {
-      void runDryRun()
-    }
-  }, [open, dryRunTrigger, isPersisted, runDryRun])
 
   const totalPredictedMs = simSteps?.reduce((sum, s) => sum + s.predictedMs, 0) ?? 0
 
