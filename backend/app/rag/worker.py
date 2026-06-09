@@ -104,7 +104,16 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             min_chars = max(256, min(min_chars, 4096))
             max_chars = max(min_chars, min(max_chars, 8192))
             overlap = max(0, min(overlap, max_chars - 1))
-            chunks = chunk_text(text or "", min_chars, max_chars, overlap)
+            strategy = str(chunking.get("strategy", "semantic")).strip().lower()
+            if strategy not in {"semantic", "fixed"}:
+                strategy = "semantic"
+            chunks = chunk_text(
+                text or "",
+                min_chars,
+                max_chars,
+                overlap,
+                strategy=strategy,
+            )
             validate_chunks(chunks)
 
         _heartbeat_job(client, job_id, worker_id)

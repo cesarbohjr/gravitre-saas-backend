@@ -85,6 +85,8 @@ import type {
   FederationHandoff,
   FederationConnectorGrant,
   FederationDelegatedTask,
+  AgentInterrupt,
+  AgentInterruptRequest,
   MarketplaceSandboxDemoResult,
   MarketplaceSandboxProvisionResult,
   MarketplaceSandboxStatus,
@@ -438,8 +440,21 @@ export const runsApi = {
   },
   get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
   getWithSteps: (id: string) => fetcher<RunDetailResponse>(apiUrl(`/api/runs/${id}`)),
-  cancel: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/cancel`), {}),
+  cancel: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/cancel`), {}),
+  pause: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/pause`), {}),
   retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
+  interrupt: (id: string, signal: AgentInterruptRequest["signal"]) =>
+    postJson<{ interrupt: AgentInterrupt }>(apiUrl("/api/agent-interrupts"), {
+      targetType: "workflow_run",
+      targetId: id,
+      signal,
+    }),
+}
+
+// ============ Agent interrupts (STA-108) ============
+export const agentInterruptsApi = {
+  request: (data: AgentInterruptRequest) =>
+    postJson<{ interrupt: AgentInterrupt }>(apiUrl("/api/agent-interrupts"), data),
 }
 
 // ============ Marketplace ============
@@ -1190,6 +1205,7 @@ export const api = {
   agents: agentsApi,
   workflows: workflowsApi,
   runs: runsApi,
+  agentInterrupts: agentInterruptsApi,
   approvals: approvalsApi,
   connectors: connectorsApi,
   marketplace: marketplaceApi,

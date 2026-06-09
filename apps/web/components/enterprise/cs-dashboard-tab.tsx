@@ -333,7 +333,9 @@ function SuggestionCard({
         : TrendingUp
 
   const installHref =
-    suggestion.suggestionType === "install_department_pack" ? "/marketplace/role-packs" : null
+    suggestion.suggestionType === "install_department_pack"
+      ? `/marketplace/role-packs${suggestion.packId ? `?pack=${encodeURIComponent(suggestion.packId)}` : ""}`
+      : null
 
   return (
     <motion.div

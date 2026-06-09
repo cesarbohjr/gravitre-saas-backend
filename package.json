@@ -22,6 +22,7 @@
     "clio:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-clio-oauth.ps1",
     "smoke:tier5": "python scripts/smoke-tier5-verticals.py",
     "smoke:post-tier5": "python scripts/smoke-post-tier5-platform.py",
+    "smoke:ai-production": "python scripts/smoke-ai-production.py",
     "airtable:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-airtable-operator-env.ps1",
     "airtable:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-airtable-oauth.ps1",
     "asana:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-asana-operator-env.ps1",

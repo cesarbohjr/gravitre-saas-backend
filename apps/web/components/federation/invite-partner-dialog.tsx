@@ -17,6 +17,9 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { federationApi } from "@/lib/api"
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 const CONSENT_TERMS = [
   "Both organizations must explicitly accept before any data flows.",
   "Agent handoffs and delegated tasks require per-exchange consent.",
@@ -28,10 +31,12 @@ export function InvitePartnerDialog({
   open,
   onOpenChange,
   onInvited,
+  disabled,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onInvited: () => void
+  disabled?: boolean
 }) {
   const [step, setStep] = useState(0)
   const [orgId, setOrgId] = useState("")
@@ -51,18 +56,21 @@ export function InvitePartnerDialog({
   }
 
   const trimmed = orgId.trim()
-  const canContinue = trimmed.length >= 4
+  const validUuid = UUID_RE.test(trimmed)
+  const canContinue = validUuid
 
   async function submit() {
-    if (!acknowledged) return
+    if (!acknowledged || disabled) return
     setSubmitting(true)
     try {
       await federationApi.invitePartner(trimmed)
       toast.success("Partnership invitation sent")
       onInvited()
       handleOpenChange(false)
-    } catch {
-      toast.error("Could not send the invitation. Verify the organization ID.")
+    } catch (err) {
+      toast.error("Could not send the invitation", {
+        description: err instanceof Error ? err.message : "Verify the organization ID and try again.",
+      })
       setSubmitting(false)
     }
   }
@@ -113,15 +121,18 @@ export function InvitePartnerDialog({
                 id="partner-org"
                 value={orgId}
                 onChange={(e) => setOrgId(e.target.value)}
-                placeholder="org_xxxxxxxx"
+                placeholder="00000000-0000-0000-0000-000000000000"
                 className="pl-9 font-mono"
                 autoFocus
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Ask your partner for their organization ID. They&apos;ll receive an invitation that
+              Ask your partner for their organization UUID. They&apos;ll receive an invitation that
               they must accept before the partnership becomes active.
             </p>
+            {trimmed.length > 0 && !validUuid ? (
+              <p className="text-xs text-destructive">Enter a valid organization UUID.</p>
+            ) : null}
           </div>
         )}
 
@@ -156,7 +167,7 @@ export function InvitePartnerDialog({
           {step === 0 ? (
             <Button
               className="gap-1.5"
-              disabled={!canContinue}
+              disabled={!canContinue || disabled}
               onClick={() => setStep(1)}
             >
               Continue
@@ -168,7 +179,11 @@ export function InvitePartnerDialog({
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button className="gap-1.5" disabled={!acknowledged || submitting} onClick={submit}>
+              <Button
+                className="gap-1.5"
+                disabled={!acknowledged || submitting || disabled}
+                onClick={submit}
+              >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (

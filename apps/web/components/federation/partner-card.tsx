@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { cn } from "@/lib/utils"
+import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import type { FederationPartnership, FederationPartnershipStatus } from "@/types/api"
 
 const STATUS_META: Record<
@@ -21,7 +22,11 @@ const STATUS_META: Record<
   { label: string; tone: string; beacon: "active" | "processing" | "warning" | "error" | "idle" }
 > = {
   active: { label: "Active", tone: "text-chart-1 border-chart-1/30 bg-chart-1/10", beacon: "active" },
-  pending: { label: "Pending consent", tone: "text-chart-3 border-chart-3/30 bg-chart-3/10", beacon: "warning" },
+  pending_partner: {
+    label: "Pending consent",
+    tone: "text-chart-3 border-chart-3/30 bg-chart-3/10",
+    beacon: "warning",
+  },
   rejected: { label: "Declined", tone: "text-muted-foreground border-border bg-muted/40", beacon: "idle" },
   revoked: { label: "Revoked", tone: "text-destructive border-destructive/30 bg-destructive/10", beacon: "error" },
 }
@@ -44,6 +49,19 @@ function formatDate(value: string | null) {
   }
 }
 
+function viewerOrgId(partnership: FederationPartnership) {
+  return partnership.currentOrgId || getSelectedOrgFromStorage()?.id || ""
+}
+
+function awaitingOurConsent(partnership: FederationPartnership) {
+  const orgId = viewerOrgId(partnership)
+  if (!orgId) return false
+  return (
+    partnership.status === "pending_partner" &&
+    partnership.invitedByOrgId !== orgId
+  )
+}
+
 export function PartnerCard({
   partnership,
   onAction,
@@ -56,10 +74,8 @@ export function PartnerCard({
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const meta = STATUS_META[partnership.status]
-
-  // An invite is awaiting *our* consent when it's pending and we are not the inviter.
-  const awaitingOurConsent =
-    partnership.status === "pending" && partnership.invitedByOrgId === partnership.orgBId
+  const needsOurConsent = awaitingOurConsent(partnership)
+  const weInvited = partnership.invitedByOrgId === viewerOrgId(partnership)
 
   async function run(action: "accept" | "reject" | "revoke") {
     setBusy(action)
@@ -95,9 +111,7 @@ export function PartnerCard({
               <StatusBeacon status={meta.beacon} />
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {partnership.invitedByOrgId === partnership.orgAId
-                ? "You invited this organization"
-                : "Invited your organization"}
+              {weInvited ? "You invited this organization" : "Invited your organization"}
             </p>
           </div>
         </div>
@@ -137,7 +151,7 @@ export function PartnerCard({
 
       {/* Actions */}
       <div className="mt-4 flex flex-wrap gap-2">
-        {awaitingOurConsent && (
+        {needsOurConsent && (
           <>
             <Button
               size="sm"
@@ -172,10 +186,12 @@ export function PartnerCard({
             {busy === "revoke" ? "Revoking…" : "Revoke access"}
           </Button>
         )}
-        {partnership.status === "pending" && !awaitingOurConsent && (
+        {partnership.status === "pending_partner" && !needsOurConsent && (
           <p className="text-xs text-muted-foreground">Waiting for partner to accept your invitation.</p>
         )}
       </div>
     </div>
   )
 }
+
+export { awaitingOurConsent }

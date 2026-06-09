@@ -159,6 +159,7 @@ export type RunStatus =
   | "pending_approval"
   | "approved"
   | "running"
+  | "paused"
   | "completed"
   | "failed"
   | "cancelled"
@@ -1477,7 +1478,7 @@ export interface DepartmentRolePackInstallResult {
 
 // Federation & B2B (STA-115/116/117/118)
 export type FederationPartnershipStatus =
-  | "pending"
+  | "pending_partner"
   | "active"
   | "rejected"
   | "revoked"
@@ -1486,6 +1487,7 @@ export interface FederationPartnership {
   id: string
   orgAId: string
   orgBId: string
+  currentOrgId: string
   partnerOrgId: string
   invitedByOrgId: string
   status: FederationPartnershipStatus
@@ -1496,7 +1498,7 @@ export interface FederationPartnership {
 }
 
 export type FederationHandoffStatus =
-  | "pending"
+  | "pending_receiver"
   | "accepted"
   | "rejected"
   | "completed"
@@ -1539,4 +1541,24 @@ export interface FederationDelegatedTask {
   status: string
   createdAt: string | null
   completedAt: string | null
+}
+
+// Agent interrupts (STA-108 / STA-170)
+export type AgentInterruptTargetType = "agent_job" | "workflow_run" | "operator_session"
+export type AgentInterruptSignal = "pause" | "cancel"
+
+export interface AgentInterruptRequest {
+  targetType: AgentInterruptTargetType
+  targetId: string
+  signal: AgentInterruptSignal
+}
+
+export interface AgentInterrupt {
+  id: string
+  targetType: AgentInterruptTargetType
+  targetId: string
+  signal: AgentInterruptSignal
+  status: string
+  source?: string | null
+  createdAt?: string | null
 }

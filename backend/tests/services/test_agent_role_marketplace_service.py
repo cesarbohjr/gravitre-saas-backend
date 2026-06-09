@@ -94,7 +94,7 @@ def test_install_sales_pack(mock_perm, mock_version, mock_audit):
     rag = _table([])
     workflows = _table([])
     workflow_defs = _table([])
-    connectors = _table([])
+    connectors = _table([{"id": "conn-1", "type": "hubspot", "status": "active", "environment": "production"}])
     installs = _table([])
     installs.upsert.return_value.execute.return_value = MagicMock(
         data=[
@@ -137,3 +137,19 @@ def test_install_sales_pack(mock_perm, mock_version, mock_audit):
     rag.upsert.assert_called_once()
     workflow_defs.upsert.assert_called_once()
     mock_audit.assert_called_once()
+
+
+def test_install_department_pack_requires_connectors():
+    client = MagicMock()
+    connectors = _table([])
+
+    def table(name):
+        if name == "connectors":
+            return connectors
+        return _table([])
+
+    client.table.side_effect = table
+
+    with pytest.raises(RoleMarketplaceError, match="Connect required apps") as exc:
+        install_department_pack(client, "org-1", "sales-ops", actor_id="user-1")
+    assert exc.value.code == "CONNECTORS_NOT_READY"

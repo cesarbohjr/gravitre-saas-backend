@@ -11,6 +11,7 @@ from app.services.b2b_handoff_service import (
     accept_partnership,
     create_cross_org_handoff,
     invite_partner_org,
+    list_partnerships,
     normalize_org_pair,
     reject_cross_org_handoff,
 )
@@ -70,8 +71,21 @@ def test_invite_partner_org_creates_pending_partnership(mock_audit):
     result = invite_partner_org(client, org_id="org-a", partner_org_id="org-b", actor_id="user-a")
     assert result["status"] == "pending_partner"
     assert result["partnerOrgId"] == "org-b"
+    assert result["currentOrgId"] == "org-a"
     partnerships.insert.assert_called_once()
     mock_audit.assert_called_once()
+
+
+def test_list_partnerships_returns_empty_when_table_missing():
+    client = MagicMock()
+    partnerships = MagicMock()
+    partnerships.select.return_value = partnerships
+    partnerships.eq.return_value = partnerships
+    partnerships.order.return_value = partnerships
+    partnerships.execute.side_effect = Exception('relation "org_b2b_partnerships" does not exist')
+    client.table.return_value = partnerships
+
+    assert list_partnerships(client, "org-a") == []
 
 
 @patch("app.services.b2b_handoff_service.write_audit_event")

@@ -67,12 +67,14 @@ class OpenAIAdapter(ProviderAdapter):
         last_exc: Exception | None = None
         for attempt in range(_MAX_ATTEMPTS):
             try:
-                resp = await client.chat.completions.create(
-                    model=model,
-                    messages=payload,
-                    temperature=options.temperature if options.temperature is not None else 0.2,
-                    max_tokens=options.max_tokens,
-                )
+                kwargs: dict[str, Any] = {
+                    "model": model,
+                    "messages": payload,
+                    "temperature": options.temperature if options.temperature is not None else 0.2,
+                }
+                if options.max_tokens is not None:
+                    kwargs["max_tokens"] = options.max_tokens
+                resp = await client.chat.completions.create(**kwargs)
                 content = resp.choices[0].message.content or ""
                 if not content.strip():
                     raise RuntimeError("Model returned empty response")

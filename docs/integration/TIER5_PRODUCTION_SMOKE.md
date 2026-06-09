@@ -98,6 +98,20 @@ See `docs/integration/POST_TIER5_BACKLOG.md` for UI and Tier 6 planning.
 
 ---
 
+## AI production smoke (STA-173 / IMPL 8)
+
+Run after Epic I wiring (Meson, agent chat, assign task, workflow run/preview, CS dashboard, role packs, federation, run interrupt).
+
+```bash
+npm run smoke:ai-production
+```
+
+Covers: `/health`, Meson interpret, agents list, agent job enqueue, assistant chat (SSE), workflow A→B→C dry-run, org failure scan, integration health, role packs, federation lists, agent-interrupt channel.
+
+Input checklist: [`docs/delivery/AI_ML_OPERATIONAL_GAP_REPORT.md`](../delivery/AI_ML_OPERATIONAL_GAP_REPORT.md)
+
+---
+
 ## Operator env scripts
 
 | Vertical | Railway env | Check |

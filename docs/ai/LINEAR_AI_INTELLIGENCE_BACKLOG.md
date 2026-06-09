@@ -8,7 +8,7 @@ Use this file to navigate the **AI Intelligence Upgrade** in Cursor. Issues live
 
 **Re-run issue creation:** `npm run linear:ai-intelligence` (requires `LINEAR_API_KEY` — idempotent re-run may duplicate; use existing IDs below).
 
-**Spec & audit:** [`docs/delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md`](../delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md)
+**Spec & audit:** [`docs/delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md`](../delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md) · **Operational gap report (STA-172):** [`docs/delivery/AI_ML_OPERATIONAL_GAP_REPORT.md`](../delivery/AI_ML_OPERATIONAL_GAP_REPORT.md)
 
 **v0 prompts (F1–F4):** [`docs/design/V0_AI_INTELLIGENCE_PROMPTS.md`](../design/V0_AI_INTELLIGENCE_PROMPTS.md)
 
@@ -88,16 +88,18 @@ Use this file to navigate the **AI Intelligence Upgrade** in Cursor. Issues live
 
 ## Production wiring checklist (IMPL 8)
 
-| UI action | Linear | Status today |
-|-----------|--------|--------------|
-| Build with Meson | [STA-164](https://linear.app/staqbot/issue/STA-164) | Mock in `meson-wizard.tsx` |
-| Chat with Agent | [STA-163](https://linear.app/staqbot/issue/STA-163) | Page exists; uses mockAgent |
-| Assign Task | [STA-165](https://linear.app/staqbot/issue/STA-165) | Proxy exists; UI may be placeholder |
-| Workflow Run/Preview | [STA-166](https://linear.app/staqbot/issue/STA-166) | API client exists; builder wiring TBD |
-| CS Scan | [STA-167](https://linear.app/staqbot/issue/STA-167) | Dashboard UI; load errors in prod |
-| Role pack Install | [STA-168](https://linear.app/staqbot/issue/STA-168) | API client exists |
-| Federation Invite | [STA-169](https://linear.app/staqbot/issue/STA-169) | Dialog wired; verify E2E |
-| Run Interrupt | [STA-170](https://linear.app/staqbot/issue/STA-170) | Backend STA-108; UI TBD |
+Updated by [AI_ML_OPERATIONAL_GAP_REPORT.md](../delivery/AI_ML_OPERATIONAL_GAP_REPORT.md) (STA-172, 2026-06-07). **Prod verified** = STA-173.
+
+| UI action | Linear | Code | Prod verified |
+|-----------|--------|------|---------------|
+| Build with Meson | [STA-164](https://linear.app/staqbot/issue/STA-164) | ✅ `mesonApi` | ☐ |
+| Chat with Agent | [STA-163](https://linear.app/staqbot/issue/STA-163) | ✅ `/agents/[id]/chat` | ☐ |
+| Assign Task | [STA-165](https://linear.app/staqbot/issue/STA-165) | ✅ `useAsyncJob` | ☐ |
+| Workflow Run/Preview | [STA-166](https://linear.app/staqbot/issue/STA-166) | ✅ builder + run-monitor | ☐ |
+| CS Scan | [STA-167](https://linear.app/staqbot/issue/STA-167) | ✅ scan + error UI | ☐ |
+| Role pack Install | [STA-168](https://linear.app/staqbot/issue/STA-168) | ✅ E2E + guards | ☐ |
+| Federation Invite | [STA-169](https://linear.app/staqbot/issue/STA-169) | ✅ consent + API fixes | ☐ |
+| Run Interrupt | [STA-170](https://linear.app/staqbot/issue/STA-170) | ✅ pause/cancel UI + API | ☐ |
 
 ---
 

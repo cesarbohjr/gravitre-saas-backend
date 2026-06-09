@@ -18,7 +18,12 @@ const STATUS_META: Record<
   FederationHandoffStatus,
   { label: string; icon: typeof CircleDot; tone: string; dot: string }
 > = {
-  pending: { label: "Pending", icon: CircleDot, tone: "text-chart-3", dot: "bg-chart-3" },
+  pending_receiver: {
+    label: "Pending",
+    icon: CircleDot,
+    tone: "text-chart-3",
+    dot: "bg-chart-3",
+  },
   accepted: { label: "Accepted", icon: CheckCircle2, tone: "text-chart-2", dot: "bg-chart-2" },
   completed: { label: "Completed", icon: CheckCircle2, tone: "text-chart-1", dot: "bg-chart-1" },
   rejected: { label: "Declined", icon: XCircle, tone: "text-muted-foreground", dot: "bg-muted-foreground" },
@@ -44,9 +49,11 @@ function relativeTime(value: string | null) {
 
 export function HandoffTimeline({
   handoffs,
+  currentOrgId,
   onAction,
 }: {
   handoffs: FederationHandoff[]
+  currentOrgId?: string
   onAction: (action: "accept" | "reject", handoff: FederationHandoff) => Promise<void>
 }) {
   const [busy, setBusy] = useState<string | null>(null)
@@ -69,7 +76,10 @@ export function HandoffTimeline({
           (typeof h.briefing?.title === "string" && h.briefing.title) ||
           h.message ||
           "Agent handoff"
-        const canRespond = h.status === "pending"
+        const canRespond =
+          h.status === "pending_receiver" &&
+          Boolean(currentOrgId) &&
+          h.receiverOrgId === currentOrgId
 
         return (
           <li key={h.id} className="relative">

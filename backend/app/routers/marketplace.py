@@ -626,10 +626,10 @@ async def get_role_pack(
     try:
         return get_department_pack(client, org_id, pack_id, environment_name=environment)
     except RoleMarketplaceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        status_code = status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST
+        if exc.code == "CONNECTORS_NOT_READY":
+            status_code = status.HTTP_409_CONFLICT
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @router.post("/role-packs/{pack_id}/install")
@@ -651,7 +651,7 @@ async def install_role_pack(
             environment_name=environment,
         )
     except RoleMarketplaceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        status_code = status.HTTP_404_NOT_FOUND if exc.code == "NOT_FOUND" else status.HTTP_400_BAD_REQUEST
+        if exc.code == "CONNECTORS_NOT_READY":
+            status_code = status.HTTP_409_CONFLICT
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc

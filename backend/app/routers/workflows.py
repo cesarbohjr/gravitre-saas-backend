@@ -2979,11 +2979,11 @@ async def retry_run_alias(
 @runs_router.post("/{run_id}/cancel")
 async def cancel_run_alias(
     run_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id = _admin
+    user, org_id = admin
     client = get_supabase_client(settings)
     run = (
         client.table("workflow_runs")
@@ -2997,10 +2997,65 @@ async def cancel_run_alias(
     )
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    client.table("workflow_runs").update(
-        {"status": "failed", "error_message": "Cancelled"}
-    ).eq("id", str(run_id)).eq("org_id", org_id).execute()
-    return {"success": True}
+    run_status = str(run[0].get("status") or "")
+    if run_status in {"running", "paused", "pending", "pending_approval", "approved"}:
+        from app.services.agent_interrupt_service import request_interrupt
+
+        request_interrupt(
+            client,
+            org_id=org_id,
+            target_type="workflow_run",
+            target_id=str(run_id),
+            signal="cancel",
+            actor_id=user["user_id"],
+            source="ui",
+        )
+        return {"success": True, "interrupt": "cancel"}
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=f"Run cannot be cancelled (status={run_status})",
+    )
+
+
+@runs_router.post("/{run_id}/pause")
+async def pause_run_alias(
+    run_id: UUID,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    run = (
+        client.table("workflow_runs")
+        .select("id, status")
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .eq("id", str(run_id))
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    run_status = str(run[0].get("status") or "")
+    if run_status != "running":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Run cannot be paused (status={run_status})",
+        )
+    from app.services.agent_interrupt_service import request_interrupt
+
+    request_interrupt(
+        client,
+        org_id=org_id,
+        target_type="workflow_run",
+        target_id=str(run_id),
+        signal="pause",
+        actor_id=user["user_id"],
+        source="ui",
+    )
+    return {"success": True, "interrupt": "pause"}
 
 
 @runs_router.post("/{run_id}/rollback")

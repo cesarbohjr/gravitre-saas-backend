@@ -31,6 +31,7 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
+import { runsApi } from "@/lib/api"
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
@@ -85,6 +86,8 @@ import {
   Users,
   ExternalLink,
   RefreshCw,
+  Pause,
+  XCircle,
 } from "lucide-react"
 import {
   Sheet,
@@ -2707,8 +2710,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [executionStep, setExecutionStep] = useState(0)
   const [executionStartTime, setExecutionStartTime] = useState<number | null>(null)
   const [executionElapsed, setExecutionElapsed] = useState(0)
-  const [executionStatus, setExecutionStatus] = useState<"idle" | "running" | "completed" | "error">("idle")
+  const [executionStatus, setExecutionStatus] = useState<
+    "idle" | "running" | "completed" | "error" | "paused" | "cancelled"
+  >("idle")
   const [executionError, setExecutionError] = useState<string | null>(null)
+  const [isInterrupting, setIsInterrupting] = useState(false)
   
   // Mobile detection for touch-friendly UI
   const [isMobile, setIsMobile] = useState(false)
@@ -3154,8 +3160,28 @@ const handleRun = useCallback(async () => {
   const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
     setIsExecuting(false)
     setIsRunning(false)
+    const status = snapshot.status.toLowerCase()
+    if (status === "paused") {
+      setExecutionStatus("paused")
+      toast.message("Workflow paused", {
+        description: `Run ID: ${runId}`,
+        action: {
+          label: "View Run",
+          onClick: () => router.push(`/runs/${runId}`),
+        },
+      })
+      return
+    }
+    if (status === "cancelled" || status === "canceled") {
+      setExecutionStatus("cancelled")
+      setExecutionError(snapshot.errorMessage ?? "Run cancelled by operator")
+      toast.error("Workflow cancelled", {
+        description: snapshot.errorMessage ?? `Run ID: ${runId}`,
+      })
+      return
+    }
     const failed =
-      snapshot.status.toLowerCase() === "failed" ||
+      status === "failed" ||
       snapshot.steps.some((step) => step.status.toLowerCase() === "failed")
     if (failed) {
       setExecutionStatus("error")
@@ -3344,6 +3370,36 @@ const handleRun = useCallback(async () => {
   })
   }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router, executionStartTime])
   
+  const handlePauseRun = useCallback(async () => {
+    if (!lastRunId) return
+    setIsInterrupting(true)
+    try {
+      await runsApi.pause(lastRunId)
+      toast.success("Pause requested", { description: "Run will stop before the next step." })
+    } catch (err) {
+      toast.error("Pause failed", {
+        description: err instanceof Error ? err.message : "Could not pause run",
+      })
+    } finally {
+      setIsInterrupting(false)
+    }
+  }, [lastRunId])
+
+  const handleCancelRun = useCallback(async () => {
+    if (!lastRunId) return
+    setIsInterrupting(true)
+    try {
+      await runsApi.cancel(lastRunId)
+      toast.success("Cancel requested", { description: "Run will stop before the next step." })
+    } catch (err) {
+      toast.error("Cancel failed", {
+        description: err instanceof Error ? err.message : "Could not cancel run",
+      })
+    } finally {
+      setIsInterrupting(false)
+    }
+  }, [lastRunId])
+
   // Reset execution state
   const handleResetExecution = useCallback(() => {
     setIsExecuting(false)
@@ -4531,7 +4587,9 @@ const handleRun = useCallback(async () => {
                   "flex items-center gap-4 px-5 py-3 rounded-xl border shadow-lg backdrop-blur-sm",
                   executionStatus === "running" && "bg-blue-500/10 border-blue-500/30",
                   executionStatus === "completed" && "bg-emerald-500/10 border-emerald-500/30",
-                  executionStatus === "error" && "bg-red-500/10 border-red-500/30"
+                  executionStatus === "error" && "bg-red-500/10 border-red-500/30",
+                  executionStatus === "paused" && "bg-amber-500/10 border-amber-500/30",
+                  executionStatus === "cancelled" && "bg-red-500/10 border-red-500/30"
                 )}>
                   {/* Status indicator */}
                   <div className="flex items-center gap-2">
@@ -4553,6 +4611,18 @@ const handleRun = useCallback(async () => {
                         <span className="text-sm font-medium text-red-400">Failed</span>
                       </>
                     )}
+                    {executionStatus === "paused" && (
+                      <>
+                        <Pause className="h-5 w-5 text-amber-400" />
+                        <span className="text-sm font-medium text-amber-400">Paused</span>
+                      </>
+                    )}
+                    {executionStatus === "cancelled" && (
+                      <>
+                        <XCircle className="h-5 w-5 text-red-400" />
+                        <span className="text-sm font-medium text-red-400">Cancelled</span>
+                      </>
+                    )}
                   </div>
                   
                   <div className="w-px h-6 bg-border" />
@@ -4572,7 +4642,9 @@ const handleRun = useCallback(async () => {
                           "h-full rounded-full transition-all duration-300",
                           executionStatus === "running" && "bg-blue-500",
                           executionStatus === "completed" && "bg-emerald-500",
-                          executionStatus === "error" && "bg-red-500"
+                          executionStatus === "error" && "bg-red-500",
+                          executionStatus === "paused" && "bg-amber-500",
+                          executionStatus === "cancelled" && "bg-red-500"
                         )}
                         style={{ width: `${(executionStep / nodes.length) * 100}%` }}
                       />
@@ -4586,6 +4658,36 @@ const handleRun = useCallback(async () => {
                     <Clock className="h-3.5 w-3.5" />
                     <span className="font-mono">{executionElapsed}s</span>
                   </div>
+
+                  {executionStatus === "running" && lastRunId && (
+                    <>
+                      <div className="w-px h-6 bg-border" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs"
+                        disabled={isInterrupting}
+                        onClick={handlePauseRun}
+                      >
+                        {isInterrupting ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Pause className="h-3 w-3" />
+                        )}
+                        Pause
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+                        disabled={isInterrupting}
+                        onClick={handleCancelRun}
+                      >
+                        <XCircle className="h-3 w-3" />
+                        Cancel
+                      </Button>
+                    </>
+                  )}
                   
                   {/* Error message and retry */}
                   {executionError && (

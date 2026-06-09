@@ -38,6 +38,25 @@ class B2BHandoffError(Exception):
             self.code = code
 
 
+def _is_missing_table_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "does not exist" in message or ("relation" in message and "does not exist" in message)
+
+
+def _safe_query(execute_fn: Any) -> list[dict[str, Any]]:
+    try:
+        result = execute_fn()
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
+    if _is_missing_table_error(getattr(result, "error", None)):
+        return []
+    return [dict(row) for row in (result.data or [])]
+
+
 def normalize_org_pair(org_id: str, partner_org_id: str) -> tuple[str, str]:
     if org_id == partner_org_id:
         raise B2BHandoffError("Cannot create a partnership with the same organization", code="VALIDATION_ERROR")
@@ -59,6 +78,7 @@ def _serialize_partnership(row: dict[str, Any], viewer_org_id: str) -> dict[str,
         "id": str(row["id"]),
         "orgAId": str(row["org_a_id"]),
         "orgBId": str(row["org_b_id"]),
+        "currentOrgId": viewer_org_id,
         "partnerOrgId": _partner_org_id(row, viewer_org_id),
         "invitedByOrgId": str(row["invited_by_org_id"]),
         "status": row["status"],
@@ -165,21 +185,21 @@ def invite_partner_org(
 
 
 def list_partnerships(client: Any, org_id: str) -> list[dict[str, Any]]:
-    result_a = (
-        client.table("org_b2b_partnerships")
+    rows_a = _safe_query(
+        lambda: client.table("org_b2b_partnerships")
         .select("*")
         .eq("org_a_id", org_id)
         .order("created_at", desc=True)
         .execute()
     )
-    result_b = (
-        client.table("org_b2b_partnerships")
+    rows_b = _safe_query(
+        lambda: client.table("org_b2b_partnerships")
         .select("*")
         .eq("org_b_id", org_id)
         .order("created_at", desc=True)
         .execute()
     )
-    rows = {str(row["id"]): dict(row) for row in (result_a.data or []) + (result_b.data or [])}
+    rows = {str(row["id"]): row for row in rows_a + rows_b}
     return [_serialize_partnership(row, org_id) for row in rows.values()]
 
 
@@ -374,25 +394,25 @@ def list_cross_org_handoffs(
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if direction in {"all", "outbound"}:
-        query = (
+        outbound_query = (
             client.table("cross_org_handoffs")
             .select("*")
             .eq("sender_org_id", org_id)
             .order("created_at", desc=True)
         )
         if status:
-            query = query.eq("status", status)
-        rows.extend(dict(row) for row in (query.execute().data or []))
+            outbound_query = outbound_query.eq("status", status)
+        rows.extend(_safe_query(lambda: outbound_query.execute()))
     if direction in {"all", "inbound"}:
-        query = (
+        inbound_query = (
             client.table("cross_org_handoffs")
             .select("*")
             .eq("receiver_org_id", org_id)
             .order("created_at", desc=True)
         )
         if status:
-            query = query.eq("status", status)
-        rows.extend(dict(row) for row in (query.execute().data or []))
+            inbound_query = inbound_query.eq("status", status)
+        rows.extend(_safe_query(lambda: inbound_query.execute()))
     deduped = {str(row["id"]): row for row in rows}
     return [_serialize_handoff(row) for row in deduped.values()]
 

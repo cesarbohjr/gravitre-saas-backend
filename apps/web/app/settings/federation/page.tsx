@@ -13,16 +13,21 @@ import {
   Clock,
   Inbox,
   Send,
+  AlertTriangle,
+  RefreshCw,
+  Lock,
 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { federationApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import type {
   FederationPartnership,
   FederationHandoff,
 } from "@/types/api"
-import { PartnerCard } from "@/components/federation/partner-card"
+import { PartnerCard, awaitingOurConsent } from "@/components/federation/partner-card"
 import { HandoffTimeline } from "@/components/federation/handoff-timeline"
 import { InvitePartnerDialog } from "@/components/federation/invite-partner-dialog"
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
@@ -48,16 +53,21 @@ export default function FederationPage() {
 }
 
 function FederationContent() {
+  const { user, loading: authLoading } = useAuth()
+  const isAdmin = user?.role === "admin" || user?.role === "owner"
+  const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
 
   const {
     data: partnershipsData,
+    error: partnershipsError,
     isLoading: loadingPartners,
     mutate: mutatePartners,
   } = useSWR("federation/partnerships", () => federationApi.listPartnerships())
 
   const {
     data: handoffsData,
+    error: handoffsError,
     isLoading: loadingHandoffs,
     mutate: mutateHandoffs,
   } = useSWR("federation/handoffs", () => federationApi.listHandoffs({ direction: "all" }))
@@ -70,12 +80,23 @@ function FederationContent() {
 
   const stats = useMemo(() => {
     const active = partnerships.filter((p) => p.status === "active").length
-    const pending = partnerships.filter((p) => p.status === "pending").length
+    const pending = partnerships.filter((p) => p.status === "pending_partner").length
     const openHandoffs = handoffs.filter(
-      (h) => h.status === "pending" || h.status === "accepted",
+      (h) => h.status === "pending_receiver" || h.status === "accepted",
     ).length
     return { active, pending, openHandoffs, total: partnerships.length }
   }, [partnerships, handoffs])
+
+  const pendingInvites = useMemo(
+    () => partnerships.filter((p) => awaitingOurConsent(p)),
+    [partnerships],
+  )
+
+  const loadError = partnershipsError || handoffsError
+
+  async function refreshAll() {
+    await Promise.all([mutatePartners(), mutateHandoffs()])
+  }
 
   async function handlePartnerAction(
     action: "accept" | "reject" | "revoke",
@@ -92,9 +113,11 @@ function FederationContent() {
             ? "Invitation declined"
             : "Partnership revoked",
       )
-      await mutatePartners()
-    } catch {
-      toast.error("Action failed. Please try again.")
+      await refreshAll()
+    } catch (err) {
+      toast.error("Action failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
     }
   }
 
@@ -104,14 +127,12 @@ function FederationContent() {
       if (action === "reject") await federationApi.rejectHandoff(handoff.id)
       toast.success(action === "accept" ? "Handoff accepted" : "Handoff declined")
       await mutateHandoffs()
-    } catch {
-      toast.error("Action failed. Please try again.")
+    } catch (err) {
+      toast.error("Action failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
     }
   }
-
-  const pendingInvites = partnerships.filter(
-    (p) => p.status === "pending" && p.invitedByOrgId !== p.partnerOrgId,
-  )
 
   const statCards = [
     { label: "Active partners", value: stats.active, icon: Network, accent: "text-chart-1" },
@@ -142,10 +163,17 @@ function FederationContent() {
                 </p>
               </div>
             </div>
-            <Button onClick={() => setInviteOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Invite partner
-            </Button>
+            {isAdmin ? (
+              <Button onClick={() => setInviteOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Invite partner
+              </Button>
+            ) : !authLoading ? (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" />
+                Admin access required to invite partners
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -170,6 +198,24 @@ function FederationContent() {
           </div>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
+              Federation data failed to load
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground text-pretty">
+              {loadError instanceof Error ? loadError.message : "Check backend connectivity and migrations."}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => refreshAll()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
+        </div>
+      ) : null}
 
       {/* Pending invites callout */}
       {pendingInvites.length > 0 && (
@@ -205,10 +251,12 @@ function FederationContent() {
                 title="No partner organizations yet"
                 description="Invite a partner organization to start exchanging agent handoffs, connector grants, and delegated tasks under mutual consent."
                 action={
-                  <Button onClick={() => setInviteOpen(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Invite your first partner
-                  </Button>
+                  isAdmin ? (
+                    <Button onClick={() => setInviteOpen(true)} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Invite your first partner
+                    </Button>
+                  ) : undefined
                 }
               />
             }
@@ -242,7 +290,11 @@ function FederationContent() {
               />
             }
           >
-            <HandoffTimeline handoffs={handoffs} onAction={handleHandoffAction} />
+            <HandoffTimeline
+              handoffs={handoffs}
+              currentOrgId={currentOrgId}
+              onAction={handleHandoffAction}
+            />
           </PageHeaderlessSection>
         </section>
       </div>
@@ -250,7 +302,8 @@ function FederationContent() {
       <InvitePartnerDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        onInvited={() => mutatePartners()}
+        disabled={!isAdmin}
+        onInvited={() => refreshAll()}
       />
     </div>
   )

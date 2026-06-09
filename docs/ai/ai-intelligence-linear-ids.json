@@ -51,8 +51,8 @@
     { "ref": "AI-035", "linear": "STA-169", "title": "End-to-end federation invite + handoff verification", "parent": "STA-158" },
     { "ref": "AI-036", "linear": "STA-170", "title": "Wire run monitor interrupt/rollback buttons", "parent": "STA-158" },
     { "ref": "AI-037", "linear": "STA-171", "title": "Semantic chunking in RAG ingest", "parent": "STA-129" },
-    { "ref": "AI-038", "linear": "STA-172", "title": "AI/ML Operational Gap Report deliverable", "parent": "STA-131" },
-    { "ref": "AI-039", "linear": "STA-173", "title": "smoke:ai-production + E2E curl verification", "parent": "STA-131" },
+    { "ref": "AI-038", "linear": "STA-172", "title": "AI/ML Operational Gap Report deliverable", "parent": "STA-131", "status": "Done" },
+    { "ref": "AI-039", "linear": "STA-173", "title": "smoke:ai-production + E2E curl verification", "parent": "STA-131", "status": "Done" },
     { "ref": "AI-040", "linear": "STA-174", "title": "AGENT_PERSONAS registry + revenue_ops + get_agent_persona()", "parent": "STA-126" }
   ]
 }

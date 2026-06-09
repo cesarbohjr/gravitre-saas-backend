@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -20,17 +21,87 @@ CHUNK_MIN_CHARS = 1024   # ~256 tokens
 CHUNK_MAX_CHARS = 2048   # ~512 tokens
 CHUNK_OVERLAP_CHARS = 200  # ~50 tokens
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def validate_payload_size(text: str) -> None:
-    if len(text.encode("utf-8")) > MAX_TEXT_BYTES:
-        raise ValueError("Text payload exceeds maximum size")
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_PARAGRAPH_SPLIT = re.compile(r"\n\s*\n+")
 
 
-def chunk_text(
+def _split_sentences(text: str) -> list[str]:
+    parts = [part.strip() for part in _SENTENCE_SPLIT.split(text.strip()) if part.strip()]
+    return parts or ([text.strip()] if text.strip() else [])
+
+
+def _split_units(text: str, max_chars: int) -> list[str]:
+    """Split text into paragraph/sentence units no larger than max_chars."""
+    paragraphs = [part.strip() for part in _PARAGRAPH_SPLIT.split(text) if part.strip()]
+    if not paragraphs:
+        paragraphs = [text.strip()] if text.strip() else []
+
+    units: list[str] = []
+    for paragraph in paragraphs:
+        if len(paragraph) <= max_chars:
+            units.append(paragraph)
+            continue
+        for sentence in _split_sentences(paragraph):
+            if len(sentence) <= max_chars:
+                units.append(sentence)
+            else:
+                start = 0
+                while start < len(sentence):
+                    end = min(start + max_chars, len(sentence))
+                    piece = sentence[start:end].strip()
+                    if piece:
+                        units.append(piece)
+                    if end >= len(sentence):
+                        break
+                    start = max(start + 1, end)
+    return units
+
+
+def _merge_units(units: list[str], min_chars: int, max_chars: int) -> list[str]:
+    chunks: list[str] = []
+    current = ""
+    for unit in units:
+        if not current:
+            current = unit
+            continue
+        joined = f"{current}\n\n{unit}"
+        if len(joined) <= max_chars:
+            current = joined
+            continue
+        if len(current) >= min_chars:
+            chunks.append(current)
+            current = unit
+            continue
+        spaced = f"{current} {unit}"
+        if len(spaced) <= max_chars:
+            current = spaced
+        else:
+            chunks.append(current)
+            current = unit
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _apply_overlap(chunks: list[str], overlap_chars: int, max_chars: int) -> list[str]:
+    if overlap_chars <= 0 or len(chunks) < 2:
+        return chunks
+    overlapped = [chunks[0]]
+    for chunk in chunks[1:]:
+        prev = overlapped[-1]
+        tail = prev[-overlap_chars:].lstrip()
+        if not tail:
+            overlapped.append(chunk)
+            continue
+        candidate = f"{tail} {chunk}".strip()
+        if len(candidate) <= max_chars:
+            overlapped.append(candidate)
+        else:
+            overlapped.append(chunk)
+    return overlapped
+
+
+def chunk_text_fixed(
     text: str,
     min_chars: int = CHUNK_MIN_CHARS,
     max_chars: int = CHUNK_MAX_CHARS,
@@ -40,7 +111,7 @@ def chunk_text(
     text = (text or "").strip()
     if not text:
         return []
-    max_chars = max(256, max_chars)
+    max_chars = max(min_chars, min(max_chars, 8192))
     min_chars = max(128, min(min_chars, max_chars))
     overlap = max(0, min(overlap_chars, max_chars - 1))
     chunks: list[str] = []
@@ -56,6 +127,57 @@ def chunk_text(
         if len(chunks) > MAX_CHUNKS:
             raise ValueError("Chunk count exceeds maximum")
     return chunks
+
+
+def chunk_text_semantic(
+    text: str,
+    min_chars: int = CHUNK_MIN_CHARS,
+    max_chars: int = CHUNK_MAX_CHARS,
+    overlap_chars: int = CHUNK_OVERLAP_CHARS,
+) -> list[str]:
+    """Split on paragraph and sentence boundaries before applying size limits (STA-171)."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    max_chars = max(min_chars, min(max_chars, 8192))
+    min_chars = max(128, min(min_chars, max_chars))
+    overlap = max(0, min(overlap_chars, max_chars - 1))
+
+    units = _split_units(text, max_chars)
+    if not units:
+        return []
+    if len(units) == 1 and len(units[0]) <= max_chars:
+        return units
+
+    chunks = _merge_units(units, min_chars, max_chars)
+    chunks = _apply_overlap(chunks, overlap, max_chars)
+    if len(chunks) > MAX_CHUNKS:
+        raise ValueError("Chunk count exceeds maximum")
+    return chunks
+
+
+def chunk_text(
+    text: str,
+    min_chars: int = CHUNK_MIN_CHARS,
+    max_chars: int = CHUNK_MAX_CHARS,
+    overlap_chars: int = CHUNK_OVERLAP_CHARS,
+    *,
+    strategy: str = "semantic",
+) -> list[str]:
+    """Chunk text for RAG ingest. Default strategy respects paragraph/sentence boundaries."""
+    normalized = (strategy or "semantic").strip().lower()
+    if normalized == "fixed":
+        return chunk_text_fixed(text, min_chars, max_chars, overlap_chars)
+    return chunk_text_semantic(text, min_chars, max_chars, overlap_chars)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def validate_payload_size(text: str) -> None:
+    if len(text.encode("utf-8")) > MAX_TEXT_BYTES:
+        raise ValueError("Text payload exceeds maximum size")
 
 
 def validate_chunks(chunks: list[str]) -> None:

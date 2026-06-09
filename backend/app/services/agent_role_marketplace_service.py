@@ -32,6 +32,13 @@ class RoleMarketplaceError(Exception):
             self.code = code
 
 
+def _is_missing_table_error(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "does not exist" in message or ("relation" in message and "does not exist" in message)
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -130,17 +137,41 @@ def _serialize_install(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _get_install_row(client: Any, org_id: str, pack_id: str) -> dict[str, Any] | None:
-    result = (
-        client.table("org_department_pack_installs")
-        .select("*")
-        .eq("org_id", org_id)
-        .eq("pack_id", pack_id)
-        .limit(1)
-        .execute()
-    )
+    try:
+        result = (
+            client.table("org_department_pack_installs")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("pack_id", pack_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return None
+        raise
+    if _is_missing_table_error(getattr(result, "error", None)):
+        return None
     if not result.data:
         return None
     return dict(result.data[0])
+
+
+def _list_install_rows(client: Any, org_id: str) -> dict[str, dict[str, Any]]:
+    try:
+        installs = (
+            client.table("org_department_pack_installs")
+            .select("*")
+            .eq("org_id", org_id)
+            .execute()
+        )
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            return {}
+        raise
+    if _is_missing_table_error(getattr(installs, "error", None)):
+        return {}
+    return {str(row["pack_id"]): dict(row) for row in (installs.data or [])}
 
 
 def _serialize_catalog_entry(
@@ -175,13 +206,7 @@ def list_department_packs(
     *,
     environment_name: str = "production",
 ) -> list[dict[str, Any]]:
-    installs = (
-        client.table("org_department_pack_installs")
-        .select("*")
-        .eq("org_id", org_id)
-        .execute()
-    )
-    by_pack = {str(row["pack_id"]): dict(row) for row in (installs.data or [])}
+    by_pack = _list_install_rows(client, org_id)
     entries: list[dict[str, Any]] = []
     for spec in list_pack_specs():
         installed = by_pack.get(spec.pack_id)
@@ -397,6 +422,13 @@ def install_department_pack(
     spec = get_pack_spec(pack_id)
     if not spec:
         raise RoleMarketplaceError("Department pack not found", code="NOT_FOUND")
+
+    checklist = build_connector_checklist(client, org_id, spec, environment_name=environment_name)
+    if any(item.get("required") and not item.get("connected") for item in checklist):
+        raise RoleMarketplaceError(
+            "Connect required apps before installing this department pack",
+            code="CONNECTORS_NOT_READY",
+        )
 
     connector_ids = {
         req.connector_type: _find_active_connector_id(

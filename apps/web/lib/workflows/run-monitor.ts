@@ -27,6 +27,7 @@ const TERMINAL_RUN_STATUSES = new Set([
   "canceled",
   "rejected",
   "error",
+  "paused",
 ])
 
 export function mapStepStatusToNodeState(status: string): NodeState {

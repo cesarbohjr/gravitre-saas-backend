@@ -173,7 +173,7 @@ async def post_partnership_invite(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
-    return partnership
+    return {"partnership": partnership}
 
 
 @router.post("/partnerships/{partnership_id}/accept")
@@ -185,7 +185,7 @@ async def post_partnership_accept(
     user, org_id = admin
     client = _client(settings)
     try:
-        return accept_partnership(
+        partnership = accept_partnership(
             client,
             org_id=org_id,
             partnership_id=partnership_id,
@@ -193,6 +193,7 @@ async def post_partnership_accept(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"partnership": partnership}
 
 
 @router.post("/partnerships/{partnership_id}/reject")
@@ -204,7 +205,7 @@ async def post_partnership_reject(
     user, org_id = admin
     client = _client(settings)
     try:
-        return reject_partnership(
+        partnership = reject_partnership(
             client,
             org_id=org_id,
             partnership_id=partnership_id,
@@ -212,6 +213,7 @@ async def post_partnership_reject(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"partnership": partnership}
 
 
 @router.post("/partnerships/{partnership_id}/revoke")
@@ -223,7 +225,7 @@ async def post_partnership_revoke(
     user, org_id = admin
     client = _client(settings)
     try:
-        return revoke_partnership(
+        partnership = revoke_partnership(
             client,
             org_id=org_id,
             partnership_id=partnership_id,
@@ -231,6 +233,7 @@ async def post_partnership_revoke(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"partnership": partnership}
 
 
 @router.get("/handoffs")
@@ -279,7 +282,7 @@ async def post_handoff(
     user, org_id = admin
     client = _client(settings)
     try:
-        return create_cross_org_handoff(
+        handoff = create_cross_org_handoff(
             client,
             sender_org_id=org_id,
             receiver_org_id=body.receiver_org_id,
@@ -293,6 +296,7 @@ async def post_handoff(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"handoff": handoff}
 
 
 @router.post("/handoffs/{handoff_id}/accept")
@@ -304,7 +308,7 @@ async def post_handoff_accept(
     user, org_id = admin
     client = _client(settings)
     try:
-        return accept_cross_org_handoff(
+        handoff = accept_cross_org_handoff(
             client,
             org_id=org_id,
             handoff_id=handoff_id,
@@ -312,6 +316,7 @@ async def post_handoff_accept(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"handoff": handoff}
 
 
 @router.post("/handoffs/{handoff_id}/reject")
@@ -324,7 +329,7 @@ async def post_handoff_reject(
     user, org_id = admin
     client = _client(settings)
     try:
-        return reject_cross_org_handoff(
+        handoff = reject_cross_org_handoff(
             client,
             org_id=org_id,
             handoff_id=handoff_id,
@@ -333,6 +338,7 @@ async def post_handoff_reject(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"handoff": handoff}
 
 
 @router.post("/handoffs/{handoff_id}/complete")
@@ -344,7 +350,7 @@ async def post_handoff_complete(
     user, org_id = admin
     client = _client(settings)
     try:
-        return complete_cross_org_handoff(
+        handoff = complete_cross_org_handoff(
             client,
             org_id=org_id,
             handoff_id=handoff_id,
@@ -352,6 +358,7 @@ async def post_handoff_complete(
         )
     except B2BHandoffError as exc:
         _raise_b2b(exc)
+    return {"handoff": handoff}
 
 
 @router.get("/connector-grants")

@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -13,6 +14,7 @@ import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 import {
   ArrowLeft,
+  AlertTriangle,
   CheckCircle2,
   Loader2,
   Package,
@@ -30,7 +32,7 @@ import {
   PartyPopper,
 } from "lucide-react"
 import { toast } from "sonner"
-import type { DepartmentRolePack } from "@/types/api"
+import type { DepartmentRolePack, DepartmentRolePackInstallResult } from "@/types/api"
 
 // Department visual theming — accent color + icon per known department.
 const DEPARTMENT_THEME: Record<
@@ -199,15 +201,19 @@ function PackCard({
   isAdmin,
   installing,
   justInstalled,
+  installResult,
   onInstall,
   index,
+  highlighted,
 }: {
   pack: DepartmentRolePack
   isAdmin: boolean
   installing: string | null
   justInstalled: string | null
+  installResult: DepartmentRolePackInstallResult | null
   onInstall: (packId: string) => void
   index: number
+  highlighted?: boolean
 }) {
   const theme = themeFor(pack.department)
   const DeptIcon = theme.icon
@@ -218,12 +224,14 @@ function PackCard({
 
   return (
     <motion.div
+      id={`role-pack-${pack.packId}`}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.06, ease: "easeOut" }}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-lg",
         pack.installed ? "border-success/30" : "border-border",
+        highlighted && "ring-2 ring-primary/50 ring-offset-2 ring-offset-background",
       )}
     >
       {/* Celebration overlay on successful install */}
@@ -239,10 +247,29 @@ function PackCard({
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 16 }}
-              className="flex flex-col items-center gap-2 text-success"
+              className="flex flex-col items-center gap-3 px-4 text-success"
             >
               <PartyPopper className="h-10 w-10" aria-hidden />
               <span className="text-sm font-semibold">Pack installed</span>
+              {installResult && justInstalled === pack.packId ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {installResult.agentIds?.[0] ? (
+                    <Button size="sm" variant="secondary" asChild>
+                      <Link href={`/agents/${installResult.agentIds[0]}`}>Open agent</Link>
+                    </Button>
+                  ) : null}
+                  {installResult.workflowIds?.[0] ? (
+                    <Button size="sm" variant="secondary" asChild>
+                      <Link href={`/workflows/${installResult.workflowIds[0]}/builder`}>
+                        Open workflow
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href="/agents">All agents</Link>
+                  </Button>
+                </div>
+              ) : null}
             </motion.div>
           </motion.div>
         ) : null}
@@ -350,27 +377,42 @@ function PackCard({
 
 export default function RolePacksPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const focusPackId = searchParams.get("pack")
   const [installing, setInstalling] = useState<string | null>(null)
   const [justInstalled, setJustInstalled] = useState<string | null>(null)
+  const [lastInstallResult, setLastInstallResult] = useState<DepartmentRolePackInstallResult | null>(null)
   const [filter, setFilter] = useState<string>("all")
+  const scrolledToPack = useRef<string | null>(null)
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
 
-  const { data, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     user ? "marketplace-role-packs" : null,
     () => marketplaceApi.listRolePacks(),
   )
 
   const handleInstall = async (packId: string) => {
+    const packName = (data?.packs ?? []).find((pack) => pack.packId === packId)?.name ?? packId
     setInstalling(packId)
     try {
       const result = await marketplaceApi.installRolePack(packId)
-      toast.success(`${result.packId} installed`, {
+      setLastInstallResult(result)
+      toast.success(`${packName} installed`, {
         description: `${result.workflowIds?.length ?? 0} workflow(s), ${result.agentIds?.length ?? 0} agent(s) added`,
+        action:
+          result.workflowIds?.[0] ? (
+            {
+              label: "Open workflow",
+              onClick: () => {
+                window.location.href = `/workflows/${result.workflowIds[0]}/builder`
+              },
+            }
+          ) : undefined,
       })
       setJustInstalled(packId)
       await mutate()
-      setTimeout(() => setJustInstalled(null), 1800)
+      setTimeout(() => setJustInstalled(null), 4000)
     } catch (err) {
       toast.error("Install failed", {
         description: err instanceof Error ? err.message : "Try again",
@@ -390,6 +432,18 @@ export default function RolePacksPage() {
     [packs, filter],
   )
   const installedCount = packs.filter((p) => p.installed).length
+
+  useEffect(() => {
+    if (!focusPackId || isLoading || packs.length === 0) return
+    if (scrolledToPack.current === focusPackId) return
+    scrolledToPack.current = focusPackId
+    window.setTimeout(() => {
+      document.getElementById(`role-pack-${focusPackId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
+    }, 150)
+  }, [focusPackId, isLoading, packs.length])
 
   return (
     <AppShell>
@@ -430,6 +484,26 @@ export default function RolePacksPage() {
           </div>
         </div>
 
+        {error ? (
+          <div
+            className="mb-6 flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            role="alert"
+          >
+            <div className="space-y-1">
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
+                Could not load role packs
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {error instanceof Error ? error.message : "Check backend connectivity and try again."}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void mutate()}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
+
         {/* Department filter */}
         {departments.length > 1 ? (
           <div className="mb-6 flex flex-wrap gap-2">
@@ -463,7 +537,7 @@ export default function RolePacksPage() {
           </div>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && !data ? (
           <div className="grid gap-4 md:grid-cols-2">
             {[0, 1, 2, 3].map((i) => (
               <div
@@ -490,6 +564,8 @@ export default function RolePacksPage() {
                 isAdmin={isAdmin}
                 installing={installing}
                 justInstalled={justInstalled}
+                installResult={lastInstallResult}
+                highlighted={focusPackId === pack.packId}
                 onInstall={(id) => void handleInstall(id)}
               />
             ))}

@@ -41,7 +41,7 @@ interface Run {
   id: string
   workflowName: string
   workflowId: string
-  status: "running" | "completed" | "failed" | "pending" | "cancelled"
+  status: "running" | "completed" | "failed" | "pending" | "cancelled" | "paused"
   approvalStatus: "approved" | "pending" | "rejected" | "not_required"
   environment: "production" | "staging"
   startedAt: string
@@ -56,7 +56,10 @@ function normalizeRun(input: Record<string, unknown> | ApiRun): Run {
   const environment = String(model.environment ?? "staging")
 
   const normalizedStatus: Run["status"] =
-    status === "running" || status === "completed" || status === "failed"
+    status === "running" ||
+    status === "completed" ||
+    status === "failed" ||
+    status === "paused"
       ? status
       : status === "cancelled" || status === "rejected"
         ? "cancelled"
