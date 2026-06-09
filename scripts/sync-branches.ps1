@@ -12,13 +12,13 @@ $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
 function Invoke-Git {
-    param([string[]] $Args)
+    param([string[]] $GitArgs)
     if ($DryRun) {
-        Write-Host "[dry-run] git $($Args -join ' ')"
+        Write-Host "[dry-run] git $($GitArgs -join ' ')"
         return
     }
-    & git @Args
-    if ($LASTEXITCODE -ne 0) { throw "git failed: $($Args -join ' ')" }
+    & git @GitArgs
+    if ($LASTEXITCODE -ne 0) { throw "git failed: $($GitArgs -join ' ')" }
 }
 
 Invoke-Git @("fetch", "origin")
