@@ -4,19 +4,34 @@ import { apiFetch } from "@/lib/fetcher"
 export type JobStatus = "queued" | "running" | "paused" | "completed" | "failed" | "cancelled"
 
 export interface AgentJobResult {
-  task: {
-    description: string
-    status: string
+  task?: {
+    description?: string
+    status?: string
   }
-  aiStatus: string
-  analysis_summary: string
-  finding_description: string
-  action_title: string
-  action_description: string
-  confidence: number
-  requires_approval: boolean
-  provider: string
-  model: string
+  aiStatus?: string
+  analysis_summary?: string
+  finding_description?: string
+  action_title?: string
+  action_description?: string
+  confidence?: number
+  requires_approval?: boolean
+  provider?: string
+  model?: string
+  // AgentIntelligence handoff fields (agent_task jobs)
+  summary?: string
+  answer?: string
+  status?: string
+  react_status?: string
+  recommended_actions?: string[]
+  agent_id?: string
+  agent_name?: string
+  tool_calls?: unknown[]
+  react_trace?: unknown[]
+  rag_sources?: unknown[]
+  needs_human_input?: boolean
+  human_input_prompt?: string
+  error?: string
+  persona?: string
 }
 
 export interface AgentJob {
@@ -36,6 +51,12 @@ interface UseAsyncJobOptions {
   onFailed?: (job: AgentJob) => void
   onCancelled?: (job: AgentJob) => void
   onPaused?: (job: AgentJob) => void
+}
+
+export interface SubmitAgentJobOptions {
+  sessionId?: string
+  agentId?: string
+  context?: Record<string, unknown>
 }
 
 const POLL_INTERVAL_BASE = 1500 // 1.5 seconds
@@ -148,10 +169,26 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
     pollJob(jobId)
   }, [stopPolling, pollJob])
 
-  const submitJob = useCallback(async (task: string, sessionId?: string, context?: object) => {
+  const submitJob = useCallback(async (
+    task: string,
+    options?: SubmitAgentJobOptions | string,
+    legacyContext?: object,
+  ) => {
     setIsSubmitting(true)
     setError(null)
     setJob(null)
+
+    let sessionId: string | undefined
+    let agentId: string | undefined
+    let context: Record<string, unknown> | undefined
+    if (typeof options === "string") {
+      sessionId = options
+      context = legacyContext as Record<string, unknown> | undefined
+    } else if (options) {
+      sessionId = options.sessionId
+      agentId = options.agentId
+      context = options.context
+    }
 
     try {
       const response = await apiFetch("/api/agent-jobs", {
@@ -160,6 +197,7 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
         body: JSON.stringify({
           task,
           session_id: sessionId,
+          agent_id: agentId,
           context,
         }),
       })

@@ -862,8 +862,10 @@ export default function AgentsPage() {
         open={mesonWizardOpen} 
         onClose={() => setMesonWizardOpen(false)}
         onComplete={(result) => {
-          console.log("Meson result:", result)
-          // Navigate to the new agent or show success
+          if (result.agentId) {
+            router.push(`/agents/${result.agentId}`)
+            return
+          }
           router.push("/agents")
         }}
       />

@@ -688,7 +688,14 @@ export default function WorkflowsPage() {
           open={mesonWizardOpen} 
           onClose={() => setMesonWizardOpen(false)}
           onComplete={(result) => {
-            console.log("Meson result:", result)
+            if (result.workflowId) {
+              router.push(`/workflows/${result.workflowId}/builder`)
+              return
+            }
+            if (result.agentId) {
+              router.push(`/agents/${result.agentId}`)
+              return
+            }
             router.push("/workflows")
           }}
         />

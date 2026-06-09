@@ -310,6 +310,52 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
     return result
 
 
+async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[str, Any]:
+    """Execute an agent-scoped task via AgentIntelligence + ReAct (STA-165)."""
+    from app.operators.agent_intelligence import get_agent_intelligence, resolve_agent_record
+
+    payload = job.get("payload") or {}
+    org_id = str(job["org_id"])
+    environment = job.get("environment") or "default"
+    task = str(payload.get("task") or "").strip()
+    if not task:
+        raise ValueError("agent_task requires payload.task")
+
+    agent_id = str(payload.get("agent_id") or payload.get("agentId") or "")
+    if not agent_id:
+        raise ValueError("agent_task requires payload.agent_id")
+
+    client = get_supabase_client(settings)
+    await asyncio.to_thread(_assert_job_runnable, client, org_id, str(job["id"]))
+
+    agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment)
+    if not agent:
+        raise ValueError(f"Agent not found: {agent_id}")
+    if (agent.get("status") or "active") != "active":
+        raise ValueError(f"Agent is not active: {agent_id}")
+
+    context = payload.get("context") or {}
+    parameters = dict(context) if isinstance(context, dict) else {}
+    if parameters.get("include_agent_memory") is None and parameters.get("useTrainingKnowledge") is not None:
+        parameters["include_agent_memory"] = bool(parameters.get("useTrainingKnowledge"))
+
+    result = await get_agent_intelligence().execute_task(
+        settings=settings,
+        org_id=org_id,
+        agent=agent,
+        task=task,
+        parameters=parameters,
+        actor_id=str(job.get("created_by") or agent_id),
+        task_id=str(job["id"]),
+        environment_name=environment,
+        client=client,
+    )
+    output = result.to_handoff_dict()
+    output["aiStatus"] = "ok" if not result.error else "error"
+    output["task"] = {"description": task, "status": result.status}
+    return output
+
+
 async def _notify_swarm_job_finished(settings: Settings, client: Any, job: dict[str, Any]) -> None:
     try:
         from app.services.swarm_coordinator_service import handle_swarm_subtask_job_completed
@@ -324,6 +370,7 @@ from app.services.swarm_coordinator_service import run_swarm_subtask_job
 
 _HANDLERS = {
     "operator_task": run_operator_job,
+    "agent_task": run_agent_task_job,
     "swarm_subtask": run_swarm_subtask_job,
 }
 

@@ -1,29 +1,24 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { agentsApi } from "@/lib/api"
+import { useAsyncJob } from "@/hooks/use-async-job"
+import { toast } from "sonner"
 
-// Types
-interface Agent {
+interface AssignableAgent {
   id: string
   name: string
   role: string
   gradient: string
   trainingProgress: number
 }
-
-// Mock Data
-const agents: Agent[] = [
-  { id: "agent-001", name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", trainingProgress: 87 },
-  { id: "agent-002", name: "Nexus", role: "Sales Assistant", gradient: "from-blue-500 to-indigo-500", trainingProgress: 92 },
-  { id: "agent-003", name: "Sentinel", role: "Data Quality Agent", gradient: "from-amber-500 to-orange-500", trainingProgress: 78 },
-  { id: "agent-004", name: "Oracle", role: "Finance Reporter", gradient: "from-violet-500 to-purple-500", trainingProgress: 65 },
-]
 
 const dataSources = [
   { id: "ds-1", name: "HubSpot CRM", icon: "database", connected: true },
@@ -57,10 +52,50 @@ const steps = [
   { id: 6, title: "Review", description: "Confirm and run" },
 ]
 
+function avatarGradient(color?: string): string {
+  const value = color || ""
+  if (value.includes("blue")) return "from-blue-500 to-indigo-500"
+  if (value.includes("amber")) return "from-amber-500 to-orange-500"
+  if (value.includes("purple") || value.includes("violet")) return "from-violet-500 to-purple-500"
+  if (value.includes("rose")) return "from-rose-500 to-pink-500"
+  if (value.includes("cyan")) return "from-cyan-500 to-blue-500"
+  return "from-emerald-500 to-teal-500"
+}
+
 function NewAssignmentPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedAgent = searchParams.get("agent")
+
+  const { data: agentsResponse, isLoading: agentsLoading } = useSWR(
+    "assignment-agents",
+    () => agentsApi.list(),
+    { revalidateOnFocus: false },
+  )
+
+  const agents: AssignableAgent[] = useMemo(() => {
+    return (agentsResponse?.agents ?? []).map((item) => {
+      const raw = item as Record<string, unknown>
+      const successRate = Number(raw.successRate ?? raw.stats?.successRate ?? 0)
+      return {
+        id: String(raw.id ?? ""),
+        name: String(raw.name ?? "Agent"),
+        role: String(raw.role ?? raw.description ?? "Agent"),
+        gradient: avatarGradient(String(raw.avatarColor ?? "")),
+        trainingProgress: Number.isFinite(successRate) ? Math.round(successRate) : 0,
+      }
+    })
+  }, [agentsResponse?.agents])
+
+  const { submitJob, isWorking } = useAsyncJob({
+    onCompleted: (job) => {
+      toast.success("Task assigned — agent is working")
+      router.push(`/assignments/${job.jobId}`)
+    },
+    onFailed: (job) => {
+      toast.error(job.error || "Agent task failed")
+    },
+  })
   
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(preselectedAgent)
@@ -70,7 +105,6 @@ function NewAssignmentPageContent() {
   const [selectedOutputs, setSelectedOutputs] = useState<string[]>([])
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([])
   const [requireApproval, setRequireApproval] = useState(true)
-  const [isRunning, setIsRunning] = useState(false)
 
   const agent = agents.find(a => a.id === selectedAgent)
 
@@ -99,9 +133,24 @@ function NewAssignmentPageContent() {
   }
 
   const handleRun = async () => {
-    setIsRunning(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    router.push("/assignments/assign-001")
+    if (!selectedAgent || !taskBrief.trim()) {
+      toast.error("Select an agent and enter a task brief")
+      return
+    }
+    try {
+      await submitJob(taskBrief.trim(), {
+        agentId: selectedAgent,
+        context: {
+          useTrainingKnowledge,
+          requireApproval,
+          dataSources: selectedSources.map((id) => dataSources.find((s) => s.id === id)?.name).filter(Boolean),
+          outputs: selectedOutputs.map((id) => outputTypes.find((o) => o.id === id)?.name).filter(Boolean),
+          destinations: selectedDestinations.map((id) => destinations.find((d) => d.id === id)?.name).filter(Boolean),
+        },
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to assign task")
+    }
   }
 
   const toggleSource = (id: string) => {
@@ -225,10 +274,10 @@ function NewAssignmentPageContent() {
                 ) : (
                   <Button 
                     onClick={handleRun}
-                    disabled={isRunning}
+                    disabled={isWorking || agentsLoading}
                     className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
                   >
-                    {isRunning ? (
+                    {isWorking ? (
                       <>
                         <Icon name="running" size="sm" className="animate-spin" />
                         Starting...
@@ -257,6 +306,11 @@ function NewAssignmentPageContent() {
                   exit={{ opacity: 0, x: -20 }}
                   className="grid grid-cols-2 gap-4"
                 >
+                  {agentsLoading ? (
+                    <p className="text-sm text-muted-foreground col-span-2">Loading agents...</p>
+                  ) : agents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground col-span-2">No active agents available.</p>
+                  ) : null}
                   {agents.map((a) => (
                     <button
                       key={a.id}

@@ -283,6 +283,47 @@ export const agentsApi = {
     postJson<AgentMemory[]>(apiUrl(`/api/agents/${agentId}/memories/search`), data),
 }
 
+// ============ Meson ============
+export interface MesonInterpretResponse {
+  intent: string
+  department: string
+  systems: string[]
+  outputTypes: string[]
+  generatedConfig: {
+    agent: string
+    agent_role?: string
+    agent_description?: string
+    training: string[]
+    workflows: string[]
+    sample_outputs: string[]
+  }
+  confidence?: number
+  explanation?: string
+}
+
+export interface MesonDeployResponse {
+  agentId: string
+  workflowId?: string | null
+  result: MesonInterpretResponse
+}
+
+export const mesonApi = {
+  interpret: (data: {
+    intent: string
+    department: string
+    systems: string[]
+    outputTypes: string[]
+  }) => postJson<MesonInterpretResponse>(apiUrl("/api/meson/interpret"), data),
+  deploy: (data: {
+    intent: string
+    department: string
+    systems: string[]
+    outputTypes: string[]
+    generatedConfig?: MesonInterpretResponse["generatedConfig"]
+    createWorkflow?: boolean
+  }) => postJson<MesonDeployResponse>(apiUrl("/api/meson/deploy"), data),
+}
+
 // ============ Workflows ============
 export const workflowsApi = {
   list: () => fetcher<WorkflowListResponse>(apiUrl("/api/workflows")),

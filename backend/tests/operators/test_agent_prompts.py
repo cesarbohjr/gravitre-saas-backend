@@ -35,3 +35,26 @@ def test_get_agent_persona_seed_type_mapping():
 
 def test_normalize_sales_operations_alias():
     assert normalize_agent_role("Sales Operations") == "SALES"
+
+
+def test_expanded_persona_copy_has_depth():
+    for key in ("DEFAULT", "SALES", "MARKETING", "FINANCE", "HR", "CS", "DEVOPS", "REVENUE_OPS"):
+        persona = AGENT_PERSONAS[key]
+        assert len(persona.expertise) >= 4, key
+        assert len(persona.heuristics) >= 4, key
+        assert len(persona.constraints) >= 2, key
+        assert len(persona.system_prompt) >= 80, key
+
+
+def test_build_agent_system_prompt_includes_persona_sections():
+    from app.operators.agent_prompts import build_agent_system_prompt
+
+    prompt = build_agent_system_prompt(
+        {"name": "Atlas", "role": "Marketing", "description": "Campaign ops"},
+        org_context={"orgName": "Acme"},
+        connected_integrations=["hubspot"],
+    )
+    assert "Marketing Agent" in prompt
+    assert "Judgment heuristics:" in prompt
+    assert "Constraints:" in prompt
+    assert "hubspot" in prompt.lower()

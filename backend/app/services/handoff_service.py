@@ -9,9 +9,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
-from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
-from app.services.agent_finetune_service import complete_for_agent
-from app.services.model_router import TaskType, get_model_router
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
 from app.workflows.constants import RESOURCE_TYPE_WORKFLOW_RUN
@@ -186,69 +183,23 @@ async def run_agent_task(
     actor_id: str | None = None,
     run_id: str | None = None,
 ) -> dict[str, Any]:
-    """Execute an agent task with optional handoff briefing in the prompt."""
-    agent_name = str(agent.get("name") or "Agent")
-    systems = agent.get("systems") or []
-    prompt = (
-        f"Agent: {agent_name}\n"
-        f"Role: {agent.get('role') or ''}\n"
-        f"Purpose: {agent.get('purpose') or ''}\n"
-        f"Connected systems: {', '.join(systems) if isinstance(systems, list) else ''}\n"
-        f"Task: {task.strip()}\n"
-    )
-    if briefing:
-        prompt += f"<handoff_briefing>{json.dumps(briefing, default=str)}</handoff_briefing>\n"
-    if parameters:
-        prompt += f"<workflow_context>{json.dumps(parameters, default=str)[:8000]}</workflow_context>\n"
-
-    try:
-        client = get_supabase_client(settings)
-        retrieval = build_task_retrieval_context(
-            settings,
-            client,
-            org_id=org_id,
-            agent=agent,
-            task=task,
-            parameters=parameters,
-        )
-        prompt += format_retrieval_prompt_section(retrieval)
-    except Exception:  # noqa: BLE001
-        logger.debug("agent memory retrieval skipped", exc_info=True)
+    """Execute an agent task through the universal AgentIntelligence layer (STA-137)."""
+    from app.operators.agent_intelligence import get_agent_intelligence
 
     client = get_supabase_client(settings)
-    router = get_model_router()
-    ai_result = await complete_for_agent(
-        router,
-        task_type=TaskType.WORKFLOW_PLANNING,
-        prompt=prompt,
-        system_prompt=(
-            "You are an enterprise revenue operations agent. Complete the assigned task using "
-            "only the handoff briefing and workflow context. Return a concise summary, optional "
-            "structured decision, recommended_actions, and confidence 0-100."
-        ),
-        response_format=AgentTaskResult,
+    result = await get_agent_intelligence().execute_task(
+        settings=settings,
         org_id=org_id,
         agent=agent,
-        client=client,
+        task=task,
+        briefing=briefing,
+        parameters=parameters,
         actor_id=actor_id,
         run_id=run_id,
+        task_id=run_id,
+        client=client,
     )
-    parsed = ai_result.parsed or {}
-    result = AgentTaskResult.model_validate(parsed if isinstance(parsed, dict) else {})
-    output: dict[str, Any] = {
-        "agent_id": str(agent["id"]),
-        "agent_name": agent_name,
-        "task": task.strip(),
-        "summary": result.summary,
-        "recommended_actions": result.recommended_actions,
-        "confidence": result.confidence,
-        "briefing_received": bool(briefing),
-        "model": ai_result.model,
-        "provider": ai_result.provider,
-    }
-    if result.decision:
-        output["decision"] = result.decision
-    return output
+    return result.to_handoff_dict()
 
 
 async def execute_agent_step_with_handoff(

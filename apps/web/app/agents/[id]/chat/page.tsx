@@ -34,7 +34,56 @@ import { agentsApi } from "@/lib/api"
 // localStorage key for agent chat persistence
 const getStorageKey = (agentId: string) => `gravitre_agent_chat_${agentId}`
 
-// Agent personality colors — keyed by status/role fallback when no custom gradient
+// Role-aware starter prompts for agent chat (STA-163)
+function getAgentSuggestions(agent: Agent): string[] {
+  const role = `${agent.role || ""} ${agent.department || ""}`.toLowerCase()
+  if (role.includes("market")) {
+    return [
+      "What campaigns should we prioritize this quarter?",
+      "Draft a segment summary for our ICP.",
+      "Which channels drove the most pipeline last month?",
+      "What content gaps should we fill next?",
+    ]
+  }
+  if (role.includes("sales") || role.includes("revenue") || role.includes("revops")) {
+    return [
+      "Which deals are at risk this week?",
+      "Summarize pipeline hygiene issues.",
+      "What are the top next-best actions for open opportunities?",
+      "Flag stale opportunities needing follow-up.",
+    ]
+  }
+  if (role.includes("success") || role.includes("support") || role.includes("cs")) {
+    return [
+      "Which accounts show churn risk signals?",
+      "Summarize open tickets blocking adoption.",
+      "Draft a proactive check-in for at-risk accounts.",
+      "What SLA risks should we address today?",
+    ]
+  }
+  if (role.includes("finance") || role.includes("billing")) {
+    return [
+      "Are there invoice or collections anomalies?",
+      "Summarize billing vs CRM discrepancies.",
+      "Which accounts have overdue balances?",
+      "What revenue recognition flags need review?",
+    ]
+  }
+  if (role.includes("devops") || role.includes("sre") || role.includes("engineer")) {
+    return [
+      "Summarize active incidents and severity.",
+      "What changed in the last 24 hours that could affect reliability?",
+      "Recommend mitigations for the top alert.",
+      "Draft a customer status update for ongoing incident.",
+    ]
+  }
+  return [
+    "What can you help me with?",
+    "What are you currently working on?",
+    "Summarize recent results for this org.",
+    "What tools and integrations do you have access to?",
+  ]
+}
 const agentColors: Record<string, { gradient: string; accent: string; glow: string }> = {
   "agent-001": { gradient: "from-emerald-500 to-teal-500", accent: "emerald", glow: "emerald-500/20" },
   "agent-002": { gradient: "from-blue-500 to-cyan-500", accent: "blue", glow: "blue-500/20" },
@@ -504,12 +553,7 @@ export default function AgentChatPage({
                   {agent.description || `Ask ${agent.name} anything about their capabilities and expertise.`}
                 </p>
                 <div className="grid grid-cols-2 gap-3 max-w-lg">
-                  {[
-                    `What can you help me with?`,
-                    `What are you currently working on?`,
-                    `Show me recent results`,
-                    `What's your success rate?`,
-                  ].map((suggestion) => (
+                  {getAgentSuggestions(agent).map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => submitText(suggestion)}

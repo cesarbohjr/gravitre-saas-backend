@@ -24,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { mesonApi } from "@/lib/api"
+import { toast } from "sonner"
 
 interface MesonWizardProps {
   open: boolean
@@ -43,6 +45,8 @@ interface MesonResult {
     workflows: string[]
     sampleOutputs: string[]
   }
+  agentId?: string
+  workflowId?: string | null
 }
 
 const departments = [
@@ -94,6 +98,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [selectedOutputs, setSelectedOutputs] = useState<string[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isDeploying, setIsDeploying] = useState(false)
   const [generationStep, setGenerationStep] = useState(0)
   const [generatedResult, setGeneratedResult] = useState<MesonResult | null>(null)
 
@@ -122,53 +127,90 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
   }
 
   const runMeson = async () => {
+    if (!intent.trim() || !selectedDepartment) {
+      toast.error("Add an intent and department before running Meson")
+      return
+    }
+
     setIsGenerating(true)
-    
-    // Simulate generation steps
-    for (let i = 0; i < generationStates.length; i++) {
-      setGenerationStep(i)
-      await new Promise(resolve => setTimeout(resolve, 1200))
-    }
-    
-    // Generate mock result
-    const result: MesonResult = {
-      intent,
-      department: selectedDepartment || "custom",
-      systems: selectedSystems,
-      outputTypes: selectedOutputs,
-      generatedConfig: {
-        agent: `${selectedDepartment?.charAt(0).toUpperCase()}${selectedDepartment?.slice(1)} Agent`,
-        training: [
-          "Brand voice guidelines",
-          "ICP documentation",
-          "Historical campaign data",
-          "Performance benchmarks"
-        ],
-        workflows: [
-          "Lead qualification workflow",
-          "Content generation pipeline",
-          "Approval routing system",
-          "Delivery automation"
-        ],
-        sampleOutputs: [
-          "Welcome email sequence (5 emails)",
-          "Lead scoring report",
-          "Campaign performance summary",
-          "Follow-up reminder workflow"
-        ]
+    setGenerationStep(0)
+
+    const progressTimer = window.setInterval(() => {
+      setGenerationStep((prev) => Math.min(prev + 1, generationStates.length - 1))
+    }, 900)
+
+    try {
+      const response = await mesonApi.interpret({
+        intent: intent.trim(),
+        department: selectedDepartment,
+        systems: selectedSystems,
+        outputTypes: selectedOutputs,
+      })
+
+      const result: MesonResult = {
+        intent: response.intent,
+        department: response.department,
+        systems: response.systems,
+        outputTypes: response.outputTypes,
+        generatedConfig: {
+          agent: response.generatedConfig.agent,
+          training: response.generatedConfig.training ?? [],
+          workflows: response.generatedConfig.workflows ?? [],
+          sampleOutputs: response.generatedConfig.sample_outputs ?? [],
+        },
       }
+
+      setGeneratedResult(result)
+      setGenerationStep(generationStates.length - 1)
+      setCurrentStep(5)
+    } catch (err) {
+      console.error("[MesonWizard] interpret failed:", err)
+      toast.error(err instanceof Error ? err.message : "Meson could not generate a plan")
+      setCurrentStep(3)
+    } finally {
+      window.clearInterval(progressTimer)
+      setIsGenerating(false)
     }
-    
-    setGeneratedResult(result)
-    setIsGenerating(false)
-    setCurrentStep(5)
   }
 
-  const handleDeploy = () => {
-    if (generatedResult && onComplete) {
-      onComplete(generatedResult)
+  const handleDeploy = async () => {
+    if (!generatedResult) return
+
+    setIsDeploying(true)
+    try {
+      const deployed = await mesonApi.deploy({
+        intent: generatedResult.intent,
+        department: generatedResult.department,
+        systems: generatedResult.systems,
+        outputTypes: generatedResult.outputTypes,
+        generatedConfig: {
+          agent: generatedResult.generatedConfig.agent,
+          training: generatedResult.generatedConfig.training,
+          workflows: generatedResult.generatedConfig.workflows,
+          sample_outputs: generatedResult.generatedConfig.sampleOutputs,
+        },
+        createWorkflow: generatedResult.outputTypes.includes("workflows"),
+      })
+
+      const completed: MesonResult = {
+        ...generatedResult,
+        agentId: deployed.agentId,
+        workflowId: deployed.workflowId,
+      }
+
+      onComplete?.(completed)
+      toast.success("Meson deployment complete", {
+        description: deployed.workflowId
+          ? "Agent and workflow draft created"
+          : "Agent created successfully",
+      })
+      handleClose()
+    } catch (err) {
+      console.error("[MesonWizard] deploy failed:", err)
+      toast.error(err instanceof Error ? err.message : "Deploy failed")
+    } finally {
+      setIsDeploying(false)
     }
-    handleClose()
   }
 
   const handleClose = () => {
@@ -179,6 +221,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
     setSelectedSystems([])
     setSelectedOutputs([])
     setIsGenerating(false)
+    setIsDeploying(false)
     setGenerationStep(0)
     setGeneratedResult(null)
     onClose()
@@ -759,10 +802,15 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 <Button 
                   size="sm" 
                   onClick={handleDeploy}
+                  disabled={isDeploying}
                   className="bg-emerald-600 hover:bg-emerald-500"
                 >
-                  <Check className="h-4 w-4 mr-2" />
-                  Deploy
+                  {isDeploying ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4 mr-2" />
+                  )}
+                  {isDeploying ? "Deploying..." : "Deploy"}
                 </Button>
               </div>
             )}

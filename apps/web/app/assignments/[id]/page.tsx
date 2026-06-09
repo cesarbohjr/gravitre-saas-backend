@@ -1,12 +1,22 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, use, useMemo } from "react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/fetcher"
+import type { AgentJob } from "@/hooks/use-async-job"
+import {
+  parseHandoffResult,
+  buildExecutionSteps,
+  buildDeliverables,
+  jobProgress,
+  relativeTime,
+} from "@/lib/agent-job-result"
 
 // Types
 interface ExecutionStep {
@@ -27,67 +37,14 @@ interface Deliverable {
   sourceRefs: string[]
 }
 
-// Mock Data
-const assignment = {
-  id: "assign-001",
-  title: "Q3 Healthcare Campaign",
-  description: "Create a comprehensive Q3 campaign targeting mid-market healthcare prospects with email sequences, social posts, and audience segments.",
-  agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", initials: "AT" },
-  status: "running" as const,
-  progress: 78,
-  createdAt: "2 hours ago",
-  estimatedCompletion: "5 minutes",
-  destination: "HubSpot + Outlook",
-  requiresApproval: true,
+async function fetchAgentJob(id: string): Promise<AgentJob> {
+  const response = await apiFetch(`/api/agent-jobs/${id}`)
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}))
+    throw new Error(payload.detail || payload.error || "Assignment not found")
+  }
+  return response.json() as Promise<AgentJob>
 }
-
-const executionSteps: ExecutionStep[] = [
-  { id: "step-1", name: "Planning", status: "completed", duration: "8s", details: "Analyzed task requirements" },
-  { id: "step-2", name: "Connecting Systems", status: "completed", duration: "3s", details: "Connected to HubSpot, Salesforce" },
-  { id: "step-3", name: "Gathering Context", status: "completed", duration: "12s", details: "Retrieved audience data and historical campaigns" },
-  { id: "step-4", name: "Generating Outputs", status: "running", details: "Creating emails and social content..." },
-  { id: "step-5", name: "Quality Check", status: "pending" },
-  { id: "step-6", name: "Finalizing", status: "pending" },
-]
-
-const deliverables: Deliverable[] = [
-  {
-    id: "del-1",
-    title: "Welcome Email Sequence",
-    type: "email",
-    status: "ready",
-    confidence: 94,
-    preview: "Subject: [First Name], Transform Your Healthcare Marketing in Q3\n\nHi [First Name],\n\nI noticed that [Company Name] has been focused on expanding your healthcare practice. Our platform has helped similar organizations reduce manual marketing tasks by 60% while increasing engagement rates.\n\nWould you be open to a quick conversation about how we might help?",
-    sourceRefs: ["Brand Voice Guidelines", "Q2 Campaign Performance", "ICP Data"],
-  },
-  {
-    id: "del-2",
-    title: "LinkedIn Post Series",
-    type: "social",
-    status: "ready",
-    confidence: 89,
-    preview: "Struggling to scale personalized outreach in healthcare?\n\nOur latest research shows that mid-market healthcare companies waste 20+ hours per week on manual marketing tasks.\n\nHere&apos;s what the top performers do differently:\n\n1. Automate without losing the human touch\n2. Use data to predict engagement\n3. Personalize at scale",
-    sourceRefs: ["Brand Voice Guidelines", "Social Patterns"],
-  },
-  {
-    id: "del-3",
-    title: "Campaign Performance Report",
-    type: "report",
-    status: "pending",
-    confidence: 0,
-    preview: "Generating comprehensive analysis...",
-    sourceRefs: [],
-  },
-  {
-    id: "del-4",
-    title: "Healthcare Decision Makers Segment",
-    type: "segment",
-    status: "ready",
-    confidence: 97,
-    preview: "1,247 contacts matching criteria:\n\n• Industry: Healthcare\n• Company Size: 50-500 employees\n• Title: VP Marketing, CMO, Growth Lead\n• Engagement: Active in last 90 days\n• Score: 70+ lead score",
-    sourceRefs: ["ICP Definition", "HubSpot Data"],
-  },
-]
 
 const typeConfig: Record<string, { icon: string; color: string; label: string; bg: string }> = {
   email: { icon: "mail", color: "text-blue-400", label: "Email", bg: "bg-blue-500/10" },
@@ -335,12 +292,25 @@ function DeliverableCard({
 }
 
 // Preview Panel
-function PreviewPanel({ deliverable, isApproved, onApprove, onPush }: { 
+function PreviewPanel({ deliverable, isApproved, onApprove, onPush, jobError }: { 
   deliverable: Deliverable | null; 
   isApproved: boolean;
   onApprove: () => void;
   onPush: () => void;
+  jobError?: string | null;
 }) {
+  if (jobError) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center p-8">
+        <div className="h-16 w-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+          <Icon name="warning" size="xl" className="text-red-400" />
+        </div>
+        <h3 className="font-semibold text-foreground mb-2">Task failed</h3>
+        <p className="text-sm text-muted-foreground max-w-md">{jobError}</p>
+      </div>
+    )
+  }
+
   if (!deliverable) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
@@ -439,7 +409,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush }: {
                 onClick={onPush}
               >
                 <Icon name="upload" size="sm" />
-                Push to {assignment.destination.split("+")[0].trim()}
+                Push to destination
               </Button>
               <Button variant="outline" className="gap-2">
                 <Icon name="download" size="sm" />
@@ -459,34 +429,79 @@ export default function AssignmentDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
-  const [selectedDeliverable, setSelectedDeliverable] = useState<string | null>(null)
+  const [selectedDeliverable, setSelectedDeliverable] = useState<string | null>("primary-answer")
   const [approvedItems, setApprovedItems] = useState<string[]>([])
-  const [progress, setProgress] = useState(assignment.progress)
-  
-  // Simulate progress
-  useEffect(() => {
-    if (assignment.status === "running" && progress < 100) {
-      const timer = setInterval(() => {
-        setProgress(prev => Math.min(prev + 1, 100))
-      }, 500)
-      return () => clearInterval(timer)
-    }
-  }, [progress])
 
-  const selectedItem = deliverables.find(d => d.id === selectedDeliverable)
-  const readyCount = deliverables.filter(d => d.status === "ready").length
+  const { data: job, error: loadError, isLoading } = useSWR(
+    id ? `agent-job-${id}` : null,
+    () => fetchAgentJob(id),
+    {
+      refreshInterval: (latest) =>
+        latest && ["queued", "running", "paused"].includes(latest.status) ? 2000 : 0,
+      revalidateOnFocus: true,
+    },
+  )
+
+  const handoff = useMemo(() => parseHandoffResult(job ?? null), [job])
+  const executionSteps = useMemo(
+    () => (job ? buildExecutionSteps(job, handoff) : []),
+    [job, handoff],
+  )
+  const deliverables = useMemo(() => buildDeliverables(handoff), [handoff])
+  const progress = job ? jobProgress(job.status, handoff) : 0
+
+  const taskTitle =
+    handoff?.task?.description?.trim() ||
+    (typeof job?.result === "object" && job?.result && "task" in job.result
+      ? String((job.result as { task?: { description?: string } }).task?.description || "")
+      : "") ||
+    "Agent assignment"
+
+  const agentName = handoff?.agent_name || "Agent"
+  const agentInitials = agentName.slice(0, 2).toUpperCase()
+  const agentId = handoff?.agent_id
+  const createdAt = relativeTime(job?.createdAt)
+
+  const selectedItem = deliverables.find((d) => d.id === selectedDeliverable) ?? deliverables[0] ?? null
+  const readyCount = deliverables.filter((d) => d.status === "ready").length
   const approvedCount = approvedItems.length
+  const jobError = job?.status === "failed" ? (job.error || handoff?.error || "The agent task failed.") : null
 
-  const handleApprove = (id: string) => {
-    setApprovedItems(prev => [...prev, id])
+  const handleApprove = (deliverableId: string) => {
+    setApprovedItems((prev) => (prev.includes(deliverableId) ? prev : [...prev, deliverableId]))
   }
 
   const handleApproveAll = () => {
-    setApprovedItems(deliverables.filter(d => d.status === "ready").map(d => d.id))
+    setApprovedItems(deliverables.filter((d) => d.status === "ready").map((d) => d.id))
+  }
+
+  if (isLoading && !job) {
+    return (
+      <AppShell title="Assignment">
+        <div className="flex h-full items-center justify-center">
+          <Icon name="spinner" size="lg" className="text-muted-foreground animate-spin" />
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (loadError || !job) {
+    return (
+      <AppShell title="Assignment">
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
+          <p className="text-sm text-muted-foreground">
+            {loadError instanceof Error ? loadError.message : "Assignment not found"}
+          </p>
+          <Link href="/assignments">
+            <Button variant="outline" size="sm">Back to Assignments</Button>
+          </Link>
+        </div>
+      </AppShell>
+    )
   }
 
   return (
-    <AppShell title={assignment.title}>
+    <AppShell title={taskTitle.slice(0, 60)}>
       <div className="flex h-full">
         {/* Left Column - Execution & Deliverables */}
         <div className="w-[420px] border-r border-border flex flex-col overflow-hidden">
@@ -499,18 +514,25 @@ export default function AssignmentDetailPage({
             
             <div className="flex items-center gap-3 mb-3">
               <motion.div 
-                className={cn("h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br text-white font-bold", assignment.agent.gradient)}
+                className="h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-bold"
                 animate={{ 
                   boxShadow: ["0 0 20px rgba(16, 185, 129, 0.2)", "0 0 30px rgba(16, 185, 129, 0.4)", "0 0 20px rgba(16, 185, 129, 0.2)"]
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                {assignment.agent.initials}
+                {agentInitials}
               </motion.div>
-              <div>
-                <h1 className="font-semibold text-foreground">{assignment.title}</h1>
-                <p className="text-xs text-muted-foreground">{assignment.agent.name} | Started {assignment.createdAt}</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="font-semibold text-foreground truncate">{taskTitle}</h1>
+                <p className="text-xs text-muted-foreground">
+                  {agentName} · {createdAt} · {job.status.replace(/_/g, " ")}
+                </p>
               </div>
+              {agentId && (
+                <Link href={`/agents/${agentId}/chat`}>
+                  <Button variant="outline" size="sm" className="text-xs">Chat</Button>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -535,16 +557,24 @@ export default function AssignmentDetailPage({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {deliverables.map((deliverable) => (
-                  <DeliverableCard
-                    key={deliverable.id}
-                    deliverable={deliverable}
-                    isSelected={selectedDeliverable === deliverable.id}
-                    isApproved={approvedItems.includes(deliverable.id)}
-                    onClick={() => setSelectedDeliverable(deliverable.id)}
-                    onApprove={() => handleApprove(deliverable.id)}
-                  />
-                ))}
+                {deliverables.length === 0 ? (
+                  <p className="col-span-2 text-sm text-muted-foreground py-4 text-center">
+                    {job.status === "running" || job.status === "queued"
+                      ? "Waiting for agent results…"
+                      : "No deliverables returned for this task."}
+                  </p>
+                ) : (
+                  deliverables.map((deliverable) => (
+                    <DeliverableCard
+                      key={deliverable.id}
+                      deliverable={deliverable}
+                      isSelected={selectedDeliverable === deliverable.id}
+                      isApproved={approvedItems.includes(deliverable.id)}
+                      onClick={() => setSelectedDeliverable(deliverable.id)}
+                      onApprove={() => handleApprove(deliverable.id)}
+                    />
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -557,6 +587,7 @@ export default function AssignmentDetailPage({
             isApproved={selectedItem ? approvedItems.includes(selectedItem.id) : false}
             onApprove={() => selectedItem && handleApprove(selectedItem.id)}
             onPush={() => console.log("Push to destination")}
+            jobError={jobError}
           />
         </div>
       </div>

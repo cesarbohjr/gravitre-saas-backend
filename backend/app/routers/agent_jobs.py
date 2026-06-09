@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
@@ -28,8 +28,11 @@ def _client(settings: Settings):
 
 
 class EnqueueJobRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     task: str
-    session_id: str | None = None
+    session_id: str | None = Field(default=None, alias="sessionId")
+    agent_id: str | None = Field(default=None, alias="agentId")
     context: dict[str, Any] | None = None
 
 
@@ -59,13 +62,18 @@ async def enqueue_job(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     if not (body.task or "").strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="task is required")
+    agent_id = (body.agent_id or "").strip() or None
+    context = dict(body.context or {})
+    if agent_id:
+        context.setdefault("agent_id", agent_id)
+    kind = "agent_task" if agent_id else "operator_task"
     job = jobs.create_job(
         _client(settings),
         org_id,
-        kind="operator_task",
+        kind=kind,
         session_id=body.session_id,
         environment=environment,
-        payload={"task": body.task, "context": body.context or {}},
+        payload={"task": body.task, "context": context, "agent_id": agent_id},
         created_by=current_user.get("user_id"),
     )
     from app.workers.queue import enqueue_agent_execution_job

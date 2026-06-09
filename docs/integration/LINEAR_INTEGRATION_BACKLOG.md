@@ -9,8 +9,11 @@ Use this file to navigate integration work in Cursor. Issues live in [Linear —
 | **3** | 6 months | [Tier 3 Integration Platform](https://linear.app/staqbot) | Tier 3 — Enterprise & Marketplace (6 months) |
 | **4** | 12 months | [Tier 4 Integration Platform](https://linear.app/staqbot) | Tier 4 — Enterprise Scale & Ecosystem (12 months) |
 | **5** | 18 months | [Tier 5 Integration Platform](https://linear.app/staqbot) | Tier 5 — Autonomous Workforce & Vertical Scale (18 months) |
+| **AI** | 6 months | [AI Intelligence Platform](https://linear.app/staqbot) | AI Intelligence Upgrade — Gravitre Operating Model |
 
-**Re-run issue creation:** `npm run linear:tier1` … `linear:tier5` (requires `LINEAR_API_KEY`).
+**Re-run issue creation:** `npm run linear:tier1` … `linear:tier5`, `npm run linear:ai-intelligence` (requires `LINEAR_API_KEY`).
+
+**AI Intelligence backlog:** [`docs/ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md`](../ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md)
 
 ---
 
@@ -239,6 +242,50 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 
 ---
 
+## AI Intelligence — Epics (STA-126 – STA-131)
+
+| Epic | Linear | Focus |
+|------|--------|--------|
+| A Agent Intelligence | [STA-126](https://linear.app/staqbot/issue/STA-126) | AgentIntelligence, ReAct, role prompts, RAG |
+| B Workflow Execution | [STA-127](https://linear.app/staqbot/issue/STA-127) | Graph engine, parallel, approval gates |
+| C Meson Copilot | [STA-130](https://linear.app/staqbot/issue/STA-130) | MesonService, `/api/meson/*` |
+| D Assistant & Org Context | [STA-128](https://linear.app/staqbot/issue/STA-128) | Memory, org context, streaming, tools |
+| E Enhanced RAG | [STA-129](https://linear.app/staqbot/issue/STA-129) | Cross-encoder + BM25 |
+| F v0 Intelligence UI | [STA-132](https://linear.app/staqbot/issue/STA-132) | F1–F4 v0 prompts |
+| G Discovery & Verification | [STA-131](https://linear.app/staqbot/issue/STA-131) | Audit ✅, Phase 5 smoke |
+
+**Full execution order:** [`docs/ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md`](../ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md)
+
+**Start with:** [STA-145](https://linear.app/staqbot/issue/STA-145) (assistant conversations) or [STA-159](https://linear.app/staqbot/issue/STA-159) (ToolRegistry) — highest ROI.
+
+### Epics H–I — Production AI/ML Ops (STA-157 – STA-158)
+
+| Epic | Linear | Focus |
+|------|--------|--------|
+| H Integration Tool Registry | [STA-157](https://linear.app/staqbot/issue/STA-157) | ToolRegistry, ReAct → invoke_tool |
+| I Production E2E Wiring | [STA-158](https://linear.app/staqbot/issue/STA-158) | Meson wizard, agent chat, button wiring |
+
+| Ref | Linear | Title |
+|-----|--------|-------|
+| AI-025 | [STA-159](https://linear.app/staqbot/issue/STA-159) | ToolRegistry — integration tools for agents |
+| AI-026 | [STA-160](https://linear.app/staqbot/issue/STA-160) | Wire ReAct tool execution to invoke_tool |
+| AI-027 | [STA-161](https://linear.app/staqbot/issue/STA-161) | Meson interpret + POST /api/meson/interpret |
+| AI-028 | [STA-162](https://linear.app/staqbot/issue/STA-162) | Next.js /api/meson/* proxy routes |
+| AI-029 | [STA-164](https://linear.app/staqbot/issue/STA-164) | Wire MesonWizard to backend |
+| AI-030 | [STA-163](https://linear.app/staqbot/issue/STA-163) | Agent-scoped chat |
+| AI-031 | [STA-165](https://linear.app/staqbot/issue/STA-165) | Wire Assign Task → agent-jobs |
+| AI-032 | [STA-166](https://linear.app/staqbot/issue/STA-166) | Wire Run/Preview → execute/dry-run |
+| AI-033 | [STA-167](https://linear.app/staqbot/issue/STA-167) | CS Command Center live APIs |
+| AI-034 | [STA-168](https://linear.app/staqbot/issue/STA-168) | Role pack install E2E |
+| AI-035 | [STA-169](https://linear.app/staqbot/issue/STA-169) | Federation invite E2E |
+| AI-036 | [STA-170](https://linear.app/staqbot/issue/STA-170) | Run interrupt/rollback wiring |
+| AI-037 | [STA-171](https://linear.app/staqbot/issue/STA-171) | Semantic RAG chunking |
+| AI-038 | [STA-172](https://linear.app/staqbot/issue/STA-172) | AI/ML Operational Gap Report |
+| AI-039 | [STA-173](https://linear.app/staqbot/issue/STA-173) | smoke:ai-production E2E |
+| AI-040 | [STA-174](https://linear.app/staqbot/issue/STA-174) | AGENT_PERSONAS + revenue_ops |
+
+---
+
 ## Full roadmap summary
 
 | Tier | Issues | Linear range |
@@ -248,6 +295,10 @@ Requires `LINEAR_API_KEY`. Parent epic: HubSpot CRM (STA-7).
 | 3 | 18 + 6 epics | STA-50 – STA-73 |
 | 4 | 20 + 6 epics | STA-74 – STA-99 |
 | 5 | 19 + 6 epics | STA-100 – STA-124 |
+| AI | 24 + 7 epics | STA-126 – STA-156 |
+| AI Ops | 16 + 2 epics | STA-157 – STA-174 |
+
+**AI Intelligence backlog:** [`docs/ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md`](../ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md) — project [AI Intelligence Platform](https://linear.app/staqbot/project/ai-intelligence-platform-67c36b17ace8).
 
 ---
 
