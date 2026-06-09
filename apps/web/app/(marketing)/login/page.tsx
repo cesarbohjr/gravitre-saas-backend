@@ -181,9 +181,16 @@ function LoginPageContent() {
 
     setIsLoading(false)
     if (error) {
-      setAuthError(error.message)
-      if ((error.message || "").toLowerCase().includes("email not confirmed")) {
+      const message = (error.message || "").toLowerCase()
+      if (message.includes("invalid login credentials") || message.includes("invalid_credentials")) {
+        setAuthError(
+          "Invalid email or password. If you originally signed in with Google or Microsoft, use those buttons — password sign-in only works for email/password accounts."
+        )
+      } else if (message.includes("email not confirmed")) {
+        setAuthError(error.message)
         setCanResendVerification(true)
+      } else {
+        setAuthError(error.message)
       }
       return
     }
@@ -453,6 +460,9 @@ function LoginPageContent() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <p className="mt-1.5 text-xs text-zinc-500">
+                    Use Google or Microsoft above if you signed up with SSO — password login is for email accounts only.
+                  </p>
                 </div>
 
                 <motion.button

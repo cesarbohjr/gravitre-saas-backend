@@ -51,3 +51,4 @@ backend/*.txt
 apps/web/*.txt
 build.txt
 tests_list.txt
+.vercel
