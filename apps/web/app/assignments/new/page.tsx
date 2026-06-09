@@ -75,13 +75,12 @@ function NewAssignmentPageContent() {
 
   const agents: AssignableAgent[] = useMemo(() => {
     return (agentsResponse?.agents ?? []).map((item) => {
-      const raw = item as Record<string, unknown>
-      const successRate = Number(raw.successRate ?? raw.stats?.successRate ?? 0)
+      const successRate = item.stats?.successRate ?? 0
       return {
-        id: String(raw.id ?? ""),
-        name: String(raw.name ?? "Agent"),
-        role: String(raw.role ?? raw.description ?? "Agent"),
-        gradient: avatarGradient(String(raw.avatarColor ?? "")),
+        id: item.id,
+        name: item.name,
+        role: item.role || item.description || "Agent",
+        gradient: avatarGradient(item.personality?.color ?? ""),
         trainingProgress: Number.isFinite(successRate) ? Math.round(successRate) : 0,
       }
     })
