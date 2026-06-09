@@ -261,7 +261,7 @@ For vendors in `GENERIC_OAUTH_VENDORS` (`oauth_provider_registry.py`):
 2. Create **OAuth 2.0 Web Application** (authorization code grant).
 3. Register redirect: `https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/{vendor}/callback`
 4. Set Railway env: `{VENDOR_UPPER}_CLIENT_ID`, `{VENDOR_UPPER}_CLIENT_SECRET`
-5. If **PKCE** (Airtable, Canva, Xero): enable PKCE in vendor portal — Gravitre sends `code_challenge` automatically.
+5. If **PKCE** (Salesforce, Airtable, Canva, Xero): enable PKCE in vendor portal — Gravitre sends `code_challenge` automatically.
 6. If **subdomain** (Freshdesk, Zendesk OAuth): customer enters subdomain at connect time.
 7. If **instance URL** (Odoo): customer enters `https://company.odoo.com`.
 8. Deploy → test Connect from UI.

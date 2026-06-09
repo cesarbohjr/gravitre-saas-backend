@@ -83,8 +83,8 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Zendesk",
 ] as const
 
-/** Generic OAuth providers that require PKCE (RFC 7636). */
-export const PKCE_OAUTH_VENDOR_KEYS = new Set(["airtable", "canva", "xero"])
+/** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
+export const PKCE_OAUTH_VENDOR_KEYS = new Set(["airtable", "canva", "salesforce", "xero"])
 
 export const OAUTH_CONNECTOR_TYPE_SET = new Set<string>(SHIPPED_OAUTH_CONNECTOR_TYPES)
 

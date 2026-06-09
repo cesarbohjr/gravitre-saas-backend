@@ -33,3 +33,12 @@ def test_salesforce_redirect_and_authorize_url():
     assert "login.salesforce.com" in url
     assert "client_id=cid" in url
     assert "state=state123" in url
+    pkce_url = salesforce_authorize_url(
+        "cid",
+        salesforce_redirect_uri(settings),
+        "state123",
+        environment_name="production",
+        code_challenge="challenge123",
+    )
+    assert "code_challenge=challenge123" in pkce_url
+    assert "code_challenge_method=S256" in pkce_url

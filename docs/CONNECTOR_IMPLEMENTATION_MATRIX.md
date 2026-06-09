@@ -14,7 +14,7 @@
 | Vendor | Auth Type | Platform Env Vars | Customer Fields | Redirect URI | PKCE | Partner Approval | Production Ready |
 |--------|-----------|-------------------|-----------------|--------------|------|------------------|------------------|
 | HubSpot | Platform OAuth | `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET` (+ optional `HUBSPOT_APP_ID`, `HUBSPOT_DEVELOPER_API_KEY` for webhooks) | None | `{API_PUBLIC_URL}/api/connectors/oauth/hubspot/callback` | No | No | **Yes** — OAuth + 10 tools |
-| Salesforce | Platform OAuth | `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET` | None | `.../salesforce/callback` | No | No | **Yes** — OAuth + 11 tools |
+| Salesforce | Platform OAuth | `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET` | None | `.../salesforce/callback` | **Yes** | No | **Yes** — OAuth + PKCE + 11 tools |
 | QuickBooks | Platform OAuth | `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET` | None | `.../quickbooks/callback` | No | No | **Yes** — OAuth + 6 tools |
 | NetSuite | Platform OAuth (custom) | `NETSUITE_CLIENT_ID`, `NETSUITE_CLIENT_SECRET` | Account ID in OAuth flow | `.../netsuite/callback` | No | No | **Partial** — OAuth + 7/9 tools |
 | Workday | Platform OAuth (custom) | `WORKDAY_CLIENT_ID`, `WORKDAY_CLIENT_SECRET` | Tenant URL | `.../workday/callback` | No | No | **Partial** — OAuth + 4 read tools |

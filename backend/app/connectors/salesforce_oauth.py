@@ -82,21 +82,24 @@ def salesforce_authorize_url(
     state: str,
     *,
     environment_name: str | None = None,
+    code_challenge: str | None = None,
 ) -> str:
     authorize_url = (
         SALESFORCE_AUTHORIZE_URL_SANDBOX
         if is_staging_environment(environment_name)
         else SALESFORCE_AUTHORIZE_URL
     )
-    query = urlencode(
-        {
-            "response_type": "code",
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "scope": SALESFORCE_SCOPES,
-            "state": state,
-        }
-    )
+    params: dict[str, str] = {
+        "response_type": "code",
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": SALESFORCE_SCOPES,
+        "state": state,
+    }
+    if code_challenge:
+        params["code_challenge"] = code_challenge
+        params["code_challenge_method"] = "S256"
+    query = urlencode(params)
     return f"{authorize_url}?{query}"
 
 
@@ -130,18 +133,22 @@ def exchange_salesforce_code(
     client_secret: str,
     redirect_uri: str,
     environment_name: str | None = None,
+    code_verifier: str | None = None,
 ) -> dict[str, Any]:
     _, token_url = _authorize_base(Settings(), environment_name)
+    data: dict[str, str] = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
+    }
+    if code_verifier:
+        data["code_verifier"] = code_verifier
     with httpx.Client(timeout=30.0) as client:
         response = client.post(
             token_url,
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "redirect_uri": redirect_uri,
-            },
+            data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         response.raise_for_status()
@@ -220,11 +227,14 @@ def complete_salesforce_oauth_connection(
     *,
     environment_name: str | None = None,
     reconnect: bool = False,
+    code_verifier: str | None = None,
 ) -> None:
     env = environment_name or _connector_environment(client, org_id, connector_id)
     client_id, client_secret = salesforce_credentials(settings, env)
     if not client_id or not client_secret:
         raise ValueError("Salesforce OAuth is not configured")
+    if not code_verifier:
+        raise ValueError("Salesforce PKCE code_verifier missing from OAuth state")
 
     tokens = exchange_salesforce_code(
         code,
@@ -232,6 +242,7 @@ def complete_salesforce_oauth_connection(
         client_secret=client_secret,
         redirect_uri=salesforce_redirect_uri(settings),
         environment_name=env,
+        code_verifier=code_verifier,
     )
     store_oauth_tokens(client, org_id, connector_id, tokens, settings)
     mark_connector_oauth_success(

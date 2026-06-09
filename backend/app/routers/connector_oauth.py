@@ -120,7 +120,11 @@ from app.connectors.generic_oauth import (
     persist_generic_oauth_connector_config,
     validate_generic_oauth_prerequisites,
 )
-from app.connectors.oauth_pkce import code_challenge_s256, generate_code_verifier
+from app.connectors.oauth_pkce import (
+    DEDICATED_PKCE_OAUTH_VENDORS,
+    code_challenge_s256,
+    generate_code_verifier,
+)
 from app.connectors.oauth_provider_registry import (
     GENERIC_OAUTH_VENDORS,
     OAUTH_PROVIDER_REGISTRY,
@@ -471,7 +475,10 @@ async def start_oauth(
     now = time.time()
     pkce_verifier: str | None = None
     pkce_challenge: str | None = None
-    if vendor in GENERIC_OAUTH_VENDORS and OAUTH_PROVIDER_REGISTRY[vendor].requires_pkce:
+    needs_pkce = vendor in DEDICATED_PKCE_OAUTH_VENDORS or (
+        vendor in GENERIC_OAUTH_VENDORS and OAUTH_PROVIDER_REGISTRY[vendor].requires_pkce
+    )
+    if needs_pkce:
         pkce_verifier = generate_code_verifier()
         pkce_challenge = code_challenge_s256(pkce_verifier)
 
@@ -545,7 +552,11 @@ async def start_oauth(
         redirect_uri = salesforce_redirect_uri(settings)
         client_id, _secret = salesforce_credentials(settings, environment_name)
         auth_url = salesforce_authorize_url(
-            client_id, redirect_uri, state, environment_name=environment_name
+            client_id,
+            redirect_uri,
+            state,
+            environment_name=environment_name,
+            code_challenge=pkce_challenge,
         )
     elif vendor == "quickbooks":
         redirect_uri = quickbooks_redirect_uri(settings)
@@ -744,6 +755,7 @@ async def oauth_callback(
                 settings,
                 environment_name=environment_name,
                 reconnect=reconnect,
+                code_verifier=str(payload.get("pkce_verifier") or "") or None,
             )
         elif vendor == "quickbooks":
             complete_quickbooks_oauth_connection(

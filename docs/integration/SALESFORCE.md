@@ -10,7 +10,8 @@
 ```
 
 3. Scopes: `api`, `refresh_token` (offline access).
-4. Set on API host:
+4. Enable **Require Proof Key for Code Exchange (PKCE)** on the Connected App (Salesforce default). Gravitre sends `code_challenge` (S256) on authorize and `code_verifier` on token exchange.
+5. Set on API host:
 
 ```env
 SALESFORCE_CLIENT_ID=

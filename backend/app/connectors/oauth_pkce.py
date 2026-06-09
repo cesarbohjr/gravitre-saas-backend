@@ -21,3 +21,7 @@ def code_challenge_s256(code_verifier: str) -> str:
     """S256 code_challenge = BASE64URL(SHA256(code_verifier)) without padding."""
     digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+
+
+# Dedicated (module-based) OAuth connectors that require PKCE on authorize + token exchange.
+DEDICATED_PKCE_OAUTH_VENDORS: frozenset[str] = frozenset({"salesforce"})
