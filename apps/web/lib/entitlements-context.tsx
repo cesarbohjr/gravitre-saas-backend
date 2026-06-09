@@ -47,7 +47,7 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
   const { data, isLoading } = useSWR<EntitlementsPayload>(
     user ? "/api/entitlements" : null,
     apiFetcher,
-    { revalidateOnFocus: false, refreshInterval: 30000 }
+    { revalidateOnFocus: false, refreshInterval: 0 }
   )
 
   const value = useMemo<EntitlementsContextValue>(() => {

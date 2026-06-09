@@ -63,8 +63,11 @@ function LoginPageContent() {
       if (error === "session_expired") {
         const { data: { user: liveUser } } = await supabaseClient.auth.getUser()
         if (liveUser && !cancelled) {
-          markAuthTransition()
-          router.replace(searchParams.get("redirect") || "/operator")
+          clearAuthTransition()
+          window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+          await supabaseClient.auth.refreshSession()
+          const redirect = searchParams.get("redirect") || "/operator"
+          router.replace(redirect)
           return
         }
       }

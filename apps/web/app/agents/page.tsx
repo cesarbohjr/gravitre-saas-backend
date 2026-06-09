@@ -536,7 +536,7 @@ export default function AgentsPage() {
     user ? "/api/agents" : null,
     apiFetcher,
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnMount: true,
       onError: (err) => {
         console.error("[v0] Agents fetch error:", err)

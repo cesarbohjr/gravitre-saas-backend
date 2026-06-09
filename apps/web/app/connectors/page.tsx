@@ -1623,7 +1623,7 @@ function ConnectorsPageContent() {
   const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
     user ? "/api/connectors" : null,
     apiFetcher,
-    { revalidateOnFocus: true, refreshInterval: 30000, onError: (err) => console.error("[connectors] fetch error:", err) }
+    { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
 
   const { data: registryData } = useSWR<{
@@ -1637,7 +1637,7 @@ function ConnectorsPageContent() {
   }>(
     user ? "/api/marketplace/registry" : null,
     apiFetcher,
-    { revalidateOnFocus: true }
+    { revalidateOnFocus: false }
   )
 
   const connectors = normalizeConnectorsResponse(data)

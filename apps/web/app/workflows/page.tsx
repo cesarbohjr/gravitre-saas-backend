@@ -189,7 +189,7 @@ export default function WorkflowsPage() {
     user ? "/api/workflows" : null,
     apiFetcher,
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnMount: true,
       onError: (err) => {
         console.error("[v0] Workflows fetch error:", err)

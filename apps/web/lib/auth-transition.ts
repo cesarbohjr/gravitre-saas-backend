@@ -2,7 +2,8 @@
 const REDIRECTING_KEY = "gravitre_auth_redirecting"
 const REDIRECT_UNTIL_KEY = "gravitre_auth_redirect_until"
 const LOGIN_REDIRECT_KEY = "gravitre_auth_login_redirect"
-const DEFAULT_MS = 20_000
+/** Short grace for cookie sync after OAuth — not a recurring poll interval. */
+const DEFAULT_MS = 5_000
 
 export function markAuthTransition(durationMs: number = DEFAULT_MS): void {
   if (typeof window === "undefined") return

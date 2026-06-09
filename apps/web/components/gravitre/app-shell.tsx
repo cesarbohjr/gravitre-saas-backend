@@ -75,24 +75,34 @@ export function AppShell({ children, title }: AppShellProps) {
   const { user, loading } = useAuth()
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
 
-  // Fetch billing status
+  // Fetch billing status (no polling — avoids periodic shell revalidation)
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
-    user ? "/api/billing/status" : null, 
-    apiFetcher, 
+    user ? "/api/billing/status" : null,
+    apiFetcher,
     {
       revalidateOnFocus: false,
-      refreshInterval: 30000,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
     }
   )
 
   // Fetch auth/me for onboarding status
-  const { data: meData, error: meError } = useSWR<MeData>(
+  const { data: meData } = useSWR<MeData>(
     user ? "/api/auth/me" : null,
     apiFetcher,
-    { revalidateOnFocus: false }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
+    }
   )
 
-  const canAccessApp = billingStatusData?.canAccessApp ?? false
+  const billingAccessDenied =
+    billingStatusData !== undefined && billingStatusData.canAccessApp === false
+  const canAccessApp =
+    billingStatusData?.canAccessApp ??
+    meData?.billing?.can_access_app ??
+    !billingAccessDenied
   const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
   const trialEndsAt = billingStatusData?.trialEndsAt
   const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
@@ -132,19 +142,26 @@ export function AppShell({ children, title }: AppShellProps) {
     }
   }
 
-  // Clear OAuth transition grace period only after /api/auth/me succeeds (or user signed out).
+  // Clear OAuth transition grace period once the shell has a signed-in user.
   useEffect(() => {
     if (!user && !loading) {
       clearAuthTransition()
       return
     }
-    if (user && meData && !meError) {
+    if (user) {
       clearAuthTransition()
     }
-  }, [user, loading, meData, meError])
+  }, [user, loading])
 
-  // Show loading while checking auth and billing
-  if (loading || (user && billingLoading && billingStatusData === undefined)) {
+  // Send unauthenticated visitors to login once (avoid infinite spinner).
+  useEffect(() => {
+    if (loading || user) return
+    router.replace("/login?intent=login")
+  }, [loading, user, router])
+
+  // Show loading only on the first auth/billing bootstrap — not on background revalidation.
+  const awaitingInitialBilling = Boolean(user) && billingLoading && billingStatusData === undefined
+  if (loading || awaitingInitialBilling) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -160,9 +177,8 @@ export function AppShell({ children, title }: AppShellProps) {
     )
   }
 
-  // Billing gate: redirect users who cannot access the app
-  // Note: If billing API fails, fail open for trialing users (allow access)
-  if (!billingLoading && !canAccessApp && !billingError && !pathname.startsWith("/settings/billing")) {
+  // Billing gate: only block when the API explicitly denies access.
+  if (billingAccessDenied && !billingError && !pathname.startsWith("/settings/billing")) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
