@@ -221,16 +221,19 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
   const [loadingDns, setLoadingDns] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<EnterpriseDomainVerifyResult | null>(null)
+  const [formSeed, setFormSeed] = useState<string | null>(null)
 
-  // Seed local form state from fetched data
-  useEffect(() => {
-    if (!data) return
-    setLogoUrl(data.logoUrl ?? "")
-    setPrimaryColor(data.primaryColor && HEX_RE.test(data.primaryColor) ? data.primaryColor : DEFAULT_COLOR)
-    setHidePoweredBy(Boolean(data.hidePoweredBy))
-    setEmailFromName(data.emailFromName ?? "")
-    setDomain(data.customDomain ?? "")
-  }, [data])
+  const brandingSeed = data
+    ? `${data.logoUrl ?? ""}|${data.primaryColor ?? ""}|${data.hidePoweredBy}|${data.emailFromName ?? ""}|${data.customDomain ?? ""}`
+    : null
+  if (brandingSeed && brandingSeed !== formSeed) {
+    setFormSeed(brandingSeed)
+    setLogoUrl(data?.logoUrl ?? "")
+    setPrimaryColor(data?.primaryColor && HEX_RE.test(data.primaryColor) ? data.primaryColor : DEFAULT_COLOR)
+    setHidePoweredBy(Boolean(data?.hidePoweredBy))
+    setEmailFromName(data?.emailFromName ?? "")
+    setDomain(data?.customDomain ?? "")
+  }
 
   // Push live preview to the global provider; clear on unmount.
   useEffect(() => {

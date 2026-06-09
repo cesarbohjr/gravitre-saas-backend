@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { Shield, KeyRound, Send, Lock, CheckCircle2, XCircle } from "lucide-react"
@@ -30,12 +30,16 @@ export function SiemTab({ isAdmin }: { isAdmin: boolean }) {
   const [rotating, setRotating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [formSeed, setFormSeed] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!data) return
-    setEnabled(Boolean(data.enabled))
-    setEndpoint(data.endpoint ?? "")
-  }, [data])
+  const siemSeed = data ? `${data.enabled}|${data.endpoint ?? ""}|${data.hasSecret}` : null
+  if (siemSeed && siemSeed !== formSeed) {
+    setFormSeed(siemSeed)
+    setEnabled(Boolean(data?.enabled))
+    setEndpoint(data?.endpoint ?? "")
+    setSecret("")
+    setRotating(false)
+  }
 
   if (isLoading) return <TabSkeleton rows={3} />
 

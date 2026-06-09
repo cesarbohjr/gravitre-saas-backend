@@ -775,11 +775,11 @@ export default function AssistantPage() {
         body: () => ({
           ...buildChatOrgPayload(),
           mode,
-          conversation_id: activeConversationIdRef.current,
+          conversation_id: activeConversationId,
           tools: ["knowledge_base", "agent_status", "connector_status"],
         }),
       }),
-    [mode]
+    [mode, activeConversationId],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({

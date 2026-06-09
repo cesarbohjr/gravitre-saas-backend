@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { Globe, Copy, Check, AlertTriangle, ShieldCheck, Lock } from "lucide-react"
@@ -39,14 +39,11 @@ export function RegionTab({ isAdmin }: { isAdmin: boolean }) {
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (data?.region) setSelected(data.region)
-  }, [data?.region])
-
   if (isLoading) return <TabSkeleton rows={2} />
 
   const currentRegion = data?.region
   const storagePrefix = data?.storagePrefix ?? ""
+  const activeRegion = selected ?? currentRegion ?? null
 
   const handleSelect = (region: EnterpriseRegion) => {
     if (!isAdmin || region === currentRegion) return
@@ -92,7 +89,7 @@ export function RegionTab({ isAdmin }: { isAdmin: boolean }) {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             {REGIONS.map((region) => {
-              const active = (selected ?? currentRegion) === region.id
+              const active = activeRegion === region.id
               return (
                 <button
                   key={region.id}
