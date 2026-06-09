@@ -10,6 +10,7 @@ The v0 frontend imported from `gravitre-saas-interface` is the canonical UI for 
 - Do not mix archived UI pages, components, layouts, styles, routes, or mock data into the active frontend without explicit approval.
 - Backend logic remains unchanged and stays in `backend/`.
 - Backend integration should connect the v0 frontend through API proxy routes.
+- Branch sync and live API matrix: [`docs/integration/V0_BACKEND_SYNC.md`](integration/V0_BACKEND_SYNC.md).
 
 ## Scope Notes
 

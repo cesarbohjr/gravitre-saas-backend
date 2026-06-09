@@ -1,8 +1,10 @@
 # Gravitre AI Intelligence — v0 Frontend Prompts (F1–F4)
 
-Paste these into [v0.dev](https://v0.dev). **Do not implement in Cursor.** Backend APIs referenced here are specified in Phase 3 (B3, B4, B6) — use mock data where endpoints are not live yet.
+Paste these into [v0.dev](https://v0.dev). **Do not implement in Cursor.** For live backend endpoints and branch sync, see [`docs/integration/V0_BACKEND_SYNC.md`](../integration/V0_BACKEND_SYNC.md).
 
 Stack: Next.js App Router, React 19, TypeScript, Tailwind v4, shadcn/ui, SWR, existing `apps/web/lib/fetcher.ts`.
+
+**Live APIs (prod):** Meson `POST /api/meson/interpret|deploy`, agent jobs, assistant chat, workflow dry-run/execute, runs pause/cancel, federation, role packs, CS health/failure scan. Meson **suggestions/alerts/optimizations** endpoints are not live yet — mock those only.
 
 Visual baseline: match production screenshots — light/dark theme support, Gravitre Labs breadcrumb shell, trial banner, Admin/Lite toggles.
 
