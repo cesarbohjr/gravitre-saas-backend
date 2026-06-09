@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
@@ -375,7 +375,7 @@ function PackCard({
   )
 }
 
-export default function RolePacksPage() {
+function RolePacksPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const focusPackId = searchParams.get("pack")
@@ -573,5 +573,30 @@ export default function RolePacksPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+function RolePacksPageFallback() {
+  return (
+    <AppShell>
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
+        <div className="grid gap-4 md:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-80 animate-pulse rounded-xl border border-border bg-muted/40"
+            />
+          ))}
+        </div>
+      </div>
+    </AppShell>
+  )
+}
+
+export default function RolePacksPage() {
+  return (
+    <Suspense fallback={<RolePacksPageFallback />}>
+      <RolePacksPageContent />
+    </Suspense>
   )
 }
