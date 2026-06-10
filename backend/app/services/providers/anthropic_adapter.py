@@ -19,6 +19,7 @@ from app.services.providers.base import (
     ProviderRateLimitedError,
     ProviderResponse,
     ProviderUnavailableError,
+    StreamChunk,
     extract_system,
     retry_provider_call,
 )
@@ -105,6 +106,68 @@ class AnthropicAdapter(ProviderAdapter):
             )
 
         return await retry_provider_call(_attempt)
+
+    async def stream(
+        self,
+        messages: list[Message],
+        model: str,
+        options: CompletionOptions,
+    ):
+        api_key = self._api_key_getter()
+        if not api_key:
+            raise ProviderUnavailableError("anthropic", "ANTHROPIC_API_KEY is not configured")
+        anthropic = _try_import("anthropic")
+        if anthropic is None:
+            raise ProviderUnavailableError("anthropic", "anthropic SDK is not installed")
+
+        system_text, convo = extract_system(messages)
+        native = [{"role": m["role"], "content": m["content"]} for m in convo]
+        if not native:
+            native = [{"role": "user", "content": system_text or ""}]
+            system_text = None
+
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": native,
+            "max_tokens": options.max_tokens or _DEFAULT_MAX_TOKENS,
+        }
+        if system_text:
+            kwargs["system"] = system_text
+        if options.temperature is not None:
+            kwargs["temperature"] = options.temperature
+
+        start = time.perf_counter()
+        parts: list[str] = []
+        try:
+            client = anthropic.AsyncAnthropic(api_key=api_key, timeout=self._timeout_s, max_retries=0)
+            async with client.messages.stream(**kwargs) as stream:
+                async for text in stream.text_stream:
+                    if text:
+                        parts.append(text)
+                        yield StreamChunk(delta=text)
+                final_message = await stream.get_final_message()
+        except Exception as exc:  # noqa: BLE001
+            raise self._map_error(anthropic, exc) from exc
+
+        content = "".join(parts)
+        if not content.strip():
+            raise ProviderUnavailableError("anthropic", "Model returned empty response")
+
+        pt, ct = self._usage(final_message)
+        latency_ms = (time.perf_counter() - start) * 1000
+        yield StreamChunk(
+            done=True,
+            response=ProviderResponse(
+                content=content,
+                prompt_tokens=pt,
+                completion_tokens=ct,
+                total_tokens=pt + ct,
+                model_used=model,
+                provider_used=self.provider_name,
+                latency_ms=latency_ms,
+                raw_response=final_message,
+            ),
+        )
 
     def embed(self, text: str, model: str = "voyage-3") -> list[float]:
         voyage_key = self._voyage_key_getter()

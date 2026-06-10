@@ -1,7 +1,9 @@
 """Provider priority resolution + failover chain execution."""
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import Any
 
 from app.config import MODEL_TIERS
 from app.core.logging import get_logger
@@ -15,6 +17,7 @@ from app.services.providers.base import (
     ProviderRateLimitedError,
     ProviderResponse,
     ProviderUnavailableError,
+    StreamChunk,
 )
 
 logger = get_logger(__name__)
@@ -113,6 +116,50 @@ async def run_failover(
             attempts.append((provider_name, f"failed:{reason}"))
             failures.append((provider_name, str(exc)))
             logger.warning("provider failover: %s failed (%s), trying next", provider_name, reason)
+            continue
+
+    raise AllProvidersFailedError(failures)
+
+
+async def run_failover_stream(
+    adapters: dict[str, ProviderAdapter],
+    priority: list[tuple[str, str]],
+    messages: list[Message],
+    options: CompletionOptions,
+    breaker: CircuitBreaker,
+) -> AsyncIterator[StreamChunk]:
+    """Try each provider in order; yield native stream chunks from the first success."""
+    attempts: list[tuple[str, str]] = []
+    failures: list[tuple[str, str]] = []
+
+    for provider_name, model in priority:
+        adapter = adapters.get(provider_name)
+        if adapter is None or not adapter.is_available():
+            attempts.append((provider_name, "skipped:unavailable"))
+            failures.append((provider_name, "unavailable/not-configured"))
+            continue
+        if breaker.is_open(provider_name):
+            attempts.append((provider_name, "skipped:circuit_open"))
+            failures.append((provider_name, "circuit breaker open"))
+            continue
+        try:
+            async for chunk in adapter.stream(messages, model, options):
+                yield chunk
+                if chunk.done and chunk.response is not None:
+                    breaker.record_success(provider_name)
+                    attempts.append((provider_name, "success"))
+                    return
+            attempts.append((provider_name, "failed:empty_stream"))
+            failures.append((provider_name, "empty stream"))
+        except ProviderInvalidResponseError:
+            attempts.append((provider_name, "invalid_response"))
+            raise
+        except (ProviderUnavailableError, ProviderRateLimitedError) as exc:
+            breaker.record_failure(provider_name)
+            reason = type(exc).__name__
+            attempts.append((provider_name, f"failed:{reason}"))
+            failures.append((provider_name, str(exc)))
+            logger.warning("provider stream failover: %s failed (%s), trying next", provider_name, reason)
             continue
 
     raise AllProvidersFailedError(failures)

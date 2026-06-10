@@ -7,7 +7,8 @@ import pytest
 from pydantic import BaseModel
 
 import app.services.model_router as model_router_module
-from app.services.model_router import ModelRouter, TaskType, get_model_router
+from app.services.model_router import ModelRouter, PreparedStream, TaskType, get_model_router
+from app.services.providers.base import CompletionOptions, ProviderResponse, StreamChunk
 
 
 class _StructuredOut(BaseModel):
@@ -79,6 +80,49 @@ class TestModelRouter:
             response = await router.complete(task_type=TaskType.CLASSIFICATION, prompt="retry")
         assert response.content == "ok"
         assert router._openai.chat.completions.create.call_count == 2  # noqa: SLF001
+
+    @pytest.mark.asyncio
+    async def test_stream_yields_deltas_then_final_response(self, router: ModelRouter):
+        prepared = PreparedStream(
+            task_type=TaskType.RAG_ANSWERING,
+            org_id="org-1",
+            prompt="hello",
+            system_prompt="sys",
+            messages=[{"role": "user", "content": "hello"}],
+            priority=[("openai", "gpt-5.5")],
+            options=CompletionOptions(),
+            model="gpt-5.5",
+        )
+
+        async def fake_failover_stream(*_args, **_kwargs):
+            yield StreamChunk(delta="hel")
+            yield StreamChunk(delta="lo")
+            yield StreamChunk(
+                done=True,
+                response=ProviderResponse(
+                    content="hello",
+                    provider_used="openai",
+                    model_used="gpt-5.5",
+                    prompt_tokens=10,
+                    completion_tokens=5,
+                    total_tokens=15,
+                    latency_ms=50.0,
+                ),
+            )
+
+        with (
+            patch("app.services.model_router.run_failover_stream", fake_failover_stream),
+            patch("app.services.model_router.moderate_output", AsyncMock()),
+            patch.object(router, "_log_model_call", AsyncMock(return_value="mc-stream-1")),
+            patch.object(router, "_log_guardrail_event", AsyncMock()),
+        ):
+            events = [event async for event in router.stream(prepared)]
+
+        assert [event.delta for event in events if event.delta] == ["hel", "lo"]
+        final = events[-1].response
+        assert final is not None
+        assert final.content == "hello"
+        assert final.model_call_id == "mc-stream-1"
 
     def test_singleton_pattern(self):
         model_router_module._model_router_singleton = None

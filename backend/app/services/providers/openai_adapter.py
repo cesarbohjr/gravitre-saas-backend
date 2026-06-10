@@ -25,6 +25,7 @@ from app.services.providers.base import (
     ProviderRateLimitedError,
     ProviderResponse,
     ProviderUnavailableError,
+    StreamChunk,
 )
 
 logger = get_logger(__name__)
@@ -125,6 +126,79 @@ class OpenAIAdapter(ProviderAdapter):
             raise ProviderUnavailableError("openai", f"auth error: {last_exc}") from last_exc
         raise ProviderUnavailableError("openai", str(last_exc)) from last_exc
 
+    async def stream(
+        self,
+        messages: list[Message],
+        model: str,
+        options: CompletionOptions,
+    ):
+        client = self._client_getter()
+        if client is None:
+            raise ProviderUnavailableError("openai", "OPENAI_API_KEY is not configured")
+
+        payload = [{"role": m["role"], "content": m["content"]} for m in messages]
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": payload,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+        }
+        if _supports_custom_temperature(model):
+            kwargs["temperature"] = options.temperature if options.temperature is not None else 0.2
+        if options.max_tokens is not None:
+            kwargs["max_tokens"] = options.max_tokens
+
+        start = time.perf_counter()
+        parts: list[str] = []
+        prompt_tokens = 0
+        completion_tokens = 0
+        cached_tokens = 0
+        try:
+            stream = await client.chat.completions.create(**kwargs)
+            async for chunk in stream:
+                if chunk.choices:
+                    delta = chunk.choices[0].delta.content or ""
+                    if delta:
+                        parts.append(delta)
+                        yield StreamChunk(delta=delta)
+                usage = getattr(chunk, "usage", None)
+                if usage is not None:
+                    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+                    details = getattr(usage, "prompt_tokens_details", None)
+                    cached_tokens = (
+                        int(getattr(details, "cached_tokens", 0) or 0) if details is not None else 0
+                    )
+        except (BadRequestError, PermissionDeniedError) as exc:
+            raise ProviderInvalidResponseError("openai", str(exc)) from exc
+        except RateLimitError as exc:
+            raise ProviderRateLimitedError("openai", str(exc)) from exc
+        except (APIConnectionError, APITimeoutError, AuthenticationError) as exc:
+            raise ProviderUnavailableError("openai", str(exc)) from exc
+        except Exception as exc:  # noqa: BLE001
+            raise ProviderUnavailableError("openai", str(exc)) from exc
+
+        content = "".join(parts)
+        if not content.strip():
+            raise ProviderUnavailableError("openai", "Model returned empty response")
+
+        latency_ms = (time.perf_counter() - start) * 1000
+        if not prompt_tokens and not completion_tokens:
+            prompt_tokens, completion_tokens, cached_tokens = self._usage_from_text(messages, content)
+        yield StreamChunk(
+            done=True,
+            response=ProviderResponse(
+                content=content,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+                cached_tokens=cached_tokens,
+                model_used=model,
+                provider_used=self.provider_name,
+                latency_ms=latency_ms,
+            ),
+        )
+
     def embed(self, text: str, model: str = "text-embedding-3-small") -> list[float]:
         api_key = self._api_key_getter()
         if not api_key:
@@ -150,6 +224,13 @@ class OpenAIAdapter(ProviderAdapter):
         details = getattr(raw, "prompt_tokens_details", None)
         cached = int(getattr(details, "cached_tokens", 0) or 0) if details is not None else 0
         return prompt, completion, cached
+
+    @staticmethod
+    def _usage_from_text(messages: list[Message], content: str) -> tuple[int, int, int]:
+        prompt_chars = sum(len(m.get("content") or "") for m in messages)
+        prompt_tokens = max(1, prompt_chars // 4) if prompt_chars else 0
+        completion_tokens = max(1, len(content) // 4) if content else 0
+        return prompt_tokens, completion_tokens, 0
 
     @staticmethod
     def _retry_after(exc: Exception, default: float) -> float:

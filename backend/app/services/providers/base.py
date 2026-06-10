@@ -11,6 +11,7 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Literal, TypedDict
 
@@ -48,6 +49,15 @@ class ProviderResponse:
     # API reports it, e.g. OpenAI usage.prompt_tokens_details.cached_tokens).
     cached_tokens: int = 0
     raw_response: Any = field(default=None, repr=False)
+
+
+@dataclass
+class StreamChunk:
+    """One chunk from a provider-native stream. Final chunk sets `done` + `response`."""
+
+    delta: str = ""
+    done: bool = False
+    response: ProviderResponse | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -297,6 +307,18 @@ class ProviderAdapter(ABC):
     @abstractmethod
     def embed(self, text: str, model: str) -> list[float]:
         """Return an embedding vector for `text`."""
+
+    async def stream(
+        self,
+        messages: list[Message],
+        model: str,
+        options: CompletionOptions,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream chat tokens. Default falls back to a single complete() call."""
+        resp = await self.complete(messages, model, options)
+        if resp.content:
+            yield StreamChunk(delta=resp.content)
+        yield StreamChunk(done=True, response=resp)
 
     @abstractmethod
     def is_available(self) -> bool:

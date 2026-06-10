@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -33,7 +35,12 @@ from app.services.providers.base import (
     ProviderAdapter,
     ProviderInvalidResponseError,
 )
-from app.services.providers.failover import build_priority, create_circuit_breaker, run_failover
+from app.services.providers.failover import (
+    build_priority,
+    create_circuit_breaker,
+    run_failover,
+    run_failover_stream,
+)
 from app.services.providers.gemini_adapter import GeminiAdapter
 from app.services.providers.openai_adapter import OpenAIAdapter
 from app.core.db import get_supabase_client
@@ -84,6 +91,34 @@ class ModelResponse(BaseModel):
     # id of the model_calls row written for this call (used as the billing
     # idempotency anchor); None if logging was skipped or failed.
     model_call_id: str | None = None
+
+
+@dataclass
+class ModelStreamEvent:
+    """Token delta during streaming, or final `response` when the provider stream completes."""
+
+    delta: str = ""
+    response: ModelResponse | None = None
+
+
+@dataclass
+class PreparedStream:
+    """Pre-flight context for provider-native streaming (guardrails already passed)."""
+
+    task_type: TaskType
+    org_id: str | None
+    prompt: str
+    system_prompt: str | None
+    messages: list[Message]
+    priority: list[tuple[str, str]]
+    options: CompletionOptions
+    model: str
+    agent_id: str | None = None
+    operator_id: str | None = None
+    autonomous_run: bool = False
+    trained_model_id: str | None = None
+    trained_model_version: int | None = None
+    used_fallback: bool = False
 
 
 class ModelRouter:
@@ -356,6 +391,227 @@ class ModelRouter:
             latency_ms=latency_ms,
         )
         return final
+
+    async def prepare_stream(
+        self,
+        task_type: TaskType,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        context: list[dict] | None = None,
+        org_id: str | None = None,
+        model_override: str | None = None,
+        agent_id: str | None = None,
+        operator_id: str | None = None,
+        autonomous_run: bool = False,
+        trained_model_id: str | None = None,
+        trained_model_version: int | None = None,
+        used_fallback: bool = False,
+    ) -> PreparedStream:
+        """Run guardrails and build messages before opening an HTTP stream."""
+        complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
+        model = model_override or self._resolve_model(task_type)
+
+        if org_id:
+            try:
+                client = get_supabase_client(self.settings)
+                policy = load_org_model_policy(client, org_id)
+                assert_model_allowed(policy, provider="openai", model=model)
+            except AIModelPolicyError:
+                raise
+            except Exception:  # noqa: BLE001
+                logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
+
+        if autonomous_run and operator_id and org_id:
+            try:
+                from app.services.autonomous_budget_service import (
+                    AutonomousBudgetExceededError,
+                    check_autonomous_llm_budget,
+                    is_autonomous_operator,
+                )
+
+                client = get_supabase_client(self.settings)
+                op_resp = (
+                    client.table("operators")
+                    .select("*")
+                    .eq("org_id", org_id)
+                    .eq("id", operator_id)
+                    .limit(1)
+                    .execute()
+                )
+                operator_row = op_resp.data[0] if op_resp.data else None
+                if operator_row and is_autonomous_operator(operator_row):
+                    est_in = self._estimate_tokens(prompt + (system_prompt or ""))
+                    est_out = max(int(max_tokens or 0), est_in)
+                    est_model = model_override or self._resolve_model(task_type)
+                    est_spend = self._estimate_cost(est_model, est_in, est_out)
+                    check_autonomous_llm_budget(
+                        client,
+                        org_id,
+                        operator_row,
+                        projected_tokens=est_in + est_out,
+                        projected_spend_usd=est_spend,
+                    )
+            except AutonomousBudgetExceededError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("autonomous budget pre-check skipped org_id=%s error=%s", org_id, str(exc))
+
+        try:
+            if getattr(self.settings, "disable_ai", False):
+                raise AIServiceDisabledError()
+            enforce_rate_limit(org_id, self.settings)
+            enforce_budget(org_id, self.settings)
+            await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
+        except AIGuardrailError as exc:
+            code = getattr(exc, "code", "AI_GUARDRAIL")
+            logger.warning(
+                "AI_GUARDRAIL_BLOCK task_type=%s org_id=%s code=%s", task_type.value, org_id, code
+            )
+            await self._log_guardrail_event(org_id, task_type, code, [], str(exc))
+            raise
+
+        redact = getattr(self.settings, "ai_pii_redaction_enabled", True)
+        messages: list[Message] = []
+        hardened_system = harden_system_prompt(system_prompt)
+        if hardened_system:
+            messages.append({"role": "system", "content": hardened_system})
+        for c in context or []:
+            role = c.get("role")
+            content = c.get("content")
+            if role in ("system", "user", "assistant") and content is not None:
+                text = str(content)
+                if redact and role != "system":
+                    text = redact_pii(text)
+                messages.append({"role": role, "content": text})
+        user_prompt = redact_pii(prompt) if redact else prompt
+        messages.append({"role": "user", "content": fence_untrusted(user_prompt)})
+
+        if model_override:
+            priority = [("openai", model_override)]
+        elif getattr(self.settings, "ai_failover_enabled", True):
+            priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+        else:
+            priority = [("openai", MODEL_TIERS[complexity]["openai"])]
+
+        options = CompletionOptions(
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout_s=OPENAI_REQUEST_TIMEOUT_S,
+        )
+
+        return PreparedStream(
+            task_type=task_type,
+            org_id=org_id,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            messages=messages,
+            priority=priority,
+            options=options,
+            model=model,
+            agent_id=agent_id,
+            operator_id=operator_id,
+            autonomous_run=autonomous_run,
+            trained_model_id=trained_model_id,
+            trained_model_version=trained_model_version,
+            used_fallback=used_fallback,
+        )
+
+    async def stream(self, prepared: PreparedStream) -> AsyncIterator[ModelStreamEvent]:
+        """Stream provider tokens after `prepare_stream()` pre-flight succeeds."""
+        start = time.perf_counter()
+        logger.info(
+            "MODEL_STREAM_START task_type=%s priority=%s",
+            prepared.task_type.value,
+            [name for name, _ in prepared.priority],
+        )
+        attempts: list[tuple[str, str]] = []
+        try:
+            async for chunk in run_failover_stream(
+                self._adapters,
+                prepared.priority,
+                prepared.messages,
+                prepared.options,
+                self._breaker,
+            ):
+                if chunk.delta:
+                    yield ModelStreamEvent(delta=chunk.delta)
+                if chunk.done and chunk.response is not None:
+                    resp = chunk.response
+                    latency_ms = int((time.perf_counter() - start) * 1000)
+                    cached_tokens = resp.cached_tokens
+                    input_tokens = resp.prompt_tokens or self._estimate_tokens(
+                        prepared.prompt + (prepared.system_prompt or "")
+                    )
+                    output_tokens = resp.completion_tokens or self._estimate_tokens(resp.content)
+                    cost = self._estimate_cost(resp.model_used, input_tokens, output_tokens, cached_tokens)
+                    final = ModelResponse(
+                        provider=resp.provider_used,
+                        model=resp.model_used,
+                        content=resp.content,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        latency_ms=latency_ms,
+                        cost_usd=cost,
+                        cache_hit=False,
+                    )
+                    try:
+                        await moderate_output(resp.content, self.settings, self._openai)
+                    except AIContentFlaggedError as exc:
+                        logger.warning(
+                            "AI_OUTPUT_FLAGGED task_type=%s org_id=%s",
+                            prepared.task_type.value,
+                            prepared.org_id,
+                        )
+                        await self._log_guardrail_event(
+                            prepared.org_id,
+                            prepared.task_type,
+                            "ai_output_flagged",
+                            [],
+                            str(exc),
+                        )
+                        raise
+                    logger.info(
+                        "MODEL_STREAM_SUCCESS task_type=%s provider=%s model=%s duration_ms=%s",
+                        prepared.task_type.value,
+                        resp.provider_used,
+                        resp.model_used,
+                        latency_ms,
+                    )
+                    final.model_call_id = await self._log_model_call(
+                        org_id=prepared.org_id,
+                        task_type=prepared.task_type,
+                        response=final,
+                        agent_id=prepared.agent_id,
+                        trained_model_id=prepared.trained_model_id,
+                        trained_model_version=prepared.trained_model_version,
+                        used_fallback=prepared.used_fallback,
+                    )
+                    if prepared.autonomous_run and prepared.operator_id and prepared.org_id:
+                        await self._record_autonomous_llm(prepared.org_id, prepared.operator_id, final)
+                    await self._log_guardrail_event(
+                        prepared.org_id,
+                        prepared.task_type,
+                        "ai_failover",
+                        attempts,
+                        f"final={resp.provider_used}/{resp.model_used}",
+                        latency_ms=latency_ms,
+                    )
+                    yield ModelStreamEvent(response=final)
+                    return
+        except ProviderInvalidResponseError as exc:
+            self._log_call_failure(prepared.task_type, prepared.model, "varied", start, exc)
+            await self._log_guardrail_event(
+                prepared.org_id, prepared.task_type, "ai_failover_invalid", [], str(exc)
+            )
+            raise
+        except AllProvidersFailedError as exc:
+            self._log_call_failure(prepared.task_type, prepared.model, "varied", start, exc)
+            await self._log_guardrail_event(
+                prepared.org_id, prepared.task_type, "ai_failover_exhausted", [], str(exc)
+            )
+            raise
 
     def _log_call_failure(
         self,

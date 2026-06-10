@@ -1,10 +1,10 @@
 """Conversational AI assistant — governed streaming endpoint.
 
 This is the single backend entry point for the customer-facing assistant. Every
-completion flows through ModelRouter.complete(), so the full governance stack
-applies: killswitch, per-org rate limit, budget gate, input moderation, prompt
-hardening, untrusted-input fencing, multi-provider failover, and token/cost
-logging to model_calls.
+completion flows through ModelRouter.prepare_stream() + stream(), so the full
+governance stack applies: killswitch, per-org rate limit, budget gate, input
+moderation, prompt hardening, untrusted-input fencing, multi-provider failover,
+and token/cost logging to model_calls.
 
 Tools (knowledge base / agent status / connector status) are executed
 server-side, org-scoped, and every tool result is passed through
@@ -43,7 +43,7 @@ from app.services.ai_guardrails import (
     AIServiceDisabledError,
     fence_untrusted,
 )
-from app.services.model_router import ModelResponse, TaskType, get_model_router
+from app.services.model_router import ModelResponse, PreparedStream, TaskType, get_model_router
 from app.services.org_context_service import get_org_context_service
 from app.services.providers.base import (
     AllProvidersFailedError,
@@ -82,7 +82,6 @@ _TOOL_DISPLAY_NAMES = {
 }
 _DEFAULT_TOOLS = ["knowledge_base", "agent_status", "connector_status"]
 _MAX_HISTORY = 12
-_TEXT_DELTA_CHARS = 24
 
 
 class AssistantChatRequest(BaseModel):
@@ -482,21 +481,21 @@ def _build_assistant_system_prompt(
     return f"{base}\n\n{org_block}"
 
 
-def _build_stream(tool_results: list[dict[str, Any]], answer: str):
-    """Yield the AI SDK UI message stream (text/event-stream) for the response.
-
-    NOTE: streaming here is cosmetic — the governed completion is produced in
-    full first (so guardrail failures surface as HTTP errors before the stream
-    opens), then chunked out. See the FUTURE note on ModelRouter.complete() and
-    STA-5 (https://linear.app/staqbot/issue/STA-5) for the two-phase real-time
-    provider-streaming design.
-    """
+def _build_stream(
+    tool_results: list[dict[str, Any]],
+    prepared: PreparedStream,
+    *,
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    user_text: str,
+):
+    """Yield AI SDK UI stream with provider-native token deltas (STA-151)."""
 
     async def generator():
         yield _sse({"type": "start"})
         yield _sse({"type": "start-step"})
-        # Tool parts — input then output, correlated by toolCallId. The client
-        # maps these to `tool-<displayName>` parts with state output-available.
         for tool in tool_results:
             call_id = f"call-{uuid.uuid4().hex[:12]}"
             yield _sse(
@@ -514,15 +513,34 @@ def _build_stream(tool_results: list[dict[str, Any]], answer: str):
                     "output": tool["output"],
                 }
             )
-        # Assistant text, chunked so the UI renders it progressively.
+
         text_id = f"text-{uuid.uuid4().hex[:12]}"
         yield _sse({"type": "text-start", "id": text_id})
-        for i in range(0, len(answer), _TEXT_DELTA_CHARS):
-            yield _sse({"type": "text-delta", "id": text_id, "delta": answer[i : i + _TEXT_DELTA_CHARS]})
+
+        router_ = get_model_router()
+        result: ModelResponse | None = None
+        async for event in router_.stream(prepared):
+            if event.delta:
+                yield _sse({"type": "text-delta", "id": text_id, "delta": event.delta})
+            if event.response is not None:
+                result = event.response
+
         yield _sse({"type": "text-end", "id": text_id})
         yield _sse({"type": "finish-step"})
         yield _sse({"type": "finish"})
         yield "data: [DONE]\n\n"
+
+        if result is not None:
+            asyncio.create_task(_record_assistant_billing(settings, org_id, result))
+            _persist_conversation_turn(
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                user_text=user_text,
+                assistant_text=result.content,
+                tool_results=tool_results,
+            )
 
     return generator()
 
@@ -613,14 +631,13 @@ async def assistant_chat(
 
     router_ = get_model_router()
     try:
-        result = await router_.complete(
+        prepared = await router_.prepare_stream(
             task_type=TaskType.RAG_ANSWERING,
             prompt=last_user,
             system_prompt=system_prompt,
             context=context,
             org_id=org_id,
         )
-        answer = result.content
     except AIServiceDisabledError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI assistant is temporarily disabled")
     except AIRateLimitError as exc:
@@ -635,23 +652,19 @@ async def assistant_chat(
         logger.error("assistant all providers failed org_id=%s error=%s", org_id, str(exc))
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI providers are unavailable")
     except Exception as exc:  # noqa: BLE001
-        logger.error("assistant completion failed org_id=%s error=%s", org_id, str(exc))
+        logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
 
-    asyncio.create_task(_record_assistant_billing(settings, org_id, result))
-
-    _persist_conversation_turn(
-        settings,
-        org_id=org_id,
-        user_id=str(current_user.get("user_id") or ""),
-        conversation_id=body.conversation_id,
-        user_text=last_user,
-        assistant_text=answer,
-        tool_results=tool_results,
-    )
-
     return StreamingResponse(
-        _build_stream(tool_results, answer),
+        _build_stream(
+            tool_results,
+            prepared,
+            settings=settings,
+            org_id=org_id,
+            user_id=str(current_user.get("user_id") or ""),
+            conversation_id=body.conversation_id,
+            user_text=last_user,
+        ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,
     )

@@ -10,7 +10,7 @@ import app.routers.assistant as assistant_module
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.main import app
-from app.services.model_router import ModelResponse
+from app.services.model_router import ModelResponse, ModelStreamEvent, PreparedStream
 
 
 def _settings(**overrides) -> Settings:
@@ -32,13 +32,24 @@ def _clear_overrides():
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def _mock_assistant_dependencies(monkeypatch):
+    """Keep assistant router tests offline (no Supabase org-context fetch)."""
+    monkeypatch.setattr(
+        assistant_module,
+        "_build_assistant_system_prompt",
+        lambda *args, **kwargs: "test system prompt",
+    )
+    monkeypatch.setattr(assistant_module, "_persist_conversation_turn", lambda *args, **kwargs: None)
+
+
 def _authenticate(org_id: str = "org-1", settings: Settings | None = None) -> None:
     app.dependency_overrides[get_current_user] = lambda: {"user_id": "user-1", "email": "u@example.com"}
     app.dependency_overrides[get_org_context] = lambda: org_id
     app.dependency_overrides[get_settings] = lambda: settings or _settings()
 
 
-def _mock_completion(monkeypatch, content: str = "answer text", **result_overrides) -> AsyncMock:
+def _mock_stream(monkeypatch, content: str = "answer text", **result_overrides) -> MagicMock:
     router = MagicMock()
     response = ModelResponse(
         provider=result_overrides.pop("provider", "openai"),
@@ -51,9 +62,16 @@ def _mock_completion(monkeypatch, content: str = "answer text", **result_overrid
         model_call_id=result_overrides.pop("model_call_id", "mc-123"),
         **result_overrides,
     )
-    router.complete = AsyncMock(return_value=response)
+    prepared = MagicMock(spec=PreparedStream)
+
+    async def fake_stream(_prepared):
+        yield ModelStreamEvent(delta=content)
+        yield ModelStreamEvent(response=response)
+
+    router.prepare_stream = AsyncMock(return_value=prepared)
+    router.stream = fake_stream
     monkeypatch.setattr(assistant_module, "get_model_router", lambda: router)
-    return router.complete
+    return router
 
 
 @pytest.fixture
@@ -80,7 +98,7 @@ async def test_unauthenticated_request_returns_401(async_client):
 async def test_authenticated_request_returns_streaming_response(async_client, monkeypatch):
     _authenticate(org_id="org-1")
     monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
-    _mock_completion(monkeypatch, content="hello-answer")
+    _mock_stream(monkeypatch, content="hello-answer")
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -101,7 +119,7 @@ async def test_stale_body_org_id_uses_validated_org(async_client, monkeypatch):
     """Client body org_id is a hint only; JWT-validated org wins (no 403)."""
     _authenticate(org_id="org-1")
     monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
-    _mock_completion(monkeypatch, content="ok")
+    _mock_stream(monkeypatch, content="ok")
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -114,7 +132,7 @@ async def test_stale_body_org_id_uses_validated_org(async_client, monkeypatch):
 
 async def test_killswitch_active_returns_503(async_client, monkeypatch):
     _authenticate(org_id="org-1", settings=_settings(disable_ai=True))
-    completion = _mock_completion(monkeypatch)
+    router = _mock_stream(monkeypatch)
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -123,7 +141,7 @@ async def test_killswitch_active_returns_503(async_client, monkeypatch):
     )
     assert resp.status_code == 503
     # Killswitch must short-circuit before any model spend.
-    completion.assert_not_called()
+    router.prepare_stream.assert_not_called()
 
 
 async def test_tool_results_are_fenced_before_model_injection(async_client, monkeypatch):
@@ -149,7 +167,7 @@ async def test_tool_results_are_fenced_before_model_injection(async_client, monk
 
     monkeypatch.setattr(assistant_module, "fence_untrusted", spy_fence)
 
-    completion = _mock_completion(monkeypatch, content="ok")
+    router = _mock_stream(monkeypatch, content="ok")
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -162,8 +180,8 @@ async def test_tool_results_are_fenced_before_model_injection(async_client, monk
     assert any(sentinel in call for call in fence_calls), "tool output was not fenced before model injection"
 
     # And the fenced content actually reached the model context.
-    completion.assert_awaited_once()
-    _, kwargs = completion.call_args
+    router.prepare_stream.assert_awaited_once()
+    _, kwargs = router.prepare_stream.call_args
     context_blob = "".join(msg.get("content", "") for msg in (kwargs.get("context") or []))
     assert sentinel in context_blob
     assert "<untrusted_input>" in context_blob
@@ -189,7 +207,7 @@ async def test_killswitch_logs_guardrail_event(async_client, monkeypatch, captur
 async def test_billing_scheduled_after_success(async_client, monkeypatch, capture_background_tasks):
     _authenticate(org_id="org-1")
     monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
-    _mock_completion(monkeypatch, input_tokens=200, output_tokens=80, model_call_id="mc-bill-1")
+    _mock_stream(monkeypatch, input_tokens=200, output_tokens=80, model_call_id="mc-bill-1")
 
     record_mock = AsyncMock()
     monkeypatch.setattr(assistant_module, "_record_assistant_billing", record_mock)
