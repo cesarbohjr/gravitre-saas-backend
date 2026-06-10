@@ -38,6 +38,18 @@ export const metadata: Metadata = {
   },
 }
 
+const requiredEnvVars = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'FASTAPI_BASE_URL',
+] as const
+
+for (const key of requiredEnvVars) {
+  if (!process.env[key]) {
+    console.error(`Missing required env var: ${key}`)
+  }
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
