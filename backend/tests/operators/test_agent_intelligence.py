@@ -88,6 +88,80 @@ async def test_execute_task_passes_connected_integrations(agent_row: dict, intel
 
 
 @pytest.mark.asyncio
+async def test_execute_task_queries_rag_with_agent_id(agent_row: dict, intelligence: AgentIntelligence):
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    intelligence.rag_service.query = AsyncMock(
+        return_value=SimpleNamespace(
+            chunks=[SimpleNamespace(id="c1", content="Pricing FAQ", score=0.9, source="KB")]
+        )
+    )
+    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
+        with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": []}):
+            with patch("app.operators.agent_intelligence.write_audit_event"):
+                with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
+                    await intelligence.execute_task(
+                        org_id="org-1",
+                        agent=agent_row,
+                        task="What is our pricing?",
+                        client=client,
+                    )
+    intelligence.rag_service.query.assert_awaited_once()
+    _, kwargs = intelligence.rag_service.query.call_args
+    assert kwargs["agent_id"] == "agent-1"
+    assert kwargs["scope"] == "agent"
+
+
+@pytest.mark.asyncio
+async def test_execute_task_empty_kb_handled_gracefully(agent_row: dict, intelligence: AgentIntelligence):
+    client = MagicMock()
+    intelligence.rag_service.query = AsyncMock(return_value=SimpleNamespace(chunks=[]))
+    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
+        with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": []}):
+            with patch("app.operators.agent_intelligence.write_audit_event"):
+                with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
+                    result = await intelligence.execute_task(
+                        org_id="org-1",
+                        agent=agent_row,
+                        task="Unknown policy question",
+                        client=client,
+                    )
+    assert result.rag_sources == []
+    task_prompt = intelligence.react_engine.run.await_args.kwargs["task"]
+    assert "<knowledge_base>" not in task_prompt
+    system_prompt = intelligence.react_engine.run.await_args.kwargs["system_prompt"]
+    assert "No knowledge-base excerpts" in system_prompt
+
+
+@pytest.mark.asyncio
+async def test_execute_task_rag_sources_cited_in_output(agent_row: dict, intelligence: AgentIntelligence):
+    client = MagicMock()
+    intelligence.rag_service.query = AsyncMock(
+        return_value=SimpleNamespace(
+            chunks=[SimpleNamespace(id="chunk-1", content="Refund policy text", score=0.88, source="Policy Doc")]
+        )
+    )
+    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
+        with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": []}):
+            with patch("app.operators.agent_intelligence.write_audit_event"):
+                with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
+                    result = await intelligence.execute_task(
+                        org_id="org-1",
+                        agent=agent_row,
+                        task="Summarize refund policy",
+                        client=client,
+                    )
+    assert len(result.rag_sources) == 1
+    assert result.rag_sources[0]["source"] == "Policy Doc"
+    handoff = result.to_handoff_dict()
+    assert handoff["rag_sources"][0]["source"] == "Policy Doc"
+    assert result.decision is not None
+    assert result.decision["ragSources"][0]["source"] == "Policy Doc"
+
+
+@pytest.mark.asyncio
 async def test_execute_task_runs_react_with_context(agent_row: dict, intelligence: AgentIntelligence):
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(

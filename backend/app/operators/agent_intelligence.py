@@ -310,10 +310,8 @@ class AgentIntelligence:
                 task_text,
                 scope="agent",
                 top_k=int(params.get("rag_top_k") or active_settings.rag_top_k or 8),
-                filters={
-                    "agent_id": agent_id,
-                    "environment": environment_name,
-                },
+                agent_id=agent_id or None,
+                filters={"environment": environment_name},
             )
             rag_sources = [
                 {
@@ -483,6 +481,15 @@ class AgentIntelligence:
                 "confidence": confidence,
                 "toolsUsed": [call.get("tool") for call in tool_calls if call.get("tool")],
             }
+            if rag_sources:
+                decision["ragSources"] = [
+                    {
+                        "id": source.get("id"),
+                        "source": source.get("source"),
+                        "score": source.get("score"),
+                    }
+                    for source in rag_sources
+                ]
 
         return AgentResult(
             summary=answer[:4000],

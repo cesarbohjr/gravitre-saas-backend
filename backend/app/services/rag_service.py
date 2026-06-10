@@ -83,21 +83,25 @@ class RAGService:
         top_k: int = 8,
         filters: dict | None = None,
         include_sources: bool = True,
+        agent_id: str | None = None,
     ) -> RAGResponse:
-        environment = str((filters or {}).get("environment") or "default")
+        filters = dict(filters or {})
+        if agent_id and not filters.get("agent_id"):
+            filters["agent_id"] = agent_id
+        environment = str(filters.get("environment") or "default")
         top_k = top_k or self.settings.rag_top_k or 8
         client = get_supabase_client(self.settings)
-        department_id = (filters or {}).get("department_id")
-        agent_id = (filters or {}).get("agent_id")
+        department_id = filters.get("department_id")
+        resolved_agent_id = filters.get("agent_id")
         if scope == "department" or scope == "agent":
             resolved_dept, resolved_agent = resolve_department_id_for_agent(
-                client, org_id, str(agent_id) if agent_id else None
+                client, org_id, str(resolved_agent_id) if resolved_agent_id else None
             )
             department_id = department_id or resolved_dept
-            agent_id = agent_id or resolved_agent
-        elif agent_id and not department_id:
-            department_id, agent_id = resolve_department_id_for_agent(
-                client, org_id, str(agent_id)
+            resolved_agent_id = resolved_agent_id or resolved_agent
+        elif resolved_agent_id and not department_id:
+            department_id, resolved_agent_id = resolve_department_id_for_agent(
+                client, org_id, str(resolved_agent_id)
             )
         embedding_method = "none"
         try:
@@ -149,7 +153,7 @@ class RAGService:
             document_id=(filters or {}).get("document_id"),
             environment_name=environment,
             department_id=str(department_id) if department_id else None,
-            agent_id=str(agent_id) if agent_id else None,
+            agent_id=str(resolved_agent_id) if resolved_agent_id else None,
         )
 
         keyword_rows = self._keyword_search(org_id, query, top_k=max(top_k * 2, top_k), environment=environment)
