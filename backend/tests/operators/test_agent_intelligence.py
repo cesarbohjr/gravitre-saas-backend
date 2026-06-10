@@ -55,6 +55,37 @@ def intelligence() -> AgentIntelligence:
     return intel
 
 
+def test_get_agent_tools_delegates_to_registry(agent_row: dict, intelligence: AgentIntelligence):
+    intelligence.tool_registry.get_tools_for_agent = MagicMock(
+        return_value=[{"type": "function", "function": {"name": "hubspot_search_contacts"}}]
+    )
+    tools = intelligence.get_agent_tools(agent_row, ["hubspot"])
+    intelligence.tool_registry.get_tools_for_agent.assert_called_once_with(
+        ["hubspot", "slack"],
+        ["hubspot"],
+    )
+    assert tools[0]["function"]["name"] == "hubspot_search_contacts"
+
+
+@pytest.mark.asyncio
+async def test_execute_task_passes_connected_integrations(agent_row: dict, intelligence: AgentIntelligence):
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
+        with patch("app.operators.agent_intelligence.write_audit_event"):
+            with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": ["hubspot"]}):
+                await intelligence.execute_task(
+                    org_id="org-1",
+                    agent=agent_row,
+                    task="Find lead",
+                    client=client,
+                )
+    call_kwargs = intelligence.react_engine.run.await_args.kwargs
+    assert call_kwargs["connected_integrations"] == ["hubspot"]
+
+
 @pytest.mark.asyncio
 async def test_execute_task_runs_react_with_context(agent_row: dict, intelligence: AgentIntelligence):
     client = MagicMock()

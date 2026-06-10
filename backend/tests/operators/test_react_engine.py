@@ -75,6 +75,53 @@ async def test_execute_tool_call_delegates_to_registry(engine: ReActEngine, tool
 
 
 @pytest.mark.asyncio
+async def test_execute_tool_call_rejects_disallowed_tool(engine: ReActEngine, tool_ctx: ToolContext):
+    engine.registry.execute_tool = AsyncMock()
+    result = await engine._execute_tool_call(
+        tool_ctx,
+        "slack_send_message",
+        {"channel": "#x", "message": "hi"},
+        allowed_tool_names={"hubspot_search_contacts"},
+    )
+    assert result["success"] is False
+    assert result["error_code"] == "tool_not_available"
+    engine.registry.execute_tool.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_surfaces_tool_errors_in_trace_without_crashing(
+    engine: ReActEngine, tool_ctx: ToolContext
+):
+    engine.registry.execute_tool = AsyncMock(
+        return_value={"success": False, "error": "HubSpot rate limited", "tool": "hubspot_search_contacts"}
+    )
+    engine.router._openai.chat.completions.create = AsyncMock(
+        side_effect=[
+            SimpleNamespace(
+                choices=[
+                    _choice(
+                        "Searching.",
+                        tool_calls=[_tool_call("hubspot_search_contacts", '{"query":"acme"}')],
+                    )
+                ]
+            ),
+            SimpleNamespace(choices=[_choice("Could not reach HubSpot; try again later.")]),
+        ]
+    )
+    with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+        result = await engine.run(
+            ctx=tool_ctx,
+            task="Find contact",
+            permitted_tools=["hubspot"],
+            connected_integrations=["hubspot"],
+            max_iterations=5,
+        )
+    assert result.status == ReActStatus.COMPLETED
+    assert result.trace[0].tool_success is False
+    assert "rate limited" in (result.trace[0].observation or "")
+
+
+@pytest.mark.asyncio
 async def test_run_completes_on_final_answer(engine: ReActEngine, tool_ctx: ToolContext):
     engine.router._openai.chat.completions.create = AsyncMock(
         return_value=SimpleNamespace(choices=[_choice("Done — contact updated.")])
@@ -181,7 +228,7 @@ async def test_run_permission_denied_returns_needs_human(engine: ReActEngine, to
             choices=[
                 _choice(
                     "",
-                    tool_calls=[_tool_call("slack_send_message", '{"channel":"#x","message":"hi"}')],
+                    tool_calls=[_tool_call("hubspot_search_contacts", '{"query":"acme"}')],
                 )
             ]
         )
@@ -189,9 +236,9 @@ async def test_run_permission_denied_returns_needs_human(engine: ReActEngine, to
     with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
         result = await engine.run(
             ctx=tool_ctx,
-            task="Notify slack",
-            permitted_tools=["slack"],
-            connected_integrations=["slack"],
+            task="Find contact in HubSpot",
+            permitted_tools=["hubspot"],
+            connected_integrations=["hubspot"],
         )
     assert result.status == ReActStatus.NEEDS_HUMAN_INPUT
     assert "permission" in result.answer.lower()

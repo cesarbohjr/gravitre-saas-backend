@@ -175,6 +175,8 @@ class ReActEngine:
                 ),
             )
 
+        allowed_tool_names = {t["function"]["name"] for t in tools}
+
         resolved_model = model or MODEL_TIERS["high"]["openai"]
         messages: list[dict[str, Any]] = []
         hardened = harden_system_prompt(system_prompt or _default_react_system_prompt())
@@ -268,7 +270,12 @@ class ReActEngine:
             for tc in tool_calls:
                 tool_name = tc.function.name
                 tool_args = _parse_tool_arguments(tc.function.arguments)
-                observation = await self._execute_tool_call(ctx, tool_name, tool_args)
+                observation = await self._execute_tool_call(
+                    ctx,
+                    tool_name,
+                    tool_args,
+                    allowed_tool_names=allowed_tool_names,
+                )
                 tool_calls_log.append(
                     {
                         "iteration": iteration,
@@ -332,8 +339,17 @@ class ReActEngine:
         ctx: ToolContext,
         tool_name: str,
         args: dict[str, Any] | None = None,
+        *,
+        allowed_tool_names: set[str] | frozenset[str] | None = None,
     ) -> dict[str, Any]:
         """Route a model tool call through ToolRegistry → invoke_tool."""
+        if allowed_tool_names is not None and tool_name not in allowed_tool_names:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "error": "Tool is not permitted or not connected for this agent",
+                "error_code": "tool_not_available",
+            }
         return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=args)
 
     async def _chat_with_tools(

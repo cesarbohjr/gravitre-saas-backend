@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.config import MODEL_TIERS, Settings, get_settings
 from app.core.logging import get_logger
 from app.operators.agent_prompts import build_agent_system_prompt, get_agent_persona
-from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine
+from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.services.agent_finetune_service import resolve_agent_inference_model
 from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
 from app.services.org_context_service import get_org_context_service
@@ -194,6 +194,17 @@ class AgentIntelligence:
         self.rag_service = rag_service or RAGService()
         self.tool_registry = get_tool_registry()
 
+    def get_agent_tools(
+        self,
+        agent: dict[str, Any],
+        connected_integrations: list[str],
+        *,
+        permitted_tools: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """OpenAI-format tools permitted for the agent and connected for the org (STA-160)."""
+        allowed = resolve_permitted_tools(agent, permitted_tools)
+        return self.tool_registry.get_tools_for_agent(allowed, connected_integrations)
+
     async def execute_task(
         self,
         *,
@@ -304,6 +315,7 @@ class AgentIntelligence:
             system_prompt=system_prompt,
             agent=agent,
             model=model,
+            connected_integrations=list(connected),
             max_iterations=max_iterations or int(params.get("max_react_iterations") or 10),
             audit_resource_type="workflow_run" if run_id else "agent_job",
             audit_resource_id=task_id or run_id or agent_id,
