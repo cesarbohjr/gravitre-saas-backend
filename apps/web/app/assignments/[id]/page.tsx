@@ -8,7 +8,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import { apiFetch } from "@/lib/fetcher"
+import { fetchAssignmentJob } from "@/lib/demo-assignments"
 import type { AgentJob } from "@/hooks/use-async-job"
 import {
   parseHandoffResult,
@@ -38,12 +38,7 @@ interface Deliverable {
 }
 
 async function fetchAgentJob(id: string): Promise<AgentJob> {
-  const response = await apiFetch(`/api/agent-jobs/${id}`)
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}))
-    throw new Error(payload.detail || payload.error || "Assignment not found")
-  }
-  return response.json() as Promise<AgentJob>
+  return fetchAssignmentJob(id)
 }
 
 const typeConfig: Record<string, { icon: string; color: string; label: string; bg: string }> = {

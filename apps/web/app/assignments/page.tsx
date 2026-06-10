@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { DEMO_ASSIGNMENTS, type DemoAssignment } from "@/lib/demo-assignments"
 import { 
   Megaphone, 
   TrendingUp, 
@@ -16,21 +17,8 @@ import {
   type LucideIcon 
 } from "lucide-react"
 
-// Types
-interface Assignment {
-  id: string
-  title: string
-  brief: string
-  agent: { name: string; role: string; gradient: string; icon: LucideIcon }
-  status: "running" | "completed" | "pending" | "failed" | "needs_approval"
-  progress: number
-  steps: { name: string; status: "done" | "running" | "pending" }[]
-  createdAt: string
-  completedAt?: string
-  outputTypes: string[]
-  destination: string
-  confidence?: number
-}
+// Types — list view uses shared demo catalog (detail resolves via fetchAssignmentJob)
+type Assignment = DemoAssignment
 
 // Agent icon mapping based on role
 const agentIcons: Record<string, LucideIcon> = {
@@ -42,98 +30,7 @@ const agentIcons: Record<string, LucideIcon> = {
   "Support Coordinator": Headphones,
 }
 
-// Mock Data
-const assignments: Assignment[] = [
-  {
-    id: "assign-001",
-    title: "Q3 Healthcare Campaign",
-    brief: "Create multi-channel campaign targeting healthcare decision makers",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
-    status: "running",
-    progress: 67,
-    steps: [
-      { name: "Research", status: "done" },
-      { name: "Strategy", status: "done" },
-      { name: "Content", status: "running" },
-      { name: "Review", status: "pending" },
-    ],
-    createdAt: "2 hours ago",
-    outputTypes: ["Emails", "Social Posts", "Segments"],
-    destination: "HubSpot + Outlook",
-  },
-  {
-    id: "assign-002",
-    title: "Weekly Performance Report",
-    brief: "Generate comprehensive weekly marketing performance analysis",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
-    status: "needs_approval",
-    progress: 100,
-    steps: [
-      { name: "Data Pull", status: "done" },
-      { name: "Analysis", status: "done" },
-      { name: "Report", status: "done" },
-      { name: "Approval", status: "running" },
-    ],
-    createdAt: "5 hours ago",
-    completedAt: "4 hours ago",
-    outputTypes: ["Report"],
-    destination: "Slack",
-    confidence: 94,
-  },
-  {
-    id: "assign-003",
-    title: "Lead Scoring Analysis",
-    brief: "Analyze and score all leads from Q2 campaign activities",
-    agent: { name: "Nexus", role: "Sales Assistant", gradient: "from-blue-500 to-indigo-500", icon: TrendingUp },
-    status: "completed",
-    progress: 100,
-    steps: [
-      { name: "Import", status: "done" },
-      { name: "Score", status: "done" },
-      { name: "Segment", status: "done" },
-      { name: "Export", status: "done" },
-    ],
-    createdAt: "1 day ago",
-    completedAt: "1 day ago",
-    outputTypes: ["Report", "Segments"],
-    destination: "Salesforce",
-    confidence: 98,
-  },
-  {
-    id: "assign-004",
-    title: "Email Sequence - Re-engagement",
-    brief: "Design 5-email re-engagement sequence for dormant leads",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
-    status: "pending",
-    progress: 0,
-    steps: [
-      { name: "Research", status: "pending" },
-      { name: "Draft", status: "pending" },
-      { name: "Review", status: "pending" },
-      { name: "Publish", status: "pending" },
-    ],
-    createdAt: "Just now",
-    outputTypes: ["Emails"],
-    destination: "HubSpot",
-  },
-  {
-    id: "assign-005",
-    title: "Competitor Analysis Report",
-    brief: "Deep dive analysis of top 5 competitors market positioning",
-    agent: { name: "Oracle", role: "Finance Reporter", gradient: "from-violet-500 to-purple-500", icon: PieChart },
-    status: "failed",
-    progress: 45,
-    steps: [
-      { name: "Research", status: "done" },
-      { name: "Analysis", status: "done" },
-      { name: "Report", status: "pending" },
-      { name: "Export", status: "pending" },
-    ],
-    createdAt: "2 days ago",
-    outputTypes: ["Report"],
-    destination: "Export",
-  },
-]
+const assignments: Assignment[] = DEMO_ASSIGNMENTS
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string; dotColor: string; icon: string }> = {
   running: { label: "Running", color: "text-blue-400", bgColor: "bg-blue-500/10", dotColor: "bg-blue-500", icon: "activity" },
