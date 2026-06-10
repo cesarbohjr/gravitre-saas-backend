@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.operators.react_engine import (
+    DEFAULT_MAX_ITERATIONS,
     ReActEngine,
     ReActStatus,
     resolve_permitted_tools,
@@ -56,6 +57,80 @@ def _choice(content: str = "", tool_calls: list | None = None):
 def _tool_call(name: str, args: str, call_id: str = "call-1"):
     fn = SimpleNamespace(name=name, arguments=args)
     return SimpleNamespace(id=call_id, function=fn)
+
+
+def test_default_max_iterations_is_ten():
+    assert DEFAULT_MAX_ITERATIONS == 10
+
+
+@pytest.mark.asyncio
+async def test_run_no_tools_available_returns_needs_human(engine: ReActEngine, tool_ctx: ToolContext):
+    engine.registry.get_tools_for_agent.return_value = []
+    with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+        result = await engine.run(
+            ctx=tool_ctx,
+            task="Do something",
+            permitted_tools=["hubspot"],
+            connected_integrations=[],
+        )
+    assert result.status == ReActStatus.NEEDS_HUMAN_INPUT
+    assert "No integration tools" in result.answer
+
+
+@pytest.mark.asyncio
+async def test_run_writes_audit_event_per_iteration(engine: ReActEngine, tool_ctx: ToolContext):
+    engine.registry.execute_tool = AsyncMock(return_value={"success": True, "result": {"ok": True}})
+    engine.router._openai.chat.completions.create = AsyncMock(
+        side_effect=[
+            SimpleNamespace(
+                choices=[
+                    _choice(
+                        "Searching.",
+                        tool_calls=[_tool_call("hubspot_search_contacts", '{"query":"acme"}')],
+                    )
+                ]
+            ),
+            SimpleNamespace(choices=[_choice("Finished.")]),
+        ]
+    )
+    with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+        with patch("app.operators.react_engine.write_audit_event") as audit_mock:
+            result = await engine.run(
+                ctx=tool_ctx,
+                task="Find contact",
+                permitted_tools=["hubspot"],
+                connected_integrations=["hubspot"],
+                max_iterations=5,
+                audit_resource_id="job-1",
+            )
+    assert result.status == ReActStatus.COMPLETED
+    assert audit_mock.call_count >= 2
+    actions = [call.kwargs["action"] for call in audit_mock.call_args_list]
+    assert all(action == "agent.react.iteration" for action in actions)
+    tool_audit = [
+        call.kwargs["metadata"]["status"]
+        for call in audit_mock.call_args_list
+        if call.kwargs.get("metadata", {}).get("status") == "tool_call"
+    ]
+    assert tool_audit == ["tool_call"]
+
+
+def test_react_result_to_dict_includes_trace(engine: ReActEngine):
+    from app.operators.react_engine import ReActResult, ReActTraceStep
+
+    result = ReActResult(
+        status=ReActStatus.COMPLETED,
+        answer="ok",
+        trace=[
+            ReActTraceStep(iteration=1, thought="step 1", tool_name="hubspot_search_contacts", tool_success=True),
+        ],
+        iterations=1,
+        tool_calls=[{"tool": "hubspot_search_contacts"}],
+    )
+    payload = result.to_dict()
+    assert payload["status"] == "completed"
+    assert len(payload["trace"]) == 1
+    assert payload["trace"][0]["toolName"] == "hubspot_search_contacts"
 
 
 @pytest.mark.asyncio
