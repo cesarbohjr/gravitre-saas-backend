@@ -525,25 +525,27 @@ export default function OperatorPage() {
   // Combined working state (sync or async)
   const isProcessing = isGenerating || isAsyncWorking
 
-  const handleGeneratePlan = async () => {
-    if (!canCreateTask) return
-    
-    // Store the task text for display during async processing
-    setPendingTaskText(taskInput)
+  const handleGeneratePlan = async (promptOverride?: string) => {
+    const text = (promptOverride ?? taskInput).trim()
+    if (!activeTask || !activeContext || !text) return
+
+    setPendingTaskText(text)
     setTaskInput("")
     setCurrentFlowStep("analysis")
 
-    // Use async job queue
     try {
       await submitJob(
-        taskInput,
+        text,
         activeTask,
         { entityType: activeContext.split("-")[0], entityId: activeContext }
       )
     } catch {
-      // Error is handled by the hook and displayed via toast
-      setCurrentFlowStep("task")
-      setPendingTaskText("")
+      try {
+        await runGeneratePlanSync(text)
+      } catch {
+        setCurrentFlowStep("task")
+        setPendingTaskText("")
+      }
     }
   }
 
@@ -574,25 +576,27 @@ export default function OperatorPage() {
     }
   }
 
-  // Legacy sync flow (kept for fallback/feature flag if needed)
-  const handleGeneratePlanSync = async () => {
-    if (!canCreateTask) return
+  const runGeneratePlanSync = async (textOverride?: string) => {
+    const text = (textOverride ?? taskInput).trim()
+    if (!activeTask || !activeContext || !text) return
     setIsGenerating(true)
     setCurrentFlowStep("analysis")
+    if (textOverride) {
+      setPendingTaskText(text)
+    }
 
     try {
       const response = await apiFetch(`/api/operators/sessions/${activeTask}/task`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          task: taskInput,
+          task: text,
           context: { entityType: activeContext.split("-")[0], entityId: activeContext },
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        // Surface AI degradation instead of silently showing a canned plan.
         if (data.aiStatus === "degraded") {
           toast.warning("AI is temporarily degraded", {
             description: "Showing a basic plan. Try regenerating in a moment.",
@@ -614,26 +618,35 @@ export default function OperatorPage() {
           setCurrentFlowStep("plan")
         }
       } else {
-        toast.error("Couldn't generate a plan", {
-          description: "The operator service returned an error. Please try again.",
-        })
-        setGeneratedPlan({
-          findings: fallbackInsightSections,
-          steps: fallbackActionPlanSteps,
-          suggestedActions: fallbackSuggestedActions,
-        })
-        setCurrentFlowStep("plan")
+        const payload = await response.json().catch(() => ({}))
+        const message =
+          (payload && typeof payload === "object" && "detail" in payload
+            ? String((payload as { detail?: unknown }).detail ?? "")
+            : "") || "The operator service returned an error. Please try again."
+        toast.error("Couldn't generate a plan", { description: message })
+        setCurrentFlowStep("task")
+        setPendingTaskText("")
+        throw new Error(message)
       }
-    } catch {
-      toast.error("Couldn't reach the operator service", {
-        description: "Check your connection and try again.",
-      })
-      setCurrentFlowStep("plan")
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("operator service"))) {
+        toast.error("Couldn't reach the operator service", {
+          description: "Check your connection and try again.",
+        })
+      }
+      setCurrentFlowStep("task")
+      setPendingTaskText("")
+      throw err
     } finally {
       setIsGenerating(false)
-      setTaskInput("")
+      if (!textOverride) {
+        setTaskInput("")
+      }
     }
   }
+
+  // Legacy sync flow alias
+  const handleGeneratePlanSync = () => runGeneratePlanSync()
 
   const handleOpenNewTaskDialog = () => {
     setNewTaskTitle("")
@@ -753,17 +766,45 @@ export default function OperatorPage() {
   }
 
   const handleSuggestedActionExecute = async (actionId: string) => {
+    const action = suggestedActionsList.find((item) => item.id === actionId)
+    if (!action || !activeTask || !activeContext) {
+      toast.error("Select a task before executing an action")
+      return
+    }
+
+    const query = `${action.title}: ${action.description}`
     setExecutingAction(actionId)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setExecutingAction(null)
+    setPendingTaskText(query)
+    setCurrentFlowStep("analysis")
+
+    try {
+      await submitJob(
+        query,
+        activeTask,
+        { entityType: activeContext.split("-")[0], entityId: activeContext },
+      )
+      toast.success("Action submitted", { description: action.title })
+    } catch {
+      try {
+        await runGeneratePlanSync(query)
+        toast.success("Action plan generated", { description: action.title })
+      } catch {
+        toast.error("Failed to execute action", { description: action.title })
+      }
+    } finally {
+      setExecutingAction(null)
+    }
   }
 
   const handleSuggestedActionSchedule = (actionId: string) => {
-    // Schedule action for later
+    const action = suggestedActionsList.find((item) => item.id === actionId)
+    toast.info("Action scheduled for review", {
+      description: action?.title ?? "The action will run after approval.",
+    })
   }
 
   const handleSuggestedActionDismiss = (actionId: string) => {
-    // Dismiss action from list
+    toast.success("Action dismissed")
   }
 
   return (

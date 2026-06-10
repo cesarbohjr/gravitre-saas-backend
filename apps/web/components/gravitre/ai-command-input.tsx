@@ -37,7 +37,7 @@ interface SuggestedAction {
 interface AICommandInputProps {
   value: string
   onChange: (value: string) => void
-  onSubmit: () => void
+  onSubmit: (valueOverride?: string) => void
   isProcessing?: boolean
   disabled?: boolean
   contextLabel?: string
@@ -149,7 +149,7 @@ export function AICommandInput({
         }
       } else if (e.key === "Enter" && !e.shiftKey && value.trim()) {
         e.preventDefault()
-        onSubmit()
+        onSubmit(value)
       }
     },
     [showCommands, filteredCommands, selectedCommandIndex, onChange, onSubmit, value]
@@ -175,7 +175,7 @@ export function AICommandInput({
 
   const handleSuggestedAction = (action: SuggestedAction) => {
     onChange(action.prompt)
-    inputRef.current?.focus()
+    onSubmit(action.prompt)
   }
 
   return (
@@ -344,7 +344,7 @@ export function AICommandInput({
             size="sm"
             className="h-9 gap-2 px-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-md shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/30"
             disabled={disabled || !value.trim() || isProcessing}
-            onClick={onSubmit}
+            onClick={() => onSubmit(value)}
           >
             {isProcessing ? (
               <>
@@ -402,7 +402,7 @@ export function AICommandInput({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
-                onClick={() => onChange(prompt)}
+                onClick={() => onSubmit(prompt)}
                 disabled={disabled || isProcessing}
                 className="group flex items-center gap-2 rounded-lg border border-border/40 bg-secondary/40 px-3 py-2 text-xs text-muted-foreground/80 transition-all hover:border-border/60 hover:bg-secondary/60 hover:text-foreground disabled:opacity-50"
               >
