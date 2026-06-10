@@ -43,9 +43,9 @@ EXECUTE_ALLOWED_STEP_TYPES = frozenset({
     "council",
 })
 
-# BE-20: closed role set for approver_roles
-ALLOWED_ROLES = frozenset({"admin", "member"})
-SAFE_DEFAULT_APPROVER_ROLES = ["admin"]
+# BE-20: closed role set for approver_roles (owner may approve/reject like admin)
+ALLOWED_ROLES = frozenset({"admin", "owner", "member"})
+SAFE_DEFAULT_APPROVER_ROLES = ["admin", "owner"]
 SAFE_DEFAULT_REQUIRED_APPROVALS = 1
 
 STEP_STATUS_PENDING = "pending"

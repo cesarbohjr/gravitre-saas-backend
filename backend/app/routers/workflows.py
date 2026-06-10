@@ -2371,7 +2371,9 @@ async def approve_run(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Role validation failed",
         ) from e
-    if role != "admin":
+    from app.auth.platform_admin import is_org_admin_role
+
+    if not is_org_admin_role(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required",
@@ -2515,7 +2517,9 @@ async def reject_run(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Role validation failed",
         ) from e
-    if role != "admin":
+    from app.auth.platform_admin import is_org_admin_role
+
+    if not is_org_admin_role(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required",

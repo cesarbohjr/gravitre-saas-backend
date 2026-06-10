@@ -11,6 +11,16 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi } from "@/lib/api"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { 
   Check, 
   X, 
@@ -428,6 +438,8 @@ function DetailPanel({ approval, onApprove, onReject }: {
 export default function ApprovalsPage() {
   const { user } = useAuth()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   const { data, error, isLoading, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
     fallbackData: { approvals: [] as Approval[] },
@@ -445,37 +457,45 @@ export default function ApprovalsPage() {
   const aiRecommendedCount = pendingApprovals.filter(a => a.aiRecommendation?.action === "approve").length
 
   const handleApprove = async (runId: string, comment?: string) => {
+    setIsSubmitting(true)
     try {
       await approvalsApi.approve(runId, { comment })
       await mutate()
       setSelectedId(null)
       toast.success("Approved successfully")
     } catch (err) {
-      console.error("[v0] Approve failed:", err)
-      toast.error("Failed to approve")
+      console.error("[approvals] Approve failed:", err)
+      toast.error(err instanceof Error ? err.message : "Failed to approve")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handleReject = async (runId: string, comment: string) => {
-    if (!comment.trim()) {
+  const handleReject = async (runId: string, comment?: string) => {
+    const reason = (comment ?? "Rejected by reviewer").trim()
+    if (!reason) {
       toast.error("Rejection reason is required")
       return
     }
+    setIsSubmitting(true)
     try {
-      await approvalsApi.reject(runId, { comment })
+      await approvalsApi.reject(runId, { comment: reason })
       await mutate()
       setSelectedId(null)
-      toast.success("Rejected")
+      setRejectTargetId(null)
+      toast.success("Rejected", {
+        description: "The workflow run has been stopped at this step.",
+      })
     } catch (err) {
-      console.error("[v0] Reject failed:", err)
-      toast.error("Failed to reject")
+      console.error("[approvals] Reject failed:", err)
+      toast.error(err instanceof Error ? err.message : "Failed to reject")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handleRejectWithPrompt = async (runId: string) => {
-    const comment = window.prompt("Enter rejection reason:")
-    if (comment === null) return
-    await handleReject(runId, comment)
+  const handleRejectWithPrompt = (runId: string) => {
+    setRejectTargetId(runId)
   }
 
   return (
@@ -563,6 +583,32 @@ export default function ApprovalsPage() {
           />
         </div>
       </div>
+
+      <AlertDialog open={Boolean(rejectTargetId)} onOpenChange={(open) => !open && setRejectTargetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this action?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will stop the workflow run at this step. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault()
+                if (rejectTargetId) {
+                  void handleReject(rejectTargetId)
+                }
+              }}
+            >
+              Reject
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   )
 }
