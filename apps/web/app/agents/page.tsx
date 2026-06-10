@@ -1,7 +1,7 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
@@ -516,12 +516,10 @@ export default function AgentsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [isMutatingAgent, setIsMutatingAgent] = useState<string | null>(null)
-  const [detailPanelOpen, setDetailPanelOpen] = useState(true)
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(AGENT_DETAIL_PANEL_KEY)
-    if (stored === "0") setDetailPanelOpen(false)
-  }, [])
+  const [detailPanelOpen, setDetailPanelOpen] = useState(() => {
+    if (typeof window === "undefined") return true
+    return window.localStorage.getItem(AGENT_DETAIL_PANEL_KEY) !== "0"
+  })
 
   const toggleDetailPanel = () => {
     setDetailPanelOpen((open) => {
