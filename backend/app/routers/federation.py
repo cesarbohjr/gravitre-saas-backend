@@ -10,6 +10,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
+from app.core.logging import get_logger
 from app.services.b2b_handoff_service import (
     B2BHandoffError,
     accept_cross_org_handoff,
@@ -47,6 +48,7 @@ from app.services.federated_connector_service import (
 )
 
 router = APIRouter(prefix="/api/federation", tags=["federation"])
+logger = get_logger(__name__)
 
 
 class PartnershipInviteRequest(BaseModel):
@@ -152,8 +154,15 @@ async def get_partnerships(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
+    if not settings.supabase_service_role_key:
+        logger.warning("federation_partnerships_missing_service_role org_id=%s", org_id)
+        return {"partnerships": []}
     client = _client(settings)
-    return {"partnerships": list_partnerships(client, org_id)}
+    try:
+        return {"partnerships": list_partnerships(client, org_id)}
+    except Exception as exc:
+        logger.exception("federation_partnerships_failed org_id=%s error=%s", org_id, exc)
+        return {"partnerships": []}
 
 
 @router.post("/partnerships")
@@ -246,15 +255,22 @@ async def get_handoffs(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
+    if not settings.supabase_service_role_key:
+        logger.warning("federation_handoffs_missing_service_role org_id=%s", org_id)
+        return {"handoffs": []}
     client = _client(settings)
-    return {
-        "handoffs": list_cross_org_handoffs(
-            client,
-            org_id,
-            direction=direction,
-            status=status_filter,
-        )
-    }
+    try:
+        return {
+            "handoffs": list_cross_org_handoffs(
+                client,
+                org_id,
+                direction=direction,
+                status=status_filter,
+            )
+        }
+    except Exception as exc:
+        logger.exception("federation_handoffs_failed org_id=%s error=%s", org_id, exc)
+        return {"handoffs": []}
 
 
 @router.get("/handoffs/{handoff_id}")
