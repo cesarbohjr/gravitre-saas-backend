@@ -16,6 +16,7 @@ class AgentPersona:
     key: str
     display_name: str
     expertise: tuple[str, ...]
+    preferred_tools: tuple[str, ...]
     heuristics: tuple[str, ...]
     constraints: tuple[str, ...]
     handoff_format: str
@@ -33,6 +34,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "policy-aware recommendations",
             "multi-system correlation",
         ),
+        preferred_tools=("hubspot", "slack", "github", "jira", "zendesk"),
         heuristics=(
             "Prefer verified knowledge-base excerpts and org context over assumptions.",
             "Use tools when external systems hold the source of truth.",
@@ -62,6 +64,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "forecast risk and stale-opportunity detection",
             "multi-threaded stakeholder mapping",
         ),
+        preferred_tools=("hubspot", "salesforce", "slack"),
         heuristics=(
             "Prioritize next-best actions that move opportunities forward with measurable impact.",
             "Validate contact, account, and owner data before recommending outreach.",
@@ -95,6 +98,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "channel mix recommendations",
             "experiment design and readouts",
         ),
+        preferred_tools=("hubspot", "slack", "github"),
         heuristics=(
             "Align recommendations with funnel stage, audience segment, and measurable outcomes.",
             "Prefer segment-level insights over one-off copy tweaks.",
@@ -128,6 +132,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "audit trails and supporting documentation",
             "close-process checklist items",
         ),
+        preferred_tools=("quickbooks", "stripe", "salesforce", "hubspot"),
         heuristics=(
             "Flag anomalies with amounts, dates, and customer identifiers when available.",
             "Prefer auditable, reversible actions over silent corrections.",
@@ -161,6 +166,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "benefits and PTO routing",
             "compliance-sensitive communications",
         ),
+        preferred_tools=("slack", "github"),
         heuristics=(
             "Handle sensitive data carefully and minimize exposure in summaries.",
             "Escalate when policy is unclear, contradictory, or jurisdiction-specific.",
@@ -194,6 +200,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "customer communication drafting",
             "product adoption blockers",
         ),
+        preferred_tools=("zendesk", "slack", "hubspot", "salesforce"),
         heuristics=(
             "Balance speed with empathy and clear customer communication.",
             "Prioritize blockers, SLA risk, and revenue impact.",
@@ -227,6 +234,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "change management and blast-radius analysis",
             "post-incident follow-up items",
         ),
+        preferred_tools=("github", "jira", "pagerduty", "slack"),
         heuristics=(
             "Prefer actionable runbook steps with explicit severity and owner.",
             "Correlate alerts with recent deploys, config changes, and dependency failures.",
@@ -259,6 +267,7 @@ AGENT_PERSONAS: dict[str, AgentPersona] = {
             "GTM data quality",
             "cross-team routing",
         ),
+        preferred_tools=("hubspot", "salesforce", "stripe", "quickbooks", "slack", "zendesk"),
         heuristics=(
             "Treat CRM, billing, and support systems as a single revenue thread.",
             "Normalize IDs and owners before recommending handoffs.",
@@ -289,6 +298,8 @@ def normalize_agent_role(role: str | None) -> str:
         "CUSTOMER_SUCCESS": "CS",
         "CUSTOMER_SUPPORT": "CS",
         "SUPPORT": "CS",
+        "SUPPORT_OPERATIONS": "CS",
+        "SUPPORT_OPS": "CS",
         "REVOPS": "REVENUE_OPS",
         "REVENUE": "REVENUE_OPS",
         "REOPS": "REVENUE_OPS",
@@ -304,6 +315,34 @@ def normalize_agent_role(role: str | None) -> str:
     }
     normalized = aliases.get(raw, raw)
     return normalized if normalized in AGENT_PERSONAS else "DEFAULT"
+
+
+_PERSONA_TEXT_MATCHES: tuple[tuple[str, str], ...] = (
+    ("revenue ops", "REVENUE_OPS"),
+    ("revenue operation", "REVENUE_OPS"),
+    ("revops", "REVENUE_OPS"),
+    ("customer support", "CS"),
+    ("customer success", "CS"),
+    ("support agent", "CS"),
+    ("support operations", "CS"),
+    ("devops", "DEVOPS"),
+    ("site reliability", "DEVOPS"),
+    ("marketing agent", "MARKETING"),
+    ("sales agent", "SALES"),
+    ("finance agent", "FINANCE"),
+    ("human resources", "HR"),
+)
+
+
+def _match_persona_from_text(*parts: str | None) -> str | None:
+    """Partial-match agent name, role, or department text to a persona key (STA-174)."""
+    combined = " ".join(str(p or "").strip().lower().replace("_", " ") for p in parts if p)
+    if not combined:
+        return None
+    for needle, persona_key in _PERSONA_TEXT_MATCHES:
+        if needle in combined:
+            return persona_key
+    return None
 
 
 def get_agent_persona(agent: dict[str, Any]) -> AgentPersona:
@@ -336,12 +375,22 @@ def get_agent_persona(agent: dict[str, Any]) -> AgentPersona:
         "cs": "CS",
         "support": "CS",
         "devops": "DEVOPS",
+        "ops": "REVENUE_OPS",
         "revenue_ops": "REVENUE_OPS",
         "revops": "REVENUE_OPS",
     }
     mapped = type_map.get(agent_type)
     if mapped and mapped in AGENT_PERSONAS:
         return AGENT_PERSONAS[mapped]
+
+    partial_key = _match_persona_from_text(
+        agent.get("name"),
+        agent.get("role"),
+        agent.get("department"),
+        agent.get("purpose") or agent.get("description"),
+    )
+    if partial_key and partial_key in AGENT_PERSONAS:
+        return AGENT_PERSONAS[partial_key]
 
     return AGENT_PERSONAS["DEFAULT"]
 
@@ -367,6 +416,7 @@ def build_agent_system_prompt(
         f"You are {name} — {persona.display_name}.",
         persona.system_prompt,
         f"Expertise: {', '.join(persona.expertise)}.",
+        f"Preferred tools: {', '.join(persona.preferred_tools)}.",
         "Judgment heuristics:",
         *[f"- {item}" for item in persona.heuristics],
         "Constraints:",
