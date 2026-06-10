@@ -50,15 +50,27 @@ async def list_sources(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    r = (
-        client.table("rag_sources")
-        .select("id, title, name, type, status, environment, tables_count, last_sync_at, connection_string_encrypted")
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .is_("deleted_at", "null")
-        .order("updated_at", desc=True)
-        .execute()
-    )
+    try:
+        r = (
+            client.table("rag_sources")
+            .select("id, title, name, type, status, environment, tables_count, last_sync_at, connection_string_encrypted")
+            .eq("org_id", org_id)
+            .eq("environment", environment_name)
+            .is_("deleted_at", "null")
+            .order("updated_at", desc=True)
+            .execute()
+        )
+    except Exception:
+        try:
+            r = (
+                client.table("rag_sources")
+                .select("id, title, name, type, status, metadata, created_at, updated_at")
+                .eq("org_id", org_id)
+                .order("updated_at", desc=True)
+                .execute()
+            )
+        except Exception:
+            return {"sources": []}
     items = []
     for row in list(r.data or []):
         conn = None
@@ -67,6 +79,11 @@ async def list_sources(
                 conn = decrypt_value(row["connection_string_encrypted"], settings.encryption_key)
             except Exception:
                 conn = None
+        metadata = row.get("metadata") or {}
+        if isinstance(metadata, dict):
+            record_count = metadata.get("recordCount") or metadata.get("recordsCount") or 0
+        else:
+            record_count = 0
         items.append(
             {
                 "id": str(row["id"]),
@@ -75,7 +92,8 @@ async def list_sources(
                 "status": row.get("status") or "connected",
                 "environment": row.get("environment") or environment_name,
                 "tablesCount": row.get("tables_count") or 0,
-                "lastSyncAt": row.get("last_sync_at"),
+                "recordCount": record_count,
+                "lastSyncAt": row.get("last_sync_at") or row.get("updated_at") or row.get("created_at"),
                 "connectionString": _mask_connection(conn),
             }
         )
