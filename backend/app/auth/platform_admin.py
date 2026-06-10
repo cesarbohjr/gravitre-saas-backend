@@ -23,11 +23,9 @@ def is_platform_admin(client: Any, user_id: str) -> bool:
             .limit(1)
             .execute()
         )
+        return bool(response.data)
     except Exception:
         return False
-    if response.error:
-        return False
-    return bool(response.data)
 
 
 def is_platform_admin_email(client: Any, email: str | None) -> bool:
@@ -42,8 +40,6 @@ def is_platform_admin_email(client: Any, email: str | None) -> bool:
             .limit(1)
             .execute()
         )
+        return bool(response.data)
     except Exception:
         return normalized == MASTER_ADMIN_EMAIL.lower()
-    if response.error:
-        return normalized == MASTER_ADMIN_EMAIL.lower()
-    return bool(response.data)

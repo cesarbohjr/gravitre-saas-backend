@@ -379,7 +379,7 @@ def _persist_conversation_turn(
             )
             if _is_missing_table_error(getattr(insert, "error", None)):
                 return None
-            if insert.error or not insert.data:
+            if not insert.data:
                 return None
             conv_id = str(insert.data[0]["id"])
             current_count = 0
