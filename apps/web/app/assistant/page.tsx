@@ -912,11 +912,7 @@ export default function AssistantPage() {
         localStorage.setItem(CONVERSATION_ID_KEY, created.id)
         await mutateConversations()
       } catch (error) {
-        console.error("[v0] Create conversation failed:", error)
-        toast.error(
-          parseChatError(error instanceof Error ? error : new Error("Could not start a new conversation"))
-        )
-        return
+        console.warn("[assistant] Conversation create failed — continuing without sidebar thread:", error)
       }
     }
 

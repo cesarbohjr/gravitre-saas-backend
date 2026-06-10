@@ -96,6 +96,37 @@ def test_create_conversation(monkeypatch):
     assert body["title"] == "Support thread"
 
 
+def test_create_conversation_supabase_v2_response_without_error_attr(monkeypatch):
+    """supabase-py v2 APIResponse has no `.error` — must not 500."""
+    _authenticate()
+    created = {
+        "id": "conv-2",
+        "title": "hello",
+        "preview": None,
+        "message_count": 0,
+        "created_at": "2026-06-04T12:00:00+00:00",
+        "updated_at": "2026-06-04T12:00:00+00:00",
+    }
+
+    class V2Response:
+        def __init__(self, data: list[dict]) -> None:
+            self.data = data
+
+    chain = MagicMock()
+    chain.insert.return_value = chain
+    chain.execute.return_value = V2Response([created])
+    supabase = MagicMock()
+    supabase.table.return_value = chain
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+
+    response = client.post("/api/conversations", json={"title": "hello"})
+    assert response.status_code == 201
+    assert response.json()["id"] == "conv-2"
+
+
 def test_list_messages_empty(monkeypatch):
     _authenticate()
     conversations = _table_chain(

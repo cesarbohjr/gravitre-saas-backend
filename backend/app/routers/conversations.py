@@ -10,6 +10,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.core.supabase_response import response_error
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -81,10 +82,10 @@ def _get_owned_conversation(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
     rows = response.data or []
     if not rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
@@ -107,10 +108,10 @@ async def list_conversations(
         .order("updated_at", desc=True)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         return {"conversations": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
     return {"conversations": [_normalize_conversation(row) for row in (response.data or [])]}
 
 
@@ -135,13 +136,13 @@ async def create_conversation(
     }
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     response = client.table("conversations").insert(row).execute()
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Conversations storage is not available",
         )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
     created = (response.data or [None])[0]
     if not created:
         raise HTTPException(status_code=500, detail="Conversation insert returned no row")
@@ -196,8 +197,8 @@ async def update_conversation(
         .eq("user_id", user["user_id"])
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
     updated = (response.data or [None])[0]
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
@@ -227,8 +228,8 @@ async def delete_conversation(
         .eq("user_id", user["user_id"])
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
 
 
 @router.get("/{conversation_id}/messages")
@@ -253,8 +254,8 @@ async def list_conversation_messages(
         .order("created_at", desc=False)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         return {"messages": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
     return {"messages": [_normalize_message(row) for row in (response.data or [])]}
