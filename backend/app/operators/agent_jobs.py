@@ -374,11 +374,15 @@ async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[st
     if parameters.get("include_agent_memory") is None and parameters.get("useTrainingKnowledge") is not None:
         parameters["include_agent_memory"] = bool(parameters.get("useTrainingKnowledge"))
 
+    briefing_raw = payload.get("briefing") or payload.get("handoff_briefing")
+    briefing = briefing_raw if isinstance(briefing_raw, dict) else None
+
     result = await get_agent_intelligence().execute_task(
         settings=settings,
         org_id=org_id,
         agent=agent,
         task=task,
+        briefing=briefing,
         parameters=parameters,
         actor_id=str(job.get("created_by") or agent_id),
         task_id=str(job["id"]),

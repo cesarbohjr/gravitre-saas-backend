@@ -8,6 +8,7 @@ import pytest
 from app.operators.agent_intelligence import (
     AgentIntelligence,
     AgentResult,
+    load_agent_task_history,
     load_org_context,
     select_model_for_agent,
 )
@@ -172,6 +173,97 @@ def test_select_model_for_agent_uses_agent_model(agent_row: dict):
     ):
         model = select_model_for_agent(agent_row, client, "org-1", "short task")
     assert model == "gpt-5.5"
+
+
+def test_select_model_for_agent_complexity_hint():
+    client = MagicMock()
+    with patch(
+        "app.operators.agent_intelligence.resolve_agent_inference_model",
+        return_value=SimpleNamespace(fine_tuned_openai_id=None, base_model=None),
+    ):
+        model = select_model_for_agent(
+            {"model": None},
+            client,
+            "org-1",
+            "short",
+            parameters={"complexity": "high"},
+        )
+    assert model == "gpt-5.5"
+
+
+def test_load_agent_task_history_filters_by_agent():
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "id": "job-old",
+                "payload": {"agent_id": "agent-1", "task": "Prior task"},
+                "result": {"summary": "Prior result"},
+                "finished_at": "2026-06-01T00:00:00Z",
+                "status": "completed",
+            },
+            {
+                "id": "job-other",
+                "payload": {"agent_id": "agent-2", "task": "Other agent"},
+                "result": {"summary": "Skip"},
+                "finished_at": "2026-06-02T00:00:00Z",
+                "status": "completed",
+            },
+        ]
+    )
+    history = load_agent_task_history(client, "org-1", "agent-1", exclude_task_id="job-current")
+    assert len(history) == 1
+    assert history[0]["task"] == "Prior task"
+    assert history[0]["summary"] == "Prior result"
+
+
+def test_build_task_prompt_includes_task_history():
+    prompt = AgentIntelligence._build_task_prompt(
+        "Do thing",
+        briefing={"dealId": "d1"},
+        parameters={},
+        org_context={"orgName": "Acme"},
+        rag_section="",
+        memory_section="",
+        task_history=[{"task": "Old task", "summary": "Old summary"}],
+    )
+    assert "<task_history>" in prompt
+    assert "Old task" in prompt
+    assert "<handoff_briefing>" in prompt
+
+
+@pytest.mark.asyncio
+async def test_execute_task_includes_task_history(agent_row: dict, intelligence: AgentIntelligence):
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    history_rows = MagicMock(
+        data=[
+            {
+                "id": "job-prior",
+                "payload": {"agent_id": "agent-1", "task": "Earlier work"},
+                "result": {"summary": "Done earlier"},
+                "finished_at": "2026-06-01T00:00:00Z",
+                "status": "completed",
+            }
+        ]
+    )
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = history_rows
+
+    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
+        with patch("app.operators.agent_intelligence.write_audit_event"):
+            with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": ["hubspot"]}):
+                await intelligence.execute_task(
+                    org_id="org-1",
+                    agent=agent_row,
+                    task="Follow up",
+                    client=client,
+                    task_id="job-current",
+                )
+    task_prompt = intelligence.react_engine.run.await_args.kwargs["task"]
+    assert "<task_history>" in task_prompt
+    assert "Earlier work" in task_prompt
 
 
 def test_build_agent_system_prompt_includes_role():

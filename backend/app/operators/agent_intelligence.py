@@ -139,7 +139,14 @@ def load_org_context(
     )
 
 
-def select_model_for_agent(agent: dict[str, Any], client: Any, org_id: str, task: str) -> str:
+def select_model_for_agent(
+    agent: dict[str, Any],
+    client: Any,
+    org_id: str,
+    task: str,
+    *,
+    parameters: dict[str, Any] | None = None,
+) -> str:
     """Resolve OpenAI model: agent override, fine-tuned model, or complexity tier."""
     inference = resolve_agent_inference_model(client, org_id, agent)
     if inference.fine_tuned_openai_id:
@@ -147,9 +154,67 @@ def select_model_for_agent(agent: dict[str, Any], client: Any, org_id: str, task
     configured = (agent.get("model") or inference.base_model or "").strip()
     if configured:
         return configured
-    if len(task) > 2500:
+    params = parameters or {}
+    complexity = str(params.get("complexity") or "").lower()
+    if complexity in {"high", "complex"} or params.get("require_high_model"):
+        return MODEL_TIERS["high"]["openai"]
+    if len(task) > 2500 or len(task.split()) > 400:
         return MODEL_TIERS["high"]["openai"]
     return MODEL_TIERS["medium"]["openai"]
+
+
+def load_agent_task_history(
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    *,
+    limit: int = 5,
+    exclude_task_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Recent completed agent_task jobs for the same agent (STA-137 task history)."""
+    if not agent_id:
+        return []
+    try:
+        resp = (
+            client.table("agent_jobs")
+            .select("id, payload, result, finished_at, status")
+            .eq("org_id", org_id)
+            .eq("kind", "agent_task")
+            .eq("status", "completed")
+            .order("finished_at", desc=True)
+            .limit(max(limit * 3, 10))
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("agent_task_history_load_skipped agent_id=%s error=%s", agent_id, exc)
+        return []
+
+    history: list[dict[str, Any]] = []
+    for row in rows:
+        job_id = str(row.get("id") or "")
+        if exclude_task_id and job_id == exclude_task_id:
+            continue
+        payload = row.get("payload") or {}
+        row_agent = str(payload.get("agent_id") or payload.get("agentId") or "")
+        if row_agent != agent_id:
+            continue
+        result = row.get("result") or {}
+        task_text = str(payload.get("task") or "").strip()
+        summary = str(result.get("summary") or result.get("answer") or "").strip()
+        if not task_text and not summary:
+            continue
+        history.append(
+            {
+                "task": task_text[:500],
+                "summary": summary[:500],
+                "finishedAt": row.get("finished_at"),
+                "jobId": job_id,
+            }
+        )
+        if len(history) >= limit:
+            break
+    return history
 
 
 def _confidence_from_react(react_status: ReActStatus, tool_calls: list[dict[str, Any]]) -> int:
@@ -281,6 +346,19 @@ class AgentIntelligence:
         )
         memory_section = format_retrieval_prompt_section(memory_context)
 
+        include_history = params.get("include_task_history")
+        if include_history is None:
+            include_history = True
+        task_history: list[dict[str, Any]] = []
+        if include_history:
+            task_history = load_agent_task_history(
+                client,
+                org_id,
+                agent_id,
+                limit=int(params.get("task_history_limit") or 5),
+                exclude_task_id=task_id,
+            )
+
         task_prompt = self._build_task_prompt(
             task_text,
             briefing=briefing,
@@ -288,6 +366,7 @@ class AgentIntelligence:
             org_context=org_context,
             rag_section=rag_section,
             memory_section=memory_section,
+            task_history=task_history,
         )
         system_prompt = build_agent_system_prompt(
             agent,
@@ -296,7 +375,7 @@ class AgentIntelligence:
             rag_available=bool(rag_sources),
         )
         persona = get_agent_persona(agent)
-        model = select_model_for_agent(agent, client, org_id, task_text)
+        model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
 
         ctx = ToolContext(
             settings=active_settings,
@@ -360,10 +439,13 @@ class AgentIntelligence:
         org_context: dict[str, Any],
         rag_section: str,
         memory_section: str,
+        task_history: list[dict[str, Any]] | None = None,
     ) -> str:
         parts = [f"Task:\n{task}"]
         if briefing:
             parts.append(f"<handoff_briefing>{json.dumps(briefing, default=str)[:8000]}</handoff_briefing>")
+        if task_history:
+            parts.append(f"<task_history>{json.dumps(task_history, default=str)[:4000]}</task_history>")
         parts.append(f"<org_context>{json.dumps(org_context, default=str)[:4000]}</org_context>")
         if rag_section:
             parts.append(rag_section)
