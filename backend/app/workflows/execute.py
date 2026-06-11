@@ -62,6 +62,26 @@ def execute_workflow_steps(
     Returns (final_status, step_rows, errors).
     """
     steps_def = definition.get("steps", [])
+    graph_block = definition.get("graph")
+    if isinstance(graph_block, dict):
+        graph_nodes = graph_block.get("nodes")
+        graph_edges = graph_block.get("edges")
+        if isinstance(graph_nodes, list) and graph_nodes and isinstance(graph_edges, list):
+            from app.workflows.execution_engine import execute_workflow_graph
+
+            return execute_workflow_graph(
+                settings,
+                org_id,
+                user_id,
+                run_id,
+                graph_nodes,
+                graph_edges,
+                parameters,
+                client,
+                environment_name,
+                steps_exist,
+            )
+
     step_outputs: dict[str, Any] = {}
     errors: list[str] = []
     run_failed = False

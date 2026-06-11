@@ -308,6 +308,16 @@ def sync_builder_graph(
         stored_edges.append(edge)
 
     definition = validate_definition(graph_to_definition(stored_nodes, stored_edges))
+    definition["graph"] = {
+        "nodes": stored_nodes,
+        "edges": [
+            {
+                "from_node_id": str(edge["from_node_id"]),
+                "to_node_id": str(edge["to_node_id"]),
+            }
+            for edge in stored_edges
+        ],
+    }
     client.table("workflow_defs").update(
         {
             "definition": definition,
