@@ -84,12 +84,6 @@ function getAgentSuggestions(agent: Agent): string[] {
     "What tools and integrations do you have access to?",
   ]
 }
-const agentColors: Record<string, { gradient: string; accent: string; glow: string }> = {
-  "agent-001": { gradient: "from-emerald-500 to-teal-500", accent: "emerald", glow: "emerald-500/20" },
-  "agent-002": { gradient: "from-blue-500 to-cyan-500", accent: "blue", glow: "blue-500/20" },
-  "agent-003": { gradient: "from-violet-500 to-purple-500", accent: "violet", glow: "violet-500/20" },
-  default: { gradient: "from-emerald-500 to-teal-500", accent: "emerald", glow: "emerald-500/20" },
-}
 
 // Parse message content
 function normalizeMessage(message: UIMessage): {
@@ -322,7 +316,11 @@ export default function AgentChatPage({
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId)
   )
-  const agentColor = agentColors[agentId] || agentColors.default
+  const agentColor = useMemo(() => {
+    const gradient = agent?.personality?.gradient || "from-emerald-500 to-teal-500"
+    const glow = agent?.personality?.glow || "emerald-500/20"
+    return { gradient, accent: "emerald", glow }
+  }, [agent?.personality?.gradient, agent?.personality?.glow])
   const agentName = agent?.name ?? "Agent"
   const agentInitials = agentName.slice(0, 2).toUpperCase()
 

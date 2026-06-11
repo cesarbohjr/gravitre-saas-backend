@@ -305,3 +305,87 @@ async def test_billing_idempotency_same_source_id(monkeypatch):
         plan, period_start, period_end, metadata=meta,
     )
     assert len(inserted) == 1
+
+
+async def test_agent_chat_passes_agent_id_to_tools(async_client, monkeypatch):
+    _authenticate(org_id="org-1")
+    run_tools = AsyncMock(return_value=[])
+    monkeypatch.setattr(assistant_module, "_run_tools", run_tools)
+    _mock_stream(monkeypatch, content="scoped")
+
+    resp = await async_client.post(
+        "/api/assistant/chat",
+        headers={"Authorization": "Bearer token"},
+        json={
+            "messages": [{"role": "user", "content": "pipeline status"}],
+            "org_id": "org-1",
+            "agent_id": "agent-revops",
+            "mode": "agent",
+            "tools": ["knowledge_base", "agent_status"],
+        },
+    )
+
+    assert resp.status_code == 200
+    run_tools.assert_awaited_once()
+    _, kwargs = run_tools.call_args
+    assert kwargs.get("agent_id") == "agent-revops"
+
+
+def test_resolve_base_system_prompt_uses_agent_persona(monkeypatch):
+    agent = {
+        "id": "agent-revops",
+        "name": "RevOps Analyst",
+        "role": "Revenue Operations",
+        "department": "Sales",
+        "description": "Pipeline hygiene specialist",
+        "status": "active",
+        "systems": ["hubspot", "salesforce"],
+    }
+    monkeypatch.setattr(
+        assistant_module,
+        "get_supabase_client",
+        lambda _s: object(),
+    )
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.resolve_agent_record",
+        lambda _c, _o, agent_id, **kwargs: agent if agent_id == "agent-revops" else None,
+    )
+
+    prompt = assistant_module._resolve_base_system_prompt(
+        _settings(),
+        "org-1",
+        "agent-revops",
+        org_context={"connectedIntegrations": ["hubspot"]},
+    )
+
+    assert "RevOps Analyst" in prompt
+    assert prompt != assistant_module.ASSISTANT_SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_tool_knowledge_base_uses_agent_scope(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class FakeRAG:
+        async def query(self, org_id, query, **kwargs):
+            captured.update(kwargs)
+            captured["org_id"] = org_id
+            captured["query"] = query
+            chunk = type("C", (), {"source": "playbook", "content": "ICP notes", "score": 0.9})()
+            resp = type("R", (), {"chunks": [chunk], "metrics": {"embedding_method": "openai"}})()
+            return resp
+
+    monkeypatch.setattr("app.services.rag_service.RAGService", FakeRAG)
+
+    output = await assistant_module._tool_knowledge_base(
+        "org-1",
+        "pipeline risks",
+        _settings(),
+        agent_id="agent-revops",
+    )
+
+    assert captured.get("scope") == "agent"
+    assert captured.get("agent_id") == "agent-revops"
+    assert output["scope"] == "agent"
+    assert output["agentId"] == "agent-revops"
+    assert output["sources"][0]["title"] == "playbook"

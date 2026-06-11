@@ -4,10 +4,15 @@ import { useState, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
+import { agentsApi } from "@/lib/api"
+import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
+import { Loader2 } from "lucide-react"
 
 // Types
 interface Agent {
@@ -36,48 +41,57 @@ interface Agent {
   recentWork: { title: string; type: string; time: string; status: "completed" | "pending" | "failed"; confidence: number }[]
 }
 
-// Mock data
-const mockAgent: Agent = {
-  id: "agent-001",
-  name: "Atlas",
-  role: "Marketing Agent",
-  tagline: "Your marketing powerhouse",
-  description: "Orchestrates marketing campaigns, creates content, analyzes performance metrics, and suggests optimizations. Trained on your brand voice, ICP, and marketing playbook.",
-  status: "active",
-  trainingProgress: 87,
-  personality: {
-    gradient: "from-emerald-500 to-teal-500",
-    glow: "shadow-emerald-500/30",
-    accent: "emerald",
-  },
-  stats: {
-    tasksCompleted: 1247,
-    successRate: 98.2,
-    avgResponseTime: "1.2s",
-    hoursActive: 847,
-    decisionsToday: 23,
-    approvalsNeeded: 2,
-  },
-  systems: [
-    { name: "HubSpot", status: "connected", icon: "database" },
-    { name: "Salesforce", status: "connected", icon: "database" },
-    { name: "Outlook", status: "connected", icon: "mail" },
-    { name: "Slack", status: "warning", icon: "chat" },
-    { name: "Google Ads", status: "connected", icon: "chart" },
-  ],
-  skills: [
-    { name: "Email Campaigns", level: 95, color: "emerald" },
-    { name: "Content Creation", level: 88, color: "blue" },
-    { name: "Performance Analysis", level: 92, color: "violet" },
-    { name: "Audience Segmentation", level: 85, color: "amber" },
-    { name: "A/B Testing", level: 78, color: "rose" },
-  ],
-  recentWork: [
-    { title: "Q3 Healthcare Campaign", type: "Campaign", time: "2 hours ago", status: "completed", confidence: 96 },
-    { title: "Weekly Performance Report", type: "Report", time: "5 hours ago", status: "completed", confidence: 94 },
-    { title: "Email Sequence - Nurture", type: "Email", time: "1 day ago", status: "completed", confidence: 91 },
-    { title: "LinkedIn Content Calendar", type: "Social", time: "2 days ago", status: "pending", confidence: 0 },
-  ],
+function mapProfileStatus(status: AgentStatus): Agent["status"] {
+  if (status === "processing") return "training"
+  if (status === "idle") return "limited"
+  if (status === "error") return "error"
+  return "active"
+}
+
+function toProfileAgent(api: ApiAgent): Agent {
+  const gradient = api.personality?.gradient || "from-emerald-500 to-teal-500"
+  const glow = api.personality?.glow || "shadow-emerald-500/30"
+  return {
+    id: api.id,
+    name: api.name,
+    role: api.role || "Agent",
+    tagline: api.department ? `${api.department} specialist` : api.role || "AI teammate",
+    description: api.description || "No description yet.",
+    status: mapProfileStatus(api.status),
+    trainingProgress: Math.min(100, Math.max(0, Math.round(api.stats?.successRate ?? 0))),
+    personality: {
+      gradient,
+      glow,
+      accent: api.personality?.color || "emerald",
+    },
+    stats: {
+      tasksCompleted: api.stats?.tasksToday ?? 0,
+      successRate: api.stats?.successRate ?? 0,
+      avgResponseTime: api.stats?.avgResponseTime || "-",
+      hoursActive: api.stats?.workflowsUsing ?? 0,
+      decisionsToday: api.stats?.tasksToday ?? 0,
+      approvalsNeeded: 0,
+    },
+    systems: (api.capabilities?.length ? api.capabilities : api.permissions).map((name) => ({
+      name,
+      status: "connected" as const,
+      icon: "database",
+    })),
+    skills: (api.capabilities || []).map((name) => ({
+      name: name.replace(/_/g, " "),
+      level: Math.min(100, Math.max(40, api.stats?.successRate ?? 75)),
+      color: "emerald",
+    })),
+    recentWork: api.lastAction
+      ? [{
+          title: api.lastAction,
+          type: "Task",
+          time: api.lastActionTime || "Recently",
+          status: "completed" as const,
+          confidence: Math.round(api.stats?.successRate ?? 0),
+        }]
+      : [],
+  }
 }
 
 const statusConfig = {
@@ -268,8 +282,39 @@ export default function AgentProfilePage({
 }) {
   const { id } = use(params)
   const router = useRouter()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<"overview" | "skills" | "history">("overview")
-  const agent = mockAgent
+
+  const { data: apiAgent, isLoading, error } = useSWR(
+    user && id ? `agent-profile/${id}` : null,
+    () => agentsApi.get(id),
+    { revalidateOnFocus: false },
+  )
+
+  if (isLoading && !apiAgent) {
+    return (
+      <AppShell title="Agent">
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (!apiAgent || error) {
+    return (
+      <AppShell title="Agent">
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
+          <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
+          <Link href="/agents">
+            <Button variant="outline" size="sm">Back to AI Team</Button>
+          </Link>
+        </div>
+      </AppShell>
+    )
+  }
+
+  const agent = toProfileAgent(apiAgent)
   const status = statusConfig[agent.status]
 
   return (
@@ -485,9 +530,13 @@ export default function AgentProfilePage({
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {agent.systems.map((system, i) => (
-                      <SystemBadge key={system.name} system={system} index={i} />
-                    ))}
+                    {agent.systems.length > 0 ? (
+                      agent.systems.map((system, i) => (
+                        <SystemBadge key={system.name} system={system} index={i} />
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground col-span-2">No connected systems yet.</p>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -504,9 +553,13 @@ export default function AgentProfilePage({
                 <div className="rounded-xl border border-border bg-card/50 p-6">
                   <h3 className="font-semibold text-foreground mb-6">Skill Proficiency</h3>
                   <div className="space-y-5">
-                    {agent.skills.map((skill, i) => (
-                      <SkillBar key={skill.name} skill={skill} index={i} />
-                    ))}
+                    {agent.skills.length > 0 ? (
+                      agent.skills.map((skill, i) => (
+                        <SkillBar key={skill.name} skill={skill} index={i} />
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No capability profile yet.</p>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -520,9 +573,13 @@ export default function AgentProfilePage({
                 exit={{ opacity: 0, y: -20 }}
               >
                 <div className="space-y-3">
-                  {agent.recentWork.map((work, i) => (
-                    <WorkItem key={work.title} work={work} index={i} />
-                  ))}
+                  {agent.recentWork.length > 0 ? (
+                    agent.recentWork.map((work, i) => (
+                      <WorkItem key={work.title} work={work} index={i} />
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No recent work recorded yet.</p>
+                  )}
                 </div>
               </motion.div>
             )}

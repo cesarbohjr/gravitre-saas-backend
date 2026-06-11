@@ -43,6 +43,14 @@ const destinations = [
   { id: "dest-5", name: "Export", icon: "download", description: "Download files" },
 ]
 
+const taskPriorities = [
+  { id: "normal", label: "Normal" },
+  { id: "high", label: "High" },
+  { id: "urgent", label: "Urgent" },
+] as const
+
+type TaskPriority = (typeof taskPriorities)[number]["id"]
+
 const steps = [
   { id: 1, title: "Select Agent", description: "Choose which AI agent to assign" },
   { id: 2, title: "Task Brief", description: "Describe what you need done" },
@@ -99,6 +107,7 @@ function NewAssignmentPageContent() {
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(preselectedAgent)
   const [taskBrief, setTaskBrief] = useState("")
+  const [taskPriority, setTaskPriority] = useState<TaskPriority>("normal")
   const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [useTrainingKnowledge, setUseTrainingKnowledge] = useState(true)
   const [selectedOutputs, setSelectedOutputs] = useState<string[]>([])
@@ -140,6 +149,7 @@ function NewAssignmentPageContent() {
       await submitJob(taskBrief.trim(), {
         agentId: selectedAgent,
         context: {
+          priority: taskPriority,
           useTrainingKnowledge,
           requireApproval,
           dataSources: selectedSources.map((id) => dataSources.find((s) => s.id === id)?.name).filter(Boolean),
@@ -373,6 +383,27 @@ function NewAssignmentPageContent() {
                         placeholder="e.g., Create a Q3 campaign for mid-market healthcare prospects. Include email sequences, social posts for LinkedIn, and audience segments based on engagement data..."
                         className="w-full h-48 rounded-lg border border-border bg-secondary px-4 py-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                       />
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-foreground mb-2">Priority</p>
+                        <div className="flex flex-wrap gap-2">
+                          {taskPriorities.map((option) => (
+                            <Button
+                              key={option.id}
+                              type="button"
+                              variant={taskPriority === option.id ? "default" : "outline"}
+                              size="sm"
+                              className={cn(
+                                "text-xs",
+                                taskPriority === option.id && option.id === "urgent" && "bg-rose-500 hover:bg-rose-600",
+                                taskPriority === option.id && option.id === "high" && "bg-amber-500 hover:bg-amber-600",
+                              )}
+                              onClick={() => setTaskPriority(option.id)}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
                       <div className="flex items-center justify-between mt-4">
                         <span className="text-xs text-muted-foreground">
                           {taskBrief.length} characters
@@ -638,6 +669,11 @@ function NewAssignmentPageContent() {
                       <div className="px-6 py-4">
                         <span className="text-sm text-muted-foreground block mb-2">Task Brief</span>
                         <p className="text-sm text-foreground">{taskBrief || "No task description"}</p>
+                      </div>
+
+                      <div className="px-6 py-4 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Priority</span>
+                        <span className="text-sm font-medium text-foreground capitalize">{taskPriority}</span>
                       </div>
                       
                       {/* Context */}

@@ -182,6 +182,31 @@ async def test_enqueue_returns_202(async_client, monkeypatch):
     assert resp.status_code == 202
     body = resp.json()
     assert body["status"] == "queued" and body["jobId"]
+    assert body.get("kind") == "operator_task"
+
+
+async def test_enqueue_with_agent_id_creates_agent_task(async_client, monkeypatch):
+    _auth()
+    fake = FakeSupabase()
+    monkeypatch.setattr(jobs_router, "create_client", lambda *a, **k: fake)
+    resp = await async_client.post(
+        "/api/agent-jobs",
+        headers={"Authorization": "Bearer t"},
+        json={
+            "task": "Reconcile CRM and billing for Acme",
+            "agent_id": "agent-abc",
+            "context": {"priority": "high", "useTrainingKnowledge": True},
+        },
+    )
+    assert resp.status_code == 202
+    body = resp.json()
+    assert body["kind"] == "agent_task"
+    assert body["status"] == "queued" and body["jobId"]
+    stored = fake.store["agent_jobs"][0]
+    assert stored["kind"] == "agent_task"
+    assert stored["payload"]["agent_id"] == "agent-abc"
+    assert stored["payload"]["context"]["priority"] == "high"
+    assert stored["payload"]["context"]["agent_id"] == "agent-abc"
 
 
 async def test_list_endpoint(async_client, monkeypatch):

@@ -195,11 +195,25 @@ async def _record_assistant_billing(
 # ---------------------------------------------------------------------------
 
 
-async def _tool_knowledge_base(org_id: str, query: str, settings: Settings) -> dict[str, Any]:
+async def _tool_knowledge_base(
+    org_id: str,
+    query: str,
+    settings: Settings,
+    *,
+    agent_id: str | None = None,
+) -> dict[str, Any]:
     try:
         from app.services.rag_service import RAGService
 
-        resp = await RAGService().query(org_id=org_id, query=query, top_k=5, include_sources=True)
+        scope = "agent" if agent_id else "organization"
+        resp = await RAGService().query(
+            org_id=org_id,
+            query=query,
+            scope=scope,
+            top_k=5,
+            include_sources=True,
+            agent_id=agent_id,
+        )
         results = [
             {
                 "title": chunk.source or "Knowledge Source",
@@ -208,27 +222,33 @@ async def _tool_knowledge_base(org_id: str, query: str, settings: Settings) -> d
             }
             for chunk in resp.chunks
         ]
+        sources = [
+            {
+                "title": chunk.source or "Knowledge Source",
+                "excerpt": (chunk.content or "")[:280],
+            }
+            for chunk in resp.chunks
+        ]
         return {
             "results": results,
+            "sources": sources,
             "totalResults": len(results),
             "method": str(resp.metrics.get("embedding_method") or "keyword"),
+            "scope": scope,
+            **({"agentId": agent_id} if agent_id else {}),
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant knowledge_base tool failed org_id=%s error=%s", org_id, str(exc))
         return {"results": [], "totalResults": 0, "error": "knowledge base unavailable"}
 
 
-def _tool_agent_status(org_id: str, settings: Settings) -> dict[str, Any]:
+def _tool_agent_status(org_id: str, settings: Settings, *, agent_id: str | None = None) -> dict[str, Any]:
     try:
         client = get_supabase_client(settings)
-        rows = (
-            client.table("agents")
-            .select("id,name,status,stats")
-            .eq("org_id", org_id)
-            .execute()
-            .data
-            or []
-        )
+        query = client.table("agents").select("id,name,status,stats").eq("org_id", org_id)
+        if agent_id:
+            query = query.eq("id", agent_id)
+        rows = query.execute().data or []
         agents = []
         for row in rows:
             stats = row.get("stats") if isinstance(row.get("stats"), dict) else {}
@@ -279,6 +299,8 @@ async def _run_tools(
     org_id: str,
     query: str,
     settings: Settings,
+    *,
+    agent_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Execute requested tools server-side. Returns [{name, displayName, input, output}]."""
     results: list[dict[str, Any]] = []
@@ -286,11 +308,13 @@ async def _run_tools(
         if name not in _TOOL_DISPLAY_NAMES:
             continue
         if name == "knowledge_base":
-            output = await _tool_knowledge_base(org_id, query, settings)
+            output = await _tool_knowledge_base(org_id, query, settings, agent_id=agent_id)
             tool_input: dict[str, Any] = {"query": query, "limit": 5}
+            if agent_id:
+                tool_input["agentId"] = agent_id
         elif name == "agent_status":
-            output = _tool_agent_status(org_id, settings)
-            tool_input = {}
+            output = _tool_agent_status(org_id, settings, agent_id=agent_id)
+            tool_input = {"agentId": agent_id} if agent_id else {}
         else:  # connector_status
             output = _tool_connector_status(org_id, settings)
             tool_input = {}
@@ -606,7 +630,13 @@ async def assistant_chat(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
 
     requested_tools = body.tools if body.tools is not None else _DEFAULT_TOOLS
-    tool_results = await _run_tools(requested_tools, org_id, last_user, settings)
+    tool_results = await _run_tools(
+        requested_tools,
+        org_id,
+        last_user,
+        settings,
+        agent_id=(body.agent_id or "").strip() or None,
+    )
 
     system_prompt = _build_assistant_system_prompt(
         settings,

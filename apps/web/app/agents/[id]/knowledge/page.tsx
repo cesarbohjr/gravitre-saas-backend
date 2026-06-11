@@ -5,6 +5,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
@@ -43,23 +44,7 @@ function formatDate(value?: string): string {
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
-// Mock agent data
-const mockAgent: Agent = {
-  id: "agent-001",
-  name: "Atlas",
-  role: "Marketing Agent",
-  department: "Marketing",
-  description: "Marketing campaign orchestration",
-  status: "active",
-  personality: { color: "#10B981", gradient: "from-emerald-500 to-teal-500", glow: "emerald-500/20" },
-  stats: { tasksToday: 12, successRate: 95, avgResponseTime: "2.4s", workflowsUsing: 3 },
-  capabilities: ["campaign_management", "content_creation", "analytics"],
-  permissions: ["read", "write", "execute"],
-  lastAction: "Generated campaign report",
-  lastActionTime: new Date().toISOString(),
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}
+// Mock agent data removed — load via agentsApi.get (STA-163)
 
 export default function AgentKnowledgePage({
   params,
@@ -74,12 +59,12 @@ export default function AgentKnowledgePage({
   const [mutatingId, setMutatingId] = useState<string | null>(null)
 
   // Fetch agent data
-  const { data: agentData } = useSWR(
+  const { data: agentData, isLoading: agentLoading } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId),
-    { fallbackData: mockAgent }
+    { revalidateOnFocus: false },
   )
-  const agent = agentData || mockAgent
+  const agent = agentData
 
   // Fetch datasets
   const { data: datasetsData, mutate: mutateDatasets } = useSWR(
@@ -148,6 +133,29 @@ export default function AgentKnowledgePage({
     } finally {
       setMutatingId(null)
     }
+  }
+
+  if (agentLoading && !agent) {
+    return (
+      <AppShell title="Knowledge Base">
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (!agent) {
+    return (
+      <AppShell title="Knowledge Base">
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
+          <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
+          <Link href="/agents">
+            <Button variant="outline" size="sm">Back to AI Team</Button>
+          </Link>
+        </div>
+      </AppShell>
+    )
   }
 
   return (
