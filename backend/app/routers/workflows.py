@@ -35,6 +35,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
 from app.workflows.constants import (
     ERROR_CODE_RAG_UNAVAILABLE,
+    RUN_STATUS_AWAITING_APPROVAL,
     RUN_STATUS_PENDING_APPROVAL,
     RUN_STATUS_RUNNING,
     RUN_TYPE_EXECUTE,
@@ -132,6 +133,11 @@ class ExecuteRequest(BaseModel):
 
 
 class ApproveRejectRequest(BaseModel):
+    comment: str | None = Field(default=None)
+
+
+class ResumeGraphRunRequest(BaseModel):
+    decision: str = Field(..., description="approved or rejected")
     comment: str | None = Field(default=None)
 
 
@@ -2566,6 +2572,94 @@ async def reject_run(
         "status": "cancelled",
         "approval_status": "rejected",
         "message": "Run rejected",
+    }
+
+
+@router.post("/runs/{run_id}/resume")
+async def resume_graph_run(
+    run_id: UUID,
+    body: ResumeGraphRunRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Resume a graph run paused at an in-graph approval node."""
+    if settings.disable_execute:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    run_id_str = str(run_id)
+    client = get_supabase_client(settings)
+    require_feature(get_plan_for_org(client, org_id), "approvals")
+    run = get_run_with_steps(client, org_id, run_id_str, environment_name)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    if run.get("run_type") != RUN_TYPE_EXECUTE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Run is not an execute run",
+        )
+    if run.get("status") != RUN_STATUS_AWAITING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Run is not awaiting in-graph approval",
+        )
+    try:
+        role = get_user_role(client, org_id, current_user["user_id"])
+    except PolicyResolutionError as e:
+        logger.error(
+            "resume_graph_role_failure org_id=%s user_id=%s error=%s stop_condition",
+            org_id,
+            current_user["user_id"],
+            e,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Role validation failed",
+        ) from e
+    from app.auth.platform_admin import is_org_admin_role
+
+    if not is_org_admin_role(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+
+    from app.workflows.execution_engine import GraphValidationError, resume_workflow_graph
+
+    try:
+        final_status, step_rows, _, rate_limited = resume_workflow_graph(
+            settings=settings,
+            org_id=org_id,
+            user_id=current_user["user_id"],
+            run_id=run_id_str,
+            decision=body.decision,
+            client=client,
+            environment_name=environment_name,
+            comment=body.comment,
+        )
+    except GraphValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if rate_limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+        )
+    rag_failed = any(s.get("error_code") == ERROR_CODE_RAG_UNAVAILABLE for s in step_rows)
+    if rag_failed:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Retrieval temporarily unavailable",
+        )
+    return {
+        "run_id": run_id_str,
+        "status": final_status,
+        "steps": [_step_to_out(s) for s in step_rows],
     }
 
 

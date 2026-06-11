@@ -256,6 +256,7 @@ def update_run(
     completed_at: str | None = None,
     error_message: str | None = None,
     approval_status: str | None = None,
+    parameters: dict[str, Any] | None = None,
 ) -> None:
     payload: dict[str, Any] = {"status": status}
     if completed_at is not None:
@@ -264,7 +265,18 @@ def update_run(
         payload["error_message"] = error_message
     if approval_status is not None:
         payload["approval_status"] = approval_status
+    if parameters is not None:
+        payload["parameters"] = parameters
     client.table("workflow_runs").update(payload).eq("id", run_id).execute()
+
+
+def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+    """Merge keys into workflow_runs.parameters (read-modify-write)."""
+    row = client.table("workflow_runs").select("parameters").eq("id", run_id).limit(1).execute()
+    current = dict((row.data or [{}])[0].get("parameters") or {})
+    current.update(patch)
+    client.table("workflow_runs").update({"parameters": current}).eq("id", run_id).execute()
+    return current
 
 
 def try_mark_run_running(client: Client, run_id: str, org_id: str) -> bool:
@@ -409,6 +421,8 @@ def update_step(
     step_uuid: str,
     status: str,
     output_snapshot: dict | None = None,
+    input_snapshot: dict | None = None,
+    logs: str | None = None,
     error_code: str | None = None,
     error_message: str | None = None,
     is_retryable: bool = False,
@@ -418,6 +432,10 @@ def update_step(
     payload: dict[str, Any] = {"status": status}
     if output_snapshot is not None:
         payload["output_snapshot"] = output_snapshot
+    if input_snapshot is not None:
+        payload["input_snapshot"] = input_snapshot
+    if logs is not None:
+        payload["logs"] = logs
     if error_code is not None:
         payload["error_code"] = error_code
     if error_message is not None:

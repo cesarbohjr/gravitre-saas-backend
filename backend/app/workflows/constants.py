@@ -28,6 +28,7 @@ RUN_STATUS_RUNNING = "running"
 RUN_STATUS_COMPLETED = "completed"
 RUN_STATUS_FAILED = "failed"
 RUN_STATUS_PENDING_APPROVAL = "pending_approval"
+RUN_STATUS_AWAITING_APPROVAL = "awaiting_approval"
 RUN_STATUS_CANCELLED = "cancelled"
 RUN_STATUS_PAUSED = "paused"
 
