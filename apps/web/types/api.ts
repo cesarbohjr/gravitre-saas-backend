@@ -157,6 +157,7 @@ export type WorkflowStatus = "draft" | "active" | "paused" | "inactive" | "archi
 export type RunStatus = 
   | "pending"
   | "pending_approval"
+  | "awaiting_approval"
   | "approved"
   | "running"
   | "paused"
@@ -1568,4 +1569,22 @@ export interface AgentInterrupt {
   status: string
   source?: string | null
   createdAt?: string | null
+}
+
+export interface RunCompensationSummary {
+  runId: string
+  compensated: number
+  failed: number
+  skipped: number
+  results: Array<{
+    recordId: string
+    action: string
+    status: string
+    error?: string | null
+  }>
+}
+
+export interface ResumeGraphRunRequest {
+  decision: "approved" | "rejected"
+  comment?: string | null
 }

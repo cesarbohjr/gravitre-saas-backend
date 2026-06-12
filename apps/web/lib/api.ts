@@ -112,6 +112,8 @@ import type {
   WorkflowFailurePredictionScanResponse,
   OrgFailurePredictionScanResponse,
   WorkflowDigitalTwinResponse,
+  ResumeGraphRunRequest,
+  RunCompensationSummary,
   AutonomousRunBudgetLimits,
   AutonomousRunBudgetUsage,
   EnterpriseAutonomousRunBudgets,
@@ -425,6 +427,11 @@ export const workflowsApi = {
     ),
   digitalTwin: (data: { workflow_id?: string; definition?: unknown; parameters?: unknown }) =>
     postJson<WorkflowDigitalTwinResponse>(apiUrl("/api/workflows/digital-twin"), data),
+  resumeRun: (runId: string, data: ResumeGraphRunRequest) =>
+    postJson<{ run_id: string; status: string; steps?: Record<string, unknown>[] }>(
+      apiUrl(`/api/workflows/runs/${runId}/resume`),
+      data,
+    ),
 }
 
 // ============ Runs ============
@@ -443,6 +450,9 @@ export const runsApi = {
   cancel: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/cancel`), {}),
   pause: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/pause`), {}),
   retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
+  rollback: (id: string) =>
+    postJson<{ run_id?: string; status?: string }>(apiUrl(`/api/runs/${id}/rollback`), {}),
+  compensate: (id: string) => postJson<RunCompensationSummary>(apiUrl(`/api/runs/${id}/compensate`), {}),
   interrupt: (id: string, signal: AgentInterruptRequest["signal"]) =>
     postJson<{ interrupt: AgentInterrupt }>(apiUrl("/api/agent-interrupts"), {
       targetType: "workflow_run",

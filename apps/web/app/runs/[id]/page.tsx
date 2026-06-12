@@ -24,9 +24,9 @@ import {
   Loader2,
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
-import { runsApi } from "@/lib/api"
+import { approvalsApi, runsApi, workflowsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import type { RunDetailResponse, RunStatus } from "@/types/api"
+import type { RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
 type StepStatus = "completed" | "running" | "failed" | "pending" | "skipped"
 
@@ -152,6 +152,7 @@ const statusVariants: Record<string, "success" | "error" | "warning" | "info"> =
   cancelled: "error",
   rejected: "error",
   pending_approval: "warning",
+  awaiting_approval: "warning",
   approved: "info",
 }
 
@@ -166,6 +167,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const [isRetrying, setIsRetrying] = useState(false)
   const [isPausing, setIsPausing] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [isCompensating, setIsCompensating] = useState(false)
+  const [compensationSummary, setCompensationSummary] = useState<RunCompensationSummary | null>(null)
+  const [isResolvingApproval, setIsResolvingApproval] = useState(false)
 
   const { data, error, isLoading, mutate } = useSWR<RunDetailResponse>(
     `/api/runs/${id}`,
@@ -173,7 +177,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     {
       refreshInterval: (latest) => {
         const status = String(latest?.run?.status ?? "").toLowerCase()
-        return status === "running" ? 2000 : 0
+        return ["running", "awaiting_approval", "pending_approval"].includes(status) ? 2000 : 0
       },
     },
   )
@@ -203,6 +207,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const canInterrupt = run.status === "running" || run.status === "paused"
   const canPause = run.status === "running"
   const canCancel = run.status === "running" || run.status === "paused"
+  const canCompensate = run.status === "failed" && isAdmin
+  const canResolveGraphApproval = run.status === "awaiting_approval" && isAdmin
+  const canResolveExecuteApproval = run.status === "pending_approval" && isAdmin
 
   async function handlePause() {
     if (!isAdmin) {
@@ -266,11 +273,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     setIsRollingBack(true)
     setRollbackError(null)
     try {
-      const response = await fetch(`/api/runs/${id}/rollback`, { method: "POST" })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(String(payload.error ?? payload.detail ?? "Rollback failed"))
-      }
+      await runsApi.rollback(id)
       setShowRollbackConfirm(false)
       toast.success("Rollback initiated")
       await mutate()
@@ -278,6 +281,71 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       setRollbackError(err instanceof Error ? err.message : "Failed to initiate rollback. Please try again.")
     } finally {
       setIsRollingBack(false)
+    }
+  }
+
+  const handleCompensate = async () => {
+    if (!isAdmin) {
+      toast.error("Admin access required to run compensations")
+      return
+    }
+    setIsCompensating(true)
+    try {
+      const summary = await runsApi.compensate(id)
+      setCompensationSummary(summary)
+      toast.success("Compensation run finished", {
+        description: `${summary.compensated} compensated · ${summary.failed} failed`,
+      })
+      await mutate()
+    } catch (err) {
+      toast.error("Compensation failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsCompensating(false)
+    }
+  }
+
+  const handleGraphApproval = async (decision: "approved" | "rejected") => {
+    if (!isAdmin) {
+      toast.error("Admin access required to resume this run")
+      return
+    }
+    setIsResolvingApproval(true)
+    try {
+      await workflowsApi.resumeRun(id, { decision })
+      toast.success(decision === "approved" ? "Approval recorded — run resumed" : "Run rejected")
+      await mutate()
+    } catch (err) {
+      toast.error("Could not resolve approval", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsResolvingApproval(false)
+    }
+  }
+
+  const handleExecuteApproval = async (decision: "approved" | "rejected") => {
+    if (!isAdmin) {
+      toast.error("Admin access required to approve execute runs")
+      return
+    }
+    setIsResolvingApproval(true)
+    try {
+      if (decision === "approved") {
+        await approvalsApi.approve(id)
+        toast.success("Run approved")
+      } else {
+        await approvalsApi.reject(id)
+        toast.success("Run rejected")
+      }
+      await mutate()
+    } catch (err) {
+      toast.error("Approval action failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsResolvingApproval(false)
     }
   }
 
@@ -428,6 +496,51 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           </div>
         ) : null}
 
+        {(canResolveGraphApproval || canResolveExecuteApproval) && (
+          <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <h2 className="text-sm font-semibold text-foreground">
+                {canResolveGraphApproval ? "In-graph approval required" : "Execute approval required"}
+              </h2>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {canResolveGraphApproval
+                ? "This run paused at an approval node in the workflow graph. Approve to continue execution or reject to stop."
+                : "This run is waiting for admin approval before it can execute."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="h-8 gap-2"
+                disabled={!isAdmin || authLoading || isResolvingApproval}
+                onClick={() =>
+                  canResolveGraphApproval ? handleGraphApproval("approved") : handleExecuteApproval("approved")
+                }
+              >
+                {isResolvingApproval ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-3.5 w-3.5" />
+                )}
+                Approve
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-2"
+                disabled={!isAdmin || authLoading || isResolvingApproval}
+                onClick={() =>
+                  canResolveGraphApproval ? handleGraphApproval("rejected") : handleExecuteApproval("rejected")
+                }
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Reject
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="mb-6 rounded-lg border border-border bg-card">
           <div className="border-b border-border p-4">
             <h2 className="text-sm font-semibold text-foreground">Execution Flow</h2>
@@ -512,6 +625,54 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             )}
           </div>
         </div>
+
+        {canCompensate && (
+          <div className="mb-6 rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold text-foreground">Compensation</h2>
+              </div>
+            </div>
+            <div className="p-4">
+              <p className="mb-4 text-sm text-muted-foreground">
+                Run compensating actions for side effects recorded during this failed run.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-2"
+                onClick={handleCompensate}
+                disabled={!isAdmin || authLoading || isCompensating}
+              >
+                {isCompensating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                )}
+                {isAdmin ? "Run compensation" : "Compensation (Admin only)"}
+              </Button>
+              {compensationSummary && (
+                <div className="mt-4 rounded-md border border-border bg-muted/30 p-3 text-sm">
+                  <p className="mb-2 font-medium text-foreground">
+                    {compensationSummary.compensated} compensated · {compensationSummary.failed} failed ·{" "}
+                    {compensationSummary.skipped} skipped
+                  </p>
+                  {compensationSummary.results.length > 0 && (
+                    <ul className="space-y-1 font-mono text-xs text-muted-foreground">
+                      {compensationSummary.results.map((result) => (
+                        <li key={result.recordId}>
+                          {result.action}: {result.status}
+                          {result.error ? ` — ${result.error}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 rounded-lg border border-border bg-card">
           <div className="border-b border-border px-4 py-3">
