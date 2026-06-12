@@ -30,6 +30,7 @@ import type {
 import { PartnerCard, awaitingOurConsent } from "@/components/federation/partner-card"
 import { HandoffTimeline } from "@/components/federation/handoff-timeline"
 import { InvitePartnerDialog } from "@/components/federation/invite-partner-dialog"
+import { CreateHandoffDialog } from "@/components/federation/create-handoff-dialog"
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
 import { cn } from "@/lib/utils"
 
@@ -57,6 +58,7 @@ function FederationContent() {
   const isAdmin = user?.role === "admin" || user?.role === "owner"
   const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [handoffOpen, setHandoffOpen] = useState(false)
 
   const {
     data: partnershipsData,
@@ -89,6 +91,11 @@ function FederationContent() {
 
   const pendingInvites = useMemo(
     () => partnerships.filter((p) => awaitingOurConsent(p)),
+    [partnerships],
+  )
+
+  const activePartnerships = useMemo(
+    () => partnerships.filter((p) => p.status === "active"),
     [partnerships],
   )
 
@@ -273,11 +280,25 @@ function FederationContent() {
 
         {/* Handoffs */}
         <section className="lg:col-span-2">
-          <div className="mb-4 flex items-center gap-2">
-            <Send className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Cross-org handoffs
-            </h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Cross-org handoffs
+              </h2>
+            </div>
+            {isAdmin ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={() => setHandoffOpen(true)}
+                disabled={activePartnerships.length === 0}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Send handoff
+              </Button>
+            ) : null}
           </div>
           <PageHeaderlessSection
             loading={loadingHandoffs}
@@ -287,6 +308,14 @@ function FederationContent() {
                 icon={ArrowLeftRight}
                 title="No handoffs yet"
                 description="When agents pass work to a partner org, the exchange appears here as a consent-gated timeline."
+                action={
+                  isAdmin && activePartnerships.length > 0 ? (
+                    <Button onClick={() => setHandoffOpen(true)} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Send your first handoff
+                    </Button>
+                  ) : undefined
+                }
               />
             }
           >
@@ -304,6 +333,13 @@ function FederationContent() {
         onOpenChange={setInviteOpen}
         disabled={!isAdmin}
         onInvited={() => refreshAll()}
+      />
+      <CreateHandoffDialog
+        open={handoffOpen}
+        onOpenChange={setHandoffOpen}
+        disabled={!isAdmin}
+        activePartnerships={activePartnerships}
+        onCreated={() => refreshAll()}
       />
     </div>
   )

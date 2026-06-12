@@ -37,6 +37,7 @@ import type {
   Connector,
   ConnectorListResponse,
   CreateConnectorRequest,
+  CreateFederationHandoffRequest,
   Source,
   SourceListResponse,
   CreateSourceRequest,
@@ -1149,13 +1150,8 @@ export const federationApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<{ handoffs: FederationHandoff[] }>(`/api/federation/handoffs${suffix}`)
   },
-  createHandoff: (data: {
-    receiverOrgId: string
-    fromAgentId?: string
-    toAgentId?: string
-    message?: string
-    briefing?: Record<string, unknown>
-  }) => postJson<{ handoff: FederationHandoff }>("/api/federation/handoffs", data),
+  createHandoff: (data: CreateFederationHandoffRequest) =>
+    postJson<{ handoff: FederationHandoff }>("/api/federation/handoffs", data),
   acceptHandoff: (handoffId: string) =>
     postJson<{ handoff: FederationHandoff }>(
       `/api/federation/handoffs/${handoffId}/accept`,

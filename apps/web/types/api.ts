@@ -1527,6 +1527,16 @@ export interface FederationHandoff {
   completedAt: string | null
 }
 
+export interface CreateFederationHandoffRequest {
+  receiverOrgId: string
+  fromAgentId?: string
+  toAgentId?: string
+  message?: string
+  briefing?: Record<string, unknown>
+  parameters?: Record<string, unknown>
+  sourceOutput?: Record<string, unknown>
+}
+
 export interface FederationConnectorGrant {
   id: string
   partnershipId?: string | null
