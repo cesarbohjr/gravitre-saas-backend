@@ -2,11 +2,11 @@
   "target": "https://gravitre-saas-backend-production.up.railway.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
   "userId": "09c29672-beff-4a65-b525-261fa3de5923",
-  "startedAt": "2026-06-12T08:44:34.560122+00:00",
-  "finishedAt": "2026-06-12T08:45:43.778501+00:00",
+  "startedAt": "2026-06-12T09:19:36.607548+00:00",
+  "finishedAt": "2026-06-12T09:21:00.418888+00:00",
   "summary": {
-    "pass": 14,
-    "warn": 1,
+    "pass": 15,
+    "warn": 0,
     "fail": 0
   },
   "impl8": {
@@ -48,19 +48,19 @@
     {
       "label": "assistant_chat",
       "status": "pass",
-      "detail": "assistant_chat: bytes=2892",
+      "detail": "assistant_chat: bytes=2964",
       "linear": "STA-163"
     },
     {
       "label": "workflow_dry_run_abc",
       "status": "pass",
-      "detail": "workflow_dry_run: run_id=68d38922-a9a9-43f8-ba6c-0a9c50cf201a steps=['step_a', 'step_b', 'step_c']",
+      "detail": "workflow_dry_run: run_id=a261190a-1c08-480e-946b-1f81e429188b steps=['step_a', 'step_b', 'step_c']",
       "linear": "STA-166"
     },
     {
       "label": "workflow_execute_abc",
-      "status": "warn",
-      "detail": "WARN execute created pending_approval run ff895e5e-3838-406b-af7e-ae1c69f77724; approve HTTP 500: Internal Server Error",
+      "status": "pass",
+      "detail": "workflow_execute: run_id=ec56f8d6-dae5-446e-9fed-1ef73523840e status=completed steps=3",
       "linear": "STA-166"
     },
     {
@@ -72,13 +72,13 @@
     {
       "label": "failure_predictions_scan",
       "status": "pass",
-      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-12T08:45:39.032941+00:00\"}",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-12T09:20:56.018826+00:00\"}",
       "linear": "STA-167"
     },
     {
       "label": "integration_health",
       "status": "pass",
-      "detail": "integration_health: score=86 grade=healthy",
+      "detail": "integration_health: score=92 grade=healthy",
       "linear": "STA-167"
     },
     {
@@ -102,7 +102,7 @@
     {
       "label": "agent_interrupt_channel",
       "status": "pass",
-      "detail": "agent_interrupt: accepted id=ae0dbd08-c9ef-4050-b1d0-31448cae08c5 signal=pause",
+      "detail": "agent_interrupt: accepted id=0944056a-96ff-4042-ada2-714893a3cfd0 signal=pause",
       "linear": null
     },
     {
