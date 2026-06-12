@@ -2806,13 +2806,14 @@ async def approve_run_alias(
     body: ApproveRejectRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
-    return await approve_run(run_id, body, current_user, org_id, settings)
+    return await approve_run(run_id, body, current_user, org_id, environment_name, settings)
 
 
 @approvals_router.post("/{run_id}/reject")
@@ -2821,13 +2822,14 @@ async def reject_run_alias(
     body: ApproveRejectRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
-    return await reject_run(run_id, body, current_user, org_id, settings)
+    return await reject_run(run_id, body, current_user, org_id, environment_name, settings)
 
 
 @router.get("/runs")
