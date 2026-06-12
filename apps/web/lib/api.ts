@@ -316,6 +316,48 @@ export interface MesonDeployResponse {
   result: MesonInterpretResponse
 }
 
+export interface MesonSuggestion {
+  id: string
+  nodeType: string
+  label: string
+  reason?: string
+  confidence?: number
+}
+
+export interface MesonSuggestionsResponse {
+  suggestions: MesonSuggestion[]
+}
+
+export interface MesonAlert {
+  id: string
+  severity: "info" | "warning" | "critical" | string
+  title: string
+  message: string
+  autoFixable?: boolean
+}
+
+export interface MesonAlertsResponse {
+  alerts: MesonAlert[]
+}
+
+export interface MesonInsight {
+  id: string
+  title: string
+  summary: string
+  category?: string
+}
+
+export interface MesonInsightsResponse {
+  insights: MesonInsight[]
+}
+
+export interface MesonFeedbackRequest {
+  suggestionId: string
+  action: "accepted" | "dismissed"
+  reason?: string
+  workflowId?: string
+}
+
 export const mesonApi = {
   interpret: (data: {
     intent: string
@@ -331,6 +373,12 @@ export const mesonApi = {
     generatedConfig?: MesonInterpretResponse["generatedConfig"]
     createWorkflow?: boolean
   }) => postJson<MesonDeployResponse>(apiUrl("/api/meson/deploy"), data),
+  suggestions: (data: { workflowState?: Record<string, unknown>; lastAddedNode?: Record<string, unknown> }) =>
+    postJson<MesonSuggestionsResponse>(apiUrl("/api/meson/suggestions"), data),
+  alerts: () => fetcher<MesonAlertsResponse>(apiUrl("/api/meson/alerts")),
+  insights: () => fetcher<MesonInsightsResponse>(apiUrl("/api/meson/insights")),
+  feedback: (data: MesonFeedbackRequest) =>
+    postJson<{ ok?: boolean }>(apiUrl("/api/meson/feedback"), data),
 }
 
 // ============ Workflows ============
