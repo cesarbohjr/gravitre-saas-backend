@@ -1,0 +1,115 @@
+{
+  "target": "https://gravitre-saas-backend-production.up.railway.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "userId": "09c29672-beff-4a65-b525-261fa3de5923",
+  "startedAt": "2026-06-12T07:48:17.658776+00:00",
+  "finishedAt": "2026-06-12T07:49:26.994257+00:00",
+  "summary": {
+    "pass": 12,
+    "warn": 3,
+    "fail": 0
+  },
+  "impl8": {
+    "STA-162": true,
+    "STA-163": true,
+    "STA-164": true,
+    "STA-165": true,
+    "STA-166": true,
+    "STA-167": true,
+    "STA-168": true,
+    "STA-169": true,
+    "STA-170": true
+  },
+  "steps": [
+    {
+      "label": "health",
+      "status": "pass",
+      "detail": "health: ok",
+      "linear": null
+    },
+    {
+      "label": "meson_interpret",
+      "status": "pass",
+      "detail": "meson_interpret: agent=Overdue Invoice Monitor",
+      "linear": "STA-164"
+    },
+    {
+      "label": "agents_list",
+      "status": "pass",
+      "detail": "agents_list: count=0",
+      "linear": null
+    },
+    {
+      "label": "agent_job",
+      "status": "pass",
+      "detail": "agent_job: status=completed aiStatus=degraded trace_steps=0",
+      "linear": "STA-165"
+    },
+    {
+      "label": "assistant_chat",
+      "status": "pass",
+      "detail": "assistant_chat: bytes=3107",
+      "linear": "STA-163"
+    },
+    {
+      "label": "workflow_dry_run_abc",
+      "status": "pass",
+      "detail": "workflow_dry_run: run_id=82e54960-f291-4985-9207-e535105bdc01 steps=['step_a', 'step_b', 'step_c']",
+      "linear": "STA-166"
+    },
+    {
+      "label": "workflow_execute_abc",
+      "status": "warn",
+      "detail": "WARN execute created pending_approval run 29bbc121-a4a3-4763-a6f1-45f9e128e994; approve HTTP 500: Internal Server Error",
+      "linear": "STA-166"
+    },
+    {
+      "label": "workflow_digital_twin",
+      "status": "pass",
+      "detail": "workflow_digital_twin: steps=3 fixture_hits=None",
+      "linear": "STA-166"
+    },
+    {
+      "label": "failure_predictions_scan",
+      "status": "pass",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-12T07:49:23.113171+00:00\"}",
+      "linear": "STA-167"
+    },
+    {
+      "label": "integration_health",
+      "status": "pass",
+      "detail": "integration_health: score=72 grade=at_risk",
+      "linear": "STA-167"
+    },
+    {
+      "label": "role_packs",
+      "status": "pass",
+      "detail": "role_packs: count=4",
+      "linear": "STA-168"
+    },
+    {
+      "label": "federation_lists",
+      "status": "pass",
+      "detail": "federation: partnerships=0 handoffs=0",
+      "linear": "STA-169"
+    },
+    {
+      "label": "run_interrupt_routes",
+      "status": "warn",
+      "detail": "WARN run interrupt routes reachable (pause=404, cancel=404); rollback pending deploy: rollback=500",
+      "linear": "STA-170"
+    },
+    {
+      "label": "agent_interrupt_channel",
+      "status": "pass",
+      "detail": "agent_interrupt: accepted id=9d3f8402-8133-4b38-a2c7-d8e8123d024e signal=pause",
+      "linear": null
+    },
+    {
+      "label": "meson_copilot_routes",
+      "status": "warn",
+      "detail": "WARN meson copilot routes pending backend (STA-142): suggestions=404, alerts=404, insights=404",
+      "linear": "STA-162"
+    }
+  ]
+}

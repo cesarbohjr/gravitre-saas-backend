@@ -104,9 +104,10 @@ Run after Epic I wiring (Meson, agent chat, assign task, workflow run/preview, C
 
 ```bash
 npm run smoke:ai-production
+npm run smoke:ai-production:report   # writes docs/delivery/smoke-ai-production-latest.json
 ```
 
-Covers: `/health`, Meson interpret, agents list, agent job enqueue, assistant chat (SSE), workflow A→B→C dry-run, org failure scan, integration health, role packs, federation lists, agent-interrupt channel.
+Covers: `/health`, Meson interpret, agents list, agent job enqueue (+ poll), assistant chat (SSE), workflow A→B→C dry-run + execute, digital twin, org failure scan, integration health, role packs, federation lists, run pause/cancel/rollback routes, agent-interrupt channel, Meson copilot proxy reachability.
 
 Input checklist: [`docs/delivery/AI_ML_OPERATIONAL_GAP_REPORT.md`](../delivery/AI_ML_OPERATIONAL_GAP_REPORT.md)
 

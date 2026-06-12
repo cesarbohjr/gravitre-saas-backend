@@ -13,7 +13,7 @@ This report closes the **production E2E wiring** slice (Epic I, STA-158) and rec
 
 | Area | Status | Notes |
 |------|--------|-------|
-| **Epic I — Production E2E wiring** | **Code complete** | STA-166–170 wired in repo; prod smoke not yet run (STA-173) |
+| **Epic I — Production E2E wiring** | **Prod smoke run** | STA-173 `smoke:ai-production` passed 2026-06-12 (12 pass / 3 warn) — see `docs/delivery/smoke-ai-production-latest.json` |
 | **STA-171 — Semantic RAG chunking** | **Shipped** | Default `semantic` strategy in ingest + worker |
 | **AI governance** (router, guardrails, billing, audit) | **Strong** | Unchanged from STA-155 |
 | **Unified intelligence layer** (ReAct, personas, streaming) | **Open** | STA-137–174 backlog |
@@ -27,16 +27,16 @@ This report closes the **production E2E wiring** slice (Epic I, STA-158) and rec
 
 | UI action | Linear | Code status | Prod verified | Key paths |
 |-----------|--------|-------------|---------------|-----------|
-| Build with Meson | STA-164 | **Wired** — `mesonApi.interpret` / `deploy` | ☐ | `apps/web/components/gravitre/meson-wizard.tsx`, `/api/meson/*` |
-| Chat with Agent | STA-163 | **Wired** — agent-scoped chat transport | ☐ | `apps/web/app/agents/[id]/chat/page.tsx` |
-| Assign Task | STA-165 | **Wired** — `useAsyncJob` → `/api/agent-jobs` | ☐ | `apps/web/app/assignments/new/page.tsx`, `hooks/use-async-job.ts` |
-| Workflow Run/Preview | STA-166 | **Wired** — execute + poll + dry-run drawer | ☐ | `apps/web/app/workflows/[id]/builder/page.tsx`, `lib/workflows/run-monitor.ts` |
-| CS Command Center | STA-167 | **Wired** — scan + health + error/retry UI | ☐ | `components/enterprise/cs-dashboard-tab.tsx`, `POST …/failure-predictions/scan` |
-| Role pack Install | STA-168 | **Wired** — install guard + deep links | ☐ | `apps/web/app/marketplace/role-packs/page.tsx` |
-| Federation Invite | STA-169 | **Wired** — consent UI + API shape fixes | ☐ | `apps/web/app/settings/federation/page.tsx` |
-| Run Interrupt | STA-170 | **Wired** — pause/cancel via STA-108 | ☐ | `apps/web/app/runs/[id]/page.tsx`, builder execution HUD |
+| Build with Meson | STA-164 | **Wired** — `mesonApi.interpret` / `deploy` | ☑ | `apps/web/components/gravitre/meson-wizard.tsx`, `/api/meson/*` |
+| Chat with Agent | STA-163 | **Wired** — agent-scoped chat transport | ☑ | `apps/web/app/agents/[id]/chat/page.tsx` |
+| Assign Task | STA-165 | **Wired** — `useAsyncJob` → `/api/agent-jobs` | ☑ | `apps/web/app/assignments/new/page.tsx`, `hooks/use-async-job.ts` |
+| Workflow Run/Preview | STA-166 | **Wired** — execute + poll + dry-run drawer | ☑ (execute warn: approve 500) | `apps/web/app/workflows/[id]/builder/page.tsx`, `lib/workflows/run-monitor.ts` |
+| CS Command Center | STA-167 | **Wired** — scan + health + error/retry UI | ☑ | `components/enterprise/cs-dashboard-tab.tsx`, `POST …/failure-predictions/scan` |
+| Role pack Install | STA-168 | **Wired** — install guard + deep links | ☑ | `apps/web/app/marketplace/role-packs/page.tsx` |
+| Federation Invite | STA-169 | **Wired** — consent UI + handoff create | ☑ | `apps/web/app/settings/federation/page.tsx` |
+| Run Interrupt | STA-170 | **Wired** — pause/cancel via STA-108 | ☑ (rollback warn: HTTP 500) | `apps/web/app/runs/[id]/page.tsx`, builder execution HUD |
 
-**Legend:** Code complete in repository; **Prod verified** remains ☐ until STA-173 curl/UI smoke against Railway + Vercel.
+**Legend:** Prod verified via `npm run smoke:ai-production:report` against Railway (`2026-06-12`). Warnings = partial backend gaps (approve path, rollback route, Meson copilot APIs).
 
 ---
 
@@ -82,7 +82,7 @@ This report closes the **production E2E wiring** slice (Epic I, STA-158) and rec
 | `currentOrgId` + consent logic | ✅ |
 | Admin-gated invite + UUID validation | ✅ |
 
-**Remaining gap:** Cross-org handoff create UI not on federation page (list/accept only).
+**Remaining gap:** Cross-org handoff create UI shipped (STA-169); prod smoke lists partnerships/handoffs (empty org OK).
 
 ### STA-170 — Run interrupt UI
 
@@ -129,9 +129,12 @@ Scores vs [STA-155 baseline → target](GRAVITRE_AI_INTELLIGENCE_UPGRADE.md#scor
 
 ## P0 — Block prod smoke (STA-173)
 
-1. **Deploy uncommitted Epic I + STA-170/171 changes** to Railway (backend) and Vercel (`apps/web`).
-2. **Run migrations** for: `org_b2b_partnerships`, integration health / failure prediction tables, `agent_execution_interrupts`.
-3. **Execute STA-173** scripted smoke: each IMPL 8 row above marked ☐ → ☑ with evidence URLs/log snippets.
+1. ~~Deploy Epic I changes to Railway + Vercel~~ — deployed on `main` through `d165232`.
+2. ~~Run `npm run smoke:ai-production:report`~~ — **2026-06-12:** 12 pass / 3 warn / 0 fail (`docs/delivery/smoke-ai-production-latest.json`).
+3. **Follow-up fixes from smoke warnings:**
+   - `POST /api/approvals/{run_id}/approve` → HTTP 500 on production (blocks full ABC execute completion).
+   - `POST /api/runs/{id}/rollback` → HTTP 500 on missing run (route wiring OK; handler error).
+   - Meson copilot backend routes (`/api/meson/suggestions|alerts|insights`) → 404 until STA-142.
 4. **Agent detail page** (`/agents/[id]`) still uses `mockAgent` for non-chat tabs — does not block chat but blocks trustworthy agent ops UI.
 
 ---
@@ -153,10 +156,9 @@ Scores vs [STA-155 baseline → target](GRAVITRE_AI_INTELLIGENCE_UPGRADE.md#scor
 
 | ID | Gap |
 |----|-----|
-| U1 | Federation cross-org handoff **create** flow from UI |
+| U1 | Agent list/detail live metrics (replace mock performance data) |
 | U2 | Workflow run **resume** after `paused` interrupt |
 | U3 | v0 F1–F4 panels (Meson copilot, run timeline, assistant sidebar) — [`V0_AI_INTELLIGENCE_PROMPTS.md`](../design/V0_AI_INTELLIGENCE_PROMPTS.md) |
-| U4 | Agent list/detail live metrics (replace mock performance data) |
 
 ---
 
@@ -169,17 +171,18 @@ Scores vs [STA-155 baseline → target](GRAVITRE_AI_INTELLIGENCE_UPGRADE.md#scor
 | `tests/services/test_b2b_handoff_service.py` | 7 passed |
 | `tests/services/test_agent_interrupt_service.py` | (included in full suite) |
 | Web `tsc` / build | Not re-run this session — run before deploy |
-| Prod IMPL 8 smoke | **Not run** — owned by STA-173 |
+| Prod IMPL 8 smoke | **Run 2026-06-12** — `smoke:ai-production:report` (12 pass / 3 warn) |
 
 ---
 
 ## Recommended order (after this report)
 
-1. **STA-173** — `smoke:ai-production` + mark IMPL 8 checklist ☑ in prod  
-2. **STA-174** — `AGENT_PERSONAS` + `revenue_ops` (unblocks richer agent chat)  
-3. **STA-151** — True streaming (user-visible assistant win)  
-4. **STA-137 / STA-133** — AgentIntelligence + ReAct  
-5. **STA-150** — Cross-encoder RAG (pairs with STA-171 chunking)
+1. **Fix prod smoke warnings** — approve-run HTTP 500, rollback handler 500, then re-run `smoke:ai-production:report`.
+2. **STA-142** — Meson copilot backend (`/api/meson/suggestions|alerts|insights|feedback`) so copilot proxies return 200.
+3. **STA-174** — `AGENT_PERSONAS` + `revenue_ops` (unblocks richer agent chat + ReAct trace in jobs).
+4. **STA-151** — True streaming (user-visible assistant win).
+5. **STA-137 / STA-133** — AgentIntelligence + ReAct with tool trace in prod smoke.
+6. **STA-150** — Cross-encoder RAG (pairs with STA-171 chunking).
 
 ---
 
