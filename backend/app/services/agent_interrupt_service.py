@@ -185,12 +185,12 @@ def enforce_interrupt(
     )
     if target_type == "workflow_run":
         if signal == "pause":
-            client.table("workflow_runs").update({"status": RUN_STATUS_PAUSED, "updated_at": _now()}).eq(
+            client.table("workflow_runs").update({"status": RUN_STATUS_PAUSED}).eq(
                 "id", target_id
             ).eq("org_id", org_id).execute()
         else:
             client.table("workflow_runs").update(
-                {"status": RUN_STATUS_CANCELLED, "error_message": "Interrupted by operator", "updated_at": _now()}
+                {"status": RUN_STATUS_CANCELLED, "error_message": "Interrupted by operator"}
             ).eq("id", target_id).eq("org_id", org_id).execute()
     raise AgentExecutionInterrupted(signal, target_type, target_id)  # type: ignore[arg-type]
 

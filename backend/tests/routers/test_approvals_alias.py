@@ -64,6 +64,46 @@ def test_approvals_approve_alias_forwards_environment(monkeypatch: pytest.Monkey
     assert isinstance(captured["settings"], Settings)
 
 
+def test_approve_run_emits_approval_recorded(monkeypatch: pytest.MonkeyPatch):
+    run_id = uuid4()
+    emitted: list[str] = []
+    mock_client = object()
+
+    monkeypatch.setattr(
+        workflows_module,
+        "get_supabase_client",
+        lambda _settings: mock_client,
+    )
+    monkeypatch.setattr(workflows_module, "get_plan_for_org", lambda _client, _org: {"features": {"approvals": True}})
+    monkeypatch.setattr(workflows_module, "require_feature", lambda _plan, _feature: None)
+    monkeypatch.setattr(
+        workflows_module,
+        "get_run_with_steps",
+        lambda _client, _org, _run_id, _env: {
+            "run_type": workflows_module.RUN_TYPE_EXECUTE,
+            "status": workflows_module.RUN_STATUS_PENDING_APPROVAL,
+            "required_approvals": 1,
+            "definition_snapshot": {"steps": []},
+            "parameters": {},
+            "environment": "production",
+        },
+    )
+    monkeypatch.setattr(workflows_module, "get_user_role", lambda *_a, **_k: "admin")
+    monkeypatch.setattr(workflows_module, "insert_run_approval", lambda *_a, **_k: {"status": "approved"})
+    monkeypatch.setattr(
+        workflows_module,
+        "emit_execute_approval_recorded",
+        lambda *_a, **_k: emitted.append("recorded"),
+    )
+    monkeypatch.setattr(workflows_module, "get_approval_counts", lambda *_a, **_k: (0, False))
+
+    _authenticate(environment="production")
+    response = client.post(f"/api/approvals/{run_id}/approve", json={})
+
+    assert response.status_code == 200
+    assert emitted == ["recorded"]
+
+
 def test_approvals_reject_alias_forwards_environment(monkeypatch: pytest.MonkeyPatch):
     run_id = uuid4()
     captured: dict[str, object] = {}

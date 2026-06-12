@@ -65,6 +65,7 @@ from app.workflows.repository import (
     create_execute_run,
     create_step,
     emit_execute_approved,
+    emit_execute_approval_recorded,
     emit_execute_created,
     emit_execute_pending_approval,
     emit_execute_rejected,
