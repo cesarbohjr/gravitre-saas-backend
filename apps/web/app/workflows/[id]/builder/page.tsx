@@ -31,7 +31,7 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
-import { runsApi } from "@/lib/api"
+import { mesonApi, runsApi, type MesonSuggestion } from "@/lib/api"
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
@@ -2773,6 +2773,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   // Smart suggestions state (moved after addNode definition)
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([])
+  const [mesonSuggestions, setMesonSuggestions] = useState<MesonSuggestion[]>([])
 
   // Get selected node object
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
@@ -2956,144 +2957,163 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     setSelectedNodeId(newNode.id)
   }, [])
 
-  // Generate smart suggestions based on current workflow state
-  const smartSuggestions = useMemo(() => {
-    const suggestions: Array<{ id: string; text: string; action: () => void; icon: typeof Lightbulb }> = []
-    
-    // Check if workflow has approval step
-    const hasApproval = nodes.some(n => n.type === "approval")
-    if (!hasApproval && nodes.length >= 2) {
-      suggestions.push({
-        id: "add-approval",
-        text: "Add approval step before production?",
-        action: () => addNode("approval", "Quality Gate", "Review before production"),
-        icon: Shield,
-      })
-    }
-    
-    // Check if there's a Slack notification
-    const hasSlackNotification = nodes.some(n => n.vendor === "slack")
-    if (!hasSlackNotification && nodes.length >= 3) {
-      suggestions.push({
-        id: "add-slack",
-        text: "Add Slack notification step?",
-        action: () => {
-          const newNode: WorkflowNode = {
-            id: nextGeneratedNodeId(),
-            type: "connector",
-            name: "Slack Notification",
-            description: "Send completion notification",
-            config: {},
-            position: { x: Math.max(...nodes.map(n => n.position.x)) + 100, y: 200 },
-            connections: [],
-            vendor: "slack",
-            selectedAction: "send_message",
-          }
-          setNodes((prev) => [...prev, newNode])
-        },
-        icon: Zap,
-      })
-    }
-    
-// Check if there's data validation
-  const hasValidation = nodes.some(n => n.name.toLowerCase().includes("valid") || n.type === "agent")
-  if (!hasValidation && nodes.length >= 1 && nodes.some(n => n.type === "source" || n.type === "connector")) {
-  suggestions.push({
-  id: "add-validation",
-  text: "Add data validation step?",
-  action: () => {
-    const newNode: WorkflowNode = {
-      id: nextGeneratedNodeId(),
-      type: "agent",
-      name: "Data Validator",
-      description: "Validate and clean data",
-      config: {},
-      position: { x: Math.max(...nodes.map(n => n.position.x)) + 100, y: 150 },
-      connections: [],
-    }
-    setNodes((prev) => [...prev, newNode])
-    setSelectedNodeId(newNode.id)
-  },
-  icon: Bot,
-  })
-  }
-  
-  // Check if there's a decision node after data processing
-  const hasDecision = nodes.some(n => n.type === "decision")
-  const hasDataProcessing = nodes.some(n => n.type === "agent" || n.type === "task")
-  if (!hasDecision && hasDataProcessing && nodes.length >= 2) {
-  suggestions.push({
-  id: "add-decision",
-  text: "Add decision node for dynamic routing?",
-  action: () => {
-    const newNode: WorkflowNode = {
-      id: nextGeneratedNodeId(),
-      type: "decision",
-      name: "Route Decision",
-      description: "AI-powered routing based on data",
-      config: {},
-      position: { x: Math.max(...nodes.map(n => n.position.x)) + 100, y: 150 },
-      connections: [],
-      decisionConfig: {
-        objective: "Route to the appropriate next step based on data",
-        strategy: "ai-assisted",
-      },
-      outputPaths: [
-        { id: "path-a", label: "Primary Path" },
-        { id: "path-b", label: "Alternate Path" },
-      ],
-    }
-    setNodes((prev) => [...prev, newNode])
-    setSelectedNodeId(newNode.id)
-  },
-  icon: GitBranch,
-  })
-  }
-
-  // Suggest adding branching after lead scoring or data enrichment
-  const hasLeadScoring = nodes.some(n => 
-    n.name.toLowerCase().includes("score") || 
-    n.name.toLowerCase().includes("lead") ||
-    n.name.toLowerCase().includes("enrich")
+  const applyMesonSuggestion = useCallback(
+    (suggestion: MesonSuggestion) => {
+      const maxX = nodes.length ? Math.max(...nodes.map((n) => n.position.x)) : 200
+      switch (suggestion.id) {
+        case "add-slack":
+          setNodes((prev) => [
+            ...prev,
+            {
+              id: nextGeneratedNodeId(),
+              type: "connector",
+              name: suggestion.label,
+              description: suggestion.reason,
+              config: {},
+              position: { x: maxX + 100, y: 200 },
+              connections: [],
+              vendor: "slack",
+              selectedAction: "send_message",
+            },
+          ])
+          break
+        case "add-validation":
+        case "add-validation-after-ingest":
+          setNodes((prev) => [
+            ...prev,
+            {
+              id: nextGeneratedNodeId(),
+              type: "agent",
+              name: suggestion.label,
+              description: suggestion.reason,
+              config: {},
+              position: { x: maxX + 100, y: 150 },
+              connections: [],
+            },
+          ])
+          break
+        case "add-decision":
+          setNodes((prev) => [
+            ...prev,
+            {
+              id: nextGeneratedNodeId(),
+              type: "decision",
+              name: suggestion.label,
+              description: suggestion.reason,
+              config: {},
+              position: { x: maxX + 100, y: 150 },
+              connections: [],
+              decisionConfig: {
+                objective: "Route to the appropriate next step based on data",
+                strategy: "ai-assisted",
+              },
+              outputPaths: [
+                { id: "path-a", label: "Primary Path" },
+                { id: "path-b", label: "Alternate Path" },
+              ],
+            },
+          ])
+          break
+        case "add-lead-routing":
+          setNodes((prev) => [
+            ...prev,
+            {
+              id: nextGeneratedNodeId(),
+              type: "decision",
+              name: suggestion.label,
+              description: suggestion.reason,
+              config: {},
+              position: { x: maxX + 100, y: 150 },
+              connections: [],
+              decisionConfig: {
+                objective: "Determine if lead is high value based on engagement and profile",
+                strategy: "ai-assisted",
+                inputSources: ["Previous node outputs", "CRM data"],
+              },
+              outputPaths: [
+                { id: "high", label: "High Value", condition: "score > 80" },
+                { id: "medium", label: "Medium Value", condition: "score 40-80" },
+                { id: "low", label: "Low Value", condition: "score < 40", isDefault: true },
+              ],
+            },
+          ])
+          break
+        default:
+          addNode(suggestion.nodeType as NodeType, suggestion.label, suggestion.reason)
+      }
+    },
+    [addNode, nodes]
   )
-  if (hasLeadScoring && !hasDecision) {
-  suggestions.push({
-  id: "add-lead-routing",
-  text: "Add lead quality routing?",
-  action: () => {
-    const newNode: WorkflowNode = {
-      id: nextGeneratedNodeId(),
-      type: "decision",
-      name: "Evaluate Lead Quality",
-      description: "Route leads based on quality score",
-      config: {},
-      position: { x: Math.max(...nodes.map(n => n.position.x)) + 100, y: 150 },
-      connections: [],
-      decisionConfig: {
-        objective: "Determine if lead is high value based on engagement and profile",
-        strategy: "ai-assisted",
-        inputSources: ["Previous node outputs", "CRM data"],
-      },
-      outputPaths: [
-        { id: "high", label: "High Value", condition: "score > 80" },
-        { id: "medium", label: "Medium Value", condition: "score 40-80" },
-        { id: "low", label: "Low Value", condition: "score < 40", isDefault: true },
-      ],
+
+  useEffect(() => {
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (nodes.length === 0) {
+        setMesonSuggestions([])
+        return
+      }
+      const lastNode = nodes[nodes.length - 1]
+      void mesonApi
+        .suggestions({
+          workflowState: {
+            nodes: nodes.map((n) => ({
+              type: n.type,
+              name: n.name,
+              vendor: n.vendor,
+            })),
+          },
+          lastAddedNode: {
+            type: lastNode.type,
+            name: lastNode.name,
+            vendor: lastNode.vendor,
+          },
+          workflowId: canPersist ? id : undefined,
+        })
+        .then((res) => {
+          if (cancelled) return
+          setMesonSuggestions(
+            res.suggestions.filter((s) => !dismissedSuggestions.includes(s.id))
+          )
+        })
+        .catch(() => {
+          if (!cancelled) setMesonSuggestions([])
+        })
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
     }
-    setNodes((prev) => [...prev, newNode])
-    setSelectedNodeId(newNode.id)
-  },
-  icon: Target,
-  })
-  }
-  
-  return suggestions.filter(s => !dismissedSuggestions.includes(s.id))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, dismissedSuggestions])
-  
-  const dismissSuggestion = useCallback((id: string) => {
-    setDismissedSuggestions(prev => [...prev, id])
-  }, [])
+  }, [nodes, dismissedSuggestions, canPersist, id])
+
+  const dismissSuggestion = useCallback(
+    (suggestionId: string) => {
+      setDismissedSuggestions((prev) => [...prev, suggestionId])
+      void mesonApi
+        .feedback({
+          suggestionId,
+          action: "dismissed",
+          workflowId: canPersist ? id : undefined,
+        })
+        .catch(() => {})
+    },
+    [canPersist, id]
+  )
+
+  const acceptSuggestion = useCallback(
+    (suggestion: MesonSuggestion) => {
+      applyMesonSuggestion(suggestion)
+      setDismissedSuggestions((prev) => [...prev, suggestion.id])
+      void mesonApi
+        .feedback({
+          suggestionId: suggestion.id,
+          action: "accepted",
+          workflowId: canPersist ? id : undefined,
+        })
+        .catch(() => {})
+      toast.success("Step added to workflow")
+    },
+    [applyMesonSuggestion, canPersist, id]
+  )
 
   // Handle save workflow
   const handleSave = useCallback(async () => {
@@ -4796,9 +4816,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             )}
 
             {/* Smart Suggestions - contextual AI-like hints */}
-            {smartSuggestions.length > 0 && !isExecuting && !selectedNodeId && (
+            {mesonSuggestions.length > 0 && !isExecuting && !selectedNodeId && (
               <div className="absolute bottom-20 right-4 space-y-2 z-40 max-w-xs">
-                {smartSuggestions.slice(0, 2).map((suggestion) => (
+                {mesonSuggestions.slice(0, 2).map((suggestion) => (
                   <div
                     key={suggestion.id}
                     className="group flex items-center gap-3 p-3 rounded-xl bg-card/90 backdrop-blur-sm border border-border shadow-lg hover:shadow-xl hover:border-info/30 transition-all animate-in slide-in-from-right-5 duration-300"
@@ -4807,15 +4827,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       <Lightbulb className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground">{suggestion.text}</p>
+                      <p className="text-sm text-foreground">{suggestion.reason || suggestion.label}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => {
-                          suggestion.action()
-                          dismissSuggestion(suggestion.id)
-                          toast.success("Step added to workflow")
-                        }}
+                        onClick={() => acceptSuggestion(suggestion)}
                         className="p-1.5 rounded-md bg-info/10 text-info hover:bg-info/20 transition-colors"
                       >
                         <Plus className="h-3.5 w-3.5" />

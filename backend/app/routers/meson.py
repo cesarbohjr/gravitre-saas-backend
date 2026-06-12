@@ -1,4 +1,4 @@
-"""Meson build API — interpret wizard requests and deploy agents/workflows (STA-161/164)."""
+"""Meson build API — interpret wizard requests and deploy agents/workflows (STA-161/164/142)."""
 from __future__ import annotations
 
 from typing import Annotated, Any
@@ -10,9 +10,13 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.services.meson_service import (
+    MesonAlertsResponse,
     MesonDeployResult,
+    MesonFeedbackResult,
+    MesonInsightsResponse,
     MesonInterpretResult,
     MesonService,
+    MesonSuggestionsResponse,
     get_meson_service,
 )
 
@@ -35,6 +39,23 @@ class MesonDeployRequest(BaseModel):
     output_types: list[str] = Field(default_factory=list, alias="outputTypes", max_length=20)
     generated_config: dict[str, Any] | None = Field(default=None, alias="generatedConfig")
     create_workflow: bool = Field(default=True, alias="createWorkflow")
+
+    model_config = {"populate_by_name": True}
+
+
+class MesonSuggestionsRequest(BaseModel):
+    workflow_state: dict[str, Any] | None = Field(default=None, alias="workflowState")
+    last_added_node: dict[str, Any] | None = Field(default=None, alias="lastAddedNode")
+    workflow_id: str | None = Field(default=None, alias="workflowId")
+
+    model_config = {"populate_by_name": True}
+
+
+class MesonFeedbackRequest(BaseModel):
+    suggestion_id: str = Field(..., alias="suggestionId", min_length=1, max_length=128)
+    action: str = Field(..., min_length=1, max_length=32)
+    reason: str | None = Field(default=None, max_length=500)
+    workflow_id: str | None = Field(default=None, alias="workflowId")
 
     model_config = {"populate_by_name": True}
 
@@ -103,3 +124,85 @@ async def deploy_build_route(
         plan=plan,
         create_workflow=body.create_workflow,
     )
+
+
+@router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True)
+async def meson_suggestions_route(
+    body: MesonSuggestionsRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonSuggestionsResponse:
+    """Return next-step node suggestions for the workflow builder."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dismissed = meson.load_dismissed_suggestion_ids(client, resolved_org, body.workflow_id)
+    return meson.get_workflow_suggestions(
+        workflow_state=body.workflow_state,
+        last_added_node=body.last_added_node,
+        org_id=resolved_org,
+        dismissed_ids=dismissed,
+    )
+
+
+@router.get("/alerts", response_model=MesonAlertsResponse, response_model_by_alias=True)
+async def meson_alerts_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonAlertsResponse:
+    """Return proactive workflow and connector alerts."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return meson.detect_anomalies(
+        client,
+        resolved_org,
+        environment_name=environment_name,
+        settings=settings,
+    )
+
+
+@router.get("/insights", response_model=MesonInsightsResponse, response_model_by_alias=True)
+async def meson_insights_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonInsightsResponse:
+    """Return org-wide Meson insights for the copilot panel."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return meson.get_proactive_insights(
+        client,
+        resolved_org,
+        environment_name=environment_name,
+    )
+
+
+@router.post("/feedback", response_model=MesonFeedbackResult)
+async def meson_feedback_route(
+    body: MesonFeedbackRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonFeedbackResult:
+    """Record accept/dismiss feedback for Meson suggestions."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return meson.record_feedback(
+            client,
+            resolved_org,
+            str(user.get("user_id") or ""),
+            suggestion_id=body.suggestion_id,
+            action=body.action,
+            reason=body.reason,
+            workflow_id=body.workflow_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc

@@ -373,7 +373,11 @@ export const mesonApi = {
     generatedConfig?: MesonInterpretResponse["generatedConfig"]
     createWorkflow?: boolean
   }) => postJson<MesonDeployResponse>(apiUrl("/api/meson/deploy"), data),
-  suggestions: (data: { workflowState?: Record<string, unknown>; lastAddedNode?: Record<string, unknown> }) =>
+  suggestions: (data: {
+    workflowState?: Record<string, unknown>
+    lastAddedNode?: Record<string, unknown>
+    workflowId?: string
+  }) =>
     postJson<MesonSuggestionsResponse>(apiUrl("/api/meson/suggestions"), data),
   alerts: () => fetcher<MesonAlertsResponse>(apiUrl("/api/meson/alerts")),
   insights: () => fetcher<MesonInsightsResponse>(apiUrl("/api/meson/insights")),

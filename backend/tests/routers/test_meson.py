@@ -14,6 +14,8 @@ from app.services.meson_service import (
     MesonGeneratedConfig,
     MesonInterpretResult,
     MesonService,
+    MesonSuggestion,
+    MesonSuggestionsResponse,
     get_meson_service,
 )
 
@@ -65,6 +67,23 @@ def _mock_meson_service() -> MesonService:
     mock.deploy_build = AsyncMock(
         return_value=MesonDeployResult(agentId="agent-123", workflowId="wf-456", result=plan)
     )
+    mock.get_workflow_suggestions = MagicMock(
+        return_value=MesonSuggestionsResponse(
+            suggestions=[
+                MesonSuggestion(
+                    id="add-approval",
+                    nodeType="approval",
+                    label="Quality Gate",
+                    reason="Add approval step before production?",
+                    confidence=0.82,
+                )
+            ]
+        )
+    )
+    mock.load_dismissed_suggestion_ids = MagicMock(return_value=set())
+    mock.detect_anomalies = MagicMock(return_value={"alerts": []})
+    mock.get_proactive_insights = MagicMock(return_value={"insights": []})
+    mock.record_feedback = MagicMock(return_value={"ok": True})
     return mock
 
 
@@ -119,3 +138,53 @@ def test_deploy_creates_resources():
     assert body["agentId"] == "agent-123"
     assert body["workflowId"] == "wf-456"
     mock.deploy_build.assert_awaited_once()
+
+
+def test_suggestions_returns_builder_hints():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    response = client.post(
+        "/api/meson/suggestions",
+        json={
+            "workflowState": {"nodes": [{"type": "source", "name": "Ingest"}]},
+            "lastAddedNode": {"type": "source"},
+            "workflowId": "wf-1",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["suggestions"][0]["id"] == "add-approval"
+    mock.load_dismissed_suggestion_ids.assert_called_once()
+    mock.get_workflow_suggestions.assert_called_once()
+
+
+def test_alerts_and_insights_return_lists():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    alerts = client.get("/api/meson/alerts")
+    insights = client.get("/api/meson/insights")
+    assert alerts.status_code == 200
+    assert insights.status_code == 200
+    assert alerts.json()["alerts"] == []
+    assert insights.json()["insights"] == []
+    mock.detect_anomalies.assert_called_once()
+    mock.get_proactive_insights.assert_called_once()
+
+
+def test_feedback_records_action():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    response = client.post(
+        "/api/meson/feedback",
+        json={
+            "suggestionId": "add-approval",
+            "action": "dismissed",
+            "workflowId": "wf-1",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+    mock.record_feedback.assert_called_once()
