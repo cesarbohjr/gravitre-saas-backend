@@ -2,11 +2,11 @@
   "target": "https://gravitre-saas-backend-production.up.railway.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
   "userId": "09c29672-beff-4a65-b525-261fa3de5923",
-  "startedAt": "2026-06-12T07:48:17.658776+00:00",
-  "finishedAt": "2026-06-12T07:49:26.994257+00:00",
+  "startedAt": "2026-06-12T08:44:34.560122+00:00",
+  "finishedAt": "2026-06-12T08:45:43.778501+00:00",
   "summary": {
-    "pass": 12,
-    "warn": 3,
+    "pass": 14,
+    "warn": 1,
     "fail": 0
   },
   "impl8": {
@@ -48,19 +48,19 @@
     {
       "label": "assistant_chat",
       "status": "pass",
-      "detail": "assistant_chat: bytes=3107",
+      "detail": "assistant_chat: bytes=2892",
       "linear": "STA-163"
     },
     {
       "label": "workflow_dry_run_abc",
       "status": "pass",
-      "detail": "workflow_dry_run: run_id=82e54960-f291-4985-9207-e535105bdc01 steps=['step_a', 'step_b', 'step_c']",
+      "detail": "workflow_dry_run: run_id=68d38922-a9a9-43f8-ba6c-0a9c50cf201a steps=['step_a', 'step_b', 'step_c']",
       "linear": "STA-166"
     },
     {
       "label": "workflow_execute_abc",
       "status": "warn",
-      "detail": "WARN execute created pending_approval run 29bbc121-a4a3-4763-a6f1-45f9e128e994; approve HTTP 500: Internal Server Error",
+      "detail": "WARN execute created pending_approval run ff895e5e-3838-406b-af7e-ae1c69f77724; approve HTTP 500: Internal Server Error",
       "linear": "STA-166"
     },
     {
@@ -72,13 +72,13 @@
     {
       "label": "failure_predictions_scan",
       "status": "pass",
-      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-12T07:49:23.113171+00:00\"}",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-12T08:45:39.032941+00:00\"}",
       "linear": "STA-167"
     },
     {
       "label": "integration_health",
       "status": "pass",
-      "detail": "integration_health: score=72 grade=at_risk",
+      "detail": "integration_health: score=86 grade=healthy",
       "linear": "STA-167"
     },
     {
@@ -95,20 +95,20 @@
     },
     {
       "label": "run_interrupt_routes",
-      "status": "warn",
-      "detail": "WARN run interrupt routes reachable (pause=404, cancel=404); rollback pending deploy: rollback=500",
+      "status": "pass",
+      "detail": "run_interrupt_routes: reachable pause/cancel/rollback HTTP ['pause=404', 'cancel=404', 'rollback=404']",
       "linear": "STA-170"
     },
     {
       "label": "agent_interrupt_channel",
       "status": "pass",
-      "detail": "agent_interrupt: accepted id=9d3f8402-8133-4b38-a2c7-d8e8123d024e signal=pause",
+      "detail": "agent_interrupt: accepted id=ae0dbd08-c9ef-4050-b1d0-31448cae08c5 signal=pause",
       "linear": null
     },
     {
       "label": "meson_copilot_routes",
-      "status": "warn",
-      "detail": "WARN meson copilot routes pending backend (STA-142): suggestions=404, alerts=404, insights=404",
+      "status": "pass",
+      "detail": "meson_copilot_routes: suggestions/alerts/insights reachable",
       "linear": "STA-162"
     }
   ]

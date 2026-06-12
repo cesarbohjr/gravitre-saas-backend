@@ -2711,7 +2711,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [executionStartTime, setExecutionStartTime] = useState<number | null>(null)
   const [executionElapsed, setExecutionElapsed] = useState(0)
   const [executionStatus, setExecutionStatus] = useState<
-    "idle" | "running" | "completed" | "error" | "paused" | "cancelled"
+    "idle" | "running" | "completed" | "error" | "paused" | "cancelled" | "waiting"
   >("idle")
   const [executionError, setExecutionError] = useState<string | null>(null)
   const [isInterrupting, setIsInterrupting] = useState(false)
@@ -4631,6 +4631,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   executionStatus === "completed" && "bg-emerald-500/10 border-emerald-500/30",
                   executionStatus === "error" && "bg-red-500/10 border-red-500/30",
                   executionStatus === "paused" && "bg-amber-500/10 border-amber-500/30",
+                  executionStatus === "waiting" && "bg-amber-500/10 border-amber-500/30",
                   executionStatus === "cancelled" && "bg-red-500/10 border-red-500/30"
                 )}>
                   {/* Status indicator */}
@@ -4657,6 +4658,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       <>
                         <Pause className="h-5 w-5 text-amber-400" />
                         <span className="text-sm font-medium text-amber-400">Paused</span>
+                      </>
+                    )}
+                    {executionStatus === "waiting" && (
+                      <>
+                        <Shield className="h-5 w-5 text-amber-400" />
+                        <span className="text-sm font-medium text-amber-400">Awaiting approval</span>
                       </>
                     )}
                     {executionStatus === "cancelled" && (
@@ -4686,6 +4693,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           executionStatus === "completed" && "bg-emerald-500",
                           executionStatus === "error" && "bg-red-500",
                           executionStatus === "paused" && "bg-amber-500",
+                          executionStatus === "waiting" && "bg-amber-500",
                           executionStatus === "cancelled" && "bg-red-500"
                         )}
                         style={{ width: `${(executionStep / nodes.length) * 100}%` }}
