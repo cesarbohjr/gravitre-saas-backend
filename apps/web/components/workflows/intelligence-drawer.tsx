@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { workflowsApi } from "@/lib/api"
-import type { WorkflowDryRunResponse, WorkflowFailureAlert } from "@/types/api"
+import type { WorkflowDigitalTwinResponse, WorkflowDryRunResponse, WorkflowFailureAlert } from "@/types/api"
 
 type DrawerTab = "simulate" | "risk" | "dryrun"
 
@@ -101,8 +101,7 @@ const SEVERITY_STYLES: Record<
   },
 }
 
-// Deterministic per-node-type simulation heuristics. The digital-twin engine
-// uses connector fixtures where available and falls back to LLM estimation.
+// Fallback timing when digital-twin steps complete instantly (simulation wall clock ≈ 0).
 const TYPE_PROFILE: Record<string, { ms: number; source: "fixture" | "llm"; note: string }> = {
   source: { ms: 480, source: "fixture", note: "Connector fixture replay" },
   connector: { ms: 620, source: "fixture", note: "Connector fixture replay" },
@@ -112,8 +111,56 @@ const TYPE_PROFILE: Record<string, { ms: number; source: "fixture" | "llm"; note
   decision: { ms: 120, source: "fixture", note: "Branch evaluation" },
 }
 
-function profileFor(type: string) {
+function fallbackProfile(type: string) {
   return TYPE_PROFILE[type] ?? { ms: 500, source: "llm" as const, note: "LLM estimate" }
+}
+
+function mapDigitalTwinSteps(
+  rawSteps: Array<Record<string, unknown>>,
+  canvasNodes: IntelligenceDrawerNode[],
+): SimulatedStep[] {
+  const nodeById = new Map(canvasNodes.map((node) => [node.id, node]))
+  return rawSteps.map((step, index) => {
+    const stepId = String(step.step_id ?? step.stepId ?? `step-${index}`)
+    const canvasNode = nodeById.get(stepId)
+    const nodeType = canvasNode?.type ?? String(step.step_type ?? step.stepType ?? "task")
+    const output = (step.output_snapshot ?? step.outputSnapshot ?? {}) as Record<string, unknown>
+    const rawSource = String(output.source ?? "")
+    const source: "fixture" | "llm" =
+      rawSource === "fixture" || rawSource === "live_read" ? "fixture" : "llm"
+
+    const startedAt = step.started_at ?? step.startedAt
+    const completedAt = step.completed_at ?? step.completedAt
+    let predictedMs = 0
+    if (startedAt && completedAt) {
+      predictedMs = Math.max(
+        0,
+        new Date(String(completedAt)).getTime() - new Date(String(startedAt)).getTime(),
+      )
+    }
+    const fallback = fallbackProfile(nodeType)
+    if (predictedMs === 0) {
+      predictedMs = fallback.ms
+    }
+
+    const note =
+      rawSource === "fixture"
+        ? "Connector fixture replay"
+        : rawSource === "live_read"
+          ? "RAG read (simulated)"
+          : output.predicted
+            ? "LLM prediction"
+            : fallback.note
+
+    return {
+      id: stepId,
+      name: canvasNode?.name ?? String(step.step_name ?? step.stepName ?? `Step ${index + 1}`),
+      type: nodeType,
+      predictedMs,
+      source,
+      note,
+    }
+  })
 }
 
 function mapDryRunSteps(raw: Array<Record<string, unknown>>): DryRunStep[] {
@@ -160,9 +207,15 @@ export function WorkflowIntelligenceDrawer({
   const prefetchedDryRunState = dryRunStateFromResponse(prefetchedDryRun)
   const [activeTab, setActiveTab] = useState<DrawerTab>(initialTab)
 
-  // Simulate
+  // Simulate (digital twin)
   const [simSteps, setSimSteps] = useState<SimulatedStep[] | null>(null)
   const [simRunning, setSimRunning] = useState(false)
+  const [simError, setSimError] = useState<string | null>(null)
+  const [simStats, setSimStats] = useState<{
+    fixtureHits: number
+    llmPredictions: number
+    ragReads: number
+  } | null>(null)
 
   // Risk scan
   const [alerts, setAlerts] = useState<WorkflowFailureAlert[] | null>(null)
@@ -176,26 +229,28 @@ export function WorkflowIntelligenceDrawer({
   const [dryRunError, setDryRunError] = useState<string | null>(null)
   const [dryRunStatus, setDryRunStatus] = useState<string | null>(prefetchedDryRunState.status)
 
-  const runSimulation = useCallback(() => {
+  const runSimulation = useCallback(async () => {
+    if (!isPersisted) return
     setSimRunning(true)
     setSimSteps(null)
-    // Build a predicted timeline from the canvas graph order.
-    window.setTimeout(() => {
-      const steps: SimulatedStep[] = nodes.map((n) => {
-        const p = profileFor(n.type)
-        return {
-          id: n.id,
-          name: n.name,
-          type: n.type,
-          predictedMs: p.ms,
-          source: p.source,
-          note: p.note,
-        }
+    setSimError(null)
+    setSimStats(null)
+    try {
+      const res: WorkflowDigitalTwinResponse = await workflowsApi.digitalTwin({
+        workflow_id: workflowId,
       })
-      setSimSteps(steps)
+      setSimSteps(mapDigitalTwinSteps((res.steps ?? []) as Array<Record<string, unknown>>, nodes))
+      setSimStats({
+        fixtureHits: res.fixtureHits ?? 0,
+        llmPredictions: res.llmPredictions ?? 0,
+        ragReads: res.ragReads ?? 0,
+      })
+    } catch (err) {
+      setSimError(err instanceof Error ? err.message : "Digital twin simulation failed")
+    } finally {
       setSimRunning(false)
-    }, 650)
-  }, [nodes])
+    }
+  }, [isPersisted, workflowId, nodes])
 
   const runRiskScan = useCallback(async () => {
     setRiskLoading(true)
@@ -337,18 +392,35 @@ export function WorkflowIntelligenceDrawer({
                     </div>
                   )}
 
-                  {!simRunning && !simSteps && (
+                  {!simRunning && simError && (
+                    <EmptyState
+                      icon={ServerCrash}
+                      title="Simulation failed"
+                      body={simError}
+                      actionLabel={isPersisted ? "Retry" : undefined}
+                      onAction={isPersisted ? runSimulation : undefined}
+                      tone="error"
+                    />
+                  )}
+
+                  {!simRunning && !simError && !simSteps && (
                     <EmptyState
                       icon={Beaker}
                       title="Predict the run timeline"
                       body="Run a digital-twin simulation to estimate per-step duration using connector fixtures and LLM latency estimates."
-                      actionLabel={nodes.length ? "Simulate run" : undefined}
-                      onAction={nodes.length ? runSimulation : undefined}
-                      disabledHint={nodes.length ? undefined : "Add steps to the canvas first"}
+                      actionLabel={isPersisted && nodes.length ? "Simulate run" : undefined}
+                      onAction={isPersisted && nodes.length ? runSimulation : undefined}
+                      disabledHint={
+                        !isPersisted
+                          ? "Save the workflow to simulate"
+                          : nodes.length
+                            ? undefined
+                            : "Add steps to the canvas first"
+                      }
                     />
                   )}
 
-                  {!simRunning && simSteps && (
+                  {!simRunning && !simError && simSteps && (
                     <>
                       <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -359,6 +431,21 @@ export function WorkflowIntelligenceDrawer({
                           {formatMs(totalPredictedMs)}
                         </span>
                       </div>
+                      {simStats && (
+                        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                          <span className="rounded-full border border-border px-2 py-0.5">
+                            Fixtures {simStats.fixtureHits}
+                          </span>
+                          <span className="rounded-full border border-border px-2 py-0.5">
+                            LLM {simStats.llmPredictions}
+                          </span>
+                          {simStats.ragReads > 0 && (
+                            <span className="rounded-full border border-border px-2 py-0.5">
+                              RAG reads {simStats.ragReads}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <ol className="relative space-y-2 pl-4">
                         <span className="absolute bottom-2 left-[7px] top-2 w-px bg-border" aria-hidden />
                         {simSteps.map((step, i) => (

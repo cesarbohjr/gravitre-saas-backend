@@ -3156,53 +3156,75 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description])
 
   // Handle run workflow with live run polling (STA-166)
-const handleRun = useCallback(async () => {
-  const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
-    setIsExecuting(false)
-    setIsRunning(false)
-    const status = snapshot.status.toLowerCase()
-    if (status === "paused") {
-      setExecutionStatus("paused")
-      toast.message("Workflow paused", {
+  const handleRun = useCallback(async () => {
+    const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
+      setIsExecuting(false)
+      setIsRunning(false)
+      const status = snapshot.status.toLowerCase()
+      if (status === "awaiting_approval") {
+        setExecutionStatus("waiting")
+        toast.message("Awaiting approval", {
+          description: `Run paused at an approval gate · ${runId}`,
+          action: {
+            label: "View Run",
+            onClick: () => router.push(`/runs/${runId}`),
+          },
+        })
+        return
+      }
+      if (status === "pending_approval") {
+        setExecutionStatus("waiting")
+        toast.message("Pending approval", {
+          description: `Execute run queued for approval · ${runId}`,
+          action: {
+            label: "View Run",
+            onClick: () => router.push(`/runs/${runId}`),
+          },
+        })
+        return
+      }
+      if (status === "paused") {
+        setExecutionStatus("paused")
+        toast.message("Workflow paused", {
+          description: `Run ID: ${runId}`,
+          action: {
+            label: "View Run",
+            onClick: () => router.push(`/runs/${runId}`),
+          },
+        })
+        return
+      }
+      if (status === "cancelled" || status === "canceled") {
+        setExecutionStatus("cancelled")
+        setExecutionError(snapshot.errorMessage ?? "Run cancelled by operator")
+        toast.error("Workflow cancelled", {
+          description: snapshot.errorMessage ?? `Run ID: ${runId}`,
+        })
+        return
+      }
+      const failed =
+        status === "failed" ||
+        snapshot.steps.some((step) => step.status.toLowerCase() === "failed")
+      if (failed) {
+        setExecutionStatus("error")
+        setExecutionError(snapshot.errorMessage ?? "Workflow run failed")
+        toast.error("Workflow run failed", {
+          description: snapshot.errorMessage ?? `Run ID: ${runId}`,
+        })
+        return
+      }
+      setExecutionStatus("completed")
+      toast.success("Workflow executed successfully", {
         description: `Run ID: ${runId}`,
         action: {
           label: "View Run",
           onClick: () => router.push(`/runs/${runId}`),
         },
       })
-      return
     }
-    if (status === "cancelled" || status === "canceled") {
-      setExecutionStatus("cancelled")
-      setExecutionError(snapshot.errorMessage ?? "Run cancelled by operator")
-      toast.error("Workflow cancelled", {
-        description: snapshot.errorMessage ?? `Run ID: ${runId}`,
-      })
-      return
-    }
-    const failed =
-      status === "failed" ||
-      snapshot.steps.some((step) => step.status.toLowerCase() === "failed")
-    if (failed) {
-      setExecutionStatus("error")
-      setExecutionError(snapshot.errorMessage ?? "Workflow run failed")
-      toast.error("Workflow run failed", {
-        description: snapshot.errorMessage ?? `Run ID: ${runId}`,
-      })
-      return
-    }
-    setExecutionStatus("completed")
-    toast.success("Workflow executed successfully", {
-      description: `Run ID: ${runId}`,
-      action: {
-        label: "View Run",
-        onClick: () => router.push(`/runs/${runId}`),
-      },
-    })
-  }
 
-  // For UUID workflows, save first then execute via API
-  if (canPersist) {
+    // For UUID workflows, save first then execute via API
+    if (canPersist) {
     setIsRunning(true)
     try {
       await saveBuilderGraph(id, nodes, {

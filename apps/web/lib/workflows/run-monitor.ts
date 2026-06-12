@@ -28,6 +28,8 @@ const TERMINAL_RUN_STATUSES = new Set([
   "rejected",
   "error",
   "paused",
+  "awaiting_approval",
+  "pending_approval",
 ])
 
 export function mapStepStatusToNodeState(status: string): NodeState {
