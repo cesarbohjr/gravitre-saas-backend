@@ -185,15 +185,26 @@ def assign_trained_model_to_agent(
 
 def list_deployable_fine_tuned_models(client: Any, org_id: str) -> list[dict[str, Any]]:
     """List org fine-tuned LLM models available for agent assignment."""
-    result = (
-        client.table("trained_models")
-        .select("id, name, status, base_model, deployed_version, current_version, dataset_id, created_at")
-        .eq("org_id", org_id)
-        .eq("model_type", "fine_tuned_llm")
-        .in_("status", ["ready", "deployed"])
-        .order("created_at", desc=True)
-        .execute()
-    )
+    from app.services.training_service import is_schema_unavailable_error
+
+    try:
+        result = (
+            client.table("trained_models")
+            .select("id, name, status, base_model, deployed_version, current_version, dataset_id, created_at")
+            .eq("org_id", org_id)
+            .eq("model_type", "fine_tuned_llm")
+            .in_("status", ["ready", "deployed"])
+            .order("created_at", desc=True)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if is_schema_unavailable_error(exc):
+            return []
+        raise
+    if is_schema_unavailable_error(getattr(result, "error", None)):
+        return []
+    if result.error:
+        return []
     models: list[dict[str, Any]] = []
     for row in result.data or []:
         version = row.get("deployed_version") or row.get("current_version")

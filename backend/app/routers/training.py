@@ -11,6 +11,13 @@ from app.auth.dependencies import get_current_user, get_org_context, require_adm
 from app.config import Settings, get_settings
 from app.services.agent_finetune_service import assign_trained_model_to_agent, list_deployable_fine_tuned_models
 from app.services.handoff_service import get_agent
+from app.services.training_service import (
+    is_schema_unavailable_error,
+    list_custom_instructions,
+    list_training_datasets,
+    list_training_jobs,
+    list_workflow_agents,
+)
 from app.workers.queue import enqueue_training_job
 
 router = APIRouter(prefix="/api/training", tags=["training"])
@@ -51,9 +58,7 @@ class AgentFineTunedModelRequest(BaseModel):
 
 
 def _is_missing_table_error(error: Exception | None) -> bool:
-    if error is None:
-        return False
-    return "does not exist" in str(error).lower()
+    return is_schema_unavailable_error(error)
 
 
 @router.get("/datasets")
@@ -65,18 +70,10 @@ async def list_datasets(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
-        client.table("training_datasets")
-        .select("id, name, description, type, status, record_count, created_by, created_at, updated_at")
-        .eq("org_id", org_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-    if _is_missing_table_error(response.error):
-        return {"datasets": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
-    return {"datasets": list(response.data or [])}
+    try:
+        return {"datasets": list_training_datasets(client, org_id)}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/datasets/{dataset_id}")
@@ -224,18 +221,10 @@ async def list_jobs(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
-        client.table("training_jobs")
-        .select("id, dataset_id, model_base, status, progress, metrics, started_at, completed_at, error, created_at")
-        .eq("org_id", org_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-    if _is_missing_table_error(response.error):
-        return {"jobs": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
-    return {"jobs": list(response.data or [])}
+    try:
+        return {"jobs": list_training_jobs(client, org_id)}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/jobs/{job_id}")
@@ -338,18 +327,10 @@ async def list_instructions(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
-        client.table("custom_instructions")
-        .select("id, agent_id, name, content, is_active, created_at, updated_at")
-        .eq("org_id", org_id)
-        .order("updated_at", desc=True)
-        .execute()
-    )
-    if _is_missing_table_error(response.error):
-        return {"instructions": []}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
-    return {"instructions": list(response.data or [])}
+    try:
+        return {"instructions": list_custom_instructions(client, org_id)}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/instructions/{instruction_id}")
@@ -476,27 +457,10 @@ async def list_workflow_agents(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
-        client.table("agents")
-        .select("id, name, role, model, status, trained_model_id")
-        .eq("org_id", org_id)
-        .order("name")
-        .execute()
-    )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
-    agents = [
-        {
-            "id": str(row["id"]),
-            "name": row.get("name"),
-            "role": row.get("role"),
-            "model": row.get("model"),
-            "status": row.get("status"),
-            "trainedModelId": row.get("trained_model_id"),
-        }
-        for row in (response.data or [])
-    ]
-    return {"agents": agents}
+    try:
+        return {"agents": list_workflow_agents(client, org_id)}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/fine-tuned-models")
@@ -509,7 +473,12 @@ async def list_fine_tuned_models_for_agents(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return {"models": list_deployable_fine_tuned_models(client, org_id)}
+    try:
+        return {"models": list_deployable_fine_tuned_models(client, org_id)}
+    except Exception as exc:  # noqa: BLE001
+        if is_schema_unavailable_error(exc):
+            return {"models": []}
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/agents/{agent_id}/fine-tuned-model")

@@ -39,6 +39,33 @@ function formatDate(value?: string): string {
   return parsed.toLocaleString()
 }
 
+function formatTrainingError(error: unknown): string {
+  if (!error) return "Failed to load training data."
+  const message = error instanceof Error ? error.message : String(error)
+  if (/organization context|403/i.test(message)) {
+    return "Organization membership required. Select an organization and retry."
+  }
+  if (/500|schema|migration|does not exist|pgrst/i.test(message)) {
+    return "Training storage is not fully provisioned yet. You can still explore the hub; run database migrations if create actions fail."
+  }
+  return message
+}
+
+const BASE_MODEL_OPTIONS = ["gpt-4.1-mini", "gpt-5.5", "meson-base-v1"] as const
+
+const STARTER_EXAMPLES = [
+  {
+    input: "Monitor overdue invoices and notify finance when totals exceed $10k",
+    expected_output:
+      "Set weekly AR review, alert finance when overdue total exceeds threshold, and log actions in CRM.",
+  },
+  {
+    input: "Customer asks why sync-customers failed at step 3",
+    expected_output:
+      "Identify timeout at transformation step, recommend retry with 60s timeout and off-peak schedule.",
+  },
+] as const
+
 export default function TrainingPage() {
   const { user } = useAuth()
   const [orgReady, setOrgReady] = useState(false)
@@ -57,6 +84,12 @@ export default function TrainingPage() {
   const [assignAgentId, setAssignAgentId] = useState<string>("")
   const [assignModelId, setAssignModelId] = useState<string>("")
   const [isAssigningModel, setIsAssigningModel] = useState(false)
+  const [recordDatasetId, setRecordDatasetId] = useState<string | null>(null)
+  const [recordInput, setRecordInput] = useState("")
+  const [recordOutput, setRecordOutput] = useState("")
+  const [trainDatasetId, setTrainDatasetId] = useState<string | null>(null)
+  const [trainModelBase, setTrainModelBase] = useState<string>(BASE_MODEL_OPTIONS[0])
+  const [isCreatingStarter, setIsCreatingStarter] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -81,7 +114,16 @@ export default function TrainingPage() {
   const { data: jobsData, error: jobsError, mutate: mutateJobs } = useSWR(
     swrKey ? "training/jobs" : null,
     () => trainingApi.listJobs(),
-    { fallbackData: { jobs: [] as TrainingJob[] }, revalidateOnFocus: false }
+    {
+      fallbackData: { jobs: [] as TrainingJob[] },
+      revalidateOnFocus: false,
+      refreshInterval: (latest) => {
+        const active = (latest?.jobs ?? []).some(
+          (job) => job.status === "queued" || job.status === "training"
+        )
+        return active ? 5000 : 0
+      },
+    }
   )
   const { data: instructionsData, error: instructionsError, mutate: mutateInstructions } = useSWR(
     swrKey ? "training/instructions" : null,
@@ -128,6 +170,7 @@ export default function TrainingPage() {
     if (!datasetName.trim()) return
     try {
       setIsCreatingDataset(true)
+      await ensureSelectedOrg(true)
       await trainingApi.createDataset({
         name: datasetName.trim(),
         type: datasetType,
@@ -161,35 +204,65 @@ export default function TrainingPage() {
     }
   }
 
+  async function handleCreateStarterDataset() {
+    try {
+      setIsCreatingStarter(true)
+      await ensureSelectedOrg(true)
+      const created = await trainingApi.createDataset({
+        name: "Agent persona starter examples",
+        type: "examples",
+        description: "Seed examples for revenue ops and sync troubleshooting personas.",
+      })
+      await trainingApi.uploadRecords(created.id, [...STARTER_EXAMPLES])
+      toast.success("Starter dataset created with example records")
+      setRecordDatasetId(null)
+      await mutateDatasets()
+    } catch (error) {
+      console.error("[training] Starter dataset failed:", error)
+      toast.error("Failed to create starter dataset", {
+        description: formatTrainingError(error),
+      })
+    } finally {
+      setIsCreatingStarter(false)
+    }
+  }
+
   async function handleAddRecord(datasetId: string) {
-    const input = window.prompt("Training input")
-    if (!input?.trim()) return
-    const expectedOutput = window.prompt("Expected output")
-    if (!expectedOutput?.trim()) return
+    if (!recordInput.trim() || !recordOutput.trim()) {
+      toast.error("Input and expected output are required")
+      return
+    }
     try {
       setMutatingDatasetId(datasetId)
-      await trainingApi.uploadRecords(datasetId, [{ input: input.trim(), expected_output: expectedOutput.trim() }])
+      await ensureSelectedOrg(true)
+      await trainingApi.uploadRecords(datasetId, [
+        { input: recordInput.trim(), expected_output: recordOutput.trim() },
+      ])
       toast.success("Training record added")
+      setRecordInput("")
+      setRecordOutput("")
+      setRecordDatasetId(null)
       await mutateDatasets()
     } catch (error) {
       console.error("[v0] Add record failed:", error)
-      toast.error("Failed to add record")
+      toast.error("Failed to add record", { description: formatTrainingError(error) })
     } finally {
       setMutatingDatasetId((current) => (current === datasetId ? null : current))
     }
   }
 
   async function handleCreateJob(datasetId: string) {
-    const modelBase = window.prompt("Base model", "meson-base-v1")?.trim()
-    if (!modelBase) return
+    if (!trainModelBase.trim()) return
     try {
       setMutatingDatasetId(datasetId)
-      await trainingApi.createJob(datasetId, modelBase)
+      await ensureSelectedOrg(true)
+      await trainingApi.createJob(datasetId, trainModelBase.trim())
       toast.success("Training job queued")
+      setTrainDatasetId(null)
       await mutateJobs()
     } catch (error) {
       console.error("[v0] Create job failed:", error)
-      toast.error("Failed to queue training job")
+      toast.error("Failed to queue training job", { description: formatTrainingError(error) })
     } finally {
       setMutatingDatasetId((current) => (current === datasetId ? null : current))
     }
@@ -277,25 +350,29 @@ export default function TrainingPage() {
     }
   }
 
+  const loadError =
+    orgError ??
+    (datasetsError ? formatTrainingError(datasetsError) : null) ??
+    (jobsError ? formatTrainingError(jobsError) : null) ??
+    (instructionsError ? formatTrainingError(instructionsError) : null)
+
   return (
     <AppShell title="Training Hub">
       <div className="relative p-6 space-y-6 overflow-hidden">
         <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
-        {(orgError || datasetsError || jobsError || instructionsError) && (
+        {loadError && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              {orgError ??
-                datasetsError?.message ??
-                jobsError?.message ??
-                instructionsError?.message ??
-                "Failed to load some training data."}
-            </span>
+            <span>{loadError}</span>
             <Button
               variant="outline"
               size="sm"
               className="h-7 text-xs"
               onClick={() => {
+                void ensureSelectedOrg(true).then((orgId) => {
+                  setOrgReady(Boolean(orgId))
+                  setOrgError(orgId ? null : "Organization membership required to load training data.")
+                })
                 void mutateDatasets()
                 void mutateJobs()
                 void mutateInstructions()
@@ -307,10 +384,17 @@ export default function TrainingPage() {
           </div>
         )}
 
-        {!orgError && orgReady && !datasetsError && !jobsError && !instructionsError &&
-          datasets.length === 0 && jobs.length === 0 && instructions.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
-            No training datasets, jobs, or instructions yet. Create a dataset below to get started.
+        {!loadError && orgReady && datasets.length === 0 && jobs.length === 0 && instructions.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>No training datasets, jobs, or instructions yet. Create a dataset below or load starter examples.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isCreatingStarter}
+              onClick={() => void handleCreateStarterDataset()}
+            >
+              {isCreatingStarter ? "Creating..." : "Load starter examples"}
+            </Button>
           </div>
         ) : null}
 
@@ -434,13 +518,63 @@ export default function TrainingPage() {
                     </span>
                   </div>
                   {dataset.description && <p className="mt-2 text-xs text-muted-foreground">{dataset.description}</p>}
+                  {recordDatasetId === dataset.id && (
+                    <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-border/60 bg-background/50 p-3">
+                      <textarea
+                        value={recordInput}
+                        onChange={(event) => setRecordInput(event.target.value)}
+                        placeholder="Training input"
+                        className="min-h-16 rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
+                      />
+                      <textarea
+                        value={recordOutput}
+                        onChange={(event) => setRecordOutput(event.target.value)}
+                        placeholder="Expected output"
+                        className="min-h-16 rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => void handleAddRecord(dataset.id)} disabled={mutatingDatasetId === dataset.id}>
+                          Save record
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setRecordDatasetId(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {trainDatasetId === dataset.id && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-3">
+                      <select
+                        value={trainModelBase}
+                        onChange={(event) => setTrainModelBase(event.target.value)}
+                        className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
+                      >
+                        {BASE_MODEL_OPTIONS.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                      <Button size="sm" onClick={() => void handleCreateJob(dataset.id)} disabled={mutatingDatasetId === dataset.id}>
+                        Queue job
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setTrainDatasetId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       className="hover:border-emerald-500/40 hover:text-emerald-400"
                       disabled={mutatingDatasetId === dataset.id}
-                      onClick={() => void handleAddRecord(dataset.id)}
+                      onClick={() => {
+                        setTrainDatasetId(null)
+                        setRecordDatasetId(recordDatasetId === dataset.id ? null : dataset.id)
+                        setRecordInput("")
+                        setRecordOutput("")
+                      }}
                     >
                       Add Record
                     </Button>
@@ -448,8 +582,11 @@ export default function TrainingPage() {
                       size="sm"
                       variant="outline"
                       className="hover:border-blue-500/40 hover:text-blue-400"
-                      disabled={mutatingDatasetId === dataset.id}
-                      onClick={() => void handleCreateJob(dataset.id)}
+                      disabled={mutatingDatasetId === dataset.id || dataset.record_count < 1}
+                      onClick={() => {
+                        setRecordDatasetId(null)
+                        setTrainDatasetId(trainDatasetId === dataset.id ? null : dataset.id)
+                      }}
                     >
                       Train
                     </Button>
@@ -550,6 +687,7 @@ export default function TrainingPage() {
               {workflowAgents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name}
+                  {agent.role ? ` · ${agent.role}` : ""}
                 </option>
               ))}
             </select>
