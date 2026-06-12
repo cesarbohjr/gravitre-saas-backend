@@ -36,6 +36,14 @@ import { toast } from "sonner"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useAsyncJob, type AgentJob, type AgentJobResult } from "@/hooks/use-async-job"
+import { ensureSelectedOrg } from "@/lib/org-context"
+import {
+  buildFindingsFromJobResult,
+  buildOperatorJobContext,
+  describeOperatorJobError,
+  isBackendUnavailableError,
+  resolveSessionIdForJob,
+} from "@/lib/operator-plan"
 
 interface Task {
   id: string
@@ -371,22 +379,10 @@ export default function OperatorPage() {
     onCompleted: useCallback((job: AgentJob) => {
       if (job.result) {
         const result = job.result
+        const findings = buildFindingsFromJobResult(result)
         // Transform async job result into the existing plan format
         setGeneratedPlan({
-          findings: [
-            {
-              id: "summary",
-              type: "summary" as const,
-              title: "Analysis Summary",
-              content: result.analysis_summary || "Analysis complete.",
-            },
-            {
-              id: "finding",
-              type: "root-cause" as const,
-              title: "Finding",
-              content: result.finding_description || "No specific findings.",
-            },
-          ],
+          findings: findings as typeof fallbackInsightSections,
           steps: [
             {
               step: 1,
@@ -419,8 +415,11 @@ export default function OperatorPage() {
         })
         setCurrentFlowStep("plan")
         setPendingTaskText("")
+        const traceCount = Array.isArray(result.react_trace) ? result.react_trace.length : 0
         toast.success("Analysis complete", {
-          description: `Model: ${result.model || "auto"} via ${result.provider || "Gravitre"}`,
+          description: traceCount
+            ? `${traceCount} reasoning step${traceCount === 1 ? "" : "s"} · ${result.model || "auto"}`
+            : `Model: ${result.model || "auto"} via ${result.provider || "Gravitre"}`,
         })
       }
     }, []),
@@ -445,6 +444,10 @@ export default function OperatorPage() {
     apiFetcher,
     { revalidateOnFocus: false }
   )
+
+  useEffect(() => {
+    void ensureSelectedOrg()
+  }, [])
 
   useEffect(() => {
     const normalized = normalizeTasksResponse(tasksData)
@@ -529,23 +532,33 @@ export default function OperatorPage() {
     const text = (promptOverride ?? taskInput).trim()
     if (!activeTask || !activeContext || !text) return
 
+    await ensureSelectedOrg()
     setPendingTaskText(text)
     setTaskInput("")
     setCurrentFlowStep("analysis")
 
     try {
-      await submitJob(
-        text,
-        activeTask,
-        { entityType: activeContext.split("-")[0], entityId: activeContext }
-      )
-    } catch {
-      try {
-        await runGeneratePlanSync(text)
-      } catch {
-        setCurrentFlowStep("task")
-        setPendingTaskText("")
+      await submitJob(text, {
+        sessionId: resolveSessionIdForJob(activeTask),
+        context: buildOperatorJobContext(activeContext),
+      })
+    } catch (err) {
+      if (isBackendUnavailableError(err)) {
+        try {
+          await runGeneratePlanSync(text)
+          return
+        } catch (fallbackErr) {
+          toast.error("Analysis failed", {
+            description: describeOperatorJobError(fallbackErr),
+          })
+        }
+      } else {
+        toast.error("Couldn't start analysis", {
+          description: describeOperatorJobError(err),
+        })
       }
+      setCurrentFlowStep("task")
+      setPendingTaskText("")
     }
   }
 
@@ -629,9 +642,9 @@ export default function OperatorPage() {
         throw new Error(message)
       }
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("operator service"))) {
-        toast.error("Couldn't reach the operator service", {
-          description: "Check your connection and try again.",
+      if (!(err instanceof Error && err.message.includes("Couldn't generate"))) {
+        toast.error("Analysis failed", {
+          description: describeOperatorJobError(err),
         })
       }
       setCurrentFlowStep("task")
@@ -778,18 +791,26 @@ export default function OperatorPage() {
     setCurrentFlowStep("analysis")
 
     try {
-      await submitJob(
-        query,
-        activeTask,
-        { entityType: activeContext.split("-")[0], entityId: activeContext },
-      )
+      await ensureSelectedOrg()
+      await submitJob(query, {
+        sessionId: resolveSessionIdForJob(activeTask),
+        context: buildOperatorJobContext(activeContext),
+      })
       toast.success("Action submitted", { description: action.title })
-    } catch {
-      try {
-        await runGeneratePlanSync(query)
-        toast.success("Action plan generated", { description: action.title })
-      } catch {
-        toast.error("Failed to execute action", { description: action.title })
+    } catch (err) {
+      if (isBackendUnavailableError(err)) {
+        try {
+          await runGeneratePlanSync(query)
+          toast.success("Action plan generated", { description: action.title })
+        } catch (fallbackErr) {
+          toast.error("Failed to execute action", {
+            description: describeOperatorJobError(fallbackErr),
+          })
+        }
+      } else {
+        toast.error("Failed to execute action", {
+          description: describeOperatorJobError(err),
+        })
       }
     } finally {
       setExecutingAction(null)
