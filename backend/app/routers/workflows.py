@@ -3161,11 +3161,12 @@ async def pause_run_alias(
 @runs_router.post("/{run_id}/rollback")
 async def rollback_run_alias(
     run_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    return await rollback_run(run_id, _admin, environment_name, settings)
+    user, org_id = admin
+    return await rollback_run(run_id, user, org_id, environment_name, settings)
 
 
 @runs_router.post("/{run_id}/compensate")
