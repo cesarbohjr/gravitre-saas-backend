@@ -165,17 +165,6 @@ class ReActEngine:
                 ctx.org_id,
                 environment_name=ctx.environment_name,
             )
-        tools = self.registry.get_tools_for_agent(allowed, connected)
-        if not tools:
-            return ReActResult(
-                status=ReActStatus.NEEDS_HUMAN_INPUT,
-                answer=(
-                    "No integration tools are available for this agent. "
-                    "Connect integrations or grant tool permissions, then retry."
-                ),
-            )
-
-        allowed_tool_names = {t["function"]["name"] for t in tools}
 
         resolved_model = model or MODEL_TIERS["high"]["openai"]
         messages: list[dict[str, Any]] = []
@@ -188,10 +177,22 @@ class ReActEngine:
                 "content": fence_untrusted(redact_pii(task)),
             }
         )
+        audit_id = audit_resource_id or ctx.task_id or ctx.agent_id or ctx.actor_id
+
+        tools = self.registry.get_tools_for_agent(allowed, connected)
+        if not tools:
+            return await self._run_reasoning_only(
+                ctx=ctx,
+                messages=messages,
+                model=resolved_model,
+                audit_resource_type=audit_resource_type,
+                audit_id=audit_id,
+            )
+
+        allowed_tool_names = {t["function"]["name"] for t in tools}
 
         trace: list[ReActTraceStep] = []
         tool_calls_log: list[dict[str, Any]] = []
-        audit_id = audit_resource_id or ctx.task_id or ctx.agent_id or ctx.actor_id
 
         for iteration in range(1, max(1, max_iterations) + 1):
             try:
@@ -367,6 +368,72 @@ class ReActEngine:
             tools=tools,
             tool_choice="auto",
             temperature=0.2,
+        )
+
+    async def _run_reasoning_only(
+        self,
+        *,
+        ctx: ToolContext,
+        messages: list[dict[str, Any]],
+        model: str,
+        audit_resource_type: str,
+        audit_id: str | None,
+    ) -> ReActResult:
+        """Single-pass reasoning when no integration tools are connected (STA-174)."""
+        trace: list[ReActTraceStep] = []
+        try:
+            client = self.router._openai
+            if client is None:
+                raise RuntimeError("OPENAI_API_KEY is not configured")
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.2,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("react_reasoning_only_failed error=%s", exc)
+            return ReActResult(
+                status=ReActStatus.ERROR,
+                answer="",
+                trace=trace,
+                iterations=0,
+                error=str(exc),
+            )
+
+        content = (response.choices[0].message.content or "").strip()
+        if content.upper().startswith(_NEEDS_HUMAN_PREFIX.upper()):
+            question = content.split(":", 1)[-1].strip() or content
+            trace.append(ReActTraceStep(iteration=1, thought=question))
+            self._audit_iteration(
+                ctx,
+                audit_resource_type,
+                audit_id,
+                1,
+                thought=question,
+                status=ReActStatus.NEEDS_HUMAN_INPUT.value,
+            )
+            return ReActResult(
+                status=ReActStatus.NEEDS_HUMAN_INPUT,
+                answer=question,
+                trace=trace,
+                iterations=1,
+            )
+
+        final_answer = content or "Task completed."
+        trace.append(ReActTraceStep(iteration=1, thought=final_answer))
+        self._audit_iteration(
+            ctx,
+            audit_resource_type,
+            audit_id,
+            1,
+            thought=final_answer[:500],
+            status=ReActStatus.COMPLETED.value,
+        )
+        return ReActResult(
+            status=ReActStatus.COMPLETED,
+            answer=final_answer,
+            trace=trace,
+            iterations=1,
         )
 
     @staticmethod

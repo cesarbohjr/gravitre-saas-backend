@@ -217,6 +217,15 @@ def load_agent_task_history(
     return history
 
 
+def _normalize_react_trace_step(step: dict[str, Any]) -> dict[str, Any]:
+    """UI-friendly trace step with action alias for toolName (STA-174)."""
+    out = dict(step)
+    tool_name = out.get("toolName") or out.get("tool_name")
+    if tool_name and not out.get("action"):
+        out["action"] = tool_name
+    return out
+
+
 def _confidence_from_react(react_status: ReActStatus, tool_calls: list[dict[str, Any]]) -> int:
     if react_status == ReActStatus.COMPLETED:
         if not tool_calls:
@@ -469,6 +478,7 @@ class AgentIntelligence:
         answer = react_result.answer or ""
         tool_calls = react_result.tool_calls or []
         trace = react_result.to_dict().get("trace") or []
+        normalized_trace = [_normalize_react_trace_step(step) for step in trace]
         confidence = _confidence_from_react(status, tool_calls)
         recommended = _recommended_actions_from_tools(tool_calls, answer)
         needs_human = status == ReActStatus.NEEDS_HUMAN_INPUT
@@ -502,7 +512,7 @@ class AgentIntelligence:
             needs_human_input=needs_human,
             human_input_prompt=answer if needs_human else None,
             rag_sources=rag_sources,
-            react_trace=trace,
+            react_trace=normalized_trace,
             tool_calls=tool_calls,
             agent_id=agent_id,
             agent_name=agent_name,

@@ -64,17 +64,23 @@ def test_default_max_iterations_is_ten():
 
 
 @pytest.mark.asyncio
-async def test_run_no_tools_available_returns_needs_human(engine: ReActEngine, tool_ctx: ToolContext):
+async def test_run_no_tools_available_uses_reasoning_only(engine: ReActEngine, tool_ctx: ToolContext):
     engine.registry.get_tools_for_agent.return_value = []
+    engine.router._openai.chat.completions.create = AsyncMock(
+        return_value=SimpleNamespace(choices=[_choice("Planned weekly invoice monitoring steps.")])
+    )
     with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
-        result = await engine.run(
-            ctx=tool_ctx,
-            task="Do something",
-            permitted_tools=["hubspot"],
-            connected_integrations=[],
-        )
-    assert result.status == ReActStatus.NEEDS_HUMAN_INPUT
-    assert "No integration tools" in result.answer
+        with patch("app.operators.react_engine.write_audit_event"):
+            result = await engine.run(
+                ctx=tool_ctx,
+                task="Monitor overdue invoices",
+                permitted_tools=["hubspot"],
+                connected_integrations=[],
+            )
+    assert result.status == ReActStatus.COMPLETED
+    assert len(result.trace) == 1
+    assert result.trace[0].thought
+    assert "invoice" in result.answer.lower()
 
 
 @pytest.mark.asyncio

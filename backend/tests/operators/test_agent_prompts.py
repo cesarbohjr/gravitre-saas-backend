@@ -1,6 +1,8 @@
 from app.operators.agent_prompts import (
     AGENT_PERSONAS,
+    build_synthetic_agent_for_task,
     get_agent_persona,
+    infer_persona_key_from_task,
     normalize_agent_role,
 )
 
@@ -96,3 +98,18 @@ def test_build_agent_system_prompt_includes_persona_sections():
     assert "Judgment heuristics:" in prompt
     assert "Constraints:" in prompt
     assert "hubspot" in prompt.lower()
+
+
+def test_infer_persona_key_from_invoice_task():
+    assert infer_persona_key_from_task("Monitor overdue invoices and notify finance") == "REVENUE_OPS"
+
+
+def test_infer_persona_key_from_context_override():
+    assert infer_persona_key_from_task("generic task", context={"persona": "DEVOPS"}) == "DEVOPS"
+
+
+def test_build_synthetic_agent_for_task_uses_revenue_ops():
+    agent = build_synthetic_agent_for_task("Plan weekly overdue invoice monitoring")
+    assert agent["role"] == "REVENUE_OPS"
+    assert agent["config"]["synthetic"] is True
+    assert agent["name"] == AGENT_PERSONAS["REVENUE_OPS"].display_name

@@ -251,10 +251,11 @@ async def test_cancel_then_retry_flow(async_client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_run_operator_job_falls_back_when_ai_unavailable(monkeypatch):
-    async def _boom(**kwargs):
+    async def _boom(*args, **kwargs):
         raise RuntimeError("All AI providers failed")
 
-    monkeypatch.setattr("app.operators.agent_jobs.get_model_router", lambda: type("R", (), {"complete": _boom})())
+    intel = type("I", (), {"execute_task": _boom})()
+    monkeypatch.setattr("app.operators.agent_intelligence.get_agent_intelligence", lambda: intel)
     monkeypatch.setattr(
         "app.operators.agent_jobs.get_supabase_client",
         lambda settings: type("C", (), {"table": lambda self, name: type("Q", (), {"select": lambda *a, **k: self, "eq": lambda *a, **k: self, "limit": lambda *a, **k: self, "execute": lambda *a, **k: type("R", (), {"data": []})()})()})(),
@@ -279,3 +280,49 @@ async def test_run_operator_job_falls_back_when_ai_unavailable(monkeypatch):
     assert result["finding_description"]
     assert result["action_title"]
     assert result["task"]["status"] == "planned"
+    assert result["react_trace"] == []
+
+
+@pytest.mark.asyncio
+async def test_run_operator_job_includes_react_trace(monkeypatch):
+    from app.operators.agent_intelligence import AgentResult
+
+    async def _execute_task(*args, **kwargs):
+        return AgentResult(
+            summary="Weekly invoice monitoring plan ready.",
+            answer="Weekly invoice monitoring plan ready.",
+            react_status="completed",
+            status="completed",
+            confidence=82,
+            persona="REVENUE_OPS",
+            react_trace=[{"iteration": 1, "thought": "Drafted monitoring plan.", "action": None}],
+            recommended_actions=["Schedule weekly finance digest"],
+            model="gpt-5.5",
+        )
+
+    intel = type("I", (), {"execute_task": _execute_task})()
+    monkeypatch.setattr("app.operators.agent_intelligence.get_agent_intelligence", lambda: intel)
+    monkeypatch.setattr(
+        "app.operators.agent_jobs.get_supabase_client",
+        lambda settings: type("C", (), {"table": lambda self, name: type("Q", (), {"select": lambda *a, **k: self, "eq": lambda *a, **k: self, "limit": lambda *a, **k: self, "execute": lambda *a, **k: type("R", (), {"data": []})()})()})(),
+    )
+    monkeypatch.setattr("app.operators.agent_jobs._assert_job_runnable", lambda *a, **k: None)
+    monkeypatch.setattr("app.operators.agent_jobs.apply_usage_with_overage", lambda **kwargs: None)
+    monkeypatch.setattr("app.operators.agent_jobs.get_plan_for_org", lambda *a, **k: {})
+    monkeypatch.setattr("app.operators.agent_jobs.get_current_period", lambda: ("2026-01-01", "2026-02-01"))
+    monkeypatch.setattr(
+        "app.operators.agent_jobs.build_ai_usage_metadata",
+        lambda *a, **k: {"credits": 1},
+    )
+
+    job = {
+        "id": "job-2",
+        "org_id": "org-1",
+        "environment": "production",
+        "payload": {"task": "Monitor overdue invoices", "context": {"smoke": True}},
+    }
+    result = await jobs.run_operator_job(get_settings(), job)
+    assert result["aiStatus"] == "ok"
+    assert result["persona"] == "REVENUE_OPS"
+    assert len(result["react_trace"]) == 1
+    assert result["react_trace"][0]["thought"]

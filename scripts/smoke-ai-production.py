@@ -567,6 +567,8 @@ def main() -> None:
             raise RuntimeError(f"agent job expected completed, got {status}{trace_note}")
         if ai_status not in {"ok", "degraded"}:
             raise RuntimeError(f"agent job missing aiStatus in result: {job_result!r}"[:200])
+        if ai_status == "ok" and not trace:
+            raise RuntimeError(f"WARN agent job ok but react_trace empty (STA-174){trace_note}")
         return f"agent_job: status={status} aiStatus={ai_status}{trace_note}"
 
     def assistant_chat() -> str:

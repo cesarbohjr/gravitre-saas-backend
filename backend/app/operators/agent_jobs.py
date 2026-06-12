@@ -16,18 +16,14 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from app.operators.services.auto_execute_service import get_operator_system_prompt
-from app.services.autonomous_budget_service import is_autonomous_operator
 from app.billing.service import (
     apply_usage_with_overage,
     build_ai_usage_metadata,
-    build_ai_usage_metadata_from_tokens,
     get_current_period,
     get_plan_for_org,
 )
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
-from app.services.model_router import TaskType, get_model_router
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -234,18 +230,15 @@ def _assert_job_runnable(client: Any, org_id: str, job_id: str) -> None:
 
 
 async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str, Any]:
-    """Execute an operator_task job: governed completion + result + usage record."""
-    from app.operators.router import OperatorTaskPlan  # lazy import avoids cycle
+    """Execute an operator_task job via AgentIntelligence + ReAct personas (STA-174)."""
+    from app.operators.agent_intelligence import get_agent_intelligence, resolve_agent_record
+    from app.operators.agent_prompts import build_synthetic_agent_for_task
 
     payload = job.get("payload") or {}
     org_id = job["org_id"]
     environment = job.get("environment") or "production"
     summary = (payload.get("task") or "Automation task").strip()
-    prompt = (
-        "Generate an operator task plan for the task below.\n"
-        f"<task>{summary}</task>\n"
-        f"<context>{payload.get('context') or {}}</context>"
-    )
+    context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
     plan_defaults = {
         "analysis_summary": f"Prepared an execution plan for: {summary}",
         "finding_description": "Key steps identified and ready for execution.",
@@ -257,36 +250,31 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
 
     client = get_supabase_client(settings)
     await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
-    operator_row = None
-    operator_id = payload.get("operator_id")
-    if operator_id:
-        op_resp = (
-            client.table("operators")
-            .select("id, execution_mode, auto_execute_trusted_scopes")
-            .eq("org_id", org_id)
-            .eq("id", str(operator_id))
-            .limit(1)
-            .execute()
-        )
-        operator_row = op_resp.data[0] if op_resp.data else None
 
-    router = get_model_router()
-    autonomous_run = bool(operator_row and is_autonomous_operator(operator_row))
+    operator_id = payload.get("operator_id")
+    agent: dict[str, Any] | None = None
+    if operator_id:
+        agent = resolve_agent_record(client, org_id, str(operator_id), environment_name=environment)
+    if not agent:
+        agent = build_synthetic_agent_for_task(summary, context=context)
+
     ai_degraded = False
     ai_degraded_reason: str | None = None
-    parsed: dict[str, Any] = {}
-    ai_result = None
+    agent_result = None
     try:
-        ai_result = await router.complete(
-            task_type=TaskType.WORKFLOW_PLANNING,
-            prompt=prompt,
-            system_prompt=get_operator_system_prompt(operator_row or {}),
-            response_format=OperatorTaskPlan,
+        parameters = dict(context)
+        parameters.setdefault("include_task_history", False)
+        agent_result = await get_agent_intelligence().execute_task(
+            settings=settings,
             org_id=org_id,
-            operator_id=str(operator_id) if operator_id else None,
-            autonomous_run=autonomous_run,
+            agent=agent,
+            task=summary,
+            parameters=parameters,
+            actor_id=str(job.get("created_by") or agent.get("id") or "system"),
+            task_id=str(job["id"]),
+            environment_name=environment,
+            client=client,
         )
-        parsed = ai_result.parsed or {}
     except Exception as exc:  # noqa: BLE001
         ai_degraded = True
         ai_degraded_reason = getattr(exc, "code", None) or "ai_unavailable"
@@ -297,23 +285,51 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             str(exc),
         )
 
-    result = {
-        "task": {"description": summary, "status": "planned"},
-        "aiStatus": "degraded" if ai_degraded else "ok",
-        "analysis_summary": str(parsed.get("analysis_summary") or plan_defaults["analysis_summary"]).strip(),
-        "finding_description": str(
-            parsed.get("finding_description") or plan_defaults["finding_description"]
-        ).strip(),
-        "action_title": str(parsed.get("action_title") or plan_defaults["action_title"]).strip(),
-        "action_description": str(
-            parsed.get("action_description") or plan_defaults["action_description"]
-        ).strip(),
-        "confidence": int(parsed.get("confidence") or plan_defaults["confidence"]),
-        "requires_approval": bool(parsed.get("requires_approval") or plan_defaults["requires_approval"]),
-        "provider": ai_result.provider if ai_result else None,
-        "model": ai_result.model if ai_result else None,
-    }
-    if ai_degraded_reason:
+    if agent_result and not agent_result.error:
+        handoff = agent_result.to_handoff_dict()
+        finding = _trace_finding_description(agent_result.react_trace) or plan_defaults["finding_description"]
+        action_description = (
+            agent_result.recommended_actions[0]
+            if agent_result.recommended_actions
+            else plan_defaults["action_description"]
+        )
+        ai_status = "ok"
+        if agent_result.react_status == "error":
+            ai_status = "degraded"
+        result: dict[str, Any] = {
+            **handoff,
+            "task": {"description": summary, "status": "planned"},
+            "aiStatus": ai_status,
+            "analysis_summary": (agent_result.summary or plan_defaults["analysis_summary"]).strip()[:2000],
+            "finding_description": finding.strip()[:2000],
+            "action_title": plan_defaults["action_title"],
+            "action_description": str(action_description).strip()[:2000],
+            "confidence": int(agent_result.confidence or plan_defaults["confidence"]),
+            "requires_approval": bool(agent_result.needs_human_input or plan_defaults["requires_approval"]),
+            "provider": agent_result.provider,
+            "model": agent_result.model,
+        }
+    else:
+        result = {
+            "task": {"description": summary, "status": "planned"},
+            "aiStatus": "degraded",
+            "analysis_summary": plan_defaults["analysis_summary"],
+            "finding_description": plan_defaults["finding_description"],
+            "action_title": plan_defaults["action_title"],
+            "action_description": plan_defaults["action_description"],
+            "confidence": plan_defaults["confidence"],
+            "requires_approval": plan_defaults["requires_approval"],
+            "react_trace": [],
+            "persona": None,
+            "tool_calls": [],
+        }
+        if ai_degraded:
+            result["aiDegradedReason"] = ai_degraded_reason or "ai_unavailable"
+        elif agent_result and agent_result.error:
+            result["error"] = agent_result.error
+            result["aiDegradedReason"] = agent_result.error
+
+    if ai_degraded_reason and ai_degraded:
         result["aiDegradedReason"] = ai_degraded_reason
 
     # Record AI-credit + operator usage (best-effort; never fails the job).
@@ -321,19 +337,14 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
         client = get_supabase_client(settings)
         plan = get_plan_for_org(client, org_id)
         period_start, period_end = get_current_period()
-        source_id = (ai_result.model_call_id if ai_result else None) or job["id"]
-        if ai_result and ai_result.model:
-            ai_meta = build_ai_usage_metadata_from_tokens(
-                ai_result.input_tokens, ai_result.output_tokens, ai_result.model, "model_call", source_id
-            )
-        else:
-            ai_meta = build_ai_usage_metadata(
-                [summary],
-                [result["analysis_summary"]],
-                None,
-                "model_call",
-                source_id,
-            )
+        source_id = str(job["id"])
+        ai_meta = build_ai_usage_metadata(
+            [summary],
+            [result.get("analysis_summary") or summary],
+            result.get("model"),
+            "model_call",
+            source_id,
+        )
         apply_usage_with_overage(
             client=client, org_id=org_id, environment=environment, metric_type="ai_credits",
             quantity=int(ai_meta["credits"]), plan=plan, period_start=period_start, period_end=period_end,
@@ -343,6 +354,22 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
         logger.warning("agent job usage record skipped job_id=%s error=%s", job.get("id"), str(exc))
 
     return result
+
+
+def _trace_finding_description(react_trace: list[dict[str, Any]]) -> str:
+    for step in react_trace:
+        observation = step.get("observation")
+        if observation:
+            return str(observation)[:500]
+        thought = step.get("thought")
+        if thought:
+            return str(thought)[:500]
+        tool_name = step.get("toolName") or step.get("action")
+        if tool_name:
+            if step.get("toolSuccess"):
+                return f"Executed {tool_name} successfully."
+            return f"Attempted {tool_name}."
+    return ""
 
 
 async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[str, Any]:

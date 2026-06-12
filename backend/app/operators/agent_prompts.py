@@ -333,6 +333,72 @@ _PERSONA_TEXT_MATCHES: tuple[tuple[str, str], ...] = (
     ("human resources", "HR"),
 )
 
+_TASK_PERSONA_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("overdue invoice", "REVENUE_OPS"),
+    ("accounts receivable", "REVENUE_OPS"),
+    ("invoice", "REVENUE_OPS"),
+    ("billing", "REVENUE_OPS"),
+    ("revenue", "REVENUE_OPS"),
+    ("pipeline", "SALES"),
+    ("lead", "SALES"),
+    ("campaign", "MARKETING"),
+    ("nurture", "MARKETING"),
+    ("incident", "DEVOPS"),
+    ("outage", "DEVOPS"),
+    ("deploy", "DEVOPS"),
+    ("support ticket", "CS"),
+    ("customer ticket", "CS"),
+    ("payroll", "HR"),
+    ("onboarding", "HR"),
+    ("finance", "FINANCE"),
+    ("budget", "FINANCE"),
+)
+
+
+def infer_persona_key_from_task(task: str, *, context: dict[str, Any] | None = None) -> str:
+    """Map free-text task descriptions to AGENT_PERSONAS keys (STA-174)."""
+    if context and isinstance(context, dict):
+        for key in ("persona", "personaKey", "persona_key"):
+            override = context.get(key)
+            if override:
+                normalized = normalize_agent_role(str(override))
+                if normalized in AGENT_PERSONAS:
+                    return normalized
+    text = (task or "").strip().lower()
+    if not text:
+        return "DEFAULT"
+    for needle, persona_key in _TASK_PERSONA_KEYWORDS:
+        if needle in text:
+            return persona_key
+    matched = _match_persona_from_text(task)
+    return matched or "DEFAULT"
+
+
+def build_synthetic_agent_for_task(task: str, *, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build an in-memory agent row for operator jobs without a persisted agent (STA-174)."""
+    persona_key = infer_persona_key_from_task(task, context=context)
+    persona = AGENT_PERSONAS[persona_key]
+    context = context if isinstance(context, dict) else {}
+    systems = context.get("systems") or context.get("connectedSystems") or list(persona.preferred_tools)
+    if not isinstance(systems, list):
+        systems = list(persona.preferred_tools)
+    return {
+        "id": f"synthetic-{persona.key.lower()}",
+        "name": persona.display_name,
+        "role": persona.key,
+        "department": persona.key,
+        "status": "active",
+        "purpose": task.strip()[:500],
+        "description": task.strip()[:500],
+        "systems": systems,
+        "connectedSystems": systems,
+        "config": {
+            "persona": persona.key,
+            "type": persona.key.lower(),
+            "synthetic": True,
+        },
+    }
+
 
 def _match_persona_from_text(*parts: str | None) -> str | None:
     """Partial-match agent name, role, or department text to a persona key (STA-174)."""
