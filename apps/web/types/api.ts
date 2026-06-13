@@ -286,11 +286,16 @@ export interface RunDetailResponse {
     id: string
     nodeId?: string | null
     name?: string
+    stepType?: string
     status: string
     startedAt?: string | null
     completedAt?: string | null
     errorMessage?: string | null
     orderIndex?: number
+    inputSnapshot?: Record<string, unknown> | null
+    outputSnapshot?: Record<string, unknown> | null
+    isRetryable?: boolean
+    logs?: string[] | null
   }>
 }
 

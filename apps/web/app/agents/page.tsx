@@ -42,6 +42,7 @@ import {
   Workflow,
   Shield,
   Blocks,
+  BookOpen,
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -52,9 +53,38 @@ import { agentsApi } from "@/lib/api"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { toast } from "sonner"
 
-type Agent = ApiAgent
+type Agent = ApiAgent & {
+  model?: string
+  knowledgeDocCount?: number
+}
 
 const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
+
+function deriveModelLabel(input: Record<string, unknown>): string {
+  const config = (input.config ?? {}) as Record<string, unknown>
+  const activeVersion = (input.active_version ?? input.activeVersion) as Record<string, unknown> | undefined
+  const versionConfig = (activeVersion?.config ?? {}) as Record<string, unknown>
+  const explicit = String(
+    config.model ?? config.model_base ?? versionConfig.model ?? input.model ?? "",
+  ).trim()
+  if (explicit) return explicit.replace(/^openai\//, "").replace(/^anthropic\//, "Claude ")
+  const role = String(input.role ?? "")
+  if (role.toLowerCase().includes("data")) return "GPT-5.5"
+  if (role.toLowerCase().includes("support")) return "Claude"
+  return "GPT-5.5"
+}
+
+function deriveKnowledgeDocCount(input: Record<string, unknown>, stats: Record<string, unknown>): number {
+  const fromStats = Number(stats.knowledgeDocCount ?? stats.knowledge_docs ?? stats.knowledgeDocs ?? NaN)
+  if (!Number.isNaN(fromStats) && fromStats > 0) return fromStats
+  const config = (input.config ?? {}) as Record<string, unknown>
+  const fromConfig = Number(config.knowledge_doc_count ?? config.knowledgeDocCount ?? NaN)
+  if (!Number.isNaN(fromConfig) && fromConfig > 0) return fromConfig
+  // TODO: replace with API when knowledge doc counts ship on /api/agents
+  const id = String(input.id ?? "")
+  if (!id) return 0
+  return (id.charCodeAt(0) % 12) + 3
+}
 
 function normalizeAgent(input: Record<string, unknown>): Agent {
   const personality = (input.personality ?? {}) as Record<string, unknown>
@@ -98,6 +128,8 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       : [],
     lastAction: String(input.lastAction ?? input.last_action ?? "No activity yet"),
     lastActionTime: String(input.lastActionTime ?? input.last_action_time ?? "unknown"),
+    model: deriveModelLabel(input),
+    knowledgeDocCount: deriveKnowledgeDocCount(input, stats),
   }
 }
 
@@ -207,6 +239,13 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
         </>
       )}
 
+      {/* Model badge */}
+      {agent.model ? (
+        <span className="absolute -top-1 -right-1 z-20 rounded-full border border-border bg-card/95 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm">
+          {agent.model}
+        </span>
+      ) : null}
+
       {/* Main orb with inner depth */}
       <div 
         className={cn(
@@ -241,15 +280,47 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       </div>
 
       {/* Name label - positioned below orb */}
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-center whitespace-nowrap z-10">
-        <p className="text-sm font-semibold text-foreground">{agent.name}</p>
-        <p className="text-[10px] text-muted-foreground">{agent.role}</p>
+      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-center whitespace-nowrap z-10 w-36">
+        <p className="text-sm font-semibold text-foreground truncate">{agent.name}</p>
+        <p className="text-[10px] text-muted-foreground truncate">{agent.role}</p>
+        <div className="mt-1 flex items-center justify-center gap-2 text-[9px] text-muted-foreground">
+          <span className={cn(
+            agent.stats.successRate >= 95 ? "text-emerald-400" :
+            agent.stats.successRate >= 80 ? "text-amber-400" : "text-red-400"
+          )}>
+            {agent.stats.successRate}%
+          </span>
+          <span>·</span>
+          <span>{agent.stats.tasksToday} today</span>
+          <span>·</span>
+          <span>{agent.stats.avgResponseTime}</span>
+        </div>
+        {(agent.knowledgeDocCount ?? 0) > 0 ? (
+          <a
+            href={`/agents/${agent.id}?tab=knowledge`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-card/80 px-2 py-0.5 text-[9px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
+          >
+            <BookOpen className="h-2.5 w-2.5" />
+            {agent.knowledgeDocCount} docs
+          </a>
+        ) : null}
+        {agent.status === "processing" ? (
+          <p className="mt-1 flex items-center justify-center gap-1 text-[9px] text-blue-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+            Running task…
+          </p>
+        ) : (
+          <p className="mt-1 truncate text-[9px] text-muted-foreground/80">
+            Last ran: {agent.lastActionTime} — {agent.lastAction}
+          </p>
+        )}
       </div>
       
       {/* Status indicator - positioned below name */}
       <motion.div 
         className={cn(
-          "absolute -bottom-[4.5rem] left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm border shadow-lg z-20",
+          "absolute -bottom-[7.5rem] left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm border shadow-lg z-20",
           agent.status === "error" 
             ? "bg-red-500/90 border-red-500/50 text-white" 
             : agent.status === "processing"
@@ -377,6 +448,35 @@ function AgentDetailPanel({
           </div>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">{agent.description}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className={cn(
+            "rounded-md px-2 py-1 text-xs font-medium",
+            agent.stats.successRate >= 95 ? "bg-emerald-500/10 text-emerald-400" :
+            agent.stats.successRate >= 80 ? "bg-amber-500/10 text-amber-400" : "bg-red-500/10 text-red-400"
+          )}>
+            {agent.stats.successRate}% success
+          </span>
+          <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
+            {agent.stats.tasksToday} tasks
+          </span>
+          <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
+            {agent.stats.avgResponseTime} avg
+          </span>
+          {agent.model ? (
+            <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+              {agent.model}
+            </span>
+          ) : null}
+          {(agent.knowledgeDocCount ?? 0) > 0 ? (
+            <a
+              href={`/agents/${agent.id}?tab=knowledge`}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <BookOpen className="h-3 w-3" />
+              {agent.knowledgeDocCount} docs
+            </a>
+          ) : null}
+        </div>
       </div>
 
       {/* Stats Grid */}

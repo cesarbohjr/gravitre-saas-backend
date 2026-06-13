@@ -18,7 +18,6 @@ import {
   AlertCircle,
   Play,
   Pause,
-  TerminalSquare,
   RotateCcw,
   AlertTriangle,
   Loader2,
@@ -26,19 +25,10 @@ import {
 import { fetcher } from "@/lib/fetcher"
 import { approvalsApi, runsApi, workflowsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
 import type { RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
-type StepStatus = "completed" | "running" | "failed" | "pending" | "skipped"
-
-interface StepView {
-  id: string
-  name: string
-  status: StepStatus
-  duration: string
-  startedAt: string
-  logs?: string[]
-  errorMessage?: string | null
-}
+type StepStatus = ExecutionStepView["status"]
 
 interface RunView {
   id: string
@@ -80,10 +70,11 @@ function normalizeStepStatus(status: string): StepStatus {
   if (normalized === "running") return "running"
   if (normalized === "failed" || normalized === "error") return "failed"
   if (normalized === "skipped") return "skipped"
+  if (normalized === "awaiting_approval" || normalized === "pending_approval") return "awaiting_approval"
   return "pending"
 }
 
-function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: RunView; steps: StepView[] } {
+function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: RunView; steps: ExecutionStepView[] } {
   const rawRun = payload.run
   const steps = (payload.steps ?? []).map((step) => {
     const started = step.startedAt ?? null
@@ -97,11 +88,15 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
     return {
       id: step.id,
       name: step.name || "Step",
+      stepType: step.stepType || undefined,
       status: normalizeStepStatus(step.status),
       duration,
       startedAt: formatTimestamp(started),
       logs,
       errorMessage: step.errorMessage,
+      inputSnapshot: step.inputSnapshot ?? null,
+      outputSnapshot: step.outputSnapshot ?? null,
+      isRetryable: step.isRetryable,
     }
   })
 
@@ -133,14 +128,16 @@ const stepStatusIcons = {
   failed: AlertCircle,
   pending: Clock,
   skipped: Pause,
+  awaiting_approval: Clock,
 }
 
-const stepStatusColors = {
+const stepStatusColors: Record<StepStatus, string> = {
   completed: "text-success",
   running: "text-info",
   failed: "text-destructive",
   pending: "text-warning",
   skipped: "text-muted-foreground",
+  awaiting_approval: "text-warning",
 }
 
 const statusVariants: Record<string, "success" | "error" | "warning" | "info"> = {
@@ -164,7 +161,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [rollbackError, setRollbackError] = useState<string | null>(null)
-  const [isRetrying, setIsRetrying] = useState(false)
+  const [isRetryingStep, setIsRetryingStep] = useState(false)
   const [isPausing, setIsPausing] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isCompensating, setIsCompensating] = useState(false)
@@ -198,7 +195,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           stepsTotal: 0,
           startedAt: "-",
         },
-        steps: [] as StepView[],
+        steps: [] as ExecutionStepView[],
       }
     }
     return normalizeRunDetail(data, id)
@@ -250,7 +247,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   }
 
   const handleRetry = async () => {
-    setIsRetrying(true)
+    setIsRetryingStep(true)
     try {
       await runsApi.retry(id)
       toast.success("Retry started")
@@ -260,7 +257,22 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
-      setIsRetrying(false)
+      setIsRetryingStep(false)
+    }
+  }
+
+  const handleRetryStep = async (_stepId: string) => {
+    setIsRetryingStep(true)
+    try {
+      await runsApi.retry(id)
+      toast.success("Retry started", { description: "Re-running workflow from failed step." })
+      await mutate()
+    } catch (err) {
+      toast.error("Step retry failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsRetryingStep(false)
     }
   }
 
@@ -427,9 +439,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 size="sm"
                 className="h-8 gap-2"
                 onClick={handleRetry}
-                disabled={isRetrying || run.status === "running"}
+                disabled={isRetryingStep || run.status === "running"}
               >
-                {isRetrying ? (
+                {isRetryingStep ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -556,7 +568,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                   return (
                     <div key={step.id} className="flex items-center gap-2">
                       <div
-                        className={`flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2 ${step.status === "failed" ? "border-destructive/50" : ""}`}
+                        className={`flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-3 py-2 ${step.status === "failed" ? "border-destructive/50" : ""} ${step.status === "awaiting_approval" ? "border-warning/50 animate-pulse" : ""}`}
                       >
                         <StatusIcon className={`h-3.5 w-3.5 ${stepStatusColors[step.status]}`} />
                         <span className="whitespace-nowrap text-xs font-medium text-foreground">{step.name}</span>
@@ -577,53 +589,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <div className="border-b border-border p-4">
             <h2 className="text-sm font-semibold text-foreground">Execution Timeline</h2>
           </div>
-          <div className="divide-y divide-border">
-            {steps.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground">Waiting for step output…</div>
-            ) : (
-              steps.map((step) => {
-                const StatusIcon = stepStatusIcons[step.status]
-                return (
-                  <div key={step.id} className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border ${stepStatusColors[step.status]}`}
-                      >
-                        <StatusIcon className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center justify-between">
-                          <h3 className="text-sm font-medium text-foreground">{step.name}</h3>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{step.startedAt}</span>
-                            <span className="font-mono">{step.duration}</span>
-                          </div>
-                        </div>
-                        {step.logs && step.logs.length > 0 && (
-                          <div className="mt-3 rounded-md bg-muted/50 p-3">
-                            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
-                              <TerminalSquare className="h-3 w-3" />
-                              <span className="text-[10px] font-medium uppercase tracking-wider">Logs</span>
-                            </div>
-                            <div className="space-y-1 font-mono text-xs">
-                              {step.logs.map((log, i) => (
-                                <p
-                                  key={i}
-                                  className={log.startsWith("ERROR") ? "text-destructive" : "text-muted-foreground"}
-                                >
-                                  {log}
-                                </p>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
+          <ExecutionTimeline steps={steps} onRetryStep={handleRetryStep} isRetrying={isRetryingStep} />
         </div>
 
         {canCompensate && (

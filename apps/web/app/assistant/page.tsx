@@ -48,6 +48,7 @@ import {
   type ToolInvocation,
 } from "@/components/gravitre/assistant/tool-chip"
 import { FollowUpSuggestions } from "@/components/gravitre/assistant/follow-up-suggestions"
+import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
 import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
 import {
   Tooltip,
@@ -690,6 +691,12 @@ export default function AssistantPage() {
     }
   }, [messages, setMessages, sendMessage])
 
+  const fillFollowUp = useCallback((text: string) => {
+    setInput(text)
+    setFollowUpSuggestions([])
+    inputRef.current?.focus()
+  }, [])
+
   const submitText = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || isLoading) return
@@ -835,6 +842,8 @@ export default function AssistantPage() {
             </Button>
           </div>
 
+          <OrgContextPill enabled={Boolean(user)} />
+
           {/* Messages area */}
           <div className="flex-1 overflow-auto">
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
@@ -922,7 +931,7 @@ export default function AssistantPage() {
                       isLast={index === messages.length - 1 && message.role === "assistant"}
                       onRegenerate={handleRegenerate}
                       followUpSuggestions={followUpSuggestions}
-                      onFollowUp={submitText}
+                      onFollowUp={fillFollowUp}
                       showFollowUps={!input.trim() && !isLoading}
                       expandedToolId={expandedToolId}
                       onToggleTool={(id) => setExpandedToolId((prev) => (prev === id ? null : id))}

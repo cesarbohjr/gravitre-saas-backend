@@ -488,12 +488,16 @@ def _run_step_out(s: dict) -> dict:
         "id": str(s["id"]),
         "nodeId": str(s.get("node_id")) if s.get("node_id") else None,
         "name": s.get("name") or s.get("step_name") or "",
+        "stepType": s.get("step_type") or "",
         "status": s.get("status") or "pending",
         "startedAt": s.get("started_at"),
         "completedAt": s.get("completed_at"),
         "logs": s.get("logs"),
         "errorMessage": s.get("error_message"),
         "orderIndex": s.get("order_index") or s.get("step_index") or 0,
+        "inputSnapshot": s.get("input_snapshot"),
+        "outputSnapshot": s.get("output_snapshot"),
+        "isRetryable": bool(s.get("is_retryable")),
     }
 
 

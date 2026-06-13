@@ -784,6 +784,13 @@ export const assistantApi = {
     fetcher<{ greeting: string; bullets: string[]; suggestions: string[] }>(
       apiUrl("/api/assistant/daily-briefing"),
     ),
+  orgContext: () =>
+    fetcher<{
+      counts: { agents: number; workflows: number; connectors: number }
+      agents: Array<{ id: string; name: string }>
+      workflows: Array<{ id: string; name: string }>
+      connectors: Array<{ id: string; name: string; type?: string }>
+    }>(apiUrl("/api/assistant/org-context")),
   getPreferences: () =>
     fetcher<{ preferred_model?: string | null; preferred_mode?: string }>(apiUrl("/api/assistant/preferences")),
   updatePreferences: (data: { preferred_model?: string; preferred_mode?: string }) =>

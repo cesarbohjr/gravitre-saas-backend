@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-drawer"
+import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { ModelSelector, ModelInheritanceChain } from "@/components/gravitre/model-selector"
@@ -2663,6 +2664,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   // Persistence state
   const canPersist = isPersistableWorkflowId(id)
+  const MESON_PANEL_KEY = "gravitre:mesonPanelOpen"
+  const [mesonPanelOpen, setMesonPanelOpen] = useState(() => {
+    if (typeof window === "undefined") return true
+    return window.localStorage.getItem(MESON_PANEL_KEY) !== "0"
+  })
+  const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
   const [prefetchedDryRun, setPrefetchedDryRun] = useState<WorkflowDryRunResponse | null>(null)
@@ -2771,9 +2778,21 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     return () => clearInterval(interval)
   }, [isExecuting, executionStartTime])
   
-  // Smart suggestions state (moved after addNode definition)
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([])
-  const [mesonSuggestions, setMesonSuggestions] = useState<MesonSuggestion[]>([])
+  const toggleMesonPanel = useCallback(() => {
+    setMesonPanelOpen((open) => {
+      const next = !open
+      window.localStorage.setItem(MESON_PANEL_KEY, next ? "1" : "0")
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    if (nodes.length > prevNodeCountRef.current) {
+      setMesonPanelOpen(true)
+      window.localStorage.setItem(MESON_PANEL_KEY, "1")
+    }
+    prevNodeCountRef.current = nodes.length
+  }, [nodes.length])
 
   // Get selected node object
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
@@ -3045,49 +3064,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     [addNode, nodes]
   )
 
-  useEffect(() => {
-    let cancelled = false
-    const timer = setTimeout(() => {
-      if (nodes.length === 0) {
-        setMesonSuggestions([])
-        return
-      }
-      const lastNode = nodes[nodes.length - 1]
-      void mesonApi
-        .suggestions({
-          workflowState: {
-            nodes: nodes.map((n) => ({
-              type: n.type,
-              name: n.name,
-              vendor: n.vendor,
-            })),
-          },
-          lastAddedNode: {
-            type: lastNode.type,
-            name: lastNode.name,
-            vendor: lastNode.vendor,
-          },
-          workflowId: canPersist ? id : undefined,
-        })
-        .then((res) => {
-          if (cancelled) return
-          setMesonSuggestions(
-            res.suggestions.filter((s) => !dismissedSuggestions.includes(s.id))
-          )
-        })
-        .catch(() => {
-          if (!cancelled) setMesonSuggestions([])
-        })
-    }, 400)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [nodes, dismissedSuggestions, canPersist, id])
-
   const dismissSuggestion = useCallback(
     (suggestionId: string) => {
-      setDismissedSuggestions((prev) => [...prev, suggestionId])
       void mesonApi
         .feedback({
           suggestionId,
@@ -3102,7 +3080,6 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const acceptSuggestion = useCallback(
     (suggestion: MesonSuggestion) => {
       applyMesonSuggestion(suggestion)
-      setDismissedSuggestions((prev) => [...prev, suggestion.id])
       void mesonApi
         .feedback({
           suggestionId: suggestion.id,
@@ -3659,6 +3636,16 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               >
                 <Settings className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Settings</span>
+              </Button>
+              <Button
+                variant={mesonPanelOpen ? "secondary" : "outline"}
+                size="sm"
+                className="h-8 gap-2"
+                onClick={toggleMesonPanel}
+                aria-expanded={mesonPanelOpen}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Meson</span>
               </Button>
               <Button
                 variant="outline"
@@ -4823,39 +4810,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               </Button>
             )}
 
-            {/* Smart Suggestions - contextual AI-like hints */}
-            {mesonSuggestions.length > 0 && !isExecuting && !selectedNodeId && (
-              <div className="absolute bottom-20 right-4 space-y-2 z-40 max-w-xs">
-                {mesonSuggestions.slice(0, 2).map((suggestion) => (
-                  <div
-                    key={suggestion.id}
-                    className="group flex items-center gap-3 p-3 rounded-xl bg-card/90 backdrop-blur-sm border border-border shadow-lg hover:shadow-xl hover:border-info/30 transition-all animate-in slide-in-from-right-5 duration-300"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
-                      <Lightbulb className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground">{suggestion.reason || suggestion.label}</p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => acceptSuggestion(suggestion)}
-                        className="p-1.5 rounded-md bg-info/10 text-info hover:bg-info/20 transition-colors"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => dismissSuggestion(suggestion.id)}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
+
+          <MesonCopilotPanel
+            open={mesonPanelOpen}
+            onClose={() => {
+              setMesonPanelOpen(false)
+              window.localStorage.setItem(MESON_PANEL_KEY, "0")
+            }}
+            workflowId={id}
+            canPersist={canPersist}
+            nodes={nodes.map((n) => ({ type: n.type, name: n.name, vendor: n.vendor }))}
+            onAcceptSuggestion={acceptSuggestion}
+            onDismissSuggestion={dismissSuggestion}
+          />
 
           {/* Right config panel */}
           <ConfigPanel

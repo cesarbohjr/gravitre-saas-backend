@@ -823,6 +823,45 @@ async def assistant_daily_briefing(
     return briefing
 
 
+@router.get("/org-context")
+async def assistant_org_context(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    snapshot = get_org_context_service().get_snapshot(client, org_id, depth="standard")
+    agents = [
+        {"id": str(a.get("id") or ""), "name": str(a.get("name") or "Agent")}
+        for a in (snapshot.get("agents") or [])
+    ]
+    workflows = [
+        {"id": str(w.get("id") or ""), "name": str(w.get("name") or "Workflow")}
+        for w in (snapshot.get("workflows") or [])
+    ]
+    connectors = [
+        {
+            "id": str(c.get("id") or ""),
+            "name": str(c.get("type") or "Connector"),
+            "type": str(c.get("type") or ""),
+        }
+        for c in (snapshot.get("integrations") or [])
+    ]
+    counts = snapshot.get("counts") or {}
+    return {
+        "counts": {
+            "agents": int(counts.get("agents") or len(agents)),
+            "workflows": int(counts.get("workflows") or len(workflows)),
+            "connectors": int(counts.get("connectedIntegrations") or len(connectors)),
+        },
+        "agents": agents,
+        "workflows": workflows,
+        "connectors": connectors,
+    }
+
+
 @router.get("/preferences")
 async def get_assistant_preferences(
     current_user: Annotated[dict, Depends(get_current_user)],
