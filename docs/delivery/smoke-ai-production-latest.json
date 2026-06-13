@@ -2,8 +2,8 @@
   "target": "https://gravitre-saas-backend-production.up.railway.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
   "userId": "09c29672-beff-4a65-b525-261fa3de5923",
-  "startedAt": "2026-06-13T07:38:52.694522+00:00",
-  "finishedAt": "2026-06-13T07:39:39.367270+00:00",
+  "startedAt": "2026-06-13T08:19:13.735732+00:00",
+  "finishedAt": "2026-06-13T08:20:09.029893+00:00",
   "summary": {
     "pass": 15,
     "warn": 0,
@@ -30,7 +30,7 @@
     {
       "label": "meson_interpret",
       "status": "pass",
-      "detail": "meson_interpret: agent=Overdue Invoice Monitor",
+      "detail": "meson_interpret: agent=Invoice Watchdog",
       "linear": "STA-164"
     },
     {
@@ -48,19 +48,19 @@
     {
       "label": "assistant_chat",
       "status": "pass",
-      "detail": "assistant_chat: bytes=3024",
+      "detail": "assistant_chat: bytes=2948",
       "linear": "STA-163"
     },
     {
       "label": "workflow_dry_run_abc",
       "status": "pass",
-      "detail": "workflow_dry_run: run_id=74d94db2-9614-46c2-b8cc-e9b3780fef60 steps=['step_a', 'step_b', 'step_c']",
+      "detail": "workflow_dry_run: run_id=4d5d0c96-daab-4a9b-9ac0-8d9a54694b40 steps=['step_a', 'step_b', 'step_c']",
       "linear": "STA-166"
     },
     {
       "label": "workflow_execute_abc",
       "status": "pass",
-      "detail": "workflow_execute: run_id=c06584f0-d603-47ea-b4cc-b5a907d92184 status=completed steps=3",
+      "detail": "workflow_execute: run_id=037c6571-62be-44b1-afdf-d01ffc8bcaf0 status=completed steps=3",
       "linear": "STA-166"
     },
     {
@@ -72,7 +72,7 @@
     {
       "label": "failure_predictions_scan",
       "status": "pass",
-      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-13T07:39:34.882288+00:00\"}",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-13T08:20:04.768295+00:00\"}",
       "linear": "STA-167"
     },
     {
@@ -102,7 +102,7 @@
     {
       "label": "agent_interrupt_channel",
       "status": "pass",
-      "detail": "agent_interrupt: accepted id=d90af3e1-8990-42d2-9fbb-153c0ce93860 signal=pause",
+      "detail": "agent_interrupt: accepted id=4c43eb48-c9d3-46c3-a2c8-843fb870c5b7 signal=pause",
       "linear": null
     },
     {
