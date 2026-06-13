@@ -64,9 +64,19 @@ class Settings(BaseSettings):
     default_embedding_model: str = "text-embedding-3-small"
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimension: int = 1536
-    rag_chunk_size: int = 1000
-    rag_chunk_overlap: int = 200
+    rag_chunk_size: int = 2048
+    rag_chunk_overlap: int = 256
+    rag_chunk_min_tokens: int = 256
+    rag_chunk_max_tokens: int = 512
+    rag_chunk_overlap_tokens: int = 64
+    rag_chunk_strategy: str = "semantic"
     rag_top_k: int = 8
+    # Hybrid RAG (STA-150): vector+BM25 candidates, cross-encoder rerank.
+    rag_hybrid_candidate_k: int = 20
+    rag_rerank_score_threshold: float = 0.3
+    rag_cross_encoder_enabled: bool = True
+    rag_disable_cross_encoder: bool = False
+    rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     blob_read_write_token: str = ""
     ml_default_classifier: str = "random_forest"
     ml_anomaly_contamination: float = 0.1
@@ -210,6 +220,11 @@ class Settings(BaseSettings):
     # AI governance / safety (chokepoint-enforced in ModelRouter)
     # Global LLM killswitch — when true, all model_router completions are refused.
     disable_ai: bool = False
+    # Optional Tavily API key for assistant search_web tool (STA-148).
+    tavily_api_key: str = ""
+    # Assistant context window + summarization (STA-146).
+    assistant_context_window_tokens: int = 128_000
+    assistant_context_summarize_threshold: float = 0.8
     # Per-org sliding-window rate limit for LLM calls; 0 disables the limiter.
     ai_rate_limit_per_min: int = 0
     # Hard spend gate (default ON): block LLM calls once an org's period

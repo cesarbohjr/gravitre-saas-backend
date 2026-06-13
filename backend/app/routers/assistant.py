@@ -43,6 +43,20 @@ from app.services.ai_guardrails import (
     AIServiceDisabledError,
     fence_untrusted,
 )
+from app.services.conversation_context_service import (
+    format_summary_block,
+    load_conversation_summary,
+    maybe_summarize_history,
+    persist_conversation_summary,
+)
+from app.services.assistant_tools import (
+    DEFAULT_ASSISTANT_TOOLS,
+    TOOL_DISPLAY_NAMES,
+    run_assistant_tools,
+    tool_agent_status,
+    tool_connector_status,
+    tool_knowledge_base,
+)
 from app.services.model_router import ModelResponse, PreparedStream, TaskType, get_model_router
 from app.services.org_context_service import get_org_context_service
 from app.services.providers.base import (
@@ -74,13 +88,8 @@ ASSISTANT_SYSTEM_PROMPT = (
     "metrics."
 )
 
-# Canonical tool id -> display name expected by the frontend UI.
-_TOOL_DISPLAY_NAMES = {
-    "knowledge_base": "searchKnowledgeBase",
-    "agent_status": "getAgentStatus",
-    "connector_status": "getConnectorStatus",
-}
-_DEFAULT_TOOLS = ["knowledge_base", "agent_status", "connector_status"]
+_TOOL_DISPLAY_NAMES = TOOL_DISPLAY_NAMES
+_DEFAULT_TOOLS = DEFAULT_ASSISTANT_TOOLS
 _MAX_HISTORY = 12
 
 
@@ -190,108 +199,10 @@ async def _record_assistant_billing(
         )
 
 
-# ---------------------------------------------------------------------------
-# Server-side tools (org-scoped). Module-level so tests can monkeypatch them.
-# ---------------------------------------------------------------------------
-
-
-async def _tool_knowledge_base(
-    org_id: str,
-    query: str,
-    settings: Settings,
-    *,
-    agent_id: str | None = None,
-) -> dict[str, Any]:
-    try:
-        from app.services.rag_service import RAGService
-
-        scope = "agent" if agent_id else "organization"
-        resp = await RAGService().query(
-            org_id=org_id,
-            query=query,
-            scope=scope,
-            top_k=5,
-            include_sources=True,
-            agent_id=agent_id,
-        )
-        results = [
-            {
-                "title": chunk.source or "Knowledge Source",
-                "snippet": (chunk.content or "")[:280],
-                "relevance": round(float(chunk.score or 0.0), 2),
-            }
-            for chunk in resp.chunks
-        ]
-        sources = [
-            {
-                "title": chunk.source or "Knowledge Source",
-                "excerpt": (chunk.content or "")[:280],
-            }
-            for chunk in resp.chunks
-        ]
-        return {
-            "results": results,
-            "sources": sources,
-            "totalResults": len(results),
-            "method": str(resp.metrics.get("embedding_method") or "keyword"),
-            "scope": scope,
-            **({"agentId": agent_id} if agent_id else {}),
-        }
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("assistant knowledge_base tool failed org_id=%s error=%s", org_id, str(exc))
-        return {"results": [], "totalResults": 0, "error": "knowledge base unavailable"}
-
-
-def _tool_agent_status(org_id: str, settings: Settings, *, agent_id: str | None = None) -> dict[str, Any]:
-    try:
-        client = get_supabase_client(settings)
-        query = client.table("agents").select("id,name,status,stats").eq("org_id", org_id)
-        if agent_id:
-            query = query.eq("id", agent_id)
-        rows = query.execute().data or []
-        agents = []
-        for row in rows:
-            stats = row.get("stats") if isinstance(row.get("stats"), dict) else {}
-            agents.append(
-                {
-                    "id": str(row.get("id")),
-                    "name": str(row.get("name") or "Agent"),
-                    "status": str(row.get("status") or "idle"),
-                    "tasksToday": int((stats or {}).get("tasksToday") or 0),
-                    "successRate": int((stats or {}).get("successRate") or 100),
-                }
-            )
-        return {"agents": agents}
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("assistant agent_status tool failed org_id=%s error=%s", org_id, str(exc))
-        return {"agents": [], "error": "agent status unavailable"}
-
-
-def _tool_connector_status(org_id: str, settings: Settings) -> dict[str, Any]:
-    try:
-        client = get_supabase_client(settings)
-        rows = (
-            client.table("connectors")
-            .select("id,name,type,status,health")
-            .eq("org_id", org_id)
-            .execute()
-            .data
-            or []
-        )
-        connectors = [
-            {
-                "id": str(row.get("id")),
-                "name": str(row.get("name") or "connector"),
-                "type": str(row.get("type") or "Custom"),
-                "status": str(row.get("status") or "disconnected"),
-                "health": int(row.get("health") or 0),
-            }
-            for row in rows
-        ]
-        return {"connectors": connectors}
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("assistant connector_status tool failed org_id=%s error=%s", org_id, str(exc))
-        return {"connectors": [], "error": "connector status unavailable"}
+# Re-export tool helpers at module level so tests can monkeypatch them.
+_tool_knowledge_base = tool_knowledge_base
+_tool_agent_status = tool_agent_status
+_tool_connector_status = tool_connector_status
 
 
 async def _run_tools(
@@ -301,32 +212,16 @@ async def _run_tools(
     settings: Settings,
     *,
     agent_id: str | None = None,
+    user_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Execute requested tools server-side. Returns [{name, displayName, input, output}]."""
-    results: list[dict[str, Any]] = []
-    for name in requested:
-        if name not in _TOOL_DISPLAY_NAMES:
-            continue
-        if name == "knowledge_base":
-            output = await _tool_knowledge_base(org_id, query, settings, agent_id=agent_id)
-            tool_input: dict[str, Any] = {"query": query, "limit": 5}
-            if agent_id:
-                tool_input["agentId"] = agent_id
-        elif name == "agent_status":
-            output = _tool_agent_status(org_id, settings, agent_id=agent_id)
-            tool_input = {"agentId": agent_id} if agent_id else {}
-        else:  # connector_status
-            output = _tool_connector_status(org_id, settings)
-            tool_input = {}
-        results.append(
-            {
-                "name": name,
-                "displayName": _TOOL_DISPLAY_NAMES[name],
-                "input": tool_input,
-                "output": output,
-            }
-        )
-    return results
+    return await run_assistant_tools(
+        requested,
+        org_id,
+        query,
+        settings,
+        agent_id=agent_id,
+        user_id=user_id,
+    )
 
 
 def _sse(chunk: dict[str, Any]) -> str:
@@ -636,6 +531,7 @@ async def assistant_chat(
         last_user,
         settings,
         agent_id=(body.agent_id or "").strip() or None,
+        user_id=str(current_user.get("user_id") or "") or None,
     )
 
     system_prompt = _build_assistant_system_prompt(
@@ -645,19 +541,52 @@ async def assistant_chat(
         agent_id=body.agent_id,
     )
 
-    # Build the model context: prior conversation turns + FENCED tool results.
-    # Every tool result is wrapped by fence_untrusted before injection so it is
-    # treated strictly as data, never instructions.
-    context: list[dict[str, Any]] = []
+    user_id = str(current_user.get("user_id") or "")
+    conversation_id = (body.conversation_id or "").strip() or None
+    existing_summary: str | None = None
+    if conversation_id and user_id:
+        existing_summary = load_conversation_summary(
+            get_supabase_client(settings),
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user_id,
+        )
+
+    # Build history turns from the client payload (excluding the latest user message).
+    history_messages: list[dict[str, Any]] = []
     for message in body.messages[:-1][-_MAX_HISTORY:]:
         role = message.get("role")
         if role in ("user", "assistant"):
             text = _message_text(message)
             if text.strip():
-                context.append({"role": role, "content": text})
+                history_messages.append({"role": role, "content": text})
+
+    tool_messages: list[dict[str, Any]] = []
     for tool in tool_results:
         fenced = fence_untrusted(json.dumps({tool["displayName"]: tool["output"]}, separators=(",", ":")))
-        context.append({"role": "user", "content": fenced})
+        tool_messages.append({"role": "user", "content": fenced})
+
+    prepared_context = await maybe_summarize_history(
+        history=history_messages,
+        system_prompt=system_prompt,
+        prompt=last_user,
+        tool_messages=tool_messages,
+        existing_summary=existing_summary,
+        org_id=org_id,
+        settings=settings,
+    )
+    if prepared_context.summary:
+        system_prompt = f"{system_prompt}{format_summary_block(prepared_context.summary)}"
+    if prepared_context.summary_updated and conversation_id and user_id and prepared_context.summary:
+        persist_conversation_summary(
+            get_supabase_client(settings),
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user_id,
+            summary=prepared_context.summary,
+        )
+
+    context = list(prepared_context.messages) + tool_messages
 
     router_ = get_model_router()
     try:

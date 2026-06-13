@@ -29,7 +29,7 @@ async def test_ingest_document(service: RAGService):
     mock_client = MagicMock()
     with patch("app.services.rag_service.get_supabase_client", return_value=mock_client):
         with patch("app.services.rag_service.upsert_document", return_value={"id": "doc-1"}):
-            with patch("app.services.rag_service.chunk_text", return_value=["chunk 1", "chunk 2"]):
+            with patch("app.services.rag_service.chunk_document_text", return_value=["chunk 1", "chunk 2"]):
                 with patch("app.services.rag_service.replace_chunks_and_embeddings", return_value=2):
                     chunks = await service.ingest_document(
                         org_id="org-1",
@@ -42,19 +42,33 @@ async def test_ingest_document(service: RAGService):
 @pytest.mark.asyncio
 async def test_query_pipeline(service: RAGService):
     semantic_rows = [
-        {"id": "a", "content": "Sky is blue by Rayleigh scattering", "score": 0.9, "title": "Science"},
-        {"id": "b", "content": "Clouds scatter light", "score": 0.7, "title": "Science"},
+        {"chunk_id": "a", "content": "Sky is blue by Rayleigh scattering", "score": 0.9, "document_title": "Science"},
+        {"chunk_id": "b", "content": "Clouds scatter light", "score": 0.7, "document_title": "Science"},
     ]
-    keyword_rows = [{"id": "b", "content": "Clouds scatter light", "score": 0.4, "title": "Science"}]
+    bm25_rows = [
+        {"id": "b", "content": "Clouds scatter light", "score": 1.1, "title": "Science"},
+    ]
     with patch("app.services.rag_service.embed_with_failover", return_value=([0.1] * 1536, "openai")):
         with patch("app.services.rag_service.search_chunks", return_value=semantic_rows):
-            with patch.object(service, "_keyword_search", return_value=keyword_rows):
-                with patch.object(
-                    service.model_router,
-                    "complete",
-                    AsyncMock(return_value=SimpleNamespace(content="Because molecules scatter shorter wavelengths first.")),
-                ):
-                    response = await service.query(org_id="org-1", query="Why is the sky blue?", top_k=2)
+            with patch("app.services.rag_service.fetch_bm25_corpus", return_value=bm25_rows):
+                with patch("app.services.rag_service.bm25_rank_rows", return_value=bm25_rows):
+                    with patch(
+                        "app.services.rag_service.rerank_rows",
+                        return_value=(
+                            [
+                                {"id": "a", "content": "Sky is blue by Rayleigh scattering", "score": 0.9, "title": "Science"},
+                                {"id": "b", "content": "Clouds scatter light", "score": 0.8, "title": "Science"},
+                            ],
+                            "cross_encoder",
+                        ),
+                    ):
+                        with patch.object(
+                            service.model_router,
+                            "complete",
+                            AsyncMock(return_value=SimpleNamespace(content="Because molecules scatter shorter wavelengths first.")),
+                        ):
+                            response = await service.query(org_id="org-1", query="Why is the sky blue?", top_k=2)
     assert response.answer
     assert len(response.chunks) == 2
     assert response.metrics["top_k"] == 2
+    assert response.metrics["rerank_method"] == "cross_encoder"

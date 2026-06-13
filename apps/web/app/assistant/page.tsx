@@ -31,6 +31,11 @@ import {
   MessageCircle,
   Search,
   ArrowUp,
+  Workflow,
+  BarChart3,
+  Globe,
+  FileText,
+  Play,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -104,6 +109,22 @@ const toolIcons: Record<string, typeof Database> = {
   searchKnowledgeBase: Search,
   getAgentStatus: Bot,
   getConnectorStatus: Plug,
+  getWorkflowRuns: Workflow,
+  getAnalytics: BarChart3,
+  searchWeb: Globe,
+  generateDocument: FileText,
+  runAgentTask: Play,
+  createWorkflow: Workflow,
+}
+
+function resolveAssistantTools(mode: IntelligenceMode): string[] {
+  const base = ["knowledge_base", "agent_status", "connector_status"]
+  if (mode === "fast") return base
+  if (mode === "standard") return [...base, "workflow_runs", "analytics"]
+  if (mode === "reasoning") {
+    return [...base, "workflow_runs", "analytics", "search_web", "generate_document"]
+  }
+  return [...base, "workflow_runs", "analytics", "run_agent_task", "create_workflow"]
 }
 
 interface ToolInvocation {
@@ -222,6 +243,12 @@ function ToolChip({ invocation }: { invocation: ToolInvocation }) {
       case "searchKnowledgeBase": return "Searched knowledge base"
       case "getAgentStatus": return "Checked agent status"
       case "getConnectorStatus": return "Checked connector status"
+      case "getWorkflowRuns": return "Listed workflow runs"
+      case "getAnalytics": return "Loaded org analytics"
+      case "searchWeb": return "Searched the web"
+      case "generateDocument": return "Generated document"
+      case "runAgentTask": return "Ran agent task"
+      case "createWorkflow": return "Created draft workflow"
       default: return name
     }
   }
@@ -776,7 +803,7 @@ export default function AssistantPage() {
           ...buildChatOrgPayload(),
           mode,
           conversation_id: activeConversationId,
-          tools: ["knowledge_base", "agent_status", "connector_status"],
+          tools: resolveAssistantTools(mode),
         }),
       }),
     [mode, activeConversationId],

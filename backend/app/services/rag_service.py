@@ -7,9 +7,18 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.core.logging import get_logger
 from app.rag.embedding import EmbeddingDimensionMismatchError, embed_with_failover
-from app.rag.ingest import chunk_text, replace_chunks_and_embeddings, upsert_document
+from app.rag.ingest import chunk_document_text, replace_chunks_and_embeddings, upsert_document
 from app.rag.department import resolve_department_id_for_agent
-from app.rag.retrieval import search_chunks
+from app.rag.hybrid_rerank import (
+    bm25_rank_rows,
+    cross_encoder_enabled,
+    hybrid_candidate_k,
+    normalize_chunk_row,
+    rerank_rows,
+    rerank_score_threshold,
+    rrf_merge,
+)
+from app.rag.retrieval import fetch_bm25_corpus, search_chunks
 from app.services.model_router import TaskType, get_model_router
 from app.workflows.repository import get_supabase_client
 
@@ -58,12 +67,7 @@ class RAGService:
             metadata=document.metadata,
             environment_name=document.environment,
         )
-        chunks = chunk_text(
-            document.content,
-            min_chars=self.settings.rag_chunk_size or CHUNK_SIZE,
-            max_chars=self.settings.rag_chunk_size or CHUNK_SIZE,
-            overlap_chars=self.settings.rag_chunk_overlap or CHUNK_OVERLAP,
-        )
+        chunks = chunk_document_text(document.content, settings=self.settings)
         replace_chunks_and_embeddings(
             client=client,
             settings=self.settings,
@@ -144,21 +148,38 @@ class RAGService:
                     "fallback": "embedding_unavailable",
                 },
             )
+        candidate_k = hybrid_candidate_k(self.settings)
+        merge_k = candidate_k * 2
         semantic_rows = search_chunks(
             settings=self.settings,
             org_id=org_id,
             query_embedding=query_embedding,
-            top_k=max(top_k * 2, top_k),
+            top_k=candidate_k,
             source_id=(filters or {}).get("source_id"),
             document_id=(filters or {}).get("document_id"),
             environment_name=environment,
             department_id=str(department_id) if department_id else None,
             agent_id=str(resolved_agent_id) if resolved_agent_id else None,
         )
+        semantic_rows = [normalize_chunk_row(row) for row in semantic_rows]
 
-        keyword_rows = self._keyword_search(org_id, query, top_k=max(top_k * 2, top_k), environment=environment)
-        merged = self._rrf_merge(semantic_rows, keyword_rows, top_k=top_k)
-        reranked = self._rerank(query, merged, top_k=top_k)
+        bm25_corpus = fetch_bm25_corpus(
+            self.settings,
+            org_id,
+            environment_name=environment,
+            source_id=(filters or {}).get("source_id"),
+            document_id=(filters or {}).get("document_id"),
+            department_id=str(department_id) if department_id else None,
+            agent_id=str(resolved_agent_id) if resolved_agent_id else None,
+        )
+        keyword_rows = bm25_rank_rows(query, bm25_corpus, top_k=candidate_k)
+        merged = rrf_merge(semantic_rows, keyword_rows, top_k=merge_k)
+        reranked, rerank_method = rerank_rows(
+            query,
+            merged,
+            top_k=top_k,
+            settings=self.settings,
+        )
 
         context_snippets = [str(row.get("content") or "").strip() for row in reranked]
         context_snippets = [snippet for snippet in context_snippets if snippet]
@@ -208,10 +229,15 @@ class RAGService:
                 "keyword_candidates": len(keyword_rows),
                 "reranked": len(reranked),
                 "embedding_method": embedding_method,
+                "hybrid_candidate_k": candidate_k,
+                "rerank_method": rerank_method,
+                "cross_encoder_enabled": cross_encoder_enabled(self.settings),
+                "rerank_threshold": rerank_score_threshold(self.settings),
             },
         )
 
     def _keyword_search(self, org_id: str, query: str, top_k: int, environment: str) -> list[dict[str, Any]]:
+        """Legacy ilike keyword fallback when embeddings are unavailable."""
         client = get_supabase_client(self.settings)
         terms = [t for t in query.split() if len(t) > 2][:5]
         if not terms:
@@ -251,32 +277,11 @@ class RAGService:
         return rows
 
     def _rrf_merge(self, semantic_rows: list[dict], keyword_rows: list[dict], top_k: int) -> list[dict]:
-        k = 50.0
-        scores: dict[str, dict[str, Any]] = {}
-        for rank, row in enumerate(semantic_rows, start=1):
-            row_id = str(row.get("id"))
-            if row_id not in scores:
-                scores[row_id] = dict(row)
-                scores[row_id]["score"] = 0.0
-            scores[row_id]["score"] += 1 / (k + rank)
-        for rank, row in enumerate(keyword_rows, start=1):
-            row_id = str(row.get("id"))
-            if row_id not in scores:
-                scores[row_id] = dict(row)
-                scores[row_id]["score"] = 0.0
-            scores[row_id]["score"] += 1 / (k + rank)
-        merged = list(scores.values())
-        merged.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
-        return merged[:top_k]
+        return rrf_merge(semantic_rows, keyword_rows, top_k=top_k)
 
     def _rerank(self, query: str, rows: list[dict], top_k: int) -> list[dict]:
-        q_terms = set(query.lower().split())
-        for row in rows:
-            content = str(row.get("content") or "").lower()
-            overlap = len([t for t in q_terms if t in content])
-            row["score"] = float(row.get("score") or 0.0) + overlap * 0.05
-        rows.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
-        return rows[:top_k]
+        reranked, _method = rerank_rows(query, rows, top_k=top_k, settings=self.settings)
+        return reranked
 
 
 _rag_service_singleton: RAGService | None = None

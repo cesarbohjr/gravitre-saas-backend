@@ -3,7 +3,47 @@ from __future__ import annotations
 
 import pytest
 
-from app.rag.ingest import chunk_text
+from app.config import Settings
+from app.rag.ingest import chunk_document_text, chunk_text, resolve_rag_chunking_params
+
+
+def _settings(**overrides) -> Settings:
+    base = dict(
+        app_env="dev",
+        supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test",
+        supabase_service_role_key="service-role-test",
+        supabase_jwt_secret="jwt-secret-test",
+        openai_api_key="sk-test-openai",
+    )
+    base.update(overrides)
+    return Settings(**base)
+
+
+def test_resolve_rag_chunking_params_defaults_to_semantic_512_64():
+    params = resolve_rag_chunking_params(_settings())
+    assert params.strategy == "semantic"
+    assert params.max_chars == 512 * 4
+    assert params.min_chars == 256 * 4
+    assert params.overlap_chars == 64 * 4
+
+
+def test_resolve_rag_chunking_params_honors_request_override():
+    params = resolve_rag_chunking_params(
+        _settings(),
+        {"target_tokens_min": 64, "target_tokens_max": 128, "overlap_tokens": 16, "strategy": "fixed"},
+    )
+    assert params.strategy == "fixed"
+    assert params.max_chars == 128 * 4
+    assert params.min_chars == 64 * 4
+    assert params.overlap_chars == 16 * 4
+
+
+def test_chunk_document_text_uses_semantic_strategy_by_default():
+    text = "Alpha paragraph one.\n\nBeta paragraph two with more detail."
+    chunks = chunk_document_text(text, settings=_settings())
+    assert chunks
+    assert "Alpha paragraph" in chunks[0]
 
 
 def test_semantic_chunk_preserves_paragraph_boundaries():

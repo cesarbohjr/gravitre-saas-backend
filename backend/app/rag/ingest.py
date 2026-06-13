@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
 from supabase import Client
 
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.rag.embedding import _estimate_tokens, get_embedding, record_embedding_cost
 
 # Size limits
@@ -16,10 +17,73 @@ MAX_TEXT_BYTES = 2 * 1024 * 1024  # 2 MiB
 MAX_CHUNKS = 500
 MAX_CHUNK_BYTES = 16 * 1024  # 16 KiB
 
-# Chunking defaults (approx tokens -> chars at 4 chars/token)
+# Chunking defaults (approx tokens -> chars at 4 chars/token) — STA-171
 CHUNK_MIN_CHARS = 1024   # ~256 tokens
 CHUNK_MAX_CHARS = 2048   # ~512 tokens
-CHUNK_OVERLAP_CHARS = 200  # ~50 tokens
+CHUNK_OVERLAP_CHARS = 256  # ~64 tokens
+
+
+@dataclass(frozen=True)
+class RagChunkingParams:
+    min_chars: int
+    max_chars: int
+    overlap_chars: int
+    strategy: str
+
+
+def resolve_rag_chunking_params(
+    settings: Settings | None = None,
+    chunking: dict[str, Any] | None = None,
+) -> RagChunkingParams:
+    """Resolve chunk sizing from request payload + settings (semantic default)."""
+    settings = settings or get_settings()
+    chunking = chunking or {}
+
+    min_tokens = chunking.get("target_tokens_min")
+    if min_tokens is None:
+        min_tokens = getattr(settings, "rag_chunk_min_tokens", None) or (CHUNK_MIN_CHARS // 4)
+    max_tokens = chunking.get("target_tokens_max")
+    if max_tokens is None:
+        max_tokens = getattr(settings, "rag_chunk_max_tokens", None) or (
+            int(getattr(settings, "rag_chunk_size", CHUNK_MAX_CHARS) or CHUNK_MAX_CHARS) // 4
+        )
+    overlap_tokens = chunking.get("overlap_tokens")
+    if overlap_tokens is None:
+        overlap_tokens = getattr(settings, "rag_chunk_overlap_tokens", None) or (
+            int(getattr(settings, "rag_chunk_overlap", CHUNK_OVERLAP_CHARS) or CHUNK_OVERLAP_CHARS) // 4
+        )
+
+    min_chars = max(256, min(int(min_tokens) * 4, 4096))
+    max_chars = max(min_chars, min(int(max_tokens) * 4, 8192))
+    overlap_chars = max(0, min(int(overlap_tokens) * 4, max_chars - 1))
+    strategy = str(
+        chunking.get("strategy") or getattr(settings, "rag_chunk_strategy", "semantic") or "semantic"
+    ).strip().lower()
+    if strategy not in {"semantic", "fixed"}:
+        strategy = "semantic"
+    return RagChunkingParams(
+        min_chars=min_chars,
+        max_chars=max_chars,
+        overlap_chars=overlap_chars,
+        strategy=strategy,
+    )
+
+
+def chunk_document_text(
+    text: str,
+    *,
+    settings: Settings | None = None,
+    chunking: dict[str, Any] | None = None,
+) -> list[str]:
+    """Chunk document text using org-wide semantic defaults (STA-171)."""
+    params = resolve_rag_chunking_params(settings, chunking)
+    return chunk_text(
+        text,
+        params.min_chars,
+        params.max_chars,
+        params.overlap_chars,
+        strategy=params.strategy,
+    )
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _PARAGRAPH_SPLIT = re.compile(r"\n\s*\n+")

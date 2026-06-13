@@ -12,7 +12,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.rag.ingest import (
     activate_document,
-    chunk_text,
+    chunk_document_text,
     cleanup_document_version,
     finalize_ingest_job,
     replace_chunks_and_embeddings,
@@ -98,22 +98,7 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             validate_chunks(chunks)
         else:
             validate_payload_size(text or "")
-            min_chars = int(chunking.get("target_tokens_min", 256)) * 4
-            max_chars = int(chunking.get("target_tokens_max", 512)) * 4
-            overlap = int(chunking.get("overlap_tokens", 50)) * 4
-            min_chars = max(256, min(min_chars, 4096))
-            max_chars = max(min_chars, min(max_chars, 8192))
-            overlap = max(0, min(overlap, max_chars - 1))
-            strategy = str(chunking.get("strategy", "semantic")).strip().lower()
-            if strategy not in {"semantic", "fixed"}:
-                strategy = "semantic"
-            chunks = chunk_text(
-                text or "",
-                min_chars,
-                max_chars,
-                overlap,
-                strategy=strategy,
-            )
+            chunks = chunk_document_text(text or "", settings=settings, chunking=chunking)
             validate_chunks(chunks)
 
         _heartbeat_job(client, job_id, worker_id)
