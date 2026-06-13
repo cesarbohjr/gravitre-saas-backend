@@ -2,8 +2,8 @@
   "target": "https://gravitre-saas-backend-production.up.railway.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
   "userId": "09c29672-beff-4a65-b525-261fa3de5923",
-  "startedAt": "2026-06-13T07:05:07.083824+00:00",
-  "finishedAt": "2026-06-13T07:06:11.390148+00:00",
+  "startedAt": "2026-06-13T07:38:52.694522+00:00",
+  "finishedAt": "2026-06-13T07:39:39.367270+00:00",
   "summary": {
     "pass": 15,
     "warn": 0,
@@ -48,19 +48,19 @@
     {
       "label": "assistant_chat",
       "status": "pass",
-      "detail": "assistant_chat: bytes=2949",
+      "detail": "assistant_chat: bytes=3024",
       "linear": "STA-163"
     },
     {
       "label": "workflow_dry_run_abc",
       "status": "pass",
-      "detail": "workflow_dry_run: run_id=aeb6f91d-7f98-43d5-aa43-cc75e049ba6d steps=['step_a', 'step_b', 'step_c']",
+      "detail": "workflow_dry_run: run_id=74d94db2-9614-46c2-b8cc-e9b3780fef60 steps=['step_a', 'step_b', 'step_c']",
       "linear": "STA-166"
     },
     {
       "label": "workflow_execute_abc",
       "status": "pass",
-      "detail": "workflow_execute: run_id=04dca7e2-9938-4db2-b2ac-076986c7243c status=completed steps=3",
+      "detail": "workflow_execute: run_id=c06584f0-d603-47ea-b4cc-b5a907d92184 status=completed steps=3",
       "linear": "STA-166"
     },
     {
@@ -72,13 +72,13 @@
     {
       "label": "failure_predictions_scan",
       "status": "pass",
-      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-13T07:06:07.101020+00:00\"}",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-13T07:39:34.882288+00:00\"}",
       "linear": "STA-167"
     },
     {
       "label": "integration_health",
       "status": "pass",
-      "detail": "integration_health: score=92 grade=healthy",
+      "detail": "integration_health: score=96 grade=healthy",
       "linear": "STA-167"
     },
     {
@@ -102,7 +102,7 @@
     {
       "label": "agent_interrupt_channel",
       "status": "pass",
-      "detail": "agent_interrupt: accepted id=1de7224e-52ad-4bb6-b55c-ff5a0ad1ff44 signal=pause",
+      "detail": "agent_interrupt: accepted id=d90af3e1-8990-42d2-9fbb-153c0ce93860 signal=pause",
       "linear": null
     },
     {
