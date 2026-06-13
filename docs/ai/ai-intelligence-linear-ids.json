@@ -37,7 +37,7 @@
     { "ref": "AI-021", "linear": "STA-153", "title": "v0 F3 — Workflow execution timeline", "parent": "STA-132" },
     { "ref": "AI-022", "linear": "STA-154", "title": "v0 F4 — Assistant intelligence upgrade", "parent": "STA-132" },
     { "ref": "AI-023", "linear": "STA-155", "title": "Phase 1–2 discovery deliverable (audit + gap analysis)", "parent": "STA-131", "status": "Done" },
-    { "ref": "AI-024", "linear": "STA-156", "title": "Phase 5 verification — pytest + live smoke", "parent": "STA-131" },
+    { "ref": "AI-024", "linear": "STA-156", "title": "Phase 5 verification — pytest + live smoke", "parent": "STA-131", "status": "Done" },
     { "ref": "AI-025", "linear": "STA-159", "title": "ToolRegistry — integration tools for agents", "parent": "STA-157" },
     { "ref": "AI-026", "linear": "STA-160", "title": "Wire ReAct tool execution to invoke_tool layer", "parent": "STA-157" },
     { "ref": "AI-027", "linear": "STA-161", "title": "Meson interpret_build_request + POST /api/meson/interpret", "parent": "STA-130" },

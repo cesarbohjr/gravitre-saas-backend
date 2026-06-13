@@ -39,8 +39,13 @@ def _table_chain(data: list[dict] | None = None, *, error: Exception | None = No
     chain = MagicMock()
     chain.select.return_value = chain
     chain.eq.return_value = chain
+    chain.is_.return_value = chain
+    chain.ilike.return_value = chain
+    chain.gte.return_value = chain
     chain.order.return_value = chain
     chain.limit.return_value = chain
+    chain.range.return_value = chain
+    chain.in_.return_value = chain
     chain.insert.return_value = chain
     chain.update.return_value = chain
     chain.delete.return_value = chain
@@ -82,9 +87,10 @@ def test_create_conversation(monkeypatch):
         "created_at": "2026-06-04T12:00:00+00:00",
         "updated_at": "2026-06-04T12:00:00+00:00",
     }
-    table = _table_chain([created])
+    dedup_chain = _table_chain([])
+    insert_chain = _table_chain([created])
     supabase = MagicMock()
-    supabase.table.return_value = table
+    supabase.table.side_effect = [dedup_chain, insert_chain]
     monkeypatch.setattr(
         "app.routers.conversations.create_client",
         lambda *_args, **_kwargs: supabase,
@@ -112,11 +118,21 @@ def test_create_conversation_supabase_v2_response_without_error_attr(monkeypatch
         def __init__(self, data: list[dict]) -> None:
             self.data = data
 
-    chain = MagicMock()
-    chain.insert.return_value = chain
-    chain.execute.return_value = V2Response([created])
+    dedup_chain = MagicMock()
+    dedup_chain.select.return_value = dedup_chain
+    dedup_chain.eq.return_value = dedup_chain
+    dedup_chain.is_.return_value = dedup_chain
+    dedup_chain.ilike.return_value = dedup_chain
+    dedup_chain.gte.return_value = dedup_chain
+    dedup_chain.order.return_value = dedup_chain
+    dedup_chain.limit.return_value = dedup_chain
+    dedup_chain.execute.return_value = V2Response([])
+
+    insert_chain = MagicMock()
+    insert_chain.insert.return_value = insert_chain
+    insert_chain.execute.return_value = V2Response([created])
     supabase = MagicMock()
-    supabase.table.return_value = chain
+    supabase.table.side_effect = [dedup_chain, insert_chain]
     monkeypatch.setattr(
         "app.routers.conversations.create_client",
         lambda *_args, **_kwargs: supabase,
@@ -159,3 +175,65 @@ def test_list_messages_empty(monkeypatch):
     response = client.get("/api/conversations/conv-1/messages")
     assert response.status_code == 200
     assert response.json() == {"messages": []}
+
+
+def test_create_conversation_deduplicates_same_day_title(monkeypatch):
+    _authenticate()
+    existing = {
+        "id": "conv-existing",
+        "title": "What agents are active?",
+        "preview": "prior answer",
+        "message_count": 2,
+        "created_at": "2026-06-13T08:00:00+00:00",
+        "updated_at": "2026-06-13T08:05:00+00:00",
+    }
+    dedup_chain = _table_chain([existing])
+    supabase = MagicMock()
+    supabase.table.return_value = dedup_chain
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post("/api/conversations", json={"title": "What agents are active?"})
+    assert response.status_code == 201
+    assert response.json()["id"] == "conv-existing"
+    dedup_chain.insert.assert_not_called()
+
+
+def test_archive_conversation(monkeypatch):
+    _authenticate()
+    owned = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "org_id": "org-1",
+                "user_id": "user-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 0,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-06-04T12:00:00+00:00",
+            }
+        ]
+    )
+    archived = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 0,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-06-13T08:00:00+00:00",
+            }
+        ]
+    )
+    supabase = MagicMock()
+    supabase.table.side_effect = [owned, archived]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post("/api/conversations/conv-1/archive")
+    assert response.status_code == 200
+    assert response.json()["id"] == "conv-1"

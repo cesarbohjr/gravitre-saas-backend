@@ -82,7 +82,7 @@ Use this file to navigate the **AI Intelligence Upgrade** in Cursor. Issues live
 | 30 | AI-019–022 | STA-149–154 | v0 F1–F4 UI (v0.dev) | backend deps above |
 | 31 | AI-038 | [STA-172](https://linear.app/staqbot/issue/STA-172) | AI/ML Operational Gap Report | ongoing |
 | 32 | AI-039 | [STA-173](https://linear.app/staqbot/issue/STA-173) | smoke:ai-production E2E | AI-001–036 |
-| 33 | AI-024 | [STA-156](https://linear.app/staqbot/issue/STA-156) | Phase 5 pytest + smoke (superseded by AI-039) | AI-039 |
+| 33 | AI-024 | [STA-156](https://linear.app/staqbot/issue/STA-156) | Phase 5 pytest + smoke ✅ | AI-039 |
 
 ---
 
