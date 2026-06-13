@@ -2,8 +2,8 @@
   "target": "https://gravitre-saas-backend-production.up.railway.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
   "userId": "09c29672-beff-4a65-b525-261fa3de5923",
-  "startedAt": "2026-06-13T03:46:36.023919+00:00",
-  "finishedAt": "2026-06-13T03:47:18.997199+00:00",
+  "startedAt": "2026-06-13T07:05:07.083824+00:00",
+  "finishedAt": "2026-06-13T07:06:11.390148+00:00",
   "summary": {
     "pass": 15,
     "warn": 0,
@@ -48,19 +48,19 @@
     {
       "label": "assistant_chat",
       "status": "pass",
-      "detail": "assistant_chat: bytes=1987",
+      "detail": "assistant_chat: bytes=2949",
       "linear": "STA-163"
     },
     {
       "label": "workflow_dry_run_abc",
       "status": "pass",
-      "detail": "workflow_dry_run: run_id=56cf0443-6b9d-423b-9c27-d571ee3b3dbe steps=['step_a', 'step_b', 'step_c']",
+      "detail": "workflow_dry_run: run_id=aeb6f91d-7f98-43d5-aa43-cc75e049ba6d steps=['step_a', 'step_b', 'step_c']",
       "linear": "STA-166"
     },
     {
       "label": "workflow_execute_abc",
       "status": "pass",
-      "detail": "workflow_execute: run_id=10bf9505-feb6-4e69-9dae-f9106ba1fcc2 status=completed steps=3",
+      "detail": "workflow_execute: run_id=04dca7e2-9938-4db2-b2ac-076986c7243c status=completed steps=3",
       "linear": "STA-166"
     },
     {
@@ -72,7 +72,7 @@
     {
       "label": "failure_predictions_scan",
       "status": "pass",
-      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-13T03:47:14.499022+00:00\"}",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-13T07:06:07.101020+00:00\"}",
       "linear": "STA-167"
     },
     {
@@ -102,7 +102,7 @@
     {
       "label": "agent_interrupt_channel",
       "status": "pass",
-      "detail": "agent_interrupt: accepted id=6a1ed7f3-f081-468a-b260-928a1b0e6b21 signal=pause",
+      "detail": "agent_interrupt: accepted id=1de7224e-52ad-4bb6-b55c-ff5a0ad1ff44 signal=pause",
       "linear": null
     },
     {
