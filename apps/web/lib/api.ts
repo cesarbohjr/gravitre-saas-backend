@@ -411,6 +411,8 @@ export const mesonApi = {
     postJson<MesonSuggestionsResponse>(apiUrl("/api/meson/suggestions"), data),
   alerts: () => fetcher<MesonAlertsResponse>(apiUrl("/api/meson/alerts")),
   insights: () => fetcher<MesonInsightsResponse>(apiUrl("/api/meson/insights")),
+  optimizations: (workflowId: string) =>
+    fetcher<MesonInsightsResponse>(apiUrl(`/api/meson/optimizations/${workflowId}`)),
   preferences: () => fetcher<MesonPreferencesResponse>(apiUrl("/api/meson/preferences")),
   feedbackMetrics: (workflowId?: string) =>
     fetcher<MesonFeedbackMetricsResponse>(

@@ -243,3 +243,56 @@ def test_proactive_insights_default_when_empty(monkeypatch):
     result = service.get_proactive_insights(client, "org-1", environment_name="default")
     assert result.insights
     assert result.insights[0].id == "meson-ready"
+
+
+def test_workflow_optimizations_draft_and_ready(monkeypatch):
+    service = MesonService(model_router=object())  # type: ignore[arg-type]
+    client = MagicMock()
+
+    def table_side_effect(name: str):
+        t = MagicMock()
+        t.select.return_value = t
+        t.eq.return_value = t
+        t.limit.return_value = t
+        t.order.return_value = t
+        if name == "workflow_defs":
+            t.execute.return_value = MagicMock(
+                data=[{"id": "wf-1", "name": "Follow-up", "status": "draft", "stage": "dev"}]
+            )
+        else:
+            t.execute.return_value = MagicMock(data=[])
+        return t
+
+    client.table.side_effect = table_side_effect
+    monkeypatch.setattr(
+        "app.services.meson_service.list_failure_alerts",
+        lambda *_a, **_k: [],
+    )
+
+    result = service.get_workflow_optimizations(
+        client,
+        "org-1",
+        "wf-1",
+        environment_name="default",
+    )
+    ids = {i.id for i in result.insights}
+    assert "publish-this-workflow" in ids
+
+
+def test_workflow_optimizations_not_found():
+    service = MesonService(model_router=object())  # type: ignore[arg-type]
+    client = MagicMock()
+    table = MagicMock()
+    table.select.return_value = table
+    table.eq.return_value = table
+    table.limit.return_value = table
+    table.execute.return_value = MagicMock(data=[])
+    client.table.return_value = table
+
+    result = service.get_workflow_optimizations(
+        client,
+        "org-1",
+        "missing-wf",
+        environment_name="default",
+    )
+    assert result.insights[0].id == "workflow-not-found"

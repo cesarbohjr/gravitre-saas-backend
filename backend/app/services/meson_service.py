@@ -779,6 +779,150 @@ class MesonService:
 
         return MesonInsightsResponse(insights=insights[:10])
 
+    def get_workflow_optimizations(
+        self,
+        client: Any,
+        org_id: str,
+        workflow_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonInsightsResponse:
+        """Return workflow-scoped optimization tips for the Meson copilot panel (F1)."""
+        insights: list[MesonInsight] = []
+        workflow_name = "This workflow"
+
+        try:
+            workflow_resp = (
+                client.table("workflow_defs")
+                .select("id, name, status, stage")
+                .eq("org_id", org_id)
+                .eq("id", workflow_id)
+                .limit(1)
+                .execute()
+            )
+            workflow = (workflow_resp.data or [None])[0]
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson optimizations workflow lookup: %s", exc)
+            workflow = None
+
+        if not workflow:
+            return MesonInsightsResponse(
+                insights=[
+                    MesonInsight(
+                        id="workflow-not-found",
+                        title="Workflow not found",
+                        summary="Save this workflow to receive Meson optimization tips.",
+                        category="workflow",
+                    )
+                ]
+            )
+
+        workflow_name = str(workflow.get("name") or workflow_name)
+        if str(workflow.get("status") or "") == "draft":
+            insights.append(
+                MesonInsight(
+                    id="publish-this-workflow",
+                    title="Publish this workflow",
+                    summary=f"{workflow_name} is still in draft — validate and publish when ready.",
+                    category="workflow",
+                )
+            )
+
+        try:
+            recent_runs = (
+                client.table("workflow_runs")
+                .select("status")
+                .eq("org_id", org_id)
+                .eq("workflow_id", workflow_id)
+                .eq("environment", environment_name)
+                .order("created_at", desc=True)
+                .limit(20)
+                .execute()
+            )
+            statuses = [str(r.get("status") or "") for r in (recent_runs.data or [])]
+            if statuses:
+                success = sum(1 for s in statuses if s in {"completed", "success"})
+                rate = round(success / len(statuses) * 100)
+                if rate < 80:
+                    insights.append(
+                        MesonInsight(
+                            id="workflow-run-success-rate",
+                            title="This workflow's success rate is low",
+                            summary=f"Recent runs for {workflow_name} succeed {rate}% of the time — review failing steps.",
+                            category="reliability",
+                        )
+                    )
+                elif rate >= 95 and len(statuses) >= 3:
+                    insights.append(
+                        MesonInsight(
+                            id="workflow-run-success-rate-good",
+                            title="Strong reliability for this workflow",
+                            summary=f"{workflow_name} completed successfully in {rate}% of the last {len(statuses)} runs.",
+                            category="reliability",
+                        )
+                    )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson optimizations run lookup: %s", exc)
+
+        try:
+            open_alerts = list_failure_alerts(
+                client,
+                org_id,
+                workflow_id=workflow_id,
+                status="open",
+                limit=5,
+            )
+            if open_alerts:
+                insights.append(
+                    MesonInsight(
+                        id="workflow-failure-alerts",
+                        title="Predictive alerts for this workflow",
+                        summary=f"{len(open_alerts)} open failure prediction(s) — review before the next run.",
+                        category="risk",
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson optimizations failure alerts: %s", exc)
+
+        try:
+            failed_run = (
+                client.table("workflow_runs")
+                .select("id, error_message")
+                .eq("org_id", org_id)
+                .eq("workflow_id", workflow_id)
+                .eq("environment", environment_name)
+                .eq("status", "failed")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if failed_run.data:
+                row = failed_run.data[0]
+                run_id = str(row.get("id") or "")
+                message = str(row.get("error_message") or "Latest run failed.")
+                insights.append(
+                    MesonInsight(
+                        id=f"workflow-last-failed-{run_id}" if run_id else "workflow-last-failed",
+                        title="Latest run failed",
+                        summary=message[:500],
+                        category="reliability",
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson optimizations failed run lookup: %s", exc)
+
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="meson-workflow-ready",
+                    title="Meson is watching this workflow",
+                    summary="No urgent optimizations detected. Keep building — Meson will suggest next steps as you add nodes.",
+                    category="general",
+                )
+            )
+
+        return MesonInsightsResponse(insights=insights[:10])
+
     def record_feedback(
         self,
         client: Any,

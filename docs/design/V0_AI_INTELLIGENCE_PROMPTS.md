@@ -4,7 +4,7 @@ Paste these into [v0.dev](https://v0.dev). **Do not implement in Cursor.** For l
 
 Stack: Next.js App Router, React 19, TypeScript, Tailwind v4, shadcn/ui, SWR, existing `apps/web/lib/fetcher.ts`.
 
-**Live APIs (prod):** Meson `POST /api/meson/interpret|deploy`, agent jobs, assistant chat, workflow dry-run/execute, runs pause/cancel, federation, role packs, CS health/failure scan. Meson **suggestions/alerts/optimizations** endpoints are not live yet — mock those only.
+**Live APIs (prod):** Meson `POST /api/meson/suggestions`, `GET /api/meson/alerts|insights`, agent jobs, assistant chat + conversations, workflow dry-run/execute, runs pause/cancel/resume/step-retry, federation, role packs, CS health/failure scan. Meson **optimizations/{workflowId}** uses `/api/meson/insights` instead.
 
 Visual baseline: match production screenshots — light/dark theme support, Gravitre Labs breadcrumb shell, trial banner, Admin/Lite toggles.
 
@@ -168,9 +168,9 @@ Wire to existing /api/assistant/chat streaming protocol (AI SDK UI stream).
 
 | Prompt | Needs backend | Status today |
 |--------|---------------|--------------|
-| F1 | `/api/meson/*` | ❌ Not built (B3) |
-| F2 | Agent stats fields on `/api/agents` | ⚠️ Partial (`stats` JSON) |
-| F3 | `/api/runs/{id}` step detail | ✅ Exists |
-| F4 | `/api/conversations`, chat `conversation_id` | ⚠️ CRUD exists; chat not wired (B4) |
+| F1 | `/api/meson/*` | ✅ Wired (`suggestions`, `alerts`, `insights`; Apply/Fix actions in builder) |
+| F2 | Agent stats + `knowledgeDocCount` on `/api/agents` | ✅ Wired (`stats` JSON + RAG/instruction counts) |
+| F3 | `/api/runs/{id}` step detail + retry/resume | ✅ Wired (`ExecutionTimeline`, step retry, pause resume) |
+| F4 | `/api/conversations`, chat `conversation_id`, org context | ✅ Wired (sidebar, streaming chat, org-context pill) |
 
-Use mocks with clear `// TODO: replace with API` comments until B3/B4 ship.
+Shipped in commits `c768f28` (F1–F4 UI), `a9c7ad7` (run ops gaps), `11ad1a7` (Meson Fix + training links). Linear: **STA-149–154**, epic **STA-132** — all **Done**.

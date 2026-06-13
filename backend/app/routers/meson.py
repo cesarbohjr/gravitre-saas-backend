@@ -193,6 +193,26 @@ async def meson_insights_route(
     )
 
 
+@router.get("/optimizations/{workflow_id}", response_model=MesonInsightsResponse, response_model_by_alias=True)
+async def meson_workflow_optimizations_route(
+    workflow_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonInsightsResponse:
+    """Return workflow-scoped Meson optimization tips for the builder copilot panel."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return meson.get_workflow_optimizations(
+        client,
+        resolved_org,
+        workflow_id,
+        environment_name=environment_name,
+    )
+
+
 @router.get("/preferences", response_model=MesonPreferencesResponse, response_model_by_alias=True)
 async def meson_preferences_route(
     user: Annotated[dict, Depends(get_current_user)],

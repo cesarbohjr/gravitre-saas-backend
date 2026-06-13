@@ -3096,6 +3096,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     (insight: MesonInsight) => {
       switch (insight.id) {
         case "draft-workflows":
+        case "publish-this-workflow":
           setSettingsName(workflowMeta.name)
           setSettingsDescription(workflowMeta.description || "")
           setSettingsOpen(true)
@@ -3104,18 +3105,30 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           })
           break
         case "run-success-rate":
+        case "workflow-run-success-rate":
           router.push("/runs")
           toast.info("Review recent runs", {
             description: "Check failing steps and connector health.",
           })
           break
         case "open-failure-alerts":
+        case "workflow-failure-alerts":
           router.push("/metrics")
           toast.info("Review failure predictions", {
             description: "Inspect open alerts before the next production run.",
           })
           break
         default:
+          if (insight.id.startsWith("workflow-last-failed")) {
+            const runId = insight.id.replace("workflow-last-failed-", "")
+            if (runId && runId !== "workflow-last-failed") {
+              router.push(`/runs/${runId}`)
+            } else {
+              router.push("/runs")
+            }
+            toast.info(insight.title, { description: insight.summary })
+            break
+          }
           toast.info(insight.title, { description: insight.summary })
           break
       }

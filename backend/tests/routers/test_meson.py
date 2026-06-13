@@ -99,6 +99,7 @@ def _mock_meson_service() -> MesonService:
     )
     mock.detect_anomalies = MagicMock(return_value={"alerts": []})
     mock.get_proactive_insights = MagicMock(return_value={"insights": []})
+    mock.get_workflow_optimizations = MagicMock(return_value={"insights": []})
     mock.record_feedback = MagicMock(return_value={"ok": True})
     mock.get_user_preferences = MagicMock(
         return_value={
@@ -197,6 +198,16 @@ def test_alerts_and_insights_return_lists():
     assert insights.json()["insights"] == []
     mock.detect_anomalies.assert_called_once()
     mock.get_proactive_insights.assert_called_once()
+
+
+def test_workflow_optimizations_returns_insights():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    response = client.get("/api/meson/optimizations/wf-1")
+    assert response.status_code == 200
+    assert response.json()["insights"] == []
+    mock.get_workflow_optimizations.assert_called_once()
 
 
 def test_feedback_metrics_returns_acceptance_rate():

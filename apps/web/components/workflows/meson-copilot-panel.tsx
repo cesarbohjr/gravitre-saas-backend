@@ -104,8 +104,11 @@ export function MesonCopilotPanel({
       .finally(() => {
         if (!cancelled) setLoadingAlerts(false)
       })
-    void mesonApi
-      .insights()
+    const insightsRequest =
+      canPersist && workflowId
+        ? mesonApi.optimizations(workflowId)
+        : mesonApi.insights()
+    void insightsRequest
       .then((res) => {
         if (!cancelled) setInsights((res.insights ?? []).slice(0, 2))
       })
@@ -118,7 +121,7 @@ export function MesonCopilotPanel({
     return () => {
       cancelled = true
     }
-  }, [open, workflowId])
+  }, [open, workflowId, canPersist])
 
   useEffect(() => {
     if (!open || nodes.length === 0) {

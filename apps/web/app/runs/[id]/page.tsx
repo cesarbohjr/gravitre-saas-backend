@@ -175,7 +175,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     {
       refreshInterval: (latest) => {
         const status = String(latest?.run?.status ?? "").toLowerCase()
-        return ["running", "awaiting_approval", "pending_approval"].includes(status) ? 2000 : 0
+        return ["running", "paused", "awaiting_approval", "pending_approval"].includes(status) ? 2000 : 0
       },
     },
   )
