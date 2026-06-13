@@ -16,6 +16,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi } from "@/lib/api"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -199,25 +200,41 @@ export function AppShell({ children, title }: AppShellProps) {
           <TopBar title={title} onMenuClick={() => setSidebarOpen(true)} />
           
           {/* Trial Banner */}
-          {billingStatus === "trialing" && !trialBannerDismissed && (
-            <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900 flex items-center justify-between">
+          {billingStatus === "trialing" && !trialBannerDismissed && (() => {
+            const days = trialEndsAt ? daysLeft(trialEndsAt) : null
+            const urgent = days !== null && days <= 3
+            const warning = days !== null && days <= 7
+            const bannerClass = urgent
+              ? "border-red-300 bg-red-50 text-red-900 animate-pulse"
+              : warning
+                ? "border-amber-300 bg-amber-50 text-amber-900"
+                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+            return (
+            <div className={cn("border-b px-4 py-2 text-sm flex items-center justify-between", bannerClass)}>
               <span>
                 You&apos;re on a 7-day free trial of Node.
-                {trialEndsAt && ` ${daysLeft(trialEndsAt)} days left.`}
+                {days !== null && ` ${days} day${days === 1 ? "" : "s"} left.`}
                 {" "}
-                <Link href="/pricing" className="underline font-medium hover:text-emerald-700">
-                  View plans
-                </Link>
+                {urgent ? (
+                  <Link href="/pricing" className="underline font-semibold hover:opacity-80">
+                    Upgrade now
+                  </Link>
+                ) : (
+                  <Link href="/pricing" className="underline font-medium hover:opacity-80">
+                    View plans
+                  </Link>
+                )}
               </span>
               <button 
                 onClick={handleDismissTrialBanner} 
                 aria-label="Dismiss trial banner"
-                className="p-1 hover:bg-emerald-100 rounded transition-colors"
+                className="p-1 hover:bg-black/5 rounded transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-          )}
+            )
+          })()}
 
           {/* Upgrade Nudge for past_due users */}
           {requiresUpgrade && canAccessApp && billingStatus === "past_due" && (

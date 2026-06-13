@@ -761,12 +761,36 @@ export const searchApi = {
 
 // ============ Conversations ============
 export const conversationsApi = {
-  list: () => fetcher<{ conversations: Conversation[] }>(apiUrl("/api/conversations")),
+  list: (params?: { search?: string; includeArchived?: boolean; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.search) query.set("search", params.search)
+    if (params?.includeArchived) query.set("include_archived", "true")
+    if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.offset) query.set("offset", String(params.offset))
+    const qs = query.toString()
+    return fetcher<{ conversations: Conversation[] }>(apiUrl(`/api/conversations${qs ? `?${qs}` : ""}`))
+  },
   get: (id: string) => fetcher<Conversation>(apiUrl(`/api/conversations/${id}`)),
   create: (data: { title?: string }) => postJson<Conversation>(apiUrl("/api/conversations"), data),
   update: (id: string, data: { title?: string }) => patchJson<Conversation>(apiUrl(`/api/conversations/${id}`), data),
+  archive: (id: string) => postJson<Conversation>(apiUrl(`/api/conversations/${id}/archive`), {}),
   delete: (id: string) => deleteRequest(apiUrl(`/api/conversations/${id}`)),
+  bulkDelete: (ids: string[]) => postJson<void>(apiUrl("/api/conversations/bulk-delete"), { ids }),
   getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
+}
+
+export const assistantApi = {
+  dailyBriefing: () =>
+    fetcher<{ greeting: string; bullets: string[]; suggestions: string[] }>(
+      apiUrl("/api/assistant/daily-briefing"),
+    ),
+  getPreferences: () =>
+    fetcher<{ preferred_model?: string | null; preferred_mode?: string }>(apiUrl("/api/assistant/preferences")),
+  updatePreferences: (data: { preferred_model?: string; preferred_mode?: string }) =>
+    patchJson<{ preferred_model?: string | null; preferred_mode?: string }>(
+      apiUrl("/api/assistant/preferences"),
+      data,
+    ),
 }
 
 // ============ Training ============

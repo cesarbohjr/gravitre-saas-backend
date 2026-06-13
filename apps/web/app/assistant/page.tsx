@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
@@ -9,33 +9,21 @@ import { conversationMessageToUI } from "@/lib/chat-messages"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
-  Send,
   Loader2,
   Sparkles,
   Check,
-  ChevronDown,
   Copy,
+  ChevronDown,
   MessageSquarePlus,
   Database,
   Bot,
   Plug,
-  Trash2,
   PanelLeftClose,
   PanelLeft,
   RefreshCw,
   Square,
-  Zap,
-  Brain,
-  Gauge,
   AlertTriangle,
-  MessageCircle,
-  Search,
   ArrowUp,
-  Workflow,
-  BarChart3,
-  Globe,
-  FileText,
-  Play,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -45,25 +33,22 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import useSWR from "swr"
-import { conversationsApi } from "@/lib/api"
+import { conversationsApi, assistantApi } from "@/lib/api"
 import type { Conversation } from "@/types/api"
+import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  AssistantModelSelector,
+  getModeConfig,
+  inferModeFromModel,
+  type IntelligenceMode,
+} from "@/components/gravitre/assistant/assistant-model-selector"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ScrollArea } from "@/components/ui/scroll-area"
+  ToolChip,
+  extractPendingAuthConnectors,
+  type ToolInvocation,
+} from "@/components/gravitre/assistant/tool-chip"
+import { FollowUpSuggestions } from "@/components/gravitre/assistant/follow-up-suggestions"
+import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
 import {
   Tooltip,
   TooltipContent,
@@ -75,26 +60,11 @@ import {
 const STORAGE_KEY = "gravitre_assistant_messages"
 const CONVERSATION_ID_KEY = "gravitre_last_conversation_id"
 const MODE_KEY = "gravitre_assistant_mode"
+const MODEL_KEY = "gravitre_assistant_model"
+const LAST_SESSION_KEY = "gravitre_last_session_date"
 const MAX_STORED_MESSAGES = 50
 
-// Intelligence modes
-type IntelligenceMode = "fast" | "standard" | "reasoning" | "agent"
-
-interface ModeConfig {
-  id: IntelligenceMode
-  label: string
-  icon: typeof Zap
-  description: string
-  placeholder: string
-  color: string
-}
-
-const intelligenceModes: ModeConfig[] = [
-  { id: "fast", label: "Fast", icon: Zap, description: "Quick answers", placeholder: "Ask a quick question...", color: "text-amber-500" },
-  { id: "standard", label: "Standard", icon: Gauge, description: "Balanced", placeholder: "Ask anything about your AI team...", color: "text-emerald-500" },
-  { id: "reasoning", label: "Reasoning", icon: Brain, description: "Deep analysis", placeholder: "Describe a complex problem...", color: "text-violet-500" },
-  { id: "agent", label: "Agent", icon: Bot, description: "Autonomous", placeholder: "Describe a task to execute...", color: "text-sky-500" },
-]
+// Intelligence modes — config lives in assistant-model-selector
 
 // Gravitre-specific sample prompts
 const samplePrompts = [
@@ -104,19 +74,6 @@ const samplePrompts = [
   { icon: Plug, label: "Which connectors have sync errors?", category: "Connectors" },
 ] as const
 
-// Tool icons mapping
-const toolIcons: Record<string, typeof Database> = {
-  searchKnowledgeBase: Search,
-  getAgentStatus: Bot,
-  getConnectorStatus: Plug,
-  getWorkflowRuns: Workflow,
-  getAnalytics: BarChart3,
-  searchWeb: Globe,
-  generateDocument: FileText,
-  runAgentTask: Play,
-  createWorkflow: Workflow,
-}
-
 function resolveAssistantTools(mode: IntelligenceMode): string[] {
   const base = ["knowledge_base", "agent_status", "connector_status"]
   if (mode === "fast") return base
@@ -125,13 +82,6 @@ function resolveAssistantTools(mode: IntelligenceMode): string[] {
     return [...base, "workflow_runs", "analytics", "search_web", "generate_document"]
   }
   return [...base, "workflow_runs", "analytics", "run_agent_task", "create_workflow"]
-}
-
-interface ToolInvocation {
-  toolCallId: string
-  toolName: string
-  state: "call" | "result"
-  result?: unknown
 }
 
 interface SourceCitation {
@@ -232,81 +182,6 @@ function CodeBlock({ children, className }: { children: React.ReactNode; classNa
   )
 }
 
-// Tool activity chip component
-function ToolChip({ invocation }: { invocation: ToolInvocation }) {
-  const [expanded, setExpanded] = useState(false)
-  const isComplete = invocation.state === "result"
-  const Icon = toolIcons[invocation.toolName] || Database
-
-  const getToolLabel = (name: string) => {
-    switch (name) {
-      case "searchKnowledgeBase": return "Searched knowledge base"
-      case "getAgentStatus": return "Checked agent status"
-      case "getConnectorStatus": return "Checked connector status"
-      case "getWorkflowRuns": return "Listed workflow runs"
-      case "getAnalytics": return "Loaded org analytics"
-      case "searchWeb": return "Searched the web"
-      case "generateDocument": return "Generated document"
-      case "runAgentTask": return "Ran agent task"
-      case "createWorkflow": return "Created draft workflow"
-      default: return name
-    }
-  }
-
-  const formatResult = (result: unknown): string => {
-    if (!result) return "No results"
-    if (typeof result === "string") return result
-    try {
-      return JSON.stringify(result, null, 2)
-    } catch {
-      return String(result)
-    }
-  }
-
-  return (
-    <div className="my-2">
-      <button
-        onClick={() => isComplete && setExpanded(!expanded)}
-        disabled={!isComplete}
-        className={cn(
-          "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-          isComplete
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer"
-            : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-        )}
-      >
-        {isComplete ? (
-          <Check className="h-3 w-3" />
-        ) : (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        )}
-        <Icon className="h-3 w-3" />
-        <span>{getToolLabel(invocation.toolName)}</span>
-        {isComplete && (
-          <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
-        )}
-      </button>
-
-      <AnimatePresence>
-        {expanded && invocation.result != null && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-2 p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-              <pre className="text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono">
-                {formatResult(invocation.result)}
-              </pre>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 // Source citations component
 function SourceCitations({ sources }: { sources: SourceCitation[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -347,248 +222,31 @@ function SourceCitations({ sources }: { sources: SourceCitation[] }) {
   )
 }
 
-function groupConversationsByDate(conversations: Conversation[]) {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-  const groups: { label: string; conversations: Conversation[] }[] = [
-    { label: "Today", conversations: [] },
-    { label: "Yesterday", conversations: [] },
-    { label: "Previous 7 days", conversations: [] },
-    { label: "Older", conversations: [] },
-  ]
-
-  for (const conv of conversations) {
-    const date = new Date(conv.updated_at)
-    if (date >= today) groups[0].conversations.push(conv)
-    else if (date >= yesterday) groups[1].conversations.push(conv)
-    else if (date >= lastWeek) groups[2].conversations.push(conv)
-    else groups[3].conversations.push(conv)
-  }
-
-  return groups.filter((g) => g.conversations.length > 0)
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return "now"
-  if (diffMins < 60) return `${diffMins}m`
-  if (diffHours < 24) return `${diffHours}h`
-  if (diffDays < 7) return `${diffDays}d`
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-}
-
-// Conversation Sidebar Component
-function ConversationSidebar({
-  conversations,
-  activeConversationId,
-  onSelect,
-  onNew,
-  onDelete,
-  isOpen,
-  onToggle,
-}: {
-  conversations: Conversation[]
-  activeConversationId: string | null
-  onSelect: (id: string) => void
-  onNew: () => void
-  onDelete: (id: string) => void
-  isOpen: boolean
-  onToggle: () => void
-}) {
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
-
-  const grouped = useMemo(() => groupConversationsByDate(conversations), [conversations])
-
-  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setConversationToDelete(id)
-    setDeleteDialogOpen(true)
-  }
-
-  const confirmDelete = () => {
-    if (conversationToDelete) {
-      onDelete(conversationToDelete)
-      setConversationToDelete(null)
-    }
-    setDeleteDialogOpen(false)
-  }
-
-  return (
-    <>
-      {/* Mobile toggle button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggle}
-        className="fixed top-20 left-4 z-40 md:hidden h-9 w-9 bg-white shadow-md border border-zinc-200"
-      >
-        {isOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-      </Button>
-
-      {/* Overlay for mobile */}
-      {isOpen && <div className="fixed inset-0 z-30 bg-black/40 md:hidden backdrop-blur-sm" onClick={onToggle} />}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed md:static inset-y-0 left-0 z-40 w-64 flex flex-col bg-zinc-50 border-r border-zinc-200 transition-all duration-300",
-          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden"
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between h-14 px-4 border-b border-zinc-200 bg-white">
-          <span className="text-sm font-semibold text-zinc-900">History</span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-900" onClick={onNew}>
-                  <MessageSquarePlus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">New conversation</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
-        {/* Conversation list */}
-        <ScrollArea className="flex-1">
-          {conversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <div className="h-12 w-12 rounded-full bg-zinc-200 flex items-center justify-center mb-4">
-                <MessageCircle className="h-5 w-5 text-zinc-400" />
-              </div>
-              <p className="text-sm font-medium text-zinc-600 mb-1">No conversations</p>
-              <p className="text-xs text-zinc-400">Start a new chat to begin</p>
-            </div>
-          ) : (
-            <div className="py-2">
-              {grouped.map((group) => (
-                <div key={group.label} className="mb-1">
-                  <div className="px-4 py-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                      {group.label}
-                    </span>
-                  </div>
-                  {group.conversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      onClick={() => onSelect(conv.id)}
-                      className={cn(
-                        "w-full group flex items-center gap-3 px-4 py-2.5 text-left transition-all",
-                        activeConversationId === conv.id
-                          ? "bg-emerald-50 border-r-2 border-emerald-500"
-                          : "hover:bg-zinc-100"
-                      )}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          "text-sm truncate",
-                          activeConversationId === conv.id ? "text-emerald-700 font-medium" : "text-zinc-700"
-                        )}>
-                          {conv.title || "New conversation"}
-                        </p>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">{formatRelativeTime(conv.updated_at)}</p>
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteClick(conv.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-red-100 text-zinc-400 hover:text-red-500 transition-all"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </aside>
-
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this conversation. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  )
-}
-
-// Intelligence Mode Selector
-function ModeSelector({ value, onChange }: { value: IntelligenceMode; onChange: (mode: IntelligenceMode) => void }) {
-  const current = intelligenceModes.find((m) => m.id === value) || intelligenceModes[1]
-  const Icon = current.icon
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all",
-          "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
-        )}>
-          <Icon className={cn("h-3.5 w-3.5", current.color)} />
-          <span>{current.label}</span>
-          <ChevronDown className="h-3 w-3 text-zinc-400 ml-0.5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        {intelligenceModes.map((mode) => {
-          const ModeIcon = mode.icon
-          return (
-            <DropdownMenuItem
-              key={mode.id}
-              onClick={() => onChange(mode.id)}
-              className={cn("flex items-center gap-3 py-2.5", value === mode.id && "bg-emerald-50")}
-            >
-              <ModeIcon className={cn("h-4 w-4", mode.color)} />
-              <div className="flex-1">
-                <p className={cn("text-sm font-medium", value === mode.id && "text-emerald-700")}>{mode.label}</p>
-                <p className="text-[10px] text-zinc-500">{mode.description}</p>
-              </div>
-              {value === mode.id && <Check className="h-3.5 w-3.5 text-emerald-600" />}
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 // Message component with markdown rendering
 function ChatMessage({
   message,
   isUser,
   isLast,
   onRegenerate,
+  followUpSuggestions,
+  onFollowUp,
+  showFollowUps,
+  expandedToolId,
+  onToggleTool,
 }: {
   message: UIMessage
   isUser: boolean
   isLast?: boolean
   onRegenerate?: () => void
+  followUpSuggestions?: string[]
+  onFollowUp?: (text: string) => void
+  showFollowUps?: boolean
+  expandedToolId?: string | null
+  onToggleTool?: (id: string) => void
 }) {
   const { text, tools, sources } = normalizeMessage(message)
   const [copied, setCopied] = useState(false)
+  const pendingConnectors = extractPendingAuthConnectors(tools)
 
   const handleCopyMessage = async () => {
     await navigator.clipboard.writeText(text)
@@ -602,7 +260,7 @@ function ChatMessage({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={cn("flex gap-4", isUser ? "justify-end" : "justify-start")}
+      className={cn("flex gap-4 group", isUser ? "justify-end" : "justify-start")}
     >
       {!isUser && (
         <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -623,7 +281,12 @@ function ChatMessage({
           {!isUser && tools.length > 0 && (
             <div className="space-y-1 mb-3">
               {tools.map((tool) => (
-                <ToolChip key={tool.toolCallId} invocation={tool} />
+                <ToolChip
+                  key={tool.toolCallId}
+                  invocation={tool}
+                  expanded={expandedToolId === tool.toolCallId}
+                  onToggle={() => onToggleTool?.(tool.toolCallId)}
+                />
               ))}
             </div>
           )}
@@ -658,11 +321,20 @@ function ChatMessage({
 
           {/* Source citations */}
           {!isUser && sources.length > 0 && <SourceCitations sources={sources} />}
+          {!isUser && pendingConnectors.length > 0 && <ConnectorActionCard connectors={pendingConnectors} />}
         </div>
+
+        {!isUser && isLast && followUpSuggestions && onFollowUp && (
+          <FollowUpSuggestions
+            suggestions={followUpSuggestions}
+            onSelect={onFollowUp}
+            visible={Boolean(showFollowUps)}
+          />
+        )}
 
         {/* Message actions */}
         {!isUser && (
-          <div className="flex items-center gap-1 mt-2 ml-1 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 mt-2 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -674,6 +346,26 @@ function ChatMessage({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Copy</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="p-1.5 rounded-md text-zinc-400 hover:text-emerald-600 hover:bg-zinc-100 transition-colors" title="Good response">
+                    👍
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Helpful</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-zinc-100 transition-colors" title="Poor response">
+                    👎
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Not helpful</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             {isLast && onRegenerate && (
@@ -737,25 +429,53 @@ function TypingIndicator() {
 export default function AssistantPage() {
   const { user } = useAuth()
   const [input, setInput] = useState("")
+  const [followUpSuggestions, setFollowUpSuggestions] = useState<string[]>([])
+  const [expandedToolId, setExpandedToolId] = useState<string | null>(null)
+  const [conversationTitle, setConversationTitle] = useState<string>("Gravitre Assistant")
+  const [editingTitle, setEditingTitle] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const activeConversationIdRef = useRef<string | null>(null)
+  const recentInputsRef = useRef<string[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return localStorage.getItem(CONVERSATION_ID_KEY)
   })
 
-  // Intelligence mode state
   const [mode, setMode] = useState<IntelligenceMode>(() => {
     if (typeof window === "undefined") return "standard"
     return (localStorage.getItem(MODE_KEY) as IntelligenceMode) || "standard"
   })
 
-  // Save mode to localStorage
+  const [modelOverride, setModelOverride] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+    return localStorage.getItem(MODEL_KEY)
+  })
+
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode)
   }, [mode])
+
+  useEffect(() => {
+    if (modelOverride) localStorage.setItem(MODEL_KEY, modelOverride)
+    else localStorage.removeItem(MODEL_KEY)
+  }, [modelOverride])
+
+  useEffect(() => {
+    if (!user) return
+    void assistantApi.getPreferences().then((prefs) => {
+      if (prefs.preferred_mode) setMode(prefs.preferred_mode as IntelligenceMode)
+      if (prefs.preferred_model) setModelOverride(prefs.preferred_model)
+    }).catch(() => {})
+  }, [user])
+
+  const persistPreferences = useCallback((nextMode: IntelligenceMode, nextModel: string | null) => {
+    void assistantApi.updatePreferences({
+      preferred_mode: nextMode,
+      preferred_model: nextModel || undefined,
+    }).catch(() => {})
+  }, [])
 
   // Resolve org from membership before first chat request (replaces stale demo org in storage).
   useEffect(() => {
@@ -765,7 +485,7 @@ export default function AssistantPage() {
   // Fetch conversations list
   const { data: conversationsData, mutate: mutateConversations } = useSWR(
     user ? "conversations" : null,
-    () => conversationsApi.list(),
+    () => conversationsApi.list({ limit: 100 }),
     { fallbackData: { conversations: [] as Conversation[] }, revalidateOnFocus: false }
   )
   const conversations = conversationsData?.conversations ?? []
@@ -802,11 +522,12 @@ export default function AssistantPage() {
         body: () => ({
           ...buildChatOrgPayload(),
           mode,
+          model_override: modelOverride,
           conversation_id: activeConversationId,
           tools: resolveAssistantTools(mode),
         }),
       }),
-    [mode, activeConversationId],
+    [mode, modelOverride, activeConversationId],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -819,12 +540,27 @@ export default function AssistantPage() {
     onFinish: () => {
       void mutateConversations()
     },
+    onData: (dataPart) => {
+      if (dataPart.type === "data-suggestions" && dataPart.data && typeof dataPart.data === "object") {
+        const payload = dataPart.data as { suggestions?: string[] }
+        if (Array.isArray(payload.suggestions)) {
+          setFollowUpSuggestions(payload.suggestions)
+        }
+      }
+    },
   })
+
+  const { data: dailyBriefing } = useSWR(
+    user && messages.length === 0 ? "assistant-daily-briefing" : null,
+    () => assistantApi.dailyBriefing(),
+    { revalidateOnFocus: false },
+  )
 
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
   const hasSentMessage = messages.some((m) => m.role === "user")
-  const currentModeConfig = intelligenceModes.find((m) => m.id === mode) || intelligenceModes[1]
+  const currentModeConfig = getModeConfig(mode)
+  const activeConversation = conversations.find((c) => c.id === activeConversationId)
 
   // Keep ref in sync for transport body closure.
   useEffect(() => {
@@ -906,6 +642,38 @@ export default function AssistantPage() {
     }
   }, [activeConversationId, handleNewConversation, mutateConversations])
 
+  const handleArchiveConversation = useCallback(async (id: string) => {
+    try {
+      await conversationsApi.archive(id)
+      if (activeConversationId === id) handleNewConversation()
+      await mutateConversations()
+      toast.success("Conversation archived")
+    } catch {
+      toast.error("Failed to archive conversation")
+    }
+  }, [activeConversationId, handleNewConversation, mutateConversations])
+
+  const handleRenameConversation = useCallback(async (id: string, title: string) => {
+    try {
+      await conversationsApi.update(id, { title })
+      if (activeConversationId === id) setConversationTitle(title)
+      await mutateConversations()
+    } catch {
+      toast.error("Failed to rename conversation")
+    }
+  }, [activeConversationId, mutateConversations])
+
+  const handleBulkDeleteConversations = useCallback(async (ids: string[]) => {
+    try {
+      await conversationsApi.bulkDelete(ids)
+      if (activeConversationId && ids.includes(activeConversationId)) handleNewConversation()
+      await mutateConversations()
+      toast.success(`Deleted ${ids.length} conversations`)
+    } catch {
+      toast.error("Failed to delete conversations")
+    }
+  }, [activeConversationId, handleNewConversation, mutateConversations])
+
   // Handle regenerate
   const handleRegenerate = useCallback(() => {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
@@ -926,6 +694,10 @@ export default function AssistantPage() {
     const trimmed = text.trim()
     if (!trimmed || isLoading) return
 
+    setFollowUpSuggestions([])
+    setExpandedToolId(null)
+    recentInputsRef.current = [trimmed, ...recentInputsRef.current.filter((v) => v !== trimmed)].slice(0, 20)
+
     const orgId = await ensureSelectedOrg(true)
     if (!orgId) {
       console.warn("[assistant] No org in client cache — backend will resolve from JWT membership")
@@ -936,6 +708,7 @@ export default function AssistantPage() {
         const created = await conversationsApi.create({ title: trimmed.slice(0, 80) })
         activeConversationIdRef.current = created.id
         setActiveConversationId(created.id)
+        setConversationTitle(created.title || trimmed.slice(0, 80))
         localStorage.setItem(CONVERSATION_ID_KEY, created.id)
         await mutateConversations()
       } catch (error) {
@@ -953,11 +726,41 @@ export default function AssistantPage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault()
+      submitText(input)
+      return
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       submitText(input)
+      return
+    }
+    if (e.key === "Escape" && input) {
+      e.preventDefault()
+      setInput("")
+      return
+    }
+    if (e.key === "ArrowUp" && !input && recentInputsRef.current.length > 0) {
+      e.preventDefault()
+      setInput(recentInputsRef.current[0])
     }
   }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault()
+        handleNewConversation()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [handleNewConversation])
 
   return (
     <AppShell title="Assistant">
@@ -969,6 +772,9 @@ export default function AssistantPage() {
           onSelect={handleSelectConversation}
           onNew={handleNewConversation}
           onDelete={handleDeleteConversation}
+          onArchive={handleArchiveConversation}
+          onRename={handleRenameConversation}
+          onBulkDelete={handleBulkDeleteConversations}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
         />
@@ -990,7 +796,31 @@ export default function AssistantPage() {
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h1 className="text-sm font-semibold text-zinc-900">Gravitre Assistant</h1>
+                {editingTitle && activeConversationId ? (
+                  <input
+                    value={conversationTitle}
+                    onChange={(e) => setConversationTitle(e.target.value)}
+                    onBlur={() => {
+                      setEditingTitle(false)
+                      if (activeConversationId) void handleRenameConversation(activeConversationId, conversationTitle)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+                      if (e.key === "Escape") setEditingTitle(false)
+                    }}
+                    className="text-sm font-semibold text-zinc-900 bg-transparent border-b border-emerald-400 outline-none"
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => activeConversationId && setEditingTitle(true)}
+                    className="text-left"
+                  >
+                    <h1 className="text-sm font-semibold text-zinc-900">
+                      {activeConversation?.title || conversationTitle}
+                    </h1>
+                  </button>
+                )}
                 <p className="text-[11px] text-zinc-500">AI-powered automation help</p>
               </div>
             </div>
@@ -1039,24 +869,34 @@ export default function AssistantPage() {
                     />
                   </div>
                   <h2 className="text-2xl font-semibold text-zinc-900 mb-3">
-                    How can I help you today?
+                    {dailyBriefing?.greeting || "How can I help you today?"}
                   </h2>
+                  {dailyBriefing?.bullets?.length ? (
+                    <div className="mb-6 max-w-md text-left w-full rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
+                      <p className="font-medium text-zinc-800 mb-2">Since you were last here:</p>
+                      <ul className="space-y-1 list-disc pl-5">
+                        {dailyBriefing.bullets.map((bullet) => (
+                          <li key={bullet}>{bullet}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <p className="text-sm text-zinc-500 mb-10 max-w-md">
                     I can help manage agents, troubleshoot workflows, check connector status, and answer questions about your automation platform.
                   </p>
 
-                  {/* Sample prompts grid */}
                   {!hasSentMessage && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
-                      {samplePrompts.map((prompt, i) => {
+                      {(dailyBriefing?.suggestions?.length ? dailyBriefing.suggestions : samplePrompts.map((p) => p.label)).slice(0, 6).map((label, i) => {
+                        const prompt = samplePrompts.find((p) => p.label === label) || samplePrompts[i % samplePrompts.length]
                         const PromptIcon = prompt.icon
                         return (
                           <motion.button
-                            key={i}
+                            key={`${label}-${i}`}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1 }}
-                            onClick={() => submitText(prompt.label)}
+                            onClick={() => submitText(label)}
                             className="group flex items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-white text-left hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-500/10 transition-all"
                           >
                             <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
@@ -1064,7 +904,7 @@ export default function AssistantPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-emerald-600 mb-1">{prompt.category}</p>
-                              <p className="text-sm text-zinc-700 group-hover:text-zinc-900">{prompt.label}</p>
+                              <p className="text-sm text-zinc-700 group-hover:text-zinc-900">{label}</p>
                             </div>
                           </motion.button>
                         )
@@ -1081,6 +921,11 @@ export default function AssistantPage() {
                       isUser={message.role === "user"}
                       isLast={index === messages.length - 1 && message.role === "assistant"}
                       onRegenerate={handleRegenerate}
+                      followUpSuggestions={followUpSuggestions}
+                      onFollowUp={submitText}
+                      showFollowUps={!input.trim() && !isLoading}
+                      expandedToolId={expandedToolId}
+                      onToggleTool={(id) => setExpandedToolId((prev) => (prev === id ? null : id))}
                     />
                   ))}
 
@@ -1113,24 +958,43 @@ export default function AssistantPage() {
                   "border-zinc-200 focus-within:border-emerald-400 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-emerald-500/10"
                 )}
               >
-                <ModeSelector value={mode} onChange={setMode} />
+                <AssistantModelSelector
+                  mode={mode}
+                  modelOverride={modelOverride}
+                  onModeChange={(next) => {
+                    setMode(next)
+                    persistPreferences(next, modelOverride)
+                  }}
+                  onModelChange={(next) => {
+                    setModelOverride(next)
+                    const nextMode = next ? inferModeFromModel(next) : mode
+                    if (next) setMode(nextMode)
+                    persistPreferences(nextMode, next)
+                  }}
+                />
 
                 <textarea
                   ref={inputRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    if (e.target.value.trim()) setFollowUpSuggestions([])
+                  }}
                   onKeyDown={handleKeyDown}
-                  placeholder={user ? currentModeConfig.placeholder : "Sign in to chat"}
+                  placeholder={user ? `[${currentModeConfig.label}] ${currentModeConfig.placeholder}` : "Sign in to chat"}
                   disabled={!user || isLoading}
                   rows={1}
-                  className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[120px] py-1.5"
+                  className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[200px] py-1.5"
                   style={{ height: "24px" }}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement
                     target.style.height = "24px"
-                    target.style.height = Math.min(target.scrollHeight, 120) + "px"
+                    target.style.height = Math.min(target.scrollHeight, 200) + "px"
                   }}
                 />
+                {input.length > 200 && (
+                  <span className="text-[10px] text-zinc-400 self-end pb-1">{input.length}</span>
+                )}
 
                 {isStreaming ? (
                   <Button

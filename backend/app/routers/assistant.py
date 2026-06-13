@@ -18,7 +18,9 @@ The response is streamed as the AI SDK UI message stream protocol
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
@@ -49,6 +51,7 @@ from app.services.conversation_context_service import (
     maybe_summarize_history,
     persist_conversation_summary,
 )
+from app.services.assistant_mode import resolve_assistant_model
 from app.services.assistant_tools import (
     DEFAULT_ASSISTANT_TOOLS,
     TOOL_DISPLAY_NAMES,
@@ -57,7 +60,8 @@ from app.services.assistant_tools import (
     tool_connector_status,
     tool_knowledge_base,
 )
-from app.services.model_router import ModelResponse, PreparedStream, TaskType, get_model_router
+from app.services.user_intelligence import classify_query, get_user_intelligence_service
+from app.services.model_router import ModelResponse, TaskType, get_model_router
 from app.services.org_context_service import get_org_context_service
 from app.services.providers.base import (
     AllProvidersFailedError,
@@ -91,6 +95,13 @@ ASSISTANT_SYSTEM_PROMPT = (
 _TOOL_DISPLAY_NAMES = TOOL_DISPLAY_NAMES
 _DEFAULT_TOOLS = DEFAULT_ASSISTANT_TOOLS
 _MAX_HISTORY = 12
+_RESPONSE_CACHE_TTL = 30
+_RESPONSE_CACHE: dict[str, tuple[float, str, list[str]]] = {}
+
+
+class UserPreferencesUpdate(BaseModel):
+    preferred_model: str | None = None
+    preferred_mode: str | None = None
 
 
 class AssistantChatRequest(BaseModel):
@@ -102,6 +113,7 @@ class AssistantChatRequest(BaseModel):
     conversation_id: str | None = None
     agent_id: str | None = None
     mode: str | None = None
+    model_override: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -222,6 +234,79 @@ async def _run_tools(
         agent_id=agent_id,
         user_id=user_id,
     )
+
+
+async def _generate_followup_suggestions(
+    *,
+    user_question: str,
+    assistant_response: str,
+    org_id: str,
+    settings: Settings,
+) -> list[str]:
+    prompt = (
+        f'The user asked: "{user_question}"\n\n'
+        f"The assistant responded:\n{assistant_response[:500]}\n\n"
+        "Generate exactly 3 follow-up questions or actions that would be the most "
+        "valuable next steps. Be specific, actionable, and under 8 words each. "
+        'Return JSON array only: ["question 1", "question 2", "question 3"]'
+    )
+    router_ = get_model_router()
+    try:
+        response = await router_.complete(
+            task_type=TaskType.SUMMARIZATION,
+            prompt=prompt,
+            org_id=org_id,
+        )
+        clean = (response.content or "").strip()
+        if clean.startswith("```"):
+            clean = clean.split("```", 2)[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+        suggestions = json.loads(clean)
+        if isinstance(suggestions, list):
+            return [str(item) for item in suggestions[:3]]
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("followup suggestion generation failed: %s", exc)
+    return []
+
+
+def _response_cache_key(org_id: str, question: str) -> str:
+    digest = hashlib.sha256(question.strip().lower().encode("utf-8")).hexdigest()[:16]
+    return f"{org_id}:{digest}"
+
+
+def _build_cached_stream(content: str, tool_results: list[dict[str, Any]], suggestions: list[str]):
+    async def generator():
+        yield _sse({"type": "start"})
+        yield _sse({"type": "start-step"})
+        for tool in tool_results:
+            call_id = f"call-{uuid.uuid4().hex[:12]}"
+            yield _sse(
+                {
+                    "type": "tool-input-available",
+                    "toolCallId": call_id,
+                    "toolName": tool["displayName"],
+                    "input": tool.get("input") or {},
+                }
+            )
+            yield _sse(
+                {
+                    "type": "tool-output-available",
+                    "toolCallId": call_id,
+                    "output": tool.get("output"),
+                }
+            )
+        text_id = f"text-{uuid.uuid4().hex[:12]}"
+        yield _sse({"type": "text-start", "id": text_id})
+        yield _sse({"type": "text-delta", "id": text_id, "delta": content})
+        yield _sse({"type": "text-end", "id": text_id})
+        if suggestions:
+            yield _sse({"type": "data-suggestions", "data": {"suggestions": suggestions}})
+        yield _sse({"type": "finish-step"})
+        yield _sse({"type": "finish"})
+        yield "data: [DONE]\n\n"
+
+    return generator()
 
 
 def _sse(chunk: dict[str, Any]) -> str:
@@ -401,42 +486,109 @@ def _build_assistant_system_prompt(
 
 
 def _build_stream(
-    tool_results: list[dict[str, Any]],
-    prepared: PreparedStream,
+    requested_tools: list[str],
+    prepared_holder: dict[str, Any],
     *,
     settings: Settings,
     org_id: str,
     user_id: str,
     conversation_id: str | None,
     user_text: str,
+    query: str,
+    agent_id: str | None,
+    system_prompt: str,
+    history_messages: list[dict[str, Any]],
+    existing_summary: str | None,
 ):
-    """Yield AI SDK UI stream with provider-native token deltas (STA-151)."""
+    """Yield AI SDK UI stream with incremental tools then provider token deltas."""
 
     async def generator():
+        start_ms = time.monotonic()
         yield _sse({"type": "start"})
         yield _sse({"type": "start-step"})
-        for tool in tool_results:
+
+        tool_results: list[dict[str, Any]] = []
+        for tool_name in requested_tools:
+            if tool_name not in TOOL_DISPLAY_NAMES:
+                continue
+            display_name = TOOL_DISPLAY_NAMES[tool_name]
             call_id = f"call-{uuid.uuid4().hex[:12]}"
+            tool_start = time.monotonic()
             yield _sse(
                 {
                     "type": "tool-input-available",
                     "toolCallId": call_id,
-                    "toolName": tool["displayName"],
-                    "input": tool["input"],
+                    "toolName": display_name,
+                    "input": {"query": query},
                 }
             )
+            batch = await _run_tools(
+                [tool_name],
+                org_id,
+                query,
+                settings,
+                agent_id=agent_id,
+                user_id=user_id or None,
+            )
+            tool = batch[0] if batch else {"name": tool_name, "displayName": display_name, "input": {}, "output": {}}
+            tool["durationMs"] = int((time.monotonic() - tool_start) * 1000)
+            tool_results.append(tool)
             yield _sse(
                 {
                     "type": "tool-output-available",
                     "toolCallId": call_id,
-                    "output": tool["output"],
+                    "output": tool.get("output"),
                 }
             )
+
+        tool_messages: list[dict[str, Any]] = []
+        for tool in tool_results:
+            fenced = fence_untrusted(json.dumps({tool["displayName"]: tool["output"]}, separators=(",", ":")))
+            tool_messages.append({"role": "user", "content": fenced})
+
+        prepared_context = await maybe_summarize_history(
+            history=history_messages,
+            system_prompt=system_prompt,
+            prompt=user_text,
+            tool_messages=tool_messages,
+            existing_summary=existing_summary,
+            org_id=org_id,
+            settings=settings,
+        )
+        prompt_with_summary = system_prompt
+        if prepared_context.summary:
+            prompt_with_summary = f"{system_prompt}{format_summary_block(prepared_context.summary)}"
+        if prepared_context.summary_updated and conversation_id and user_id and prepared_context.summary:
+            persist_conversation_summary(
+                get_supabase_client(settings),
+                conversation_id=conversation_id,
+                org_id=org_id,
+                user_id=user_id,
+                summary=prepared_context.summary,
+            )
+
+        context = list(prepared_context.messages) + tool_messages
+        router_ = get_model_router()
+        model_override = prepared_holder.get("model_override")
+        task_type = prepared_holder.get("task_type", TaskType.RAG_ANSWERING)
+        try:
+            prepared = await router_.prepare_stream(
+                task_type=task_type,
+                prompt=user_text,
+                system_prompt=prompt_with_summary,
+                context=context,
+                org_id=org_id,
+                model_override=model_override,
+            )
+        except Exception as exc:
+            logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
+            yield _sse({"type": "error", "errorText": "Assistant request failed"})
+            yield "data: [DONE]\n\n"
+            return
 
         text_id = f"text-{uuid.uuid4().hex[:12]}"
         yield _sse({"type": "text-start", "id": text_id})
 
-        router_ = get_model_router()
         result: ModelResponse | None = None
         async for event in router_.stream(prepared):
             if event.delta:
@@ -445,12 +597,39 @@ def _build_stream(
                 result = event.response
 
         yield _sse({"type": "text-end", "id": text_id})
+
+        suggestions: list[str] = []
+        if result and result.content:
+            suggestions = await _generate_followup_suggestions(
+                user_question=user_text,
+                assistant_response=result.content,
+                org_id=org_id,
+                settings=settings,
+            )
+            cache_key = _response_cache_key(org_id, user_text)
+            _RESPONSE_CACHE[cache_key] = (time.time(), result.content, suggestions)
+
+        if suggestions:
+            yield _sse({"type": "data-suggestions", "data": {"suggestions": suggestions}})
+
         yield _sse({"type": "finish-step"})
         yield _sse({"type": "finish"})
         yield "data: [DONE]\n\n"
 
+        elapsed_ms = int((time.monotonic() - start_ms) * 1000)
         if result is not None:
             asyncio.create_task(_record_assistant_billing(settings, org_id, result))
+            asyncio.create_task(
+                get_user_intelligence_service().record_query(
+                    settings,
+                    org_id=org_id,
+                    user_id=user_id,
+                    query=user_text,
+                    category=classify_query(user_text),
+                    model_used=result.model,
+                    response_time_ms=elapsed_ms,
+                )
+            )
             _persist_conversation_turn(
                 settings,
                 org_id=org_id,
@@ -525,14 +704,25 @@ async def assistant_chat(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
 
     requested_tools = body.tools if body.tools is not None else _DEFAULT_TOOLS
-    tool_results = await _run_tools(
-        requested_tools,
-        org_id,
-        last_user,
-        settings,
-        agent_id=(body.agent_id or "").strip() or None,
-        user_id=str(current_user.get("user_id") or "") or None,
-    )
+    model_override, task_type = resolve_assistant_model(body.mode, body.model_override)
+
+    cache_key = _response_cache_key(org_id, last_user)
+    cached = _RESPONSE_CACHE.get(cache_key)
+    if cached and time.time() - cached[0] < _RESPONSE_CACHE_TTL:
+        cached_content, cached_suggestions = cached[1], cached[2]
+        cached_tools = await _run_tools(
+            requested_tools,
+            org_id,
+            last_user,
+            settings,
+            agent_id=(body.agent_id or "").strip() or None,
+            user_id=str(current_user.get("user_id") or "") or None,
+        )
+        return StreamingResponse(
+            _build_cached_stream(cached_content, cached_tools, cached_suggestions),
+            media_type="text/event-stream",
+            headers=_STREAM_HEADERS,
+        )
 
     system_prompt = _build_assistant_system_prompt(
         settings,
@@ -552,7 +742,6 @@ async def assistant_chat(
             user_id=user_id,
         )
 
-    # Build history turns from the client payload (excluding the latest user message).
     history_messages: list[dict[str, Any]] = []
     for message in body.messages[:-1][-_MAX_HISTORY:]:
         role = message.get("role")
@@ -561,41 +750,17 @@ async def assistant_chat(
             if text.strip():
                 history_messages.append({"role": role, "content": text})
 
-    tool_messages: list[dict[str, Any]] = []
-    for tool in tool_results:
-        fenced = fence_untrusted(json.dumps({tool["displayName"]: tool["output"]}, separators=(",", ":")))
-        tool_messages.append({"role": "user", "content": fenced})
-
-    prepared_context = await maybe_summarize_history(
-        history=history_messages,
-        system_prompt=system_prompt,
-        prompt=last_user,
-        tool_messages=tool_messages,
-        existing_summary=existing_summary,
-        org_id=org_id,
-        settings=settings,
-    )
-    if prepared_context.summary:
-        system_prompt = f"{system_prompt}{format_summary_block(prepared_context.summary)}"
-    if prepared_context.summary_updated and conversation_id and user_id and prepared_context.summary:
-        persist_conversation_summary(
-            get_supabase_client(settings),
-            conversation_id=conversation_id,
-            org_id=org_id,
-            user_id=user_id,
-            summary=prepared_context.summary,
-        )
-
-    context = list(prepared_context.messages) + tool_messages
+    prepared_holder = {"model_override": model_override, "task_type": task_type}
 
     router_ = get_model_router()
     try:
-        prepared = await router_.prepare_stream(
-            task_type=TaskType.RAG_ANSWERING,
+        await router_.prepare_stream(
+            task_type=task_type,
             prompt=last_user,
             system_prompt=system_prompt,
-            context=context,
+            context=history_messages,
             org_id=org_id,
+            model_override=model_override,
         )
     except AIServiceDisabledError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI assistant is temporarily disabled")
@@ -616,14 +781,73 @@ async def assistant_chat(
 
     return StreamingResponse(
         _build_stream(
-            tool_results,
-            prepared,
+            requested_tools,
+            prepared_holder,
             settings=settings,
             org_id=org_id,
-            user_id=str(current_user.get("user_id") or ""),
-            conversation_id=body.conversation_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
             user_text=last_user,
+            query=last_user,
+            agent_id=(body.agent_id or "").strip() or None,
+            system_prompt=system_prompt,
+            history_messages=history_messages,
+            existing_summary=existing_summary,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,
+    )
+
+
+@router.get("/daily-briefing")
+async def assistant_daily_briefing(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    service = get_user_intelligence_service()
+    user_name = str(current_user.get("full_name") or current_user.get("email") or "")
+    briefing = await service.get_daily_briefing(
+        settings,
+        org_id=org_id,
+        user_id=str(current_user.get("user_id") or ""),
+        user_name=user_name,
+    )
+    await service.touch_session(
+        settings,
+        org_id=org_id,
+        user_id=str(current_user.get("user_id") or ""),
+    )
+    return briefing
+
+
+@router.get("/preferences")
+async def get_assistant_preferences(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    prefs = await get_user_intelligence_service().get_preferences(
+        settings,
+        user_id=str(current_user.get("user_id") or ""),
+    )
+    return prefs
+
+
+@router.patch("/preferences")
+async def update_assistant_preferences(
+    body: UserPreferencesUpdate,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    return await get_user_intelligence_service().update_preferences(
+        settings,
+        org_id=org_id,
+        user_id=str(current_user.get("user_id") or ""),
+        preferred_model=body.preferred_model,
+        preferred_mode=body.preferred_mode,
     )

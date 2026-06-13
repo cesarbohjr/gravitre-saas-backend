@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -161,36 +162,41 @@ class OrgContextService:
     ) -> dict[str, Any]:
         limits = _DEPTH_LIMITS[depth]
 
-        org_name: str | None = None
-        org_row = _safe_query(
-            lambda: client.table("organizations")
-            .select("id,name")
-            .eq("id", org_id)
-            .limit(1)
-            .execute(),
-            None,
-        )
-        if org_row and getattr(org_row, "data", None):
-            org_name = org_row.data[0].get("name")
+        def load_org_name() -> str | None:
+            org_row = _safe_query(
+                lambda: client.table("organizations")
+                .select("id,name")
+                .eq("id", org_id)
+                .limit(1)
+                .execute(),
+                None,
+            )
+            if org_row and getattr(org_row, "data", None):
+                return org_row.data[0].get("name")
+            return None
 
-        integrations: list[dict[str, Any]] = []
-        connected_types: list[str] = []
-        for conn in list_connectors(client, org_id, environment_name=environment_name):
-            ctype = str(conn.get("type") or "").strip()
-            status = str(conn.get("status") or "").lower()
-            if limits["integrations"] and len(integrations) < limits["integrations"]:
-                integrations.append(
-                    {
-                        "id": str(conn.get("id") or ""),
-                        "type": ctype or "custom",
-                        "status": status or "unknown",
-                    }
-                )
-            if status in _ACTIVE_CONNECTOR_STATUSES and ctype:
-                connected_types.append(ctype)
+        def load_integrations() -> tuple[list[dict[str, Any]], list[str]]:
+            integrations: list[dict[str, Any]] = []
+            connected_types: list[str] = []
+            for conn in list_connectors(client, org_id, environment_name=environment_name):
+                ctype = str(conn.get("type") or "").strip()
+                status = str(conn.get("status") or "").lower()
+                if limits["integrations"] and len(integrations) < limits["integrations"]:
+                    integrations.append(
+                        {
+                            "id": str(conn.get("id") or ""),
+                            "type": ctype or "custom",
+                            "status": status or "unknown",
+                        }
+                    )
+                if status in _ACTIVE_CONNECTOR_STATUSES and ctype:
+                    connected_types.append(ctype)
+            return integrations, connected_types
 
-        agents: list[dict[str, Any]] = []
-        if limits["agents"]:
+        def load_agents() -> list[dict[str, Any]]:
+            agents: list[dict[str, Any]] = []
+            if not limits["agents"]:
+                return agents
             agent_rows = _safe_query(
                 lambda: client.table("agents")
                 .select("id,name,status,role")
@@ -209,9 +215,12 @@ class OrgContextService:
                         "role": str(row.get("role") or ""),
                     }
                 )
+            return agents
 
-        workflows: list[dict[str, Any]] = []
-        if limits["workflows"]:
+        def load_workflows() -> list[dict[str, Any]]:
+            workflows: list[dict[str, Any]] = []
+            if not limits["workflows"]:
+                return workflows
             for row in list_workflows(client, org_id)[: limits["workflows"]]:
                 workflows.append(
                     {
@@ -222,9 +231,12 @@ class OrgContextService:
                         "lastRunAt": row.get("last_run_at"),
                     }
                 )
+            return workflows
 
-        recent_runs: list[dict[str, Any]] = []
-        if limits["runs"]:
+        def load_runs() -> list[dict[str, Any]]:
+            recent_runs: list[dict[str, Any]] = []
+            if not limits["runs"]:
+                return recent_runs
             run_rows = _safe_query(
                 lambda: client.table("workflow_runs")
                 .select("id,status,created_at,workflow_id,run_type")
@@ -245,10 +257,49 @@ class OrgContextService:
                         "createdAt": row.get("created_at"),
                     }
                 )
+            return recent_runs
 
+        def load_alerts() -> list[dict[str, Any]]:
+            if not limits["alerts"]:
+                return []
+            return list_failure_alerts(client, org_id, status="open", limit=limits["alerts"])
+
+        org_name: str | None = None
+        integrations: list[dict[str, Any]] = []
+        connected_types: list[str] = []
+        agents: list[dict[str, Any]] = []
+        workflows: list[dict[str, Any]] = []
+        recent_runs: list[dict[str, Any]] = []
         alerts: list[dict[str, Any]] = []
-        if limits["alerts"]:
-            alerts = list_failure_alerts(client, org_id, status="open", limit=limits["alerts"])
+
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = {
+                pool.submit(load_org_name): "org_name",
+                pool.submit(load_integrations): "integrations",
+                pool.submit(load_agents): "agents",
+                pool.submit(load_workflows): "workflows",
+                pool.submit(load_runs): "runs",
+                pool.submit(load_alerts): "alerts",
+            }
+            for future in as_completed(futures):
+                key = futures[future]
+                try:
+                    result = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("org_context_parallel_fetch_failed key=%s error=%s", key, exc)
+                    continue
+                if key == "org_name":
+                    org_name = result
+                elif key == "integrations":
+                    integrations, connected_types = result
+                elif key == "agents":
+                    agents = result
+                elif key == "workflows":
+                    workflows = result
+                elif key == "runs":
+                    recent_runs = result
+                elif key == "alerts":
+                    alerts = result
 
         generated_at = datetime.now(timezone.utc).isoformat()
         snapshot: dict[str, Any] = {

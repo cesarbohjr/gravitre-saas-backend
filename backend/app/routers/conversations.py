@@ -1,10 +1,10 @@
 """Assistant conversation history API (sidebar metadata + messages)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -60,6 +60,10 @@ class ConversationUpdateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=500)
 
 
+class BulkDeleteRequest(BaseModel):
+    ids: list[str] = Field(default_factory=list, min_length=1)
+
+
 def _require_org(org_id: str | None) -> str:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -72,16 +76,18 @@ def _get_owned_conversation(
     conversation_id: str,
     org_id: str,
     user_id: str,
+    include_deleted: bool = False,
 ) -> dict:
-    response = (
+    query = (
         client.table("conversations")
-        .select("id, org_id, user_id, title, preview, message_count, created_at, updated_at")
+        .select("id, org_id, user_id, title, preview, message_count, created_at, updated_at, archived_at, deleted_at")
         .eq("id", conversation_id)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
-        .limit(1)
-        .execute()
     )
+    if not include_deleted:
+        query = query.is_("deleted_at", "null")
+    response = query.limit(1).execute()
     if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
     if response_error(response):
@@ -92,22 +98,57 @@ def _get_owned_conversation(
     return rows[0]
 
 
+def _find_duplicate_conversation(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    title: str,
+) -> dict | None:
+    """Return an existing same-day conversation with a matching title."""
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    response = (
+        client.table("conversations")
+        .select("id, title, preview, message_count, created_at, updated_at")
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .is_("deleted_at", "null")
+        .ilike("title", title.strip())
+        .gte("created_at", since)
+        .order("updated_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if _is_missing_table_error(response_error(response)):
+        return None
+    rows = response.data or []
+    return rows[0] if rows else None
+
+
 @router.get("")
 async def list_conversations(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    search: str | None = Query(default=None, max_length=200),
+    include_archived: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ) -> dict:
     org_id = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    response = (
+    query = (
         client.table("conversations")
         .select("id, title, preview, message_count, created_at, updated_at")
         .eq("org_id", org_id)
         .eq("user_id", user["user_id"])
-        .order("updated_at", desc=True)
-        .execute()
+        .is_("deleted_at", "null")
     )
+    if not include_archived:
+        query = query.is_("archived_at", "null")
+    if search and search.strip():
+        query = query.ilike("title", f"%{search.strip()}%")
+    response = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
     if _is_missing_table_error(response_error(response)):
         return {"conversations": []}
     if response_error(response):
@@ -125,6 +166,15 @@ async def create_conversation(
     org_id = _require_org(org_id)
     now = _now_iso()
     title = (body.title or "").strip() or "New conversation"
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    duplicate = _find_duplicate_conversation(
+        client,
+        org_id=org_id,
+        user_id=user["user_id"],
+        title=title,
+    )
+    if duplicate:
+        return _normalize_conversation(duplicate)
     row = {
         "org_id": org_id,
         "user_id": user["user_id"],
@@ -134,7 +184,6 @@ async def create_conversation(
         "created_at": now,
         "updated_at": now,
     }
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     response = client.table("conversations").insert(row).execute()
     if _is_missing_table_error(response_error(response)):
         raise HTTPException(
@@ -147,6 +196,35 @@ async def create_conversation(
     if not created:
         raise HTTPException(status_code=500, detail="Conversation insert returned no row")
     return _normalize_conversation(created)
+
+
+@router.post("/bulk-delete", status_code=status.HTTP_204_NO_CONTENT)
+async def bulk_delete_conversations(
+    body: BulkDeleteRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    now = _now_iso()
+    for conversation_id in body.ids:
+        _get_owned_conversation(
+            client,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user["user_id"],
+        )
+    response = (
+        client.table("conversations")
+        .update({"deleted_at": now, "updated_at": now})
+        .in_("id", body.ids)
+        .eq("org_id", org_id)
+        .eq("user_id", user["user_id"])
+        .execute()
+    )
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
 
 
 @router.get("/{conversation_id}")
@@ -205,6 +283,38 @@ async def update_conversation(
     return _normalize_conversation(updated)
 
 
+@router.post("/{conversation_id}/archive")
+async def archive_conversation(
+    conversation_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    _get_owned_conversation(
+        client,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        user_id=user["user_id"],
+    )
+    now = _now_iso()
+    response = (
+        client.table("conversations")
+        .update({"archived_at": now, "updated_at": now})
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user["user_id"])
+        .execute()
+    )
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    updated = (response.data or [None])[0]
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    return _normalize_conversation(updated)
+
+
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_conversation(
     conversation_id: str,
@@ -220,9 +330,10 @@ async def delete_conversation(
         org_id=org_id,
         user_id=user["user_id"],
     )
+    now = _now_iso()
     response = (
         client.table("conversations")
-        .delete()
+        .update({"deleted_at": now, "updated_at": now})
         .eq("id", conversation_id)
         .eq("org_id", org_id)
         .eq("user_id", user["user_id"])

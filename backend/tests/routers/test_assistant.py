@@ -35,12 +35,14 @@ def _clear_overrides():
 @pytest.fixture(autouse=True)
 def _mock_assistant_dependencies(monkeypatch):
     """Keep assistant router tests offline (no Supabase org-context fetch)."""
+    assistant_module._RESPONSE_CACHE.clear()
     monkeypatch.setattr(
         assistant_module,
         "_build_assistant_system_prompt",
         lambda *args, **kwargs: "test system prompt",
     )
     monkeypatch.setattr(assistant_module, "_persist_conversation_turn", lambda *args, **kwargs: None)
+    monkeypatch.setattr(assistant_module, "_generate_followup_suggestions", AsyncMock(return_value=[]))
 
 
 def _authenticate(org_id: str = "org-1", settings: Settings | None = None) -> None:
@@ -176,11 +178,12 @@ async def test_tool_results_are_fenced_before_model_injection(async_client, monk
     )
 
     assert resp.status_code == 200
+    body = resp.text
     # fence_untrusted was called with the tool output (containing the sentinel).
     assert any(sentinel in call for call in fence_calls), "tool output was not fenced before model injection"
 
     # And the fenced content actually reached the model context.
-    router.prepare_stream.assert_awaited_once()
+    router.prepare_stream.assert_awaited()
     _, kwargs = router.prepare_stream.call_args
     context_blob = "".join(msg.get("content", "") for msg in (kwargs.get("context") or []))
     assert sentinel in context_blob
@@ -218,6 +221,7 @@ async def test_billing_scheduled_after_success(async_client, monkeypatch, captur
         json={"messages": [{"role": "user", "content": "hello"}], "org_id": "org-1", "tools": []},
     )
     assert resp.status_code == 200
+    resp.text  # drain stream so billing/background tasks are scheduled
     for coro in capture_background_tasks:
         await coro
     record_mock.assert_awaited_once()
@@ -326,9 +330,10 @@ async def test_agent_chat_passes_agent_id_to_tools(async_client, monkeypatch):
     )
 
     assert resp.status_code == 200
-    run_tools.assert_awaited_once()
-    _, kwargs = run_tools.call_args
-    assert kwargs.get("agent_id") == "agent-revops"
+    resp.text
+    assert run_tools.await_count == 2
+    for call in run_tools.call_args_list:
+        assert call.kwargs.get("agent_id") == "agent-revops"
 
 
 def test_resolve_base_system_prompt_uses_agent_persona(monkeypatch):
