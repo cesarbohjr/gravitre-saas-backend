@@ -340,6 +340,9 @@ export interface MesonAlert {
   title: string
   message: string
   autoFixable?: boolean
+  actionType?: "navigate" | string
+  actionTarget?: string
+  fixLabel?: string
 }
 
 export interface MesonAlertsResponse {

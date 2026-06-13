@@ -61,6 +61,7 @@ export function MesonCopilotPanel({
   onAcceptSuggestion,
   onDismissSuggestion,
   onApplyInsight,
+  onFixAlert,
 }: {
   open: boolean
   onClose: () => void
@@ -70,6 +71,7 @@ export function MesonCopilotPanel({
   onAcceptSuggestion: (suggestion: MesonSuggestion) => void
   onDismissSuggestion: (suggestionId: string) => void
   onApplyInsight?: (insight: MesonInsight) => void
+  onFixAlert?: (alert: MesonAlert) => void
 }) {
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
   const [alerts, setAlerts] = useState<MesonAlert[]>([])
@@ -77,6 +79,7 @@ export function MesonCopilotPanel({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [loadingAlerts, setLoadingAlerts] = useState(false)
   const [loadingInsights, setLoadingInsights] = useState(false)
+  const [fixingAlertId, setFixingAlertId] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed(workflowId))
 
   useEffect(() => {
@@ -163,6 +166,20 @@ export function MesonCopilotPanel({
       onDismissSuggestion(suggestionId)
     },
     [dismissed, onDismissSuggestion, workflowId],
+  )
+
+  const handleFixAlert = useCallback(
+    (alert: MesonAlert) => {
+      if (!onFixAlert) return
+      setFixingAlertId(alert.id)
+      try {
+        onFixAlert(alert)
+        setAlerts((prev) => prev.filter((item) => item.id !== alert.id))
+      } finally {
+        setFixingAlertId(null)
+      }
+    },
+    [onFixAlert],
   )
 
   const visibleAlerts = useMemo(() => alerts.slice(0, 5), [alerts])
@@ -286,10 +303,16 @@ export function MesonCopilotPanel({
                         <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{alert.message}</p>
                       </div>
                     </div>
-                    {alert.autoFixable ? (
-                      <Button variant="outline" size="sm" className="mt-2 h-6 gap-1 px-2 text-[10px]">
+                    {(alert.autoFixable || alert.actionTarget) && onFixAlert ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                        disabled={fixingAlertId === alert.id}
+                        onClick={() => handleFixAlert(alert)}
+                      >
                         <Wrench className="h-3 w-3" />
-                        Fix
+                        {alert.fixLabel ?? "Fix"}
                       </Button>
                     ) : null}
                   </div>

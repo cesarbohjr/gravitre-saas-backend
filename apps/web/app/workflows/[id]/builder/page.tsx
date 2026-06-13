@@ -32,7 +32,7 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
-import { mesonApi, runsApi, type MesonInsight, type MesonSuggestion } from "@/lib/api"
+import { mesonApi, runsApi, type MesonAlert, type MesonInsight, type MesonSuggestion } from "@/lib/api"
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
@@ -3130,6 +3130,33 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     [canPersist, id, router, workflowMeta.description, workflowMeta.name]
   )
 
+  const fixAlert = useCallback(
+    (alert: MesonAlert) => {
+      const target =
+        alert.actionTarget ??
+        (alert.id.startsWith("connector-auth-")
+          ? `/connectors/${alert.id.replace("connector-auth-", "")}`
+          : alert.id.startsWith("run-failed-")
+            ? `/runs/${alert.id.replace("run-failed-", "")}`
+            : null)
+      if (target) {
+        router.push(target)
+        toast.info(alert.fixLabel ?? "Opening fix flow", { description: alert.title })
+      } else {
+        router.push("/metrics")
+        toast.info("Review workflow health", { description: alert.message })
+      }
+      void mesonApi
+        .feedback({
+          suggestionId: alert.id,
+          action: "accepted",
+          workflowId: canPersist ? id : undefined,
+        })
+        .catch(() => {})
+    },
+    [canPersist, id, router],
+  )
+
   // Handle save workflow
   const handleSave = useCallback(async () => {
     if (!canPersist) {
@@ -4862,6 +4889,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             onAcceptSuggestion={acceptSuggestion}
             onDismissSuggestion={dismissSuggestion}
             onApplyInsight={applyInsight}
+            onFixAlert={fixAlert}
           />
 
           {/* Right config panel */}

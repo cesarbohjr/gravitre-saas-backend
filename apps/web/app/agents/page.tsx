@@ -293,14 +293,23 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
         </div>
         {(agent.knowledgeDocCount ?? 0) > 0 ? (
           <a
-            href={`/agents/${agent.id}?tab=knowledge`}
+            href={`/training?agentId=${agent.id}`}
             onClick={(e) => e.stopPropagation()}
             className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-card/80 px-2 py-0.5 text-[9px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
           >
             <BookOpen className="h-2.5 w-2.5" />
             {agent.knowledgeDocCount} docs
           </a>
-        ) : null}
+        ) : (
+          <a
+            href={`/training?agentId=${agent.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-card/50 px-2 py-0.5 text-[9px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
+          >
+            <BookOpen className="h-2.5 w-2.5" />
+            Add training
+          </a>
+        )}
         {agent.status === "processing" ? (
           <p className="mt-1 flex items-center justify-center gap-1 text-[9px] text-blue-400">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -465,13 +474,21 @@ function AgentDetailPanel({
           ) : null}
           {(agent.knowledgeDocCount ?? 0) > 0 ? (
             <a
-              href={`/agents/${agent.id}?tab=knowledge`}
+              href={`/training?agentId=${agent.id}`}
               className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <BookOpen className="h-3 w-3" />
               {agent.knowledgeDocCount} docs
             </a>
-          ) : null}
+          ) : (
+            <a
+              href={`/training?agentId=${agent.id}`}
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <BookOpen className="h-3 w-3" />
+              Add training
+            </a>
+          )}
         </div>
       </div>
 

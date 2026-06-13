@@ -95,6 +95,9 @@ class MesonAlert(BaseModel):
     title: str
     message: str
     auto_fixable: bool = Field(default=False, alias="autoFixable")
+    action_type: str | None = Field(default=None, alias="actionType")
+    action_target: str | None = Field(default=None, alias="actionTarget")
+    fix_label: str | None = Field(default=None, alias="fixLabel")
 
     model_config = {"populate_by_name": True}
 
@@ -606,13 +609,18 @@ class MesonService:
         alerts: list[MesonAlert] = []
 
         for row in list_failure_alerts(client, org_id, status="open", limit=20):
+            workflow_id = str(row.get("workflowId") or row.get("workflow_id") or "")
+            action_target = f"/workflows/{workflow_id}/builder" if workflow_id else "/metrics"
             alerts.append(
                 MesonAlert(
                     id=str(row.get("id") or f"failure-{len(alerts)}"),
                     severity=str(row.get("severity") or "warning"),
                     title=str(row.get("title") or "Workflow risk detected"),
                     message=str(row.get("message") or "Review predicted failure before next run."),
-                    autoFixable=False,
+                    autoFixable=True,
+                    actionType="navigate",
+                    actionTarget=action_target,
+                    fixLabel="Review",
                 )
             )
 
@@ -640,7 +648,10 @@ class MesonService:
                         severity="critical",
                         title="Recent workflow failure",
                         message=message[:500],
-                        autoFixable=False,
+                        autoFixable=True,
+                        actionType="navigate",
+                        actionTarget=f"/runs/{run_id}",
+                        fixLabel="View run",
                     )
                 )
         except Exception as exc:  # noqa: BLE001
@@ -668,6 +679,9 @@ class MesonService:
                             title=f"{vendor or 'Connector'} authentication issue",
                             message=f"Reconnect {vendor or 'connector'} to restore workflow reliability.",
                             autoFixable=True,
+                            actionType="navigate",
+                            actionTarget=f"/connectors/{connector_id}",
+                            fixLabel="Reconnect",
                         )
                     )
         except Exception as exc:  # noqa: BLE001

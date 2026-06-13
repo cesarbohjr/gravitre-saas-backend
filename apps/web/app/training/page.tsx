@@ -1,13 +1,15 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, Suspense } from "react"
 import useSWR from "swr"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { trainingApi } from "@/lib/api"
+import { trainingApi, agentsApi } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import type {
   CustomInstruction,
@@ -66,7 +68,9 @@ const STARTER_EXAMPLES = [
   },
 ] as const
 
-export default function TrainingPage() {
+function TrainingPageContent() {
+  const searchParams = useSearchParams()
+  const agentFilterId = searchParams.get("agentId") ?? ""
   const { user } = useAuth()
   const [orgReady, setOrgReady] = useState(false)
   const [orgError, setOrgError] = useState<string | null>(null)
@@ -104,6 +108,12 @@ export default function TrainingPage() {
     })
   }, [user])
 
+  useEffect(() => {
+    if (agentFilterId) {
+      setSelectedAgentId(agentFilterId)
+    }
+  }, [agentFilterId])
+
   const swrKey = user && orgReady ? "training" : null
 
   const { data: datasetsData, error: datasetsError, mutate: mutateDatasets } = useSWR(
@@ -135,6 +145,23 @@ export default function TrainingPage() {
     () => trainingApi.listWorkflowAgents(),
     { fallbackData: { agents: [] as WorkflowAgent[] }, revalidateOnFocus: false }
   )
+  const { data: agentsFallbackData } = useSWR(
+    swrKey ? "training/agents-fallback" : null,
+    async () => {
+      const response = await agentsApi.list()
+      const raw = response.agents ?? []
+      return raw.map(
+        (agent): WorkflowAgent => ({
+          id: String(agent.id),
+          name: String(agent.name ?? "Agent"),
+          role: agent.role,
+          status: agent.status,
+          trainedModelId: null,
+        }),
+      )
+    },
+    { revalidateOnFocus: false }
+  )
   const { data: fineTunedModelsData } = useSWR(
     swrKey ? "training/fine-tuned-models" : null,
     () => trainingApi.listFineTunedModels(),
@@ -145,26 +172,40 @@ export default function TrainingPage() {
   const jobs = jobsData?.jobs ?? []
   const instructions = instructionsData?.instructions ?? []
   const workflowAgents = workflowAgentsData?.agents ?? []
+  const assignableAgents = useMemo(() => {
+    if (workflowAgents.length > 0) return workflowAgents
+    return agentsFallbackData ?? []
+  }, [workflowAgents, agentsFallbackData])
   const fineTunedModels = fineTunedModelsData?.models ?? []
+  const filteredAgent = assignableAgents.find((agent) => agent.id === agentFilterId)
+  const visibleInstructions = useMemo(() => {
+    if (!agentFilterId) return instructions
+    return instructions.filter(
+      (instruction) => !instruction.agent_id || instruction.agent_id === agentFilterId,
+    )
+  }, [instructions, agentFilterId])
 
-  const effectiveSelectedAgentId = selectedAgentId || workflowAgents[0]?.id || ""
-  const effectiveAssignAgentId = assignAgentId || workflowAgents[0]?.id || ""
-  const assignedModelForAgent = workflowAgents.find((a) => a.id === effectiveAssignAgentId)?.trainedModelId
+  const effectiveSelectedAgentId = selectedAgentId || agentFilterId || assignableAgents[0]?.id || ""
+  const effectiveAssignAgentId = assignAgentId || agentFilterId || assignableAgents[0]?.id || ""
+  const assignedModelForAgent = assignableAgents.find((a) => a.id === effectiveAssignAgentId)?.trainedModelId
   const effectiveAssignModelId = assignModelId || assignedModelForAgent || fineTunedModels[0]?.id || ""
 
   const stats = useMemo(() => {
     const readyDatasets = datasets.filter((d) => d.status === "ready").length
     const activeJobs = jobs.filter((j) => j.status === "queued" || j.status === "training").length
     const activeInstructions = instructions.filter((i) => i.is_active).length
+    const scopedInstructions = agentFilterId
+      ? instructions.filter((i) => !i.agent_id || i.agent_id === agentFilterId).length
+      : instructions.length
     return {
       totalDatasets: datasets.length,
       readyDatasets,
       totalJobs: jobs.length,
       activeJobs,
-      totalInstructions: instructions.length,
+      totalInstructions: scopedInstructions,
       activeInstructions,
     }
-  }, [datasets, jobs, instructions])
+  }, [datasets, jobs, instructions, agentFilterId])
 
   async function handleCreateDataset() {
     if (!datasetName.trim()) return
@@ -383,6 +424,22 @@ export default function TrainingPage() {
             </Button>
           </div>
         )}
+
+        {agentFilterId && filteredAgent ? (
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-muted-foreground">
+              Training knowledge for <span className="font-medium text-foreground">{filteredAgent.name}</span>
+            </span>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm" className="h-8">
+                <Link href={`/agents/${agentFilterId}/knowledge`}>RAG sources</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="h-8">
+                <Link href="/training">Clear filter</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {!loadError && orgReady && datasets.length === 0 && jobs.length === 0 && instructions.length === 0 ? (
           <div className="rounded-lg border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -684,7 +741,7 @@ export default function TrainingPage() {
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
               <option value="">All agents</option>
-              {workflowAgents.map((agent) => (
+              {assignableAgents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name}
                   {agent.role ? ` · ${agent.role}` : ""}
@@ -708,7 +765,7 @@ export default function TrainingPage() {
 
           <div className="space-y-2">
             <AnimatePresence initial={false}>
-              {instructions.map((instruction) => (
+              {visibleInstructions.map((instruction) => (
                 <motion.div
                   key={instruction.id}
                   layout
@@ -760,7 +817,11 @@ export default function TrainingPage() {
                 </motion.div>
               ))}
             </AnimatePresence>
-            {instructions.length === 0 && <p className="text-sm text-muted-foreground">No custom instructions yet.</p>}
+            {visibleInstructions.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                {agentFilterId ? "No custom instructions for this agent yet." : "No custom instructions yet."}
+              </p>
+            )}
           </div>
         </motion.section>
 
@@ -783,8 +844,8 @@ export default function TrainingPage() {
               }}
               className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
-              {workflowAgents.length === 0 && <option value="">No workflow agents</option>}
-              {workflowAgents.map((agent) => (
+              {assignableAgents.length === 0 && <option value="">No workflow agents</option>}
+              {assignableAgents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name} {agent.model ? `(${agent.model})` : ""}
                 </option>
@@ -815,9 +876,9 @@ export default function TrainingPage() {
               No deployable fine-tuned models yet. Complete a fine-tuning job first.
             </p>
           )}
-          {workflowAgents.some((a) => a.trainedModelId) && (
+          {assignableAgents.some((a) => a.trainedModelId) && (
             <div className="space-y-2">
-              {workflowAgents
+              {assignableAgents
                 .filter((a) => a.trainedModelId)
                 .map((agent) => {
                   const model = fineTunedModels.find((m) => m.id === agent.trainedModelId)
@@ -837,5 +898,21 @@ export default function TrainingPage() {
         </motion.section>
       </div>
     </AppShell>
+  )
+}
+
+export default function TrainingPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell title="Training Hub">
+          <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+            Loading training hub…
+          </div>
+        </AppShell>
+      }
+    >
+      <TrainingPageContent />
+    </Suspense>
   )
 }
