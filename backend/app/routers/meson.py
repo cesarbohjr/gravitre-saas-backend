@@ -12,9 +12,11 @@ from app.config import Settings, get_settings
 from app.services.meson_service import (
     MesonAlertsResponse,
     MesonDeployResult,
+    MesonFeedbackMetricsResponse,
     MesonFeedbackResult,
     MesonInsightsResponse,
     MesonInterpretResult,
+    MesonPreferencesResponse,
     MesonService,
     MesonSuggestionsResponse,
     get_meson_service,
@@ -71,16 +73,21 @@ async def interpret_build_request_route(
     body: MesonInterpretRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     meson: Annotated[MesonService, Depends(get_meson_service)],
 ) -> MesonInterpretResult:
     """Turn Meson wizard inputs into an agent/workflow build plan."""
     resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    user_id = str(_user.get("user_id") or "")
     return await meson.interpret_build_request(
         intent=body.intent,
         department=body.department,
         systems=body.systems,
         output_types=body.output_types,
         org_id=resolved_org,
+        user_id=user_id,
+        client=client,
     )
 
 
@@ -94,12 +101,16 @@ async def deploy_build_route(
 ) -> MesonDeployResult:
     """Create agent (+ optional workflow draft) from a Meson build plan."""
     current_user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    user_id = str(current_user.get("user_id") or "")
     plan = await meson.interpret_build_request(
         intent=body.intent,
         department=body.department,
         systems=body.systems,
         output_types=body.output_types,
         org_id=org_id,
+        user_id=user_id,
+        client=client,
     )
     if body.generated_config:
         cfg = body.generated_config
@@ -115,7 +126,6 @@ async def deploy_build_route(
         if isinstance(cfg.get("sample_outputs"), list):
             plan.generated_config.sample_outputs = [str(x) for x in cfg["sample_outputs"]]
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     return await meson.deploy_build(
         client=client,
         org_id=org_id,
@@ -137,12 +147,12 @@ async def meson_suggestions_route(
     """Return next-step node suggestions for the workflow builder."""
     resolved_org = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    dismissed = meson.load_dismissed_suggestion_ids(client, resolved_org, body.workflow_id)
+    feedback_summary = meson.load_feedback_summary(client, resolved_org, workflow_id=body.workflow_id)
     return meson.get_workflow_suggestions(
         workflow_state=body.workflow_state,
         last_added_node=body.last_added_node,
         org_id=resolved_org,
-        dismissed_ids=dismissed,
+        feedback_summary=feedback_summary,
     )
 
 
@@ -181,6 +191,37 @@ async def meson_insights_route(
         resolved_org,
         environment_name=environment_name,
     )
+
+
+@router.get("/preferences", response_model=MesonPreferencesResponse, response_model_by_alias=True)
+async def meson_preferences_route(
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+) -> MesonPreferencesResponse:
+    """Return learned Meson build preferences for the current user."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return meson.get_user_preferences(
+        client,
+        resolved_org,
+        str(user.get("user_id") or ""),
+    )
+
+
+@router.get("/feedback/metrics", response_model=MesonFeedbackMetricsResponse, response_model_by_alias=True)
+async def meson_feedback_metrics_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+    workflow_id: str | None = None,
+) -> MesonFeedbackMetricsResponse:
+    """Return Meson suggestion accept/dismiss metrics for the org or a workflow."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return meson.get_feedback_metrics(client, resolved_org, workflow_id=workflow_id)
 
 
 @router.post("/feedback", response_model=MesonFeedbackResult)

@@ -81,9 +81,35 @@ def _mock_meson_service() -> MesonService:
         )
     )
     mock.load_dismissed_suggestion_ids = MagicMock(return_value=set())
+    mock.load_feedback_summary = MagicMock(
+        return_value={
+            "dismissed_ids": set(),
+            "by_suggestion": {},
+            "accepted_count": 0,
+            "dismissed_count": 0,
+        }
+    )
+    mock.get_feedback_metrics = MagicMock(
+        return_value={
+            "acceptedCount": 3,
+            "dismissedCount": 1,
+            "acceptanceRate": 0.75,
+            "suggestions": [],
+        }
+    )
     mock.detect_anomalies = MagicMock(return_value={"alerts": []})
     mock.get_proactive_insights = MagicMock(return_value={"insights": []})
     mock.record_feedback = MagicMock(return_value={"ok": True})
+    mock.get_user_preferences = MagicMock(
+        return_value={
+            "department": "sales",
+            "systems": ["crm"],
+            "outputTypes": ["workflows"],
+            "preferredBuildHoursUtc": [14],
+            "interpretCount": 2,
+            "deployCount": 1,
+        }
+    )
     return mock
 
 
@@ -155,7 +181,7 @@ def test_suggestions_returns_builder_hints():
     assert response.status_code == 200
     body = response.json()
     assert body["suggestions"][0]["id"] == "add-approval"
-    mock.load_dismissed_suggestion_ids.assert_called_once()
+    mock.load_feedback_summary.assert_called_once()
     mock.get_workflow_suggestions.assert_called_once()
 
 
@@ -171,6 +197,29 @@ def test_alerts_and_insights_return_lists():
     assert insights.json()["insights"] == []
     mock.detect_anomalies.assert_called_once()
     mock.get_proactive_insights.assert_called_once()
+
+
+def test_feedback_metrics_returns_acceptance_rate():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    response = client.get("/api/meson/feedback/metrics?workflow_id=wf-1")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["acceptanceRate"] == 0.75
+    mock.get_feedback_metrics.assert_called_once()
+
+
+def test_preferences_returns_learned_profile():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    response = client.get("/api/meson/preferences")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["department"] == "sales"
+    assert body["interpretCount"] == 2
+    mock.get_user_preferences.assert_called_once()
 
 
 def test_feedback_records_action():

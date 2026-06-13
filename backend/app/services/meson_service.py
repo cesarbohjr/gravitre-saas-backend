@@ -118,6 +118,38 @@ class MesonFeedbackResult(BaseModel):
     ok: bool = True
 
 
+class MesonSuggestionFeedbackStat(BaseModel):
+    suggestion_id: str = Field(alias="suggestionId")
+    accepted: int = 0
+    dismissed: int = 0
+    acceptance_rate: float | None = Field(default=None, alias="acceptanceRate")
+
+    model_config = {"populate_by_name": True}
+
+
+class MesonFeedbackMetricsResponse(BaseModel):
+    accepted_count: int = Field(default=0, alias="acceptedCount")
+    dismissed_count: int = Field(default=0, alias="dismissedCount")
+    acceptance_rate: float | None = Field(default=None, alias="acceptanceRate")
+    suggestions: list[MesonSuggestionFeedbackStat] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
+
+
+class MesonPreferencesResponse(BaseModel):
+    department: str | None = None
+    systems: list[str] = Field(default_factory=list)
+    output_types: list[str] = Field(default_factory=list, alias="outputTypes")
+    preferred_build_hours_utc: list[int] = Field(
+        default_factory=list,
+        alias="preferredBuildHoursUtc",
+    )
+    interpret_count: int = Field(default=0, alias="interpretCount")
+    deploy_count: int = Field(default=0, alias="deployCount")
+
+    model_config = {"populate_by_name": True}
+
+
 class MesonInterpretPayload(BaseModel):
     """LLM structured output for interpret_build_request."""
 
@@ -148,11 +180,18 @@ class MesonService:
         systems: list[str],
         output_types: list[str],
         org_id: str | None = None,
+        user_id: str | None = None,
+        client: Any | None = None,
     ) -> MesonInterpretResult:
         cleaned_intent = intent.strip()
         dept = (department or "custom").lower()
         selected_systems = [s for s in systems if s]
         selected_outputs = [o for o in output_types if o]
+
+        preference_context = ""
+        if client is not None and org_id and user_id:
+            prefs = self.load_user_preferences(client, org_id, user_id)
+            preference_context = self.format_preferences_for_prompt(prefs)
 
         prompt = (
             "You are Meson, Gravitre's system builder copilot.\n"
@@ -160,8 +199,12 @@ class MesonService:
             f"Intent: {cleaned_intent}\n"
             f"Department: {dept}\n"
             f"Selected systems: {selected_systems}\n"
-            f"Output types: {selected_outputs}\n\n"
-            "Return ONLY strict JSON (no markdown) matching:\n"
+            f"Output types: {selected_outputs}\n"
+        )
+        if preference_context:
+            prompt += f"\nUser build preferences (learned from prior Meson sessions):\n{preference_context}\n"
+        prompt += (
+            "\nReturn ONLY strict JSON (no markdown) matching:\n"
             '{"agent": "<agent display name>", '
             '"agent_role": "<short role title>", '
             '"agent_description": "<1-2 sentence purpose>", '
@@ -196,7 +239,7 @@ class MesonService:
             workflows=parsed.workflows,
             sample_outputs=parsed.sample_outputs,
         )
-        return MesonInterpretResult(
+        result = MesonInterpretResult(
             intent=cleaned_intent,
             department=dept,
             systems=selected_systems,
@@ -205,6 +248,17 @@ class MesonService:
             confidence=parsed.confidence,
             explanation=parsed.explanation,
         )
+        if client is not None and org_id and user_id:
+            self.learn_user_preferences(
+                client,
+                org_id,
+                user_id,
+                department=dept,
+                systems=selected_systems,
+                output_types=selected_outputs,
+                event="interpret",
+            )
+        return result
 
     def _heuristic_plan(
         self,
@@ -290,6 +344,16 @@ class MesonService:
         )
         agent_id = str(operator["id"])
 
+        self.learn_user_preferences(
+            client,
+            org_id,
+            user_id,
+            department=plan.department,
+            systems=plan.systems,
+            output_types=plan.output_types,
+            event="deploy",
+        )
+
         write_audit_event(
             client,
             org_id=org_id,
@@ -373,9 +437,12 @@ class MesonService:
         last_added_node: dict[str, Any] | None,
         org_id: str,
         dismissed_ids: set[str] | None = None,
+        feedback_summary: dict[str, Any] | None = None,
     ) -> MesonSuggestionsResponse:
         nodes = _parse_workflow_nodes(workflow_state)
-        dismissed = dismissed_ids or set()
+        dismissed = set(dismissed_ids or set())
+        if feedback_summary:
+            dismissed.update(feedback_summary.get("dismissed_ids") or set())
         suggestions: list[MesonSuggestion] = []
 
         has_approval = any(str(n.get("type") or "") == "approval" for n in nodes)
@@ -461,7 +528,72 @@ class MesonService:
             )
 
         filtered = [s for s in suggestions if s.id not in dismissed]
-        return MesonSuggestionsResponse(suggestions=filtered[:5])
+        ranked = _rank_suggestions_by_feedback(filtered, feedback_summary)
+        return MesonSuggestionsResponse(suggestions=ranked[:5])
+
+    def get_feedback_metrics(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        workflow_id: str | None = None,
+    ) -> MesonFeedbackMetricsResponse:
+        summary = self.load_feedback_summary(client, org_id, workflow_id=workflow_id)
+        return _feedback_summary_to_metrics(summary)
+
+    def load_feedback_summary(
+        self,
+        client: Any,
+        org_id: str,
+        workflow_id: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            rows = (
+                client.table("audit_events")
+                .select("metadata")
+                .eq("org_id", org_id)
+                .eq("action", "meson.suggestion.feedback")
+                .order("created_at", desc=True)
+                .limit(500)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson feedback summary lookup failed: %s", exc)
+            return _empty_feedback_summary()
+
+        dismissed_ids: set[str] = set()
+        by_suggestion: dict[str, dict[str, int]] = {}
+        accepted_total = 0
+        dismissed_total = 0
+
+        for row in rows.data or []:
+            meta = row.get("metadata") or {}
+            if not isinstance(meta, dict):
+                continue
+            event_workflow_id = str(meta.get("workflowId") or "") or None
+            if workflow_id and event_workflow_id and event_workflow_id != workflow_id:
+                continue
+
+            suggestion_id = str(meta.get("suggestionId") or "")
+            if not suggestion_id:
+                continue
+
+            action = str(meta.get("action") or "").lower()
+            stats = by_suggestion.setdefault(suggestion_id, {"accepted": 0, "dismissed": 0})
+            if action == "dismissed":
+                dismissed_ids.add(suggestion_id)
+                stats["dismissed"] += 1
+                dismissed_total += 1
+            elif action == "accepted":
+                stats["accepted"] += 1
+                accepted_total += 1
+
+        return {
+            "dismissed_ids": dismissed_ids,
+            "by_suggestion": by_suggestion,
+            "accepted_count": accepted_total,
+            "dismissed_count": dismissed_total,
+        }
 
     def detect_anomalies(
         self,
@@ -665,41 +797,265 @@ class MesonService:
         )
         return MesonFeedbackResult(ok=True)
 
+    def load_user_preferences(self, client: Any, org_id: str, user_id: str) -> dict[str, Any]:
+        try:
+            row = (
+                client.table("meson_user_preferences")
+                .select("preferences")
+                .eq("org_id", org_id)
+                .eq("user_id", user_id)
+                .maybe_single()
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson preferences load failed: %s", exc)
+            return {}
+
+        data = row.data if row else None
+        if not isinstance(data, dict):
+            return {}
+        prefs = data.get("preferences")
+        return dict(prefs) if isinstance(prefs, dict) else {}
+
+    def learn_user_preferences(
+        self,
+        client: Any,
+        org_id: str,
+        user_id: str,
+        *,
+        department: str,
+        systems: list[str],
+        output_types: list[str],
+        event: str,
+    ) -> dict[str, Any]:
+        current = self.load_user_preferences(client, org_id, user_id)
+        updated = _merge_meson_preferences(
+            current,
+            department=department,
+            systems=systems,
+            output_types=output_types,
+            event=event,
+        )
+        try:
+            client.table("meson_user_preferences").upsert(
+                {
+                    "org_id": org_id,
+                    "user_id": user_id,
+                    "preferences": updated,
+                },
+                on_conflict="org_id,user_id",
+            ).execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("meson preferences persist failed: %s", exc)
+        return updated
+
+    def get_user_preferences(
+        self,
+        client: Any,
+        org_id: str,
+        user_id: str,
+    ) -> MesonPreferencesResponse:
+        prefs = self.load_user_preferences(client, org_id, user_id)
+        return _preferences_to_response(prefs)
+
+    @staticmethod
+    def format_preferences_for_prompt(prefs: dict[str, Any]) -> str:
+        if not prefs:
+            return ""
+
+        lines: list[str] = []
+        dept = _top_count_key(prefs.get("department_counts"))
+        if dept:
+            lines.append(f"- Preferred department: {dept}")
+
+        systems = _top_count_keys(prefs.get("system_counts"), limit=4)
+        if systems:
+            lines.append(f"- Frequently selected systems: {', '.join(systems)}")
+
+        outputs = _top_count_keys(prefs.get("output_type_counts"), limit=4)
+        if outputs:
+            lines.append(f"- Common output types: {', '.join(outputs)}")
+
+        hours = _top_count_keys(prefs.get("build_hour_counts"), limit=3)
+        if hours:
+            lines.append(f"- Typical build hours (UTC): {', '.join(hours)}")
+
+        interpret_count = int(prefs.get("interpret_count") or 0)
+        deploy_count = int(prefs.get("deploy_count") or 0)
+        if interpret_count or deploy_count:
+            lines.append(f"- Prior Meson sessions: {interpret_count} plans, {deploy_count} deploys")
+
+        return "\n".join(lines)
+
     def load_dismissed_suggestion_ids(
         self,
         client: Any,
         org_id: str,
         workflow_id: str | None,
     ) -> set[str]:
-        if not workflow_id:
-            return set()
-        try:
-            rows = (
-                client.table("audit_events")
-                .select("metadata")
-                .eq("org_id", org_id)
-                .eq("action", "meson.suggestion.feedback")
-                .order("created_at", desc=True)
-                .limit(200)
-                .execute()
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("meson dismissed lookup failed: %s", exc)
-            return set()
+        summary = self.load_feedback_summary(client, org_id, workflow_id=workflow_id)
+        return set(summary.get("dismissed_ids") or set())
 
-        dismissed: set[str] = set()
-        for row in rows.data or []:
-            meta = row.get("metadata") or {}
-            if not isinstance(meta, dict):
+
+def _empty_feedback_summary() -> dict[str, Any]:
+    return {
+        "dismissed_ids": set(),
+        "by_suggestion": {},
+        "accepted_count": 0,
+        "dismissed_count": 0,
+    }
+
+
+def _feedback_summary_to_metrics(summary: dict[str, Any]) -> MesonFeedbackMetricsResponse:
+    accepted = int(summary.get("accepted_count") or 0)
+    dismissed = int(summary.get("dismissed_count") or 0)
+    total = accepted + dismissed
+    rate = round(accepted / total, 3) if total else None
+
+    suggestion_stats: list[MesonSuggestionFeedbackStat] = []
+    for suggestion_id, counts in (summary.get("by_suggestion") or {}).items():
+        acc = int(counts.get("accepted") or 0)
+        dis = int(counts.get("dismissed") or 0)
+        subtotal = acc + dis
+        suggestion_stats.append(
+            MesonSuggestionFeedbackStat(
+                suggestionId=str(suggestion_id),
+                accepted=acc,
+                dismissed=dis,
+                acceptanceRate=round(acc / subtotal, 3) if subtotal else None,
+            )
+        )
+    suggestion_stats.sort(key=lambda item: (-(item.accepted + item.dismissed), item.suggestion_id))
+
+    return MesonFeedbackMetricsResponse(
+        acceptedCount=accepted,
+        dismissedCount=dismissed,
+        acceptanceRate=rate,
+        suggestions=suggestion_stats,
+    )
+
+
+def _rank_suggestions_by_feedback(
+    suggestions: list[MesonSuggestion],
+    feedback_summary: dict[str, Any] | None,
+) -> list[MesonSuggestion]:
+    if not suggestions:
+        return []
+
+    by_suggestion = (feedback_summary or {}).get("by_suggestion") or {}
+    ranked: list[MesonSuggestion] = []
+
+    for suggestion in suggestions:
+        stats = by_suggestion.get(suggestion.id) or {}
+        accepted = int(stats.get("accepted") or 0)
+        dismissed = int(stats.get("dismissed") or 0)
+        total = accepted + dismissed
+        if total >= 2 and dismissed > accepted:
+            continue
+
+        confidence = suggestion.confidence
+        if total:
+            rate = accepted / total
+            if rate >= 0.6:
+                confidence = min(0.99, confidence + 0.05)
+            elif rate <= 0.25 and dismissed >= 2:
                 continue
-            if str(meta.get("action") or "") != "dismissed":
+
+        if confidence != suggestion.confidence:
+            suggestion = suggestion.model_copy(update={"confidence": confidence})
+        ranked.append(suggestion)
+
+    ranked.sort(key=lambda item: item.confidence, reverse=True)
+    return ranked
+
+
+def _increment_count_map(counts: dict[str, Any] | None, key: str, amount: int = 1) -> dict[str, int]:
+    merged: dict[str, int] = {}
+    if isinstance(counts, dict):
+        for raw_key, raw_value in counts.items():
+            try:
+                merged[str(raw_key)] = int(raw_value)
+            except (TypeError, ValueError):
                 continue
-            if str(meta.get("workflowId") or "") != workflow_id:
+    merged[key] = merged.get(key, 0) + amount
+    return merged
+
+
+def _increment_count_maps(
+    counts: dict[str, Any] | None,
+    keys: list[str],
+    amount: int = 1,
+) -> dict[str, int]:
+    merged: dict[str, int] = {}
+    if isinstance(counts, dict):
+        for raw_key, raw_value in counts.items():
+            try:
+                merged[str(raw_key)] = int(raw_value)
+            except (TypeError, ValueError):
                 continue
-            suggestion_id = meta.get("suggestionId")
-            if suggestion_id:
-                dismissed.add(str(suggestion_id))
-        return dismissed
+    for key in keys:
+        if not key:
+            continue
+        merged[key] = merged.get(key, 0) + amount
+    return merged
+
+
+def _top_count_key(counts: dict[str, Any] | None) -> str | None:
+    ranked = _top_count_keys(counts, limit=1)
+    return ranked[0] if ranked else None
+
+
+def _top_count_keys(counts: dict[str, Any] | None, *, limit: int) -> list[str]:
+    if not isinstance(counts, dict) or not counts:
+        return []
+    scored: list[tuple[int, str]] = []
+    for key, value in counts.items():
+        try:
+            scored.append((int(value), str(key)))
+        except (TypeError, ValueError):
+            continue
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [key for _, key in scored[:limit]]
+
+
+def _merge_meson_preferences(
+    current: dict[str, Any],
+    *,
+    department: str,
+    systems: list[str],
+    output_types: list[str],
+    event: str,
+) -> dict[str, Any]:
+    prefs = dict(current or {})
+    dept = (department or "custom").lower()
+    prefs["department_counts"] = _increment_count_map(prefs.get("department_counts"), dept)
+    prefs["system_counts"] = _increment_count_maps(prefs.get("system_counts"), systems)
+    prefs["output_type_counts"] = _increment_count_maps(prefs.get("output_type_counts"), output_types)
+    hour_key = str(datetime.now(timezone.utc).hour)
+    prefs["build_hour_counts"] = _increment_count_map(prefs.get("build_hour_counts"), hour_key)
+    prefs["last_department"] = dept
+    prefs["last_systems"] = [s for s in systems if s]
+    prefs["last_output_types"] = [o for o in output_types if o]
+    if event == "deploy":
+        prefs["deploy_count"] = int(prefs.get("deploy_count") or 0) + 1
+    else:
+        prefs["interpret_count"] = int(prefs.get("interpret_count") or 0) + 1
+    return prefs
+
+
+def _preferences_to_response(prefs: dict[str, Any]) -> MesonPreferencesResponse:
+    hours = _top_count_keys(prefs.get("build_hour_counts"), limit=3)
+    return MesonPreferencesResponse(
+        department=_top_count_key(prefs.get("department_counts"))
+        or (str(prefs.get("last_department")) if prefs.get("last_department") else None),
+        systems=_top_count_keys(prefs.get("system_counts"), limit=5)
+        or [str(x) for x in (prefs.get("last_systems") or []) if x],
+        outputTypes=_top_count_keys(prefs.get("output_type_counts"), limit=5)
+        or [str(x) for x in (prefs.get("last_output_types") or []) if x],
+        preferredBuildHoursUtc=[int(h) for h in hours if str(h).isdigit()],
+        interpretCount=int(prefs.get("interpret_count") or 0),
+        deployCount=int(prefs.get("deploy_count") or 0),
+    )
 
 
 def _parse_workflow_nodes(workflow_state: dict[str, Any] | None) -> list[dict[str, Any]]:

@@ -358,6 +358,27 @@ export interface MesonFeedbackRequest {
   workflowId?: string
 }
 
+export interface MesonPreferencesResponse {
+  department?: string | null
+  systems?: string[]
+  outputTypes?: string[]
+  preferredBuildHoursUtc?: number[]
+  interpretCount?: number
+  deployCount?: number
+}
+
+export interface MesonFeedbackMetricsResponse {
+  acceptedCount?: number
+  dismissedCount?: number
+  acceptanceRate?: number | null
+  suggestions?: Array<{
+    suggestionId: string
+    accepted: number
+    dismissed: number
+    acceptanceRate?: number | null
+  }>
+}
+
 export const mesonApi = {
   interpret: (data: {
     intent: string
@@ -381,6 +402,13 @@ export const mesonApi = {
     postJson<MesonSuggestionsResponse>(apiUrl("/api/meson/suggestions"), data),
   alerts: () => fetcher<MesonAlertsResponse>(apiUrl("/api/meson/alerts")),
   insights: () => fetcher<MesonInsightsResponse>(apiUrl("/api/meson/insights")),
+  preferences: () => fetcher<MesonPreferencesResponse>(apiUrl("/api/meson/preferences")),
+  feedbackMetrics: (workflowId?: string) =>
+    fetcher<MesonFeedbackMetricsResponse>(
+      apiUrl(
+        `/api/meson/feedback/metrics${workflowId ? `?workflowId=${encodeURIComponent(workflowId)}` : ""}`
+      )
+    ),
   feedback: (data: MesonFeedbackRequest) =>
     postJson<{ ok?: boolean }>(apiUrl("/api/meson/feedback"), data),
 }
