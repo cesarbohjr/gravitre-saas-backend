@@ -75,15 +75,11 @@ function deriveModelLabel(input: Record<string, unknown>): string {
 }
 
 function deriveKnowledgeDocCount(input: Record<string, unknown>, stats: Record<string, unknown>): number {
+  const direct = Number(input.knowledgeDocCount ?? input.knowledge_doc_count ?? NaN)
+  if (!Number.isNaN(direct) && direct >= 0) return direct
   const fromStats = Number(stats.knowledgeDocCount ?? stats.knowledge_docs ?? stats.knowledgeDocs ?? NaN)
-  if (!Number.isNaN(fromStats) && fromStats > 0) return fromStats
-  const config = (input.config ?? {}) as Record<string, unknown>
-  const fromConfig = Number(config.knowledge_doc_count ?? config.knowledgeDocCount ?? NaN)
-  if (!Number.isNaN(fromConfig) && fromConfig > 0) return fromConfig
-  // TODO: replace with API when knowledge doc counts ship on /api/agents
-  const id = String(input.id ?? "")
-  if (!id) return 0
-  return (id.charCodeAt(0) % 12) + 3
+  if (!Number.isNaN(fromStats) && fromStats >= 0) return fromStats
+  return 0
 }
 
 function normalizeAgent(input: Record<string, unknown>): Agent {

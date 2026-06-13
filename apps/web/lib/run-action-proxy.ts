@@ -103,3 +103,73 @@ export async function proxyRunAction(request: NextRequest, runId: string, action
     return mapRunActionError(503, { detail: error instanceof Error ? error.message : "Unknown proxy error" })
   }
 }
+
+/** Proxy per-step workflow run mutations to FastAPI. */
+export async function proxyRunStepAction(
+  request: NextRequest,
+  runId: string,
+  stepId: string,
+  action: string,
+) {
+  const bearer = await resolveBearerToken(request)
+  if (!bearer) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401, headers: JSON_HEADERS })
+  }
+
+  const baseUrl = process.env.FASTAPI_BASE_URL?.trim()?.replace(/\/+$/, "")
+  if (!baseUrl) {
+    return NextResponse.json(
+      { error: "Backend not configured — FASTAPI_BASE_URL is not set" },
+      { status: 503, headers: JSON_HEADERS },
+    )
+  }
+
+  const body = await request.text()
+  const headers = new Headers({
+    authorization: bearer,
+    accept: "application/json",
+  })
+  const contentType = request.headers.get("content-type")
+  if (contentType) headers.set("content-type", contentType)
+  const xOrgId = request.headers.get("x-org-id")
+  if (xOrgId) headers.set("x-org-id", xOrgId)
+  const xEnv = request.headers.get("x-environment")
+  if (xEnv) headers.set("x-environment", xEnv)
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+  try {
+    const upstream = await fetch(`${baseUrl}/api/runs/${runId}/steps/${stepId}/${action}`, {
+      method: "POST",
+      headers,
+      body: body || undefined,
+      cache: "no-store",
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    const contentTypeHeader = upstream.headers.get("content-type") ?? ""
+    const payload = contentTypeHeader.includes("application/json") ? await upstream.json() : null
+
+    if (upstream.ok) {
+      if (payload === null) return new NextResponse(null, { status: upstream.status })
+      return NextResponse.json(payload, { status: upstream.status, headers: JSON_HEADERS })
+    }
+
+    if (upstream.status in STATUS_MESSAGES) {
+      return mapRunActionError(upstream.status, payload)
+    }
+
+    if (payload !== null) {
+      return NextResponse.json(payload, { status: upstream.status, headers: JSON_HEADERS })
+    }
+    return NextResponse.json({ error: "Request failed" }, { status: upstream.status, headers: JSON_HEADERS })
+  } catch (error) {
+    clearTimeout(timeout)
+    if (error instanceof Error && error.name === "AbortError") {
+      return mapRunActionError(504, null)
+    }
+    return mapRunActionError(503, { detail: error instanceof Error ? error.message : "Unknown proxy error" })
+  }
+}

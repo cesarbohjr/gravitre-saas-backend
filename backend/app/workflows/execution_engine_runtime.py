@@ -161,6 +161,36 @@ def _finalize_run(
     return final_status, step_rows, errors, rate_limited
 
 
+def _save_graph_checkpoint(
+    ctx: _GraphRunContext,
+    *,
+    paused_at_node: str,
+    batch_index: int,
+    approval_context: dict[str, Any] | None = None,
+    pause_reason: str | None = None,
+) -> dict[str, Any]:
+    checkpoint = {
+        "paused_at_node": paused_at_node,
+        "batch_index": batch_index,
+        "step_index": ctx.step_index,
+        "node_outputs": ctx.node_outputs,
+        "skipped_nodes": ctx.skipped_nodes,
+        "approval_context": approval_context or {},
+        "nodes": list(ctx.graph.nodes_by_id.values()),
+        "edges": _edges_as_dicts(ctx.graph.edges),
+    }
+    if pause_reason:
+        checkpoint["pause_reason"] = pause_reason
+    params: dict[str, Any] = {
+        _CHECKPOINT_KEY: checkpoint,
+        "paused_at_node": paused_at_node,
+    }
+    if approval_context is not None:
+        params["approval_context"] = approval_context
+    merge_run_parameters(ctx.client, ctx.run_id, params)
+    return checkpoint
+
+
 def _save_checkpoint(
     ctx: _GraphRunContext,
     *,
@@ -168,24 +198,11 @@ def _save_checkpoint(
     batch_index: int,
     approval_context: dict[str, Any],
 ) -> None:
-    checkpoint = {
-        "paused_at_node": paused_at_node,
-        "batch_index": batch_index,
-        "step_index": ctx.step_index,
-        "node_outputs": ctx.node_outputs,
-        "skipped_nodes": ctx.skipped_nodes,
-        "approval_context": approval_context,
-        "nodes": list(ctx.graph.nodes_by_id.values()),
-        "edges": _edges_as_dicts(ctx.graph.edges),
-    }
-    merge_run_parameters(
-        ctx.client,
-        ctx.run_id,
-        {
-            _CHECKPOINT_KEY: checkpoint,
-            "paused_at_node": paused_at_node,
-            "approval_context": approval_context,
-        },
+    _save_graph_checkpoint(
+        ctx,
+        paused_at_node=paused_at_node,
+        batch_index=batch_index,
+        approval_context=approval_context,
     )
     update_run(ctx.client, ctx.run_id, status=RUN_STATUS_AWAITING_APPROVAL)
 
@@ -520,25 +537,84 @@ def _batch_requires_serial(ctx: _GraphRunContext, batch: list[str]) -> bool:
     return any(_is_approval_node(ctx.graph.nodes_by_id[nid]) for nid in batch)
 
 
-def _run_graph_batches(ctx: _GraphRunContext, batches: list[list[str]], *, start_batch: int = 0) -> tuple[str, list[str], bool]:
+def _batch_index_for_node(batches: list[list[str]], node_id: str) -> int:
+    for idx, batch in enumerate(batches):
+        if node_id in batch:
+            return idx
+    raise GraphValidationError(f"Node {node_id} not found in execution graph")
+
+
+def _downstream_node_ids(graph: ExecutionGraph, node_id: str) -> set[str]:
+    from collections import deque
+
+    seen: set[str] = set()
+    queue: deque[str] = deque(graph.successors.get(node_id, []))
+    while queue:
+        current = queue.popleft()
+        if current in seen:
+            continue
+        seen.add(current)
+        queue.extend(graph.successors.get(current, []))
+    return seen
+
+
+def _node_outputs_from_completed_steps(steps: list[dict[str, Any]]) -> dict[str, Any]:
+    outputs: dict[str, Any] = {}
+    for step in steps:
+        status = str(step.get("status") or "")
+        if status not in {STEP_STATUS_COMPLETED, STEP_STATUS_SKIPPED}:
+            continue
+        node_id = str(step.get("step_id") or "")
+        snapshot = step.get("output_snapshot")
+        if node_id and isinstance(snapshot, dict):
+            outputs[node_id] = snapshot
+    return outputs
+
+
+def _graph_from_run(run: dict[str, Any]) -> tuple[ExecutionGraph, list[list[str]]]:
+    definition = run.get("definition_snapshot") or {}
+    graph_payload = definition.get("graph") if isinstance(definition.get("graph"), dict) else {}
+    nodes = graph_payload.get("nodes") or definition.get("nodes") or []
+    edges = graph_payload.get("edges") or definition.get("edges") or []
+    graph = build_execution_graph(nodes, edges)
+    validate_execution_graph(graph)
+    return graph, topological_batches(graph)
+
+
+def _run_graph_batches(
+    ctx: _GraphRunContext,
+    batches: list[list[str]],
+    *,
+    start_batch: int = 0,
+    skip_nodes_with_outputs: bool = False,
+) -> tuple[str, list[str], bool]:
     errors: list[str] = []
     rate_limited = False
 
     for batch_idx, batch in enumerate(batches[start_batch:], start=start_batch):
+        node_ids = batch
+        if skip_nodes_with_outputs:
+            node_ids = [node_id for node_id in batch if node_id not in ctx.node_outputs]
+        if not node_ids:
+            continue
+
         base_index = ctx.step_index
-        if _batch_requires_serial(ctx, batch):
-            outcomes = [_execute_graph_node(ctx, node_id, base_index + offset) for offset, node_id in enumerate(batch)]
+        if _batch_requires_serial(ctx, node_ids):
+            outcomes = [
+                _execute_graph_node(ctx, node_id, base_index + offset)
+                for offset, node_id in enumerate(node_ids)
+            ]
         else:
             outcomes = []
-            with ThreadPoolExecutor(max_workers=min(len(batch), 8)) as pool:
+            with ThreadPoolExecutor(max_workers=min(len(node_ids), 8)) as pool:
                 futures = {
                     pool.submit(_execute_graph_node, ctx, node_id, base_index + offset): node_id
-                    for offset, node_id in enumerate(batch)
+                    for offset, node_id in enumerate(node_ids)
                 }
                 by_node = {}
                 for future in as_completed(futures):
                     by_node[futures[future]] = future.result()
-                outcomes = [by_node[nid] for nid in batch]
+                outcomes = [by_node[nid] for nid in node_ids]
 
         ctx.step_index = max((o.step_index for o in outcomes), default=ctx.step_index)
 
@@ -550,6 +626,12 @@ def _run_graph_batches(ctx: _GraphRunContext, batches: list[list[str]], *, start
                 _save_checkpoint(ctx, paused_at_node=outcome.node_id, batch_index=batch_idx, approval_context=approval_context)
                 return RUN_STATUS_AWAITING_APPROVAL, errors, rate_limited
             if outcome.halt == "paused":
+                _save_graph_checkpoint(
+                    ctx,
+                    paused_at_node=outcome.node_id,
+                    batch_index=batch_idx,
+                    pause_reason="operator_interrupt",
+                )
                 update_run(ctx.client, ctx.run_id, status=RUN_STATUS_PAUSED)
                 return RUN_STATUS_PAUSED, errors, rate_limited
             if outcome.halt == "cancelled":
@@ -681,6 +763,146 @@ def resume_workflow_graph(
     merge_run_parameters(client, run_id, {_CHECKPOINT_KEY: None, "paused_at_node": None, "approval_context": None})
     update_run(client, run_id, status="running")
 
-    final_status, errors, rate_limited = _run_graph_batches(ctx, batches, start_batch=batch_index + 1)
+    final_status, errors, rate_limited = _run_graph_batches(
+        ctx,
+        batches,
+        start_batch=batch_index + 1,
+    )
     run_error_message = errors[0] if errors else None
     return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=run_error_message, rate_limited=rate_limited)
+
+
+def resume_paused_workflow_graph(
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    run_id: str,
+    *,
+    client: Any,
+    environment_name: str = "default",
+) -> tuple[str, list[dict], list[str], bool]:
+    """Resume a graph run paused by operator interrupt (STA-170)."""
+    run = get_run_with_steps(client, org_id, run_id, environment_name)
+    if not run:
+        raise GraphValidationError("Run not found")
+    if run.get("status") != RUN_STATUS_PAUSED:
+        raise GraphValidationError(f"Run is not paused (status={run.get('status')})")
+
+    params = dict(run.get("parameters") or {})
+    checkpoint = params.get(_CHECKPOINT_KEY) or {}
+    if not checkpoint:
+        raise GraphValidationError("Missing pause checkpoint — cannot resume this run")
+
+    graph, batches = _graph_from_run(run)
+    batch_index = int(checkpoint.get("batch_index") or 0)
+    ctx = _GraphRunContext(
+        settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        run_id=run_id,
+        graph=graph,
+        edge_dicts=_edges_as_dicts(graph.edges),
+        parameters=params,
+        client=client,
+        environment_name=environment_name,
+        node_outputs=dict(checkpoint.get("node_outputs") or {}),
+        skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
+        step_index=int(checkpoint.get("step_index") or 0),
+    )
+    merge_run_parameters(
+        client,
+        run_id,
+        {_CHECKPOINT_KEY: None, "paused_at_node": None, "approval_context": None},
+    )
+    update_run(client, run_id, status="running", error_message=None)
+    final_status, errors, rate_limited = _run_graph_batches(
+        ctx,
+        batches,
+        start_batch=batch_index,
+        skip_nodes_with_outputs=True,
+    )
+    run_error_message = errors[0] if errors else None
+    return _finalize_run(
+        ctx,
+        final_status=final_status,
+        errors=errors,
+        run_error_message=run_error_message,
+        rate_limited=rate_limited,
+    )
+
+
+def retry_workflow_step(
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    run_id: str,
+    step_uuid: str,
+    *,
+    client: Any,
+    environment_name: str = "default",
+) -> tuple[str, list[dict], list[str], bool]:
+    """Re-run a failed workflow step and its downstream nodes."""
+    run = get_run_with_steps(client, org_id, run_id, environment_name)
+    if not run:
+        raise GraphValidationError("Run not found")
+    if str(run.get("status") or "") not in {RUN_STATUS_FAILED, RUN_STATUS_PAUSED}:
+        raise GraphValidationError(f"Run cannot retry step in status={run.get('status')}")
+
+    steps = list(run.get("steps") or [])
+    target = next((step for step in steps if str(step.get("id")) == str(step_uuid)), None)
+    if not target:
+        raise GraphValidationError("Step not found")
+    if str(target.get("status") or "") != STEP_STATUS_FAILED and not target.get("is_retryable"):
+        raise GraphValidationError("Step is not retryable")
+
+    node_id = str(target.get("step_id") or "")
+    if not node_id:
+        raise GraphValidationError("Step is missing node reference")
+
+    graph, batches = _graph_from_run(run)
+    batch_index = _batch_index_for_node(batches, node_id)
+    step_index = int(target.get("step_index") or 0)
+    prior_steps = [step for step in steps if int(step.get("step_index") or 0) < step_index]
+    node_outputs = _node_outputs_from_completed_steps(prior_steps)
+    downstream = _downstream_node_ids(graph, node_id)
+    for downstream_id in downstream:
+        node_outputs.pop(downstream_id, None)
+    node_outputs.pop(node_id, None)
+
+    client.table("workflow_steps").delete().eq("run_id", run_id).gte("step_index", step_index).execute()
+
+    params = dict(run.get("parameters") or {})
+    ctx = _GraphRunContext(
+        settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        run_id=run_id,
+        graph=graph,
+        edge_dicts=_edges_as_dicts(graph.edges),
+        parameters=params,
+        client=client,
+        environment_name=environment_name,
+        node_outputs=node_outputs,
+        skipped_nodes=[],
+        step_index=step_index,
+    )
+    merge_run_parameters(
+        client,
+        run_id,
+        {_CHECKPOINT_KEY: None, "paused_at_node": None, "approval_context": None},
+    )
+    update_run(client, run_id, status="running", error_message=None)
+    final_status, errors, rate_limited = _run_graph_batches(
+        ctx,
+        batches,
+        start_batch=batch_index,
+        skip_nodes_with_outputs=True,
+    )
+    run_error_message = errors[0] if errors else None
+    return _finalize_run(
+        ctx,
+        final_status=final_status,
+        errors=errors,
+        run_error_message=run_error_message,
+        rate_limited=rate_limited,
+    )

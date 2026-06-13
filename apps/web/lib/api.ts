@@ -537,6 +537,10 @@ export const runsApi = {
   cancel: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/cancel`), {}),
   pause: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/pause`), {}),
   retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
+  retryStep: (runId: string, stepId: string) =>
+    postJson<{ success?: boolean; status?: string }>(apiUrl(`/api/runs/${runId}/steps/${stepId}/retry`), {}),
+  resumePaused: (id: string) =>
+    postJson<{ success?: boolean; status?: string }>(apiUrl(`/api/runs/${id}/resume-paused`), {}),
   rollback: (id: string) =>
     postJson<{ run_id?: string; status?: string }>(apiUrl(`/api/runs/${id}/rollback`), {}),
   compensate: (id: string) => postJson<RunCompensationSummary>(apiUrl(`/api/runs/${id}/compensate`), {}),

@@ -167,6 +167,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const [isCompensating, setIsCompensating] = useState(false)
   const [compensationSummary, setCompensationSummary] = useState<RunCompensationSummary | null>(null)
   const [isResolvingApproval, setIsResolvingApproval] = useState(false)
+  const [isResuming, setIsResuming] = useState(false)
 
   const { data, error, isLoading, mutate } = useSWR<RunDetailResponse>(
     `/api/runs/${id}`,
@@ -204,6 +205,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const canInterrupt = run.status === "running" || run.status === "paused"
   const canPause = run.status === "running"
   const canCancel = run.status === "running" || run.status === "paused"
+  const canResumePaused = run.status === "paused"
   const canCompensate = run.status === "failed" && isAdmin
   const canResolveGraphApproval = run.status === "awaiting_approval" && isAdmin
   const canResolveExecuteApproval = run.status === "pending_approval" && isAdmin
@@ -261,11 +263,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     }
   }
 
-  const handleRetryStep = async (_stepId: string) => {
+  const handleRetryStep = async (stepId: string) => {
     setIsRetryingStep(true)
     try {
-      await runsApi.retry(id)
-      toast.success("Retry started", { description: "Re-running workflow from failed step." })
+      await runsApi.retryStep(id, stepId)
+      toast.success("Step retry started", { description: "Re-running from the failed step." })
       await mutate()
     } catch (err) {
       toast.error("Step retry failed", {
@@ -273,6 +275,25 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       })
     } finally {
       setIsRetryingStep(false)
+    }
+  }
+
+  const handleResumePaused = async () => {
+    if (!isAdmin) {
+      toast.error("Admin access required to resume this run")
+      return
+    }
+    setIsResuming(true)
+    try {
+      await runsApi.resumePaused(id)
+      toast.success("Run resumed", { description: "Continuing from the pause checkpoint." })
+      await mutate()
+    } catch (err) {
+      toast.error("Resume failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsResuming(false)
     }
   }
 
@@ -403,6 +424,21 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {canResumePaused && (
+                <Button
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={handleResumePaused}
+                  disabled={!isAdmin || authLoading || isResuming}
+                >
+                  {isResuming ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5" />
+                  )}
+                  Resume
+                </Button>
+              )}
               {canPause && (
                 <Button
                   variant="outline"
@@ -507,6 +543,31 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             {run.errorMessage}
           </div>
         ) : null}
+
+        {canResumePaused && (
+          <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Pause className="h-4 w-4 text-warning" />
+              <h2 className="text-sm font-semibold text-foreground">Run paused</h2>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              This run was paused by an operator. Resume to continue from the saved checkpoint.
+            </p>
+            <Button
+              size="sm"
+              className="h-8 gap-2"
+              disabled={!isAdmin || authLoading || isResuming}
+              onClick={handleResumePaused}
+            >
+              {isResuming ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              Resume run
+            </Button>
+          </div>
+        )}
 
         {(canResolveGraphApproval || canResolveExecuteApproval) && (
           <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">

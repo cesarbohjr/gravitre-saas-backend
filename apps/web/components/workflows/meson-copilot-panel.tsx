@@ -60,6 +60,7 @@ export function MesonCopilotPanel({
   nodes,
   onAcceptSuggestion,
   onDismissSuggestion,
+  onApplyInsight,
 }: {
   open: boolean
   onClose: () => void
@@ -68,6 +69,7 @@ export function MesonCopilotPanel({
   nodes: Array<{ type: string; name: string; vendor?: string }>
   onAcceptSuggestion: (suggestion: MesonSuggestion) => void
   onDismissSuggestion: (suggestionId: string) => void
+  onApplyInsight?: (insight: MesonInsight) => void
 }) {
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
   const [alerts, setAlerts] = useState<MesonAlert[]>([])
@@ -315,7 +317,13 @@ export function MesonCopilotPanel({
                       <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{insight.summary}</p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" className="mt-2 h-6 gap-1 px-2 text-[10px]">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                    onClick={() => onApplyInsight?.(insight)}
+                    disabled={!onApplyInsight}
+                  >
                     Apply
                     <ChevronRight className="h-3 w-3" />
                   </Button>

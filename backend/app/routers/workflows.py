@@ -3081,6 +3081,88 @@ async def retry_run_alias(
     return {"success": True}
 
 
+@runs_router.post("/{run_id}/resume-paused")
+async def resume_paused_run_alias(
+    run_id: UUID,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Resume a workflow run paused by operator interrupt."""
+    user, org_id = admin
+    if settings.disable_execute:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
+    client = get_supabase_client(settings)
+    from app.workflows.execution_engine import GraphValidationError, resume_paused_workflow_graph
+
+    try:
+        final_status, step_rows, _, rate_limited = resume_paused_workflow_graph(
+            settings=settings,
+            org_id=org_id,
+            user_id=user["user_id"],
+            run_id=str(run_id),
+            client=client,
+            environment_name=environment_name,
+        )
+    except GraphValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if rate_limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+        )
+    rag_failed = any(s.get("error_code") == ERROR_CODE_RAG_UNAVAILABLE for s in step_rows)
+    if rag_failed:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RAG unavailable for one or more steps",
+        )
+    return {"success": True, "status": final_status}
+
+
+@runs_router.post("/{run_id}/steps/{step_id}/retry")
+async def retry_run_step_alias(
+    run_id: UUID,
+    step_id: UUID,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Re-run a failed workflow step and downstream nodes."""
+    user, org_id = admin
+    if settings.disable_execute:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
+    client = get_supabase_client(settings)
+    from app.workflows.execution_engine import GraphValidationError, retry_workflow_step
+
+    try:
+        final_status, step_rows, _, rate_limited = retry_workflow_step(
+            settings=settings,
+            org_id=org_id,
+            user_id=user["user_id"],
+            run_id=str(run_id),
+            step_uuid=str(step_id),
+            client=client,
+            environment_name=environment_name,
+        )
+    except GraphValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if rate_limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+        )
+    rag_failed = any(s.get("error_code") == ERROR_CODE_RAG_UNAVAILABLE for s in step_rows)
+    if rag_failed:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RAG unavailable for one or more steps",
+        )
+    return {"success": True, "status": final_status}
+
+
 @runs_router.post("/{run_id}/cancel")
 async def cancel_run_alias(
     run_id: UUID,

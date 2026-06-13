@@ -32,7 +32,7 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
-import { mesonApi, runsApi, type MesonSuggestion } from "@/lib/api"
+import { mesonApi, runsApi, type MesonInsight, type MesonSuggestion } from "@/lib/api"
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
@@ -3092,6 +3092,44 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     [applyMesonSuggestion, canPersist, id]
   )
 
+  const applyInsight = useCallback(
+    (insight: MesonInsight) => {
+      switch (insight.id) {
+        case "draft-workflows":
+          setSettingsName(workflowMeta.name)
+          setSettingsDescription(workflowMeta.description || "")
+          setSettingsOpen(true)
+          toast.info("Review workflow settings", {
+            description: "Publish when validation passes.",
+          })
+          break
+        case "run-success-rate":
+          router.push("/runs")
+          toast.info("Review recent runs", {
+            description: "Check failing steps and connector health.",
+          })
+          break
+        case "open-failure-alerts":
+          router.push("/metrics")
+          toast.info("Review failure predictions", {
+            description: "Inspect open alerts before the next production run.",
+          })
+          break
+        default:
+          toast.info(insight.title, { description: insight.summary })
+          break
+      }
+      void mesonApi
+        .feedback({
+          suggestionId: insight.id,
+          action: "accepted",
+          workflowId: canPersist ? id : undefined,
+        })
+        .catch(() => {})
+    },
+    [canPersist, id, router, workflowMeta.description, workflowMeta.name]
+  )
+
   // Handle save workflow
   const handleSave = useCallback(async () => {
     if (!canPersist) {
@@ -4823,6 +4861,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             nodes={nodes.map((n) => ({ type: n.type, name: n.name, vendor: n.vendor }))}
             onAcceptSuggestion={acceptSuggestion}
             onDismissSuggestion={dismissSuggestion}
+            onApplyInsight={applyInsight}
           />
 
           {/* Right config panel */}

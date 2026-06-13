@@ -3,7 +3,7 @@ import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from 
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
-function mapAgentRow(input: Record<string, unknown>) {
+function mapAgentRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
   const model = snakeToCamel<Record<string, unknown>>(input)
   const personality =
     model.personality && typeof model.personality === "object"
@@ -18,6 +18,8 @@ function mapAgentRow(input: Record<string, unknown>) {
     department: String(model.department ?? "Operations"),
     description: String(model.description ?? model.purpose ?? "AI teammate"),
     status: String(model.status ?? "idle"),
+    model: String(model.model ?? "auto"),
+    knowledgeDocCount,
     personality: {
       color: String(personality.color ?? "blue"),
       gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
@@ -28,12 +30,78 @@ function mapAgentRow(input: Record<string, unknown>) {
       successRate: Number(stats.successRate ?? 100),
       avgResponseTime: String(stats.avgResponseTime ?? "-"),
       workflowsUsing: Number(stats.workflowsUsing ?? 0),
+      knowledgeDocCount,
     },
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
   }
+}
+
+async function loadKnowledgeDocCounts(
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  orgId: string,
+  agentIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  if (agentIds.length === 0) return counts
+
+  for (const agentId of agentIds) {
+    counts.set(agentId, 0)
+  }
+
+  const { data: sources } = await supabase
+    .from("rag_sources")
+    .select("id, agent_id")
+    .eq("org_id", orgId)
+    .in("agent_id", agentIds)
+
+  const sourceIds: string[] = []
+  const sourcesByAgent = new Map<string, string[]>()
+  for (const source of sources ?? []) {
+    const agentId = String((source as { agent_id?: string }).agent_id ?? "")
+    const sourceId = String((source as { id?: string }).id ?? "")
+    if (!agentId || !sourceId) continue
+    sourceIds.push(sourceId)
+    const bucket = sourcesByAgent.get(agentId) ?? []
+    bucket.push(sourceId)
+    sourcesByAgent.set(agentId, bucket)
+  }
+
+  const docsBySource = new Map<string, number>()
+  if (sourceIds.length > 0) {
+    const { data: documents } = await supabase
+      .from("rag_documents")
+      .select("source_id")
+      .in("source_id", sourceIds)
+
+    for (const document of documents ?? []) {
+      const sourceId = String((document as { source_id?: string }).source_id ?? "")
+      if (!sourceId) continue
+      docsBySource.set(sourceId, (docsBySource.get(sourceId) ?? 0) + 1)
+    }
+  }
+
+  for (const [agentId, agentSources] of sourcesByAgent.entries()) {
+    const ragCount = agentSources.reduce((total, sourceId) => total + (docsBySource.get(sourceId) ?? 0), 0)
+    counts.set(agentId, (counts.get(agentId) ?? 0) + ragCount)
+  }
+
+  const { data: instructions } = await supabase
+    .from("custom_instructions")
+    .select("agent_id")
+    .eq("org_id", orgId)
+    .eq("is_active", true)
+    .in("agent_id", agentIds)
+
+  for (const instruction of instructions ?? []) {
+    const agentId = String((instruction as { agent_id?: string }).agent_id ?? "")
+    if (!agentId) continue
+    counts.set(agentId, (counts.get(agentId) ?? 0) + 1)
+  }
+
+  return counts
 }
 
 export async function GET(request: NextRequest) {
@@ -75,7 +143,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const agents = (data ?? []).map((row) => mapAgentRow(row as Record<string, unknown>))
+    const agentRows = data ?? []
+    const agentIds = agentRows
+      .map((row) => String((row as { id?: string }).id ?? ""))
+      .filter((agentId) => agentId.length > 0)
+    const knowledgeCounts = await loadKnowledgeDocCounts(supabase, orgId, agentIds)
+    const agents = agentRows.map((row) =>
+      mapAgentRow(row as Record<string, unknown>, knowledgeCounts.get(String((row as { id?: string }).id ?? "")) ?? 0),
+    )
 
     return NextResponse.json({
       agents,
