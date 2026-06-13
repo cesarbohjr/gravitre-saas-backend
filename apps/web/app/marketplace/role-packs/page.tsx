@@ -8,6 +8,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -32,7 +39,19 @@ import {
   PartyPopper,
 } from "lucide-react"
 import { toast } from "sonner"
-import type { DepartmentRolePack, DepartmentRolePackInstallResult } from "@/types/api"
+import type {
+  DepartmentRolePack,
+  DepartmentRolePackConnectorChecklistItem,
+  DepartmentRolePackInstallResult,
+} from "@/types/api"
+
+const INSTALL_STEPS = [
+  "Verifying connectors",
+  "Creating department agents",
+  "Setting up knowledge sources",
+  "Building workflows",
+  "Finalizing install",
+] as const
 
 // Department visual theming — accent color + icon per known department.
 const DEPARTMENT_THEME: Record<
@@ -133,12 +152,20 @@ function ReadinessRing({
   )
 }
 
-function ConnectorChecklist({ pack }: { pack: DepartmentRolePack }) {
+function ConnectorChecklist({
+  pack,
+  items,
+}: {
+  pack?: DepartmentRolePack
+  items?: DepartmentRolePackConnectorChecklistItem[]
+}) {
+  const checklist = items ?? pack?.connectorChecklist ?? []
+  if (checklist.length === 0) return null
   return (
     <ul className="space-y-1.5">
-      {pack.connectorChecklist.map((item) => (
+      {checklist.map((item) => (
         <li
-          key={`${pack.packId}-${item.connectorType}`}
+          key={`${pack?.packId ?? "result"}-${item.connectorType}`}
           className={cn(
             "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
             item.connected ? "border-success/30 bg-success/5" : "border-border/60",
@@ -173,6 +200,104 @@ function ConnectorChecklist({ pack }: { pack: DepartmentRolePack }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+function InstallProgressDialog({
+  open,
+  packName,
+  stepIndex,
+}: {
+  open: boolean
+  packName: string
+  stepIndex: number
+}) {
+  return (
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Installing {packName}</DialogTitle>
+          <DialogDescription>
+            Provisioning agents, knowledge sources, and workflows for your organization.
+          </DialogDescription>
+        </DialogHeader>
+        <ol className="space-y-3 pt-2">
+          {INSTALL_STEPS.map((label, index) => {
+            const done = index < stepIndex
+            const active = index === stepIndex
+            return (
+              <li key={label} className="flex items-center gap-3 text-sm">
+                <span
+                  className={cn(
+                    "grid h-7 w-7 shrink-0 place-items-center rounded-full border",
+                    done && "border-success/40 bg-success/10 text-success",
+                    active && "border-primary bg-primary/10 text-primary",
+                    !done && !active && "border-border text-muted-foreground",
+                  )}
+                  aria-hidden
+                >
+                  {done ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : active ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="text-xs font-medium tabular-nums">{index + 1}</span>
+                  )}
+                </span>
+                <span className={cn(active ? "font-medium text-foreground" : "text-muted-foreground")}>
+                  {label}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function InstallResultSummary({ result }: { result: DepartmentRolePackInstallResult }) {
+  const agentCount = result.agentIds?.length ?? 0
+  const workflowCount = result.workflowIds?.length ?? 0
+  const ragCount = result.ragSourceIds?.length ?? 0
+  const missingOptional = (result.connectorChecklist ?? []).filter(
+    (item) => !item.connected && !item.required,
+  )
+
+  return (
+    <div className="mt-3 w-full space-y-3 text-left">
+      <div className="flex flex-wrap justify-center gap-2">
+        {result.agentIds?.map((agentId) => (
+          <Button key={agentId} size="sm" variant="secondary" asChild>
+            <Link href={`/agents/${agentId}`}>
+              <Bot className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              Open agent
+            </Link>
+          </Button>
+        ))}
+        {result.workflowIds?.map((workflowId) => (
+          <Button key={workflowId} size="sm" variant="secondary" asChild>
+            <Link href={`/workflows/${workflowId}/builder`}>
+              <Workflow className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              Open workflow
+            </Link>
+          </Button>
+        ))}
+      </div>
+      <p className="text-center text-xs text-muted-foreground">
+        Created {agentCount} agent{agentCount === 1 ? "" : "s"},{" "}
+        {workflowCount} workflow{workflowCount === 1 ? "" : "s"}
+        {ragCount > 0 ? `, ${ragCount} knowledge source${ragCount === 1 ? "" : "s"}` : ""}.
+      </p>
+      {missingOptional.length > 0 ? (
+        <div className="rounded-lg border border-border/60 bg-card/80 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Optional connectors to connect next
+          </p>
+          <ConnectorChecklist items={missingOptional} />
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -252,23 +377,7 @@ function PackCard({
               <PartyPopper className="h-10 w-10" aria-hidden />
               <span className="text-sm font-semibold">Pack installed</span>
               {installResult && justInstalled === pack.packId ? (
-                <div className="flex flex-wrap justify-center gap-2">
-                  {installResult.agentIds?.[0] ? (
-                    <Button size="sm" variant="secondary" asChild>
-                      <Link href={`/agents/${installResult.agentIds[0]}`}>Open agent</Link>
-                    </Button>
-                  ) : null}
-                  {installResult.workflowIds?.[0] ? (
-                    <Button size="sm" variant="secondary" asChild>
-                      <Link href={`/workflows/${installResult.workflowIds[0]}/builder`}>
-                        Open workflow
-                      </Link>
-                    </Button>
-                  ) : null}
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href="/agents">All agents</Link>
-                  </Button>
-                </div>
+                <InstallResultSummary result={installResult} />
               ) : null}
             </motion.div>
           </motion.div>
@@ -380,8 +489,13 @@ function RolePacksPageContent() {
   const searchParams = useSearchParams()
   const focusPackId = searchParams.get("pack")
   const [installing, setInstalling] = useState<string | null>(null)
+  const [installProgress, setInstallProgress] = useState<{ packId: string; packName: string; step: number } | null>(
+    null,
+  )
   const [justInstalled, setJustInstalled] = useState<string | null>(null)
-  const [lastInstallResult, setLastInstallResult] = useState<DepartmentRolePackInstallResult | null>(null)
+  const [installResultsByPack, setInstallResultsByPack] = useState<
+    Record<string, DepartmentRolePackInstallResult>
+  >({})
   const [filter, setFilter] = useState<string>("all")
   const scrolledToPack = useRef<string | null>(null)
   const role = user?.role
@@ -395,9 +509,20 @@ function RolePacksPageContent() {
   const handleInstall = async (packId: string) => {
     const packName = (data?.packs ?? []).find((pack) => pack.packId === packId)?.name ?? packId
     setInstalling(packId)
+    setInstallProgress({ packId, packName, step: 0 })
+
+    let stepTimer: number | undefined
+    stepTimer = window.setInterval(() => {
+      setInstallProgress((prev) => {
+        if (!prev || prev.packId !== packId) return prev
+        return { ...prev, step: Math.min(prev.step + 1, INSTALL_STEPS.length - 2) }
+      })
+    }, 700)
+
     try {
       const result = await marketplaceApi.installRolePack(packId)
-      setLastInstallResult(result)
+      setInstallProgress({ packId, packName, step: INSTALL_STEPS.length - 1 })
+      setInstallResultsByPack((prev) => ({ ...prev, [packId]: result }))
       toast.success(`${packName} installed`, {
         description: `${result.workflowIds?.length ?? 0} workflow(s), ${result.agentIds?.length ?? 0} agent(s) added`,
         action:
@@ -408,16 +533,38 @@ function RolePacksPageContent() {
                 window.location.href = `/workflows/${result.workflowIds[0]}/builder`
               },
             }
-          ) : undefined,
+          ) : result.agentIds?.[0]
+            ? {
+                label: "Open agent",
+                onClick: () => {
+                  window.location.href = `/agents/${result.agentIds[0]}`
+                },
+              }
+            : undefined,
       })
       setJustInstalled(packId)
       await mutate()
-      setTimeout(() => setJustInstalled(null), 4000)
+      window.setTimeout(() => setJustInstalled(null), 6000)
     } catch (err) {
-      toast.error("Install failed", {
-        description: err instanceof Error ? err.message : "Try again",
+      const message = err instanceof Error ? err.message : "Try again"
+      const connectorsBlocked = /connect required apps/i.test(message)
+      toast.error(connectorsBlocked ? "Connect required apps first" : "Install failed", {
+        description: message,
+        action: connectorsBlocked
+          ? {
+              label: "View checklist",
+              onClick: () => {
+                document.getElementById(`role-pack-${packId}`)?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                })
+              },
+            }
+          : undefined,
       })
     } finally {
+      if (stepTimer) window.clearInterval(stepTimer)
+      window.setTimeout(() => setInstallProgress(null), 400)
       setInstalling(null)
     }
   }
@@ -447,6 +594,11 @@ function RolePacksPageContent() {
 
   return (
     <AppShell>
+      <InstallProgressDialog
+        open={!!installProgress}
+        packName={installProgress?.packName ?? "Department pack"}
+        stepIndex={installProgress?.step ?? 0}
+      />
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
         {/* Hero header */}
         <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-card p-6 md:p-8">
@@ -564,7 +716,7 @@ function RolePacksPageContent() {
                 isAdmin={isAdmin}
                 installing={installing}
                 justInstalled={justInstalled}
-                installResult={lastInstallResult}
+                installResult={installResultsByPack[pack.packId] ?? null}
                 highlighted={focusPackId === pack.packId}
                 onInstall={(id) => void handleInstall(id)}
               />
