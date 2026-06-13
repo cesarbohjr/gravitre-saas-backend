@@ -41,6 +41,12 @@ import type {
   Source,
   SourceListResponse,
   CreateSourceRequest,
+  DataSourceTypesResponse,
+  DataSourceTestResponse,
+  DataSourceQueryResponse,
+  SourceSyncHistoryItem,
+  SourceConnectorOption,
+  SourceDetail,
   SearchResponse,
   SearchHistoryItem,
   Conversation,
@@ -721,11 +727,27 @@ export const connectorsApi = {
 // ============ Sources ============
 export const sourcesApi = {
   list: () => fetcher<SourceListResponse>(apiUrl("/api/sources")),
-  get: (id: string) => fetcher<Source>(apiUrl(`/api/sources/${id}`)),
-  create: (data: CreateSourceRequest) => postJson<Source>(apiUrl("/api/sources"), data),
+  listTypes: (params?: { category?: string; search?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.category) query.set("category", params.category)
+    if (params?.search) query.set("search", params.search)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<DataSourceTypesResponse>(apiUrl(`/api/sources/types${suffix}`))
+  },
+  listConnectors: (vendor: string) =>
+    fetcher<{ connectors: SourceConnectorOption[] }>(apiUrl(`/api/sources/connectors?vendor=${encodeURIComponent(vendor)}`)),
+  get: (id: string) => fetcher<{ source: SourceDetail }>(apiUrl(`/api/sources/${id}`)),
+  create: (data: CreateSourceRequest) => postJson<{ id: string; typeId?: string }>(apiUrl("/api/sources"), data),
   update: (id: string, data: Partial<Source>) => patchJson<Source>(apiUrl(`/api/sources/${id}`), data),
   delete: (id: string) => deleteRequest(apiUrl(`/api/sources/${id}`)),
-  sync: (id: string) => postJson<{ status: string }>(apiUrl(`/api/sources/${id}/sync`), {}),
+  sync: (id: string) => postJson<{ status: string; tables?: number; records?: number }>(apiUrl(`/api/sources/${id}/sync`), {}),
+  testConnection: (data: { typeId: string; config?: Record<string, unknown>; connectionString?: string }) =>
+    postJson<DataSourceTestResponse>(apiUrl("/api/sources/test"), data),
+  testExisting: (id: string) => postJson<DataSourceTestResponse>(apiUrl(`/api/sources/${id}/test`), {}),
+  getSchema: (id: string) => fetcher<{ tables: unknown[]; tableCount: number }>(apiUrl(`/api/sources/${id}/schema`)),
+  getSyncHistory: (id: string) => fetcher<{ history: SourceSyncHistoryItem[] }>(apiUrl(`/api/sources/${id}/sync-history`)),
+  query: (id: string, question: string) =>
+    postJson<DataSourceQueryResponse>(apiUrl(`/api/sources/${id}/query`), { question }),
 }
 
 // ============ Search ============

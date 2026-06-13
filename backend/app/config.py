@@ -196,6 +196,7 @@ class Settings(BaseSettings):
     internal_api_secret: str = ""
     # In-process knowledge sync scheduler (STA-45). 0 = disabled.
     knowledge_sync_interval_seconds: int = 3600
+    source_sync_interval_seconds: int = 300
     # In-process workflow schedule dispatcher (STA-47). 0 = disabled.
     workflow_schedule_interval_seconds: int = 60
     # In-process usage-sync scheduler interval (seconds). 0 disables it (e.g. if

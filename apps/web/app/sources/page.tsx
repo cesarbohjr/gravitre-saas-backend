@@ -26,12 +26,9 @@ import {
   Workflow,
   Bot,
   RefreshCw,
-  Activity,
   Layers,
   CircleDot,
-  ArrowRight,
   ChevronDown,
-  Check,
   Loader2,
   ExternalLink,
   Zap,
@@ -40,16 +37,11 @@ import {
   TrendingUp,
   Sparkles
 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { sourcesApi } from "@/lib/api"
 import type { CreateSourceRequest } from "@/types/api"
+import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
 import { toast } from "sonner"
 
 interface Source {
@@ -199,7 +191,9 @@ function formatCompactCount(value: number): string {
 function normalizeSource(input: Record<string, unknown>): Source {
   const status = String(input.status ?? "connected")
   const type = String(input.type ?? "Unknown")
-  const rawRecordCount = Number(input.recordCount ?? input.record_count ?? 0)
+  const rawRecordCount = Number(
+    input.recordCount ?? input.record_count ?? input.recordsCount ?? input.records_count ?? 0
+  )
   const stringRecords = String(input.records ?? "")
   const parsedStringRecords = Number.parseFloat(stringRecords.replace(/[^\d.]/g, ""))
   const recordsFromString = stringRecords.includes("M")
@@ -227,8 +221,12 @@ function normalizeSource(input: Record<string, unknown>): Source {
         ? status
         : "connected",
     environment: environment === "staging" ? "staging" : "production",
-    lastSync: formatRelativeSync((input.lastSync as string | null) ?? (input.last_sync as string | null)),
-    tables: Number(input.tables ?? 0),
+    lastSync: formatRelativeSync(
+      (input.lastSync as string | null) ??
+        (input.last_sync as string | null) ??
+        (input.lastSyncAt as string | null)
+    ),
+    tables: Number(input.tables ?? input.tablesCount ?? input.tables_count ?? 0),
     records: formatCompactCount(effectiveRecordCount),
     description: String(input.description ?? `${type} data source`),
     workflowsUsing: Number(input.workflowsUsing ?? input.workflows_using ?? 0),
@@ -551,178 +549,7 @@ function SourceTile({
   )
 }
 
-// Add Source Modal
-function AddSourceModal({
-  open,
-  onClose,
-  onCreate,
-  creating,
-}: {
-  open: boolean
-  onClose: () => void
-  onCreate: (data: CreateSourceRequest) => Promise<void>
-  creating: boolean
-}) {
-  const [step, setStep] = useState(1)
-  const [selectedType, setSelectedType] = useState<string | null>(null)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<"success" | "error" | null>(null)
-  const [sourceName, setSourceName] = useState("")
-  const [connectionString, setConnectionString] = useState("")
-
-  const sourceTypes = [
-    { id: "postgresql", name: "PostgreSQL", icon: Database, color: "text-blue-400" },
-    { id: "mysql", name: "MySQL", icon: Database, color: "text-orange-400" },
-    { id: "mongodb", name: "MongoDB", icon: HardDrive, color: "text-green-400" },
-    { id: "snowflake", name: "Snowflake", icon: Cloud, color: "text-cyan-400" },
-    { id: "bigquery", name: "BigQuery", icon: Server, color: "text-yellow-400" },
-  ]
-
-  const handleTest = () => {
-    setTesting(true)
-    setTimeout(() => {
-      setTesting(false)
-      setTestResult("success")
-    }, 2000)
-  }
-
-  const resetAndClose = () => {
-    onClose()
-    setStep(1)
-    setSelectedType(null)
-    setTestResult(null)
-    setSourceName("")
-    setConnectionString("")
-  }
-
-  const handleCreateSource = async () => {
-    const typeName = sourceTypes.find((type) => type.id === selectedType)?.name ?? "Unknown"
-    await onCreate({
-      name: sourceName.trim(),
-      type: typeName,
-      description: `${typeName} data source`,
-      config: connectionString.trim() ? { connection_string: connectionString.trim() } : undefined,
-    })
-    resetAndClose()
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={resetAndClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {step === 1 && "Add Data Source"}
-            {step === 2 && "Configure Connection"}
-            {step === 3 && "Test & Connect"}
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Progress */}
-        <div className="flex items-center gap-2 mb-4">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={cn(
-                "h-1.5 flex-1 rounded-full transition-colors",
-                s <= step ? "bg-primary" : "bg-secondary"
-              )}
-            />
-          ))}
-        </div>
-
-        {step === 1 && (
-          <div className="grid grid-cols-2 gap-3">
-            {sourceTypes.map((type) => (
-              <button
-                key={type.id}
-                onClick={() => {
-                  setSelectedType(type.id)
-                  setStep(2)
-                }}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:bg-card/80"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                  <type.icon className={cn("h-5 w-5", type.color)} />
-                </div>
-                <span className="text-sm font-medium text-foreground">{type.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Source Name
-              </label>
-              <input
-                type="text"
-                placeholder="my-database"
-                value={sourceName}
-                onChange={(event) => setSourceName(event.target.value)}
-                className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Connection String
-              </label>
-              <input
-                type="text"
-                placeholder="postgresql://user:pass@host:5432/db"
-                value={connectionString}
-                onChange={(event) => setConnectionString(event.target.value)}
-                className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-              <Button onClick={() => setStep(3)}>Continue <ArrowRight className="ml-2 h-4 w-4" /></Button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-4">
-            {!testing && testResult === null && (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground mb-4">Test your connection before adding</p>
-                <Button onClick={handleTest} className="gap-2">
-                  <Activity className="h-4 w-4" />
-                  Test Connection
-                </Button>
-              </div>
-            )}
-
-            {testing && (
-              <div className="text-center py-6">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Testing connection...</p>
-              </div>
-            )}
-
-            {testResult === "success" && (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
-                <Check className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-emerald-400">Connection successful!</p>
-                <p className="text-xs text-muted-foreground mt-1">Found 24 tables, 1.2M records</p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-              <Button onClick={() => void handleCreateSource()} disabled={testResult !== "success" || creating || !sourceName.trim()} className="gap-2">
-                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {creating ? "Adding..." : "Add Source"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
+// Add Source Modal — see components/gravitre/add-data-source-modal.tsx
 
 export default function SourcesPage() {
   const { user } = useAuth()
@@ -981,7 +808,7 @@ export default function SourcesPage() {
         </div>
       </div>
 
-      <AddSourceModal
+      <AddDataSourceModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onCreate={handleCreate}

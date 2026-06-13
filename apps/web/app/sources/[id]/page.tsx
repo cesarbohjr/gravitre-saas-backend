@@ -1,33 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import useSWR from "swr"
 import { useRouter, useParams } from "next/navigation"
+import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
+import { SourceQueryPanel } from "@/components/gravitre/source-query-panel"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { sourcesApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Database,
-  Server,
   RefreshCw,
-  Settings,
   Trash2,
   Activity,
-  Layers,
-  CircleDot,
-  Workflow,
-  Bot,
   Check,
   AlertCircle,
-  Copy,
   ExternalLink,
-  Table2,
-  Clock,
   Loader2,
-  ChevronRight,
-  Play,
 } from "lucide-react"
 import {
   Dialog,
@@ -37,56 +33,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 
-// Mock source data
-const sourceData = {
-  id: "1",
-  name: "postgres-primary",
-  type: "PostgreSQL",
-  status: "connected" as const,
-  environment: "production" as const,
-  lastSync: "2 minutes ago",
-  tables: 42,
-  records: "2.4M",
-  description: "Primary PostgreSQL database for customer data",
-  workflowsUsing: 8,
-  operatorsUsing: 3,
-  connectionHost: "db.example.com",
-  connectionPort: "5432",
-  connectionDatabase: "production_db",
-  createdAt: "Jan 15, 2024",
-  syncFrequency: "Every 5 minutes",
-}
-
-const tableSchema = [
-  { name: "customers", columns: 12, rows: "1.2M", lastUpdated: "2 min ago" },
-  { name: "orders", columns: 18, rows: "890K", lastUpdated: "2 min ago" },
-  { name: "products", columns: 24, rows: "45K", lastUpdated: "5 min ago" },
-  { name: "transactions", columns: 15, rows: "2.1M", lastUpdated: "2 min ago" },
-  { name: "invoices", columns: 20, rows: "320K", lastUpdated: "10 min ago" },
-  { name: "users", columns: 8, rows: "15K", lastUpdated: "1 hour ago" },
-]
-
-const linkedWorkflows = [
-  { id: "1", name: "Customer Sync Pipeline", status: "active", lastRun: "5 min ago" },
-  { id: "2", name: "Order Processing", status: "active", lastRun: "2 min ago" },
-  { id: "3", name: "Daily Analytics Export", status: "active", lastRun: "1 hour ago" },
-  { id: "4", name: "Inventory Update", status: "paused", lastRun: "2 days ago" },
-]
-
-const linkedOperators = [
-  { id: "1", name: "Sales Assistant", uses: "Query customer data" },
-  { id: "2", name: "Data Quality Agent", uses: "Validate records" },
-  { id: "3", name: "Finance Reporter", uses: "Generate reports" },
-]
-
-const syncHistory = [
-  { id: "1", status: "success", records: "2,450", duration: "12s", timestamp: "2 min ago" },
-  { id: "2", status: "success", records: "1,823", duration: "9s", timestamp: "7 min ago" },
-  { id: "3", status: "success", records: "3,102", duration: "15s", timestamp: "12 min ago" },
-  { id: "4", status: "error", records: "0", duration: "2s", timestamp: "17 min ago", error: "Connection timeout" },
-  { id: "5", status: "success", records: "2,891", duration: "11s", timestamp: "22 min ago" },
-]
-
 const statusVariants: Record<string, "success" | "warning" | "error" | "info" | "muted"> = {
   connected: "success",
   disconnected: "muted",
@@ -94,32 +40,141 @@ const statusVariants: Record<string, "success" | "warning" | "error" | "info" | 
   syncing: "info",
 }
 
+function formatRelative(iso: string | undefined): string {
+  if (!iso) return "Never"
+  const timestamp = new Date(iso)
+  if (Number.isNaN(timestamp.getTime())) return "Never"
+  const diffMs = Date.now() - timestamp.getTime()
+  const minutes = Math.max(0, Math.floor(diffMs / 60000))
+  if (minutes < 1) return "Just now"
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+function formatCount(value: number | undefined): string {
+  if (!value) return "0"
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
+  return String(value)
+}
+
+interface SchemaTable {
+  name: string
+  schema?: string
+  columns?: Array<{ name: string; type: string }>
+}
+
 export default function SourceDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const [syncing, setSyncing] = useState(false)
+  const sourceId = String(params.id ?? "")
+  const { user } = useAuth()
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
-  const [testResult, setTestResult] = useState<"success" | "error" | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [testMessage, setTestMessage] = useState<string | null>(null)
 
-  const handleSync = () => {
-    setSyncing(true)
-    setTimeout(() => setSyncing(false), 3000)
+  const { data, error, isLoading, mutate } = useSWR(
+    user && sourceId ? `/api/sources/${sourceId}` : null,
+    apiFetcher,
+    { revalidateOnFocus: false }
+  )
+  const { data: schemaData } = useSWR(
+    user && sourceId ? `/api/sources/${sourceId}/schema` : null,
+    apiFetcher,
+    { revalidateOnFocus: false }
+  )
+  const { data: historyData, mutate: mutateHistory } = useSWR(
+    user && sourceId ? `/api/sources/${sourceId}/sync-history` : null,
+    apiFetcher,
+    { revalidateOnFocus: false }
+  )
+
+  const source = (data as { source?: Record<string, unknown> } | undefined)?.source
+  const schemaTables = ((schemaData as { tables?: SchemaTable[] } | undefined)?.tables ?? []) as SchemaTable[]
+  const history = (historyData as { history?: Array<Record<string, unknown>> } | undefined)?.history ?? []
+
+  const suggestions = useMemo(
+    () =>
+      schemaTables.slice(0, 3).flatMap((table) => [
+        `How many rows are in ${table.name}?`,
+        `Show 10 sample rows from ${table.name}`,
+      ]),
+    [schemaTables]
+  )
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true)
+      await sourcesApi.sync(sourceId)
+      toast.success("Sync completed")
+      await Promise.all([mutate(), mutateHistory()])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sync failed")
+    } finally {
+      setSyncing(false)
+    }
   }
 
-  const handleTestConnection = () => {
-    setTestingConnection(true)
-    setTestResult(null)
-    setTimeout(() => {
+  const handleTestConnection = async () => {
+    try {
+      setTestingConnection(true)
+      setTestMessage(null)
+      const result = await sourcesApi.testExisting(sourceId)
+      setTestMessage(result.message ?? (result.success ? "Connection successful" : "Connection failed"))
+      if (!result.success) toast.error(result.message ?? "Connection test failed")
+    } catch (err) {
+      setTestMessage(err instanceof Error ? err.message : "Connection test failed")
+      toast.error("Connection test failed")
+    } finally {
       setTestingConnection(false)
-      setTestResult("success")
-    }, 2000)
+    }
   }
+
+  const handleDelete = async () => {
+    try {
+      await sourcesApi.delete(sourceId)
+      toast.success("Source removed")
+      router.push("/sources")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed")
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell title="Source">
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (error || !source) {
+    return (
+      <AppShell title="Source">
+        <div className="p-6">
+          <button onClick={() => router.push("/sources")} className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to Sources
+          </button>
+          <p className="text-sm text-red-400">{error instanceof Error ? error.message : "Source not found"}</p>
+        </div>
+      </AppShell>
+    )
+  }
+
+  const name = String(source.name ?? "Source")
+  const status = String(source.status ?? "connected")
+  const environment = (String(source.environment ?? "production") === "staging" ? "staging" : "production") as
+    | "production"
+    | "staging"
 
   return (
-    <AppShell title={sourceData.name}>
+    <AppShell title={name}>
       <div className="p-6">
-        {/* Back Button */}
         <button
           onClick={() => router.push("/sources")}
           className="mb-4 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -128,266 +183,206 @@ export default function SourceDetailPage() {
           Back to Sources
         </button>
 
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-8 flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-400/10">
               <Database className="h-7 w-7 text-blue-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">{sourceData.name}</h1>
-              <p className="text-sm text-muted-foreground mt-1">{sourceData.description}</p>
+              <h1 className="text-2xl font-semibold text-foreground">{name}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {String(source.description ?? `${source.type} data source`)}
+              </p>
               <div className="flex items-center gap-2 mt-3">
-                <StatusBadge variant={statusVariants[sourceData.status]} dot>
-                  {sourceData.status}
+                <StatusBadge variant={statusVariants[status] ?? "muted"} dot>
+                  {status}
                 </StatusBadge>
-                <EnvironmentBadge environment={sourceData.environment} />
-                <span className="text-xs text-muted-foreground">{sourceData.type}</span>
+                <EnvironmentBadge environment={environment} />
+                <span className="text-xs text-muted-foreground">{String(source.type ?? "")}</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleTestConnection} disabled={testingConnection}>
-              {testingConnection ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Activity className="h-4 w-4" />
-              )}
+            <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => void handleTestConnection()} disabled={testingConnection}>
+              {testingConnection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
               Test Connection
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2">
-              <Settings className="h-4 w-4" />
-              Edit
-            </Button>
-            <Button size="sm" className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={handleSync} disabled={syncing}>
-              {syncing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
+            <Button size="sm" className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => void handleSync()} disabled={syncing}>
+              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Sync Now
             </Button>
           </div>
         </div>
 
-        {/* Test Result Banner */}
-        {testResult && (
-          <div className={cn(
-            "mb-6 rounded-lg border p-4 flex items-center gap-3",
-            testResult === "success" 
-              ? "border-emerald-500/30 bg-emerald-500/10" 
-              : "border-destructive/30 bg-destructive/10"
-          )}>
-            {testResult === "success" ? (
-              <>
-                <Check className="h-5 w-5 text-emerald-500" />
-                <span className="text-sm text-emerald-500">Connection test successful. Database is reachable.</span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="h-5 w-5 text-destructive" />
-                <span className="text-sm text-destructive">Connection test failed. Please check your credentials.</span>
-              </>
-            )}
-            <button onClick={() => setTestResult(null)} className="ml-auto text-muted-foreground hover:text-foreground">
-              <span className="sr-only">Dismiss</span>×
-            </button>
+        {testMessage ? (
+          <div className="mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-400">
+            {testMessage}
           </div>
-        )}
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content - 2 columns */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Overview */}
             <div className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">Overview</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Connection</p>
-                  <p className="text-sm text-foreground mt-1 font-mono">{sourceData.connectionHost}:{sourceData.connectionPort}</p>
+                  <p className="text-sm text-foreground mt-1 font-mono">
+                    {source.connectionHost
+                      ? `${String(source.connectionHost)}:${String(source.connectionPort ?? "")}`
+                      : source.connectorId
+                      ? `Connector ${String(source.connectorId).slice(0, 8)}…`
+                      : "Configured"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Database</p>
-                  <p className="text-sm text-foreground mt-1 font-mono">{sourceData.connectionDatabase}</p>
+                  <p className="text-sm text-foreground mt-1 font-mono">
+                    {String(source.connectionDatabase ?? "—")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Last Sync</p>
-                  <p className="text-sm text-foreground mt-1">{sourceData.lastSync}</p>
+                  <p className="text-sm text-foreground mt-1">{formatRelative(String(source.lastSyncAt ?? ""))}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Sync Frequency</p>
-                  <p className="text-sm text-foreground mt-1">{sourceData.syncFrequency}</p>
+                  <p className="text-sm text-foreground mt-1">
+                    Every {Math.round(Number(source.syncIntervalSeconds ?? 300) / 60)} minutes
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Tables</p>
-                  <p className="text-sm text-foreground mt-1">{sourceData.tables}</p>
+                  <p className="text-sm text-foreground mt-1">{Number(source.tablesCount ?? 0)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Records</p>
-                  <p className="text-sm text-foreground mt-1">{sourceData.records}</p>
+                  <p className="text-sm text-foreground mt-1">{formatCount(Number(source.recordCount ?? 0))}</p>
                 </div>
               </div>
             </div>
 
-            {/* Schema Preview */}
+            <SourceQueryPanel sourceId={sourceId} suggestions={suggestions} />
+
             <div className="rounded-lg border border-border bg-card p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-foreground">Schema Preview</h2>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                  <ExternalLink className="h-3 w-3" />
-                  Browse All
-                </Button>
+                <span className="text-xs text-muted-foreground">{schemaTables.length} tables</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-2 px-3 text-muted-foreground font-medium">Table</th>
+                      <th className="text-left py-2 px-3 text-muted-foreground font-medium">Schema</th>
                       <th className="text-left py-2 px-3 text-muted-foreground font-medium">Columns</th>
-                      <th className="text-left py-2 px-3 text-muted-foreground font-medium">Rows</th>
-                      <th className="text-left py-2 px-3 text-muted-foreground font-medium">Updated</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {tableSchema.map((table) => (
-                      <tr key={table.name} className="border-b border-border/50 hover:bg-secondary/50">
-                        <td className="py-2 px-3">
-                          <span className="font-mono text-foreground">{table.name}</span>
+                    {schemaTables.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
+                          Run sync to discover schema
                         </td>
-                        <td className="py-2 px-3 text-muted-foreground">{table.columns}</td>
-                        <td className="py-2 px-3 text-muted-foreground">{table.rows}</td>
-                        <td className="py-2 px-3 text-muted-foreground">{table.lastUpdated}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      schemaTables.slice(0, 20).map((table) => (
+                        <tr key={`${table.schema ?? "public"}.${table.name}`} className="border-b border-border/50">
+                          <td className="py-2 px-3 font-mono text-foreground">{table.name}</td>
+                          <td className="py-2 px-3 text-muted-foreground">{table.schema ?? "—"}</td>
+                          <td className="py-2 px-3 text-muted-foreground">{table.columns?.length ?? 0}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* Sync History */}
             <div className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">Sync History</h2>
               <div className="space-y-2">
-                {syncHistory.map((sync) => (
-                  <div key={sync.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                    <div className="flex items-center gap-3">
-                      {sync.status === "success" ? (
-                        <Check className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                      )}
-                      <div>
-                        <p className="text-xs text-foreground">
-                          {sync.status === "success" ? `Synced ${sync.records} records` : sync.error}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{sync.timestamp}</p>
+                {history.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No sync history yet.</p>
+                ) : (
+                  history.map((item) => {
+                    const ok = String(item.status) === "success"
+                    return (
+                      <div key={String(item.id)} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                        <div className="flex items-center gap-3">
+                          {ok ? (
+                            <Check className="h-4 w-4 text-emerald-500" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-destructive" />
+                          )}
+                          <div>
+                            <p className="text-xs text-foreground">
+                              {ok
+                                ? `Synced ${formatCount(Number(item.records ?? 0))} records across ${Number(item.tables ?? 0)} tables`
+                                : String(item.error ?? "Sync failed")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatRelative(String(item.createdAt ?? ""))} · {String(item.trigger ?? "manual")}
+                            </p>
+                          </div>
+                        </div>
+                        {item.durationMs ? (
+                          <span className="text-xs text-muted-foreground">{Math.round(Number(item.durationMs) / 1000)}s</span>
+                        ) : null}
                       </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{sync.duration}</span>
-                  </div>
-                ))}
+                    )
+                  })
+                )}
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Stats */}
             <div className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">Quick Stats</h2>
-              <div className="space-y-4">
+              <div className="space-y-4 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Created</span>
-                  <span className="text-xs text-foreground">{sourceData.createdAt}</span>
+                  <span className="text-muted-foreground">Created</span>
+                  <span className="text-foreground">{formatRelative(String(source.createdAt ?? ""))}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Tables</span>
-                  <span className="text-xs text-foreground">{sourceData.tables}</span>
+                  <span className="text-muted-foreground">Type ID</span>
+                  <span className="font-mono text-foreground">{String(source.typeId ?? "—")}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Records</span>
-                  <span className="text-xs text-foreground">{sourceData.records}</span>
+                  <span className="text-muted-foreground">Tables</span>
+                  <span className="text-foreground">{Number(source.tablesCount ?? 0)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Workflows</span>
-                  <span className="text-xs text-foreground">{sourceData.workflowsUsing}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Operators</span>
-                  <span className="text-xs text-foreground">{sourceData.operatorsUsing}</span>
+                  <span className="text-muted-foreground">Records</span>
+                  <span className="text-foreground">{formatCount(Number(source.recordCount ?? 0))}</span>
                 </div>
               </div>
             </div>
 
-            {/* Linked Workflows */}
-            <div className="rounded-lg border border-border bg-card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-foreground">Used in Workflows</h2>
-                <span className="text-xs text-muted-foreground">{linkedWorkflows.length}</span>
-              </div>
-              <div className="space-y-2">
-                {linkedWorkflows.slice(0, 4).map((workflow) => (
-                  <button
-                    key={workflow.id}
-                    onClick={() => router.push(`/workflows/${workflow.id}`)}
-                    className="w-full flex items-center justify-between py-2 px-3 rounded-md hover:bg-secondary/50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs text-foreground">{workflow.name}</span>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Linked Operators */}
-            <div className="rounded-lg border border-border bg-card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-foreground">Used by Operators</h2>
-                <span className="text-xs text-muted-foreground">{linkedOperators.length}</span>
-              </div>
-              <div className="space-y-2">
-                {linkedOperators.map((operator) => (
-                  <button
-                    key={operator.id}
-                    onClick={() => router.push(`/agents/${operator.id}`)}
-                    className="w-full flex items-center justify-between py-2 px-3 rounded-md hover:bg-secondary/50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-                      <div>
-                        <span className="text-xs text-foreground block">{operator.name}</span>
-                        <span className="text-[10px] text-muted-foreground">{operator.uses}</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Actions */}
             <div className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">Actions</h2>
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full h-9 justify-start gap-2">
-                  <Play className="h-4 w-4" />
-                  Use in new Workflow
+                <Button variant="outline" size="sm" className="w-full h-9 justify-start gap-2" asChild>
+                  <Link href="/workflows/new">
+                    <ExternalLink className="h-4 w-4" />
+                    Use in new Workflow
+                  </Link>
                 </Button>
-                <Button variant="outline" size="sm" className="w-full h-9 justify-start gap-2">
-                  <Bot className="h-4 w-4" />
-                  Open in Operator
-                </Button>
-                <Button variant="outline" size="sm" className="w-full h-9 justify-start gap-2">
-                  <Copy className="h-4 w-4" />
-                  Copy Connection String
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full h-9 justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                {source.connectorId ? (
+                  <Button variant="outline" size="sm" className="w-full h-9 justify-start gap-2" asChild>
+                    <Link href={`/connectors/${String(source.connectorId)}`}>
+                      <ExternalLink className="h-4 w-4" />
+                      Open linked Connector
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "w-full h-9 justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                  )}
                   onClick={() => setDeleteModalOpen(true)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -399,33 +394,17 @@ export default function SourceDetailPage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove Source</DialogTitle>
             <DialogDescription>
-              This will disconnect {sourceData.name} from Gravitre. This action cannot be undone.
+              This will disconnect {name} from Gravitre. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 my-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-500">
-                <p className="font-medium">This source is used by:</p>
-                <ul className="mt-1 text-xs space-y-1">
-                  <li>• {sourceData.workflowsUsing} workflows</li>
-                  <li>• {sourceData.operatorsUsing} operators</li>
-                </ul>
-                <p className="mt-2 text-xs">Removing it may break these integrations.</p>
-              </div>
-            </div>
-          </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { setDeleteModalOpen(false); router.push("/sources") }}>
-              Remove Source
-            </Button>
+            <Button variant="destructive" onClick={() => void handleDelete()}>Remove Source</Button>
           </div>
         </DialogContent>
       </Dialog>

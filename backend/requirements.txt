@@ -29,3 +29,9 @@ dnspython>=2.6.0,<3.0
 rank-bm25>=0.2.2,<1.0
 # Lazy-loaded for cross-encoder rerank (STA-150); set RAG_DISABLE_CROSS_ENCODER=true to skip.
 sentence-transformers>=3.0.0,<4.0
+# External database connectivity (data landscape)
+asyncpg>=0.29.0,<1.0
+aiomysql>=0.2.0,<1.0
+motor>=3.3.0,<4.0
+snowflake-connector-python>=3.0.0,<4.0
+google-cloud-bigquery>=3.0.0,<4.0

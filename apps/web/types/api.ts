@@ -889,8 +889,96 @@ export interface CreateConnectorRequest {
 export interface CreateSourceRequest {
   name: string
   type: string
+  typeId?: string
   description?: string
   connector_id?: string
+  connectionString?: string
+  config?: Record<string, unknown>
+}
+
+export interface DataSourceConnectionField {
+  key: string
+  label: string
+  type: "text" | "number" | "password" | "boolean" | "textarea" | "select"
+  required?: boolean
+  placeholder?: string
+  default?: string | number | boolean
+  options?: Array<{ value: string; label: string }>
+}
+
+export interface DataSourceTypeDefinition {
+  id: string
+  name: string
+  category: string
+  categoryLabel: string
+  icon: string
+  color: string
+  driver: string
+  connectionFields: DataSourceConnectionField[]
+  oauthVendor?: string
+}
+
+export interface DataSourceTypesResponse {
+  types: DataSourceTypeDefinition[]
+  categories: Array<{ id: string; label: string }>
+}
+
+export interface DataSourceTestResponse {
+  success: boolean
+  message?: string
+  tables?: number
+  records?: number
+  driverPending?: boolean
+  schemaPreview?: Array<{ name: string; schema?: string; columns?: Array<{ name: string; type: string }> }>
+  suggestions?: string[]
+}
+
+export interface DataSourceQueryResponse {
+  question: string
+  sql: string
+  columns: string[]
+  rows: Record<string, unknown>[]
+  rowCount: number
+  schemaTableCount?: number
+}
+
+export interface SourceSyncHistoryItem {
+  id: string
+  action?: string
+  status: string
+  records?: number
+  tables?: number
+  durationMs?: number
+  error?: string
+  trigger?: string
+  createdAt?: string
+}
+
+export interface SourceConnectorOption {
+  id: string
+  type: string
+  status: string
+  name: string
+  environment?: string
+}
+
+export interface SourceDetail {
+  id: string
+  name: string
+  type: string
+  typeId?: string
+  status: string
+  environment?: string
+  description?: string
+  tablesCount?: number
+  recordCount?: number
+  lastSyncAt?: string
+  createdAt?: string
+  syncIntervalSeconds?: number
+  connectionHost?: string
+  connectionPort?: string | number
+  connectionDatabase?: string
+  connectorId?: string
   config?: Record<string, unknown>
 }
 

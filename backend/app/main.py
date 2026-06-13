@@ -140,6 +140,10 @@ async def lifespan(app: FastAPI):
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
+    from app.data.source_sync_scheduler import (
+        start_source_sync_scheduler,
+        stop_source_sync_scheduler,
+    )
     from app.knowledge.sync_scheduler import (
         start_knowledge_sync_scheduler,
         stop_knowledge_sync_scheduler,
@@ -153,6 +157,7 @@ async def lifespan(app: FastAPI):
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
+    app.state.source_sync_task = start_source_sync_scheduler()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
@@ -162,6 +167,7 @@ async def lifespan(app: FastAPI):
     finally:
         await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
         await stop_knowledge_sync_scheduler(getattr(app.state, "knowledge_sync_task", None))
+        await stop_source_sync_scheduler(getattr(app.state, "source_sync_task", None))
         await stop_workflow_schedule_scheduler(getattr(app.state, "workflow_schedule_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
