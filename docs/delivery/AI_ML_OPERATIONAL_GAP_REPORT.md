@@ -1,5 +1,7 @@
 # AI/ML Operational Gap Report — STA-172
 
+> **Superseded (2026-06-13):** Use [`GRAVITRE_AI_ML_PRODUCTION_READINESS.md`](GRAVITRE_AI_ML_PRODUCTION_READINESS.md) for current EXISTS/MISSING/WIRED status. This file retains the June 7 Epic I snapshot for history.
+
 **Date:** 2026-06-07  
 **Parent epic:** [STA-131](https://linear.app/staqbot/issue/STA-131) Discovery & Verification  
 **Linear:** [STA-172](https://linear.app/staqbot/issue/STA-172)  
