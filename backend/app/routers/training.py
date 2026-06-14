@@ -1,7 +1,7 @@
 """Training API: datasets, jobs, and custom instructions."""
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -9,6 +9,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.core.supabase_response import response_error
 from app.services.agent_finetune_service import assign_trained_model_to_agent, list_deployable_fine_tuned_models
 from app.services.handoff_service import get_agent
 from app.services.training_service import (
@@ -61,6 +62,19 @@ def _is_missing_table_error(error: Exception | None) -> bool:
     return is_schema_unavailable_error(error)
 
 
+def _raise_if_response_error(response: Any, *, not_found: str | None = None) -> None:
+    error = response_error(response)
+    if error and _is_missing_table_error(error):
+        if not_found:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=not_found)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Training storage is not provisioned. Apply database migrations.",
+        )
+    if error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+
 @router.get("/datasets")
 async def list_datasets(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -94,10 +108,9 @@ async def get_dataset(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Dataset not found")
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     if not response.data:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return dict(response.data[0])
@@ -130,8 +143,7 @@ async def create_dataset(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     return dict((response.data or [{}])[0])
 
 
@@ -152,10 +164,9 @@ async def delete_dataset(
         .eq("id", dataset_id)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     return {"ok": True}
 
 
@@ -185,8 +196,14 @@ async def upload_dataset_records(
             }
         )
     inserted = client.table("training_records").insert(rows).execute()
-    if inserted.error:
-        raise HTTPException(status_code=500, detail=str(inserted.error))
+    inserted_error = response_error(inserted)
+    if inserted_error:
+        if _is_missing_table_error(inserted_error):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Training storage is not provisioned. Apply database migrations.",
+            )
+        raise HTTPException(status_code=500, detail=str(inserted_error))
 
     update_dataset = (
         client.rpc(
@@ -195,7 +212,8 @@ async def upload_dataset_records(
         )
         .execute()
     )
-    if update_dataset.error and "function" in str(update_dataset.error).lower():
+    update_error = response_error(update_dataset)
+    if update_error and "function" in str(update_error).lower():
         # Fallback when RPC is not installed yet.
         dataset_resp = (
             client.table("training_datasets")
@@ -245,10 +263,9 @@ async def get_job(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Job not found")
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     if not response.data:
         raise HTTPException(status_code=404, detail="Job not found")
     return dict(response.data[0])
@@ -281,8 +298,7 @@ async def create_job(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     job = dict((response.data or [{}])[0])
     job_id = str(job.get("id") or "")
     if job_id:
@@ -309,10 +325,9 @@ async def cancel_job(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Job not found")
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     if not response.data:
         raise HTTPException(status_code=404, detail="Job not found")
     return dict(response.data[0])
@@ -351,10 +366,9 @@ async def get_instruction(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Instruction not found")
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     if not response.data:
         raise HTTPException(status_code=404, detail="Instruction not found")
     return dict(response.data[0])
@@ -386,8 +400,7 @@ async def create_instruction(
         .limit(1)
         .execute()
     )
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     return dict((response.data or [{}])[0])
 
 
@@ -414,10 +427,9 @@ async def update_instruction(
         .limit(1)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Instruction not found")
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     if not response.data:
         raise HTTPException(status_code=404, detail="Instruction not found")
     return dict(response.data[0])
@@ -440,10 +452,9 @@ async def delete_instruction(
         .eq("id", instruction_id)
         .execute()
     )
-    if _is_missing_table_error(response.error):
+    if _is_missing_table_error(response_error(response)):
         return {"ok": True}
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
+    _raise_if_response_error(response)
     return {"ok": True}
 
 

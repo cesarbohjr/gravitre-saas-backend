@@ -29,6 +29,21 @@ def test_list_training_datasets_returns_empty_when_table_missing():
     assert list_training_datasets(client, "org-1") == []
 
 
+def test_list_training_datasets_handles_supabase_v2_response_without_error_attr():
+    client = MagicMock()
+
+    class V2Response:
+        def __init__(self, data: list[dict]) -> None:
+            self.data = data
+
+    client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = V2Response(
+        data=[{"id": "d1", "name": "Examples", "description": None, "type": "examples", "status": "ready", "record_count": 0, "created_by": "u1", "created_at": "2026-01-01", "updated_at": "2026-01-01"}]
+    )
+    rows = list_training_datasets(client, "org-1")
+    assert len(rows) == 1
+    assert rows[0]["id"] == "d1"
+
+
 def test_list_workflow_agents_falls_back_without_trained_model_column():
     client = MagicMock()
     table = client.table.return_value

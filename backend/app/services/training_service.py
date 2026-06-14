@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.supabase_response import response_error
+
 
 def is_schema_unavailable_error(error: Exception | None) -> bool:
     """True when Supabase/Postgres schema is missing tables or columns."""
@@ -40,10 +42,11 @@ def execute_or_empty(client: Any, builder: Any, *, resource: str) -> list[dict[s
         if is_schema_unavailable_error(exc):
             return []
         raise
-    if is_schema_unavailable_error(getattr(response, "error", None)):
+    error = response_error(response)
+    if is_schema_unavailable_error(error):
         return []
-    if response.error:
-        raise RuntimeError(f"{resource}: {response.error}")
+    if error:
+        raise RuntimeError(f"{resource}: {error}")
     return list(response.data or [])
 
 
@@ -89,7 +92,8 @@ def list_custom_instructions(client: Any, org_id: str) -> list[dict[str, Any]]:
                 .in_("id", agent_ids)
                 .execute()
             )
-            if not agents_resp.error:
+            agents_error = response_error(agents_resp)
+            if not agents_error:
                 agent_names = {
                     str(row["id"]): str(row.get("name") or "Agent")
                     for row in (agents_resp.data or [])
@@ -121,14 +125,15 @@ def list_workflow_agents(client: Any, org_id: str) -> list[dict[str, Any]]:
             if is_schema_unavailable_error(exc):
                 return []
             raise
-        if is_schema_unavailable_error(getattr(response, "error", None)):
+        if is_schema_unavailable_error(response_error(response)):
             return []
-        if response.error:
-            if is_missing_column_error(response.error) and columns == select_with_ft:
+        error = response_error(response)
+        if error:
+            if is_missing_column_error(error) and columns == select_with_ft:
                 continue
-            if is_schema_unavailable_error(response.error):
+            if is_schema_unavailable_error(error):
                 return []
-            raise RuntimeError(str(response.error))
+            raise RuntimeError(str(error))
         return [
             {
                 "id": str(row["id"]),
