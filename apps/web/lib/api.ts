@@ -214,6 +214,18 @@ async function deleteRequest(url: string): Promise<void> {
   }
 }
 
+async function postNoContent(url: string, data?: unknown): Promise<void> {
+  const response = await apiFetch(url, {
+    method: "POST",
+    headers: data ? { "Content-Type": "application/json" } : undefined,
+    body: data ? JSON.stringify(data) : undefined,
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+  }
+}
+
 // ============ Auth ============
 export const authApi = {
   me: () => fetcher<UserProfile>(apiUrl("/api/auth/me")),
@@ -784,7 +796,7 @@ export const conversationsApi = {
   update: (id: string, data: { title?: string }) => patchJson<Conversation>(apiUrl(`/api/conversations/${id}`), data),
   archive: (id: string) => postJson<Conversation>(apiUrl(`/api/conversations/${id}/archive`), {}),
   delete: (id: string) => deleteRequest(apiUrl(`/api/conversations/${id}`)),
-  bulkDelete: (ids: string[]) => postJson<void>(apiUrl("/api/conversations/bulk-delete"), { ids }),
+  bulkDelete: (ids: string[]) => postNoContent(apiUrl("/api/conversations/bulk-delete"), { ids }),
   getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
 }
 

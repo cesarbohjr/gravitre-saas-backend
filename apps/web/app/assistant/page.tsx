@@ -438,6 +438,9 @@ export default function AssistantPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const activeConversationIdRef = useRef<string | null>(null)
   const recentInputsRef = useRef<string[]>([])
+  const submitLockRef = useRef(false)
+  const pendingConversationRef = useRef<Promise<string | null> | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
@@ -524,11 +527,11 @@ export default function AssistantPage() {
           ...buildChatOrgPayload(),
           mode,
           model_override: modelOverride,
-          conversation_id: activeConversationId,
+          conversation_id: activeConversationIdRef.current,
           tools: resolveAssistantTools(mode),
         }),
       }),
-    [mode, modelOverride, activeConversationId],
+    [mode, modelOverride],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -536,9 +539,13 @@ export default function AssistantPage() {
     messages: initialMessages,
     onError: (error) => {
       console.error("[v0] Chat error:", error)
+      submitLockRef.current = false
+      setIsSubmitting(false)
       toast.error(parseChatError(error))
     },
     onFinish: () => {
+      submitLockRef.current = false
+      setIsSubmitting(false)
       void mutateConversations()
     },
     onData: (dataPart) => {
@@ -559,6 +566,7 @@ export default function AssistantPage() {
 
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
+  const isBusy = isLoading || isSubmitting
   const hasSentMessage = messages.some((m) => m.role === "user")
   const currentModeConfig = getModeConfig(mode)
   const activeConversation = conversations.find((c) => c.id === activeConversationId)
@@ -606,6 +614,9 @@ export default function AssistantPage() {
     setMessages([])
     setActiveConversationId(null)
     activeConversationIdRef.current = null
+    pendingConversationRef.current = null
+    submitLockRef.current = false
+    setIsSubmitting(false)
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(CONVERSATION_ID_KEY)
     inputRef.current?.focus()
@@ -697,50 +708,70 @@ export default function AssistantPage() {
     inputRef.current?.focus()
   }, [])
 
-  const submitText = async (text: string) => {
+  const submitText = useCallback(async (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || isLoading) return
+    if (!trimmed || isBusy || submitLockRef.current) return
 
+    submitLockRef.current = true
+    setIsSubmitting(true)
     setFollowUpSuggestions([])
     setExpandedToolId(null)
+    setInput(trimmed)
     recentInputsRef.current = [trimmed, ...recentInputsRef.current.filter((v) => v !== trimmed)].slice(0, 20)
 
-    const orgId = await ensureSelectedOrg(true)
-    if (!orgId) {
-      console.warn("[assistant] No org in client cache — backend will resolve from JWT membership")
-    }
-
-    if (!activeConversationIdRef.current) {
-      try {
-        const created = await conversationsApi.create({ title: trimmed.slice(0, 80) })
-        activeConversationIdRef.current = created.id
-        setActiveConversationId(created.id)
-        setConversationTitle(created.title || trimmed.slice(0, 80))
-        localStorage.setItem(CONVERSATION_ID_KEY, created.id)
-        await mutateConversations()
-      } catch (error) {
-        console.warn("[assistant] Conversation create failed — continuing without sidebar thread:", error)
+    try {
+      const orgId = await ensureSelectedOrg(true)
+      if (!orgId) {
+        console.warn("[assistant] No org in client cache — backend will resolve from JWT membership")
       }
-    }
 
-    sendMessage({ text: trimmed })
-    setInput("")
-  }
+      if (!activeConversationIdRef.current) {
+        if (!pendingConversationRef.current) {
+          pendingConversationRef.current = conversationsApi
+            .create({ title: trimmed.slice(0, 80) })
+            .then((created) => {
+              activeConversationIdRef.current = created.id
+              setActiveConversationId(created.id)
+              setConversationTitle(created.title || trimmed.slice(0, 80))
+              localStorage.setItem(CONVERSATION_ID_KEY, created.id)
+              void mutateConversations()
+              return created.id
+            })
+            .catch((error) => {
+              console.warn("[assistant] Conversation create failed — continuing without sidebar thread:", error)
+              return null
+            })
+            .finally(() => {
+              pendingConversationRef.current = null
+            })
+        }
+        await pendingConversationRef.current
+      }
+
+      sendMessage({ text: trimmed })
+      setInput("")
+    } catch (error) {
+      console.error("[assistant] Submit failed:", error)
+      toast.error("Failed to send message")
+      submitLockRef.current = false
+      setIsSubmitting(false)
+    }
+  }, [isBusy, mutateConversations, sendMessage])
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    submitText(input)
+    void submitText(input)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
-      submitText(input)
+      void submitText(input)
       return
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      submitText(input)
+      void submitText(input)
       return
     }
     if (e.key === "Escape" && input) {
@@ -902,11 +933,16 @@ export default function AssistantPage() {
                         return (
                           <motion.button
                             key={`${label}-${i}`}
+                            type="button"
+                            disabled={isBusy}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1 }}
-                            onClick={() => submitText(label)}
-                            className="group flex items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-white text-left hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-500/10 transition-all"
+                            onClick={() => void submitText(label)}
+                            className={cn(
+                              "group flex items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-white text-left hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-500/10 transition-all",
+                              isBusy && "opacity-60 pointer-events-none",
+                            )}
                           >
                             <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
                               <PromptIcon className="h-4 w-4 text-emerald-600" />
@@ -991,7 +1027,7 @@ export default function AssistantPage() {
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder={user ? `[${currentModeConfig.label}] ${currentModeConfig.placeholder}` : "Sign in to chat"}
-                  disabled={!user || isLoading}
+                  disabled={!user || isBusy}
                   rows={1}
                   className="flex-1 bg-transparent text-zinc-900 placeholder:text-zinc-400 focus:outline-none text-sm resize-none min-h-[24px] max-h-[200px] py-1.5"
                   style={{ height: "24px" }}
@@ -1020,10 +1056,10 @@ export default function AssistantPage() {
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={!user || !input.trim() || isLoading}
+                    disabled={!user || !input.trim() || isBusy}
                     className="h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50"
                   >
-                    {isLoading ? (
+                    {isBusy ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <ArrowUp className="h-4 w-4" />

@@ -102,7 +102,7 @@ export function ConversationSidebar({
   activeConversationId: string | null
   onSelect: (id: string) => void
   onNew: () => void
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void | Promise<void>
   onArchive: (id: string) => void
   onRename: (id: string, title: string) => void
   onBulkDelete: (ids: string[]) => void
@@ -116,6 +116,7 @@ export function ConversationSidebar({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
 
@@ -137,10 +138,16 @@ export function ConversationSidebar({
     setMultiSelect(true)
   }
 
-  const confirmDelete = () => {
-    if (conversationToDelete) onDelete(conversationToDelete)
-    setConversationToDelete(null)
-    setDeleteDialogOpen(false)
+  const confirmDelete = async () => {
+    if (!conversationToDelete || isDeleting) return
+    setIsDeleting(true)
+    try {
+      await onDelete(conversationToDelete)
+    } finally {
+      setIsDeleting(false)
+      setConversationToDelete(null)
+      setDeleteDialogOpen(false)
+    }
   }
 
   const confirmBulkDelete = () => {
@@ -351,8 +358,17 @@ export function ConversationSidebar({
             <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmDelete()
+              }}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

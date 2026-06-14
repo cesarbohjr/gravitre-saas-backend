@@ -70,6 +70,60 @@ def _require_org(org_id: str | None) -> str:
     return org_id
 
 
+def _missing_column_error(error: Any) -> bool:
+    message = str(error).lower()
+    return "column" in message and "does not exist" in message
+
+
+def _delete_owned_conversation(
+    client: Any,
+    *,
+    conversation_id: str,
+    org_id: str,
+    user_id: str,
+) -> None:
+    """Soft-delete a conversation, falling back to hard delete when lifecycle columns are missing."""
+    now = _now_iso()
+    try:
+        response = (
+            client.table("conversations")
+            .update({"deleted_at": now, "updated_at": now})
+            .eq("id", conversation_id)
+            .eq("org_id", org_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        error = response_error(response)
+        if error and _missing_column_error(error):
+            response = (
+                client.table("conversations")
+                .delete()
+                .eq("id", conversation_id)
+                .eq("org_id", org_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            error = response_error(response)
+        if error:
+            raise HTTPException(status_code=500, detail=str(error))
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        if _missing_column_error(exc):
+            response = (
+                client.table("conversations")
+                .delete()
+                .eq("id", conversation_id)
+                .eq("org_id", org_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            if response_error(response):
+                raise HTTPException(status_code=500, detail=str(response_error(response))) from exc
+            return
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 def _get_owned_conversation(
     client: Any,
     *,
@@ -207,7 +261,6 @@ async def bulk_delete_conversations(
 ) -> None:
     org_id = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    now = _now_iso()
     for conversation_id in body.ids:
         _get_owned_conversation(
             client,
@@ -215,16 +268,13 @@ async def bulk_delete_conversations(
             org_id=org_id,
             user_id=user["user_id"],
         )
-    response = (
-        client.table("conversations")
-        .update({"deleted_at": now, "updated_at": now})
-        .in_("id", body.ids)
-        .eq("org_id", org_id)
-        .eq("user_id", user["user_id"])
-        .execute()
-    )
-    if response_error(response):
-        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    for conversation_id in body.ids:
+        _delete_owned_conversation(
+            client,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user["user_id"],
+        )
 
 
 @router.get("/{conversation_id}")
@@ -330,17 +380,12 @@ async def delete_conversation(
         org_id=org_id,
         user_id=user["user_id"],
     )
-    now = _now_iso()
-    response = (
-        client.table("conversations")
-        .update({"deleted_at": now, "updated_at": now})
-        .eq("id", conversation_id)
-        .eq("org_id", org_id)
-        .eq("user_id", user["user_id"])
-        .execute()
+    _delete_owned_conversation(
+        client,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        user_id=user["user_id"],
     )
-    if response_error(response):
-        raise HTTPException(status_code=500, detail=str(response_error(response)))
 
 
 @router.get("/{conversation_id}/messages")

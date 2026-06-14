@@ -237,3 +237,60 @@ def test_archive_conversation(monkeypatch):
     response = client.post("/api/conversations/conv-1/archive")
     assert response.status_code == 200
     assert response.json()["id"] == "conv-1"
+
+
+def test_delete_conversation_soft_delete(monkeypatch):
+    _authenticate()
+    owned = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "org_id": "org-1",
+                "user_id": "user-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 0,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-06-04T12:00:00+00:00",
+            }
+        ]
+    )
+    deleted = _table_chain([])
+    supabase = MagicMock()
+    supabase.table.side_effect = [owned, deleted]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.delete("/api/conversations/conv-1")
+    assert response.status_code == 204
+    deleted.update.assert_called_once()
+
+
+def test_delete_conversation_falls_back_to_hard_delete(monkeypatch):
+    _authenticate()
+    owned = _table_chain(
+        [
+            {
+                "id": "conv-1",
+                "org_id": "org-1",
+                "user_id": "user-1",
+                "title": "Thread",
+                "preview": None,
+                "message_count": 0,
+                "created_at": "2026-06-04T12:00:00+00:00",
+                "updated_at": "2026-06-04T12:00:00+00:00",
+            }
+        ]
+    )
+    soft_fail = _table_chain([], error=Exception('column "deleted_at" of relation "conversations" does not exist'))
+    hard_ok = _table_chain([])
+    supabase = MagicMock()
+    supabase.table.side_effect = [owned, soft_fail, hard_ok]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.delete("/api/conversations/conv-1")
+    assert response.status_code == 204
+    hard_ok.delete.assert_called_once()

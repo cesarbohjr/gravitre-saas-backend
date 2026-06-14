@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, getRouteClientAuthMode, resolveOrgId } from "@/lib/supabase/server"
 import { getOrgCountDiagnostics, isDebugRequest } from "@/lib/supabase/route-diagnostics"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
+import {
+  inferAgentDepartment,
+  inferAgentPersonality,
+  mapAgentStatusToOperator,
+  mapOperatorStatusToUi,
+  normalizeAgentDepartment,
+} from "@/lib/agent-display"
 
 function mapAgentRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
   const model = snakeToCamel<Record<string, unknown>>(input)
@@ -10,32 +17,67 @@ function mapAgentRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
       ? (model.personality as Record<string, unknown>)
       : {}
   const stats = model.stats && typeof model.stats === "object" ? (model.stats as Record<string, unknown>) : {}
+  const department = normalizeAgentDepartment(String(model.department ?? "Operations"))
 
   return {
     id: String(model.id),
     name: String(model.name ?? "Agent"),
     role: String(model.role ?? model.name ?? "AI Agent"),
-    department: String(model.department ?? "Operations"),
+    department,
     description: String(model.description ?? model.purpose ?? "AI teammate"),
-    status: String(model.status ?? "idle"),
+    status: mapOperatorStatusToUi(String(model.status ?? "idle")),
     model: String(model.model ?? "auto"),
     knowledgeDocCount,
     personality: {
-      color: String(personality.color ?? "blue"),
-      gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
-      glow: String(personality.glow ?? "shadow-blue-500/30"),
+      color: String(personality.color ?? inferAgentPersonality(department).color),
+      gradient: String(personality.gradient ?? inferAgentPersonality(department).gradient),
+      glow: String(personality.glow ?? inferAgentPersonality(department).glow),
     },
     stats: {
-      tasksToday: Number(stats.tasksToday ?? 0),
-      successRate: Number(stats.successRate ?? 100),
-      avgResponseTime: String(stats.avgResponseTime ?? "-"),
-      workflowsUsing: Number(stats.workflowsUsing ?? 0),
+      tasksToday: Number(stats.tasksToday ?? stats.tasks_today ?? 0),
+      successRate: Number(stats.successRate ?? stats.success_rate ?? 100),
+      avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
+      workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
       knowledgeDocCount,
     },
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
+    createdAt: String(model.createdAt ?? model.created_at ?? ""),
+  }
+}
+
+function mapOperatorRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
+  const name = String(input.name ?? "Agent")
+  const role = String(input.role ?? name)
+  const department = inferAgentDepartment(name, String(input.description ?? ""), role)
+  const personality = inferAgentPersonality(department)
+  const successRate = Number(input.success_rate ?? 100)
+  const totalRuns = Number(input.total_runs ?? 0)
+
+  return {
+    id: String(input.id),
+    name,
+    role,
+    department,
+    description: String(input.description ?? "AI teammate"),
+    status: mapOperatorStatusToUi(String(input.status ?? "draft")),
+    model: "auto",
+    knowledgeDocCount,
+    personality,
+    stats: {
+      tasksToday: totalRuns,
+      successRate: Number.isFinite(successRate) ? successRate : 100,
+      avgResponseTime: "-",
+      workflowsUsing: 0,
+      knowledgeDocCount,
+    },
+    capabilities: Array.isArray(input.capabilities) ? input.capabilities : [],
+    permissions: [],
+    lastAction: "No recent activity",
+    lastActionTime: "recently",
+    createdAt: String(input.created_at ?? ""),
   }
 }
 
@@ -104,6 +146,36 @@ async function loadKnowledgeDocCounts(
   return counts
 }
 
+async function syncOperatorMirror(
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  orgId: string,
+  agentRow: Record<string, unknown>,
+  userId: string | null,
+) {
+  const agentId = String(agentRow.id ?? "")
+  if (!agentId) return
+
+  const operatorPayload: Record<string, unknown> = {
+    id: agentId,
+    org_id: orgId,
+    name: String(agentRow.name ?? "Agent"),
+    description: (agentRow.description as string | null | undefined) ?? (agentRow.purpose as string | null | undefined) ?? null,
+    role: (agentRow.role as string | null | undefined) ?? String(agentRow.name ?? "Agent"),
+    status: mapAgentStatusToOperator(String(agentRow.status ?? "active")),
+    capabilities: Array.isArray(agentRow.capabilities) ? agentRow.capabilities : [],
+    config: agentRow.config && typeof agentRow.config === "object" ? agentRow.config : {},
+    updated_at: new Date().toISOString(),
+  }
+  if (userId) {
+    operatorPayload.created_by = userId
+  }
+
+  const { error } = await supabase.from("operators").upsert(operatorPayload, { onConflict: "id" })
+  if (error) {
+    console.warn("[agents] operator mirror upsert failed:", error.message)
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const debugEnabled = isDebugRequest(request.nextUrl.searchParams)
@@ -144,13 +216,44 @@ export async function GET(request: NextRequest) {
     }
 
     const agentRows = data ?? []
-    const agentIds = agentRows
-      .map((row) => String((row as { id?: string }).id ?? ""))
-      .filter((agentId) => agentId.length > 0)
-    const knowledgeCounts = await loadKnowledgeDocCounts(supabase, orgId, agentIds)
-    const agents = agentRows.map((row) =>
-      mapAgentRow(row as Record<string, unknown>, knowledgeCounts.get(String((row as { id?: string }).id ?? "")) ?? 0),
-    )
+    const mergedIds = new Set<string>()
+    const mergedRows: Record<string, unknown>[] = []
+
+    for (const row of agentRows) {
+      const id = String((row as { id?: string }).id ?? "")
+      if (!id || mergedIds.has(id)) continue
+      mergedIds.add(id)
+      mergedRows.push(row as Record<string, unknown>)
+    }
+
+    const { data: operatorRows, error: operatorError } = await supabase
+      .from("operators")
+      .select("id, org_id, name, description, status, role, capabilities, total_runs, success_rate, created_at")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false })
+
+    if (operatorError) {
+      console.warn("[agents] operators list failed:", operatorError.message)
+    } else {
+      for (const row of operatorRows ?? []) {
+        const id = String((row as { id?: string }).id ?? "")
+        if (!id || mergedIds.has(id)) continue
+        mergedIds.add(id)
+        mergedRows.push(row as Record<string, unknown>)
+      }
+    }
+
+    const knowledgeCounts = await loadKnowledgeDocCounts(supabase, orgId, Array.from(mergedIds))
+    const agents = mergedRows
+      .map((row) => {
+        const id = String(row.id ?? "")
+        const knowledgeDocCount = knowledgeCounts.get(id) ?? 0
+        if ("purpose" in row || "personality" in row || "stats" in row) {
+          return mapAgentRow(row, knowledgeDocCount)
+        }
+        return mapOperatorRow(row, knowledgeDocCount)
+      })
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
 
     return NextResponse.json({
       agents,
@@ -159,10 +262,11 @@ export async function GET(request: NextRequest) {
         ? {
             _debug: {
               resolvedOrgId: orgId,
-              table: "agents",
+              table: "agents+operators",
               ...diagnostics,
               queryError: null,
               authMode,
+              mergedCount: agents.length,
             },
           }
         : {}),
@@ -193,25 +297,25 @@ export async function POST(request: NextRequest) {
         ? snake.systems
         : []
 
+    const name = String(snake.name ?? "New Agent").trim()
+    const purpose = (snake.purpose as string | undefined) ?? null
+    const role = (snake.role as string | undefined) ?? name
+    const department =
+      (snake.department as string | undefined) ??
+      inferAgentDepartment(name, purpose, role)
+
     const insertPayload = {
       org_id: orgId,
-      name: String(snake.name ?? "New Agent"),
-      purpose: (snake.purpose as string | undefined) ?? null,
-      role: (snake.role as string | undefined) ?? String(snake.name ?? "New Agent"),
+      name,
+      purpose,
+      role,
       model: (snake.model as string | undefined) ?? "auto",
-      department: (snake.department as string | undefined) ?? "Operations",
-      description:
-        (snake.description as string | undefined) ??
-        (snake.purpose as string | undefined) ??
-        null,
+      department,
+      description: (snake.description as string | undefined) ?? purpose ?? null,
       personality:
         snake.personality && typeof snake.personality === "object"
           ? snake.personality
-          : {
-              color: "blue",
-              gradient: "from-blue-500 to-indigo-500",
-              glow: "shadow-blue-500/30",
-            },
+          : inferAgentPersonality(normalizeAgentDepartment(department)),
       stats:
         snake.stats && typeof snake.stats === "object"
           ? snake.stats
@@ -224,7 +328,7 @@ export async function POST(request: NextRequest) {
       capabilities: Array.isArray(snake.capabilities) ? snake.capabilities : [],
       systems: permissions,
       guardrails: Array.isArray(snake.guardrails) ? snake.guardrails : [],
-      status: "active",
+      status: String(snake.status ?? "active"),
       last_action:
         (snake.last_action as string | undefined) ??
         (snake.lastAction as string | undefined) ??
@@ -233,17 +337,21 @@ export async function POST(request: NextRequest) {
       created_by: userData.user?.id ?? null,
     }
 
-    const { data, error } = await supabase
-      .from("agents")
-      .insert(insertPayload)
-      .select("*")
-      .single()
+    const { data, error } = await supabase.from("agents").insert(insertPayload).select("*").single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) }, { status: 201 })
+    await syncOperatorMirror(
+      supabase,
+      orgId,
+      data as Record<string, unknown>,
+      userData.user?.id ?? null,
+    )
+
+    const mapped = mapAgentRow(data as Record<string, unknown>)
+    return NextResponse.json({ agent: mapped, id: mapped.id, agentId: mapped.id }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

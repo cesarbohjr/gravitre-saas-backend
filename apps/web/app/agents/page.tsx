@@ -43,6 +43,7 @@ import {
   Shield,
   Blocks,
   BookOpen,
+  Users,
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,7 @@ import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
+import { inferAgentDepartment, resolveAgentRoleIcon } from "@/lib/agent-display"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { toast } from "sonner"
 
@@ -95,7 +97,8 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
       department === "Marketing" ||
       department === "Sales" ||
       department === "Finance" ||
-      department === "Support"
+      department === "Support" ||
+      department === "HR"
         ? department
         : "Operations",
     description: String(input.description ?? ""),
@@ -149,6 +152,11 @@ const roleIcons: Record<string, LucideIcon> = {
   "Data Quality Agent": Database,
   "Finance Reporter": PieChart,
   "Support Coordinator": Headphones,
+  "HR Partner": Users,
+}
+
+function getAgentIcon(agent: Agent): LucideIcon {
+  return resolveAgentRoleIcon(agent.role, agent.name)
 }
 
 const statusConfig = {
@@ -160,7 +168,7 @@ const statusConfig = {
 
 // Agent Orb Component - Premium visual personality representation with depth
 function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelected: boolean; onClick: () => void; index: number }) {
-  const Icon = roleIcons[agent.role] || Bot
+  const Icon = getAgentIcon(agent)
   const status = statusConfig[agent.status]
   
   // 3D hover effect
@@ -184,184 +192,184 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
 
   return (
     <motion.button
+      type="button"
       onClick={onClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       initial={{ opacity: 0, y: 30, scale: 0.8 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: index * 0.1, type: "spring", stiffness: 100 }}
-      whileHover={{ scale: 1.08, y: -8 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.04, y: -4 }}
+      whileTap={{ scale: 0.97 }}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
       className={cn(
-        "relative group perspective-1000",
-        isSelected && "z-10"
+        "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-colors",
+        isSelected ? "border-emerald-500/30 bg-card/70 shadow-lg z-10" : "hover:border-border/60 hover:bg-card/40",
       )}
     >
-      {/* Ambient glow - subtle for selected */}
-      <motion.div 
+      <motion.div
         className={cn(
-          "absolute -inset-3 rounded-full blur-xl transition-opacity duration-500",
-          `bg-gradient-to-br ${agent.personality.gradient}`
-        )}
-        animate={{ opacity: isSelected ? 0.25 : 0, scale: isSelected ? 1.1 : 1 }}
-      />
-      
-      {/* Outer glow ring on hover - very subtle */}
-      <div className={cn(
-        "absolute -inset-2 rounded-full opacity-0 group-hover:opacity-30 transition-opacity duration-300 blur-lg",
-        `bg-gradient-to-br ${agent.personality.gradient}`
-      )} />
-      
-      {/* Animated pulse rings for active/processing */}
-      {(agent.status === "active" || agent.status === "processing") && (
-        <>
-          <motion.div
-            className={cn(
-              "absolute -inset-2 rounded-full border-2",
-              agent.status === "processing" ? "border-blue-500/40" : "border-emerald-500/30"
-            )}
-            animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
-          />
-          <motion.div
-            className={cn(
-              "absolute -inset-2 rounded-full border",
-              agent.status === "processing" ? "border-blue-500/20" : "border-emerald-500/20"
-            )}
-            animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
-          />
-        </>
-      )}
-
-      {/* Model badge */}
-      {agent.model ? (
-        <span className="absolute -top-1 -right-1 z-20 rounded-full border border-border bg-card/95 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm">
-          {agent.model}
-        </span>
-      ) : null}
-
-      {/* Main orb with inner depth */}
-      <div 
-        className={cn(
-          "relative h-28 w-28 rounded-full flex items-center justify-center transition-all duration-300",
+          "pointer-events-none absolute inset-x-4 top-6 h-24 rounded-full blur-2xl transition-opacity duration-500",
           `bg-gradient-to-br ${agent.personality.gradient}`,
-          isSelected ? "ring-2 ring-white/20 shadow-lg scale-105" : "shadow-md",
-          agent.status === "error" && "opacity-50 grayscale-[30%]"
         )}
-        style={{ transform: "translateZ(20px)" }}
-      >
-        {/* Inner highlight */}
-        <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 to-transparent" />
-        
-        {/* Icon */}
-        <Icon className="h-11 w-11 text-white drop-shadow-lg relative z-10" />
-        
-        {/* Processing spinner */}
-        {agent.status === "processing" && (
+        animate={{ opacity: isSelected ? 0.35 : 0.18 }}
+      />
+
+      <div className="relative mb-4 flex h-28 w-28 items-center justify-center">
+        {(agent.status === "active" || agent.status === "processing") && (
+          <>
+            <motion.div
+              className={cn(
+                "absolute inset-0 rounded-full border-2",
+                agent.status === "processing" ? "border-blue-500/40" : "border-emerald-500/30",
+              )}
+              animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
+            />
+            <motion.div
+              className={cn(
+                "absolute inset-0 rounded-full border",
+                agent.status === "processing" ? "border-blue-500/20" : "border-emerald-500/20",
+              )}
+              animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0, 0.4] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
+            />
+          </>
+        )}
+
+        {agent.model ? (
+          <span className="absolute -top-1 right-0 z-20 max-w-[88px] truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm">
+            {agent.model}
+          </span>
+        ) : null}
+
+        {agent.stats.tasksToday > 0 && (
           <motion.div
-            className="absolute inset-0 rounded-full border-3 border-white/20 border-t-white"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-          />
+            className="absolute -top-1 left-0 z-20 flex h-6 min-w-6 items-center justify-center rounded-full border border-border bg-card px-1 shadow-lg"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: index * 0.1 + 0.3 }}
+          >
+            <span className="text-[10px] font-bold text-foreground">
+              {agent.stats.tasksToday > 99 ? "99+" : agent.stats.tasksToday}
+            </span>
+          </motion.div>
         )}
-        
-        {/* Error X overlay */}
-        {agent.status === "error" && (
-          <div className="absolute inset-0 rounded-full bg-red-900/30 flex items-center justify-center">
-            <Shield className="h-6 w-6 text-red-400 absolute top-2 right-2" />
-          </div>
-        )}
+
+        <div
+          className={cn(
+            "relative flex h-24 w-24 items-center justify-center rounded-full transition-all duration-300",
+            `bg-gradient-to-br ${agent.personality.gradient}`,
+            isSelected ? "ring-2 ring-white/20 shadow-lg" : "shadow-md",
+            agent.status === "error" && "opacity-50 grayscale-[30%]",
+          )}
+          style={{ transform: "translateZ(20px)" }}
+        >
+          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 to-transparent" />
+          <Icon className="relative z-10 h-10 w-10 text-white drop-shadow-lg" />
+          {agent.status === "processing" && (
+            <motion.div
+              className="absolute inset-0 rounded-full border-[3px] border-white/20 border-t-white"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+            />
+          )}
+          {agent.status === "error" && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-red-900/30">
+              <Shield className="h-5 w-5 text-red-400" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Name label - positioned below orb */}
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-center whitespace-nowrap z-10 w-36">
-        <p className="text-sm font-semibold text-foreground truncate">{agent.name}</p>
-        <p className="text-[10px] text-muted-foreground truncate">{agent.role}</p>
-        <div className="mt-1 flex items-center justify-center gap-2 text-[9px] text-muted-foreground">
-          <span className={cn(
-            agent.stats.successRate >= 95 ? "text-emerald-400" :
-            agent.stats.successRate >= 80 ? "text-amber-400" : "text-red-400"
-          )}>
+      <div className="relative z-10 w-full space-y-2 text-center">
+        <div className="space-y-0.5">
+          <p className="truncate text-sm font-semibold text-foreground">{agent.name}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{agent.role}</p>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground">
+          <span
+            className={cn(
+              agent.stats.successRate >= 95
+                ? "text-emerald-400"
+                : agent.stats.successRate >= 80
+                  ? "text-amber-400"
+                  : "text-red-400",
+            )}
+          >
             {agent.stats.successRate}%
           </span>
-          <span>·</span>
+          <span className="mx-1">·</span>
           <span>{agent.stats.tasksToday} today</span>
-          <span>·</span>
-          <span>{agent.stats.avgResponseTime}</span>
-        </div>
+        </p>
+
         {(agent.knowledgeDocCount ?? 0) > 0 ? (
           <a
             href={`/training?agentId=${agent.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-card/80 px-2 py-0.5 text-[9px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-card/80 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
           >
-            <BookOpen className="h-2.5 w-2.5" />
+            <BookOpen className="h-3 w-3" />
             {agent.knowledgeDocCount} docs
           </a>
         ) : (
           <a
             href={`/training?agentId=${agent.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="mt-1 inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-card/50 px-2 py-0.5 text-[9px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-card/50 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/30 hover:text-foreground"
           >
-            <BookOpen className="h-2.5 w-2.5" />
+            <BookOpen className="h-3 w-3" />
             Add training
           </a>
         )}
+
         {agent.status === "processing" ? (
-          <p className="mt-1 flex items-center justify-center gap-1 text-[9px] text-blue-400">
+          <p className="flex items-center justify-center gap-1 text-[10px] text-blue-400">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
             Running task…
           </p>
         ) : (
-          <p className="mt-1 truncate text-[9px] text-muted-foreground/80">
-            Last ran: {agent.lastActionTime} — {agent.lastAction}
+          <p className="line-clamp-2 min-h-[2rem] text-[10px] leading-4 text-muted-foreground/80">
+            Last ran {agent.lastActionTime}
           </p>
         )}
-      </div>
-      
-      {/* Status indicator - positioned below name */}
-      <motion.div 
-        className={cn(
-          "absolute -bottom-[7.5rem] left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm border shadow-lg z-20",
-          agent.status === "error" 
-            ? "bg-red-500/90 border-red-500/50 text-white" 
-            : agent.status === "processing"
-              ? "bg-blue-500/20 border-blue-500/30"
-              : agent.status === "active"
-                ? "bg-emerald-500/20 border-emerald-500/30"
-                : "bg-card/80 border-border"
-        )}
-        initial={{ opacity: 0, y: -5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.1 + 0.2 }}
-      >
-        <StatusBeacon 
-          status={agent.status === "error" ? "error" : agent.status === "processing" ? "processing" : agent.status === "active" ? "active" : "idle"} 
-          size="sm" 
-          pulse={agent.status !== "idle"}
-        />
-        <span className={cn(
-          "text-[10px] font-semibold uppercase tracking-wider",
-          agent.status === "error" ? "text-white" : status.color
-        )}>
-          {status.label}
-        </span>
-      </motion.div>
-      
-      {/* Task count badge */}
-      {agent.stats.tasksToday > 0 && (
-        <motion.div 
-          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-card border border-border flex items-center justify-center shadow-lg"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: index * 0.1 + 0.3 }}
+
+        <div
+          className={cn(
+            "mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-sm",
+            agent.status === "error"
+              ? "border-red-500/50 bg-red-500/90 text-white"
+              : agent.status === "processing"
+                ? "border-blue-500/30 bg-blue-500/10"
+                : agent.status === "active"
+                  ? "border-emerald-500/30 bg-emerald-500/10"
+                  : "border-border bg-card/80",
+          )}
         >
-          <span className="text-[10px] font-bold text-foreground">{agent.stats.tasksToday > 99 ? "99+" : agent.stats.tasksToday}</span>
-        </motion.div>
-      )}
+          <StatusBeacon
+            status={
+              agent.status === "error"
+                ? "error"
+                : agent.status === "processing"
+                  ? "processing"
+                  : agent.status === "active"
+                    ? "active"
+                    : "idle"
+            }
+            size="sm"
+            pulse={agent.status !== "idle"}
+          />
+          <span
+            className={cn(
+              "text-[10px] font-semibold uppercase tracking-wider",
+              agent.status === "error" ? "text-white" : status.color,
+            )}
+          >
+            {status.label}
+          </span>
+        </div>
+      </div>
     </motion.button>
   )
 }
@@ -379,7 +387,7 @@ function AgentDetailPanel({
   isMutating: boolean
 }) {
   const router = useRouter()
-  const Icon = roleIcons[agent.role] || Bot
+  const Icon = getAgentIcon(agent)
   const status = statusConfig[agent.status]
 
   return (
@@ -647,8 +655,9 @@ export default function AgentsPage() {
     user ? "/api/agents" : null,
     apiFetcher,
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
       revalidateOnMount: true,
+      dedupingInterval: 2000,
       onError: (err) => {
         console.error("[v0] Agents fetch error:", err)
       },
@@ -803,7 +812,7 @@ export default function AgentsPage() {
               </div>
               
               {/* Orb constellation - extra bottom padding for status badges */}
-              <div className="relative flex flex-wrap gap-10 sm:gap-14 lg:gap-20 justify-center items-center pt-8 sm:pt-12 pb-8">
+              <div className="relative flex flex-wrap gap-8 sm:gap-10 lg:gap-12 justify-center items-start pt-8 sm:pt-10 pb-28">
                 {error ? (
                   <div className="text-center space-y-3 px-4">
                     <p className="text-sm text-destructive">Could not load agents.</p>

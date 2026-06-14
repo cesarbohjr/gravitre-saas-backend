@@ -28,7 +28,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
-import { apiFetch } from "@/lib/fetcher"
+import { agentsApi } from "@/lib/api"
+import { inferAgentDepartment } from "@/lib/agent-display"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 
@@ -142,49 +143,25 @@ export default function NewAgentPage() {
         .map((id) => guardrailOptions.find((guardrail) => guardrail.id === id)?.name)
         .filter((value): value is string => Boolean(value))
 
-      const response = await apiFetch("/api/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: agentName.trim(),
-          purpose: agentPurpose.trim(),
-          role: agentName.trim(),
-          model: agentModel,
-          capabilities: selectedCapabilityNames,
-          systems: selectedSystemNames,
-          guardrails: selectedGuardrailNames,
-          status: "active",
-        }),
-      })
+      const trimmedName = agentName.trim()
+      const trimmedPurpose = agentPurpose.trim()
+      const department = inferAgentDepartment(trimmedName, trimmedPurpose, trimmedName)
 
-      const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>
-      if (!response.ok) {
-        const message =
-          typeof payload.error === "string" && payload.error.trim().length > 0
-            ? payload.error
-            : "Failed to create agent"
-        throw new Error(message)
-      }
+      const created = await agentsApi.create({
+        name: trimmedName,
+        purpose: trimmedPurpose,
+        role: trimmedName,
+        department,
+        model: agentModel,
+        capabilities: selectedCapabilityNames,
+        systems: selectedSystemNames,
+        guardrails: selectedGuardrailNames,
+        status: "active",
+      })
 
       toast.success("Agent created")
       await globalMutate("/api/agents")
-      const agentPayload =
-        payload.agent && typeof payload.agent === "object"
-          ? (payload.agent as Record<string, unknown>)
-          : null
-      const createdId =
-        typeof payload.id === "string"
-          ? payload.id
-          : typeof payload.agentId === "string"
-            ? payload.agentId
-            : typeof agentPayload?.id === "string"
-              ? agentPayload.id
-            : null
-      if (createdId) {
-        router.push(`/agents/${createdId}`)
-        return
-      }
-      router.push("/agents")
+      router.push(`/agents/${created.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create agent")
     } finally {

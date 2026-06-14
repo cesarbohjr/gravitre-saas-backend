@@ -26,6 +26,7 @@ export default function ChatPage() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
 
   const { data: historyData, mutate: mutateHistory } = useSWR<{ searches: SearchHistoryItem[] }>(
@@ -42,19 +43,38 @@ export default function ChatPage() {
     }
     const effectiveQuery = (nextQuery ?? query).trim()
     if (!effectiveQuery) return
+    setQuery(effectiveQuery)
+    setHasSearched(true)
     setIsSearching(true)
     try {
       const response = await searchApi.search(effectiveQuery)
       setResults(response.results)
       setSuggestions(response.suggestions)
-      setQuery(effectiveQuery)
+      if (response.results.length === 0) {
+        toast.message("No matches found", {
+          description: "Try a shorter query or one of the suggested prompts.",
+        })
+      }
       await mutateHistory()
     } catch (err) {
       console.error("[v0] Search failed:", err)
+      setResults([])
       toast.error("Search failed")
     } finally {
       setIsSearching(false)
     }
+  }
+
+  const handleSampleQuery = (sample: string) => {
+    setQuery(sample)
+    void handleSearch(sample)
+  }
+
+  const handleNewSearch = () => {
+    setHasSearched(false)
+    setResults([])
+    setSuggestions([])
+    setQuery("")
   }
 
   const handleClearHistory = async () => {
@@ -122,7 +142,7 @@ export default function ChatPage() {
                     Semantic search and search history are available after authentication.
                   </p>
                 </motion.div>
-              ) : results.length === 0 && !isSearching ? (
+              ) : !hasSearched && !isSearching ? (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -148,7 +168,8 @@ export default function ChatPage() {
                     {sampleQueries.map((q, i) => (
                       <button
                         key={i}
-                        onClick={() => void handleSearch(q)}
+                        type="button"
+                        onClick={() => handleSampleQuery(q)}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
                       >
                         <Sparkles className="h-3 w-3" />
@@ -159,10 +180,39 @@ export default function ChatPage() {
                 </motion.div>
               ) : (
                 <>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <p className="text-sm text-muted-foreground truncate">
+                      Results for <span className="text-foreground font-medium">&ldquo;{query}&rdquo;</span>
+                    </p>
+                    <Button variant="ghost" size="sm" type="button" onClick={handleNewSearch}>
+                      New search
+                    </Button>
+                  </div>
                   {isSearching && (
                     <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-card border border-border">
                       <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
                       <span className="text-sm text-muted-foreground">Searching...</span>
+                    </div>
+                  )}
+                  {!isSearching && results.length === 0 && (
+                    <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
+                      <p className="text-sm font-medium text-foreground mb-1">No matches found</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Try refining your query or pick another prompt below.
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {sampleQueries.map((q, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => handleSampleQuery(q)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            {q}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {results.map((result) => (
@@ -285,7 +335,11 @@ export default function ChatPage() {
                 {history.map((entry) => (
                   <button
                     key={entry.id}
-                    onClick={() => void handleSearch(entry.query)}
+                    type="button"
+                    onClick={() => {
+                      setQuery(entry.query)
+                      void handleSearch(entry.query)
+                    }}
                     className="w-full p-3 rounded-lg text-left hover:bg-secondary/50 transition-colors group"
                   >
                     <div className="flex items-start justify-between gap-2">

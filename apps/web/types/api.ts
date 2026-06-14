@@ -120,7 +120,7 @@ export interface OperatorSessionDetail {
 
 // ============ Agents ============
 export type AgentStatus = "active" | "idle" | "processing" | "error"
-export type AgentDepartment = "Marketing" | "Sales" | "Operations" | "Finance" | "Support"
+export type AgentDepartment = "Marketing" | "Sales" | "Operations" | "Finance" | "Support" | "HR"
 
 export interface AgentPersonality {
   color: string
@@ -1012,10 +1012,15 @@ export interface OperatorActionPlanRequest {
 export interface CreateAgentRequest {
   name: string
   role: string
-  department: AgentDepartment
+  department?: AgentDepartment
+  purpose?: string
   description?: string
+  model?: string
   capabilities?: string[]
   permissions?: string[]
+  systems?: string[]
+  guardrails?: string[]
+  status?: string
 }
 
 // ============ Marketplace (STA-71) ============
