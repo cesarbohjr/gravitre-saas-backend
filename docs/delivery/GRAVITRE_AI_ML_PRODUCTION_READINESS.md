@@ -182,7 +182,7 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | `GET /api/agents` → `knowledgeDocCount` | **WIRED** | RAG document count + active custom instructions per agent |
 | `POST /api/runs/{id}/steps/{stepId}/retry` | **WIRED** | Re-runs failed step and downstream nodes from checkpoint |
 | `POST /api/runs/{id}/resume-paused` | **WIRED** | Resumes operator-paused runs; UI Resume button on run detail |
-| `GET /api/meson/optimizations/{workflowId}` | **MISSING** | Insights used instead (`/insights`) — not blocking |
+| `GET /api/meson/optimizations/{workflowId}` | **WIRED** | `meson_service.py` `get_workflow_optimizations()`; proxy `apps/web/app/api/meson/optimizations/[workflowId]/route.ts`; panel uses `mesonApi.optimizations()` |
 | True provider streaming edge cases (STA-5) | **WIRED** | `prepare_stream` + `stream` shipped; close STA-5 in Linear |
 
 ---
