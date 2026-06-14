@@ -3718,12 +3718,18 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <Button
                 variant={mesonPanelOpen ? "secondary" : "outline"}
                 size="sm"
-                className="h-8 gap-2"
+                className="relative h-8 gap-2"
                 onClick={toggleMesonPanel}
                 aria-expanded={mesonPanelOpen}
               >
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span className="hidden sm:inline">Meson</span>
+                {!mesonPanelOpen && nodes.length > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-primary/70 motion-safe:animate-ping" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                  </span>
+                ) : null}
               </Button>
               <Button
                 variant="outline"
