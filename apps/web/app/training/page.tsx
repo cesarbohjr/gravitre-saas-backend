@@ -696,11 +696,20 @@ function TrainingPageContent() {
                   </div>
                   <div className="mt-3 h-1.5 rounded-full bg-secondary overflow-hidden">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                      className="relative h-full bg-gradient-to-r from-blue-500 to-cyan-400 overflow-hidden"
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
                       transition={{ duration: 0.45, ease: "easeOut" }}
-                    />
+                    >
+                      {(job.status === "training" || job.status === "queued") && (
+                        <motion.span
+                          aria-hidden="true"
+                          className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                          animate={{ x: ["-120%", "320%"] }}
+                          transition={{ duration: 1.3, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                      )}
+                    </motion.div>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <Button
