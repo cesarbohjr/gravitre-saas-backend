@@ -266,3 +266,21 @@
     animation: gradient 6s ease infinite;
   }
 }
+
+/* ============================================================
+   Global reduced-motion guard (F5 motion system)
+   Honors the OS "Reduce Motion" setting across the whole app:
+   collapses CSS keyframe animations, transitions, and smooth
+   scrolling to near-instant so motion never causes discomfort.
+   framer-motion surfaces additionally use useMotionPrefs().
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

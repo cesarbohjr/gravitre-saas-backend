@@ -96,6 +96,8 @@ export function MesonCopilotPanel({
   const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed(workflowId))
 
   useEffect(() => {
+    // Sync dismissed list from localStorage when switching workflows.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDismissed(loadDismissed(workflowId))
   }, [workflowId])
 
@@ -104,6 +106,8 @@ export function MesonCopilotPanel({
   useEffect(() => {
     if (!open) return
     let cancelled = false
+    // Kick off async data fetch + loading flags (external sync).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingAlerts(true)
     setLoadingInsights(true)
     void mesonApi
@@ -138,6 +142,7 @@ export function MesonCopilotPanel({
 
   useEffect(() => {
     if (!open || nodes.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([])
       return
     }
