@@ -520,9 +520,10 @@ export default function AssistantPage() {
     return []
   })
 
-  // Transport configuration
+  // Transport configuration (ref read happens only inside body/headers at request time)
   const transport = useMemo(
     () =>
+      // eslint-disable-next-line react-hooks/refs -- activeConversationIdRef is read in body(), not during render
       new DefaultChatTransport({
         api: "/api/chat",
         headers: async () => {

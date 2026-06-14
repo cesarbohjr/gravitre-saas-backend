@@ -108,12 +108,6 @@ function TrainingPageContent() {
     })
   }, [user])
 
-  useEffect(() => {
-    if (agentFilterId) {
-      setSelectedAgentId(agentFilterId)
-    }
-  }, [agentFilterId])
-
   const swrKey = user && orgReady ? "training" : null
 
   const { data: datasetsData, error: datasetsError, mutate: mutateDatasets } = useSWR(

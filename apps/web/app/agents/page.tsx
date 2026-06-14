@@ -1,7 +1,7 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { useState } from "react"
+import { createElement, useState } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
@@ -168,7 +168,6 @@ const statusConfig = {
 
 // Agent Orb Component - Premium visual personality representation with depth
 function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelected: boolean; onClick: () => void; index: number }) {
-  const Icon = getAgentIcon(agent)
   const status = statusConfig[agent.status]
   
   // 3D hover effect
@@ -268,7 +267,9 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
           style={{ transform: "translateZ(20px)" }}
         >
           <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 to-transparent" />
-          <Icon className="relative z-10 h-10 w-10 text-white drop-shadow-lg" />
+          {createElement(getAgentIcon(agent), {
+            className: "relative z-10 h-10 w-10 text-white drop-shadow-lg",
+          })}
           {agent.status === "processing" && (
             <motion.div
               className="absolute inset-0 rounded-full border-[3px] border-white/20 border-t-white"
@@ -389,7 +390,6 @@ function AgentDetailPanel({
   isMutating: boolean
 }) {
   const router = useRouter()
-  const Icon = getAgentIcon(agent)
   const status = statusConfig[agent.status]
 
   return (
@@ -407,7 +407,7 @@ function AgentDetailPanel({
               "h-14 w-14 rounded-xl flex items-center justify-center",
               `bg-gradient-to-br ${agent.personality.gradient}`
             )}>
-              <Icon className="h-7 w-7 text-white" />
+              {createElement(getAgentIcon(agent), { className: "h-7 w-7 text-white" })}
             </div>
             <div>
               <div className="flex items-center gap-2">

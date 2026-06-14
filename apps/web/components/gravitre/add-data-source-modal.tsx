@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import {
   Activity,
@@ -157,15 +158,6 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
   const categories = (typesPayload as { categories?: Array<{ id: string; label: string }> } | undefined)
     ?.categories ?? []
 
-  useEffect(() => {
-    if (!selectedType) return
-    const defaults: Record<string, string | number | boolean> = {}
-    for (const field of selectedType.connectionFields) {
-      if (field.default !== undefined) defaults[field.key] = field.default
-    }
-    setConfig(defaults)
-  }, [selectedType])
-
   const resetAndClose = () => {
     onClose()
     setStep(1)
@@ -181,6 +173,11 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
   const handleSelectType = (type: DataSourceTypeDefinition) => {
     setSelectedType(type)
     setSourceName(type.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))
+    const defaults: Record<string, string | number | boolean> = {}
+    for (const field of type.connectionFields) {
+      if (field.default !== undefined) defaults[field.key] = field.default
+    }
+    setConfig(defaults)
     setStep(2)
   }
 
@@ -347,9 +344,9 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                 </select>
                 <p className="mt-2 text-[11px] text-muted-foreground">
                   Or connect one first from{" "}
-                  <a href="/connectors" className="text-primary underline">
+                  <Link href="/connectors" className="text-primary underline">
                     Connectors
-                  </a>
+                  </Link>
                   .
                 </p>
               </div>
