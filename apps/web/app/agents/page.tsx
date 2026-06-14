@@ -196,9 +196,11 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       onClick={onClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      layout
       initial={{ opacity: 0, y: 30, scale: 0.8 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.1, type: "spring", stiffness: 100 }}
+      exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
+      transition={{ delay: Math.min(index, 8) * 0.05, type: "spring", stiffness: 100 }}
       whileHover={{ scale: 1.04, y: -4 }}
       whileTap={{ scale: 0.97 }}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
@@ -839,15 +841,17 @@ export default function AgentsPage() {
                     ) : null}
                   </div>
                 ) : (
-                  filteredAgents.map((agent, index) => (
-                    <AgentOrb
-                      key={agent.id}
-                      agent={agent}
-                      index={index}
-                      isSelected={selectedAgentOrDefault?.id === agent.id}
-                      onClick={() => setSelectedAgent(agent)}
-                    />
-                  ))
+                  <AnimatePresence mode="popLayout">
+                    {filteredAgents.map((agent, index) => (
+                      <AgentOrb
+                        key={agent.id}
+                        agent={agent}
+                        index={index}
+                        isSelected={selectedAgentOrDefault?.id === agent.id}
+                        onClick={() => setSelectedAgent(agent)}
+                      />
+                    ))}
+                  </AnimatePresence>
                 )}
               </div>
             </div>
