@@ -172,17 +172,17 @@ Wire to existing /api/assistant/chat streaming protocol (AI SDK UI stream).
 | F2 | Agent stats + `knowledgeDocCount` on `/api/agents` | ✅ Wired (`stats` JSON + RAG/instruction counts; agents + operators merge) |
 | F3 | `/api/runs/{id}` step detail + retry/resume | ✅ Wired (`ExecutionTimeline`, step retry, pause resume, poll while paused) |
 | F4 | `/api/conversations`, chat `conversation_id`, org context | ✅ Wired (sidebar, streaming chat, org-context pill, submit lock) |
-| F5 | Motion only — no new APIs | ✅ Shipped PR #38 (`39cfaba`) — see [`F5_MOTION_HANDOFF.md`](F5_MOTION_HANDOFF.md) |
+| F5 | Motion only — no new APIs | ✅ Shipped PR #38 + PR #39 (`28d3f0b`) — see [`F5_MOTION_HANDOFF.md`](F5_MOTION_HANDOFF.md) |
 
-Shipped in commits `c768f28` (F1–F4 UI), `a9c7ad7` (run ops gaps), `11ad1a7` (Meson Fix + training links), `a5b8cce` (optimizations API + paused polling), `933892a` (search, assistant, agents roster), **`39cfaba`** (F5 motion PR #38). Linear: **STA-149–154**, epic **STA-132** — all **Done**.
+Shipped in commits `c768f28` (F1–F4 UI), `a9c7ad7` (run ops gaps), `11ad1a7` (Meson Fix + training links), `a5b8cce` (optimizations API + paused polling), `933892a` (search, assistant, agents roster), **`39cfaba`** (F5 PR #38), **`28d3f0b`** (F5.1 PR #39). Linear: **STA-149–154**, epic **STA-132** — all **Done**.
 
 ---
 
 ## F5 — Motion, Lottie & Premium UX Pass
 
-**Status: ✅ Shipped** (PR #38 → `main` `39cfaba`). Full handoff: [`F5_MOTION_HANDOFF.md`](F5_MOTION_HANDOFF.md).
+**Status: ✅ Fully shipped** — PR #38 (9 surfaces) + PR #39 (4 surfaces) → `main` **`28d3f0b`**. Handoff: [`F5_MOTION_HANDOFF.md`](F5_MOTION_HANDOFF.md).
 
-Use **`useMotionPrefs()`** from `apps/web/lib/animations.ts` for any new animated UI. Do not re-run the v0 prompt below on surfaces already listed in the handoff.
+Use **`useMotionPrefs()`** from `apps/web/lib/animations.ts` for any **new** animated UI. Do not re-polish surfaces listed in the handoff.
 
 <details>
 <summary>Original v0 prompt (archived — do not re-apply to shipped surfaces)</summary>

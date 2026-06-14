@@ -55,7 +55,7 @@ Requires `backend/.env.operator.local` with Supabase JWT + service role.
 
 ## v0 prompt notes
 
-- [`V0_AI_INTELLIGENCE_PROMPTS.md`](../design/V0_AI_INTELLIGENCE_PROMPTS.md) — UI prompts F1–F5. F5 motion shipped PR #38 — see [`F5_MOTION_HANDOFF.md`](../design/F5_MOTION_HANDOFF.md).
+- [`V0_AI_INTELLIGENCE_PROMPTS.md`](../design/V0_AI_INTELLIGENCE_PROMPTS.md) — UI prompts F1–F5. Motion fully shipped: PR #38 + PR #39 — see [`F5_MOTION_HANDOFF.md`](../design/F5_MOTION_HANDOFF.md).
 - Backend gap report: [`GRAVITRE_AI_ML_PRODUCTION_READINESS.md`](../delivery/GRAVITRE_AI_ML_PRODUCTION_READINESS.md)
 
 ## Environment (Vercel + Railway)

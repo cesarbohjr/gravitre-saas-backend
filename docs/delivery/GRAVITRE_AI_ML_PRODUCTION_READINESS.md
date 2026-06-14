@@ -172,7 +172,7 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | Run execution timeline | STA-153 | **WIRED** | `components/runs/execution-timeline.tsx` |
 | Assistant intelligence | STA-154 | **WIRED** | `app/assistant/page.tsx` |
 | Enterprise assistant upgrade | STA-156 | **WIRED** | Sidebar, tools, follow-ups, models |
-| F5 motion system (PR #38) | — | **WIRED** | `lib/animations.ts` `useMotionPrefs()`; 9 surfaces — see [`F5_MOTION_HANDOFF.md`](../design/F5_MOTION_HANDOFF.md) |
+| F5 motion system (PR #38 + #39) | — | **WIRED** | `lib/animations.ts`; 13 surfaces total — see [`F5_MOTION_HANDOFF.md`](../design/F5_MOTION_HANDOFF.md) |
 
 ---
 
@@ -195,7 +195,7 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | Backend pytest | `cd backend && python -m pytest -q` | 803 passed |
 | Frontend typecheck + build | `cd apps/web && npx tsc --noEmit && npm run build` | Pass |
 | Prod smoke | `npm run smoke:ai-production:report` | 15 pass / 0 warn / 0 fail |
-| Vercel deploy | `39cfaba` on `main` (PR #38 F5 motion) | Build OK |
+| Vercel deploy | `28d3f0b` on `main` (PR #39 F5.1 motion) | Build OK |
 | Railway backend | Auto-deploy from `main` | Smoke target 200 |
 
 ---
@@ -216,6 +216,6 @@ docs/delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md   # Phase 1–2 audit (STA-155
 docs/delivery/STA-156_PHASE5_VERIFICATION.md        # pytest + smoke scores
 docs/delivery/smoke-ai-production-latest.json       # latest prod E2E
 docs/design/V0_AI_INTELLIGENCE_PROMPTS.md           # F1–F5 spec
-docs/design/F5_MOTION_HANDOFF.md                    # PR #38 motion handoff
+docs/design/F5_MOTION_HANDOFF.md                    # PR #38 + #39 motion handoff
 docs/delivery/AI_ML_OPERATIONAL_GAP_REPORT.md       # superseded Jun 7 snapshot
 ```
