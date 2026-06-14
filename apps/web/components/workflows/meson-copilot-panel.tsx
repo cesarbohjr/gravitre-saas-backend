@@ -1,11 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   AlertTriangle,
   CheckCircle,
   ChevronRight,
   Lightbulb,
+  Loader2,
   Plus,
   Sparkles,
   TrendingUp,
@@ -16,6 +18,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { GlowOrb, StatusBeacon, ShimmerText } from "@/components/gravitre/premium-effects"
+import { useMotionPrefs } from "@/lib/animations"
 import {
   mesonApi,
   type MesonAlert,
@@ -52,6 +56,12 @@ function severityIcon(severity: string) {
   return CheckCircle
 }
 
+function severityBeacon(severity: string): "warning" | "error" | "idle" {
+  if (severity === "critical") return "error"
+  if (severity === "warning") return "warning"
+  return "idle"
+}
+
 export function MesonCopilotPanel({
   open,
   onClose,
@@ -73,6 +83,7 @@ export function MesonCopilotPanel({
   onApplyInsight?: (insight: MesonInsight) => void
   onFixAlert?: (alert: MesonAlert) => void
 }) {
+  const { reduced, container, item } = useMotionPrefs()
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
   const [alerts, setAlerts] = useState<MesonAlert[]>([])
   const [insights, setInsights] = useState<MesonInsight[]>([])
@@ -80,9 +91,13 @@ export function MesonCopilotPanel({
   const [loadingAlerts, setLoadingAlerts] = useState(false)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [fixingAlertId, setFixingAlertId] = useState<string | null>(null)
+  const [fixedAlertId, setFixedAlertId] = useState<string | null>(null)
+  const [appliedInsightId, setAppliedInsightId] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed(workflowId))
 
   useEffect(() => {
+    // Sync dismissed list from localStorage when switching workflows.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDismissed(loadDismissed(workflowId))
   }, [workflowId])
 
@@ -91,6 +106,8 @@ export function MesonCopilotPanel({
   useEffect(() => {
     if (!open) return
     let cancelled = false
+    // Kick off async data fetch + loading flags (external sync).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingAlerts(true)
     setLoadingInsights(true)
     void mesonApi
@@ -125,6 +142,7 @@ export function MesonCopilotPanel({
 
   useEffect(() => {
     if (!open || nodes.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([])
       return
     }
@@ -171,13 +189,27 @@ export function MesonCopilotPanel({
     [dismissed, onDismissSuggestion, workflowId],
   )
 
+  const handleAccept = useCallback(
+    (suggestion: MesonSuggestion) => {
+      // Optimistically collapse the card out (suggestions refetch on node change).
+      setSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id))
+      onAcceptSuggestion(suggestion)
+    },
+    [onAcceptSuggestion],
+  )
+
   const handleFixAlert = useCallback(
     (alert: MesonAlert) => {
       if (!onFixAlert) return
       setFixingAlertId(alert.id)
       try {
         onFixAlert(alert)
-        setAlerts((prev) => prev.filter((item) => item.id !== alert.id))
+        // brief success checkmark before the row clears
+        setFixedAlertId(alert.id)
+        window.setTimeout(() => {
+          setAlerts((prev) => prev.filter((item) => item.id !== alert.id))
+          setFixedAlertId(null)
+        }, 600)
       } finally {
         setFixingAlertId(null)
       }
@@ -185,19 +217,51 @@ export function MesonCopilotPanel({
     [onFixAlert],
   )
 
+  const handleApplyInsight = useCallback(
+    (insight: MesonInsight) => {
+      if (!onApplyInsight) return
+      setAppliedInsightId(insight.id)
+      onApplyInsight(insight)
+      window.setTimeout(() => setAppliedInsightId(null), 900)
+    },
+    [onApplyInsight],
+  )
+
   const visibleAlerts = useMemo(() => alerts.slice(0, 5), [alerts])
+
+  // Bounce the alert badge when the count increases.
+  const [badgeBounce, setBadgeBounce] = useState(0)
+  const prevAlertCount = useRef(0)
+  useEffect(() => {
+    if (visibleAlerts.length > prevAlertCount.current) {
+      setBadgeBounce((n) => n + 1)
+    }
+    prevAlertCount.current = visibleAlerts.length
+  }, [visibleAlerts.length])
 
   if (!open) return null
 
   return (
-    <aside
+    <motion.aside
+      initial={reduced ? { opacity: 0 } : { x: 36, opacity: 0 }}
+      animate={reduced ? { opacity: 1 } : { x: 0, opacity: 1 }}
+      transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 360, damping: 34 }}
       className={cn(
-        "w-[280px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden",
-        "animate-in slide-in-from-right-2 duration-200",
+        "relative w-[280px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden",
       )}
       aria-label="Meson AI Copilot"
     >
-      <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+      {/* soft attention glow behind the header */}
+      {!reduced ? (
+        <GlowOrb
+          size={160}
+          color="violet"
+          animate
+          className="pointer-events-none absolute -right-10 -top-10 opacity-40"
+        />
+      ) : null}
+
+      <div className="relative flex items-center justify-between border-b border-border px-3 py-2.5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-foreground">Meson</span>
@@ -207,7 +271,7 @@ export function MesonCopilotPanel({
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto">
         {/* Suggestions */}
         <section className="border-b border-border p-3">
           <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -217,53 +281,87 @@ export function MesonCopilotPanel({
             <div className="space-y-2">
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
           ) : suggestions.length === 0 ? (
             <p className="text-xs text-muted-foreground">Add nodes to get step suggestions.</p>
           ) : (
-            <div className="space-y-2">
-              {suggestions.map((suggestion) => (
-                <div
-                  key={suggestion.id}
-                  className={cn(
-                    "rounded-lg border p-2.5",
-                    confidenceClass(suggestion.confidence),
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
-                      <Lightbulb className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground">{suggestion.label}</p>
-                      {suggestion.reason ? (
-                        <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">
-                          {suggestion.reason}
-                        </p>
+            <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+              <AnimatePresence initial={false}>
+                {suggestions.map((suggestion) => {
+                  const conf = suggestion.confidence ?? null
+                  const strong = conf != null && conf >= 0.75
+                  return (
+                    <motion.div
+                      key={suggestion.id}
+                      layout={!reduced}
+                      variants={item}
+                      exit={
+                        reduced
+                          ? { opacity: 0 }
+                          : { opacity: 0, height: 0, marginBottom: 0, scale: 0.96 }
+                      }
+                      className={cn(
+                        "overflow-hidden rounded-lg border p-2.5",
+                        confidenceClass(suggestion.confidence),
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
+                          <Lightbulb className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground">{suggestion.label}</p>
+                          {suggestion.reason ? (
+                            <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">
+                              {suggestion.reason}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      {conf != null ? (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                            <span>Confidence</span>
+                            <span className="tabular-nums">{Math.round(conf * 100)}%</span>
+                          </div>
+                          <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+                            <motion.div
+                              className={cn(
+                                "h-full rounded-full",
+                                strong ? "bg-emerald-500" : "bg-amber-500",
+                              )}
+                              initial={{ width: reduced ? `${conf * 100}%` : 0 }}
+                              animate={{ width: `${conf * 100}%` }}
+                              transition={reduced ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }}
+                            />
+                          </div>
+                        </div>
                       ) : null}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[10px]"
-                      onClick={() => handleDismiss(suggestion.id)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-6 gap-1 px-2 text-[10px]"
-                      onClick={() => onAcceptSuggestion(suggestion)}
-                    >
-                      <Plus className="h-3 w-3" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <div className="mt-2 flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => handleDismiss(suggestion.id)}
+                          aria-label="Dismiss suggestion"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-6 gap-1 px-2 text-[10px]"
+                          onClick={() => handleAccept(suggestion)}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Add
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            </motion.div>
           )}
         </section>
 
@@ -272,56 +370,89 @@ export function MesonCopilotPanel({
           <div className="mb-2 flex items-center gap-2">
             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Alerts</h3>
             {visibleAlerts.length > 0 ? (
-              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                {visibleAlerts.length}
-              </Badge>
+              <motion.span
+                key={badgeBounce}
+                initial={reduced ? false : { scale: 0.6 }}
+                animate={reduced ? {} : { scale: [0.6, 1.25, 1] }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] tabular-nums">
+                  {visibleAlerts.length}
+                </Badge>
+              </motion.span>
             ) : null}
           </div>
           {loadingAlerts ? (
             <Skeleton className="h-12 w-full" />
           ) : visibleAlerts.length === 0 ? (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2">
+            <motion.div
+              initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+              animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 380, damping: 24 }}
+              className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2"
+            >
               <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
               <span className="text-xs text-muted-foreground">No issues detected</span>
-            </div>
+            </motion.div>
           ) : (
-            <div className="space-y-2">
-              {visibleAlerts.map((alert) => {
-                const Icon = severityIcon(alert.severity)
-                return (
-                  <div key={alert.id} className="rounded-lg border border-border bg-secondary/30 p-2.5">
-                    <div className="flex items-start gap-2">
-                      <Icon
-                        className={cn(
-                          "mt-0.5 h-3.5 w-3.5 shrink-0",
-                          alert.severity === "critical"
-                            ? "text-destructive"
-                            : alert.severity === "warning"
-                              ? "text-warning"
-                              : "text-muted-foreground",
+            <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+              <AnimatePresence initial={false}>
+                {visibleAlerts.map((alert) => {
+                  const Icon = severityIcon(alert.severity)
+                  const beacon = severityBeacon(alert.severity)
+                  const isFixed = fixedAlertId === alert.id
+                  return (
+                    <motion.div
+                      key={alert.id}
+                      layout={!reduced}
+                      variants={item}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0, marginBottom: 0 }}
+                      className="overflow-hidden rounded-lg border border-border bg-secondary/30 p-2.5"
+                    >
+                      <div className="flex items-start gap-2">
+                        {beacon !== "idle" ? (
+                          <span className="mt-0.5">
+                            <StatusBeacon status={beacon} size="sm" />
+                          </span>
+                        ) : (
+                          <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-foreground">{alert.title}</p>
-                        <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{alert.message}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground">{alert.title}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{alert.message}</p>
+                        </div>
                       </div>
-                    </div>
-                    {(alert.autoFixable || alert.actionTarget) && onFixAlert ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 h-6 gap-1 px-2 text-[10px]"
-                        disabled={fixingAlertId === alert.id}
-                        onClick={() => handleFixAlert(alert)}
-                      >
-                        <Wrench className="h-3 w-3" />
-                        {alert.fixLabel ?? "Fix"}
-                      </Button>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
+                      {(alert.autoFixable || alert.actionTarget) && onFixAlert ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                          disabled={fixingAlertId === alert.id || isFixed}
+                          onClick={() => handleFixAlert(alert)}
+                        >
+                          {isFixed ? (
+                            <>
+                              <CheckCircle className="h-3 w-3 text-emerald-500" />
+                              Fixed
+                            </>
+                          ) : fixingAlertId === alert.id ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Fixing
+                            </>
+                          ) : (
+                            <>
+                              <Wrench className="h-3 w-3" />
+                              {alert.fixLabel ?? "Fix"}
+                            </>
+                          )}
+                        </Button>
+                      ) : null}
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            </motion.div>
           )}
         </section>
 
@@ -333,32 +464,45 @@ export function MesonCopilotPanel({
           ) : insights.length === 0 ? (
             <p className="text-xs text-muted-foreground">No optimization tips yet.</p>
           ) : (
-            <div className="space-y-2">
-              {insights.map((insight) => (
-                <div key={insight.id} className="rounded-lg border border-border bg-secondary/20 p-2.5">
-                  <div className="flex items-start gap-2">
-                    <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground">{insight.title}</p>
-                      <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{insight.summary}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 h-6 gap-1 px-2 text-[10px]"
-                    onClick={() => onApplyInsight?.(insight)}
-                    disabled={!onApplyInsight}
+            <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+              {insights.map((insight) => {
+                const applied = appliedInsightId === insight.id
+                return (
+                  <motion.div
+                    key={insight.id}
+                    variants={item}
+                    className="rounded-lg border border-border bg-secondary/20 p-2.5"
                   >
-                    Apply
-                    <ChevronRight className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" />
+                      <div className="min-w-0 flex-1">
+                        {applied && !reduced ? (
+                          <ShimmerText className="text-xs font-medium text-foreground">
+                            {insight.title}
+                          </ShimmerText>
+                        ) : (
+                          <p className="text-xs font-medium text-foreground">{insight.title}</p>
+                        )}
+                        <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{insight.summary}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                      onClick={() => handleApplyInsight(insight)}
+                      disabled={!onApplyInsight}
+                    >
+                      Apply
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </motion.div>
+                )
+              })}
+            </motion.div>
           )}
         </section>
       </div>
-    </aside>
+    </motion.aside>
   )
 }

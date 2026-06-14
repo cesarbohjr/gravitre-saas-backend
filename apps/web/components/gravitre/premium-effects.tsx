@@ -1,8 +1,16 @@
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from "react"
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion"
+import { motion, useMotionValue, useSpring, useTransform, AnimatePresence, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
+
+// ============================================================================
+// MOTION SYSTEM NOTE
+// Shared motion variants/tokens (entrance, hover, press, success, error) and
+// the `useMotionPrefs()` reduced-motion hook live in `@/lib/animations`.
+// The ambient/continuous effects below (ParticleField, NeuralNetwork,
+// DataStream, MorphingBackground) self-disable under prefers-reduced-motion.
+// ============================================================================
 
 // ============================================================================
 // PARTICLE FIELD - Ambient floating particles that respond to cursor
@@ -24,17 +32,26 @@ function seededUnit(seed: number) {
   return value - Math.floor(value)
 }
 
-export function ParticleField({
-  count = 50,
-  color = "emerald",
-  interactive = true,
-  className,
-}: {
+interface ParticleFieldProps {
   count?: number
   color?: "emerald" | "violet" | "blue" | "amber" | "cyan"
   interactive?: boolean
   className?: string
-}) {
+}
+
+export function ParticleField(props: ParticleFieldProps) {
+  // Decorative ambient particles — skip entirely under reduced motion.
+  const reduced = useReducedMotion()
+  if (reduced) return null
+  return <ParticleFieldImpl {...props} />
+}
+
+function ParticleFieldImpl({
+  count = 50,
+  color = "emerald",
+  interactive = true,
+  className,
+}: ParticleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
@@ -217,15 +234,23 @@ interface Node {
   connections: number[]
 }
 
-export function NeuralNetwork({
-  nodeCount = 15,
-  color = "emerald",
-  className,
-}: {
+interface NeuralNetworkProps {
   nodeCount?: number
   color?: "emerald" | "violet" | "blue" | "cyan"
   className?: string
-}) {
+}
+
+export function NeuralNetwork(props: NeuralNetworkProps) {
+  const reduced = useReducedMotion()
+  if (reduced) return null
+  return <NeuralNetworkImpl {...props} />
+}
+
+function NeuralNetworkImpl({
+  nodeCount = 15,
+  color = "emerald",
+  className,
+}: NeuralNetworkProps) {
   const nodes = useMemo<Node[]>(() => {
     const generated: Node[] = Array.from({ length: nodeCount }, (_, i) => ({
       id: i,
@@ -302,17 +327,25 @@ export function NeuralNetwork({
 // DATA STREAM - Flowing data visualization
 // ============================================================================
 
-export function DataStream({
-  direction = "vertical",
-  color = "emerald",
-  speed = 1,
-  className,
-}: {
+interface DataStreamProps {
   direction?: "vertical" | "horizontal"
   color?: "emerald" | "violet" | "blue" | "amber"
   speed?: number
   className?: string
-}) {
+}
+
+export function DataStream(props: DataStreamProps) {
+  const reduced = useReducedMotion()
+  if (reduced) return null
+  return <DataStreamImpl {...props} />
+}
+
+function DataStreamImpl({
+  direction = "vertical",
+  color = "emerald",
+  speed = 1,
+  className,
+}: DataStreamProps) {
   const streams = useMemo(() => 
     Array.from({ length: 8 }, (_, i) => ({
       id: i,
@@ -424,13 +457,21 @@ export function StatusBeacon({
 // MORPHING BACKGROUND - Animated gradient mesh
 // ============================================================================
 
-export function MorphingBackground({
-  colors = ["emerald", "violet", "blue"],
-  className,
-}: {
+interface MorphingBackgroundProps {
   colors?: ("emerald" | "violet" | "blue" | "amber" | "cyan")[]
   className?: string
-}) {
+}
+
+export function MorphingBackground(props: MorphingBackgroundProps) {
+  const reduced = useReducedMotion()
+  if (reduced) return null
+  return <MorphingBackgroundImpl {...props} />
+}
+
+function MorphingBackgroundImpl({
+  colors = ["emerald", "violet", "blue"],
+  className,
+}: MorphingBackgroundProps) {
   const colorValues = {
     emerald: "rgba(16, 185, 129, 0.15)",
     violet: "rgba(139, 92, 246, 0.15)",

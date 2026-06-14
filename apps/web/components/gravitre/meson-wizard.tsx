@@ -88,8 +88,17 @@ const generationStates = [
   { label: "Finalizing", description: "Preparing your system..." },
 ]
 
+// Direction-aware slide variants for step transitions
+const stepVariants = {
+  enter: (direction: number) => ({ opacity: 0, x: direction >= 0 ? 24 : -24 }),
+  center: { opacity: 1, x: 0 },
+  exit: (direction: number) => ({ opacity: 0, x: direction >= 0 ? -24 : 24 }),
+}
+const stepTransition = { type: "spring" as const, stiffness: 360, damping: 32 }
+
 export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }: MesonWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [direction, setDirection] = useState(1)
   
   // Feature gate check - Node users cannot access Meson
   const canAccessMeson = userPlan === "control" || userPlan === "command"
@@ -114,6 +123,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
 
   const handleNext = () => {
     if (currentStep < 4) {
+      setDirection(1)
       setCurrentStep(currentStep + 1)
     } else if (currentStep === 4) {
       runMeson()
@@ -122,6 +132,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
 
   const handleBack = () => {
     if (currentStep > 1) {
+      setDirection(-1)
       setCurrentStep(currentStep - 1)
     }
   }
@@ -380,14 +391,17 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
 
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" custom={direction}>
             {/* Step 1: Intent */}
             {currentStep === 1 && (
               <motion.div
                 key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                custom={direction}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={stepTransition}
                 className="space-y-4"
               >
                 <div>
@@ -424,9 +438,12 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
             {currentStep === 2 && (
               <motion.div
                 key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                custom={direction}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={stepTransition}
                 className="space-y-6"
               >
                 <div>
@@ -506,9 +523,12 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
             {currentStep === 3 && (
               <motion.div
                 key="step3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                custom={direction}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={stepTransition}
                 className="space-y-4"
               >
                 <div>
@@ -551,15 +571,22 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
             {currentStep === 4 && !isGenerating && (
               <motion.div
                 key="step4"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                custom={direction}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={stepTransition}
                 className="space-y-6"
               >
                 <div className="text-center py-8">
-                  <div className="h-20 w-20 mx-auto rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-6">
+                  <motion.div
+                    className="h-20 w-20 mx-auto rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-6"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                  >
                     <Sparkles className="h-10 w-10 text-violet-400" />
-                  </div>
+                  </motion.div>
                   <h3 className="text-xl font-semibold text-foreground mb-2">Ready to build</h3>
                   <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                     Meson will create your agent configuration, training structure, and workflows based on your requirements.

@@ -572,7 +572,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         {(canResolveGraphApproval || canResolveExecuteApproval) && (
           <div className="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning" />
+              <span className="relative flex h-4 w-4 items-center justify-center" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-warning/40 motion-safe:animate-ping" />
+                <AlertTriangle className="relative h-4 w-4 text-warning" />
+              </span>
               <h2 className="text-sm font-semibold text-foreground">
                 {canResolveGraphApproval ? "In-graph approval required" : "Execute approval required"}
               </h2>

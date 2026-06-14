@@ -1,6 +1,24 @@
 // Shared Animation Utilities for Gravitre UI
 // Based on premium interaction guidelines for alive, responsive, intelligent feel
+//
+// ============================================================================
+// GRAVITRE MOTION SYSTEM (F5 polish) — single source of truth
+// ----------------------------------------------------------------------------
+// entrance : staggerChildren 0.04s · opacity 0→1 + y 8→0 · spring 380/32
+// exit     : opacity 0 · scale 0.98 · 150ms
+// hover    : y -2px + shadow lift · 150ms ease-out
+// press    : scale 0.98 · 80ms
+// loading  : ShimmerText headings + skeleton sweep (see premium-effects)
+// success  : green PulseRing + checkmark scale-in (successVariants)
+// error    : horizontal shake ±4px (errorShakeVariants) + destructive pulse
+// live     : StatusBeacon / PulseRing on running/active states
+//
+// Reduced motion: use `useMotionPrefs()` (below) — when the user prefers
+// reduced motion we collapse spring/stagger to instant fades and skip
+// particles, shake, typewriter, and Lottie. Honor it on every surface.
+// ============================================================================
 
+import { useEffect, useState } from "react"
 import type { Variants, Transition } from "framer-motion"
 
 // Cubic-bezier easing tuple type accepted by framer-motion's `ease`.
@@ -566,4 +584,83 @@ export function createSpring(stiffness = 300, damping = 25): Transition {
  */
 export function createTimed(duration: number, ease = easing.smooth): Transition {
   return { duration, ease }
+}
+
+// ============================================
+// F5 ENTRANCE SYSTEM (brief-exact specs)
+// ============================================
+
+/** Container that staggers its children in (entrance token). */
+export const entranceContainer: Variants = {
+  initial: {},
+  animate: {
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+/** Child item: opacity 0→1 + translateY(8px→0), spring 380/32. */
+export const entranceItem: Variants = {
+  initial: { opacity: 0, y: 8 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 380, damping: 32 },
+  },
+  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.15 } },
+}
+
+/** Hover lift token: y -2px + shadow, 150ms ease-out. */
+export const hoverLift = {
+  y: -2,
+  boxShadow: "0 10px 30px -12px rgba(0,0,0,0.35)",
+  transition: { duration: 0.15, ease: easing.smooth },
+} as const
+
+/** Press token: scale 0.98, 80ms. */
+export const pressScale = {
+  scale: 0.98,
+  transition: { duration: 0.08 },
+} as const
+
+/** Reduced-motion-safe variants: instant fade, no transform/stagger. */
+export const reducedEntranceContainer: Variants = {
+  initial: {},
+  animate: { transition: { staggerChildren: 0 } },
+}
+export const reducedEntranceItem: Variants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.12 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
+}
+
+// ============================================
+// REDUCED MOTION HOOK
+// ============================================
+
+/**
+ * Subscribe to `prefers-reduced-motion`. Returns motion preferences plus
+ * the appropriate entrance variants so callers can do:
+ *   const { reduced, container, item } = useMotionPrefs()
+ * and skip particles / shake / typewriter when `reduced` is true.
+ */
+export function useMotionPrefs() {
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const update = () => setReduced(mq.matches)
+    update()
+    mq.addEventListener?.("change", update)
+    return () => mq.removeEventListener?.("change", update)
+  }, [])
+
+  return {
+    reduced,
+    container: reduced ? reducedEntranceContainer : entranceContainer,
+    item: reduced ? reducedEntranceItem : entranceItem,
+  }
 }

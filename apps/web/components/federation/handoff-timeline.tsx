@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowUpRight,
   Check,
@@ -69,7 +70,8 @@ export function HandoffTimeline({
 
   return (
     <ol className="relative space-y-4 border-l border-border/70 pl-5">
-      {handoffs.map((h) => {
+      <AnimatePresence initial={false}>
+      {handoffs.map((h, index) => {
         const meta = STATUS_META[h.status]
         const Icon = meta.icon
         const title =
@@ -80,16 +82,33 @@ export function HandoffTimeline({
           h.status === "pending_receiver" &&
           Boolean(currentOrgId) &&
           h.receiverOrgId === currentOrgId
+        const isPending = h.status === "pending_receiver"
 
         return (
-          <li key={h.id} className="relative">
+          <motion.li
+            key={h.id}
+            layout
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ delay: Math.min(index, 6) * 0.05, type: "spring", stiffness: 380, damping: 30 }}
+            className="relative"
+          >
             <span
               className={cn(
                 "absolute -left-[1.6rem] top-1 flex h-3 w-3 items-center justify-center rounded-full ring-4 ring-background",
                 meta.dot,
               )}
               aria-hidden
-            />
+            >
+              {isPending && (
+                <motion.span
+                  className={cn("absolute inset-0 rounded-full", meta.dot)}
+                  animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+                />
+              )}
+            </span>
             <div className="rounded-lg border border-border bg-card p-3.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -138,9 +157,10 @@ export function HandoffTimeline({
                 )}
               </div>
             </div>
-          </li>
+          </motion.li>
         )
       })}
+      </AnimatePresence>
     </ol>
   )
 }
