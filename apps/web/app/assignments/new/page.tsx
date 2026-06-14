@@ -3,11 +3,12 @@
 import { Suspense, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
+import { hoverLift, pressScale } from "@/lib/animations"
 import { agentsApi } from "@/lib/api"
 import { useAsyncJob } from "@/hooks/use-async-job"
 import { toast } from "sonner"
@@ -50,6 +51,14 @@ const taskPriorities = [
 ] as const
 
 type TaskPriority = (typeof taskPriorities)[number]["id"]
+
+// Direction-aware slide variants so forward/back navigation reads naturally.
+const stepVariants = {
+  enter: (direction: number) => ({ opacity: 0, x: direction >= 0 ? 24 : -24 }),
+  center: { opacity: 1, x: 0 },
+  exit: (direction: number) => ({ opacity: 0, x: direction >= 0 ? -24 : 24 }),
+}
+const stepTransition = { type: "spring" as const, stiffness: 360, damping: 32 }
 
 const steps = [
   { id: 1, title: "Select Agent", description: "Choose which AI agent to assign" },
@@ -104,7 +113,9 @@ function NewAssignmentPageContent() {
     },
   })
   
+  const reduced = useReducedMotion()
   const [currentStep, setCurrentStep] = useState(1)
+  const [direction, setDirection] = useState(1)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(preselectedAgent)
   const [taskBrief, setTaskBrief] = useState("")
   const [taskPriority, setTaskPriority] = useState<TaskPriority>("normal")
@@ -130,14 +141,21 @@ function NewAssignmentPageContent() {
 
   const handleNext = () => {
     if (currentStep < 6) {
+      setDirection(1)
       setCurrentStep(currentStep + 1)
     }
   }
 
   const handleBack = () => {
     if (currentStep > 1) {
+      setDirection(-1)
       setCurrentStep(currentStep - 1)
     }
+  }
+
+  const goToStep = (id: number) => {
+    setDirection(id >= currentStep ? 1 : -1)
+    setCurrentStep(id)
   }
 
   const handleRun = async () => {
@@ -200,28 +218,41 @@ function NewAssignmentPageContent() {
                 return (
                   <button
                     key={step.id}
-                    onClick={() => step.id < currentStep && setCurrentStep(step.id)}
+                    onClick={() => step.id < currentStep && goToStep(step.id)}
                     disabled={isUpcoming}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all",
-                      isActive && "bg-secondary",
+                      "relative w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors",
                       isCompleted && "hover:bg-secondary/50 cursor-pointer",
                       isUpcoming && "opacity-50 cursor-not-allowed"
                     )}
                   >
+                    {isActive && (
+                      <motion.span
+                        layoutId="assignment-step-active"
+                        className="absolute inset-0 rounded-lg bg-secondary"
+                        transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
+                        aria-hidden
+                      />
+                    )}
                     <div className={cn(
-                      "h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0",
+                      "relative h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 transition-colors",
                       isActive && "bg-emerald-500 text-white",
                       isCompleted && "bg-emerald-500/20 text-emerald-400",
                       isUpcoming && "bg-secondary text-muted-foreground"
                     )}>
                       {isCompleted ? (
-                        <Icon name="check" size="sm" />
+                        <motion.span
+                          initial={reduced ? false : { scale: 0.4, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 24 }}
+                        >
+                          <Icon name="check" size="sm" />
+                        </motion.span>
                       ) : (
                         step.id
                       )}
                     </div>
-                    <div>
+                    <div className="relative">
                       <p className={cn(
                         "text-sm font-medium",
                         isActive ? "text-foreground" : "text-muted-foreground"
@@ -284,7 +315,7 @@ function NewAssignmentPageContent() {
                   <Button 
                     onClick={handleRun}
                     disabled={isWorking || agentsLoading}
-                    className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
+                    className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 transition-transform duration-150 active:scale-95 motion-safe:hover:scale-[1.03]"
                   >
                     {isWorking ? (
                       <>
@@ -305,14 +336,17 @@ function NewAssignmentPageContent() {
 
           {/* Step Content */}
           <div className="flex-1 overflow-y-auto p-8">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" custom={direction}>
               {/* Step 1: Select Agent */}
               {currentStep === 1 && (
                 <motion.div
                   key="step-1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  custom={direction}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={reduced ? { duration: 0 } : stepTransition}
                   className="grid grid-cols-2 gap-4"
                 >
                   {agentsLoading ? (
@@ -320,17 +354,30 @@ function NewAssignmentPageContent() {
                   ) : agents.length === 0 ? (
                     <p className="text-sm text-muted-foreground col-span-2">No active agents available.</p>
                   ) : null}
-                  {agents.map((a) => (
-                    <button
+                  {agents.map((a, index) => (
+                    <motion.button
                       key={a.id}
+                      initial={reduced ? false : { opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={reduced ? { duration: 0 } : { delay: index * 0.05, type: "spring", stiffness: 380, damping: 30 }}
+                      whileHover={reduced ? undefined : hoverLift}
+                      whileTap={reduced ? undefined : pressScale}
                       onClick={() => setSelectedAgent(a.id)}
                       className={cn(
-                        "flex items-center gap-4 p-5 rounded-xl border transition-all text-left",
+                        "relative flex items-center gap-4 p-5 rounded-xl border text-left transition-colors",
                         selectedAgent === a.id
-                          ? "border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/20"
+                          ? "border-emerald-500/50 bg-emerald-500/5"
                           : "border-border bg-card hover:border-border/80 hover:bg-secondary/30"
                       )}
                     >
+                      {selectedAgent === a.id && (
+                        <motion.span
+                          layoutId="assignment-agent-ring"
+                          className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-emerald-500/40"
+                          transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
+                          aria-hidden
+                        />
+                      )}
                       <div className={cn(
                         "h-14 w-14 rounded-xl flex items-center justify-center bg-gradient-to-br shrink-0",
                         a.gradient
@@ -342,20 +389,27 @@ function NewAssignmentPageContent() {
                         <p className="text-sm text-muted-foreground">{a.role}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                            <div 
+                            <motion.div
                               className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
-                              style={{ width: `${a.trainingProgress}%` }}
+                              initial={reduced ? false : { width: 0 }}
+                              animate={{ width: `${a.trainingProgress}%` }}
+                              transition={reduced ? { duration: 0 } : { duration: 0.7, delay: index * 0.05 + 0.15, ease: "easeOut" }}
                             />
                           </div>
                           <span className="text-xs text-emerald-400">{a.trainingProgress}%</span>
                         </div>
                       </div>
                       {selectedAgent === a.id && (
-                        <div className="h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <motion.div
+                          initial={reduced ? false : { scale: 0.4, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                          className="relative h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center"
+                        >
                           <Icon name="check" size="xs" className="text-white" />
-                        </div>
+                        </motion.div>
                       )}
-                    </button>
+                    </motion.button>
                   ))}
                 </motion.div>
               )}
@@ -364,9 +418,12 @@ function NewAssignmentPageContent() {
               {currentStep === 2 && (
                 <motion.div
                   key="step-2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  custom={direction}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={reduced ? { duration: 0 } : stepTransition}
                   className="max-w-2xl"
                 >
                   <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -431,9 +488,12 @@ function NewAssignmentPageContent() {
               {currentStep === 3 && (
                 <motion.div
                   key="step-3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  custom={direction}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={reduced ? { duration: 0 } : stepTransition}
                   className="space-y-6"
                 >
                   {/* Training Knowledge Toggle */}
@@ -515,9 +575,12 @@ function NewAssignmentPageContent() {
               {currentStep === 4 && (
                 <motion.div
                   key="step-4"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  custom={direction}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={reduced ? { duration: 0 } : stepTransition}
                   className="space-y-4"
                 >
                   <p className="text-sm text-muted-foreground mb-4">
@@ -564,9 +627,12 @@ function NewAssignmentPageContent() {
               {currentStep === 5 && (
                 <motion.div
                   key="step-5"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  custom={direction}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={reduced ? { duration: 0 } : stepTransition}
                   className="space-y-6"
                 >
                   <p className="text-sm text-muted-foreground">
@@ -640,9 +706,12 @@ function NewAssignmentPageContent() {
               {currentStep === 6 && (
                 <motion.div
                   key="step-6"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  custom={direction}
+                  variants={stepVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={reduced ? { duration: 0 } : stepTransition}
                   className="max-w-2xl space-y-6"
                 >
                   {/* Summary Card */}

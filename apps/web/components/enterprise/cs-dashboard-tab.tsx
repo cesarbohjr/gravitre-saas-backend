@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   Activity,
   AlertTriangle,
@@ -113,8 +113,15 @@ function ScoreRing({ score, grade }: { score: number; grade: IntegrationHealthGr
   const offset = circumference - (clamped / 100) * circumference
   const color = scoreColor(clamped)
 
-  const [display, setDisplay] = useState(0)
+  const reduced = useReducedMotion()
+  const [display, setDisplay] = useState(reduced ? clamped : 0)
   useEffect(() => {
+    // Count-up is a JS rAF loop, so it must honor reduced motion directly.
+    if (reduced) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDisplay(clamped)
+      return
+    }
     let frame = 0
     let start = 0
     const duration = 1100
@@ -127,17 +134,19 @@ function ScoreRing({ score, grade }: { score: number; grade: IntegrationHealthGr
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [clamped])
+  }, [clamped, reduced])
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <motion.div
-        className="absolute inset-0 rounded-full"
-        style={{ background: `radial-gradient(circle, ${color}22 0%, transparent 70%)` }}
-        animate={{ opacity: [0.5, 0.9, 0.5], scale: [0.95, 1.05, 0.95] }}
-        transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        aria-hidden
-      />
+      {!reduced && (
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          style={{ background: `radial-gradient(circle, ${color}22 0%, transparent 70%)` }}
+          animate={{ opacity: [0.5, 0.9, 0.5], scale: [0.95, 1.05, 0.95] }}
+          transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+          aria-hidden
+        />
+      )}
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--secondary)" strokeWidth={stroke} />
         <motion.circle
@@ -149,9 +158,9 @@ function ScoreRing({ score, grade }: { score: number; grade: IntegrationHealthGr
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          initial={{ strokeDashoffset: reduced ? offset : circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.1, ease: "easeOut" }}
+          transition={{ duration: reduced ? 0 : 1.1, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">

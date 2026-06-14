@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -109,10 +109,12 @@ function ReadinessRing({
   total: number
   className?: string
 }) {
+  const reduced = useReducedMotion()
   const pct = total === 0 ? 100 : Math.round((connected / total) * 100)
   const radius = 26
   const circumference = 2 * Math.PI * radius
   const ready = pct === 100
+  const targetOffset = circumference - (pct / 100) * circumference
   return (
     <div className={cn("relative grid h-16 w-16 place-items-center", className)}>
       <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64" aria-hidden>
@@ -133,9 +135,9 @@ function ReadinessRing({
           strokeLinecap="round"
           className={ready ? "stroke-success" : "stroke-primary"}
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: circumference - (pct / 100) * circumference }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          initial={{ strokeDashoffset: reduced ? targetOffset : circumference }}
+          animate={{ strokeDashoffset: targetOffset }}
+          transition={{ duration: reduced ? 0 : 1, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center">
@@ -212,6 +214,7 @@ function InstallProgressDialog({
   packName: string
   stepIndex: number
 }) {
+  const reduced = useReducedMotion()
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
@@ -221,32 +224,59 @@ function InstallProgressDialog({
             Provisioning agents, knowledge sources, and workflows for your organization.
           </DialogDescription>
         </DialogHeader>
-        <ol className="space-y-3 pt-2">
+        <ol className="relative space-y-3 pt-2">
           {INSTALL_STEPS.map((label, index) => {
             const done = index < stepIndex
             const active = index === stepIndex
+            const isLast = index === INSTALL_STEPS.length - 1
             return (
-              <li key={label} className="flex items-center gap-3 text-sm">
-                <span
-                  className={cn(
-                    "grid h-7 w-7 shrink-0 place-items-center rounded-full border",
-                    done && "border-success/40 bg-success/10 text-success",
-                    active && "border-primary bg-primary/10 text-primary",
-                    !done && !active && "border-border text-muted-foreground",
+              <li key={label} className="relative flex items-center gap-3 text-sm">
+                {/* Vertical connector that fills as steps complete */}
+                {!isLast && (
+                  <span className="absolute left-[13px] top-7 h-3 w-0.5 -translate-x-1/2 overflow-hidden rounded bg-border" aria-hidden>
+                    <motion.span
+                      className="block h-full w-full bg-success origin-top"
+                      initial={false}
+                      animate={{ scaleY: done ? 1 : 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    />
+                  </span>
+                )}
+                <span className="relative grid h-7 w-7 shrink-0 place-items-center" aria-hidden>
+                  {active && !reduced && (
+                    <motion.span
+                      className="absolute inset-0 rounded-full bg-primary/20"
+                      animate={{ scale: [1, 1.35], opacity: [0.6, 0] }}
+                      transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY, ease: "easeOut" }}
+                    />
                   )}
-                  aria-hidden
+                  <motion.span
+                    initial={false}
+                    animate={done ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+                    transition={{ duration: 0.32 }}
+                    className={cn(
+                      "relative grid h-7 w-7 place-items-center rounded-full border transition-colors",
+                      done && "border-success/40 bg-success/10 text-success",
+                      active && "border-primary bg-primary/10 text-primary",
+                      !done && !active && "border-border text-muted-foreground",
+                    )}
+                  >
+                    {done ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : active ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span className="text-xs font-medium tabular-nums">{index + 1}</span>
+                    )}
+                  </motion.span>
+                </span>
+                <motion.span
+                  initial={false}
+                  animate={{ color: active || done ? "var(--foreground)" : "var(--muted-foreground)" }}
+                  className={cn(active ? "font-medium" : "")}
                 >
-                  {done ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : active ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <span className="text-xs font-medium tabular-nums">{index + 1}</span>
-                  )}
-                </span>
-                <span className={cn(active ? "font-medium text-foreground" : "text-muted-foreground")}>
                   {label}
-                </span>
+                </motion.span>
               </li>
             )
           })}
@@ -511,8 +541,7 @@ function RolePacksPageContent() {
     setInstalling(packId)
     setInstallProgress({ packId, packName, step: 0 })
 
-    let stepTimer: number | undefined
-    stepTimer = window.setInterval(() => {
+    const stepTimer: number = window.setInterval(() => {
       setInstallProgress((prev) => {
         if (!prev || prev.packId !== packId) return prev
         return { ...prev, step: Math.min(prev.step + 1, INSTALL_STEPS.length - 2) }
