@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { useMotionPrefs } from "@/lib/animations"
 import {
   Archive,
   Check,
@@ -119,6 +121,7 @@ export function ConversationSidebar({
   const [isDeleting, setIsDeleting] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const { reduced } = useMotionPrefs()
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -267,18 +270,30 @@ export function ConversationSidebar({
                       {group.label}
                     </span>
                   </div>
+                  <AnimatePresence initial={false}>
                   {group.conversations.map((conv) => (
-                    <div
+                    <motion.div
                       key={conv.id}
+                      layout={!reduced}
+                      initial={reduced ? { opacity: 0 } : { opacity: 0, x: -12 }}
+                      animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      whileHover={reduced ? undefined : { x: 2 }}
                       className={cn(
-                        "w-full group flex items-center gap-2 px-3 py-2 transition-all cursor-pointer",
-                        activeConversationId === conv.id
-                          ? "bg-emerald-50 border-r-2 border-emerald-500"
-                          : "hover:bg-zinc-100",
+                        "relative w-full group flex items-center gap-2 px-3 py-2 cursor-pointer",
+                        activeConversationId === conv.id ? "bg-emerald-50" : "hover:bg-zinc-100",
                       )}
                       onClick={() => !renamingId && onSelect(conv.id)}
                       onContextMenu={(e) => e.preventDefault()}
                     >
+                      {activeConversationId === conv.id && (
+                        <motion.span
+                          layoutId="conversation-active-rail"
+                          className="absolute inset-y-0 right-0 w-0.5 bg-emerald-500"
+                          transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                        />
+                      )}
                       <input
                         type="checkbox"
                         checked={selectedIds.has(conv.id)}
@@ -342,8 +357,9 @@ export function ConversationSidebar({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </div>
+                    </motion.div>
                   ))}
+                  </AnimatePresence>
                 </div>
               ))}
             </div>

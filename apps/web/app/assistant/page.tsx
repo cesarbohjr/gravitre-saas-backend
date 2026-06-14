@@ -228,6 +228,7 @@ function ChatMessage({
   message,
   isUser,
   isLast,
+  streaming,
   onRegenerate,
   followUpSuggestions,
   onFollowUp,
@@ -238,6 +239,7 @@ function ChatMessage({
   message: UIMessage
   isUser: boolean
   isLast?: boolean
+  streaming?: boolean
   onRegenerate?: () => void
   followUpSuggestions?: string[]
   onFollowUp?: (text: string) => void
@@ -258,9 +260,9 @@ function ChatMessage({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 10, x: isUser ? 16 : -16 }}
+      animate={{ opacity: 1, y: 0, x: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={cn("flex gap-4 group", isUser ? "justify-end" : "justify-start")}
     >
       {!isUser && (
@@ -317,6 +319,14 @@ function ChatMessage({
               >
                 {text}
               </ReactMarkdown>
+              {streaming && text && (
+                <motion.span
+                  aria-hidden="true"
+                  className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 rounded-full bg-emerald-500 align-middle"
+                  animate={{ opacity: [1, 0.2, 1] }}
+                  transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                />
+              )}
             </div>
           )}
 
@@ -959,12 +969,14 @@ export default function AssistantPage() {
                 </motion.div>
               ) : (
                 <>
+                  <AnimatePresence initial={false}>
                   {messages.map((message, index) => (
                     <ChatMessage
                       key={message.id}
                       message={message}
                       isUser={message.role === "user"}
                       isLast={index === messages.length - 1 && message.role === "assistant"}
+                      streaming={isStreaming && index === messages.length - 1 && message.role === "assistant"}
                       onRegenerate={handleRegenerate}
                       followUpSuggestions={followUpSuggestions}
                       onFollowUp={fillFollowUp}
@@ -973,6 +985,7 @@ export default function AssistantPage() {
                       onToggleTool={(id) => setExpandedToolId((prev) => (prev === id ? null : id))}
                     />
                   ))}
+                  </AnimatePresence>
 
                   {isLoading && !isStreaming && <TypingIndicator />}
 
@@ -1057,7 +1070,11 @@ export default function AssistantPage() {
                     type="submit"
                     size="sm"
                     disabled={!user || !input.trim() || isBusy}
-                    className="h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50"
+                    className={cn(
+                      "h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50",
+                      "transition-transform duration-150 active:scale-90",
+                      input.trim() && !isBusy && "motion-safe:hover:scale-110",
+                    )}
                   >
                     {isBusy ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

@@ -144,6 +144,7 @@ function ChatMessage({
   agentName,
   agentColor,
   isLast,
+  streaming,
   onRegenerate,
 }: {
   message: UIMessage
@@ -151,6 +152,7 @@ function ChatMessage({
   agentName: string
   agentColor: { gradient: string; accent: string; glow: string }
   isLast?: boolean
+  streaming?: boolean
   onRegenerate?: () => void
 }) {
   const { text, tools, sources } = normalizeMessage(message)
@@ -163,8 +165,9 @@ function ChatMessage({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10, x: isUser ? 16 : -16 }}
+      animate={{ opacity: 1, y: 0, x: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={cn(
         "flex gap-3 group",
         isUser ? "justify-end" : "justify-start"
@@ -245,6 +248,14 @@ function ChatMessage({
           >
             {text}
           </ReactMarkdown>
+          {streaming && text && !isUser && (
+            <motion.span
+              aria-hidden="true"
+              className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 rounded-full bg-emerald-500 align-middle"
+              animate={{ opacity: [1, 0.2, 1] }}
+              transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+            />
+          )}
         </div>
 
         {/* Sources */}
@@ -551,19 +562,25 @@ export default function AgentChatPage({
                   {agent.description || `Ask ${agent.name} anything about their capabilities and expertise.`}
                 </p>
                 <div className="grid grid-cols-2 gap-3 max-w-lg">
-                  {getAgentSuggestions(agent).map((suggestion) => (
-                    <button
+                  {getAgentSuggestions(agent).map((suggestion, i) => (
+                    <motion.button
                       key={suggestion}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 + i * 0.06, type: "spring", stiffness: 380, damping: 32 }}
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => submitText(suggestion)}
-                      className="px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 transition-all text-left"
+                      className="px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-700 hover:bg-zinc-50 hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-500/10 transition-colors text-left"
                     >
                       {suggestion}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </motion.div>
             ) : (
               <>
+                <AnimatePresence initial={false}>
                 {messages.map((message, index) => (
                   <ChatMessage
                     key={message.id}
@@ -572,9 +589,11 @@ export default function AgentChatPage({
                     agentName={agent.name}
                     agentColor={agentColor}
                     isLast={index === messages.length - 1 && message.role === "assistant"}
+                    streaming={isStreaming && index === messages.length - 1 && message.role === "assistant"}
                     onRegenerate={handleRegenerate}
                   />
                 ))}
+                </AnimatePresence>
 
                 {isLoading && !isStreaming && (
                   <motion.div
@@ -646,8 +665,9 @@ export default function AgentChatPage({
                   size="sm"
                   disabled={!user || !input.trim() || isLoading}
                   className={cn(
-                    "gap-2 text-white",
-                    `bg-gradient-to-r ${agentColor.gradient} hover:opacity-90`
+                    "gap-2 text-white transition-transform duration-150 active:scale-90",
+                    `bg-gradient-to-r ${agentColor.gradient} hover:opacity-90`,
+                    input.trim() && !isLoading && "motion-safe:hover:scale-105",
                   )}
                 >
                   {isLoading ? (
