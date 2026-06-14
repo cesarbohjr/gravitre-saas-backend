@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Search, Loader2, Clock, Sparkles, Trash2, X, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useMotionPrefs, hoverLift, pressScale } from "@/lib/animations"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
@@ -23,6 +24,7 @@ const sampleQueries = [
 
 export default function ChatPage() {
   const { user } = useAuth()
+  const { reduced, container, item } = useMotionPrefs()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -152,11 +154,13 @@ export default function ChatPage() {
                     <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
                       <Sparkles className="h-8 w-8 text-emerald-400" />
                     </div>
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                      transition={{ duration: 3, repeat: Infinity }}
-                    />
+                    {!reduced && (
+                      <motion.div
+                        className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                      />
+                    )}
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">
                     What do you want to find?
@@ -164,19 +168,27 @@ export default function ChatPage() {
                   <p className="text-sm text-muted-foreground mb-8 max-w-md">
                     Use natural language to search your workflows, runs, connectors, agents, and documents.
                   </p>
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <motion.div
+                    variants={container}
+                    initial="initial"
+                    animate="animate"
+                    className="flex flex-wrap justify-center gap-2"
+                  >
                     {sampleQueries.map((q, i) => (
-                      <button
+                      <motion.button
                         key={i}
+                        variants={item}
+                        whileHover={reduced ? undefined : hoverLift}
+                        whileTap={reduced ? undefined : pressScale}
                         type="button"
                         onClick={() => handleSampleQuery(q)}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
                       >
                         <Sparkles className="h-3 w-3" />
                         {q}
-                      </button>
+                      </motion.button>
                     ))}
-                  </div>
+                  </motion.div>
                 </motion.div>
               ) : (
                 <>
@@ -189,9 +201,27 @@ export default function ChatPage() {
                     </Button>
                   </div>
                   {isSearching && (
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-card border border-border">
-                      <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
-                      <span className="text-sm text-muted-foreground">Searching...</span>
+                    <div className="space-y-3" aria-label="Searching" aria-busy="true">
+                      {[0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          className="relative overflow-hidden rounded-xl border border-border bg-card p-4"
+                        >
+                          <div className="space-y-2">
+                            <div className="h-2.5 w-20 rounded bg-secondary" />
+                            <div className="h-3.5 w-2/3 rounded bg-secondary" />
+                            <div className="h-3 w-full rounded bg-secondary/60" />
+                          </div>
+                          {!reduced && (
+                            <motion.span
+                              aria-hidden="true"
+                              className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
+                              animate={{ x: ["-120%", "320%"] }}
+                              transition={{ duration: 1.3, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }}
+                            />
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                   {!isSearching && results.length === 0 && (
@@ -215,11 +245,16 @@ export default function ChatPage() {
                       </div>
                     </div>
                   )}
+                  {!isSearching && results.length > 0 && (
+                    <motion.div variants={container} initial="initial" animate="animate" className="space-y-4">
+                      <AnimatePresence initial={false}>
                   {results.map((result) => (
                     <motion.div
                       key={result.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      variants={item}
+                      layout={!reduced}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+                      whileHover={reduced ? undefined : hoverLift}
                       className="rounded-xl border border-border bg-card p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -250,6 +285,9 @@ export default function ChatPage() {
                       </div>
                     </motion.div>
                   ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
                 </>
               )}
             </div>
@@ -273,7 +311,10 @@ export default function ChatPage() {
                   type="submit"
                   size="sm"
                   disabled={!user || !query.trim() || isSearching}
-                  className="gap-2"
+                  className={cn(
+                    "gap-2 transition-transform duration-150 active:scale-90",
+                    query.trim() && !isSearching && "motion-safe:hover:scale-105",
+                  )}
                 >
                   {isSearching ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -331,10 +372,14 @@ export default function ChatPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <motion.div variants={container} initial="initial" animate="animate" className="space-y-1">
+                <AnimatePresence initial={false}>
                 {history.map((entry) => (
-                  <button
+                  <motion.button
                     key={entry.id}
+                    variants={item}
+                    layout={!reduced}
+                    exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
                     type="button"
                     onClick={() => {
                       setQuery(entry.query)
@@ -371,9 +416,10 @@ export default function ChatPage() {
                         <X className="h-3.5 w-3.5" />
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+                </AnimatePresence>
+              </motion.div>
             )}
           </div>
         </div>
