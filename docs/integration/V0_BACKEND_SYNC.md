@@ -55,8 +55,8 @@ Requires `backend/.env.operator.local` with Supabase JWT + service role.
 
 ## v0 prompt notes
 
-- [`V0_AI_INTELLIGENCE_PROMPTS.md`](../design/V0_AI_INTELLIGENCE_PROMPTS.md) — UI prompts F1–F5. Motion fully shipped: PR #38 + PR #39 — see [`F5_MOTION_HANDOFF.md`](../design/F5_MOTION_HANDOFF.md).
-- Backend gap report: [`GRAVITRE_AI_ML_PRODUCTION_READINESS.md`](../delivery/GRAVITRE_AI_ML_PRODUCTION_READINESS.md)
+- [`V0_AI_INTELLIGENCE_PROMPTS.md`](../design/V0_AI_INTELLIGENCE_PROMPTS.md) — UI-only prompts (F1–F4). Meson **interpret/deploy** and agent chat are **live**; suggestion/optimization Meson endpoints remain future work — use mocks only for those.
+- Backend gap report: [`AI_ML_OPERATIONAL_GAP_REPORT.md`](../delivery/AI_ML_OPERATIONAL_GAP_REPORT.md)
 
 ## Environment (Vercel + Railway)
 
