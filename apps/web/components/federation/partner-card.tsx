@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { motion } from "framer-motion"
 import {
   Building2,
   Check,
@@ -92,9 +93,15 @@ export function PartnerCard({
   ]
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 360, damping: 30 }}
+      whileHover={{ y: -3 }}
       className={cn(
-        "group relative overflow-hidden rounded-xl border bg-card p-5 transition-all",
+        "group relative overflow-hidden rounded-xl border bg-card p-5 transition-colors",
         partnership.status === "active"
           ? "border-chart-1/30 hover:border-chart-1/50"
           : "border-border hover:border-border/80",
@@ -124,7 +131,9 @@ export function PartnerCard({
       <div className="mt-4 flex items-center gap-2">
         {consentSteps.map((step, i) => (
           <div key={step.label} className="flex items-center gap-2">
-            <div
+            <motion.div
+              animate={step.done ? { scale: [1, 1.08, 1] } : {}}
+              transition={{ duration: 0.4 }}
               className={cn(
                 "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
                 step.done
@@ -138,7 +147,7 @@ export function PartnerCard({
                 <Clock className="h-3 w-3" />
               )}
               {step.label}
-            </div>
+            </motion.div>
             {i === 0 && <ArrowRight className="h-3 w-3 text-muted-foreground/50" />}
           </div>
         ))}
@@ -190,7 +199,7 @@ export function PartnerCard({
           <p className="text-xs text-muted-foreground">Waiting for partner to accept your invitation.</p>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

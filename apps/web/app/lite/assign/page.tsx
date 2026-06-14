@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
@@ -71,15 +72,27 @@ function LiteAssignContent() {
           <div>
             <p className="text-sm font-medium mb-2">Workflow</p>
             <div className="grid gap-2">
-              {(data?.workflows ?? []).map((workflow) => (
-                <button
+              {(data?.workflows ?? []).map((workflow, index) => (
+                <motion.button
                   key={workflow.id}
-                  className={`text-left border rounded-lg p-3 ${workflowId === workflow.id ? "border-emerald-500 bg-emerald-500/5" : "border-border"}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index, 8) * 0.04, type: "spring", stiffness: 380, damping: 30 }}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.99 }}
+                  className={`relative text-left border rounded-lg p-3 transition-colors ${workflowId === workflow.id ? "border-emerald-500 bg-emerald-500/5" : "border-border hover:border-emerald-500/40"}`}
                   onClick={() => setWorkflowId(workflow.id)}
                 >
+                  {workflowId === workflow.id && (
+                    <motion.span
+                      layoutId="lite-assign-selected"
+                      className="absolute inset-0 rounded-lg ring-2 ring-emerald-500/50 pointer-events-none"
+                      transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                    />
+                  )}
                   <p className="font-medium">{workflow.name}</p>
                   <p className="text-xs text-muted-foreground">{workflow.description || "No description"}</p>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
