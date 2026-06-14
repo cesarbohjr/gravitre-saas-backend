@@ -75,6 +75,29 @@ def _missing_column_error(error: Any) -> bool:
     return "column" in message and "does not exist" in message
 
 
+def _hard_delete_owned_conversation(
+    client: Any,
+    *,
+    conversation_id: str,
+    org_id: str,
+    user_id: str,
+) -> None:
+    response = (
+        client.table("conversations")
+        .delete()
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .select("id")
+        .execute()
+    )
+    error = response_error(response)
+    if error:
+        raise HTTPException(status_code=500, detail=str(error))
+    if not (response.data or []):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+
 def _delete_owned_conversation(
     client: Any,
     *,
@@ -91,35 +114,38 @@ def _delete_owned_conversation(
             .eq("id", conversation_id)
             .eq("org_id", org_id)
             .eq("user_id", user_id)
+            .select("id")
             .execute()
         )
         error = response_error(response)
         if error and _missing_column_error(error):
-            response = (
-                client.table("conversations")
-                .delete()
-                .eq("id", conversation_id)
-                .eq("org_id", org_id)
-                .eq("user_id", user_id)
-                .execute()
+            _hard_delete_owned_conversation(
+                client,
+                conversation_id=conversation_id,
+                org_id=org_id,
+                user_id=user_id,
             )
-            error = response_error(response)
+            return
         if error:
             raise HTTPException(status_code=500, detail=str(error))
+        if response.data:
+            return
+        _hard_delete_owned_conversation(
+            client,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user_id,
+        )
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
         if _missing_column_error(exc):
-            response = (
-                client.table("conversations")
-                .delete()
-                .eq("id", conversation_id)
-                .eq("org_id", org_id)
-                .eq("user_id", user_id)
-                .execute()
+            _hard_delete_owned_conversation(
+                client,
+                conversation_id=conversation_id,
+                org_id=org_id,
+                user_id=user_id,
             )
-            if response_error(response):
-                raise HTTPException(status_code=500, detail=str(response_error(response))) from exc
             return
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -131,21 +157,37 @@ def _get_owned_conversation(
     org_id: str,
     user_id: str,
     include_deleted: bool = False,
+    use_lifecycle_columns: bool = True,
 ) -> dict:
+    select = (
+        "id, org_id, user_id, title, preview, message_count, created_at, updated_at, archived_at, deleted_at"
+        if use_lifecycle_columns
+        else "id, org_id, user_id, title, preview, message_count, created_at, updated_at"
+    )
     query = (
         client.table("conversations")
-        .select("id, org_id, user_id, title, preview, message_count, created_at, updated_at, archived_at, deleted_at")
+        .select(select)
         .eq("id", conversation_id)
         .eq("org_id", org_id)
         .eq("user_id", user_id)
     )
-    if not include_deleted:
+    if use_lifecycle_columns and not include_deleted:
         query = query.is_("deleted_at", "null")
     response = query.limit(1).execute()
-    if _is_missing_table_error(response_error(response)):
+    error = response_error(response)
+    if error and _missing_column_error(error) and use_lifecycle_columns:
+        return _get_owned_conversation(
+            client,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            user_id=user_id,
+            include_deleted=include_deleted,
+            use_lifecycle_columns=False,
+        )
+    if _is_missing_table_error(error):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-    if response_error(response):
-        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    if error:
+        raise HTTPException(status_code=500, detail=str(error))
     rows = response.data or []
     if not rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
@@ -261,20 +303,23 @@ async def bulk_delete_conversations(
 ) -> None:
     org_id = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    for conversation_id in body.ids:
-        _get_owned_conversation(
-            client,
-            conversation_id=conversation_id,
-            org_id=org_id,
-            user_id=user["user_id"],
-        )
-    for conversation_id in body.ids:
-        _delete_owned_conversation(
-            client,
-            conversation_id=conversation_id,
-            org_id=org_id,
-            user_id=user["user_id"],
-        )
+    seen: set[str] = set()
+    for raw_id in body.ids:
+        conversation_id = raw_id.strip()
+        if not conversation_id or conversation_id in seen:
+            continue
+        seen.add(conversation_id)
+        try:
+            _delete_owned_conversation(
+                client,
+                conversation_id=conversation_id,
+                org_id=org_id,
+                user_id=user["user_id"],
+            )
+        except HTTPException as exc:
+            if exc.status_code == status.HTTP_404_NOT_FOUND:
+                continue
+            raise
 
 
 @router.get("/{conversation_id}")
@@ -374,12 +419,6 @@ async def delete_conversation(
 ) -> None:
     org_id = _require_org(org_id)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    _get_owned_conversation(
-        client,
-        conversation_id=conversation_id,
-        org_id=org_id,
-        user_id=user["user_id"],
-    )
     _delete_owned_conversation(
         client,
         conversation_id=conversation_id,

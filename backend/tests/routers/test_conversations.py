@@ -241,52 +241,24 @@ def test_archive_conversation(monkeypatch):
 
 def test_delete_conversation_soft_delete(monkeypatch):
     _authenticate()
-    owned = _table_chain(
-        [
-            {
-                "id": "conv-1",
-                "org_id": "org-1",
-                "user_id": "user-1",
-                "title": "Thread",
-                "preview": None,
-                "message_count": 0,
-                "created_at": "2026-06-04T12:00:00+00:00",
-                "updated_at": "2026-06-04T12:00:00+00:00",
-            }
-        ]
-    )
-    deleted = _table_chain([])
+    soft_deleted = _table_chain([{"id": "conv-1"}])
     supabase = MagicMock()
-    supabase.table.side_effect = [owned, deleted]
+    supabase.table.return_value = soft_deleted
     monkeypatch.setattr(
         "app.routers.conversations.create_client",
         lambda *_args, **_kwargs: supabase,
     )
     response = client.delete("/api/conversations/conv-1")
     assert response.status_code == 204
-    deleted.update.assert_called_once()
+    soft_deleted.update.assert_called_once()
 
 
 def test_delete_conversation_falls_back_to_hard_delete(monkeypatch):
     _authenticate()
-    owned = _table_chain(
-        [
-            {
-                "id": "conv-1",
-                "org_id": "org-1",
-                "user_id": "user-1",
-                "title": "Thread",
-                "preview": None,
-                "message_count": 0,
-                "created_at": "2026-06-04T12:00:00+00:00",
-                "updated_at": "2026-06-04T12:00:00+00:00",
-            }
-        ]
-    )
     soft_fail = _table_chain([], error=Exception('column "deleted_at" of relation "conversations" does not exist'))
-    hard_ok = _table_chain([])
+    hard_ok = _table_chain([{"id": "conv-1"}])
     supabase = MagicMock()
-    supabase.table.side_effect = [owned, soft_fail, hard_ok]
+    supabase.table.side_effect = [soft_fail, hard_ok]
     monkeypatch.setattr(
         "app.routers.conversations.create_client",
         lambda *_args, **_kwargs: supabase,
@@ -294,3 +266,54 @@ def test_delete_conversation_falls_back_to_hard_delete(monkeypatch):
     response = client.delete("/api/conversations/conv-1")
     assert response.status_code == 204
     hard_ok.delete.assert_called_once()
+
+
+def test_delete_conversation_falls_back_when_soft_update_matches_nothing(monkeypatch):
+    _authenticate()
+    soft_empty = _table_chain([])
+    hard_ok = _table_chain([{"id": "conv-1"}])
+    supabase = MagicMock()
+    supabase.table.side_effect = [soft_empty, hard_ok]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.delete("/api/conversations/conv-1")
+    assert response.status_code == 204
+    soft_empty.update.assert_called_once()
+    hard_ok.delete.assert_called_once()
+
+
+def test_bulk_delete_conversations_skips_missing(monkeypatch):
+    _authenticate()
+    soft_ok = _table_chain([{"id": "conv-1"}])
+    soft_empty = _table_chain([])
+    hard_missing = _table_chain([])
+    supabase = MagicMock()
+    supabase.table.side_effect = [soft_ok, soft_empty, hard_missing]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post(
+        "/api/conversations/bulk-delete",
+        json={"ids": ["conv-1", "conv-missing"]},
+    )
+    assert response.status_code == 204
+
+
+def test_bulk_delete_conversations_dedupes_ids(monkeypatch):
+    _authenticate()
+    soft_ok = _table_chain([{"id": "conv-1"}])
+    supabase = MagicMock()
+    supabase.table.return_value = soft_ok
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post(
+        "/api/conversations/bulk-delete",
+        json={"ids": ["conv-1", "conv-1", " conv-1 "]},
+    )
+    assert response.status_code == 204
+    assert supabase.table.call_count == 1

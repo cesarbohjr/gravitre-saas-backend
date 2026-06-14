@@ -661,7 +661,8 @@ export default function AssistantPage() {
       toast.success("Conversation deleted")
     } catch (error) {
       console.error("[v0] Delete conversation failed:", error)
-      toast.error("Failed to delete conversation")
+      const message = error instanceof Error ? error.message : "Failed to delete conversation"
+      toast.error(message)
     }
   }, [activeConversationId, handleNewConversation, mutateConversations])
 
@@ -691,9 +692,11 @@ export default function AssistantPage() {
       await conversationsApi.bulkDelete(ids)
       if (activeConversationId && ids.includes(activeConversationId)) handleNewConversation()
       await mutateConversations()
-      toast.success(`Deleted ${ids.length} conversations`)
-    } catch {
-      toast.error("Failed to delete conversations")
+      toast.success(`Deleted ${ids.length} conversation${ids.length === 1 ? "" : "s"}`)
+    } catch (error) {
+      console.error("[v0] Bulk delete conversations failed:", error)
+      const message = error instanceof Error ? error.message : "Failed to delete conversations"
+      toast.error(message)
     }
   }, [activeConversationId, handleNewConversation, mutateConversations])
 

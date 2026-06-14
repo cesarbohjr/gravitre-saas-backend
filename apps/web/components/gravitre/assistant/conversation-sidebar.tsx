@@ -109,7 +109,7 @@ export function ConversationSidebar({
   onDelete: (id: string) => void | Promise<void>
   onArchive: (id: string) => void
   onRename: (id: string, title: string) => void
-  onBulkDelete: (ids: string[]) => void
+  onBulkDelete: (ids: string[]) => void | Promise<void>
   isOpen: boolean
   onToggle: () => void
 }) {
@@ -121,6 +121,7 @@ export function ConversationSidebar({
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
   const { reduced } = useMotionPrefs()
@@ -179,10 +180,16 @@ export function ConversationSidebar({
     }
   }
 
-  const confirmBulkDelete = () => {
-    onBulkDelete(Array.from(selectedIds))
-    exitSelection()
-    setBulkDeleteOpen(false)
+  const confirmBulkDelete = async () => {
+    if (isBulkDeleting || selectedIds.size === 0) return
+    setIsBulkDeleting(true)
+    try {
+      await onBulkDelete(Array.from(selectedIds))
+      exitSelection()
+      setBulkDeleteOpen(false)
+    } finally {
+      setIsBulkDeleting(false)
+    }
   }
 
   const archiveSelected = () => {
@@ -537,9 +544,16 @@ export function ConversationSidebar({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmBulkDelete} className="bg-red-500 hover:bg-red-600">
-              Delete
+            <AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmBulkDelete()
+              }}
+              disabled={isBulkDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isBulkDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
