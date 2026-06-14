@@ -6,7 +6,8 @@ import { useMotionPrefs } from "@/lib/animations"
 import {
   Archive,
   Check,
-  Copy,
+  CheckCheck,
+  ListChecks,
   MessageCircle,
   MessageSquarePlus,
   MoreHorizontal,
@@ -36,6 +37,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -113,7 +115,7 @@ export function ConversationSidebar({
 }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [multiSelect, setMultiSelect] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -131,6 +133,18 @@ export function ConversationSidebar({
 
   const grouped = useMemo(() => groupConversationsByDate(filtered), [filtered])
 
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length
+
+  const enterSelection = () => {
+    setSelectionMode(true)
+    setSearchOpen(false)
+  }
+
+  const exitSelection = () => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+  }
+
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -138,7 +152,19 @@ export function ConversationSidebar({
       else next.add(id)
       return next
     })
-    setMultiSelect(true)
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((c) => c.id))))
+  }
+
+  const handleRowClick = (id: string) => {
+    if (renamingId) return
+    if (selectionMode) {
+      toggleSelected(id)
+      return
+    }
+    onSelect(id)
   }
 
   const confirmDelete = async () => {
@@ -155,9 +181,13 @@ export function ConversationSidebar({
 
   const confirmBulkDelete = () => {
     onBulkDelete(Array.from(selectedIds))
-    setSelectedIds(new Set())
-    setMultiSelect(false)
+    exitSelection()
     setBulkDeleteOpen(false)
+  }
+
+  const archiveSelected = () => {
+    selectedIds.forEach((id) => onArchive(id))
+    exitSelection()
   }
 
   const shareLink = (id: string) => {
@@ -180,56 +210,115 @@ export function ConversationSidebar({
 
       <aside
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-40 w-64 flex flex-col bg-zinc-50 border-r border-zinc-200 transition-all duration-300",
+          "fixed md:static inset-y-0 left-0 z-40 w-72 flex flex-col bg-zinc-50/80 border-r border-zinc-200 transition-all duration-300",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden",
         )}
       >
-        <div className="flex items-center justify-between h-14 px-4 border-b border-zinc-200 bg-white gap-2">
-          {multiSelect ? (
-            <div className="flex items-center gap-1 flex-1 text-xs">
-              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setSelectedIds(new Set(filtered.map((c) => c.id)))}>
-                Select all
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => selectedIds.forEach((id) => onArchive(id))}>
-                Archive
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-red-600" onClick={() => setBulkDeleteOpen(true)}>
-                Delete
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setMultiSelect(false); setSelectedIds(new Set()) }}>
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <>
-              <span className="text-sm font-semibold text-zinc-900">History</span>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSearchOpen(!searchOpen)}>
-                  <Search className="h-4 w-4" />
-                </Button>
-                <TooltipProvider>
+        {/* Header */}
+        <div className="flex items-center justify-between h-14 px-3 border-b border-zinc-200 bg-white gap-2">
+          {selectionMode ? (
+            <TooltipProvider delayDuration={300}>
+              <div className="flex items-center gap-1 flex-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={exitSelection}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Cancel</TooltipContent>
+                </Tooltip>
+                <span className="text-sm font-medium text-zinc-900 tabular-nums">
+                  {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select items"}
+                </span>
+                <div className="ml-auto flex items-center gap-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNew}>
-                        <MessageSquarePlus className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={toggleSelectAll}>
+                        {allSelected ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <ListChecks className="h-4 w-4" />}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">New conversation</TooltipContent>
+                    <TooltipContent side="bottom">{allSelected ? "Clear selection" : "Select all"}</TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-zinc-500 disabled:opacity-40"
+                        disabled={selectedIds.size === 0}
+                        onClick={archiveSelected}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Archive</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
+                        disabled={selectedIds.size === 0}
+                        onClick={() => setBulkDeleteOpen(true)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Delete</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
-            </>
+            </TooltipProvider>
+          ) : (
+            <TooltipProvider delayDuration={300}>
+              <span className="text-sm font-semibold text-zinc-900 pl-1">History</span>
+              <div className="flex items-center gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={() => setSearchOpen((v) => !v)}>
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Search</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-zinc-500 disabled:opacity-40"
+                      disabled={conversations.length === 0}
+                      onClick={enterSelection}
+                    >
+                      <ListChecks className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Select</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={onNew}>
+                      <MessageSquarePlus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">New conversation</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           )}
         </div>
 
-        {searchOpen && (
+        {/* Search */}
+        {searchOpen && !selectionMode && (
           <div className="px-3 py-2 border-b border-zinc-200 bg-white">
             <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search conversations..."
-                className="h-8 pr-8 text-xs"
+                className="h-8 pl-8 pr-8 text-xs"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
@@ -238,128 +327,174 @@ export function ConversationSidebar({
                   }
                 }}
               />
-              {(searchQuery || searchOpen) && (
-                <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-                  onClick={() => { setSearchQuery(""); setSearchOpen(false) }}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <button
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                onClick={() => {
+                  setSearchQuery("")
+                  setSearchOpen(false)
+                }}
+                aria-label="Close search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
         )}
 
+        {/* List */}
         <ScrollArea className="flex-1">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <div className="h-12 w-12 rounded-full bg-zinc-200 flex items-center justify-center mb-4">
+              <div className="h-12 w-12 rounded-full bg-zinc-200/70 flex items-center justify-center mb-4">
                 <MessageCircle className="h-5 w-5 text-zinc-400" />
               </div>
               <p className="text-sm font-medium text-zinc-600 mb-1">
-                {searchQuery ? `No conversations matching "${searchQuery}"` : "No conversations"}
+                {searchQuery ? `No matches for "${searchQuery}"` : "No conversations yet"}
               </p>
               {!searchQuery && <p className="text-xs text-zinc-400">Start a new chat to begin</p>}
             </div>
           ) : (
             <div className="py-2">
               {grouped.map((group) => (
-                <div key={group.label} className="mb-1">
-                  <div className="px-4 py-2">
+                <div key={group.label} className="mb-2">
+                  <div className="px-4 pb-1 pt-2">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                       {group.label}
                     </span>
                   </div>
-                  <AnimatePresence initial={false}>
-                  {group.conversations.map((conv) => (
-                    <motion.div
-                      key={conv.id}
-                      layout={!reduced}
-                      initial={reduced ? { opacity: 0 } : { opacity: 0, x: -12 }}
-                      animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
-                      exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
-                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      whileHover={reduced ? undefined : { x: 2 }}
-                      className={cn(
-                        "relative w-full group flex items-center gap-2 px-3 py-2 cursor-pointer",
-                        activeConversationId === conv.id ? "bg-emerald-50" : "hover:bg-zinc-100",
-                      )}
-                      onClick={() => !renamingId && onSelect(conv.id)}
-                      onContextMenu={(e) => e.preventDefault()}
-                    >
-                      {activeConversationId === conv.id && (
-                        <motion.span
-                          layoutId="conversation-active-rail"
-                          className="absolute inset-y-0 right-0 w-0.5 bg-emerald-500"
-                          transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                        />
-                      )}
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(conv.id)}
-                        onChange={() => toggleSelected(conv.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="opacity-0 group-hover:opacity-100 h-3.5 w-3.5 accent-emerald-600 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        {renamingId === conv.id ? (
-                          <Input
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            className="h-7 text-xs"
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                onRename(conv.id, renameValue.trim() || conv.title)
-                                setRenamingId(null)
-                              }
-                              if (e.key === "Escape") setRenamingId(null)
-                            }}
-                            onBlur={() => {
-                              if (renameValue.trim()) onRename(conv.id, renameValue.trim())
-                              setRenamingId(null)
-                            }}
-                          />
-                        ) : (
-                          <>
-                            <p className={cn("text-sm truncate", activeConversationId === conv.id ? "text-emerald-700 font-medium" : "text-zinc-700")}>
-                              {conv.title || "New conversation"}
-                            </p>
-                            <p className="text-[10px] text-zinc-400 mt-0.5">{formatRelativeTime(conv.updated_at)}</p>
-                          </>
-                        )}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            onClick={(e) => e.stopPropagation()}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-zinc-200 text-zinc-400"
+                  <div className="px-2">
+                    <AnimatePresence initial={false}>
+                      {group.conversations.map((conv) => {
+                        const isActive = activeConversationId === conv.id
+                        const isSelected = selectedIds.has(conv.id)
+                        const isRenaming = renamingId === conv.id
+                        return (
+                          <motion.div
+                            key={conv.id}
+                            layout={!reduced}
+                            initial={reduced ? { opacity: 0 } : { opacity: 0, x: -12 }}
+                            animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                            exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
+                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            className={cn(
+                              "relative group flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors",
+                              isActive && !selectionMode
+                                ? "bg-emerald-50 text-emerald-900"
+                                : isSelected
+                                  ? "bg-emerald-50/70"
+                                  : "hover:bg-zinc-100",
+                            )}
+                            onClick={() => handleRowClick(conv.id)}
+                            onContextMenu={(e) => e.preventDefault()}
                           >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => { setRenamingId(conv.id); setRenameValue(conv.title || "") }}>
-                            <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onArchive(conv.id)}>
-                            <Archive className="h-3.5 w-3.5 mr-2" /> Archive
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => shareLink(conv.id)}>
-                            <Share2 className="h-3.5 w-3.5 mr-2" /> Share link
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => { setConversationToDelete(conv.id); setDeleteDialogOpen(true) }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </motion.div>
-                  ))}
-                  </AnimatePresence>
+                            {isActive && !selectionMode && (
+                              <motion.span
+                                layoutId="conversation-active-rail"
+                                className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-500"
+                                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                              />
+                            )}
+
+                            {/* Leading: checkbox in selection mode, chat glyph otherwise */}
+                            {selectionMode ? (
+                              <span
+                                className={cn(
+                                  "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                                  isSelected ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-300 bg-white",
+                                )}
+                                aria-hidden
+                              >
+                                {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
+                              </span>
+                            ) : (
+                              <MessageCircle
+                                className={cn(
+                                  "h-4 w-4 shrink-0",
+                                  isActive ? "text-emerald-500" : "text-zinc-400",
+                                )}
+                              />
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              {isRenaming ? (
+                                <Input
+                                  value={renameValue}
+                                  onChange={(e) => setRenameValue(e.target.value)}
+                                  className="h-7 text-xs"
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      onRename(conv.id, renameValue.trim() || conv.title)
+                                      setRenamingId(null)
+                                    }
+                                    if (e.key === "Escape") setRenamingId(null)
+                                  }}
+                                  onBlur={() => {
+                                    if (renameValue.trim()) onRename(conv.id, renameValue.trim())
+                                    setRenamingId(null)
+                                  }}
+                                />
+                              ) : (
+                                <>
+                                  <p
+                                    className={cn(
+                                      "text-sm truncate leading-tight",
+                                      isActive && !selectionMode ? "text-emerald-700 font-medium" : "text-zinc-700",
+                                    )}
+                                  >
+                                    {conv.title || "New conversation"}
+                                  </p>
+                                  <p className="text-[10px] text-zinc-400 mt-0.5">{formatRelativeTime(conv.updated_at)}</p>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Trailing actions (hidden in selection mode) */}
+                            {!selectionMode && !isRenaming && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100 p-1.5 rounded-md hover:bg-zinc-200 text-zinc-400 hover:text-zinc-600 transition-colors shrink-0"
+                                    aria-label="Conversation options"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setRenamingId(conv.id)
+                                      setRenameValue(conv.title || "")
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onArchive(conv.id)}>
+                                    <Archive className="h-3.5 w-3.5 mr-2" /> Archive
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => shareLink(conv.id)}>
+                                    <Share2 className="h-3.5 w-3.5 mr-2" /> Copy link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    onClick={() => {
+                                      setConversationToDelete(conv.id)
+                                      setDeleteDialogOpen(true)
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </motion.div>
+                        )
+                      })}
+                    </AnimatePresence>
+                  </div>
                 </div>
               ))}
             </div>
@@ -371,7 +506,9 @@ export function ConversationSidebar({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This permanently removes the conversation and its messages. This cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
@@ -392,12 +529,18 @@ export function ConversationSidebar({
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} conversations?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>
+              Delete {selectedIds.size} conversation{selectedIds.size === 1 ? "" : "s"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The selected conversations and their messages will be permanently removed. This cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmBulkDelete} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+            <AlertDialogAction onClick={confirmBulkDelete} className="bg-red-500 hover:bg-red-600">
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
