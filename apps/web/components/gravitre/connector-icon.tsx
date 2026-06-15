@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils"
 import { connectorVendorKey } from "@/lib/connectors"
-import { Plug } from "lucide-react"
 
 // ============================================================================
 // GRAVITRE CONNECTOR ICON + INTEGRATION TOKEN SYSTEM
@@ -350,6 +349,16 @@ export const connectorBrandTokens = {
     border: "border-[#FF9900]/20",
     text: "text-[#FF9900]",
   },
+  constant_contact: {
+    bg: "bg-[#1856ED]/10 dark:bg-[#1856ED]/15",
+    border: "border-[#1856ED]/20",
+    text: "text-[#1856ED]",
+  },
+  absorb_lms: {
+    bg: "bg-[#00A4A6]/10 dark:bg-[#00A4A6]/15",
+    border: "border-[#00A4A6]/20",
+    text: "text-[#00A4A6]",
+  },
   aws: {
     bg: "bg-[#FF9900]/10 dark:bg-[#FF9900]/15",
     border: "border-[#FF9900]/20",
@@ -656,10 +665,35 @@ interface ConnectorIconProps {
   onClick?: () => void
 }
 
+// Brand logos served as static SVG assets (sourced from theSVG.org).
+// Keyed by the resolved vendor slug produced by connectorVendorKey().
+const IMAGE_LOGOS: Record<string, string> = {
+  mixpanel: "/connector-logos/mixpanel.svg",
+  hootsuite: "/connector-logos/hootsuite.svg",
+  semrush: "/connector-logos/semrush.svg",
+  apollo: "/connector-logos/apollo.svg",
+  google_analytics: "/connector-logos/google_analytics.svg",
+  google_calendar: "/connector-logos/google_calendar.svg",
+  google_drive: "/connector-logos/google_drive.svg",
+  google_docs: "/connector-logos/google_docs.svg",
+  zapier: "/connector-logos/zapier.svg",
+  n8n: "/connector-logos/n8n.svg",
+  odoo: "/connector-logos/odoo.svg",
+  greenhouse: "/connector-logos/greenhouse.svg",
+  canva: "/connector-logos/canva.svg",
+}
+
+// Vendor slugs that reuse an existing inline brand logo.
+const LOGO_ALIASES: Record<string, string> = {
+  microsoft365: "microsoft",
+  microsoft_365: "microsoft",
+}
+
 // Helper to normalize vendor names to brand keys
 function resolveVendorLogoKey(vendor?: string): string {
   if (!vendor) return ""
   const slug = connectorVendorKey(vendor)
+  if (LOGO_ALIASES[slug]) return LOGO_ALIASES[slug]
   if (slug in logos) return slug
   const normalized = vendor.toLowerCase().trim()
   if (normalized in logos) return normalized
@@ -677,7 +711,25 @@ function getBrandKey(vendor?: string): ConnectorBrand {
 // Helper to get logo for vendor
 function getVendorLogo(vendor?: string): React.ReactNode | null {
   const key = resolveVendorLogoKey(vendor)
-  return key ? logos[key] || null : null
+  if (!key) return null
+  if (logos[key]) return logos[key]
+  const imgSrc = IMAGE_LOGOS[key]
+  if (imgSrc) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={imgSrc} alt="" aria-hidden className="h-full w-full object-contain" />
+  }
+  return null
+}
+
+// Brand monogram fallback for connectors without a dedicated logo.
+function getConnectorInitials(name: string): string {
+  return name
+    .split(/[\s\-_/.]+/)
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 export function ConnectorIcon({
@@ -717,7 +769,17 @@ export function ConnectorIcon({
         )}
       >
         <div className={cn("flex items-center justify-center", sizeToken.icon)}>
-          {logo || <Plug className={cn(sizeToken.icon, brandToken.text)} />}
+          {logo || (
+            <span
+              className={cn(
+                "font-semibold leading-none",
+                brandToken.text,
+                size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm"
+              )}
+            >
+              {getConnectorInitials(displayName)}
+            </span>
+          )}
         </div>
       </div>
 
