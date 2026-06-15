@@ -186,6 +186,8 @@ export default function MarketplaceAdminPage() {
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href="/marketplace/billing">Billing</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/marketplace/sandbox">Sandbox</Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
