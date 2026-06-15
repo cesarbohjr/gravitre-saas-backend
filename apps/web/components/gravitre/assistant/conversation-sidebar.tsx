@@ -16,8 +16,6 @@ import {
   Share2,
   Trash2,
   X,
-  PanelLeft,
-  PanelLeftClose,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -197,15 +195,8 @@ export function ConversationSidebar({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggle}
-        className="fixed top-20 left-4 z-40 md:hidden h-9 w-9 bg-white shadow-md border border-zinc-200"
-      >
-        {isOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-      </Button>
-
+      {/* Mobile-only scrim. The single open/close toggle lives in the chat
+          header; tapping the scrim or the in-sidebar close button dismisses it. */}
       {isOpen && <div className="fixed inset-0 z-30 bg-black/40 md:hidden backdrop-blur-sm" onClick={onToggle} />}
 
       <aside
@@ -304,6 +295,16 @@ export function ConversationSidebar({
                   </TooltipTrigger>
                   <TooltipContent side="bottom">New conversation</TooltipContent>
                 </Tooltip>
+                {/* Explicit close affordance on mobile (sidebar is an overlay there) */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-zinc-500 md:hidden"
+                  onClick={onToggle}
+                  aria-label="Close conversation history"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </TooltipProvider>
           )}
