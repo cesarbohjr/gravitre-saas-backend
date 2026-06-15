@@ -840,18 +840,21 @@ export default function OperatorPage() {
         {/* Main Content - Single Column Layout */}
         <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
           {/* Clean Header with Stats */}
-          <div className="shrink-0 border-b border-border px-6 py-5 bg-card/50 backdrop-blur-sm">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
+          {/* z-20 lifts the header (and its model-selector dropdown) above the
+              content below it. Required because backdrop-blur creates a stacking
+              context that would otherwise trap the dropdown beneath page content. */}
+          <div className="relative z-20 shrink-0 border-b border-border px-4 py-3 md:px-6 md:py-5 bg-card/50 backdrop-blur-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <AIPresence 
                   isProcessing={isProcessing} 
                   isListening={Boolean(taskInput.trim())}
                 />
-                <span className="text-xs text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                   {user?.email ? `Signed in as ${user.email}` : "Signed in"}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 md:gap-3">
                 {/* Model Selector - Premium, minimal */}
                 <ModelSelector
                   value={selectedModel}
@@ -861,23 +864,24 @@ export default function OperatorPage() {
                   showAdvanced
                   size="sm"
                 />
-                <div className="h-4 w-px bg-border" />
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <div className="hidden h-4 w-px bg-border md:block" />
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1.5 md:px-3">
                   <StatusBeacon status="active" size="sm" />
                   <span className="text-xs font-medium text-emerald-500">12 systems</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 md:px-3">
                   <Activity className="h-3.5 w-3.5 text-blue-500" />
                   <span className="text-xs font-medium text-blue-500">{tasks.length} active</span>
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="h-8 gap-2"
+                  className="h-8 gap-2 ml-auto md:ml-0"
                   onClick={handleOpenNewTaskDialog}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  New Task
+                  <span className="hidden sm:inline">New Task</span>
+                  <span className="sm:hidden">New</span>
                 </Button>
               </div>
             </div>
