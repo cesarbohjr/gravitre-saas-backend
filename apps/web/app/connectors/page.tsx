@@ -43,6 +43,9 @@ import {
   Link2,
   Copy,
   Check,
+  Receipt,
+  Code2,
+  ShieldCheck,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -1817,7 +1820,7 @@ function ConnectorsPageContent() {
                 <p className="text-xs md:text-sm text-muted-foreground">Connect and manage your data sources</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
               <div className="relative flex-1 md:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1913,17 +1916,41 @@ function ConnectorsPageContent() {
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               </div>
-              {isAdmin && (
-                <Button variant="outline" size="sm" className="gap-1.5 shrink-0" asChild>
-                  <Link href="/marketplace/admin">Review</Link>
-                </Button>
-              )}
-              <Button variant="outline" size="sm" className="gap-1.5 shrink-0 hidden sm:inline-flex" asChild>
-                <Link href="/marketplace/billing">Partner billing</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5 shrink-0 hidden sm:inline-flex" asChild>
-                <Link href="/marketplace/submit">Partner SDK</Link>
-              </Button>
+              {/* Secondary actions collapsed into an overflow menu to keep the
+                  toolbar from overflowing. These are navigation links, so a
+                  dropdown is the natural home for them. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" aria-label="More options">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/marketplace/billing" className="gap-2">
+                      <Receipt className="h-4 w-4 text-muted-foreground" />
+                      Partner billing
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/marketplace/submit" className="gap-2">
+                      <Code2 className="h-4 w-4 text-muted-foreground" />
+                      Partner SDK
+                    </Link>
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/marketplace/admin" className="gap-2">
+                          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                          Review submissions
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button onClick={() => setAddModal(true)} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Connector</span>
