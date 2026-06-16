@@ -36,6 +36,14 @@ class EnqueueJobRequest(BaseModel):
     context: dict[str, Any] | None = None
 
 
+class AssignmentDecisionRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    notes: str | None = None
+    reason: str | None = None
+    comment: str | None = None
+
+
 def _public(job: dict[str, Any]) -> dict[str, Any]:
     return {
         "jobId": job.get("id"),
@@ -188,5 +196,57 @@ async def retry(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Job not found or not retryable (must be failed/cancelled)",
+        )
+    return _public(job)
+
+
+@router.post("/{job_id}/approve")
+async def approve_job_endpoint(
+    job_id: str,
+    body: AssignmentDecisionRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    notes = (body.notes or body.comment or "").strip() or None
+    job = jobs.approve_job(
+        _client(settings),
+        org_id,
+        job_id,
+        approver_id=current_user.get("user_id"),
+        notes=notes,
+    )
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Job not found or not awaiting approval",
+        )
+    return _public(job)
+
+
+@router.post("/{job_id}/reject")
+async def reject_job_endpoint(
+    job_id: str,
+    body: AssignmentDecisionRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    reason = (body.reason or body.notes or body.comment or "").strip() or None
+    job = jobs.reject_job(
+        _client(settings),
+        org_id,
+        job_id,
+        approver_id=current_user.get("user_id"),
+        reason=reason,
+    )
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Job not found or not awaiting approval",
         )
     return _public(job)

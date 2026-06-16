@@ -10,7 +10,11 @@ import {
   normalizeAgentDepartment,
 } from "@/lib/agent-display"
 
-function mapAgentRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
+function mapAgentRow(
+  input: Record<string, unknown>,
+  knowledgeDocCount = 0,
+  recentTasks: Array<{ id: string; title: string; time: string; status: string }> = [],
+) {
   const model = snakeToCamel<Record<string, unknown>>(input)
   const personality =
     model.personality && typeof model.personality === "object"
@@ -44,11 +48,16 @@ function mapAgentRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
     permissions: Array.isArray(model.systems) ? model.systems : [],
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
+    recentTasks,
     createdAt: String(model.createdAt ?? model.created_at ?? ""),
   }
 }
 
-function mapOperatorRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
+function mapOperatorRow(
+  input: Record<string, unknown>,
+  knowledgeDocCount = 0,
+  recentTasks: Array<{ id: string; title: string; time: string; status: string }> = [],
+) {
   const name = String(input.name ?? "Agent")
   const role = String(input.role ?? name)
   const department = inferAgentDepartment(name, String(input.description ?? ""), role)
@@ -77,8 +86,58 @@ function mapOperatorRow(input: Record<string, unknown>, knowledgeDocCount = 0) {
     permissions: [],
     lastAction: "No recent activity",
     lastActionTime: "recently",
+    recentTasks,
     createdAt: String(input.created_at ?? ""),
   }
+}
+
+async function loadRecentTasksForAgents(
+  supabase: ReturnType<typeof createSupabaseRouteClient>,
+  orgId: string,
+  agentIds: string[],
+): Promise<Map<string, Array<{ id: string; title: string; time: string; status: string }>>> {
+  const byAgent = new Map<string, Array<{ id: string; title: string; time: string; status: string }>>()
+  for (const agentId of agentIds) {
+    byAgent.set(agentId, [])
+  }
+  if (agentIds.length === 0) return byAgent
+
+  const { data: jobs } = await supabase
+    .from("agent_jobs")
+    .select("id, status, payload, created_at, finished_at")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(120)
+
+  for (const row of jobs ?? []) {
+    const payload = ((row as { payload?: unknown }).payload ?? {}) as Record<string, unknown>
+    const context =
+      payload.context && typeof payload.context === "object"
+        ? (payload.context as Record<string, unknown>)
+        : {}
+    const agentId = String(
+      payload.agent_id ?? payload.agentId ?? context.agent_id ?? context.agentId ?? "",
+    )
+    if (!agentId || !byAgent.has(agentId)) continue
+
+    const bucket = byAgent.get(agentId) ?? []
+    if (bucket.length >= 3) continue
+
+    const rawTitle = String(payload.task ?? "Agent task").trim() || "Agent task"
+    bucket.push({
+      id: String((row as { id?: string }).id ?? ""),
+      title: rawTitle.length > 80 ? `${rawTitle.slice(0, 77)}…` : rawTitle,
+      time: String(
+        (row as { finished_at?: string }).finished_at ??
+          (row as { created_at?: string }).created_at ??
+          "",
+      ),
+      status: String((row as { status?: string }).status ?? "queued"),
+    })
+    byAgent.set(agentId, bucket)
+  }
+
+  return byAgent
 }
 
 async function loadKnowledgeDocCounts(
@@ -244,14 +303,16 @@ export async function GET(request: NextRequest) {
     }
 
     const knowledgeCounts = await loadKnowledgeDocCounts(supabase, orgId, Array.from(mergedIds))
+    const recentTasksByAgent = await loadRecentTasksForAgents(supabase, orgId, Array.from(mergedIds))
     const agents = mergedRows
       .map((row) => {
         const id = String(row.id ?? "")
         const knowledgeDocCount = knowledgeCounts.get(id) ?? 0
+        const recentTasks = recentTasksByAgent.get(id) ?? []
         if ("purpose" in row || "personality" in row || "stats" in row) {
-          return mapAgentRow(row, knowledgeDocCount)
+          return mapAgentRow(row, knowledgeDocCount, recentTasks)
         }
-        return mapOperatorRow(row, knowledgeDocCount)
+        return mapOperatorRow(row, knowledgeDocCount, recentTasks)
       })
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
 

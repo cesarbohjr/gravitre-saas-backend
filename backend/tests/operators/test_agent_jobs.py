@@ -249,6 +249,37 @@ async def test_cancel_then_retry_flow(async_client, monkeypatch):
     assert again.status_code == 409
 
 
+async def test_approve_and_reject_pending_job(async_client, monkeypatch):
+    _auth()
+    fake = FakeSupabase()
+    monkeypatch.setattr(jobs_router, "create_client", lambda *a, **k: fake)
+    enq = await async_client.post(
+        "/api/agent-jobs", headers={"Authorization": "Bearer t"}, json={"task": "weekly report"}
+    )
+    job_id = enq.json()["jobId"]
+    row = fake.store["agent_jobs"][0]
+    row["status"] = "completed"
+    row["result"] = {"requires_approval": True, "summary": "Weekly report ready"}
+
+    approved = await async_client.post(
+        f"/api/agent-jobs/{job_id}/approve",
+        headers={"Authorization": "Bearer t"},
+        json={"notes": "Looks good"},
+    )
+    assert approved.status_code == 200
+    assert approved.json()["result"]["approval_status"] == "approved"
+
+    row["result"] = {"requires_approval": True, "summary": "Needs another review"}
+    rejected = await async_client.post(
+        f"/api/agent-jobs/{job_id}/reject",
+        headers={"Authorization": "Bearer t"},
+        json={"reason": "Missing Q3 comparison"},
+    )
+    assert rejected.status_code == 200
+    assert rejected.json()["result"]["approval_status"] == "rejected"
+    assert rejected.json()["status"] == "cancelled"
+
+
 @pytest.mark.asyncio
 async def test_run_operator_job_falls_back_when_ai_unavailable(monkeypatch):
     async def _boom(*args, **kwargs):

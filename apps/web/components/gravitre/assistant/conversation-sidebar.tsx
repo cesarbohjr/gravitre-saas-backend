@@ -7,6 +7,7 @@ import {
   Archive,
   Check,
   CheckCheck,
+  Filter,
   ListChecks,
   MessageCircle,
   MessageSquarePlus,
@@ -21,6 +22,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +48,42 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { Conversation } from "@/types/api"
+
+type HistoryDateFilter = "all" | "today" | "week" | "archived"
+
+const DATE_FILTER_OPTIONS: { value: HistoryDateFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This week" },
+  { value: "archived", label: "Archived" },
+]
+
+function isConversationArchived(conversation: Conversation): boolean {
+  return Boolean(conversation.archived_at)
+}
+
+function matchesHistoryDateFilter(conversation: Conversation, filter: HistoryDateFilter): boolean {
+  const archived = isConversationArchived(conversation)
+  if (filter === "archived") return archived
+  if (archived) return false
+
+  const updated = new Date(conversation.updated_at)
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  if (filter === "today") return updated >= startOfToday
+  if (filter === "week") return updated >= startOfWeek
+  return true
+}
+
+function emptyHistoryMessage(filter: HistoryDateFilter, searchQuery: string): string {
+  if (searchQuery.trim()) return `No matches for "${searchQuery.trim()}"`
+  if (filter === "archived") return "No archived conversations"
+  if (filter === "today") return "No conversations from today"
+  if (filter === "week") return "No conversations this week"
+  return "No conversations yet"
+}
 
 function groupConversationsByDate(conversations: Conversation[]) {
   const now = new Date()
@@ -88,6 +127,22 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+function ConversationListSkeleton() {
+  return (
+    <div className="space-y-1 px-2 py-3">
+      {Array.from({ length: 7 }).map((_, index) => (
+        <div key={index} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
+          <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-4/5" />
+            <Skeleton className="h-2.5 w-12" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function ConversationSidebar({
   conversations,
   activeConversationId,
@@ -99,6 +154,9 @@ export function ConversationSidebar({
   onBulkDelete,
   isOpen,
   onToggle,
+  isLoading = false,
+  loadError = false,
+  onRetry,
 }: {
   conversations: Conversation[]
   activeConversationId: string | null
@@ -110,9 +168,13 @@ export function ConversationSidebar({
   onBulkDelete: (ids: string[]) => void | Promise<void>
   isOpen: boolean
   onToggle: () => void
+  isLoading?: boolean
+  loadError?: boolean
+  onRetry?: () => void
 }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [dateFilter, setDateFilter] = useState<HistoryDateFilter>("all")
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -126,9 +188,12 @@ export function ConversationSidebar({
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return conversations
-    return conversations.filter((c) => (c.title || "").toLowerCase().includes(q))
-  }, [conversations, searchQuery])
+    return conversations.filter((conversation) => {
+      if (!matchesHistoryDateFilter(conversation, dateFilter)) return false
+      if (!q) return true
+      return (conversation.title || "").toLowerCase().includes(q)
+    })
+  }, [conversations, searchQuery, dateFilter])
 
   const grouped = useMemo(() => groupConversationsByDate(filtered), [filtered])
 
@@ -280,6 +345,40 @@ export function ConversationSidebar({
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Search</TooltipContent>
                 </Tooltip>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-8 w-8",
+                            dateFilter === "all" ? "text-zinc-500" : "text-emerald-600 bg-emerald-50",
+                          )}
+                          aria-label="Filter conversations by date"
+                        >
+                          <Filter className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Filter</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-40">
+                    {DATE_FILTER_OPTIONS.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => setDateFilter(option.value)}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{option.label}</span>
+                        {dateFilter === option.value && (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -349,17 +448,43 @@ export function ConversationSidebar({
           </div>
         )}
 
+        {dateFilter !== "all" && !selectionMode && (
+          <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-3 py-2">
+            <span className="text-[11px] font-medium text-zinc-600">
+              {DATE_FILTER_OPTIONS.find((option) => option.value === dateFilter)?.label}
+            </span>
+            <button
+              type="button"
+              className="text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
+              onClick={() => setDateFilter("all")}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* List */}
         <ScrollArea className="flex-1">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <ConversationListSkeleton />
+          ) : loadError ? (
+            <WorkSectionErrorCard
+              title="Couldn't load history"
+              message="We couldn't fetch your conversations. Check your connection and try again."
+              onRetry={onRetry}
+              className="mx-3 my-6 border-zinc-200 bg-red-50/90"
+            />
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
               <div className="h-12 w-12 rounded-full bg-zinc-200/70 flex items-center justify-center mb-4">
                 <MessageCircle className="h-5 w-5 text-zinc-400" />
               </div>
               <p className="text-sm font-medium text-zinc-600 mb-1">
-                {searchQuery ? `No matches for "${searchQuery}"` : "No conversations yet"}
+                {emptyHistoryMessage(dateFilter, searchQuery)}
               </p>
-              {!searchQuery && <p className="text-xs text-zinc-400">Start a new chat to begin</p>}
+              {!searchQuery && dateFilter === "all" && (
+                <p className="text-xs text-zinc-400">Start a new chat to begin</p>
+              )}
             </div>
           ) : (
             <div className="py-2">

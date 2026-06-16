@@ -13,7 +13,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Loader2, Check, Download, ExternalLink } from "lucide-react"
+import { Loader2, Check, Download, ExternalLink, Zap, BookOpen, LifeBuoy } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { AnimatedCounter } from "@/components/gravitre/premium-effects"
 
 interface ReasoningStep {
   id: string
@@ -23,7 +30,7 @@ interface ReasoningStep {
 
 interface InsightSection {
   id: string
-  type: "summary" | "reasoning" | "root-cause" | "actions" | "evidence"
+  type: "summary" | "reasoning" | "root-cause" | "actions" | "evidence" | "prevention"
   title: string
   content: string
   steps?: ReasoningStep[]
@@ -33,12 +40,16 @@ interface InsightSection {
 
 interface MesonInsightsPanelProps {
   confidence: number
+  confidenceDataPoints?: number
   severity?: "critical" | "high" | "medium" | "low"
   lastUpdated?: string
   sections: InsightSection[]
   isGenerating?: boolean
   className?: string
   onTakeAction?: () => void
+  onTryAutoFix?: () => void
+  onViewDocumentation?: () => void
+  onContactSupport?: () => void
 }
 
 const severityConfig: Record<string, { label: string; color: string; bg: string; border: string; glow: string; ring: string; icon: IconName }> = {
@@ -81,13 +92,45 @@ const severityConfig: Record<string, { label: string; color: string; bg: string;
 }
 
 const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor: string; borderColor: string; headerBg: string; priority: number }> = {
-  "root-cause": {
-    icon: "warning",
+  summary: {
+    icon: "ai",
     iconBg: "bg-gradient-to-br from-red-500/20 to-orange-500/10",
     iconColor: "text-red-400",
     borderColor: "border-l-red-500",
     headerBg: "bg-red-500/5",
+    priority: 0,
+  },
+  "root-cause": {
+    icon: "warning",
+    iconBg: "bg-gradient-to-br from-orange-500/20 to-amber-500/10",
+    iconColor: "text-orange-400",
+    borderColor: "border-l-orange-500",
+    headerBg: "bg-orange-500/5",
     priority: 1,
+  },
+  reasoning: {
+    icon: "aiAnalysis",
+    iconBg: "bg-gradient-to-br from-orange-500/20 to-amber-500/10",
+    iconColor: "text-orange-400",
+    borderColor: "border-l-orange-500",
+    headerBg: "bg-orange-500/5",
+    priority: 2,
+  },
+  actions: {
+    icon: "insight",
+    iconBg: "bg-gradient-to-br from-blue-500/20 to-cyan-500/10",
+    iconColor: "text-blue-400",
+    borderColor: "border-l-blue-500",
+    headerBg: "bg-blue-500/5",
+    priority: 3,
+  },
+  prevention: {
+    icon: "shield",
+    iconBg: "bg-gradient-to-br from-emerald-500/20 to-teal-500/10",
+    iconColor: "text-emerald-400",
+    borderColor: "border-l-emerald-500",
+    headerBg: "bg-emerald-500/5",
+    priority: 4,
   },
   evidence: {
     icon: "file",
@@ -95,69 +138,61 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
     iconColor: "text-blue-400",
     borderColor: "border-l-blue-500",
     headerBg: "bg-blue-500/5",
-    priority: 2,
-  },
-  reasoning: {
-    icon: "aiAnalysis",
-    iconBg: "bg-gradient-to-br from-purple-500/20 to-pink-500/10",
-    iconColor: "text-purple-400",
-    borderColor: "border-l-purple-500",
-    headerBg: "bg-purple-500/5",
-    priority: 3,
-  },
-  actions: {
-    icon: "insight",
-    iconBg: "bg-gradient-to-br from-emerald-500/20 to-teal-500/10",
-    iconColor: "text-emerald-400",
-    borderColor: "border-l-emerald-500",
-    headerBg: "bg-emerald-500/5",
-    priority: 4,
-  },
-  summary: {
-    icon: "ai",
-    iconBg: "bg-gradient-to-br from-blue-500/20 to-indigo-500/10",
-    iconColor: "text-blue-400",
-    borderColor: "border-l-blue-500",
-    headerBg: "bg-blue-500/5",
-    priority: 0,
+    priority: 5,
   },
 }
 
-function ConfidenceIndicator({ value }: { value: number }) {
+function ConfidenceIndicator({
+  value,
+  dataPoints = 5,
+}: {
+  value: number
+  dataPoints?: number
+}) {
   const getColor = () => {
-    if (value >= 85) return { text: "text-emerald-400", bg: "bg-emerald-500", glow: "shadow-emerald-500/30" }
-    if (value >= 70) return { text: "text-blue-400", bg: "bg-blue-500", glow: "shadow-blue-500/30" }
-    if (value >= 50) return { text: "text-amber-400", bg: "bg-amber-500", glow: "shadow-amber-500/30" }
+    if (value >= 80) return { text: "text-emerald-400", bg: "bg-emerald-500", glow: "shadow-emerald-500/30" }
+    if (value >= 60) return { text: "text-amber-400", bg: "bg-amber-500", glow: "shadow-amber-500/30" }
     return { text: "text-red-400", bg: "bg-red-500", glow: "shadow-red-500/30" }
   }
 
   const colors = getColor()
+  const tooltipText = `Based on ${dataPoints} data point${dataPoints === 1 ? "" : "s"} from execution logs and error patterns`
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
-      <div className="flex items-center gap-2">
-        <Icon name="confidence" size="sm" className={colors.text} />
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Confidence</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="h-2 w-24 rounded-full bg-secondary/80 overflow-hidden">
-          <motion.div
-            className={cn("h-full rounded-full", colors.bg)}
-            initial={{ width: 0 }}
-            animate={{ width: `${value}%` }}
-            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-          />
-        </div>
-        <motion.span 
-          className={cn("text-xl font-bold tabular-nums", colors.text)}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.5 }}
-        >
-          {value}%
-        </motion.span>
-      </div>
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex cursor-default flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
+              <Icon name="confidence" size="sm" className={colors.text} />
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Confidence</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-24 overflow-hidden rounded-full bg-secondary/80">
+                <motion.div
+                  key={value}
+                  className={cn("h-full rounded-full", colors.bg)}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${value}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                />
+              </div>
+              <motion.span
+                className={cn("text-xl font-bold tabular-nums", colors.text)}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.15 }}
+              >
+                <AnimatedCounter value={value} duration={0.6} />%
+              </motion.span>
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="end" className="max-w-[220px] text-xs">
+          {tooltipText}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
@@ -180,18 +215,105 @@ function SeverityBadge({ severity }: { severity: "critical" | "high" | "medium" 
   )
 }
 
+function FixActionButtons({
+  onTryAutoFix,
+  onViewDocumentation,
+  onContactSupport,
+  isBusy,
+}: {
+  onTryAutoFix?: () => void
+  onViewDocumentation?: () => void
+  onContactSupport?: () => void
+  isBusy?: boolean
+}) {
+  const handleTryAutoFix = () => {
+    if (onTryAutoFix) {
+      onTryAutoFix()
+      return
+    }
+    toast.info("Auto-fix queued", {
+      description: "Recommended fixes will be applied after approval.",
+    })
+  }
+
+  const handleViewDocumentation = () => {
+    if (onViewDocumentation) {
+      onViewDocumentation()
+      return
+    }
+    window.open("https://docs.gravitre.app", "_blank", "noopener,noreferrer")
+  }
+
+  const handleContactSupport = () => {
+    if (onContactSupport) {
+      onContactSupport()
+      return
+    }
+    window.open(
+      "mailto:support@gravitre.app?subject=Operator%20analysis%20help",
+      "_self",
+    )
+  }
+
+  return (
+    <div className="mt-5 flex flex-wrap gap-2 border-t border-border/40 pt-4">
+      <Button
+        size="sm"
+        className="h-8 gap-1.5 text-xs"
+        onClick={handleTryAutoFix}
+        disabled={isBusy}
+      >
+        {isBusy ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Zap className="h-3.5 w-3.5" />
+        )}
+        Try auto-fix
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 gap-1.5 text-xs"
+        onClick={handleViewDocumentation}
+        disabled={isBusy}
+      >
+        <BookOpen className="h-3.5 w-3.5" />
+        View documentation
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 gap-1.5 text-xs"
+        onClick={handleContactSupport}
+        disabled={isBusy}
+      >
+        <LifeBuoy className="h-3.5 w-3.5" />
+        Contact support
+      </Button>
+    </div>
+  )
+}
+
 function InsightSectionCard({
   section,
   isExpanded,
   onToggle,
   index,
   isHighlighted = false,
+  onTryAutoFix,
+  onViewDocumentation,
+  onContactSupport,
+  isFixBusy = false,
 }: {
   section: InsightSection
   isExpanded: boolean
   onToggle: () => void
   index: number
   isHighlighted?: boolean
+  onTryAutoFix?: () => void
+  onViewDocumentation?: () => void
+  onContactSupport?: () => void
+  isFixBusy?: boolean
 }) {
   const config = sectionConfig[section.type] || sectionConfig.summary
 
@@ -402,7 +524,22 @@ function InsightSectionCard({
                       </span>
                     </motion.div>
                   ))}
+                  <FixActionButtons
+                    onTryAutoFix={onTryAutoFix}
+                    onViewDocumentation={onViewDocumentation}
+                    onContactSupport={onContactSupport}
+                    isBusy={isFixBusy}
+                  />
                 </div>
+              )}
+
+              {section.type === "actions" && !section.actions && (
+                <FixActionButtons
+                  onTryAutoFix={onTryAutoFix}
+                  onViewDocumentation={onViewDocumentation}
+                  onContactSupport={onContactSupport}
+                  isBusy={isFixBusy}
+                />
               )}
             </div>
           </motion.div>
@@ -414,18 +551,23 @@ function InsightSectionCard({
 
 export function MesonInsightsPanel({
   confidence,
+  confidenceDataPoints,
   severity = "high",
   lastUpdated,
   sections,
   isGenerating = false,
   className,
   onTakeAction,
+  onTryAutoFix,
+  onViewDocumentation,
+  onContactSupport,
 }: MesonInsightsPanelProps) {
-  const [expandedSections, setExpandedSections] = useState<string[]>(["root-cause", "summary"])
+  const [expandedSections, setExpandedSections] = useState<string[]>(["summary", "root-cause", "actions"])
   const [showFullAnalysis, setShowFullAnalysis] = useState(false)
   const [showVerifySources, setShowVerifySources] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isTakingAction, setIsTakingAction] = useState(false)
+  const [isFixBusy, setIsFixBusy] = useState(false)
   const severityConf = severityConfig[severity]
 
   const toggleSection = (id: string) => {
@@ -466,6 +608,17 @@ export function MesonInsightsPanel({
         description: "The recommended fixes have been queued for execution."
       })
     }, 1000)
+  }
+
+  const handleTryAutoFix = () => {
+    setIsFixBusy(true)
+    if (onTryAutoFix) {
+      onTryAutoFix()
+      setTimeout(() => setIsFixBusy(false), 800)
+      return
+    }
+    handleTakeAction()
+    setTimeout(() => setIsFixBusy(false), 1000)
   }
 
   // Sort sections by priority, with root-cause first
@@ -538,7 +691,7 @@ export function MesonInsightsPanel({
               </div>
             </div>
           </div>
-          <ConfidenceIndicator value={confidence} />
+          <ConfidenceIndicator value={confidence} dataPoints={confidenceDataPoints} />
         </div>
       </div>
 
@@ -551,7 +704,11 @@ export function MesonInsightsPanel({
             isExpanded={expandedSections.includes(section.id)}
             onToggle={() => toggleSection(section.id)}
             index={index}
-            isHighlighted={section.type === "root-cause"}
+            isHighlighted={section.type === "summary" || section.type === "root-cause"}
+            onTryAutoFix={handleTryAutoFix}
+            onViewDocumentation={onViewDocumentation}
+            onContactSupport={onContactSupport}
+            isFixBusy={isFixBusy || isTakingAction}
           />
         ))}
       </div>

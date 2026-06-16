@@ -808,12 +808,22 @@ async def assistant_daily_briefing(
     if not org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     service = get_user_intelligence_service()
-    user_name = str(current_user.get("full_name") or current_user.get("email") or "")
+    first_name: str | None = None
+    full_name = str(current_user.get("full_name") or "").strip()
+    if full_name:
+        first_name = full_name.split()[0]
+    else:
+        email = str(current_user.get("email") or "").strip()
+        if "@" in email:
+            local = email.split("@", 1)[0].replace(".", " ").replace("_", " ")
+            token = local.split()[0]
+            if token:
+                first_name = token[:1].upper() + token[1:]
     briefing = await service.get_daily_briefing(
         settings,
         org_id=org_id,
         user_id=str(current_user.get("user_id") or ""),
-        user_name=user_name,
+        user_name=first_name,
     )
     await service.touch_session(
         settings,

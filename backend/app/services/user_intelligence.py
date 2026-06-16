@@ -1,7 +1,9 @@
 """User query pattern learning and personalized assistant suggestions."""
 from __future__ import annotations
 
+import json
 import re
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -134,18 +136,60 @@ class UserIntelligenceService:
             last_session = prefs[0].get("last_session_at") if prefs else None
             greeting = "Good morning" if datetime.now().hour < 12 else "Welcome back"
             if user_name:
-                greeting = f"{greeting}, {user_name.split()[0]}"
+                first = user_name.split()[0]
+                if first and "@" not in first:
+                    greeting = f"{greeting}, {first}"
 
-            bullets: list[str] = []
+            bullets: list[dict[str, str]] = []
             failed = int(changes.get("failed_workflows") or 0)
             if failed:
-                bullets.append(f"{failed} workflow{'s' if failed != 1 else ''} failed recently")
+                bullets.append(
+                    {
+                        "id": "failed-workflows",
+                        "text": f"{failed} workflow{'s' if failed != 1 else ''} failed recently",
+                        "href": "/workflows",
+                        "tone": "warning",
+                    }
+                )
             pending = int(changes.get("pending_auth_connectors") or 0)
             if pending:
-                bullets.append(f"{pending} connector{'s' if pending != 1 else ''} need authentication")
-            agent_tasks = int(changes.get("agent_tasks_overnight") or 0)
+                bullets.append(
+                    {
+                        "id": "pending-auth-connectors",
+                        "text": f"{pending} connector{'s' if pending != 1 else ''} need authentication",
+                        "href": "/connectors",
+                        "tone": "error",
+                    }
+                )
+            agent_tasks = int(changes.get("agent_tasks_completed") or 0)
+            top_agent_id = str(changes.get("top_agent_id") or "").strip()
+            top_agent_name = str(changes.get("top_agent_name") or "").strip()
+            top_agent_tasks = int(changes.get("top_agent_task_count") or 0)
             if agent_tasks:
-                bullets.append(f"Your agents completed {agent_tasks} tasks recently")
+                if top_agent_name and top_agent_id and top_agent_tasks:
+                    bullets.append(
+                        {
+                            "id": f"agent-{top_agent_id}",
+                            "text": (
+                                f"{top_agent_name} completed {top_agent_tasks} "
+                                f"task{'s' if top_agent_tasks != 1 else ''} recently"
+                            ),
+                            "href": f"/agents/{top_agent_id}",
+                            "tone": "success",
+                        }
+                    )
+                else:
+                    bullets.append(
+                        {
+                            "id": "agent-tasks-completed",
+                            "text": (
+                                f"Your agents completed {agent_tasks} "
+                                f"task{'s' if agent_tasks != 1 else ''} recently"
+                            ),
+                            "href": "/agents",
+                            "tone": "success",
+                        }
+                    )
 
             return {
                 "greeting": greeting,
@@ -238,10 +282,14 @@ class UserIntelligenceService:
             logger.debug("update_preferences skipped: %s", exc)
         return row
 
-    async def _get_changes_since(self, client: Any, org_id: str) -> dict[str, int]:
+    async def _get_changes_since(self, client: Any, org_id: str) -> dict[str, Any]:
         since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         failed = 0
         pending_auth = 0
+        agent_tasks_completed = 0
+        top_agent_id: str | None = None
+        top_agent_name: str | None = None
+        top_agent_task_count = 0
         try:
             runs = (
                 client.table("workflow_runs")
@@ -265,10 +313,54 @@ class UserIntelligenceService:
             pending_auth = int(getattr(connectors, "count", None) or 0)
         except Exception:  # noqa: BLE001
             pass
+        try:
+            jobs = (
+                client.table("agent_jobs")
+                .select("id, payload, status, finished_at")
+                .eq("org_id", org_id)
+                .eq("status", "completed")
+                .gte("finished_at", since)
+                .execute()
+                .data
+                or []
+            )
+            agent_tasks_completed = len(jobs)
+            agent_counts: Counter[str] = Counter()
+            for job in jobs:
+                payload = job.get("payload") or {}
+                if isinstance(payload, str):
+                    try:
+                        payload = json.loads(payload)
+                    except json.JSONDecodeError:
+                        payload = {}
+                if not isinstance(payload, dict):
+                    continue
+                agent_id = str(payload.get("agent_id") or payload.get("agentId") or "").strip()
+                if agent_id:
+                    agent_counts[agent_id] += 1
+            if agent_counts:
+                top_agent_id, top_agent_task_count = agent_counts.most_common(1)[0]
+                agent_rows = (
+                    client.table("agents")
+                    .select("id, name")
+                    .eq("org_id", org_id)
+                    .eq("id", top_agent_id)
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
+                if agent_rows:
+                    top_agent_name = str(agent_rows[0].get("name") or "").strip() or None
+        except Exception:  # noqa: BLE001
+            pass
         return {
             "failed_workflows": failed,
             "pending_auth_connectors": pending_auth,
-            "agent_tasks_overnight": 0,
+            "agent_tasks_completed": agent_tasks_completed,
+            "top_agent_id": top_agent_id,
+            "top_agent_name": top_agent_name,
+            "top_agent_task_count": top_agent_task_count,
         }
 
 

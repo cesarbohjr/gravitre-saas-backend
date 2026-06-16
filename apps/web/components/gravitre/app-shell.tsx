@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
 import { onboardingApi } from "@/lib/api"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -75,6 +76,8 @@ export function AppShell({ children, title }: AppShellProps) {
   const pathname = usePathname()
   const { user, loading } = useAuth()
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
+
+  useGlobalWorkShortcuts()
 
   // Fetch billing status (no polling — avoids periodic shell revalidation)
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(

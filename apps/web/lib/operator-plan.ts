@@ -5,9 +5,18 @@ const UUID_RE =
 
 export type OperatorInsightSection = {
   id: string
-  type: "summary" | "root-cause" | "analysis" | "discovery"
+  type:
+    | "summary"
+    | "root-cause"
+    | "analysis"
+    | "discovery"
+    | "reasoning"
+    | "actions"
+    | "prevention"
+    | "evidence"
   title: string
   content: string
+  actions?: { id: string; label: string; priority: "high" | "medium" | "low" }[]
 }
 
 export function resolveSessionIdForJob(taskId: string): string | undefined {
@@ -60,7 +69,7 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
     {
       id: "summary",
       type: "summary",
-      title: "Analysis Summary",
+      title: "What Happened",
       content:
         result.analysis_summary ||
         result.summary ||
@@ -70,11 +79,38 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
     {
       id: "finding",
       type: "root-cause",
-      title: "Finding",
+      title: "Why It Happened",
       content: result.finding_description || "No specific findings.",
     },
     ...traceSections,
   ]
+
+  const recommended = Array.isArray(result.recommended_actions)
+    ? result.recommended_actions.filter((item) => typeof item === "string" && item.trim())
+    : []
+
+  if (recommended.length > 0) {
+    sections.push({
+      id: "actions",
+      type: "actions",
+      title: "How to Fix It",
+      content: result.action_description || "Recommended remediation steps from the analysis:",
+      actions: recommended.map((label, index) => ({
+        id: `action-${index + 1}`,
+        label: String(label),
+        priority: index === 0 ? "high" : index === 1 ? "medium" : "low",
+      })),
+    })
+    sections.push({
+      id: "prevention",
+      type: "prevention",
+      title: "Prevention",
+      content:
+        result.action_title
+          ? `Ongoing mitigation: ${result.action_title}. Monitor similar failures and adjust thresholds before peak load.`
+          : "Monitor for repeat failures, tune timeouts ahead of peak hours, and enable alerts on connector latency.",
+    })
+  }
 
   if (result.persona) {
     sections.push({

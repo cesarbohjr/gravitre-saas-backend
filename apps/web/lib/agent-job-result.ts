@@ -6,6 +6,7 @@ export interface AgentJobHandoffResult {
   task?: { description?: string; status?: string }
   summary?: string
   answer?: string
+  finding_description?: string
   status?: string
   react_status?: string
   recommended_actions?: string[]
@@ -16,6 +17,13 @@ export interface AgentJobHandoffResult {
   error?: string
   needs_human_input?: boolean
   human_input_prompt?: string
+  requires_approval?: boolean
+  approval_status?: "approved" | "rejected"
+  rejection_reason?: string
+  approval_notes?: string
+  action_title?: string
+  action_description?: string
+  progress_percent?: number
   aiStatus?: string
   persona?: string
   model?: string
@@ -46,6 +54,9 @@ export function parseHandoffResult(job: AgentJob | null): AgentJobHandoffResult 
 }
 
 export function jobProgress(status: JobStatus, result: AgentJobHandoffResult | null): number {
+  if (typeof result?.progress_percent === "number") {
+    return Math.max(0, Math.min(100, result.progress_percent))
+  }
   if (status === "completed") return 100
   if (status === "failed" || status === "cancelled") return 100
   if (status === "paused") return 55

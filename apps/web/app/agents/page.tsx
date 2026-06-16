@@ -1,7 +1,7 @@
 "use client"
 
 // Agents Page - AI Team Command Center with Premium Orb System
-import { createElement, useState } from "react"
+import { createElement, useEffect, useMemo, useRef, useState } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
@@ -17,6 +17,16 @@ import {
   ActivityIndicator
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useMotionPrefs } from "@/lib/animations"
+import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import { 
   Plus, 
   Search,
@@ -35,13 +45,13 @@ import {
   Play,
   Pause,
   Settings,
+  X,
   ChevronRight,
   PanelRightClose,
   PanelRightOpen,
   Circle,
   Workflow,
   Shield,
-  Blocks,
   BookOpen,
   Users,
   type LucideIcon
@@ -54,13 +64,23 @@ import { agentsApi } from "@/lib/api"
 import { inferAgentDepartment, resolveAgentRoleIcon } from "@/lib/agent-display"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { toast } from "sonner"
+import { formatDistanceToNow } from "date-fns"
+
+type AgentRecentTask = {
+  id: string
+  title: string
+  time: string
+  status: string
+}
 
 type Agent = ApiAgent & {
   model?: string
   knowledgeDocCount?: number
+  recentTasks?: AgentRecentTask[]
 }
 
 const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
+const AGENTS_REFRESH_MS = 30_000
 
 function deriveModelLabel(input: Record<string, unknown>): string {
   const config = (input.config ?? {}) as Record<string, unknown>
@@ -129,6 +149,11 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
     lastActionTime: String(input.lastActionTime ?? input.last_action_time ?? "unknown"),
     model: deriveModelLabel(input),
     knowledgeDocCount: deriveKnowledgeDocCount(input, stats),
+    recentTasks: Array.isArray(input.recentTasks)
+      ? (input.recentTasks as AgentRecentTask[])
+      : Array.isArray(input.recent_tasks)
+        ? (input.recent_tasks as AgentRecentTask[])
+        : [],
   }
 }
 
@@ -166,8 +191,121 @@ const statusConfig = {
   error: { label: "Error", color: "text-red-400", dotColor: "bg-red-500", animate: false },
 }
 
+function shouldShowSuccessRate(agent: Agent): boolean {
+  return !(agent.status === "idle" && agent.stats.successRate === 0)
+}
+
+function successRateColorClass(rate: number): string {
+  if (rate >= 90) return "text-emerald-400"
+  if (rate >= 70) return "text-amber-400"
+  return "text-red-400"
+}
+
+function successRateBadgeClass(rate: number): string {
+  if (rate >= 90) return "bg-emerald-500/10 text-emerald-400"
+  if (rate >= 70) return "bg-amber-500/10 text-amber-400"
+  return "bg-red-500/10 text-red-400"
+}
+
+function formatModelDisplayName(model: string, maxLength = 15): string {
+  const trimmed = model.trim()
+  if (trimmed.length <= maxLength) return trimmed
+  return `${trimmed.slice(0, maxLength - 1)}…`
+}
+
+function AgentModelBadge({
+  model,
+  className,
+  variant = "orb",
+}: {
+  model: string
+  className?: string
+  variant?: "orb" | "panel"
+}) {
+  const display = formatModelDisplayName(model, variant === "orb" ? 14 : 22)
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={className}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {display}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs font-mono text-xs">
+        {model}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function agentMatchesQuery(agent: Agent, query: string): boolean {
+  const haystack = [
+    agent.name,
+    agent.role,
+    agent.department,
+    agent.description,
+    agent.model ?? "",
+    statusConfig[agent.status].label,
+    ...agent.capabilities,
+    ...agent.permissions,
+  ]
+    .join(" ")
+    .toLowerCase()
+  return haystack.includes(query)
+}
+
+function formatTaskTime(value: string): string {
+  if (!value || value === "unknown" || value === "recently") return value
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return formatDistanceToNow(date, { addSuffix: true })
+}
+
+function getAgentRecentTasks(agent: Agent): AgentRecentTask[] {
+  if (agent.recentTasks && agent.recentTasks.length > 0) {
+    return agent.recentTasks.slice(0, 3)
+  }
+  if (
+    agent.lastAction &&
+    agent.lastAction !== "No recent activity" &&
+    agent.lastAction !== "No activity yet"
+  ) {
+    return [
+      {
+        id: `${agent.id}-last`,
+        title: agent.lastAction,
+        time: agent.lastActionTime,
+        status: agent.status === "processing" ? "running" : agent.status,
+      },
+    ]
+  }
+  return []
+}
+
+function taskStatusBadgeClass(status: string): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-500/10 text-emerald-400"
+    case "running":
+    case "processing":
+      return "bg-blue-500/10 text-blue-400"
+    case "failed":
+    case "error":
+      return "bg-red-500/10 text-red-400"
+    case "paused":
+      return "bg-amber-500/10 text-amber-400"
+    default:
+      return "bg-secondary text-muted-foreground"
+  }
+}
+
 // Agent Orb Component - Premium visual personality representation with depth
 function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelected: boolean; onClick: () => void; index: number }) {
+  const { reduced } = useMotionPrefs()
   const status = statusConfig[agent.status]
   
   // 3D hover effect
@@ -200,12 +338,16 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
       transition={{ delay: Math.min(index, 8) * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={{ scale: 1.04, y: -4 }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={reduced ? undefined : { scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.98 }}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
       className={cn(
-        "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-colors",
-        isSelected ? "border-emerald-500/30 bg-card/70 shadow-lg z-10" : "hover:border-border/60 hover:bg-card/40",
+        "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
+        isSelected
+          ? "border-emerald-500/30 bg-card/70 shadow-lg z-10"
+          : "hover:border-border/60 hover:bg-card/40 hover:shadow-xl hover:shadow-black/20",
+        agent.status === "active" && !isSelected && "shadow-[0_0_24px_rgba(16,185,129,0.08)]",
+        agent.status === "idle" && "opacity-85",
       )}
     >
       <motion.div
@@ -239,9 +381,11 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
         )}
 
         {agent.model ? (
-          <span className="absolute -top-1 right-0 z-20 max-w-[88px] truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm">
-            {agent.model}
-          </span>
+          <AgentModelBadge
+            model={agent.model}
+            variant="orb"
+            className="absolute -top-1 right-0 z-20 max-w-[92px] truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm transition-colors group-hover:border-foreground/20 group-hover:text-foreground"
+          />
         ) : null}
 
         {agent.stats.tasksToday > 0 && (
@@ -292,17 +436,13 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
         </div>
 
         <p className="text-[10px] text-muted-foreground">
-          <span
-            className={cn(
-              agent.stats.successRate >= 95
-                ? "text-emerald-400"
-                : agent.stats.successRate >= 80
-                  ? "text-amber-400"
-                  : "text-red-400",
-            )}
-          >
-            {agent.stats.successRate}%
-          </span>
+          {shouldShowSuccessRate(agent) ? (
+            <span className={successRateColorClass(agent.stats.successRate)}>
+              {agent.stats.successRate}%
+            </span>
+          ) : (
+            <span className="text-muted-foreground/70">No tasks yet</span>
+          )}
           <span className="mx-1">·</span>
           <span>{agent.stats.tasksToday} today</span>
         </p>
@@ -340,16 +480,24 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
 
         <div
           className={cn(
-            "mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-sm",
+            "relative mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-sm",
             agent.status === "error"
               ? "border-red-500/50 bg-red-500/90 text-white"
               : agent.status === "processing"
                 ? "border-blue-500/30 bg-blue-500/10"
                 : agent.status === "active"
-                  ? "border-emerald-500/30 bg-emerald-500/10"
+                  ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_14px_rgba(16,185,129,0.35)]"
                   : "border-border bg-card/80",
           )}
         >
+          {agent.status === "active" && !reduced ? (
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-full border border-emerald-400/40"
+              animate={{ opacity: [0.35, 0.75, 0.35], scale: [1, 1.06, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            />
+          ) : null}
           <StatusBeacon
             status={
               agent.status === "error"
@@ -361,7 +509,7 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
                     : "idle"
             }
             size="sm"
-            pulse={agent.status !== "idle"}
+            pulse={agent.status === "active" || agent.status === "processing"}
           />
           <span
             className={cn(
@@ -466,10 +614,11 @@ function AgentDetailPanel({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className={cn(
             "rounded-md px-2 py-1 text-xs font-medium",
-            agent.stats.successRate >= 95 ? "bg-emerald-500/10 text-emerald-400" :
-            agent.stats.successRate >= 80 ? "bg-amber-500/10 text-amber-400" : "bg-red-500/10 text-red-400"
+            shouldShowSuccessRate(agent)
+              ? successRateBadgeClass(agent.stats.successRate)
+              : "bg-secondary text-muted-foreground",
           )}>
-            {agent.stats.successRate}% success
+            {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}% success` : "No tasks yet"}
           </span>
           <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
             {agent.stats.tasksToday} tasks
@@ -478,9 +627,11 @@ function AgentDetailPanel({
             {agent.stats.avgResponseTime} avg
           </span>
           {agent.model ? (
-            <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-              {agent.model}
-            </span>
+            <AgentModelBadge
+              model={agent.model}
+              variant="panel"
+              className="max-w-[140px] truncate rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+            />
           ) : null}
           {(agent.knowledgeDocCount ?? 0) > 0 ? (
             <a
@@ -511,10 +662,11 @@ function AgentDetailPanel({
         <div className="bg-card p-4 text-center">
           <div className={cn(
             "text-2xl font-semibold",
-            agent.stats.successRate >= 95 ? "text-emerald-400" : 
-            agent.stats.successRate >= 80 ? "text-amber-400" : "text-red-400"
+            shouldShowSuccessRate(agent)
+              ? successRateColorClass(agent.stats.successRate)
+              : "text-muted-foreground",
           )}>
-            {agent.stats.successRate}%
+            {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : "—"}
           </div>
           <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Success Rate</div>
         </div>
@@ -635,6 +787,233 @@ function AgentDetailPanel({
   )
 }
 
+function AgentQuickPanel({
+  agent,
+  activeCount,
+  totalTasks,
+  teamHealth,
+  onClose,
+  onOpenProfile,
+}: {
+  agent: Agent
+  activeCount: number
+  totalTasks: number
+  teamHealth: number
+  onClose: () => void
+  onOpenProfile: () => void
+}) {
+  const recentTasks = getAgentRecentTasks(agent)
+  const status = statusConfig[agent.status]
+
+  return (
+    <motion.div
+      role="dialog"
+      aria-label={`${agent.name} quick view`}
+      initial={{ y: "100%", opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: "100%", opacity: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+      className="fixed bottom-0 left-0 right-0 z-[60] border-t border-emerald-500/20 bg-card/95 shadow-2xl backdrop-blur-xl"
+    >
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
+      <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="min-w-0 flex-1 rounded-lg text-left transition-colors hover:bg-secondary/40"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                  `bg-gradient-to-br ${agent.personality.gradient}`,
+                )}
+              >
+                {createElement(getAgentIcon(agent), { className: "h-5 w-5 text-white" })}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">{agent.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{agent.role}</p>
+              </div>
+              <span
+                className={cn(
+                  "ml-auto hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex",
+                  agent.status === "error"
+                    ? "border-red-500/30 bg-red-500/10 text-red-400"
+                    : agent.status === "processing"
+                      ? "border-blue-500/30 bg-blue-500/10 text-blue-400"
+                      : agent.status === "active"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                        : "border-border bg-secondary text-muted-foreground",
+                )}
+              >
+                {status.label}
+              </span>
+            </div>
+          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            aria-label="Close agent panel"
+            onClick={(event) => {
+              event.stopPropagation()
+              onClose()
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          className="w-full cursor-pointer rounded-xl border border-border/60 bg-secondary/20 p-3 text-left transition-colors hover:border-border hover:bg-secondary/40 sm:p-4"
+        >
+          <div className="grid grid-cols-3 gap-3 sm:gap-6">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-emerald-400 sm:text-xl">
+                <AnimatedCounter value={activeCount} duration={0.8} />
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-blue-400 sm:text-xl">
+                <AnimatedCounter value={totalTasks} duration={1} />
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tasks Today</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-emerald-400 sm:text-xl">
+                {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : `${teamHealth}%`}
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Health</div>
+            </div>
+          </div>
+
+          {recentTasks.length > 0 ? (
+            <ul className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
+              {recentTasks.map((task) => (
+                <li
+                  key={task.id}
+                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <Zap className="h-3 w-3 shrink-0 text-blue-400/80" />
+                  <span className="min-w-0 flex-1 truncate text-foreground">{task.title}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase",
+                      taskStatusBadgeClass(task.status),
+                    )}
+                  >
+                    {task.status}
+                  </span>
+                  <span className="hidden shrink-0 sm:inline">{formatTaskTime(task.time)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+              No recent tasks for this agent yet.
+            </p>
+          )}
+        </button>
+
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1 gap-1.5" asChild>
+            <a href={`/agents/${agent.id}/chat`} onClick={(event) => event.stopPropagation()}>
+              <MessageSquare className="h-3.5 w-3.5" />
+              Chat
+            </a>
+          </Button>
+          <Button size="sm" className="flex-1 gap-1.5 bg-zinc-900 text-white hover:bg-zinc-800" asChild>
+            <a href={`/lite/assign?agent=${agent.id}`} onClick={(event) => event.stopPropagation()}>
+              <Play className="h-3.5 w-3.5" />
+              Assign Task
+            </a>
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function MesonBuildButton({
+  onClick,
+  isOpen,
+}: {
+  onClick: () => void
+  isOpen?: boolean
+}) {
+  const { reduced } = useMotionPrefs()
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="group relative">
+            <div
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute -inset-px rounded-lg bg-gradient-to-r from-violet-500/60 via-fuchsia-500/40 to-indigo-500/60 opacity-60 blur-[2px] transition-opacity duration-300",
+                "group-hover:opacity-100 group-focus-within:opacity-100",
+                isOpen && "opacity-100",
+              )}
+            />
+            <motion.div
+              whileHover={reduced ? undefined : { scale: 1.02 }}
+              whileTap={reduced ? undefined : { scale: 0.98 }}
+              className={cn(
+                "relative rounded-lg bg-gradient-to-r from-violet-500/50 via-fuchsia-500/30 to-indigo-500/50 p-px shadow-lg shadow-violet-500/15",
+                isOpen && "shadow-violet-500/25",
+              )}
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClick}
+                aria-expanded={isOpen}
+                aria-haspopup="dialog"
+                aria-label="Build with Meson"
+                className={cn(
+                  "relative gap-2 rounded-[7px] border-0 bg-card/95 px-3 hover:bg-violet-500/10",
+                  isOpen && "bg-violet-500/15",
+                )}
+              >
+                <motion.span
+                  animate={
+                    reduced
+                      ? undefined
+                      : { rotate: [0, 10, -10, 0], scale: [1, 1.08, 1] }
+                  }
+                  transition={
+                    reduced
+                      ? undefined
+                      : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+                  }
+                  className="inline-flex"
+                >
+                  <Sparkles className="h-4 w-4 text-violet-400" />
+                </motion.span>
+                <span className="hidden bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300 bg-clip-text font-medium text-transparent sm:inline">
+                  Build with Meson
+                </span>
+                <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-indigo-300 bg-clip-text text-sm font-medium text-transparent sm:hidden">
+                  Meson
+                </span>
+              </Button>
+            </motion.div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          AI-powered builder — describe intent, deploy agents and workflows
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 export default function AgentsPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -652,13 +1031,14 @@ export default function AgentsPage() {
     })
   }
   
-  // Fetch agents from API with SWR
+  // Fetch agents from API with SWR — refresh every 30s for live task/active counts
   const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
     user ? "/api/agents" : null,
     apiFetcher,
     {
       revalidateOnFocus: true,
       revalidateOnMount: true,
+      refreshInterval: AGENTS_REFRESH_MS,
       dedupingInterval: 2000,
       onError: (err) => {
         console.error("[v0] Agents fetch error:", err)
@@ -668,9 +1048,28 @@ export default function AgentsPage() {
   
   const agents = normalizeAgentsResponse(data)
   
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
+  const [quickPanelDismissed, setQuickPanelDismissed] = useState(false)
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return
+      event.preventDefault()
+      searchInputRef.current?.focus()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  useWorkPageShortcut("focus-search", () => searchInputRef.current?.focus())
 
   const handleStartAgent = async (agent: Agent) => {
     try {
@@ -700,15 +1099,42 @@ export default function AgentsPage() {
     }
   }
   
-  const selectedAgentOrDefault = selectedAgent ?? agents[0] ?? null
-  
-  const filteredAgents = agents.filter((a) =>
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.role.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredAgents = useMemo(() => {
+    if (!normalizedSearchQuery) return agents
+    return agents.filter((agent) => agentMatchesQuery(agent, normalizedSearchQuery))
+  }, [agents, normalizedSearchQuery])
+
+  const visibleSelectedAgent = useMemo(() => {
+    if (selectedAgent && filteredAgents.some((agent) => agent.id === selectedAgent.id)) {
+      return selectedAgent
+    }
+    return filteredAgents[0] ?? null
+  }, [selectedAgent, filteredAgents])
 
   const activeCount = agents.filter((a) => a.status === "active" || a.status === "processing").length
   const totalTasks = agents.reduce((sum, a) => sum + a.stats.tasksToday, 0)
+  const totalAgents = agents.length
+  const teamHealth =
+    agents.length > 0
+      ? Math.round(
+          agents.reduce(
+            (sum, agent) => sum + (shouldShowSuccessRate(agent) ? agent.stats.successRate : 100),
+            0,
+          ) / agents.length,
+        )
+      : 100
+  const showQuickPanel = Boolean(visibleSelectedAgent) && !quickPanelDismissed
+
+  const prevActiveCountRef = useRef(activeCount)
+  const [activeStatPulse, setActiveStatPulse] = useState(false)
+
+  useEffect(() => {
+    if (prevActiveCountRef.current === activeCount) return
+    prevActiveCountRef.current = activeCount
+    setActiveStatPulse(true)
+    const timer = window.setTimeout(() => setActiveStatPulse(false), 800)
+    return () => window.clearTimeout(timer)
+  }, [activeCount])
 
   return (
   <AppShell title="Agents">
@@ -742,14 +1168,10 @@ export default function AgentsPage() {
             iconColor="from-violet-500/20 to-purple-500/20"
             actions={
               <>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setMesonWizardOpen(true)} 
-                  className="gap-2 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50"
-                >
-                  <Blocks className="h-4 w-4 text-violet-400" />
-                  <span className="text-violet-400">Build with Meson</span>
-                </Button>
+                <MesonBuildButton
+                  onClick={() => setMesonWizardOpen(true)}
+                  isOpen={mesonWizardOpen}
+                />
                 <Button onClick={() => router.push("/agents/new")} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
                   <Plus className="h-4 w-4" />
                   New Agent
@@ -767,24 +1189,66 @@ export default function AgentsPage() {
             }
           >
             <StatsGrid columns={3}>
-              <StatCard label="Total" value={agents.length} />
-              <StatCard label="Active" value={activeCount} variant="success" />
-              <StatCard label="Tasks" value={totalTasks} variant="info" />
+              <StatCard
+                label="Total"
+                value={<AnimatedCounter value={totalAgents} duration={0.8} />}
+              />
+              <motion.div
+                animate={
+                  activeStatPulse
+                    ? { scale: [1, 1.04, 1], boxShadow: ["0 0 0 rgba(16,185,129,0)", "0 0 20px rgba(16,185,129,0.25)", "0 0 0 rgba(16,185,129,0)"] }
+                    : { scale: 1 }
+                }
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="rounded-lg"
+              >
+                <StatCard
+                  label="Active"
+                  value={<AnimatedCounter value={activeCount} duration={0.8} />}
+                  variant="success"
+                  className={activeCount > 0 ? "border-emerald-500/30" : undefined}
+                />
+              </motion.div>
+              <StatCard
+                label="Tasks"
+                value={<AnimatedCounter value={totalTasks} duration={1} />}
+                variant="info"
+              />
             </StatsGrid>
           </PageHeader>
 
           {/* Search */}
-          <div className="p-3 sm:p-4 border-b border-border">
+          <div className="p-3 sm:p-4 border-b border-border space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
-                type="text"
-                placeholder="Search agents..."
+                ref={searchInputRef}
+                type="search"
+                placeholder="Search agents by name, role, department..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 sm:h-9 rounded-lg border border-border bg-secondary pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                aria-label="Search agents"
+                className="w-full h-10 sm:h-9 rounded-lg border border-border bg-secondary pl-9 pr-9 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearchQuery("")
+                    searchInputRef.current?.focus()
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
             </div>
+            {normalizedSearchQuery && agents.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {filteredAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
+              </p>
+            ) : null}
           </div>
 
           {/* Agent Orb Grid - Premium with particle field */}
@@ -814,31 +1278,55 @@ export default function AgentsPage() {
               </div>
               
               {/* Orb constellation - extra bottom padding for status badges */}
+              <TooltipProvider delayDuration={200}>
               <div className="relative flex flex-wrap gap-8 sm:gap-10 lg:gap-12 justify-center items-start pt-8 sm:pt-10 pb-28">
                 {error ? (
-                  <div className="text-center space-y-3 px-4">
-                    <p className="text-sm text-destructive">Could not load agents.</p>
-                    <Button variant="outline" size="sm" onClick={() => void mutate()}>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Retry
-                    </Button>
-                  </div>
+                  <WorkSectionErrorCard
+                    title="Could not load agents"
+                    message="We couldn't reach the agents service. Check your connection and try again."
+                    onRetry={() => void mutate()}
+                    className="max-w-sm"
+                  />
                 ) : isLoading && agents.length === 0 ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Loading agents…
+                  <div className="flex flex-wrap justify-center gap-8 sm:gap-10 lg:gap-12 pt-8 sm:pt-10 pb-28">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div key={index} className="flex flex-col items-center gap-3">
+                        <Skeleton className="h-24 w-24 rounded-full" />
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-2 w-16" />
+                      </div>
+                    ))}
                   </div>
                 ) : filteredAgents.length === 0 ? (
                   <div className="text-center space-y-3 px-4">
-                    <p className="text-sm text-muted-foreground">
-                      {searchQuery ? "No agents match your search." : "No agents yet. Create your first AI teammate."}
-                    </p>
-                    {!searchQuery ? (
-                      <Button onClick={() => router.push("/agents/new")} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        New Agent
-                      </Button>
-                    ) : null}
+                    {normalizedSearchQuery ? (
+                      <>
+                        <Bot className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                        <p className="text-sm text-muted-foreground">
+                          No agents matching &apos;{searchQuery.trim()}&apos;
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchQuery("")
+                            searchInputRef.current?.focus()
+                          }}
+                        >
+                          Clear search
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          No agents yet. Create your first AI teammate.
+                        </p>
+                        <Button onClick={() => router.push("/agents/new")} className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          New Agent
+                        </Button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <AnimatePresence mode="popLayout">
@@ -847,32 +1335,52 @@ export default function AgentsPage() {
                         key={agent.id}
                         agent={agent}
                         index={index}
-                        isSelected={selectedAgentOrDefault?.id === agent.id}
-                        onClick={() => setSelectedAgent(agent)}
+                        isSelected={visibleSelectedAgent?.id === agent.id}
+                        onClick={() => {
+                          setSelectedAgent(agent)
+                          setQuickPanelDismissed(false)
+                        }}
                       />
                     ))}
                   </AnimatePresence>
                 )}
               </div>
+              </TooltipProvider>
             </div>
             
-            {/* Stats bar - sticky at bottom of scroll container */}
+            {/* Team stats bar — hidden when agent quick panel is open */}
+            {!showQuickPanel ? (
             <motion.div 
               className="sticky bottom-0 left-0 right-0 z-50 flex justify-center py-4 bg-gradient-to-t from-background via-background to-transparent"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               transition={{ delay: 0.5 }}
             >
               <div className="flex items-center gap-6 px-6 py-3 rounded-full bg-card border border-border shadow-lg">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <Activity className="h-4 w-4 text-emerald-400" />
+                <motion.div
+                  className="flex items-center gap-2"
+                  animate={
+                    activeStatPulse
+                      ? { scale: [1, 1.03, 1] }
+                      : { scale: 1 }
+                  }
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                >
+                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
+                    {activeCount > 0 ? (
+                      <StatusBeacon status="active" size="sm" pulse />
+                    ) : (
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                    )}
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Active</div>
-                    <div className="text-sm font-semibold text-foreground"><AnimatedCounter value={activeCount} duration={1} /></div>
+                    <div className="text-sm font-semibold text-foreground">
+                      <AnimatedCounter value={activeCount} duration={0.8} />
+                    </div>
                   </div>
-                </div>
+                </motion.div>
                 <div className="w-px h-8 bg-border" />
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -885,16 +1393,31 @@ export default function AgentsPage() {
                 </div>
                 <div className="w-px h-8 bg-border" />
                 <div className="flex items-center gap-2">
-                  <ActivityIndicator value={98} size={36} color="emerald" />
+                  <ActivityIndicator value={teamHealth} size={36} color="emerald" />
                   <div>
                     <div className="text-xs text-muted-foreground">Health</div>
-                    <div className="text-sm font-semibold text-emerald-400">98%</div>
+                    <div className="text-sm font-semibold text-emerald-400">{teamHealth}%</div>
                   </div>
                 </div>
               </div>
             </motion.div>
+            ) : null}
           </div>
         </div>
+
+        <AnimatePresence>
+          {showQuickPanel && visibleSelectedAgent ? (
+            <AgentQuickPanel
+              key={visibleSelectedAgent.id}
+              agent={visibleSelectedAgent}
+              activeCount={activeCount}
+              totalTasks={totalTasks}
+              teamHealth={teamHealth}
+              onClose={() => setQuickPanelDismissed(true)}
+              onOpenProfile={() => router.push(`/agents/${visibleSelectedAgent.id}`)}
+            />
+          ) : null}
+        </AnimatePresence>
 
 {/* Right - Agent Detail Panel - Premium glassmorphism */}
         <AnimatePresence initial={false}>
@@ -909,14 +1432,16 @@ export default function AgentsPage() {
             >
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
               <AnimatePresence mode="wait">
-                {selectedAgentOrDefault && (
-                  <AgentDetailPanel
-                    key={selectedAgentOrDefault.id}
-                    agent={selectedAgentOrDefault}
-                    onStart={handleStartAgent}
-                    onStop={handleStopAgent}
-                    isMutating={isMutatingAgent === selectedAgentOrDefault.id}
-                  />
+                {visibleSelectedAgent && (
+                  <TooltipProvider delayDuration={200}>
+                    <AgentDetailPanel
+                      key={visibleSelectedAgent.id}
+                      agent={visibleSelectedAgent}
+                      onStart={handleStartAgent}
+                      onStop={handleStopAgent}
+                      isMutating={isMutatingAgent === visibleSelectedAgent.id}
+                    />
+                  </TooltipProvider>
                 )}
               </AnimatePresence>
             </motion.div>

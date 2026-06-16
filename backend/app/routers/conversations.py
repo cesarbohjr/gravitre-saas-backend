@@ -38,6 +38,7 @@ def _normalize_conversation(row: dict) -> dict:
         "created_at": row.get("created_at") or _now_iso(),
         "updated_at": row.get("updated_at") or row.get("created_at") or _now_iso(),
         "message_count": int(row.get("message_count") or 0),
+        "archived_at": row.get("archived_at"),
     }
 
 
@@ -235,7 +236,7 @@ async def list_conversations(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     query = (
         client.table("conversations")
-        .select("id, title, preview, message_count, created_at, updated_at")
+        .select("id, title, preview, message_count, created_at, updated_at, archived_at")
         .eq("org_id", org_id)
         .eq("user_id", user["user_id"])
         .is_("deleted_at", "null")

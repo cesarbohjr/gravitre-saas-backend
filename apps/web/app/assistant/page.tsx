@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react"
+import Link from "next/link"
+import type { User } from "@supabase/supabase-js"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
@@ -23,10 +25,13 @@ import {
   RefreshCw,
   Square,
   AlertTriangle,
+  CheckCircle2,
   ArrowUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
@@ -36,6 +41,7 @@ import useSWR from "swr"
 import { conversationsApi, assistantApi } from "@/lib/api"
 import type { Conversation } from "@/types/api"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
+import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import {
   AssistantModelSelector,
   getModeConfig,
@@ -67,13 +73,126 @@ const MAX_STORED_MESSAGES = 50
 
 // Intelligence modes — config lives in assistant-model-selector
 
-// Gravitre-specific sample prompts
-const samplePrompts = [
-  { icon: Bot, label: "What agents are currently active?", category: "Agents" },
-  { icon: Database, label: "Show failed workflows from today", category: "Workflows" },
-  { icon: Sparkles, label: "How do I create a new automation?", category: "Help" },
-  { icon: Plug, label: "Which connectors have sync errors?", category: "Connectors" },
+const WELCOME_QUICK_ACTIONS = [
+  {
+    id: "agents",
+    icon: Bot,
+    category: "Agents",
+    defaultQuery: "What agents are currently active?",
+    iconWrapClass: "bg-violet-50 group-hover:bg-violet-100",
+    iconClass: "text-violet-600",
+    categoryClass: "text-violet-600",
+    cardHoverClass: "hover:border-violet-300 hover:shadow-violet-500/10",
+  },
+  {
+    id: "workflows",
+    icon: Database,
+    category: "Workflows",
+    defaultQuery: "Show failed workflows from today",
+    iconWrapClass: "bg-amber-50 group-hover:bg-amber-100",
+    iconClass: "text-amber-600",
+    categoryClass: "text-amber-600",
+    cardHoverClass: "hover:border-amber-300 hover:shadow-amber-500/10",
+  },
+  {
+    id: "connectors",
+    icon: Plug,
+    category: "Connectors",
+    defaultQuery: "Which connectors have sync errors?",
+    iconWrapClass: "bg-emerald-50 group-hover:bg-emerald-100",
+    iconClass: "text-emerald-600",
+    categoryClass: "text-emerald-600",
+    cardHoverClass: "hover:border-emerald-300 hover:shadow-emerald-500/10",
+  },
 ] as const
+
+type BriefingBullet = {
+  id: string
+  text: string
+  href: string
+  tone: "error" | "success" | "warning"
+}
+
+function resolveUserFirstName(user: User | null): string | null {
+  if (!user) return null
+  const meta = user.user_metadata ?? {}
+  const fromMeta = String(meta.full_name || meta.name || meta.display_name || "").trim()
+  if (fromMeta) return fromMeta.split(/\s+/)[0]
+  const email = user.email ?? ""
+  if (email.includes("@")) {
+    const local = email.split("@")[0].replace(/[._]/g, " ")
+    const token = local.split(/\s+/)[0]
+    if (token) return token.charAt(0).toUpperCase() + token.slice(1)
+  }
+  return null
+}
+
+function resolveWelcomeGreeting(
+  apiGreeting: string | undefined,
+  user: User | null,
+): string {
+  const firstName = resolveUserFirstName(user)
+  if (apiGreeting) {
+    if (user?.email && apiGreeting.includes(user.email) && firstName) {
+      return apiGreeting.replace(user.email, firstName)
+    }
+    if (firstName && !apiGreeting.includes(firstName)) {
+      if (apiGreeting === "Welcome back" || apiGreeting === "Good morning") {
+        return `${apiGreeting}, ${firstName}`
+      }
+    }
+    return apiGreeting
+  }
+  if (firstName) return `Welcome back, ${firstName}`
+  return "How can I help you today?"
+}
+
+function normalizeBriefingBullet(
+  bullet: string | { id?: string; text: string; href?: string; tone?: BriefingBullet["tone"] },
+  index: number,
+): BriefingBullet {
+  if (typeof bullet === "string") {
+    const lower = bullet.toLowerCase()
+    if (lower.includes("connector") && lower.includes("auth")) {
+      return { id: `legacy-${index}`, text: bullet, href: "/connectors", tone: "error" }
+    }
+    if (lower.includes("agent") && lower.includes("completed")) {
+      return { id: `legacy-${index}`, text: bullet, href: "/agents", tone: "success" }
+    }
+    if (lower.includes("workflow") && lower.includes("fail")) {
+      return { id: `legacy-${index}`, text: bullet, href: "/workflows", tone: "warning" }
+    }
+    return { id: `legacy-${index}`, text: bullet, href: "/assignments", tone: "warning" }
+  }
+  return {
+    id: bullet.id || `briefing-${index}`,
+    text: bullet.text,
+    href: bullet.href || "/assignments",
+    tone: bullet.tone || "warning",
+  }
+}
+
+function briefingToneStyles(tone: BriefingBullet["tone"]) {
+  if (tone === "error") {
+    return {
+      icon: Plug,
+      iconClass: "text-red-400",
+      rowClass: "hover:border-red-500/30 hover:bg-red-500/5",
+    }
+  }
+  if (tone === "success") {
+    return {
+      icon: CheckCircle2,
+      iconClass: "text-emerald-400",
+      rowClass: "hover:border-emerald-500/30 hover:bg-emerald-500/5",
+    }
+  }
+  return {
+    icon: AlertTriangle,
+    iconClass: "text-amber-400",
+    rowClass: "hover:border-amber-500/30 hover:bg-amber-500/5",
+  }
+}
 
 function resolveAssistantTools(mode: IntelligenceMode): string[] {
   const base = ["knowledge_base", "agent_status", "connector_status"]
@@ -437,6 +556,32 @@ function TypingIndicator() {
   )
 }
 
+function ConversationMessagesSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end gap-3">
+        <Skeleton className="h-16 w-[min(72%,20rem)] rounded-2xl rounded-br-md" />
+        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+      </div>
+      <div className="flex gap-4">
+        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-20 w-[min(80%,24rem)] rounded-2xl rounded-bl-md" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+      </div>
+      <div className="flex justify-end gap-3">
+        <Skeleton className="h-12 w-[min(60%,16rem)] rounded-2xl rounded-br-md" />
+        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+      </div>
+      <div className="flex gap-4">
+        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+        <Skeleton className="h-24 w-[min(85%,26rem)] rounded-2xl rounded-bl-md" />
+      </div>
+    </div>
+  )
+}
+
 export default function AssistantPage() {
   const { user } = useAuth()
   const [input, setInput] = useState("")
@@ -452,6 +597,8 @@ export default function AssistantPage() {
   const pendingConversationRef = useRef<Promise<string | null> | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [conversationMessagesLoading, setConversationMessagesLoading] = useState(false)
+  const [conversationMessagesError, setConversationMessagesError] = useState<string | null>(null)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return localStorage.getItem(CONVERSATION_ID_KEY)
@@ -497,12 +644,19 @@ export default function AssistantPage() {
   }, [user])
 
   // Fetch conversations list
-  const { data: conversationsData, mutate: mutateConversations } = useSWR(
+  const {
+    data: conversationsData,
+    error: conversationsError,
+    isLoading: conversationsLoading,
+    mutate: mutateConversations,
+  } = useSWR(
     user ? "conversations" : null,
-    () => conversationsApi.list({ limit: 100 }),
-    { fallbackData: { conversations: [] as Conversation[] }, revalidateOnFocus: false }
+    () => conversationsApi.list({ limit: 100, includeArchived: true }),
+    { revalidateOnFocus: false },
   )
   const conversations = conversationsData?.conversations ?? []
+  const showConversationsSkeleton = Boolean(user) && conversationsLoading && !conversationsData
+  const showConversationsError = Boolean(user) && Boolean(conversationsError) && !conversationsLoading
 
   // Hydrate once from localStorage (only for ad-hoc sessions without a saved conversation id)
   const [initialMessages] = useState<UIMessage[]>(() => {
@@ -575,6 +729,20 @@ export default function AssistantPage() {
     { revalidateOnFocus: false },
   )
 
+  const welcomeGreeting = resolveWelcomeGreeting(dailyBriefing?.greeting, user)
+  const briefingBullets = useMemo(
+    () => (dailyBriefing?.bullets ?? []).map((bullet, index) => normalizeBriefingBullet(bullet, index)),
+    [dailyBriefing?.bullets],
+  )
+  const welcomeQuickActions = useMemo(
+    () =>
+      WELCOME_QUICK_ACTIONS.map((action, index) => ({
+        ...action,
+        query: dailyBriefing?.suggestions?.[index] ?? action.defaultQuery,
+      })),
+    [dailyBriefing?.suggestions],
+  )
+
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
   const isBusy = isLoading || isSubmitting
@@ -588,19 +756,30 @@ export default function AssistantPage() {
   }, [activeConversationId])
 
   // Hydrate active conversation messages from API when restoring last session.
+  const loadConversationMessages = useCallback(
+    async (id: string) => {
+      setConversationMessagesLoading(true)
+      setConversationMessagesError(null)
+      try {
+        const { messages: stored } = await conversationsApi.getMessages(id)
+        setMessages(stored.map(conversationMessageToUI))
+      } catch (error) {
+        console.error("[v0] Load conversation failed:", error)
+        setMessages([])
+        setConversationMessagesError(
+          "We couldn't load this conversation. Check your connection and try again.",
+        )
+      } finally {
+        setConversationMessagesLoading(false)
+      }
+    },
+    [setMessages],
+  )
+
   useEffect(() => {
     if (!user || !activeConversationId || messages.length > 0) return
-    let cancelled = false
-    void conversationsApi.getMessages(activeConversationId).then(({ messages: stored }) => {
-      if (cancelled || stored.length === 0) return
-      setMessages(stored.map(conversationMessageToUI))
-    }).catch(() => {
-      // Ignore — user can start a fresh thread.
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [user, activeConversationId, messages.length, setMessages])
+    void loadConversationMessages(activeConversationId)
+  }, [user, activeConversationId, messages.length, loadConversationMessages])
 
   // Persist ad-hoc sessions to localStorage (conversation threads are stored via API)
   useEffect(() => {
@@ -628,6 +807,8 @@ export default function AssistantPage() {
     pendingConversationRef.current = null
     submitLockRef.current = false
     setIsSubmitting(false)
+    setConversationMessagesLoading(false)
+    setConversationMessagesError(null)
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(CONVERSATION_ID_KEY)
     inputRef.current?.focus()
@@ -635,20 +816,22 @@ export default function AssistantPage() {
   }, [setMessages, mutateConversations])
 
   // Handle selecting a conversation from sidebar
-  const handleSelectConversation = useCallback(async (id: string) => {
-    setActiveConversationId(id)
-    activeConversationIdRef.current = id
-    localStorage.setItem(CONVERSATION_ID_KEY, id)
-    localStorage.removeItem(STORAGE_KEY)
-    try {
-      const { messages: stored } = await conversationsApi.getMessages(id)
-      setMessages(stored.map(conversationMessageToUI))
-    } catch (error) {
-      console.error("[v0] Load conversation failed:", error)
-      setMessages([])
-      toast.error("Failed to load conversation")
+  const handleSelectConversation = useCallback(
+    async (id: string) => {
+      setActiveConversationId(id)
+      activeConversationIdRef.current = id
+      localStorage.setItem(CONVERSATION_ID_KEY, id)
+      localStorage.removeItem(STORAGE_KEY)
+      await loadConversationMessages(id)
+    },
+    [loadConversationMessages],
+  )
+
+  const retryLoadConversation = useCallback(() => {
+    if (activeConversationId) {
+      void loadConversationMessages(activeConversationId)
     }
-  }, [setMessages])
+  }, [activeConversationId, loadConversationMessages])
 
   // Handle deleting a conversation
   const handleDeleteConversation = useCallback(async (id: string) => {
@@ -799,20 +982,8 @@ export default function AssistantPage() {
     }
   }
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "n") {
-        e.preventDefault()
-        handleNewConversation()
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault()
-        inputRef.current?.focus()
-      }
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [handleNewConversation])
+  useWorkPageShortcut("new", handleNewConversation)
+  useWorkPageShortcut("focus-search", () => inputRef.current?.focus())
 
   return (
     <AppShell title="Assistant">
@@ -829,6 +1000,9 @@ export default function AssistantPage() {
           onBulkDelete={handleBulkDeleteConversations}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
+          isLoading={showConversationsSkeleton}
+          loadError={showConversationsError}
+          onRetry={() => void mutateConversations()}
         />
 
         {/* Main chat area */}
@@ -906,6 +1080,15 @@ export default function AssistantPage() {
                     Sign in to use the Gravitre AI Assistant and get help with your automation workflows.
                   </p>
                 </motion.div>
+              ) : conversationMessagesLoading && activeConversationId ? (
+                <ConversationMessagesSkeleton />
+              ) : conversationMessagesError && activeConversationId ? (
+                <WorkSectionErrorCard
+                  title="Couldn't load conversation"
+                  message={conversationMessagesError}
+                  onRetry={retryLoadConversation}
+                  className="border-zinc-200 bg-red-50/90"
+                />
               ) : messages.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -923,15 +1106,32 @@ export default function AssistantPage() {
                     />
                   </div>
                   <h2 className="text-2xl font-semibold text-zinc-900 mb-3">
-                    {dailyBriefing?.greeting || "How can I help you today?"}
+                    {welcomeGreeting}
                   </h2>
-                  {dailyBriefing?.bullets?.length ? (
-                    <div className="mb-6 max-w-md text-left w-full rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
-                      <p className="font-medium text-zinc-800 mb-2">Since you were last here:</p>
-                      <ul className="space-y-1 list-disc pl-5">
-                        {dailyBriefing.bullets.map((bullet) => (
-                          <li key={bullet}>{bullet}</li>
-                        ))}
+                  {briefingBullets.length ? (
+                    <div className="mb-6 max-w-md w-full rounded-xl border border-zinc-200/80 bg-white p-4 text-sm shadow-sm shadow-zinc-200/60 ring-1 ring-zinc-100/80">
+                      <p className="font-medium text-zinc-800 mb-3">Since you were last here:</p>
+                      <ul className="space-y-1">
+                        {briefingBullets.map((bullet) => {
+                          const tone = briefingToneStyles(bullet.tone)
+                          const ToneIcon = tone.icon
+                          return (
+                            <li key={bullet.id}>
+                              <Link
+                                href={bullet.href}
+                                className={cn(
+                                  "group flex items-start gap-2.5 rounded-lg border border-transparent px-2 py-2 -mx-2 transition-all",
+                                  tone.rowClass,
+                                )}
+                              >
+                                <ToneIcon className={cn("h-4 w-4 mt-0.5 shrink-0", tone.iconClass)} />
+                                <span className="text-zinc-600 transition-colors group-hover:text-zinc-900">
+                                  {bullet.text}
+                                </span>
+                              </Link>
+                            </li>
+                          )
+                        })}
                       </ul>
                     </div>
                   ) : null}
@@ -940,30 +1140,41 @@ export default function AssistantPage() {
                   </p>
 
                   {!hasSentMessage && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
-                      {(dailyBriefing?.suggestions?.length ? dailyBriefing.suggestions : samplePrompts.map((p) => p.label)).slice(0, 6).map((label, i) => {
-                        const prompt = samplePrompts.find((p) => p.label === label) || samplePrompts[i % samplePrompts.length]
-                        const PromptIcon = prompt.icon
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl">
+                      {welcomeQuickActions.map((action, i) => {
+                        const PromptIcon = action.icon
                         return (
                           <motion.button
-                            key={`${label}-${i}`}
+                            key={action.id}
                             type="button"
                             disabled={isBusy}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            onClick={() => void submitText(label)}
+                            whileHover={isBusy ? undefined : { scale: 1.02 }}
+                            whileTap={isBusy ? undefined : { scale: 0.98 }}
+                            transition={{ delay: i * 0.08 }}
+                            onClick={() => void submitText(action.query)}
                             className={cn(
-                              "group flex items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-white text-left hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-500/10 transition-all",
+                              "group flex flex-col items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-white text-left shadow-sm transition-all",
+                              action.cardHoverClass,
                               isBusy && "opacity-60 pointer-events-none",
                             )}
                           >
-                            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
-                              <PromptIcon className="h-4 w-4 text-emerald-600" />
+                            <div
+                              className={cn(
+                                "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                                action.iconWrapClass,
+                              )}
+                            >
+                              <PromptIcon className={cn("h-4 w-4", action.iconClass)} />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-emerald-600 mb-1">{prompt.category}</p>
-                              <p className="text-sm text-zinc-700 group-hover:text-zinc-900">{label}</p>
+                            <div className="flex-1 min-w-0 w-full">
+                              <p className={cn("text-xs font-semibold mb-1.5", action.categoryClass)}>
+                                {action.category}
+                              </p>
+                              <p className="text-sm text-zinc-700 leading-snug group-hover:text-zinc-900">
+                                {action.query}
+                              </p>
                             </div>
                           </motion.button>
                         )
@@ -1026,6 +1237,7 @@ export default function AssistantPage() {
                   onModeChange={(next) => {
                     setMode(next)
                     persistPreferences(next, modelOverride)
+                    inputRef.current?.focus()
                   }}
                   onModelChange={(next) => {
                     setModelOverride(next)
@@ -1064,6 +1276,7 @@ export default function AssistantPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => stop()}
+                    aria-label="Stop generating"
                     className="h-8 px-3 gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
                   >
                     <Square className="h-3 w-3 fill-current" />
@@ -1073,17 +1286,19 @@ export default function AssistantPage() {
                   <Button
                     type="submit"
                     size="sm"
+                    aria-label={isBusy ? "Sending message" : "Send message"}
                     disabled={!user || !input.trim() || isBusy}
                     className={cn(
-                      "h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50",
+                      "h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600",
+                      "disabled:cursor-not-allowed disabled:opacity-40",
                       "transition-transform duration-150 active:scale-90",
                       input.trim() && !isBusy && "motion-safe:hover:scale-110",
                     )}
                   >
                     {isBusy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                     ) : (
-                      <ArrowUp className="h-4 w-4" />
+                      <ArrowUp className="h-4 w-4" aria-hidden />
                     )}
                   </Button>
                 )}

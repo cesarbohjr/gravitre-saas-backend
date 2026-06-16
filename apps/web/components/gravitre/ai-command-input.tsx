@@ -17,8 +17,12 @@ import {
   ChevronRight,
   History,
   Lightbulb,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { useMotionPrefs } from "@/lib/animations"
+import { WORK_SHORTCUT_EVENT } from "@/lib/work-page-shortcuts"
 
 interface SlashCommand {
   command: string
@@ -41,6 +45,7 @@ interface AICommandInputProps {
   isProcessing?: boolean
   disabled?: boolean
   contextLabel?: string
+  listenForFocusShortcut?: boolean
 }
 
 const slashCommands: SlashCommand[] = [
@@ -53,10 +58,10 @@ const slashCommands: SlashCommand[] = [
 ]
 
 const suggestedActions: SuggestedAction[] = [
-  { label: "Why did the last sync fail?", icon: AlertCircle, prompt: "Investigate why the last sync failed and suggest fixes" },
+  { label: "Why did the last sync fail?", icon: Clock, prompt: "Investigate why the last sync failed and suggest fixes" },
   { label: "Analyze latency trends", icon: TrendingUp, prompt: "/analyze latency patterns over the past 24 hours" },
   { label: "Debug pipeline errors", icon: Bug, prompt: "/debug Find errors in the data pipeline" },
-  { label: "Optimize query performance", icon: Gauge, prompt: "/optimize Suggest query performance improvements" },
+  { label: "Optimize query performance", icon: Zap, prompt: "/optimize Suggest query performance improvements" },
 ]
 
 const rotatingPlaceholders = [
@@ -75,12 +80,15 @@ export function AICommandInput({
   isProcessing = false,
   disabled = false,
   contextLabel,
+  listenForFocusShortcut = false,
 }: AICommandInputProps) {
+  const { reduced } = useMotionPrefs()
   const [isFocused, setIsFocused] = useState(false)
   const [showCommands, setShowCommands] = useState(false)
   const [filteredCommands, setFilteredCommands] = useState<SlashCommand[]>([])
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const [submittingChip, setSubmittingChip] = useState<string | null>(null)
   const [recentPrompts] = useState<string[]>([
     "Investigate sync-customers-1234 failure",
     "Analyze API response times",
@@ -95,6 +103,14 @@ export function AICommandInput({
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (isProcessing) return
+    const frameId = window.requestAnimationFrame(() => {
+      setSubmittingChip(null)
+    })
+    return () => window.cancelAnimationFrame(frameId)
+  }, [isProcessing])
 
   // Handle slash command detection
   useEffect(() => {
@@ -155,17 +171,20 @@ export function AICommandInput({
     [showCommands, filteredCommands, selectedCommandIndex, onChange, onSubmit, value]
   )
 
-  // Global keyboard shortcut
+  // Page-level ⌘/ focus (global handler dispatches gravitre:work-shortcut)
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
+    if (!listenForFocusShortcut) return
+
+    const handleFocusShortcut = (event: Event) => {
+      const detail = (event as CustomEvent<{ action?: string }>).detail
+      if (detail?.action === "focus-search") {
         inputRef.current?.focus()
       }
     }
-    window.addEventListener("keydown", handleGlobalKeyDown)
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown)
-  }, [])
+
+    window.addEventListener(WORK_SHORTCUT_EVENT, handleFocusShortcut)
+    return () => window.removeEventListener(WORK_SHORTCUT_EVENT, handleFocusShortcut)
+  }, [listenForFocusShortcut])
 
   const handleCommandSelect = (command: SlashCommand) => {
     onChange(command.command + " ")
@@ -174,9 +193,13 @@ export function AICommandInput({
   }
 
   const handleSuggestedAction = (action: SuggestedAction) => {
+    if (disabled || isProcessing || submittingChip) return
+    setSubmittingChip(action.label)
     onChange(action.prompt)
     onSubmit(action.prompt)
   }
+
+  const chipsDisabled = disabled || isProcessing || submittingChip !== null
 
   return (
     <div className="space-y-4">
@@ -370,17 +393,30 @@ export function AICommandInput({
         <div className="flex flex-wrap gap-2">
           {suggestedActions.map((action, i) => {
             const ActionIcon = action.icon
+            const isActiveChip = submittingChip === action.label
             return (
             <motion.button
-              key={i}
+              key={action.label}
+              type="button"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, ease: "easeOut" }}
+              whileTap={reduced || chipsDisabled ? undefined : { scale: 0.97, transition: { duration: 0.08 } }}
               onClick={() => handleSuggestedAction(action)}
-              disabled={disabled || isProcessing}
-              className="group flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm px-4 py-2.5 text-[13px] text-muted-foreground transition-all duration-200 hover:border-blue-500/40 hover:bg-blue-500/5 hover:text-foreground hover:shadow-md hover:shadow-blue-500/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={chipsDisabled}
+              aria-busy={isActiveChip && isProcessing}
+              className={cn(
+                "group flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm px-4 py-2.5 text-[13px] text-muted-foreground transition-all duration-200",
+                "hover:border-blue-500/40 hover:bg-blue-500/5 hover:text-foreground hover:shadow-md hover:shadow-blue-500/5",
+                "disabled:pointer-events-none disabled:opacity-50",
+                isActiveChip && isProcessing && "border-blue-500/30 bg-blue-500/5 text-foreground",
+              )}
             >
-              <ActionIcon className="h-4 w-4 text-muted-foreground/70 group-hover:text-blue-400 transition-colors" />
+              {isActiveChip && isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+              ) : (
+                <ActionIcon className="h-4 w-4 text-muted-foreground/70 transition-colors group-hover:text-blue-400 group-disabled:text-muted-foreground/50" />
+              )}
               <span>{action.label}</span>
             </motion.button>
             )

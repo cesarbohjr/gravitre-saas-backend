@@ -802,9 +802,11 @@ export const conversationsApi = {
 
 export const assistantApi = {
   dailyBriefing: () =>
-    fetcher<{ greeting: string; bullets: string[]; suggestions: string[] }>(
-      apiUrl("/api/assistant/daily-briefing"),
-    ),
+    fetcher<{
+      greeting: string
+      bullets: Array<string | { id?: string; text: string; href?: string; tone?: "error" | "success" | "warning" }>
+      suggestions: string[]
+    }>(apiUrl("/api/assistant/daily-briefing")),
   orgContext: () =>
     fetcher<{
       counts: { agents: number; workflows: number; connectors: number }

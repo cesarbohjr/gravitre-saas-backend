@@ -81,7 +81,7 @@ export function StatsGrid({ children, columns = 3, className }: StatsGridProps) 
 
 interface StatCardProps {
   label: string
-  value: string | number
+  value: React.ReactNode
   variant?: "default" | "success" | "warning" | "info" | "danger"
   className?: string
 }

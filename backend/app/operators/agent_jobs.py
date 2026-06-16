@@ -211,6 +211,97 @@ def retry_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
     return upd.data[0] if upd.data else None
 
 
+def _job_result(job: dict[str, Any]) -> dict[str, Any]:
+    result = job.get("result")
+    return dict(result) if isinstance(result, dict) else {}
+
+
+def job_pending_approval(job: dict[str, Any]) -> bool:
+    """True when a completed job still awaits human approval."""
+    if job.get("status") != "completed":
+        return False
+    result = _job_result(job)
+    if result.get("approval_status") in ("approved", "rejected"):
+        return False
+    return bool(result.get("requires_approval") or result.get("needs_human_input"))
+
+
+def approve_job(
+    client: Any,
+    org_id: str,
+    job_id: str,
+    *,
+    approver_id: str | None = None,
+    notes: str | None = None,
+) -> dict[str, Any] | None:
+    """Record approval on a completed job awaiting review. Idempotent when already approved."""
+    job = get_job(client, org_id, job_id)
+    if not job:
+        return None
+    result = _job_result(job)
+    if result.get("approval_status") == "approved":
+        return job
+    if not job_pending_approval(job):
+        return None
+    result["approval_status"] = "approved"
+    result["requires_approval"] = False
+    result["needs_human_input"] = False
+    result["approved_at"] = _now()
+    if approver_id:
+        result["approved_by"] = approver_id
+    if notes:
+        result["approval_notes"] = notes.strip()
+    upd = (
+        client.table("agent_jobs")
+        .update({"result": result, "updated_at": _now()})
+        .eq("id", job_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    return upd.data[0] if upd.data else None
+
+
+def reject_job(
+    client: Any,
+    org_id: str,
+    job_id: str,
+    *,
+    approver_id: str | None = None,
+    reason: str | None = None,
+) -> dict[str, Any] | None:
+    """Reject a completed job awaiting review."""
+    job = get_job(client, org_id, job_id)
+    if not job:
+        return None
+    result = _job_result(job)
+    if result.get("approval_status") == "rejected":
+        return job
+    if not job_pending_approval(job):
+        return None
+    result["approval_status"] = "rejected"
+    result["requires_approval"] = False
+    result["needs_human_input"] = False
+    result["rejected_at"] = _now()
+    result["rejection_reason"] = (reason or "Rejected by reviewer").strip()[:2000]
+    if approver_id:
+        result["rejected_by"] = approver_id
+    upd = (
+        client.table("agent_jobs")
+        .update(
+            {
+                "result": result,
+                "status": "cancelled",
+                "error": result["rejection_reason"],
+                "updated_at": _now(),
+            }
+        )
+        .eq("id", job_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    return upd.data[0] if upd.data else None
+
+
 # ---------------------------------------------------------------------------
 # Operator job handler (governed AI call + result + usage)
 # ---------------------------------------------------------------------------

@@ -92,20 +92,16 @@ export function GlobalCommandBar() {
   const groups = filteredItems()
   const allItems = groups.flatMap(g => g.items)
 
-  // Keyboard shortcut to open
+  // ⌘K is handled globally by CommandPalette in AppShell.
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
-        setIsOpen(prev => !prev)
-      }
-      if (e.key === "Escape") {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
         setIsOpen(false)
       }
     }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
+    window.addEventListener("keydown", onEscape)
+    return () => window.removeEventListener("keydown", onEscape)
   }, [])
 
   // Handle navigation within list

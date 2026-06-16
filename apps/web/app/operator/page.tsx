@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -10,18 +10,27 @@ import { cn } from "@/lib/utils"
 import { MesonInsightsPanel } from "@/components/gravitre/ai-insights-panel"
 import { AIProcessingStatus } from "@/components/gravitre/ai-processing-status"
 import { AICommandInput } from "@/components/gravitre/ai-command-input"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import { SuggestedActions } from "@/components/gravitre/suggested-actions"
 import { AIPresence } from "@/components/gravitre/ai-presence"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { 
   ParticleField, 
-  StatusBeacon
+  StatusBeacon,
+  AnimatedCounter,
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { 
   Eye, Play, Search, FileCode, RefreshCw,
   CheckCircle, Sparkles, Loader2, ArrowRight,
-  Activity, X, Trash2, AlertCircle, RotateCcw, Pause
+  Activity, X, Trash2, AlertCircle, RotateCcw, Pause, Plus, ListTodo
 } from "lucide-react"
 import {
   Dialog,
@@ -103,6 +112,18 @@ type OperatorSessionsResponse = {
   activities?: OperatorSessionPayload[]
 }
 
+type ConnectedSystemPayload = {
+  id: string
+  name: string
+  status?: string
+}
+
+type SystemsResponse = {
+  systems?: ConnectedSystemPayload[]
+}
+
+const OPERATOR_HEADER_REFRESH_MS = 10_000
+
 // Flow steps for the progress indicator
 const flowSteps = [
   { label: "Task", key: "task" },
@@ -110,45 +131,6 @@ const flowSteps = [
   { label: "Plan", key: "plan" },
   { label: "Confirm", key: "confirm" },
   { label: "Execute", key: "execute" },
-]
-
-const fallbackTasks: Task[] = [
-  {
-    id: "1",
-    title: "Looking into failed customer sync",
-    timestamp: "2m ago",
-    environment: "production",
-    contextEntity: "run",
-    contextName: "sync-customers-1234",
-    status: "failed",
-  },
-  {
-    id: "2",
-    title: "Checking Salesforce connection issues",
-    timestamp: "15m ago",
-    environment: "staging",
-    contextEntity: "connector",
-    contextName: "salesforce-api",
-    status: "running",
-  },
-  {
-    id: "3",
-    title: "Reviewing slow data sync",
-    timestamp: "1h ago",
-    environment: "production",
-    contextEntity: "workflow",
-    contextName: "main-data-sync",
-    status: "success",
-  },
-  {
-    id: "4",
-    title: "Fixing database connection timeout",
-    timestamp: "3h ago",
-    environment: "staging",
-    contextEntity: "source",
-    contextName: "postgres-backup",
-    status: "pending",
-  },
 ]
 
 const fallbackInsightSections = [
@@ -161,7 +143,7 @@ const fallbackInsightSections = [
   {
     id: "reasoning",
     type: "reasoning" as const,
-    title: "What I Checked",
+    title: "Contributing factors",
     content: "I looked at the activity logs, past issues, and system performance to find out what went wrong.",
     steps: [
       { id: "r1", text: "Reviewed the timeline and found where it failed", isCompleted: true },
@@ -174,7 +156,7 @@ const fallbackInsightSections = [
   {
     id: "root-cause",
     type: "root-cause" as const,
-    title: "Why It Failed",
+    title: "Why It Happened",
     content: "The Salesforce connection slows down between 2-4 PM when there are too many requests at once. The 30-second wait time isn't long enough during these busy periods, so the data processing step fails while waiting for information.",
   },
   {
@@ -191,14 +173,21 @@ const fallbackInsightSections = [
   {
     id: "actions",
     type: "actions" as const,
-    title: "Suggested Fixes",
-    content: "Here are the recommended changes to prevent this from happening again:",
+    title: "How to Fix It",
+    content: "Apply these changes to resolve the timeout and restore the sync pipeline:",
     actions: [
       { id: "a1", label: "Wait longer (60 seconds) before timing out", priority: "high" as const },
       { id: "a2", label: "Automatically retry when things fail", priority: "high" as const },
       { id: "a3", label: "Run the sync before 2 PM to avoid busy hours", priority: "medium" as const },
       { id: "a4", label: "Add automatic pause when Salesforce is too slow", priority: "low" as const },
     ],
+  },
+  {
+    id: "prevention",
+    type: "prevention" as const,
+    title: "Prevention",
+    content:
+      "Schedule syncs before peak API hours, enable a circuit breaker on the Salesforce connector, and alert when response times exceed 15 seconds so the team can act before timeouts occur.",
   },
 ]
 
@@ -280,6 +269,47 @@ const quickActions = [
   },
 ]
 
+function normalizeConfidenceScore(value: number | undefined | null): number | null {
+  if (value == null || Number.isNaN(value)) return null
+  if (value > 0 && value <= 1) return Math.round(value * 100)
+  return Math.round(Math.min(100, Math.max(0, value)))
+}
+
+function resolveAnalysisConfidence(
+  generatedPlan: {
+    suggestedActions?: SuggestedActionData[]
+  } | null,
+  asyncJob: AgentJob | null,
+): number {
+  if (asyncJob?.status === "completed" && asyncJob.result?.confidence != null) {
+    const fromJob = normalizeConfidenceScore(asyncJob.result.confidence)
+    if (fromJob != null) return fromJob
+  }
+  const fromPlan = generatedPlan?.suggestedActions?.[0]?.trustBadges?.confidenceScore
+  if (fromPlan != null && fromPlan > 0) return fromPlan
+  return fallbackSuggestedActions[0]?.trustBadges.confidenceScore ?? 87
+}
+
+function resolveConfidenceDataPoints(
+  asyncJob: AgentJob | null,
+  sections: Array<{ evidence?: unknown[] }>,
+): number {
+  const trace = asyncJob?.result?.react_trace
+  const traceCount = Array.isArray(trace) ? trace.filter(Boolean).length : 0
+  const ragCount = Array.isArray(asyncJob?.result?.rag_sources)
+    ? asyncJob.result.rag_sources.length
+    : 0
+  if (traceCount + ragCount > 0) return traceCount + ragCount
+
+  const evidenceCount = sections.reduce(
+    (sum, section) => sum + (Array.isArray(section.evidence) ? section.evidence.length : 0),
+    0,
+  )
+  if (evidenceCount > 0) return evidenceCount
+
+  return 5
+}
+
 function toRelativeTime(value: string | undefined): string {
   if (!value) return "Just now"
   const timestamp = new Date(value).getTime()
@@ -339,11 +369,45 @@ function normalizeTasksResponse(input: OperatorSessionsResponse | undefined): Ta
     .filter((item): item is Task => item !== null)
 }
 
+function TaskListEmptyState({ onNewTask }: { onNewTask: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/80 ring-1 ring-border">
+        <ListTodo className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <p className="text-sm font-medium text-foreground">No active tasks</p>
+      <p className="mt-1 mb-4 max-w-[200px] text-xs text-muted-foreground">
+        Create a task to investigate runs, connectors, or automations.
+      </p>
+      <Button size="sm" className="gap-2" onClick={onNewTask}>
+        <Plus className="h-3.5 w-3.5" />
+        New Task
+      </Button>
+    </div>
+  )
+}
+
+function TaskListSkeleton() {
+  return (
+    <div className="space-y-4 px-1" aria-label="Loading tasks" aria-busy="true">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex gap-3">
+          <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-2.5 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 
 
 export default function OperatorPage() {
   const { user } = useAuth()
-  const [activeTask, setActiveTask] = useState(fallbackTasks[0]?.id ?? "")
+  const [activeTask, setActiveTask] = useState("")
   const [activeContext, setActiveContext] = useState("run-1234")
   const [taskInput, setTaskInput] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -357,7 +421,7 @@ export default function OperatorPage() {
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
-  const [localTasks, setLocalTasks] = useState<Task[]>(fallbackTasks)
+  const [localTasks, setLocalTasks] = useState<Task[]>([])
   const [generatedPlan, setGeneratedPlan] = useState<{
     findings: typeof fallbackInsightSections
     steps: ActionPlanStep[]
@@ -439,10 +503,16 @@ export default function OperatorPage() {
   })
 
   // Fetch tasks (formerly sessions)
-  const { data: tasksData } = useSWR<OperatorSessionsResponse>(
-    "/api/operators/sessions",
+  const { data: tasksData, isLoading: tasksLoading, error: tasksError, mutate: mutateTasks } = useSWR<OperatorSessionsResponse>(
+    user ? "/api/operators/sessions" : null,
     apiFetcher,
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, refreshInterval: OPERATOR_HEADER_REFRESH_MS }
+  )
+
+  const { data: systemsData } = useSWR<SystemsResponse>(
+    user ? "/api/systems" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, refreshInterval: OPERATOR_HEADER_REFRESH_MS }
   )
 
   useEffect(() => {
@@ -450,26 +520,39 @@ export default function OperatorPage() {
   }, [])
 
   useEffect(() => {
-    const normalized = normalizeTasksResponse(tasksData)
-    const timer = setTimeout(() => {
-      if (normalized.length > 0) {
-        setLocalTasks(normalized)
-        return
-      }
-      setLocalTasks(fallbackTasks)
-    }, 0)
-    return () => clearTimeout(timer)
+    if (tasksData === undefined) return
+    const frameId = window.requestAnimationFrame(() => {
+      setLocalTasks(normalizeTasksResponse(tasksData))
+    })
+    return () => window.cancelAnimationFrame(frameId)
   }, [tasksData])
 
   const tasks = localTasks
+  const tasksReady = tasksData !== undefined
+  const connectedSystems = systemsData?.systems ?? []
+  const systemsCount = connectedSystems.length
+  const activeTaskCount = tasks.length
   useEffect(() => {
-    if (!tasks.length) return
-    if (!tasks.some((task) => task.id === activeTask)) {
-      const timer = setTimeout(() => setActiveTask(tasks[0].id), 0)
-      return () => clearTimeout(timer)
-    }
+    const frameId = window.requestAnimationFrame(() => {
+      if (!tasks.length) {
+        if (activeTask) setActiveTask("")
+        return
+      }
+      if (!tasks.some((task) => task.id === activeTask)) {
+        setActiveTask(tasks[0].id)
+      }
+    })
+    return () => window.cancelAnimationFrame(frameId)
   }, [tasks, activeTask])
   const insightSections = generatedPlan?.findings ?? fallbackInsightSections
+  const analysisConfidence = useMemo(
+    () => resolveAnalysisConfidence(generatedPlan, asyncJob),
+    [generatedPlan, asyncJob],
+  )
+  const confidenceDataPoints = useMemo(
+    () => resolveConfidenceDataPoints(asyncJob, insightSections),
+    [asyncJob, insightSections],
+  )
 
   // Suggested actions for the secondary panel
   const suggestedActionsList = [
@@ -661,10 +744,12 @@ export default function OperatorPage() {
   // Legacy sync flow alias
   const handleGeneratePlanSync = () => runGeneratePlanSync()
 
-  const handleOpenNewTaskDialog = () => {
+  const handleOpenNewTaskDialog = useCallback(() => {
     setNewTaskTitle("")
     setShowNewTaskDialog(true)
-  }
+  }, [])
+
+  useWorkPageShortcut("new", handleOpenNewTaskDialog)
 
   const handleViewTaskDetails = (task: Task) => {
     setSelectedTaskForDetails(task)
@@ -865,14 +950,74 @@ export default function OperatorPage() {
                   size="sm"
                 />
                 <div className="hidden h-4 w-px bg-border md:block" />
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1.5 md:px-3">
-                  <StatusBeacon status="active" size="sm" />
-                  <span className="text-xs font-medium text-emerald-500">12 systems</span>
-                </div>
-                <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 md:px-3">
-                  <Activity className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-xs font-medium text-blue-500">{tasks.length} active</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex cursor-default items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1.5 md:px-3">
+                      <StatusBeacon
+                        status={systemsCount > 0 ? "active" : "idle"}
+                        size="sm"
+                        pulse={systemsCount > 0}
+                      />
+                      <span className="text-xs font-medium text-emerald-500">
+                        <AnimatedCounter value={systemsCount} duration={0.6} />
+                        {" "}
+                        system{systemsCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <p className="mb-1.5 text-xs font-medium">Connected systems</p>
+                    {connectedSystems.length > 0 ? (
+                      <ul className="max-h-40 space-y-0.5 overflow-y-auto text-xs text-muted-foreground">
+                        {connectedSystems.slice(0, 12).map((system) => (
+                          <li key={system.id}>{system.name}</li>
+                        ))}
+                        {connectedSystems.length > 12 && (
+                          <li className="text-muted-foreground/80">
+                            +{connectedSystems.length - 12} more
+                          </li>
+                        )}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No systems connected yet
+                      </p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        "flex cursor-default items-center gap-2 rounded-lg border px-2.5 py-1.5 md:px-3",
+                        activeTaskCount > 0
+                          ? "border-emerald-500/20 bg-emerald-500/10"
+                          : "border-blue-500/20 bg-blue-500/10",
+                      )}
+                    >
+                      {activeTaskCount > 0 ? (
+                        <StatusBeacon status="active" size="sm" />
+                      ) : (
+                        <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <span
+                        className={cn(
+                          "text-xs font-medium",
+                          activeTaskCount > 0 ? "text-emerald-500" : "text-muted-foreground",
+                        )}
+                      >
+                        <AnimatedCounter value={activeTaskCount} duration={0.6} />
+                        {" "}
+                        active
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {activeTaskCount > 0
+                      ? `${activeTaskCount} operator task${activeTaskCount === 1 ? "" : "s"} in your queue`
+                      : "No active operator tasks — create one to get started"}
+                  </TooltipContent>
+                </Tooltip>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -896,49 +1041,78 @@ export default function OperatorPage() {
                 <p className="text-xs text-muted-foreground">Select a task to analyze</p>
               </div>
               <div className="flex-1 overflow-y-auto p-3 scrollbar-on-hover">
-                <Timeline>
-                  {tasks.map((task, index) => (
-                    <TimelineItem
-                      key={task.id}
-                      {...task}
-                      status={task.status}
-                      isActive={task.id === activeTask}
-                      isLast={index === tasks.length - 1}
-                      onClick={() => {
-                        setActiveTask(task.id)
-                        setCurrentFlowStep("task")
-                      }}
-                      onView={() => handleViewTaskDetails(task)}
-                      onRetry={() => handleRetryTask(task)}
-                      onDelete={() => handleDeleteTask(task)}
-                    />
-                  ))}
-                </Timeline>
+                {tasksError && !tasksLoading ? (
+                  <WorkSectionErrorCard
+                    title="Could not load tasks"
+                    message="Your operator task queue could not be loaded."
+                    onRetry={() => void mutateTasks()}
+                  />
+                ) : !tasksReady && tasksLoading ? (
+                  <TaskListSkeleton />
+                ) : tasks.length === 0 ? (
+                  <TaskListEmptyState onNewTask={handleOpenNewTaskDialog} />
+                ) : (
+                  <Timeline>
+                    {tasks.map((task, index) => (
+                      <TimelineItem
+                        key={task.id}
+                        {...task}
+                        status={task.status}
+                        isActive={task.id === activeTask}
+                        isLast={index === tasks.length - 1}
+                        onClick={() => {
+                          setActiveTask(task.id)
+                          setCurrentFlowStep("task")
+                        }}
+                        onView={() => handleViewTaskDetails(task)}
+                        onRetry={() => handleRetryTask(task)}
+                        onDelete={() => handleDeleteTask(task)}
+                      />
+                    ))}
+                  </Timeline>
+                )}
               </div>
             </div>
 
             {/* Mobile Task Pills */}
             <div className="md:hidden border-b border-border bg-card/30 p-3 shrink-0">
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hidden">
-                {tasks.map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => {
-                      setActiveTask(task.id)
-                      setCurrentFlowStep("task")
-                    }}
-                    className={`
-                      flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all
-                      ${task.id === activeTask 
-                        ? "bg-blue-500/20 text-blue-500 ring-1 ring-blue-500/30" 
-                        : "bg-secondary text-muted-foreground hover:text-foreground"
-                      }
-                    `}
-                  >
-                    {task.title.length > 25 ? task.title.slice(0, 25) + "..." : task.title}
-                  </button>
-                ))}
-              </div>
+              {!tasksReady && tasksLoading ? (
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-24 rounded-full" />
+                  <Skeleton className="h-8 w-28 rounded-full" />
+                </div>
+              ) : tasks.length === 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={handleOpenNewTaskDialog}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  New Task
+                </Button>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hidden">
+                  {tasks.map((task) => (
+                    <button
+                      key={task.id}
+                      onClick={() => {
+                        setActiveTask(task.id)
+                        setCurrentFlowStep("task")
+                      }}
+                      className={`
+                        flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                        ${task.id === activeTask 
+                          ? "bg-blue-500/20 text-blue-500 ring-1 ring-blue-500/30" 
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                        }
+                      `}
+                    >
+                      {task.title.length > 25 ? task.title.slice(0, 25) + "..." : task.title}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Right: AI Workspace */}
@@ -966,6 +1140,7 @@ export default function OperatorPage() {
                       isProcessing={isProcessing}
                       disabled={!activeTask || !activeContext || isProcessing}
                       contextLabel={activeContextLabel || undefined}
+                      listenForFocusShortcut
                     />
                   </div>
                 </div>
@@ -1140,11 +1315,24 @@ export default function OperatorPage() {
                     transition={{ type: "spring", stiffness: 100 }}
                   >
                     <MesonInsightsPanel
-                      confidence={87}
+                      confidence={analysisConfidence}
+                      confidenceDataPoints={confidenceDataPoints}
                       severity="high"
                       lastUpdated="2 minutes ago"
                       sections={insightSections}
                       isGenerating={isProcessing}
+                      onTryAutoFix={() => {
+                        void handleSuggestedActionExecute(suggestedActionsList[0]?.id ?? "action-1")
+                      }}
+                      onViewDocumentation={() => {
+                        window.open("https://docs.gravitre.app", "_blank", "noopener,noreferrer")
+                      }}
+                      onContactSupport={() => {
+                        window.open(
+                          "mailto:support@gravitre.app?subject=Operator%20analysis%20help",
+                          "_self",
+                        )
+                      }}
                     />
                   </motion.section>
                 )}

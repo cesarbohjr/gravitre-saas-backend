@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   CommandDialog,
   CommandInput,
@@ -12,6 +12,12 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command"
+import {
+  dispatchWorkShortcut,
+  isEditableTarget,
+  isWorkSectionPath,
+  markFocusSearchAfterNav,
+} from "@/lib/work-page-shortcuts"
 import {
   Target,
   Workflow,
@@ -59,18 +65,39 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+
+  const openSemanticSearch = useCallback(() => {
+    if (pathname === "/chat") {
+      dispatchWorkShortcut("focus-search")
+      return
+    }
+    markFocusSearchAfterNav()
+    router.push("/chat")
+  }, [pathname, router])
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        if (isEditableTarget(e.target)) return
         e.preventDefault()
+
+        if (pathname === "/chat") {
+          dispatchWorkShortcut("focus-search")
+          return
+        }
+        if (isWorkSectionPath(pathname)) {
+          openSemanticSearch()
+          return
+        }
+
         setOpen((open) => !open)
       }
     }
 
     document.addEventListener("keydown", down)
     return () => document.removeEventListener("keydown", down)
-  }, [])
+  }, [pathname, openSemanticSearch])
 
   const runCommand = useCallback((command: () => void) => {
     setOpen(false)
@@ -82,6 +109,16 @@ export function CommandPalette({
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
+
+        <CommandGroup heading="Search">
+          <CommandItem onSelect={() => runCommand(openSemanticSearch)}>
+            <Search className="mr-2 h-4 w-4 text-emerald-400" />
+            <span>Semantic Search</span>
+            <CommandShortcut>⌘K</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
 
         {/* Goal Commands */}
         <CommandGroup heading="Goals">

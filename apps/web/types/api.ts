@@ -387,6 +387,7 @@ export interface Conversation {
   created_at: string
   updated_at: string
   message_count: number
+  archived_at?: string | null
 }
 
 export interface ConversationMessage {

@@ -13,6 +13,7 @@ export interface AgentJobResult {
   finding_description?: string
   action_title?: string
   action_description?: string
+  progress_percent?: number
   confidence?: number
   requires_approval?: boolean
   provider?: string
