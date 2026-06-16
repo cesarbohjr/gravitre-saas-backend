@@ -8,7 +8,7 @@ import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { conversationMessageToUI } from "@/lib/chat-messages"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   Loader2,
@@ -368,6 +368,7 @@ function ChatMessage({
 }) {
   const { text, tools, sources } = normalizeMessage(message)
   const [copied, setCopied] = useState(false)
+  const reduceMotion = useReducedMotion()
   const pendingConnectors = extractPendingAuthConnectors(tools)
 
   const handleCopyMessage = async () => {
@@ -417,7 +418,11 @@ function ChatMessage({
           {isUser ? (
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{text}</p>
           ) : (
-            <div className="prose prose-sm max-w-none prose-p:my-2 prose-p:leading-relaxed prose-headings:my-3 prose-headings:font-semibold prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-strong:font-semibold">
+            <div
+              aria-live={streaming ? "polite" : "off"}
+              aria-busy={streaming || undefined}
+              className="prose prose-sm max-w-none prose-p:my-2 prose-p:leading-relaxed prose-headings:my-3 prose-headings:font-semibold prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-code:text-emerald-700 prose-code:bg-emerald-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-strong:font-semibold"
+            >
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
@@ -439,12 +444,19 @@ function ChatMessage({
                 {text}
               </ReactMarkdown>
               {streaming && text && (
-                <motion.span
-                  aria-hidden="true"
-                  className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 rounded-full bg-emerald-500 align-middle"
-                  animate={{ opacity: [1, 0.2, 1] }}
-                  transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-                />
+                reduceMotion ? (
+                  <span
+                    aria-hidden="true"
+                    className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 rounded-full bg-emerald-500 align-middle"
+                  />
+                ) : (
+                  <motion.span
+                    aria-hidden="true"
+                    className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 rounded-full bg-emerald-500 align-middle"
+                    animate={{ opacity: [1, 0.2, 1] }}
+                    transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                )
               )}
             </div>
           )}
@@ -596,6 +608,8 @@ export default function AssistantPage() {
   const submitLockRef = useRef(false)
   const pendingConversationRef = useRef<Promise<string | null> | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // G2: inline stream-health error (empty completion or transport failure) with retry.
+  const [streamError, setStreamError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [conversationMessagesLoading, setConversationMessagesLoading] = useState(false)
   const [conversationMessagesError, setConversationMessagesError] = useState<string | null>(null)
@@ -706,11 +720,26 @@ export default function AssistantPage() {
       console.error("[v0] Chat error:", error)
       submitLockRef.current = false
       setIsSubmitting(false)
+      setStreamError(parseChatError(error))
       toast.error(parseChatError(error))
     },
-    onFinish: () => {
+    onFinish: ({ message, isAbort, isDisconnect }) => {
       submitLockRef.current = false
       setIsSubmitting(false)
+      // G2 stream health: a finished assistant turn with no text means the
+      // provider stream produced nothing (silent failover/guardrail). Surface
+      // an inline retry instead of leaving an empty bubble. Ignore user-initiated
+      // stops (isAbort) so the Stop button never looks like an error.
+      const finishedText = message?.role === "assistant" ? normalizeMessage(message).text.trim() : ""
+      if (!isAbort && message?.role === "assistant" && !finishedText) {
+        setStreamError(
+          isDisconnect
+            ? "The connection dropped before the assistant could respond. Please try again."
+            : "The assistant didn't return a response. Please try again.",
+        )
+      } else {
+        setStreamError(null)
+      }
       void mutateConversations()
     },
     onData: (dataPart) => {
@@ -905,12 +934,30 @@ export default function AssistantPage() {
     inputRef.current?.focus()
   }, [])
 
+  // G2: retry after a failed/empty stream. Preserves conversation_id (ref persists)
+  // so the thread is not orphaned, and strips any trailing empty assistant bubble.
+  const retryStream = useCallback(() => {
+    setStreamError(null)
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
+    if (!lastUserMessage) return
+    const cleaned = messages.filter((m, i) => {
+      if (i === messages.length - 1 && m.role === "assistant") {
+        return normalizeMessage(m).text.trim().length > 0
+      }
+      return true
+    })
+    setMessages(cleaned)
+    const text = normalizeMessage(lastUserMessage).text
+    if (text) sendMessage({ text })
+  }, [messages, setMessages, sendMessage])
+
   const submitText = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || isBusy || submitLockRef.current) return
 
     submitLockRef.current = true
     setIsSubmitting(true)
+    setStreamError(null)
     setFollowUpSuggestions([])
     setExpandedToolId(null)
     setInput(trimmed)
@@ -1203,6 +1250,15 @@ export default function AssistantPage() {
                   </AnimatePresence>
 
                   {isLoading && !isStreaming && <TypingIndicator />}
+
+                  {streamError && !isLoading && (
+                    <WorkSectionErrorCard
+                      title="Response interrupted"
+                      message={streamError}
+                      onRetry={retryStream}
+                      className="border-zinc-200 bg-red-50/90"
+                    />
+                  )}
 
                   <div ref={messagesEndRef} />
                 </>
