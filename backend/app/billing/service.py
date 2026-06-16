@@ -35,7 +35,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "workflow_runs_included": 1000,
         "features": {
             "approvals": True,
-            "audit_logs": False,
+            "audit_logs": "basic",
             "versioning": False,
             "advanced_connectors": True,
         },

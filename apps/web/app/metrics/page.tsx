@@ -52,51 +52,43 @@ import {
   ReferenceLine,
 } from "recharts"
 
-const fallbackRunData = [
-  { time: "00:00", completed: 45, failed: 2, latency: 120 },
-  { time: "04:00", completed: 32, failed: 1, latency: 110 },
-  { time: "08:00", completed: 78, failed: 3, latency: 145 },
-  { time: "12:00", completed: 124, failed: 5, latency: 180 },
-  { time: "14:32", completed: 89, failed: 8, latency: 320, anomaly: true }, // Anomaly point
-  { time: "16:00", completed: 156, failed: 4, latency: 165 },
-  { time: "20:00", completed: 98, failed: 2, latency: 130 },
-  { time: "Now", completed: 67, failed: 1, latency: 125 },
-]
+type ThroughputDay = {
+  day: string
+  records: number
+  target: number
+}
 
-const fallbackLatencyData = [
-  { time: "00:00", p50: 120, p95: 450, p99: 890 },
-  { time: "04:00", p50: 110, p95: 420, p99: 780 },
-  { time: "08:00", p50: 145, p95: 520, p99: 1020 },
-  { time: "12:00", p50: 180, p95: 680, p99: 1340 },
-  { time: "14:32", p50: 320, p95: 890, p99: 1800 }, // Spike
-  { time: "16:00", p50: 165, p95: 590, p99: 1180 },
-  { time: "20:00", p50: 130, p95: 480, p99: 920 },
-  { time: "Now", p50: 125, p95: 460, p99: 880 },
-]
+const WEEKDAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-const fallbackThroughputData = [
-  { day: "Mon", records: 245000, target: 250000 },
-  { day: "Tue", records: 312000, target: 250000 },
-  { day: "Wed", records: 287000, target: 250000 },
-  { day: "Thu", records: 356000, target: 250000 },
-  { day: "Fri", records: 298000, target: 250000 },
-  { day: "Sat", records: 145000, target: 250000 },
-  { day: "Sun", records: 123000, target: 250000 },
-]
-
-const fallbackOverview = {
-  totalRuns: 1247,
-  successRate: 98.7,
-  recordsProcessed: 1800000,
-  avgLatency: 142,
-  activeConnectors: 9,
-  totalConnectors: 12,
-  changes: {
-    totalRuns: 12,
-    successRate: 0.5,
-    recordsProcessed: 24,
-    avgLatency: -8,
-  },
+function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[]; target: number } {
+  const emptyDays = WEEKDAY_ORDER.map((day) => ({ day, records: 0, target: 0 }))
+  if (!payload || typeof payload !== "object") {
+    return { days: emptyDays, target: 0 }
+  }
+  const model = payload as Record<string, unknown>
+  const target = parseNumber(model.target, 0)
+  const raw = Array.isArray(model.days) ? model.days : null
+  if (!raw) {
+    return { days: emptyDays.map((entry) => ({ ...entry, target })), target }
+  }
+  const byDay = new Map<string, ThroughputDay>()
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue
+    const row = item as Record<string, unknown>
+    const day = String(row.day ?? "")
+    if (!day) continue
+    byDay.set(day, {
+      day,
+      records: parseNumber(row.records, 0),
+      target: parseNumber(row.target, target),
+    })
+  }
+  return {
+    days: WEEKDAY_ORDER.map(
+      (day) => byDay.get(day) ?? { day, records: 0, target }
+    ),
+    target,
+  }
 }
 
 type MetricsOverview = {
@@ -129,45 +121,57 @@ function parseNumber(value: unknown, defaultValue = 0): number {
 }
 
 function normalizeOverview(payload: unknown): MetricsOverview {
-  const fallback: MetricsOverview = fallbackOverview
-  if (!payload || typeof payload !== "object") return fallback
+  const empty: MetricsOverview = {
+    totalRuns: 0,
+    successRate: 0,
+    recordsProcessed: 0,
+    avgLatency: 0,
+    activeConnectors: 0,
+    totalConnectors: 0,
+    changes: {
+      totalRuns: 0,
+      successRate: 0,
+      recordsProcessed: 0,
+      avgLatency: 0,
+    },
+  }
+  if (!payload || typeof payload !== "object") return empty
   const model = payload as Record<string, unknown>
   return {
-    totalRuns: parseNumber(model.totalRuns, fallback.totalRuns),
-    successRate: parseNumber(model.successRate, fallback.successRate),
-    recordsProcessed: parseNumber(model.recordsProcessed, fallback.recordsProcessed),
-    avgLatency: parseNumber(model.avgLatency, fallback.avgLatency),
-    activeConnectors: parseNumber(model.activeConnectors, fallback.activeConnectors),
-    totalConnectors: parseNumber(model.totalConnectors, fallback.totalConnectors),
+    totalRuns: parseNumber(model.totalRuns, 0),
+    successRate: parseNumber(model.successRate, 0),
+    recordsProcessed: parseNumber(model.recordsProcessed, 0),
+    avgLatency: parseNumber(model.avgLatency, 0),
+    activeConnectors: parseNumber(model.activeConnectors, 0),
+    totalConnectors: parseNumber(model.totalConnectors, 0),
     changes: {
       totalRuns: parseNumber(
         (model.changes as Record<string, unknown> | undefined)?.totalRuns ?? model.totalRunsChange,
-        fallback.changes.totalRuns
+        0
       ),
       successRate: parseNumber(
         (model.changes as Record<string, unknown> | undefined)?.successRate ?? model.successRateChange,
-        fallback.changes.successRate
+        0
       ),
       recordsProcessed: parseNumber(
         (model.changes as Record<string, unknown> | undefined)?.recordsProcessed ??
           model.recordsProcessedChange,
-        fallback.changes.recordsProcessed
+        0
       ),
       avgLatency: parseNumber(
         (model.changes as Record<string, unknown> | undefined)?.avgLatency ?? model.avgLatencyChange,
-        fallback.changes.avgLatency
+        0
       ),
     },
   }
 }
 
 function normalizeSeries(payload: unknown) {
-  if (!payload || typeof payload !== "object") {
-    return {
-      runVolume: fallbackRunData,
-      latencyDistribution: fallbackLatencyData,
-    }
+  const empty = {
+    runVolume: [] as Record<string, unknown>[],
+    latencyDistribution: [] as Record<string, unknown>[],
   }
+  if (!payload || typeof payload !== "object") return empty
   const model = payload as Record<string, unknown>
   return {
     runVolume: Array.isArray(model.runVolume)
@@ -175,50 +179,22 @@ function normalizeSeries(payload: unknown) {
           ...entry,
           time: String(entry.time ?? entry.hour ?? "Now"),
         }))
-      : fallbackRunData,
+      : empty.runVolume,
     latencyDistribution: Array.isArray(model.latencyDistribution)
       ? (model.latencyDistribution as Record<string, unknown>[]).map((entry) => ({
           ...entry,
           time: String(entry.time ?? entry.hour ?? "Now"),
         }))
-      : fallbackLatencyData,
+      : empty.latencyDistribution,
   }
 }
 
-// Meson Insights
-const mesonInsights: MetricInsight[] = [
-  {
-    id: "1",
-    type: "anomaly",
-    severity: "warning",
-    title: "Latency spike detected at 14:32",
-    description: "P50 latency increased 77% above baseline. Correlated with sync-customers workflow.",
-    timestamp: "2 hours ago",
-  },
-  {
-    id: "2",
-    type: "trend",
-    severity: "info",
-    title: "Weekend throughput consistently lower",
-    description: "Saturday/Sunday process 45% fewer records. Consider adjusting schedules.",
-    timestamp: "Today",
-  },
-  {
-    id: "3",
-    type: "optimization",
-    severity: "success",
-    title: "etl-main-pipeline optimization available",
-    description: "Parallelization could reduce avg duration by 35% based on resource analysis.",
-    timestamp: "Today",
-  },
-]
-
 function normalizeInsights(payload: unknown): MetricInsight[] {
-  if (!payload || typeof payload !== "object") return mesonInsights
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw = Array.isArray(model.insights) ? model.insights : null
-  if (!raw) return mesonInsights
-  const normalized = raw
+  if (!raw) return []
+  return raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item, index): MetricInsight => {
       const type: MetricInsight["type"] =
@@ -245,7 +221,6 @@ function normalizeInsights(payload: unknown): MetricInsight[] {
         suggestedAction: item.suggestedAction ? String(item.suggestedAction) : undefined,
       }
     })
-  return normalized.length > 0 ? normalized : mesonInsights
 }
 
 // Metric card with trend visualization
@@ -439,6 +414,7 @@ export default function MetricsPage() {
     void mutateOverview()
     void mutateSeries()
     void mutateInsights()
+    void mutateThroughput()
     toast.success("Metrics refreshed")
   }
   
@@ -446,7 +422,6 @@ export default function MetricsPage() {
     user ? ["metrics-overview", timeRange] : null,
     () => metricsApi.overview(timeRange),
     {
-      fallbackData: fallbackOverview,
       revalidateOnFocus: false,
       refreshInterval: autoRefresh ? 15000 : 0,
       onError: (err) => console.error("[v0] Metrics fetch error:", err),
@@ -456,7 +431,6 @@ export default function MetricsPage() {
     user ? ["metrics-runs", timeRange] : null,
     () => metricsApi.runs(timeRange),
     {
-      fallbackData: { runVolume: fallbackRunData, latencyDistribution: fallbackLatencyData },
       revalidateOnFocus: false,
       refreshInterval: autoRefresh ? 15000 : 0,
     }
@@ -465,7 +439,14 @@ export default function MetricsPage() {
     user ? ["metrics-insights", timeRange] : null,
     () => metricsApi.insights(timeRange),
     {
-      fallbackData: { insights: mesonInsights },
+      revalidateOnFocus: false,
+      refreshInterval: autoRefresh ? 60000 : 0,
+    }
+  )
+  const { data: throughputDataRaw, mutate: mutateThroughput } = useSWR(
+    user ? "metrics-weekly-throughput" : null,
+    () => metricsApi.weeklyThroughput(),
+    {
       revalidateOnFocus: false,
       refreshInterval: autoRefresh ? 60000 : 0,
     }
@@ -476,7 +457,7 @@ export default function MetricsPage() {
   const insights = normalizeInsights(insightsData)
   const runData = series.runVolume
   const latencyData = series.latencyDistribution
-  const throughputData = fallbackThroughputData
+  const { days: throughputData, target: throughputTarget } = normalizeWeeklyThroughput(throughputDataRaw)
 
   return (
     <AppShell title="Metrics">
@@ -718,7 +699,19 @@ export default function MetricsPage() {
                       <XAxis dataKey="day" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<GlowTooltip />} />
-                      <ReferenceLine y={250000} stroke="oklch(0.65 0.18 145)" strokeDasharray="5 5" label={{ value: 'Target', fill: 'oklch(0.65 0.18 145)', fontSize: 10, position: 'right' }} />
+                      {throughputTarget > 0 && (
+                        <ReferenceLine
+                          y={throughputTarget}
+                          stroke="oklch(0.65 0.18 145)"
+                          strokeDasharray="5 5"
+                          label={{
+                            value: "Target",
+                            fill: "oklch(0.65 0.18 145)",
+                            fontSize: 10,
+                            position: "right",
+                          }}
+                        />
+                      )}
                       <Bar 
                         dataKey="records" 
                         name="Records"

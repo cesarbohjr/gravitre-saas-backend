@@ -109,6 +109,11 @@ export default function AuditPage() {
   const actions = Object.keys(summaryData?.byAction ?? {}).sort()
   const entityTypes = Object.keys(summaryData?.byEntityType ?? {}).sort()
 
+  const auditErrorMessage =
+    error instanceof Error && /upgrade|403|unauthorized/i.test(error.message)
+      ? "Audit logs require a plan with audit access. Upgrade your plan or contact support."
+      : "Failed to load audit logs. Check your connection and try again."
+
   async function handleExport(format: "csv" | "json") {
     try {
       const response = await auditApi.export(format, fromDate)
@@ -244,7 +249,7 @@ export default function AuditPage() {
         {error && (
           <div className="mx-4 md:mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>Failed to load audit logs.</span>
+            <span>{auditErrorMessage}</span>
           </div>
         )}
 

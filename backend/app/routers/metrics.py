@@ -15,6 +15,7 @@ from app.metrics.service import (
     overview_metrics,
     rag_metrics,
     timeseries_metrics,
+    weekly_throughput_metrics,
     workflow_metrics,
 )
 
@@ -181,6 +182,102 @@ async def timeseries(
         org_id,
         rng,
         metric,
+        latency_ms,
+    )
+    return data
+
+
+@router.get("/insights")
+async def metrics_insights(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    range: Annotated[str | None, Query()] = "7d",
+) -> dict:
+    """Lightweight operational insights from real run + connector metrics (no hardcoded copy)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from datetime import datetime, timedelta, timezone
+
+    rng = _validate_range(range)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    from app.metrics.service import parse_range
+
+    _, start_at, _ = parse_range(rng)
+    runs = (
+        client.table("workflow_runs")
+        .select("id, status, created_at, error_message, workflow_id")
+        .eq("org_id", org_id)
+        .gte("created_at", start_at.isoformat())
+        .execute()
+        .data
+        or []
+    )
+    connectors = (
+        client.table("connectors")
+        .select("id, type, status")
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    insights: list[dict] = []
+    failed = [r for r in runs if r.get("status") == "failed"]
+    if failed:
+        insights.append(
+            {
+                "id": "failed-runs",
+                "type": "anomaly",
+                "severity": "warning",
+                "title": f"{len(failed)} failed run(s) in range",
+                "description": "Review failed workflow runs and connector auth health.",
+                "actionUrl": "/tasks",
+            }
+        )
+    disconnected = [c for c in connectors if (c.get("status") or "") != "active"]
+    if disconnected:
+        insights.append(
+            {
+                "id": "connectors-offline",
+                "type": "optimization",
+                "severity": "info",
+                "title": f"{len(disconnected)} connector(s) not active",
+                "description": "Complete OAuth or reconnect integrations to restore automations.",
+                "actionUrl": "/connectors",
+            }
+        )
+    if not runs:
+        insights.append(
+            {
+                "id": "no-runs",
+                "type": "trend",
+                "severity": "info",
+                "title": "No workflow runs in selected period",
+                "description": "Execute or schedule a workflow to populate execution metrics.",
+                "actionUrl": "/automations",
+            }
+        )
+    return {"insights": insights, "generatedAt": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/weekly-throughput")
+async def weekly_throughput(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Day-of-week throughput for the current calendar week (records/chunks/runs)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    start = time.perf_counter()
+    data = weekly_throughput_metrics(settings, org_id)
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    logger.info(
+        "metrics_weekly_throughput request_id=%s org_id=%s latency_ms=%s",
+        request_id_ctx.get(),
+        org_id,
         latency_ms,
     )
     return data

@@ -196,8 +196,15 @@ export default function WorkflowsPage() {
       },
     }
   )
+  const { data: statsData } = useSWR(user ? "/api/workflows/stats" : null, apiFetcher, {
+    revalidateOnFocus: false,
+  })
 
   const workflows = normalizeWorkflowsResponse(data)
+  const footerSuccessRate =
+    typeof statsData?.overallSuccessRate === "number" ? statsData.overallSuccessRate : null
+  const footerRunsThisWeek =
+    typeof statsData?.totalRunsThisWeek === "number" ? statsData.totalRunsThisWeek : 0
   const activeCount = workflows.filter((w) => w.status === "active").length
   const pausedCount = workflows.filter((w) => w.status === "paused").length
   const runningCount = workflows.filter((w) => w.isRunning).length
@@ -588,14 +595,25 @@ export default function WorkflowsPage() {
                     <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
                       <TrendingUp className="h-4 w-4 text-emerald-400" />
                     </div>
-                    <span><AnimatedCounter value={98} duration={1} />% overall success rate</span>
+                    <span>
+                      {footerSuccessRate === null ? (
+                        "— overall success rate (no runs yet)"
+                      ) : (
+                        <>
+                          <AnimatedCounter value={Math.round(footerSuccessRate)} duration={1} />% overall
+                          success rate
+                        </>
+                      )}
+                    </span>
                   </div>
                   <div className="w-px h-6 bg-border" />
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                       <Zap className="h-4 w-4 text-blue-400" />
                     </div>
-                    <span><AnimatedCounter value={4690} duration={1.5} /> runs this week</span>
+                    <span>
+                      <AnimatedCounter value={footerRunsThisWeek} duration={1.5} /> runs this week
+                    </span>
                   </div>
                 </motion.div>
               </motion.div>

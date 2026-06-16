@@ -3335,6 +3335,51 @@ async def list_workflows_route(
     }
 
 
+@router.get("/stats")
+async def workflow_org_stats(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Aggregate workflow + run stats for automations list footer (real data, no mocks)."""
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    from datetime import datetime, timedelta, timezone
+
+    client = get_supabase_client(settings)
+    workflows = list_workflows(client, org_id)
+    week_start = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    runs = (
+        client.table("workflow_runs")
+        .select("id, status, created_at")
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .gte("created_at", week_start)
+        .execute()
+        .data
+        or []
+    )
+    completed = sum(1 for row in runs if row.get("status") == "completed")
+    failed = sum(1 for row in runs if row.get("status") == "failed")
+    running = sum(1 for row in runs if row.get("status") == "running")
+    terminal = completed + failed
+    success_rate = round((completed / terminal) * 100, 1) if terminal else None
+    active = sum(1 for w in workflows if (w.get("status") or "") == "active")
+    paused = sum(1 for w in workflows if (w.get("status") or "") in {"paused", "inactive", "archived"})
+    return {
+        "total": len(workflows),
+        "active": active,
+        "paused": paused,
+        "running": running,
+        "overallSuccessRate": success_rate,
+        "totalRunsThisWeek": len(runs),
+    }
+
+
 @router.post("/from-goal", status_code=status.HTTP_201_CREATED)
 async def create_workflow_from_goal(
     request: GoalWorkflowRequest,

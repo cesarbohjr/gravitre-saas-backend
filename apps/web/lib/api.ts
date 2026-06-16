@@ -956,6 +956,10 @@ export const metricsApi = {
     ),
   insights: (range?: string) =>
     fetcher<{ insights: MetricInsight[] }>(apiUrl(`/api/metrics/insights${range ? `?range=${range}` : ""}`)),
+  weeklyThroughput: () =>
+    fetcher<{ weekStart: string; target: number; days: { day: string; records: number; target: number }[] }>(
+      apiUrl("/api/metrics/weekly-throughput")
+    ),
   exportCsv: (range?: string) =>
     apiFetch(apiUrl(`/api/metrics/export?format=csv${range ? `&range=${range}` : ""}`)),
   workflowStats: (workflowId: string) =>

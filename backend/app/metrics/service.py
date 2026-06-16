@@ -648,3 +648,106 @@ def timeseries_metrics(settings: Settings, org_id: str, range_str: str, metric: 
         "metric": metric,
         "points": [{"date": k, "value": points[k]} for k in sorted(points.keys())],
     }
+
+
+_WEEKDAY_LABELS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def _parse_timestamp(value: Any) -> datetime | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _extract_record_count(metadata: dict[str, Any]) -> int:
+    for key in ("recordsProcessed", "records_processed", "records", "pages_synced", "chunk_count", "chunks"):
+        raw = metadata.get(key)
+        if raw is None:
+            continue
+        try:
+            count = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if count > 0:
+            return count
+    return 0
+
+
+def _start_of_week_utc(now: datetime | None = None) -> datetime:
+    current = now or _now_utc()
+    monday = current - timedelta(days=current.weekday())
+    return monday.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def weekly_throughput_metrics(settings: Settings, org_id: str) -> dict[str, Any]:
+    """Aggregate records processed by weekday for the current calendar week."""
+    client = _client(settings)
+    week_start = _start_of_week_utc()
+    buckets = {label: 0 for label in _WEEKDAY_LABELS}
+
+    ingest_jobs = (
+        client.table("rag_ingest_jobs")
+        .select("created_at, chunk_count, status")
+        .eq("org_id", org_id)
+        .gte("created_at", week_start.isoformat())
+        .execute()
+    )
+    for row in ingest_jobs.data or []:
+        if row.get("status") != "completed":
+            continue
+        created_at = _parse_timestamp(row.get("created_at"))
+        if created_at is None:
+            continue
+        buckets[_WEEKDAY_LABELS[created_at.weekday()]] += int(row.get("chunk_count") or 0)
+
+    audit_events = (
+        client.table("audit_events")
+        .select("created_at, metadata")
+        .eq("org_id", org_id)
+        .gte("created_at", week_start.isoformat())
+        .execute()
+    )
+    for row in audit_events.data or []:
+        metadata = row.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            continue
+        count = _extract_record_count(metadata)
+        if count <= 0:
+            continue
+        created_at = _parse_timestamp(row.get("created_at"))
+        if created_at is None:
+            continue
+        buckets[_WEEKDAY_LABELS[created_at.weekday()]] += count
+
+    runs = (
+        client.table("workflow_runs")
+        .select("created_at, status, run_type")
+        .eq("org_id", org_id)
+        .eq("run_type", "execute")
+        .eq("status", "completed")
+        .gte("created_at", week_start.isoformat())
+        .execute()
+    )
+    for row in runs.data or []:
+        created_at = _parse_timestamp(row.get("created_at"))
+        if created_at is None:
+            continue
+        buckets[_WEEKDAY_LABELS[created_at.weekday()]] += 1
+
+    days = [{"day": label, "records": buckets[label]} for label in _WEEKDAY_LABELS]
+    values = list(buckets.values())
+    max_records = max(values) if values else 0
+    avg_records = (sum(values) / len(values)) if values else 0.0
+    target = int(round(max(avg_records * 1.1, max_records * 0.95))) if max_records > 0 else 0
+    days_with_target = [{**entry, "target": target} for entry in days]
+
+    return {
+        "weekStart": week_start.date().isoformat(),
+        "target": target,
+        "days": days_with_target,
+    }

@@ -87,127 +87,19 @@ function normalizeRun(input: Record<string, unknown> | ApiRun): Run {
 }
 
 function normalizeRunsResponse(payload: unknown): Run[] {
-  if (!payload || typeof payload !== "object") return fallbackRuns
+  if (!payload || typeof payload !== "object") return []
   const model = payload as Record<string, unknown>
   const raw =
     (Array.isArray(model.runs) ? model.runs : null) ??
     (Array.isArray(model.data) ? model.data : null) ??
     (Array.isArray(model.items) ? model.items : null)
-  if (!raw) return fallbackRuns
+  if (!raw) return []
   const normalized = raw
     .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
     .map((item) => normalizeRun(item))
     .filter((item) => item.id.length > 0)
-  return normalized.length > 0 ? normalized : fallbackRuns
+  return normalized
 }
-
-const fallbackRuns: Run[] = [
-  {
-    id: "run-1234",
-    workflowName: "sync-customers",
-    workflowId: "wf-001",
-    status: "failed",
-    approvalStatus: "approved",
-    environment: "production",
-    startedAt: "2 minutes ago",
-    duration: "3m 24s",
-    steps: [
-      { name: "Fetch data", status: "completed" },
-      { name: "Transform", status: "completed" },
-      { name: "Sync to DB", status: "failed" },
-    ],
-  },
-  {
-    id: "run-1233",
-    workflowName: "etl-main-pipeline",
-    workflowId: "wf-002",
-    status: "running",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "5 minutes ago",
-    duration: "5m 12s",
-    steps: [
-      { name: "Extract", status: "completed" },
-      { name: "Transform", status: "running" },
-      { name: "Load", status: "pending" },
-      { name: "Validate", status: "pending" },
-    ],
-  },
-  {
-    id: "run-1232",
-    workflowName: "invoice-processing",
-    workflowId: "wf-003",
-    status: "pending",
-    approvalStatus: "pending",
-    environment: "staging",
-    startedAt: "15 minutes ago",
-    duration: "-",
-    steps: [
-      { name: "Parse invoices", status: "pending" },
-      { name: "Validate", status: "pending" },
-      { name: "Process", status: "pending" },
-    ],
-  },
-  {
-    id: "run-1231",
-    workflowName: "user-onboarding",
-    workflowId: "wf-004",
-    status: "completed",
-    approvalStatus: "approved",
-    environment: "production",
-    startedAt: "30 minutes ago",
-    duration: "45s",
-    steps: [
-      { name: "Create user", status: "completed" },
-      { name: "Send email", status: "completed" },
-      { name: "Setup workspace", status: "completed" },
-    ],
-  },
-  {
-    id: "run-1230",
-    workflowName: "data-cleanup",
-    workflowId: "wf-005",
-    status: "pending",
-    approvalStatus: "pending",
-    environment: "staging",
-    startedAt: "1 hour ago",
-    duration: "-",
-    steps: [
-      { name: "Scan records", status: "pending" },
-      { name: "Archive", status: "pending" },
-      { name: "Delete", status: "pending" },
-    ],
-  },
-  {
-    id: "run-1229",
-    workflowName: "sync-customers",
-    workflowId: "wf-001",
-    status: "completed",
-    approvalStatus: "not_required",
-    environment: "production",
-    startedAt: "2 hours ago",
-    duration: "4m 12s",
-    steps: [
-      { name: "Fetch data", status: "completed" },
-      { name: "Transform", status: "completed" },
-      { name: "Sync to DB", status: "completed" },
-    ],
-  },
-  {
-    id: "run-1228",
-    workflowName: "report-generation",
-    workflowId: "wf-006",
-    status: "cancelled",
-    approvalStatus: "rejected",
-    environment: "staging",
-    startedAt: "3 hours ago",
-    duration: "1m 30s",
-    steps: [
-      { name: "Gather data", status: "completed" },
-      { name: "Generate", status: "failed" },
-    ],
-  },
-]
 
 const statusConfig = {
   running: { color: "text-blue-400", bg: "bg-blue-500/20", glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]", icon: Activity },
@@ -459,9 +351,8 @@ export default function RunsPage() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date())
 
   const { data, error, isLoading, mutate } = useSWR(user ? "/api/runs" : null, apiFetcher, {
-    fallbackData: { runs: fallbackRuns },
     revalidateOnFocus: true,
-    refreshInterval: 10000,
+    refreshInterval: error ? 0 : 10000,
     onError: (err) => console.error("[v0] Runs fetch error:", err),
   })
 
@@ -549,7 +440,11 @@ export default function RunsPage() {
           </div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs text-muted-foreground">
-              {error ? "Connection: error" : isLoading ? "Connection: syncing..." : "Connection: live"}
+              {error
+                ? "Connection: retrying via poll (API unavailable)"
+                : isLoading
+                  ? "Connection: syncing..."
+                  : "Connection: live (10s poll)"}
             </p>
             <p className="text-xs text-muted-foreground">Last refresh: {refreshLabel}</p>
           </div>
