@@ -188,6 +188,10 @@ export function WorkflowCard({
   // Use provided dependencies or generate from nodes
   const dependencies = connectorDependencies || getConnectorDependencies(nodes)
   const hasDisconnected = dependencies.some(d => d.status === "disconnected" || d.status === "error")
+  // G1: connector + invoke_tool action counts. Each connector/source node compiles
+  // to one vendor invoke_tool action, so action count tracks those node types.
+  const connectorCount = new Set(dependencies.map(d => d.vendor)).size
+  const actionCount = nodes.filter(n => n.type === "connector" || n.type === "source").length
 
   return (
     <motion.div
@@ -288,6 +292,11 @@ export function WorkflowCard({
                   <span className="text-[10px] text-muted-foreground">+{dependencies.length - 4}</span>
                 )}
               </div>
+              {connectorCount > 0 && (
+                <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
+                  {connectorCount} {connectorCount === 1 ? "connector" : "connectors"} · {actionCount} {actionCount === 1 ? "action" : "actions"}
+                </span>
+              )}
             </div>
           )}
 
