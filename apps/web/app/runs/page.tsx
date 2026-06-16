@@ -352,7 +352,7 @@ export default function RunsPage() {
 
   const { data, error, isLoading, mutate } = useSWR(user ? "/api/runs" : null, apiFetcher, {
     revalidateOnFocus: true,
-    refreshInterval: error ? 0 : 10000,
+    refreshInterval: 10000,
     onError: (err) => console.error("[v0] Runs fetch error:", err),
   })
 
