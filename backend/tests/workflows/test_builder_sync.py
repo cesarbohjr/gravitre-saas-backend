@@ -60,3 +60,50 @@ def test_graph_skips_source_nodes():
     definition = graph_to_definition(nodes, edges)
     assert len(definition["steps"]) == 1
     assert definition["steps"][0]["type"] == "agent"
+
+
+def test_graph_connector_node_compiles_to_invoke_tool():
+    nodes = [
+        {
+            "id": "hubspot_search",
+            "node_type": "connector",
+            "title": "Search HubSpot contacts",
+            "config": {
+                "connector_id": "hs-1",
+                "tool_action": "hubspot.contacts.search",
+                "param_sources": {"query": "$search_query"},
+            },
+        }
+    ]
+    definition = graph_to_definition(nodes, [])
+    assert len(definition["steps"]) == 1
+    step = definition["steps"][0]
+    assert step["type"] == "invoke_tool"
+    assert step["config"]["action"] == "hubspot.contacts.search"
+    assert step["config"]["connector_id"] == "hs-1"
+
+
+def test_definition_round_trips_invoke_tool_connector_node():
+    nodes, edges = definition_to_builder_nodes(
+        {
+            "schema_version": "2025.1",
+            "steps": [
+                {
+                    "id": "jira_create",
+                    "name": "Create Jira issue",
+                    "type": "invoke_tool",
+                    "config": {
+                        "connector_id": "jira-1",
+                        "action": "jira.issues.create",
+                        "param_sources": {"summary": "$jira_summary"},
+                    },
+                }
+            ],
+        }
+    )
+    assert len(nodes) == 1
+    assert nodes[0]["node_type"] == "connector"
+    assert nodes[0]["config"]["tool_action"] == "jira.issues.create"
+    definition = graph_to_definition(nodes, edges)
+    assert definition["steps"][0]["type"] == "invoke_tool"
+    assert definition["steps"][0]["config"]["action"] == "jira.issues.create"

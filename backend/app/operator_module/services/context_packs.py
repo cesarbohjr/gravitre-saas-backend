@@ -24,6 +24,29 @@ CONNECTOR_STEP_TYPE_MAP = {
 }
 
 
+def _connector_type_for_step(step: dict[str, Any]) -> str | None:
+    step_type = str(step.get("type") or "").strip()
+    mapped = CONNECTOR_STEP_TYPE_MAP.get(step_type)
+    if mapped:
+        return mapped
+    if step_type != "invoke_tool":
+        return None
+    config = step.get("config") if isinstance(step.get("config"), dict) else {}
+    action = str(config.get("action") or config.get("tool_action") or "").strip()
+    if "." in action:
+        return action.split(".", 1)[0]
+    return None
+
+
+def _workflow_uses_connector_type(definition: dict[str, Any], connector_type: str) -> bool:
+    for step in definition.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        if _connector_type_for_step(step) == connector_type:
+            return True
+    return False
+
+
 def _safe_config_keys(config: dict | None) -> list[str]:
     if not isinstance(config, dict):
         return []
@@ -135,18 +158,16 @@ def build_workflow_context(
     active = get_active_workflow_version(client, org_id, workflow_id, environment)
     versions = list_workflow_versions(client, org_id, workflow_id, environment)
     recent_runs = _recent_runs(client, org_id, environment, limit=5, workflow_id=workflow_id)
-    step_types = []
     definition = (active or {}).get("definition") or wf.get("definition") or {}
-    for step in definition.get("steps") or []:
-        step_type = (step.get("type") or "").strip()
-        if step_type:
-            step_types.append(step_type)
     connector_refs: dict[str, set[str]] = {}
-    for stype in step_types:
-        connector = CONNECTOR_STEP_TYPE_MAP.get(stype)
+    for step in definition.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        step_type = str(step.get("type") or "").strip()
+        connector = _connector_type_for_step(step)
         if not connector:
             continue
-        connector_refs.setdefault(connector, set()).add(stype)
+        connector_refs.setdefault(connector, set()).add(step_type or "invoke_tool")
     return {
         "workflow": {
             "id": str(wf["id"]),
@@ -199,18 +220,12 @@ def build_connector_context(
         return None
     config_keys = _safe_config_keys(connector.get("config"))
     related: list[dict[str, Any]] = []
-    target_step_type = None
     connector_type = (connector.get("type") or "").strip()
-    for step_type, conn_type in CONNECTOR_STEP_TYPE_MAP.items():
-        if conn_type == connector_type:
-            target_step_type = step_type
-            break
-    if target_step_type:
+    if connector_type:
         workflows = _recent_workflow_defs(client, org_id, limit=20)
         for wf in workflows:
             definition = wf.get("definition") or {}
-            steps = definition.get("steps") or []
-            if any((s.get("type") or "").strip() == target_step_type for s in steps):
+            if _workflow_uses_connector_type(definition, connector_type):
                 related.append({"id": str(wf["id"]), "name": wf.get("name") or ""})
             if len(related) >= 5:
                 break

@@ -180,6 +180,13 @@ class RAGService:
             top_k=top_k,
             settings=self.settings,
         )
+        logger.info(
+            "rag_rerank org_id=%s method=%s candidates=%s cross_encoder_enabled=%s",
+            org_id,
+            rerank_method,
+            len(merged),
+            cross_encoder_enabled(self.settings),
+        )
 
         context_snippets = [str(row.get("content") or "").strip() for row in reranked]
         context_snippets = [snippet for snippet in context_snippets if snippet]

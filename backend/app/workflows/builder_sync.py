@@ -95,6 +95,31 @@ def _resolve_agent_ids(node: dict[str, Any], nodes_by_id: dict[str, dict], edges
     return (str(agent_id) if agent_id else None, str(next_agent_id) if next_agent_id else None)
 
 
+def _normalize_tool_action(config: dict[str, Any]) -> str | None:
+    action = config.get("tool_action") or config.get("action")
+    if action is None:
+        return None
+    text = str(action).strip()
+    return text or None
+
+
+def _invoke_tool_step(
+    step_id: str,
+    name: str,
+    config: dict[str, Any],
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    cfg = {k: v for k, v in config.items() if k not in {"tool_action", "action"}}
+    action = _normalize_tool_action(config)
+    if action:
+        cfg["action"] = action
+    step: dict[str, Any] = {"id": step_id, "name": name, "type": "invoke_tool", "config": cfg}
+    if metadata:
+        step["metadata"] = metadata
+    return step
+
+
 def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: list[dict[str, Any]]) -> dict[str, Any] | None:
     node_type = str(node.get("node_type") or node.get("type") or "").strip()
     step_id = str(node["id"])
@@ -134,10 +159,14 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
             return {"id": step_id, "name": name, "type": "email_send", "config": dict(config)}
         if tool_action in {"webhook.post", "webhook_post"}:
             return {"id": step_id, "name": name, "type": "webhook_post", "config": dict(config)}
+        if tool_action:
+            return _invoke_tool_step(step_id, name, config, metadata=metadata or None)
     if node_type == "tool":
         mapped = config.get("step_type") or config.get("tool_action")
         if mapped in {"slack_post_message", "email_send", "webhook_post", "rag_retrieve", "noop"}:
             return {"id": step_id, "name": name, "type": str(mapped), "config": dict(config)}
+        if mapped == "invoke_tool" or (mapped and "." in str(mapped)):
+            return _invoke_tool_step(step_id, name, config, metadata=metadata or None)
     if node_type == "council":
         council_cfg = metadata.get("councilConfig") if isinstance(metadata.get("councilConfig"), dict) else {}
         if not council_cfg and isinstance(config.get("councilConfig"), dict):
@@ -184,14 +213,24 @@ def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[s
         step_type = str(step.get("type") or "noop")
         metadata = step.get("metadata") if isinstance(step.get("metadata"), dict) else {}
         config = step.get("config") if isinstance(step.get("config"), dict) else {}
-        node_type = "agent" if step_type == "agent" else "tool" if step_type in {"slack_post_message", "email_send", "webhook_post"} else "task"
+        if step_type == "invoke_tool":
+            node_type = "connector"
+            tool_config = dict(config)
+            if tool_config.get("action") and not tool_config.get("tool_action"):
+                tool_config["tool_action"] = tool_config["action"]
+        elif step_type in {"slack_post_message", "email_send", "webhook_post", "rag_retrieve"}:
+            node_type = "tool"
+            tool_config = dict(config)
+        else:
+            node_type = "agent" if step_type == "agent" else "task"
+            tool_config = dict(config)
         nodes.append(
             {
                 "id": step_id,
                 "node_type": node_type,
                 "title": str(step.get("name") or step_id),
                 "name": str(step.get("name") or step_id),
-                "config": config,
+                "config": tool_config,
                 "metadata": metadata,
                 "position": {"x": x, "y": 160},
                 "position_x": x,

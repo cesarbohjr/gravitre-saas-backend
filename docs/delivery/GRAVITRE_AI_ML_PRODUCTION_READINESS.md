@@ -21,9 +21,10 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | Conversations CRUD + chat persistence | **WIRED** | — |
 | Integrations as tools (`invoke_tool`) | **WIRED** | — |
 | Frontend E2E (Epic I + F1–F4) | **WIRED** | — |
+| WORK section UX audit (Operator, Assistant, Search, Agents, Assignments) | **WIRED** | [`WORK_SECTION_FRONTEND_AUDIT.md`](WORK_SECTION_FRONTEND_AUDIT.md) · deploy `9263bdc` |
 | **Overall** | **Production-ready for AI ops** | **8/10 → 8/10** ✓ |
 
-**Prod smoke:** `npm run smoke:ai-production` — **15/15 pass** ([`smoke-ai-production-latest.json`](smoke-ai-production-latest.json), 2026-06-13)  
+**Prod smoke:** `npm run smoke:ai-production` — **15/15 pass** ([`smoke-ai-production-latest.json`](smoke-ai-production-latest.json), 2026-06-16)  
 **Backend tests:** **803 passed** ([STA-156 verification](STA-156_PHASE5_VERIFICATION.md))
 
 ---
@@ -120,7 +121,7 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | Agent-scoped retrieval in tasks | **WIRED** | `AgentIntelligence` + `RAGService.query` |
 | Department / org RAG scopes | **EXISTS** | STA-20 migrations + rag routers |
 
-**Remaining gap:** Monitor cross-encoder model load failures in prod (`cross_encoder_load_failed` fallback in logs).
+**Remaining gap:** None blocking production — ops monitoring via `npm run rag:cross-encoder:report` (see [`RAG_CROSS_ENCODER_OPS.md`](RAG_CROSS_ENCODER_OPS.md)).
 
 ---
 
@@ -146,12 +147,12 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 |------|--------|-----------|
 | Unified `invoke_tool` | **EXISTS · WIRED** | `tool_service.py:2477` |
 | Connector rate limits | **EXISTS** | `connectors/rate_limit.py` |
-| Workflow step → tool mapping | **WIRED** | `tool_service.py:2748` (`params_for_step`) |
+| Workflow step → tool mapping | **WIRED** | `tool_service.py:2741` (`params_for_step`); builder compiles vendor nodes → `invoke_tool` — see [`CONNECTOR_WORKFLOW_STEP_HANDLERS.md`](CONNECTOR_WORKFLOW_STEP_HANDLERS.md) |
 | ReAct → tool registry | **WIRED** | `react_engine.py` via `ToolRegistry` |
 | OAuth connector catalog | **WIRED** | Connectors router + `/api/connectors/*` proxies |
 | CS integration health scan | **WIRED** | Smoke `integration_health: score=96` |
 
-**Remaining gap:** Not every connector vendor has workflow step handlers — see connector production readiness docs.
+**Remaining gap:** None blocking production — vendor connector nodes compile to `invoke_tool` for all shipped actions.
 
 ---
 
@@ -172,6 +173,7 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | Run execution timeline | STA-153 | **WIRED** | `components/runs/execution-timeline.tsx` |
 | Assistant intelligence | STA-154 | **WIRED** | `app/assistant/page.tsx` |
 | Enterprise assistant upgrade | STA-156 | **WIRED** | Sidebar, tools, follow-ups, models |
+| WORK section premium UX | — | **WIRED** | `app/operator`, `assistant`, `chat`, `agents`, `assignments` — see WORK audit |
 
 ---
 
@@ -183,34 +185,38 @@ This is the canonical **Phase 2 operational gap / production readiness** deliver
 | `POST /api/runs/{id}/steps/{stepId}/retry` | **WIRED** | Re-runs failed step and downstream nodes from checkpoint |
 | `POST /api/runs/{id}/resume-paused` | **WIRED** | Resumes operator-paused runs; UI Resume button on run detail |
 | `GET /api/meson/optimizations/{workflowId}` | **WIRED** | `meson_service.py` `get_workflow_optimizations()`; proxy `apps/web/app/api/meson/optimizations/[workflowId]/route.ts`; panel uses `mesonApi.optimizations()` |
-| True provider streaming edge cases (STA-5) | **WIRED** | `prepare_stream` + `stream` shipped; close STA-5 in Linear |
+| True provider streaming edge cases (STA-5) | **WIRED · VERIFIED** | `prepare_stream` + `stream` + prod smoke `text-delta` checks — see [`STA-5_STREAMING_VERIFICATION.md`](STA-5_STREAMING_VERIFICATION.md) |
 
 ---
 
 ## 9. Production verification
 
-| Check | Command / artifact | Result (2026-06-13) |
+| Check | Command / artifact | Result (2026-06-16) |
 |-------|-------------------|---------------------|
 | Backend pytest | `cd backend && python -m pytest -q` | 803 passed |
 | Frontend typecheck + build | `cd apps/web && npx tsc --noEmit && npm run build` | Pass |
 | Prod smoke | `npm run smoke:ai-production:report` | 15 pass / 0 warn / 0 fail |
-| Vercel deploy | `c768f28` on `main` | Build OK |
+| Vercel deploy | `9263bdc` on `main` (WORK section UX) | Build OK |
 | Railway backend | Auto-deploy from `main` | Smoke target 200 |
 
 ---
 
 ## 10. Recommended follow-ups (post-8/10)
 
-1. **Re-run smoke** after gap-closure deploy; append results to `smoke-ai-production-latest.json`.
-2. **STA-5:** Close Linear issue — token streaming path exists; verify edge-case failover in prod.
-3. **RAG ops:** Monitor cross-encoder model load failures in prod logs.
-4. **Connectors:** Expand workflow step handlers for remaining vendor gaps.
+1. **Re-run smoke** after major deploys; append results to `smoke-ai-production-latest.json`. *(Done 2026-06-16 post `9263bdc`; STA-5 `text-delta` checks added.)*
+2. ~~**STA-5:** Close Linear issue — token streaming path exists; verify edge-case failover in prod.~~ **Done** — see [`STA-5_STREAMING_VERIFICATION.md`](STA-5_STREAMING_VERIFICATION.md).
+3. ~~**RAG ops:** Monitor cross-encoder model load failures in prod logs.~~ **Wired** — `npm run rag:cross-encoder:report` + [`RAG_CROSS_ENCODER_OPS.md`](RAG_CROSS_ENCODER_OPS.md).
+4. ~~**Connectors:** Expand workflow step handlers for remaining vendor gaps.~~ **Done** — builder `invoke_tool` compile path; see [`CONNECTOR_WORKFLOW_STEP_HANDLERS.md`](CONNECTOR_WORKFLOW_STEP_HANDLERS.md).
 
 ---
 
 ## Appendix — Related deliverables
 
 ```text
+docs/delivery/CONNECTOR_WORKFLOW_STEP_HANDLERS.md     # Vendor invoke_tool builder compile
+docs/delivery/RAG_CROSS_ENCODER_OPS.md              # Cross-encoder prod monitoring runbook
+docs/delivery/STA-5_STREAMING_VERIFICATION.md          # STA-5 token streaming sign-off
+docs/delivery/WORK_SECTION_FRONTEND_AUDIT.md       # WORK section UX audit (Jun 2026)
 docs/delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md   # Phase 1–2 audit (STA-155)
 docs/delivery/STA-156_PHASE5_VERIFICATION.md        # pytest + smoke scores
 docs/delivery/smoke-ai-production-latest.json       # latest prod E2E

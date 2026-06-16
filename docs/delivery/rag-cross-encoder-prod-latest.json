@@ -1,0 +1,46 @@
+{
+  "target": "https://gravitre-saas-backend-production.up.railway.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "startedAt": "2026-06-16T20:42:17.626082+00:00",
+  "finishedAt": "2026-06-16T20:42:24.033341+00:00",
+  "status": "pass",
+  "notes": [
+    "no indexed chunks; rerank path not exercised (probe still reachable)",
+    "log scan: no cross-encoder activity in recent window (cold or no RAG traffic)"
+  ],
+  "probe": {
+    "endpoint": "/api/rag-enhanced/query",
+    "query": "workflow failure predictions and overdue invoices",
+    "answerPresent": true,
+    "chunkCount": 0,
+    "metrics": {
+      "top_k": 5,
+      "semantic_candidates": 0,
+      "keyword_candidates": 0,
+      "reranked": 0,
+      "embedding_method": "openai",
+      "hybrid_candidate_k": 20,
+      "rerank_method": "none",
+      "cross_encoder_enabled": true,
+      "rerank_threshold": 0.3
+    },
+    "rerankMethod": "none",
+    "crossEncoderEnabled": true,
+    "embeddingMethod": "openai"
+  },
+  "logs": {
+    "available": true,
+    "service": "gravitre-saas-backend",
+    "linesScanned": 1500,
+    "counts": {
+      "cross_encoder_load_failed": 0,
+      "cross_encoder_predict_failed": 0,
+      "cross_encoder_unavailable": 0,
+      "cross_encoder_loading": 0,
+      "rag_rerank_method": 0
+    },
+    "recentFailures": [],
+    "recentLoads": [],
+    "recentRerankInfo": []
+  }
+}

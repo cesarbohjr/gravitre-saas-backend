@@ -477,6 +477,23 @@ def _warn_http(label: str, exc: urllib.error.HTTPError, note: str) -> str:
     return f"WARN HTTP {exc.code} ({note}): {body[:160]}"
 
 
+def _parse_sse_json_events(body: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for line in body.splitlines():
+        if not line.startswith("data: "):
+            continue
+        payload = line[6:].strip()
+        if not payload or payload == "[DONE]":
+            continue
+        try:
+            parsed = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            events.append(parsed)
+    return events
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="STA-173 AI production smoke")
     parser.add_argument(
@@ -593,7 +610,26 @@ def main() -> None:
             raise RuntimeError("assistant chat returned empty body")
         if "data:" not in stream and "[DONE]" not in stream:
             raise RuntimeError("assistant chat response missing SSE framing")
-        return f"assistant_chat: bytes={len(stream)}"
+        events = _parse_sse_json_events(stream)
+        event_types = [event.get("type") for event in events]
+        deltas = [
+            str(event.get("delta", ""))
+            for event in events
+            if event.get("type") == "text-delta" and event.get("delta")
+        ]
+        if "text-start" not in event_types:
+            raise RuntimeError("assistant chat missing text-start SSE event (STA-5)")
+        if "text-end" not in event_types:
+            raise RuntimeError("assistant chat missing text-end SSE event (STA-5)")
+        if not deltas:
+            raise RuntimeError("assistant chat missing text-delta token stream (STA-5)")
+        streamed_text = "".join(deltas).strip()
+        if not streamed_text:
+            raise RuntimeError("assistant chat text-delta stream was empty")
+        return (
+            f"assistant_chat: deltas={len(deltas)} chars={len(streamed_text)} "
+            f"bytes={len(stream)}"
+        )
 
     def workflow_dry_run_abc() -> str:
         result = _request(

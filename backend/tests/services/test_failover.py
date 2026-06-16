@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 import pytest
 
 from app.services.providers.base import (
@@ -12,8 +14,9 @@ from app.services.providers.base import (
     ProviderRateLimitedError,
     ProviderResponse,
     ProviderUnavailableError,
+    StreamChunk,
 )
-from app.services.providers.failover import build_priority, run_failover
+from app.services.providers.failover import build_priority, run_failover, run_failover_stream
 
 MSGS: list[Message] = [{"role": "user", "content": "hi"}]
 OPTS = CompletionOptions()
@@ -45,6 +48,31 @@ class StubAdapter(ProviderAdapter):
 
     def embed(self, text: str, model: str) -> list[float]:
         return [0.0]
+
+
+class StreamStubAdapter(StubAdapter):
+    async def stream(
+        self,
+        messages: list[Message],
+        model: str,
+        options: CompletionOptions,
+    ) -> AsyncIterator[StreamChunk]:
+        self.calls += 1
+        if self._error:
+            raise self._error
+        yield StreamChunk(delta="ok")
+        yield StreamChunk(
+            done=True,
+            response=ProviderResponse(
+                content="ok",
+                prompt_tokens=1,
+                completion_tokens=1,
+                total_tokens=2,
+                model_used=model,
+                provider_used=self.provider_name,
+                latency_ms=1.0,
+            ),
+        )
 
 
 class TestBuildPriority:
@@ -136,6 +164,100 @@ class TestFailoverChain:
             CircuitBreaker(),
         )
         assert result.response.provider_used == "anthropic"
+        assert a.calls == 0
+
+
+class TestFailoverStreamChain:
+    @pytest.mark.asyncio
+    async def test_primary_fails_secondary_streams(self):
+        a = StreamStubAdapter("openai", error=ProviderUnavailableError("openai", "down"))
+        b = StreamStubAdapter("anthropic")
+        chunks = [
+            chunk
+            async for chunk in run_failover_stream(
+                {"openai": a, "anthropic": b},
+                [("openai", "m1"), ("anthropic", "m2")],
+                MSGS,
+                OPTS,
+                CircuitBreaker(),
+            )
+        ]
+        assert [c.delta for c in chunks if c.delta] == ["ok"]
+        assert chunks[-1].done is True
+        assert chunks[-1].response is not None
+        assert chunks[-1].response.provider_used == "anthropic"
+        assert a.calls == 1 and b.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_two_fail_third_streams(self):
+        a = StreamStubAdapter("openai", error=ProviderRateLimitedError("openai", "429"))
+        b = StreamStubAdapter("anthropic", error=ProviderUnavailableError("anthropic", "down"))
+        c = StreamStubAdapter("gemini")
+        chunks = [
+            chunk
+            async for chunk in run_failover_stream(
+                {"openai": a, "anthropic": b, "gemini": c},
+                [("openai", "m1"), ("anthropic", "m2"), ("gemini", "m3")],
+                MSGS,
+                OPTS,
+                CircuitBreaker(),
+            )
+        ]
+        assert chunks[-1].response is not None
+        assert chunks[-1].response.provider_used == "gemini"
+        assert (a.calls, b.calls, c.calls) == (1, 1, 1)
+
+    @pytest.mark.asyncio
+    async def test_all_fail_raises(self):
+        a = StreamStubAdapter("openai", error=ProviderUnavailableError("openai", "down"))
+        b = StreamStubAdapter("anthropic", error=ProviderUnavailableError("anthropic", "down"))
+        with pytest.raises(AllProvidersFailedError):
+            _ = [
+                chunk
+                async for chunk in run_failover_stream(
+                    {"openai": a, "anthropic": b},
+                    [("openai", "m1"), ("anthropic", "m2")],
+                    MSGS,
+                    OPTS,
+                    CircuitBreaker(),
+                )
+            ]
+
+    @pytest.mark.asyncio
+    async def test_invalid_response_no_failover(self):
+        a = StreamStubAdapter("openai", error=ProviderInvalidResponseError("openai", "bad prompt"))
+        b = StreamStubAdapter("anthropic")
+        with pytest.raises(ProviderInvalidResponseError):
+            _ = [
+                chunk
+                async for chunk in run_failover_stream(
+                    {"openai": a, "anthropic": b},
+                    [("openai", "m1"), ("anthropic", "m2")],
+                    MSGS,
+                    OPTS,
+                    CircuitBreaker(),
+                )
+            ]
+        assert b.calls == 0
+
+    @pytest.mark.asyncio
+    async def test_open_breaker_skips_provider_in_stream_chain(self):
+        breaker = CircuitBreaker(failure_threshold=1, cooldown_s=60.0)
+        breaker.record_failure("openai")
+        a = StreamStubAdapter("openai")
+        b = StreamStubAdapter("anthropic")
+        chunks = [
+            chunk
+            async for chunk in run_failover_stream(
+                {"openai": a, "anthropic": b},
+                [("openai", "m1"), ("anthropic", "m2")],
+                MSGS,
+                OPTS,
+                breaker,
+            )
+        ]
+        assert chunks[-1].response is not None
+        assert chunks[-1].response.provider_used == "anthropic"
         assert a.calls == 0
 
 

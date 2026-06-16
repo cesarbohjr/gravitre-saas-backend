@@ -160,17 +160,9 @@ class ModelRouter:
         self._breaker = create_circuit_breaker(self.settings)
         self._cache: dict[str, ModelResponse] = {}
 
-    # FUTURE (STA-5): Add a streaming path to the router (e.g. complete_stream()).
-    # https://linear.app/staqbot/issue/STA-5
-    # Current: full completion is produced here, then the caller streams it to
-    # the client (see app/routers/assistant.py). True real-time token streaming
-    # needs a two-phase approach so guardrail failures still surface before the
-    # stream opens:
-    #   1. Pre-flight: run all guardrails (killswitch, rate limit, budget,
-    #      moderation) synchronously — fast, can raise/return an HTTP error.
-    #   2. Stream: open the provider stream and forward chunks through failover
-    #      to the client in real time, logging tokens/cost on stream completion.
-    # Add to the backlog when assistant UX becomes a priority.
+    # Token streaming (STA-5 / STA-151):
+    #   prepare_stream() — guardrails + message build before HTTP stream opens
+    #   stream() — run_failover_stream() forwards provider chunks to assistant SSE
     async def complete(
         self,
         task_type: TaskType,
