@@ -346,6 +346,73 @@ const connectorLibrary = [
   { id: "conn-6", name: "Stripe", vendor: "stripe", status: "connected" },
 ]
 
+// G1: derive the canonical invoke_tool action key (`{vendor}.{actionId}`) that the
+// backend builder_sync compiles connector nodes into. Mirrors lib/connector-sdk actionKey().
+function compiledActionKey(vendor?: string, selectedAction?: string): string | null {
+  if (!vendor || !selectedAction) return null
+  return `${vendor}.${selectedAction}`
+}
+
+// G1: is the selected action present in the local action catalog (i.e. will it
+// actually compile + run rather than silently becoming a noop)?
+function isActionImplemented(vendor?: string, selectedAction?: string): boolean {
+  if (!vendor || !selectedAction) return false
+  return !!connectorActions[vendor]?.actions.find((a) => a.id === selectedAction)
+}
+
+export interface ConnectorValidationIssue {
+  nodeId: string
+  nodeName: string
+  severity: "error" | "warning"
+  message: string
+}
+
+// G1: pre-save/publish validation so operators never ship a connector step that
+// silently compiles to a no-op. Returns blocking errors + non-blocking warnings.
+function getConnectorValidationIssues(nodes: WorkflowNode[]): ConnectorValidationIssue[] {
+  const issues: ConnectorValidationIssue[] = []
+  for (const node of nodes) {
+    if (node.type !== "connector") continue
+    // No connector bound at all.
+    if (!node.vendor) {
+      issues.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        severity: "error",
+        message: "No connector selected — pick a connector & action.",
+      })
+      continue
+    }
+    const connector = connectorLibrary.find((c) => c.vendor === node.vendor)
+    // Vendor disconnected in the connector library.
+    if (!connector || connector.status !== "connected") {
+      issues.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        severity: "error",
+        message: `${node.vendor} is disconnected — reconnect it before publishing.`,
+      })
+    }
+    // Action chosen but not in the catalog → would compile to noop.
+    if (!node.selectedAction) {
+      issues.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        severity: "error",
+        message: "No action selected — this step would not run.",
+      })
+    } else if (!isActionImplemented(node.vendor, node.selectedAction)) {
+      issues.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        severity: "error",
+        message: `Action "${node.selectedAction}" is not available for ${node.vendor}.`,
+      })
+    }
+  }
+  return issues
+}
+
 const sourceLibrary = [
   { id: "src-1", name: "CRM Records", type: "database" },
   { id: "src-2", name: "Internal Docs", type: "documents" },
@@ -1963,6 +2030,59 @@ node.type === "approval" && "bg-red-500",
             )}
           </div>
 
+          {/* G1: Compiled step preview — show that a connector node runs as an
+              executable invoke_tool step (never a silent noop) and surface the
+              canonical action key + readiness. */}
+          {node.type === "connector" && node.vendor && (
+            <div className="space-y-2 p-3 rounded-lg border border-border bg-secondary/40">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="text-xs font-medium text-foreground">Runs as</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400">
+                    invoke_tool
+                  </span>
+                </div>
+                {node.selectedAction && (
+                  isActionImplemented(node.vendor, node.selectedAction) ? (
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-500">
+                      <CheckCircle className="h-3 w-3" /> Ready
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] text-amber-500">
+                      <AlertTriangle className="h-3 w-3" /> Action not available
+                    </span>
+                  )
+                )}
+              </div>
+              {compiledActionKey(node.vendor, node.selectedAction) ? (
+                <code className="block text-xs font-mono text-muted-foreground break-all">
+                  {compiledActionKey(node.vendor, node.selectedAction)}
+                </code>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Select an action below to compile this step.
+                </p>
+              )}
+              {node.selectedAction && !isActionImplemented(node.vendor, node.selectedAction) && (
+                <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-500">
+                    This action is not in the connector catalog and will not run in production. Pick a supported action.
+                  </p>
+                </div>
+              )}
+              {connectorStatus !== "connected" && (
+                <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-500">
+                    {node.vendor} is {connectorStatus}. Reconnect it so this step can run.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Basic Info */}
           <div className="space-y-4">
             <div>
@@ -2711,7 +2831,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   // Saving and running state
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
-  
+  // G1: live blocking-issue count to disable Save/Publish + drive warnings.
+  const connectorBlockingIssues = useMemo(
+    () => getConnectorValidationIssues(nodes).filter((i) => i.severity === "error"),
+    [nodes],
+  )
   // Execution mode state
   const [isExecuting, setIsExecuting] = useState(false)
   const [executionStep, setExecutionStep] = useState(0)
@@ -3178,7 +3302,17 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       })
       return
     }
-    
+
+    // G1: block save when connector steps would compile to a noop or hit a
+    // disconnected vendor, so operators never ship a silently broken workflow.
+    if (connectorBlockingIssues.length > 0) {
+      const first = connectorBlockingIssues[0]
+      toast.error(`Fix ${connectorBlockingIssues.length} connector ${connectorBlockingIssues.length === 1 ? "issue" : "issues"} before saving`, {
+        description: `${first.nodeName}: ${first.message}`,
+      })
+      return
+    }
+
     setIsSaving(true)
     try {
       const result = await saveBuilderGraph(id, nodes, {
@@ -3197,9 +3331,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     } finally {
       setIsSaving(false)
     }
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description])
-
-  // Handle dry-run preview via intelligence drawer (STA-166)
+  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
   const handlePreview = useCallback(async () => {
     if (!canPersist) {
       toast.info("Demo mode", {
@@ -3747,8 +3879,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 size="sm" 
                 className="h-8 gap-2"
                 onClick={handleSave}
-                disabled={isSaving || isLoadingGraph || isRunning}
+                disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
                 aria-busy={isSaving}
+                title={
+                  connectorBlockingIssues.length > 0
+                    ? `Resolve ${connectorBlockingIssues.length} connector issue(s) before saving`
+                    : undefined
+                }
               >
                 {isSaving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3756,6 +3893,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   <Save className="h-3.5 w-3.5" />
                 )}
                 <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
+                {connectorBlockingIssues.length > 0 && (
+                  <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-medium text-amber-500">
+                    {connectorBlockingIssues.length}
+                  </span>
+                )}
               </Button>
               <Button 
                 variant="outline" 
