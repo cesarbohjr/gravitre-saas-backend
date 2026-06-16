@@ -3340,6 +3340,16 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       return
     }
 
+    // G1: don't preview a workflow that has connector steps which would compile
+    // to a noop — the dry-run would be misleading.
+    if (connectorBlockingIssues.length > 0) {
+      const first = connectorBlockingIssues[0]
+      toast.error(`Fix ${connectorBlockingIssues.length} connector ${connectorBlockingIssues.length === 1 ? "issue" : "issues"} before previewing`, {
+        description: `${first.nodeName}: ${first.message}`,
+      })
+      return
+    }
+
     setIsSaving(true)
     try {
       await saveBuilderGraph(id, nodes, {
@@ -3360,7 +3370,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     } finally {
       setIsSaving(false)
     }
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description])
+  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
 
   // Handle run workflow with live run polling (STA-166)
   const handleRun = useCallback(async () => {
