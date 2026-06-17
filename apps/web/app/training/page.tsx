@@ -7,6 +7,7 @@ import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { trainingApi, agentsApi } from "@/lib/api"
@@ -450,6 +451,16 @@ function TrainingPageContent() {
         ) : null}
 
         <div className="relative grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="col-span-2 md:col-span-6 flex justify-end">
+            <DataFreshness
+              updatedAt={datasetsData || jobsData ? Date.now() : null}
+              onRefresh={() => {
+                void mutateDatasets()
+                void mutateJobs()
+                void mutateInstructions()
+              }}
+            />
+          </div>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}

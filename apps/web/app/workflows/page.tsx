@@ -6,6 +6,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
 import { WorkflowCard, WorkflowGrid } from "@/components/gravitre/workflow-card"
+import { ErrorState, EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
+import { CardSkeleton } from "@/components/gravitre/loading-state"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { DataTable } from "@/components/gravitre/data-table"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -190,7 +193,7 @@ export default function WorkflowsPage() {
   const [envFilter, setEnvFilter] = useState<string[]>([])
   
   // Fetch workflows - only when user is authenticated
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
     user ? "/api/workflows" : null,
     apiFetcher,
     {
@@ -487,36 +490,30 @@ export default function WorkflowsPage() {
         )}
 
         <div className="relative z-10 flex-1 overflow-y-auto p-4 md:p-6 scrollbar-on-hover">
-          {/* Error banner */}
+          {/* Error state with retry */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              <Icon name="error" size="sm" emphasis />
-              Failed to load workflows. Check your organization context and try again.
-            </div>
+            <ErrorState
+              title="Failed to load workflows"
+              description="We couldn't reach your workflows. Check your organization context and try again."
+              onRetry={() => mutate()}
+            />
           )}
 
           {isLoading && workflows.length === 0 && (
-            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-              Loading workflows...
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
             </div>
           )}
 
           {!isLoading && !error && workflows.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-              <Workflow className="h-10 w-10 text-muted-foreground/60" />
-              <div>
-                <p className="text-sm font-medium text-foreground">No workflows yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Create your first workflow to automate work across your systems.
-                </p>
-              </div>
-              <Link href="/workflows/new/builder">
-                <Button size="sm" className="gap-2">
-                  <Icon name="add" size="sm" />
-                  New Workflow
-                </Button>
-              </Link>
-            </div>
+            <EmptyState
+              icon={Workflow}
+              title="No workflows yet"
+              description="Create your first workflow to automate work across your systems."
+              action={{ label: "New Workflow", onClick: () => router.push("/workflows/new/builder") }}
+            />
           )}
 
           {workflows.length > 0 && (
@@ -562,7 +559,29 @@ export default function WorkflowsPage() {
             </div>
           </div>
 
-          {/* Content - Premium animated */}
+          {/* Freshness + result count */}
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {filteredWorkflows.length} of {workflows.length} workflow{workflows.length === 1 ? "" : "s"}
+            </span>
+            <DataFreshness
+              updatedAt={data ? Date.now() : null}
+              isRefreshing={isValidating}
+              onRefresh={() => mutate()}
+            />
+          </div>
+
+          {/* Filtered no-results */}
+          {filteredWorkflows.length === 0 ? (
+            <NoResultsState
+              onClear={() => {
+                setSearchQuery("")
+                setStatusFilter([])
+                setEnvFilter([])
+              }}
+            />
+          ) : (
+          /* Content - Premium animated */
           <AnimatePresence mode="wait">
             {viewMode === "grid" ? (
               <motion.div
@@ -643,6 +662,7 @@ export default function WorkflowsPage() {
               </motion.div>
             )}
           </AnimatePresence>
+          )}
           </>
           )}
         </div>
