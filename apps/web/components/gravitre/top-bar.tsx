@@ -46,21 +46,23 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
   const { user, signOut } = useAuth()
 
   // Live profile stats (real data, no mocks). Falls back to "—" while loading/unavailable.
-  const { data: overviewData } = useSWR(user ? "/api/metrics/overview" : null, apiFetcher, {
-    revalidateOnFocus: false,
-    refreshInterval: 60_000,
-  })
-  const { data: approvalsData } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
-    revalidateOnFocus: false,
-    refreshInterval: 60_000,
-  })
+  const { data: overviewData } = useSWR<{ activeWorkflows?: number; successRate?: number }>(
+    user ? "/api/metrics/overview" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, refreshInterval: 60_000 },
+  )
+  const { data: approvalsData } = useSWR<{ approvals?: unknown[] } | unknown[]>(
+    user ? "/api/approvals" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, refreshInterval: 60_000 },
+  )
 
   const activeWorkflows =
     typeof overviewData?.activeWorkflows === "number" ? overviewData.activeWorkflows : null
   const successRate =
     typeof overviewData?.successRate === "number" ? overviewData.successRate : null
-  const pendingApprovals = Array.isArray(approvalsData?.approvals)
-    ? approvalsData.approvals.length
+  const pendingApprovals = Array.isArray((approvalsData as { approvals?: unknown[] })?.approvals)
+    ? (approvalsData as { approvals: unknown[] }).approvals.length
     : Array.isArray(approvalsData)
       ? approvalsData.length
       : null
