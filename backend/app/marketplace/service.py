@@ -315,7 +315,6 @@ def _install_ai_agent(
             "capabilities": config.capabilities,
             "config": {**(config.config or {}), "marketplaceAssetId": asset["id"]},
             "allowed_environments": [environment_name],
-            "environment_id": environment_name,
             "status": "active",
         },
         created_by=actor_id,

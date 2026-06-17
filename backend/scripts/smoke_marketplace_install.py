@@ -35,18 +35,34 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _ensure_hubspot_connector(client, org_id: str) -> str:
-    existing = (
-        client.table("connectors")
-        .select("id")
+def _resolve_actor_id(client, org_id: str) -> str:
+    members = (
+        client.table("organization_members")
+        .select("user_id")
         .eq("org_id", org_id)
-        .eq("type", "hubspot")
-        .eq("status", "active")
         .limit(1)
         .execute()
     )
-    if existing.data:
-        return str(existing.data[0]["id"])
+    if members.data and members.data[0].get("user_id"):
+        return str(members.data[0]["user_id"])
+    return "00000000-0000-0000-0000-000000000001"
+
+
+def _ensure_hubspot_connector(client, org_id: str) -> str:
+    by_type = (
+        client.table("connectors")
+        .select("id,status")
+        .eq("org_id", org_id)
+        .eq("type", "hubspot")
+        .limit(1)
+        .execute()
+    )
+    if by_type.data:
+        row = by_type.data[0]
+        connector_id = str(row["id"])
+        if row.get("status") != "active":
+            client.table("connectors").update({"status": "active"}).eq("id", connector_id).execute()
+        return connector_id
 
     inserted = (
         client.table("connectors")
@@ -96,12 +112,14 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "Connect HubSpot or pass --ensure-hubspot"}))
         return 1
 
+    actor_id = _resolve_actor_id(client, args.org_id)
+
     try:
         result = install_asset(
             client,
             args.org_id,
             asset_id,
-            actor_id="smoke-marketplace-install",
+            actor_id=actor_id,
             environment_name="production",
         )
     except MarketplaceError as exc:
@@ -111,9 +129,17 @@ def main() -> int:
     entities = result.get("entities") or {}
     agent_ids = entities.get("agentIds") or []
     workflow_ids = entities.get("workflowIds") or []
+    failures = entities.get("failures") or []
 
     operators = (
         client.table("operators")
+        .select("id", count="exact")
+        .eq("org_id", args.org_id)
+        .in_("id", agent_ids if agent_ids else ["00000000-0000-0000-0000-000000000000"])
+        .execute()
+    )
+    agents = (
+        client.table("agents")
         .select("id", count="exact")
         .eq("org_id", args.org_id)
         .in_("id", agent_ids if agent_ids else ["00000000-0000-0000-0000-000000000000"])
@@ -136,11 +162,14 @@ def main() -> int:
         "agent_count": len(agent_ids),
         "workflow_count": len(workflow_ids),
         "operators_verified": len(operators.data or []),
+        "agents_verified": len(agents.data or []),
         "workflows_verified": len(workflows.data or []),
+        "failures": failures,
         "install_id": (result.get("install") or {}).get("id"),
     }
     print(json.dumps(summary, indent=2))
-    return 0 if summary["operators_verified"] >= 1 and summary["workflows_verified"] >= 1 else 1
+    agents_ok = summary["operators_verified"] >= 1 or summary["agents_verified"] >= 1
+    return 0 if agents_ok and summary["workflows_verified"] >= 1 else 1
 
 
 if __name__ == "__main__":
