@@ -174,6 +174,11 @@ const columns = [
   },
 ]
 
+type WorkflowStatsPayload = {
+  overallSuccessRate?: number
+  totalRunsThisWeek?: number
+}
+
 export default function WorkflowsPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -196,12 +201,12 @@ export default function WorkflowsPage() {
       },
     }
   )
-  const { data: statsData } = useSWR<{ overallSuccessRate?: number; totalRunsThisWeek?: number }>(
+  const { data: statsData } = useSWR<WorkflowStatsPayload>(
     user ? "/api/workflows/stats" : null,
     apiFetcher,
     {
       revalidateOnFocus: false,
-    },
+    }
   )
 
   const workflows = normalizeWorkflowsResponse(data)
