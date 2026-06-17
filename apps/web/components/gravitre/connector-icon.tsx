@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { connectorVendorKey } from "@/lib/connectors"
 
@@ -721,6 +722,101 @@ function getVendorLogo(vendor?: string): React.ReactNode | null {
   return null
 }
 
+// ============================================================================
+// SIMPLE ICONS CDN — primary logo source for exact, official brand marks.
+// Falls back to inline/asset logos for vendors removed from Simple Icons
+// (e.g. Google, Gmail, Microsoft were delisted for trademark reasons).
+// ============================================================================
+
+// Resolved vendor key -> Simple Icons slug, for cases where the slug differs
+// from a naive de-punctuation of the vendor key.
+const SIMPLE_ICON_SLUG_OVERRIDES: Record<string, string> = {
+  google_analytics: "googleanalytics",
+  google_calendar: "googlecalendar",
+  google_drive: "googledrive",
+  google_docs: "googledocs",
+  google_sheets: "googlesheets",
+  google_ads: "googleads",
+  monday: "mondaydotcom",
+  clickup: "clickup",
+  constant_contact: "constantcontact",
+  pagerduty: "pagerduty",
+  quickbooks: "quickbooks",
+  amazon_s3: "amazons3",
+  s3: "amazons3",
+  dynamodb: "amazondynamodb",
+  redshift: "amazonredshift",
+  bamboohr: "bamboo",
+  big_query: "googlebigquery",
+  bigquery: "googlebigquery",
+}
+
+// Vendors known to be unavailable on Simple Icons (delisted/trademark) — skip
+// the CDN entirely and use the existing inline/asset logo to avoid a 404 flash.
+const SIMPLE_ICON_UNAVAILABLE = new Set<string>([
+  "google",
+  "gmail",
+  "google_analytics",
+  "google_calendar",
+  "google_drive",
+  "google_docs",
+  "google_sheets",
+  "google_ads",
+  "microsoft",
+  "microsoft365",
+  "microsoft_365",
+  "outlook",
+  "teams",
+])
+
+function getSimpleIconSlug(vendor?: string): string | null {
+  const key = resolveVendorLogoKey(vendor)
+  if (!key) return null
+  if (SIMPLE_ICON_UNAVAILABLE.has(key)) return null
+  if (SIMPLE_ICON_SLUG_OVERRIDES[key]) return SIMPLE_ICON_SLUG_OVERRIDES[key]
+  return key.replace(/[_\s./-]/g, "")
+}
+
+/**
+ * Renders an exact brand logo from the Simple Icons CDN.
+ * - Light theme: official brand color.
+ * - Dark theme: white (guarantees contrast on dark surfaces).
+ * On load failure (slug not on Simple Icons), renders `fallback`.
+ */
+function BrandLogo({
+  slug,
+  alt,
+  fallback,
+}: {
+  slug: string
+  alt: string
+  fallback: React.ReactNode
+}) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <>{fallback}</>
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://cdn.simpleicons.org/${slug}`}
+        alt={alt}
+        loading="lazy"
+        className="h-full w-full object-contain dark:hidden"
+        onError={() => setFailed(true)}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://cdn.simpleicons.org/${slug}/white`}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        className="hidden h-full w-full object-contain dark:block"
+        onError={() => setFailed(true)}
+      />
+    </>
+  )
+}
+
 // Brand monogram fallback for connectors without a dedicated logo.
 function getConnectorInitials(name: string): string {
   return name
@@ -744,13 +840,29 @@ export function ConnectorIcon({
   className,
   onClick,
 }: ConnectorIconProps) {
-  const brandKey = brand || getBrandKey(vendor)
-  const brandToken = connectorBrandTokens[brandKey]
   const statusToken = connectorStatusTokens[status]
   const sizeToken = connectorIconSizes[size]
-  
-  const logo = icon || getVendorLogo(vendor)
+
   const displayName = name || vendor || "Connector"
+  const inlineLogo = getVendorLogo(vendor)
+  const initials = (
+    <span
+      className={cn(
+        "font-semibold leading-none text-muted-foreground",
+        size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm"
+      )}
+    >
+      {getConnectorInitials(displayName)}
+    </span>
+  )
+  // Simple Icons CDN is the primary logo source for exact official marks;
+  // fall back to inline/asset logo, then to brand initials.
+  const simpleSlug = icon ? null : getSimpleIconSlug(vendor)
+  const logo = icon
+    ? icon
+    : simpleSlug
+      ? <BrandLogo slug={simpleSlug} alt={`${displayName} logo`} fallback={inlineLogo ?? initials} />
+      : (inlineLogo ?? null)
 
   return (
     <div className={cn("relative inline-flex", className)} onClick={onClick}>
@@ -762,24 +874,15 @@ export function ConnectorIcon({
           "hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_36px_rgba(15,23,42,0.08)]",
           sizeToken.container,
           sizeToken.radius,
-          brandToken.bg,
-          brandToken.border,
-          selected && "ring-2 ring-offset-2 ring-blue-500/30 dark:ring-offset-zinc-950",
+          // Uniform neutral surface for every connector — no per-brand tints
+          // or black boxes, so icons stay visually consistent across themes.
+          "bg-muted border-border",
+          selected && "ring-2 ring-offset-2 ring-blue-500/30 dark:ring-offset-background",
           onClick && "cursor-pointer"
         )}
       >
         <div className={cn("flex items-center justify-center", sizeToken.icon)}>
-          {logo || (
-            <span
-              className={cn(
-                "font-semibold leading-none",
-                brandToken.text,
-                size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm"
-              )}
-            >
-              {getConnectorInitials(displayName)}
-            </span>
-          )}
+          {logo || initials}
         </div>
       </div>
 
