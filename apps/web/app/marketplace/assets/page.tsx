@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -570,15 +571,21 @@ function AssetDetailDrawer({
 
 function MarketplaceAssetsContent() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const initialSlug = searchParams.get("slug")
+  const initialType = searchParams.get("type")
   const reduceMotion = useReducedMotion()
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
-  const [typeFilter, setTypeFilter] = useState<string>("all")
+  const validTypes = useMemo(() => new Set(TYPE_FILTERS.map((filter) => filter.id)), [])
+  const [typeFilter, setTypeFilter] = useState<string>(
+    initialType && validTypes.has(initialType as (typeof TYPE_FILTERS)[number]["id"]) ? initialType : "all",
+  )
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search.trim())
   const [busy, setBusy] = useState<string | null>(null)
-  const [detailRef, setDetailRef] = useState<string | null>(null)
-  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailRef, setDetailRef] = useState<string | null>(initialSlug)
+  const [detailOpen, setDetailOpen] = useState(Boolean(initialSlug))
   const [installTarget, setInstallTarget] = useState<MarketplaceAssetSummary | null>(null)
   const [installOpen, setInstallOpen] = useState(false)
 
@@ -652,6 +659,14 @@ function MarketplaceAssetsContent() {
           <div className="min-w-0 flex-1 space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Link href="/marketplace" className="hover:text-foreground">
+                  Marketplace home
+                </Link>
+                <span aria-hidden>·</span>
+                <Link href="/marketplace/installed" className="hover:text-foreground">
+                  Installed
+                </Link>
+                <span aria-hidden>·</span>
                 <Link href="/marketplace/submit" className="hover:text-foreground">
                   Partner submissions
                 </Link>

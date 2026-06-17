@@ -1684,6 +1684,46 @@ export interface MarketplaceAssetCloneResult {
   }
 }
 
+export interface MarketplaceInstallDeepLink {
+  label: string
+  entityType: string
+  entityId: string
+  path: string
+}
+
+export interface MarketplaceInstall {
+  id: string
+  assetId: string
+  assetVersion?: string | null
+  status: string
+  installedEntityType?: string | null
+  installedEntityId?: string | null
+  installedAt?: string | null
+  updatedAt?: string | null
+  metadata?: {
+    agentIds?: string[]
+    workflowIds?: string[]
+    ragSourceIds?: string[]
+    operatorId?: string
+  }
+  deepLinks: MarketplaceInstallDeepLink[]
+  asset?: {
+    id: string
+    slug: string
+    title: string
+    assetType: string
+    category?: string | null
+    department?: string | null
+  } | null
+}
+
+export interface MarketplaceInstallsListResponse {
+  installs: MarketplaceInstall[]
+  total: number
+  limit: number
+  offset: number
+}
+
 // Federation & B2B (STA-115/116/117/118)
 export type FederationPartnershipStatus =
   | "pending_partner"

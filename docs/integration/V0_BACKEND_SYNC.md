@@ -1,7 +1,7 @@
 # v0 ↔ Backend sync (production-ready)
 
 **Canonical branch:** `main`  
-**v0 import branch:** `v0/cesarbohorquezjr-4251-8b623736` (local: `v0-sync`)  
+**v0 import branch:** `v0/cesarbohorquezjr-4251-045ef0d4` (local: `v0-sync` — fast-forward from `main`, or track `045ef0d4` when v0 leads UI)  
 **Cursor branch:** `cursor/auth-config-cli-0dd3`
 
 Keep these branches **fast-forwarded to `main`** so v0 and Cursor always see the same backend + proxy wiring as production.

@@ -94,6 +94,7 @@ import type {
   MarketplaceAssetInstallResult,
   MarketplaceAssetsListResponse,
   MarketplaceInstallBlocker,
+  MarketplaceInstallsListResponse,
   FederationPartnership,
   FederationHandoff,
   FederationConnectorGrant,
@@ -714,6 +715,15 @@ export const marketplaceApi = {
     fetcher<{ categories: { key: string; count: number }[]; departments: { key: string; count: number }[]; assetTypes: { key: string; count: number }[]; totalAssets: number }>(
       apiUrl("/api/marketplace/categories"),
     ),
+  listInstalls: (params?: { status?: string; assetId?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set("status", params.status)
+    if (params?.assetId) query.set("assetId", params.assetId)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceInstallsListResponse>(apiUrl(`/api/marketplace/installs${suffix}`))
+  },
 }
 
 // ============ Approvals ============
