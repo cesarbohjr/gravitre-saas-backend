@@ -1639,6 +1639,37 @@ export interface MarketplaceAssetInstallResult {
   connectorChecklist?: MarketplaceConnectorChecklistItem[]
 }
 
+export interface MarketplaceAssetInstallCheck {
+  canInstall: boolean
+  blockers: MarketplaceInstallBlocker[]
+  connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorsReady?: boolean
+  requiredConnectorsConnected?: number
+  requiredConnectorsTotal?: number
+}
+
+export interface MarketplacePackItemChild {
+  id: string
+  slug: string
+  title: string
+  assetType: string
+  category?: string | null
+  department?: string | null
+}
+
+export interface MarketplacePackItem {
+  sortOrder: number
+  required: boolean
+  child: MarketplacePackItemChild
+}
+
+export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
+  config?: Record<string, unknown>
+  blockers?: MarketplaceInstallBlocker[]
+  packItems?: MarketplacePackItem[]
+  installVariables?: unknown[]
+}
+
 export interface MarketplaceAssetCloneResult {
   cloned: boolean
   sourceAssetId: string

@@ -166,6 +166,16 @@ def find_forbidden_secret_paths(value: Any, path: str = "") -> list[str]:
     return errors
 
 
+def assert_no_forbidden_secrets(value: Any, *, field_label: str) -> None:
+    """Raise when ``value`` contains credential-like keys anywhere in the tree."""
+    secret_paths = find_forbidden_secret_paths(value)
+    if secret_paths:
+        raise MarketplaceValidationError(
+            f"{field_label} must not contain secret or credential fields",
+            errors=[f"forbidden_secret:{path}" for path in secret_paths],
+        )
+
+
 def _format_pydantic_errors(exc: ValidationError) -> list[str]:
     return [
         f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}"
@@ -243,12 +253,7 @@ def parse_asset_config(
             "config must be an object",
             errors=["config_invalid"],
         )
-    secret_paths = find_forbidden_secret_paths(config)
-    if secret_paths:
-        raise MarketplaceValidationError(
-            "config must not contain secret or credential fields",
-            errors=[f"forbidden_secret:{path}" for path in secret_paths],
-        )
+    assert_no_forbidden_secrets(config, field_label="config")
     model_cls = ASSET_CONFIG_MODELS[asset_type]
     try:
         return model_cls.model_validate(config)
@@ -268,6 +273,8 @@ def validate_asset_payload(
     publish: bool = False,
 ) -> dict[str, Any]:
     """Validate config plus top-level marketplace asset metadata fields."""
+    assert_no_forbidden_secrets(install_variables, field_label="install_variables")
+    assert_no_forbidden_secrets(required_connectors, field_label="required_connectors")
     parsed_config = parse_asset_config(asset_type, config, publish=publish)
     parsed_variables = validate_install_variables(install_variables)
     parsed_connectors = validate_required_connectors(required_connectors)

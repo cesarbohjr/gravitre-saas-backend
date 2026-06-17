@@ -43,8 +43,9 @@ def _table(select_data: list | None = None) -> MagicMock:
 
 
 @patch("app.marketplace.clone.write_audit_event")
+@patch("app.marketplace.clone.increment_marketplace_counter")
 @patch("app.marketplace.clone.resolve_browsable_asset", return_value=SOURCE)
-def test_clone_asset_creates_private_draft(mock_resolve, mock_audit):
+def test_clone_asset_creates_private_draft(mock_resolve, mock_increment, mock_audit):
     slug_checks = _table([])
     slug_checks.execute.side_effect = [
         MagicMock(data=[]),
@@ -80,9 +81,8 @@ def test_clone_asset_creates_private_draft(mock_resolve, mock_audit):
     assert result["asset"]["status"] == "draft"
     assert result["asset"]["visibility"] == "private"
     assert result["asset"]["slug"] == "marketing-analyst-copy"
+    mock_increment.assert_called_once_with(client, SOURCE["id"], "clone_count")
     mock_audit.assert_called_once()
-    update_call = assets.update.call_args
-    assert update_call is not None
 
 
 @patch("app.marketplace.clone.resolve_browsable_asset")

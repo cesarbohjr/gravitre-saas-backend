@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.marketplace.browse import MarketplaceBrowseError, resolve_browsable_asset
+from app.marketplace.counters import increment_marketplace_counter
 from app.workflows.audit import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -108,10 +109,7 @@ def clone_asset(
     result = client.table("marketplace_assets").insert(row).execute()
     cloned = dict((result.data or [row])[0])
 
-    current_clones = int(source.get("clone_count") or 0)
-    client.table("marketplace_assets").update(
-        {"clone_count": current_clones + 1, "updated_at": now}
-    ).eq("id", source["id"]).execute()
+    increment_marketplace_counter(client, str(source["id"]), "clone_count")
 
     write_audit_event(
         client,

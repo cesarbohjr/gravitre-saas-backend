@@ -4,7 +4,9 @@ from __future__ import annotations
 import pytest
 
 from app.marketplace.schemas import (
+    FORBIDDEN_SECRET_KEYS,
     MarketplaceValidationError,
+    assert_no_forbidden_secrets,
     find_forbidden_secret_paths,
     parse_asset_config,
     validate_asset_payload,
@@ -134,3 +136,102 @@ def test_publish_gate_revalidates_invalid_department_pack():
             },
             publish=True,
         )
+
+
+@pytest.mark.parametrize("secret_key", sorted(FORBIDDEN_SECRET_KEYS))
+def test_rejects_forbidden_secret_keys_in_config(secret_key: str):
+    with pytest.raises(MarketplaceValidationError) as exc:
+        parse_asset_config(
+            "connector_config",
+            {
+                "connector_type": "hubspot",
+                "label": "HubSpot",
+                secret_key: "leaked-value",
+            },
+        )
+    assert any("forbidden_secret" in err for err in exc.value.errors)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "payload"),
+    [
+        ("oauth_token", {"connector_type": "hubspot", "oauth_token": "x"}),
+        ("nested bearer", {"connector_type": "hubspot", "metadata": {"bearer_token": "x"}}),
+        ("suffix _secret", {"connector_type": "hubspot", "webhook_secret": "x"}),
+        ("suffix _password", {"connector_type": "hubspot", "smtp_password": "x"}),
+        ("suffix _api_key", {"connector_type": "hubspot", "stripe_api_key": "x"}),
+        ("list item", {"connector_type": "hubspot", "headers": [{"authorization": "Bearer x"}]}),
+    ],
+)
+def test_find_forbidden_secret_paths_cases(field_name: str, payload: dict):
+    paths = find_forbidden_secret_paths(payload)
+    assert paths, field_name
+
+
+def test_allows_safe_config_fields():
+    assert_no_forbidden_secrets(
+        {
+            "connector_type": "hubspot",
+            "label": "HubSpot CRM",
+            "connectPath": "/connectors?type=hubspot",
+            "metadata": {"portal_id": "12345", "team_name": "Sales"},
+        },
+        field_label="config",
+    )
+
+
+def test_rejects_secret_fields_in_install_variables():
+    with pytest.raises(MarketplaceValidationError) as exc:
+        validate_asset_payload(
+            asset_type="ai_agent",
+            config={"name": "Agent", "purpose": "Test"},
+            install_variables=[
+                {
+                    "key": "PORTAL",
+                    "label": "Portal",
+                    "default": "safe",
+                    "metadata": {"api_key": "sk-live-leak"},
+                }
+            ],
+        )
+    assert any("install_variables" in err or "forbidden_secret" in err for err in exc.value.errors)
+
+
+def test_rejects_secret_fields_in_required_connectors():
+    with pytest.raises(MarketplaceValidationError) as exc:
+        validate_asset_payload(
+            asset_type="ai_agent",
+            config={"name": "Agent", "purpose": "Test"},
+            required_connectors=[
+                {
+                    "connectorType": "hubspot",
+                    "label": "HubSpot",
+                    "client_secret": "should-not-be-here",
+                }
+            ],
+        )
+    assert any("required_connectors" in err or "forbidden_secret" in err for err in exc.value.errors)
+
+
+def test_rejects_nested_secret_in_department_pack_agent_config():
+    with pytest.raises(MarketplaceValidationError) as exc:
+        validate_asset_payload(
+            asset_type="department_pack",
+            config={
+                "workflow_name": "Pack workflow",
+                "agents": [
+                    {
+                        "name": "Agent",
+                        "config": {"refresh_token": "oauth-leak"},
+                    }
+                ],
+                "workflow_steps": _valid_workflow_config()["steps"],
+            },
+        )
+    assert any("forbidden_secret" in err for err in exc.value.errors)
+
+
+def test_assert_no_forbidden_secrets_reports_field_label():
+    with pytest.raises(MarketplaceValidationError) as exc:
+        assert_no_forbidden_secrets({"password": "x"}, field_label="install_variables")
+    assert "install_variables must not contain secret" in exc.value.message

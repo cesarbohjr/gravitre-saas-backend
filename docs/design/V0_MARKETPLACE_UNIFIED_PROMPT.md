@@ -1,6 +1,6 @@
 # Unified Marketplace UI — v0 Handoff (MKT-6.1)
 
-Paste into [v0.dev](https://v0.dev) after backend Epics 5–7 land. **Functional baseline** already ships at `apps/web/app/marketplace/assets/page.tsx` with Next.js proxies under `apps/web/app/api/marketplace/assets/*`.
+Paste into [v0.dev](https://v0.dev) for further visual polish. **Production baseline** ships at `apps/web/app/marketplace/assets/page.tsx` with staggered motion, detail drawer, install stepper, connector readiness rings, and Next.js proxies under `apps/web/app/api/marketplace/assets/*`.
 
 Stack: Next.js App Router, React 19, TypeScript, Tailwind v4, shadcn/ui, SWR, Framer Motion. Match existing Gravitre marketplace visuals (`apps/web/app/marketplace/role-packs/page.tsx` motion patterns before redirect).
 

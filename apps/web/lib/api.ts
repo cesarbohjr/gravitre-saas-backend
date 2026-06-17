@@ -89,6 +89,8 @@ import type {
   DepartmentRolePack,
   DepartmentRolePackInstallResult,
   MarketplaceAssetCloneResult,
+  MarketplaceAssetDetail,
+  MarketplaceAssetInstallCheck,
   MarketplaceAssetInstallResult,
   MarketplaceAssetsListResponse,
   MarketplaceInstallBlocker,
@@ -691,8 +693,12 @@ export const marketplaceApi = {
     return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/assets${suffix}`))
   },
   getAsset: (assetRef: string) =>
-    fetcher<{ asset: MarketplaceAssetSummary & { config?: Record<string, unknown>; blockers?: MarketplaceInstallBlocker[] } }>(
+    fetcher<{ asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
+    ),
+  installCheck: (assetRef: string) =>
+    fetcher<MarketplaceAssetInstallCheck>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install-check`),
     ),
   installAsset: (assetRef: string, installVariables?: Record<string, string>) =>
     postJson<MarketplaceAssetInstallResult>(

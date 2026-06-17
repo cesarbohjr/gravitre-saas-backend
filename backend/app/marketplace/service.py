@@ -17,6 +17,7 @@ from app.marketplace.schemas import (
     validate_install_variables,
     validate_required_connectors,
 )
+from app.marketplace.counters import increment_marketplace_counter
 from app.marketplace.variables import VariableResolutionError, resolve_variables
 from app.operators.repository import create_operator, list_operators
 from app.services.agent_tool_permissions import default_demo_scopes_for_system, upsert_agent_tool_permission
@@ -573,11 +574,7 @@ def _record_install(
 
 
 def _increment_install_count(client: Any, asset_id: str) -> None:
-    asset = fetch_marketplace_asset(client, asset_id)
-    current = int(asset.get("install_count") or 0)
-    client.table("marketplace_assets").update(
-        {"install_count": current + 1, "updated_at": _now()}
-    ).eq("id", asset_id).execute()
+    increment_marketplace_counter(client, asset_id, "install_count")
 
 
 def install_asset(

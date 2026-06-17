@@ -83,6 +83,7 @@ from app.marketplace.support import (
     upsert_my_asset_review,
 )
 from app.marketplace.service import MarketplaceError, install_asset, preview_install
+from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
@@ -122,10 +123,25 @@ def _clone_http_error(exc: MarketplaceCloneError) -> HTTPException:
     return _browse_http_error(MarketplaceBrowseError(str(exc), code=exc.code))
 
 
+def _version_http_error(exc: MarketplaceVersionError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_FOUND":
+        status_code = status.HTTP_404_NOT_FOUND
+    elif exc.code == "FORBIDDEN":
+        status_code = status.HTTP_403_FORBIDDEN
+    elif exc.code == "ALREADY_CURRENT":
+        status_code = status.HTTP_409_CONFLICT
+    return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
+
+
 class InstallAssetRequest(BaseModel):
     install_variables: dict[str, str] = Field(default_factory=dict, alias="installVariables")
 
     model_config = {"populate_by_name": True}
+
+
+class RollbackAssetRequest(BaseModel):
+    version: int = Field(ge=1)
 
 
 class AssetReviewRequest(BaseModel):
@@ -985,6 +1001,43 @@ async def clone_marketplace_asset(
         )
     except MarketplaceCloneError as exc:
         raise _clone_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}/versions")
+async def list_marketplace_asset_versions(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """List version history for an org-owned asset (MKT-9.4)."""
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return list_asset_versions(client, org_id, asset_ref)
+    except MarketplaceVersionError as exc:
+        raise _version_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/rollback")
+async def rollback_marketplace_asset_version(
+    asset_ref: str,
+    body: RollbackAssetRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Restore an org-owned asset from ``marketplace_asset_versions`` (MKT-9.4)."""
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return rollback_asset_version(
+            client,
+            org_id,
+            asset_ref,
+            version_number=body.version,
+            actor_id=user["user_id"],
+        )
+    except MarketplaceVersionError as exc:
+        raise _version_http_error(exc) from exc
 
 
 @router.get("/assets/{asset_id}/install-check")

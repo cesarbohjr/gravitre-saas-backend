@@ -129,3 +129,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: service-role-test
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
+
+      - name: Marketplace QA (schemas, install, RLS)
+        run: python -m pytest tests/marketplace/ -q
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
