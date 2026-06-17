@@ -4,8 +4,14 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import type { Connector, Workflow, WorkflowListResponse } from "@/types/api"
+import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/connector-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,8 +39,6 @@ import {
   Check,
   Play,
   Pause,
-  Workflow,
-  Bot,
   Calendar,
   MoreVertical,
   Download,
@@ -117,21 +121,6 @@ const activityLogs = [
   { id: "8", type: "success", action: "Connection verified", timestamp: "2 hr ago", details: "OAuth token refreshed" },
 ]
 
-// Mock workflows using this connector
-const connectedWorkflows = [
-  { id: "1", name: "sync-customers", status: "active", lastRun: "2 min ago", runs: 1247 },
-  { id: "2", name: "lead-enrichment", status: "active", lastRun: "5 min ago", runs: 892 },
-  { id: "3", name: "opportunity-alerts", status: "paused", lastRun: "1 day ago", runs: 456 },
-  { id: "4", name: "contact-sync", status: "active", lastRun: "10 min ago", runs: 2341 },
-]
-
-// Mock agents using this connector
-const connectedAgents = [
-  { id: "1", name: "Sales Assistant", type: "CRM Agent", actions: 234 },
-  { id: "2", name: "Lead Qualifier", type: "Analysis Agent", actions: 128 },
-  { id: "3", name: "Data Enricher", type: "Processing Agent", actions: 567 },
-]
-
 const statusConfig = {
   connected: { color: "text-emerald-500", bg: "bg-emerald-500", icon: CheckCircle2, label: "Connected" },
   disconnected: { color: "text-zinc-500", bg: "bg-zinc-500", icon: WifiOff, label: "Disconnected" },
@@ -142,6 +131,28 @@ const statusConfig = {
 export default function ConnectorDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
+  const connectorId = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
+
+  // G4: live connector record (the page previously hardcoded Salesforce regardless of id).
+  const { data: liveConnector } = useSWR<Connector>(
+    user && connectorId ? `/api/connectors/${connectorId}` : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+
+  // G4: action catalog + workflows so we can show real readiness and linkage.
+  const { data: catalogData } = useSWR<ConnectorActionCatalogResponse>(
+    user ? "/api/connectors/catalog/actions" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+  const { data: workflowsData } = useSWR<WorkflowListResponse>(
+    user ? "/api/workflows" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+
   const [connector, setConnector] = useState<
     Omit<typeof mockConnector, "status" | "environment"> & { status: string; environment: string }
   >(mockConnector)
@@ -150,6 +161,28 @@ export default function ConnectorDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+
+  // Merge the live connector record over the mock scaffold (charts/activity stay mocked).
+  useEffect(() => {
+    if (!liveConnector) return
+    setConnector((prev) => ({
+      ...prev,
+      id: liveConnector.id,
+      name: liveConnector.name,
+      type: liveConnector.type || liveConnector.vendor,
+      status: liveConnector.status,
+      environment: liveConnector.environment || prev.environment,
+      description: liveConnector.description || prev.description,
+      category: prev.category,
+      createdAt: liveConnector.created_at?.slice(0, 10) || prev.createdAt,
+    }))
+  }, [liveConnector])
+
+  // Resolve the vendor key the catalog is indexed by.
+  const vendorKey = (liveConnector?.vendor || liveConnector?.type || connector.type || "").toLowerCase()
+  const vendorCatalog: VendorActionCatalog | null =
+    catalogData?.vendors.find((v) => v.vendor.toLowerCase() === vendorKey) ?? null
+  const workflows: Workflow[] = workflowsData?.workflows ?? []
 
   const config = statusConfig[(connector.status as keyof typeof statusConfig) || "connected"]
   const StatusIcon = config.icon
@@ -424,67 +457,16 @@ export default function ConnectorDetailPage() {
             </Card>
           </div>
 
-          {/* AI Integration & Activity Logs */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Connected Workflows */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Workflow className="h-4 w-4 text-blue-400" />
-                    Connected Workflows
-                  </CardTitle>
-                  <span className="text-xs text-muted-foreground">{connectedWorkflows.length} total</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {connectedWorkflows.map((workflow) => (
-                  <Link 
-                    key={workflow.id}
-                    href={`/workflows/${workflow.id}`}
-                    className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "h-2 w-2 rounded-full",
-                        workflow.status === "active" ? "bg-emerald-500" : "bg-amber-500"
-                      )} />
-                      <span className="text-sm font-medium text-foreground">{workflow.name}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{workflow.runs.toLocaleString()} runs</span>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
+          {/* G4: live action readiness, workflow linkage, and starter workflows */}
+          <ConnectorLinkage
+            vendor={vendorKey}
+            connectorStatus={connector.status}
+            catalog={vendorCatalog}
+            workflows={workflows}
+          />
 
-            {/* Connected Agents */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-violet-400" />
-                    AI Agents Using This
-                  </CardTitle>
-                  <span className="text-xs text-muted-foreground">{connectedAgents.length} agents</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {connectedAgents.map((agent) => (
-                  <Link 
-                    key={agent.id}
-                    href={`/agents/${agent.id}`}
-                    className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{agent.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{agent.type}</p>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{agent.actions} actions</span>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
-
+          {/* Configuration */}
+          <div className="grid gap-6">
             {/* Configuration */}
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
