@@ -196,9 +196,13 @@ export default function WorkflowsPage() {
       },
     }
   )
-  const { data: statsData } = useSWR(user ? "/api/workflows/stats" : null, apiFetcher, {
-    revalidateOnFocus: false,
-  })
+  const { data: statsData } = useSWR<{ overallSuccessRate?: number; totalRunsThisWeek?: number }>(
+    user ? "/api/workflows/stats" : null,
+    apiFetcher,
+    {
+      revalidateOnFocus: false,
+    },
+  )
 
   const workflows = normalizeWorkflowsResponse(data)
   const footerSuccessRate =

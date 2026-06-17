@@ -1,21 +1,26 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   AlertCircle,
   CheckCircle,
   ChevronRight,
   Clock,
+  ExternalLink,
   GitBranch,
   Loader2,
   Pause,
   Play,
+  PlugZap,
   RefreshCw,
   TerminalSquare,
+  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { DataStream } from "@/components/gravitre/premium-effects"
 import { useMotionPrefs } from "@/lib/animations"
 
@@ -68,6 +73,82 @@ const dotRingColors: Record<StepStatus, string> = {
   awaiting_approval: "border-warning/50 bg-warning/10",
 }
 
+const SECRET_KEY_PATTERN = /(token|secret|password|api[_-]?key|authorization|bearer|credential|access[_-]?key|client[_-]?secret|refresh)/i
+
+function redactSecrets(value: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null
+  const out: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(value)) {
+    if (SECRET_KEY_PATTERN.test(key)) {
+      out[key] = "••••••• (redacted)"
+    } else if (val && typeof val === "object" && !Array.isArray(val)) {
+      out[key] = redactSecrets(val as Record<string, unknown>)
+    } else {
+      out[key] = val
+    }
+  }
+  return out
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    if (typeof v === "string" && v.trim()) return v.trim()
+  }
+  return undefined
+}
+
+export interface InvokeToolMeta {
+  isInvokeTool: boolean
+  action?: string
+  vendor?: string
+  actionName?: string
+  connectorId?: string
+  errorCode?: string
+  success?: boolean
+  retryCount?: number
+  isAuthError: boolean
+}
+
+const AUTH_ERROR_PATTERN = /(auth|unauthorized|forbidden|token|credential|expired|401|403|reconnect)/i
+
+// Derives connector tool metadata from a step's type + output snapshot. The
+// backend InvokeToolHandler writes action ("{vendor}.{action}"), connector_id,
+// success, error_code and retry_count into the step output.
+function parseInvokeTool(step: ExecutionStepView): InvokeToolMeta {
+  const out = step.outputSnapshot ?? {}
+  const input = step.inputSnapshot ?? {}
+  const action = firstString(
+    out.action,
+    (out.config as Record<string, unknown> | undefined)?.action,
+    input.action,
+    (input.config as Record<string, unknown> | undefined)?.action,
+  )
+  const isInvokeTool = step.stepType === "invoke_tool" || Boolean(action)
+  if (!isInvokeTool) return { isInvokeTool: false, isAuthError: false }
+
+  const [vendor, ...rest] = (action ?? "").split(".")
+  const errorCode = firstString(out.error_code, out.errorCode, (out.error as Record<string, unknown> | undefined)?.code)
+  const successRaw = out.success
+  const success = typeof successRaw === "boolean" ? successRaw : step.status === "completed" ? true : undefined
+  const retryRaw = out.retry_count ?? out.retryCount ?? out.attempts
+  const retryCount = typeof retryRaw === "number" ? retryRaw : undefined
+  const isAuthError =
+    step.status === "failed" &&
+    Boolean((errorCode && AUTH_ERROR_PATTERN.test(errorCode)) || (step.errorMessage && AUTH_ERROR_PATTERN.test(step.errorMessage)))
+
+  return {
+    isInvokeTool: true,
+    action,
+    vendor: vendor || undefined,
+    actionName: rest.length ? rest.join(".") : undefined,
+    connectorId: firstString(out.connector_id, out.connectorId, input.connector_id, input.connectorId),
+    errorCode,
+    success,
+    retryCount,
+    isAuthError,
+  }
+}
+
 function JsonBlock({ label, value }: { label: string; value: Record<string, unknown> | null | undefined }) {
   if (!value || Object.keys(value).length === 0) return null
   return (
@@ -108,6 +189,70 @@ function BranchVisualization({ output }: { output?: Record<string, unknown> | nu
   )
 }
 
+function InvokeToolDetail({ meta }: { meta: InvokeToolMeta }) {
+  const succeeded = meta.success === true
+  const failed = meta.success === false
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+        <PlugZap className="h-3 w-3" />
+        <span className="text-[10px] font-medium uppercase tracking-wider">Connector tool result</span>
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
+        {meta.action ? (
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Action</dt>
+            <dd className="mt-0.5 font-mono text-foreground">{meta.action}</dd>
+          </div>
+        ) : null}
+        <div>
+          <dt className="text-muted-foreground">Result</dt>
+          <dd className="mt-0.5">
+            {succeeded ? (
+              <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 font-medium text-success">
+                <CheckCircle className="h-3 w-3" /> Success
+              </span>
+            ) : failed ? (
+              <span className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
+                <XCircle className="h-3 w-3" /> Failed
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </dd>
+        </div>
+        {meta.errorCode ? (
+          <div>
+            <dt className="text-muted-foreground">Error code</dt>
+            <dd className="mt-0.5 font-mono text-destructive">{meta.errorCode}</dd>
+          </div>
+        ) : null}
+        {typeof meta.retryCount === "number" ? (
+          <div>
+            <dt className="text-muted-foreground">Retries</dt>
+            <dd className="mt-0.5 font-mono text-foreground">{meta.retryCount}</dd>
+          </div>
+        ) : null}
+        {meta.connectorId ? (
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Connector</dt>
+            <dd className="mt-0.5 flex items-center gap-2">
+              <span className="font-mono text-foreground">{meta.connectorId}</span>
+              <Link
+                href={`/connectors/${meta.connectorId}`}
+                className="inline-flex items-center gap-1 text-info hover:underline"
+              >
+                View connector
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    </div>
+  )
+}
+
 function ExecutionStepRow({
   step,
   index,
@@ -133,6 +278,7 @@ function ExecutionStepRow({
   const isFailed = step.status === "failed"
   const modelInfo = step.outputSnapshot?.modelInfo ?? step.outputSnapshot?.model_info
   const tokens = step.outputSnapshot?.tokens ?? step.outputSnapshot?.tokenCount
+  const invokeMeta = useMemo(() => parseInvokeTool(step), [step])
 
   return (
     <motion.div
@@ -194,13 +340,27 @@ function ExecutionStepRow({
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className={cn("text-sm font-medium text-foreground", step.status === "skipped" && "line-through")}>
-                {step.name}
-              </h3>
-              {step.stepType ? (
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{step.stepType}</p>
+            <div className="flex min-w-0 items-center gap-2.5">
+              {invokeMeta.isInvokeTool && invokeMeta.vendor ? (
+                <ConnectorIcon
+                  vendor={invokeMeta.vendor}
+                  size="xs"
+                  showStatusIndicator={false}
+                  status={invokeMeta.success === false ? "error" : "connected"}
+                />
               ) : null}
+              <div className="min-w-0">
+                <h3 className={cn("text-sm font-medium text-foreground", step.status === "skipped" && "line-through")}>
+                  {step.name}
+                </h3>
+                {invokeMeta.isInvokeTool && invokeMeta.action ? (
+                  <p className="font-mono text-[11px] text-muted-foreground">{invokeMeta.action}</p>
+                ) : step.stepType ? (
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {invokeMeta.isInvokeTool ? "invoke_tool" : step.stepType}
+                  </p>
+                ) : null}
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
               <span>{step.startedAt}</span>
@@ -232,8 +392,9 @@ function ExecutionStepRow({
             className="overflow-hidden"
           >
             <div className="ml-10 mt-3 space-y-3">
-              <JsonBlock label="Input" value={step.inputSnapshot} />
-              <JsonBlock label="Output" value={step.outputSnapshot} />
+              {invokeMeta.isInvokeTool ? <InvokeToolDetail meta={invokeMeta} /> : null}
+              <JsonBlock label="Input" value={invokeMeta.isInvokeTool ? redactSecrets(step.inputSnapshot) : step.inputSnapshot} />
+              <JsonBlock label="Output" value={invokeMeta.isInvokeTool ? redactSecrets(step.outputSnapshot) : step.outputSnapshot} />
               {(step.stepType === "condition" || step.stepType === "decision") && (
                 <BranchVisualization output={step.outputSnapshot} />
               )}
@@ -252,18 +413,33 @@ function ExecutionStepRow({
                   className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
                 >
                   {step.errorMessage}
-                  {step.status === "failed" && onRetry ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 h-7 gap-1.5"
-                      disabled={isRetrying}
-                      onClick={() => onRetry(step.id)}
-                    >
-                      {isRetrying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                      Retry step
-                    </Button>
+                  {invokeMeta.isAuthError ? (
+                    <p className="mt-2 text-[11px] text-destructive/80">
+                      This looks like an authentication problem. Reconnect the connector, then retry the step.
+                    </p>
                   ) : null}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {step.status === "failed" && onRetry ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5"
+                        disabled={isRetrying}
+                        onClick={() => onRetry(step.id)}
+                      >
+                        {isRetrying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                        Retry step
+                      </Button>
+                    ) : null}
+                    {invokeMeta.isAuthError && invokeMeta.connectorId ? (
+                      <Button asChild variant="outline" size="sm" className="h-7 gap-1.5">
+                        <Link href={`/connectors/${invokeMeta.connectorId}`}>
+                          <PlugZap className="h-3 w-3" />
+                          Reconnect connector
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
                 </motion.div>
               ) : null}
               {step.logs && step.logs.length > 0 && (
