@@ -179,11 +179,18 @@ function normalizeSeries(payload: unknown) {
   }
   if (!payload || typeof payload !== "object") return empty
   const model = payload as Record<string, unknown>
+  const rawRunVolume = Array.isArray(model.runVolume)
+    ? model.runVolume
+    : Array.isArray(model.series)
+      ? model.series
+      : null
   return {
-    runVolume: Array.isArray(model.runVolume)
-      ? (model.runVolume as Record<string, unknown>[]).map((entry) => ({
+    runVolume: rawRunVolume
+      ? (rawRunVolume as Record<string, unknown>[]).map((entry) => ({
           ...entry,
-          time: String(entry.time ?? entry.hour ?? "Now"),
+          time: String(entry.time ?? entry.timestamp ?? entry.hour ?? "Now"),
+          completed: Number(entry.completed ?? 0),
+          failed: Number(entry.failed ?? 0),
         }))
       : empty.runVolume,
     latencyDistribution: Array.isArray(model.latencyDistribution)

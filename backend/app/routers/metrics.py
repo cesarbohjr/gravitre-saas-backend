@@ -403,6 +403,15 @@ async def runs(
             {"timestamp": day, **counts} for day, counts in sorted(buckets.items(), key=lambda x: x[0])
         ]
     }
+    data["runVolume"] = [
+        {
+            "time": entry["timestamp"],
+            "completed": entry.get("completed", 0),
+            "failed": entry.get("failed", 0),
+            "pending": entry.get("pending", 0),
+        }
+        for entry in data["series"]
+    ]
     latency_ms = int((time.perf_counter() - start) * 1000)
     logger.info(
         "metrics_runs request_id=%s org_id=%s range=%s latency_ms=%s",

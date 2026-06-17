@@ -95,7 +95,11 @@ def test_execution_volume_returns_time_series(mock_create):
     authenticate()
     response = client.get("/api/metrics/runs?range=7d")
     assert response.status_code == 200
-    assert "series" in response.json()
+    body = response.json()
+    assert "series" in body
+    assert "runVolume" in body
+    assert body["runVolume"][0]["time"] == "2026-06-07"
+    assert body["runVolume"][0]["completed"] == 1
 
 
 @patch("app.routers.metrics.create_client")
