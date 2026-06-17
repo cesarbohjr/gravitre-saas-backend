@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { connectorVendorKey } from "@/lib/connectors"
+import brandLogoManifest from "@/lib/brand-logos-manifest.json"
 
 // ============================================================================
 // GRAVITRE CONNECTOR ICON + INTEGRATION TOKEN SYSTEM
@@ -723,65 +724,24 @@ function getVendorLogo(vendor?: string): React.ReactNode | null {
 }
 
 // ============================================================================
-// SIMPLE ICONS CDN — primary logo source for exact, official brand marks.
-// Falls back to inline/asset logos for vendors removed from Simple Icons
-// (e.g. Google, Gmail, Microsoft were delisted for trademark reasons).
+// SIMPLE ICONS (self-hosted) — primary logo source for exact, official marks.
+// SVGs are generated offline from the `simple-icons` package into
+// public/brand-logos via scripts/fetch-brand-logos.mjs. The manifest lists the
+// vendorKeys that have a local logo; everything else (delisted brands such as
+// Slack, Salesforce, LinkedIn, Oracle, ...) falls back to inline logos/initials.
 // ============================================================================
-
-// Resolved vendor key -> Simple Icons slug, for cases where the slug differs
-// from a naive de-punctuation of the vendor key.
-const SIMPLE_ICON_SLUG_OVERRIDES: Record<string, string> = {
-  google_analytics: "googleanalytics",
-  google_calendar: "googlecalendar",
-  google_drive: "googledrive",
-  google_docs: "googledocs",
-  google_sheets: "googlesheets",
-  google_ads: "googleads",
-  monday: "mondaydotcom",
-  clickup: "clickup",
-  constant_contact: "constantcontact",
-  pagerduty: "pagerduty",
-  quickbooks: "quickbooks",
-  amazon_s3: "amazons3",
-  s3: "amazons3",
-  dynamodb: "amazondynamodb",
-  redshift: "amazonredshift",
-  bamboohr: "bamboo",
-  big_query: "googlebigquery",
-  bigquery: "googlebigquery",
-}
-
-// Vendors known to be unavailable on Simple Icons (delisted/trademark) — skip
-// the CDN entirely and use the existing inline/asset logo to avoid a 404 flash.
-const SIMPLE_ICON_UNAVAILABLE = new Set<string>([
-  "google",
-  "gmail",
-  "google_analytics",
-  "google_calendar",
-  "google_drive",
-  "google_docs",
-  "google_sheets",
-  "google_ads",
-  "microsoft",
-  "microsoft365",
-  "microsoft_365",
-  "outlook",
-  "teams",
-])
 
 function getSimpleIconSlug(vendor?: string): string | null {
   const key = resolveVendorLogoKey(vendor)
   if (!key) return null
-  if (SIMPLE_ICON_UNAVAILABLE.has(key)) return null
-  if (SIMPLE_ICON_SLUG_OVERRIDES[key]) return SIMPLE_ICON_SLUG_OVERRIDES[key]
-  return key.replace(/[_\s./-]/g, "")
+  return (brandLogoManifest as Record<string, string>)[key] ?? null
 }
 
 /**
- * Renders an exact brand logo from the Simple Icons CDN.
+ * Renders an exact, self-hosted brand logo (Simple Icons).
  * - Light theme: official brand color.
  * - Dark theme: white (guarantees contrast on dark surfaces).
- * On load failure (slug not on Simple Icons), renders `fallback`.
+ * On load failure, renders `fallback`.
  */
 function BrandLogo({
   slug,
@@ -798,7 +758,7 @@ function BrandLogo({
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`https://cdn.simpleicons.org/${slug}`}
+        src={`/brand-logos/${slug}.svg`}
         alt={alt}
         loading="lazy"
         className="h-full w-full object-contain dark:hidden"
@@ -806,7 +766,7 @@ function BrandLogo({
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`https://cdn.simpleicons.org/${slug}/white`}
+        src={`/brand-logos/${slug}-white.svg`}
         alt=""
         aria-hidden
         loading="lazy"
