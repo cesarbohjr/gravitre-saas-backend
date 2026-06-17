@@ -2923,6 +2923,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         config: {},
         position: { x: 240, y: 160 + prev.length * 40 },
         connections: [],
+        state: "idle",
         vendor,
         selectedAction,
       },
