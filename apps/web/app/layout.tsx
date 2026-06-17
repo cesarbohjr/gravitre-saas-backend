@@ -16,12 +16,13 @@ import './globals.css'
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
-// Disable auto-zoom on iOS Safari for inputs
+// Allow pinch-to-zoom for accessibility (low-vision users).
+// iOS auto-zoom on focus is prevented via 16px-minimum input font sizes, not by blocking zoom.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
     { media: '(prefers-color-scheme: dark)', color: '#0B0F14' },
