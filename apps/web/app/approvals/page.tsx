@@ -441,7 +441,7 @@ export default function ApprovalsPage() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
-  const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
+  const { data, error, isLoading, isValidating, mutate, dataUpdatedAt } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
     fallbackData: { approvals: [] as Approval[] },
     revalidateOnFocus: true,
     refreshInterval: 30000,
@@ -513,7 +513,7 @@ export default function ApprovalsPage() {
                 </p>
               </div>
               <DataFreshness
-                updatedAt={data ? Date.now() : null}
+                updatedAt={dataUpdatedAt || null}
                 isRefreshing={isValidating}
                 onRefresh={() => mutate()}
               />

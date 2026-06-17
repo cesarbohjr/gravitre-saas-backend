@@ -111,12 +111,12 @@ function TrainingPageContent() {
 
   const swrKey = user && orgReady ? "training" : null
 
-  const { data: datasetsData, error: datasetsError, mutate: mutateDatasets } = useSWR(
+  const { data: datasetsData, error: datasetsError, mutate: mutateDatasets, dataUpdatedAt: datasetsUpdatedAt } = useSWR(
     swrKey ? "training/datasets" : null,
     () => trainingApi.listDatasets(),
     { fallbackData: { datasets: [] as TrainingDataset[] }, revalidateOnFocus: false }
   )
-  const { data: jobsData, error: jobsError, mutate: mutateJobs } = useSWR(
+  const { data: jobsData, error: jobsError, mutate: mutateJobs, dataUpdatedAt: jobsUpdatedAt } = useSWR(
     swrKey ? "training/jobs" : null,
     () => trainingApi.listJobs(),
     {
@@ -453,7 +453,7 @@ function TrainingPageContent() {
         <div className="relative grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="col-span-2 md:col-span-6 flex justify-end">
             <DataFreshness
-              updatedAt={datasetsData || jobsData ? Date.now() : null}
+              updatedAt={Math.max(datasetsUpdatedAt || 0, jobsUpdatedAt || 0) || null}
               onRefresh={() => {
                 void mutateDatasets()
                 void mutateJobs()

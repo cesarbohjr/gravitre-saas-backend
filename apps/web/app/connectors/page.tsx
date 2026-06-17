@@ -1624,7 +1624,7 @@ function ConnectorsPageContent() {
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
 
   // Fetch connectors from API with SWR
-  const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
+  const { data, error, isLoading, isValidating, mutate, dataUpdatedAt } = useSWR<{ connectors: Connector[] }>(
     user ? "/api/connectors" : null,
     apiFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
@@ -2003,7 +2003,7 @@ function ConnectorsPageContent() {
           {connectors.length > 0 && (
             <div className="mb-4 flex justify-end">
               <DataFreshness
-                updatedAt={data ? Date.now() : null}
+                updatedAt={dataUpdatedAt || null}
                 isRefreshing={isValidating}
                 onRefresh={() => mutate()}
               />

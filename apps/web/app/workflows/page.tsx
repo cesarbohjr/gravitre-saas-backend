@@ -193,7 +193,7 @@ export default function WorkflowsPage() {
   const [envFilter, setEnvFilter] = useState<string[]>([])
   
   // Fetch workflows - only when user is authenticated
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
+  const { data, error, isLoading, isValidating, mutate, dataUpdatedAt } = useSWR(
     user ? "/api/workflows" : null,
     apiFetcher,
     {
@@ -565,7 +565,7 @@ export default function WorkflowsPage() {
               {filteredWorkflows.length} of {workflows.length} workflow{workflows.length === 1 ? "" : "s"}
             </span>
             <DataFreshness
-              updatedAt={data ? Date.now() : null}
+              updatedAt={dataUpdatedAt || null}
               isRefreshing={isValidating}
               onRefresh={() => mutate()}
             />

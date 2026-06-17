@@ -220,7 +220,7 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR<RunListResponse>(
+  const { data, error, isLoading, isValidating, mutate, dataUpdatedAt } = useSWR<RunListResponse>(
     user ? "/api/runs?limit=50" : null,
     apiFetcher,
     {
@@ -337,7 +337,7 @@ export default function TasksPage() {
                 {filteredTasks.length} of {tasks.length} run{tasks.length === 1 ? "" : "s"}
               </span>
               <DataFreshness
-                updatedAt={data ? Date.now() : null}
+                updatedAt={dataUpdatedAt || null}
                 isRefreshing={isValidating}
                 onRefresh={() => mutate()}
               />

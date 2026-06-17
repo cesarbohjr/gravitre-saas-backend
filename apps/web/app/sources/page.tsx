@@ -561,7 +561,7 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
-  const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
+  const { data, error, isLoading, isValidating, mutate, dataUpdatedAt } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
     onError: (err) => console.error("[v0] Sources fetch error:", err),
@@ -774,7 +774,7 @@ export default function SourcesPage() {
           
           <div className="relative z-10 mb-4 flex justify-end">
             <DataFreshness
-              updatedAt={data ? Date.now() : null}
+              updatedAt={dataUpdatedAt || null}
               isRefreshing={isValidating}
               onRefresh={() => mutate()}
             />

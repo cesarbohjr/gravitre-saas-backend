@@ -68,7 +68,7 @@ export default function AuditPage() {
     : null
   const summaryKey = user ? ["audit/summary", selectedDateRange] as const : null
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
+  const { data, error, isLoading, isValidating, mutate, dataUpdatedAt } = useSWR(
     listKey,
     () =>
       auditApi.list({
@@ -281,7 +281,7 @@ export default function AuditPage() {
               {filteredLogs.length} event{filteredLogs.length === 1 ? "" : "s"}
             </span>
             <DataFreshness
-              updatedAt={data ? Date.now() : null}
+              updatedAt={dataUpdatedAt || null}
               isRefreshing={isValidating}
               onRefresh={() => void mutate()}
             />

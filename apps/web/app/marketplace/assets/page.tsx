@@ -334,18 +334,22 @@ function InstallStepperSheet({
     { revalidateOnFocus: false },
   )
 
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
       setStep("check")
       setInstallResult(null)
     }
-  }, [open])
+    onOpenChange(next)
+  }
 
-  useEffect(() => {
-    if (open && check && step === "check") {
-      setStep(check.canInstall ? "confirm" : "check")
-    }
-  }, [open, check, step])
+  const activeStep: InstallStep =
+    step === "installing" || step === "done"
+      ? step
+      : step === "check" && check && !checkLoading
+        ? check.canInstall
+          ? "confirm"
+          : "check"
+        : step
 
   const runInstall = async () => {
     if (!asset) return
@@ -378,7 +382,7 @@ function InstallStepperSheet({
   const blockers = check?.blockers ?? []
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Install {asset?.title ?? "asset"}</SheetTitle>
@@ -392,7 +396,7 @@ function InstallStepperSheet({
                 key={id}
                 className={cn(
                   "flex items-center gap-1",
-                  (step === id || (step === "installing" && id === "confirm") || (step === "done" && id === "done")) &&
+                  (activeStep === id || (step === "installing" && id === "confirm") || (activeStep === "done" && id === "done")) &&
                     "text-primary",
                 )}
               >
@@ -408,21 +412,21 @@ function InstallStepperSheet({
             </div>
           ) : null}
 
-          {!checkLoading && step === "check" && !check?.canInstall ? (
+          {!checkLoading && activeStep === "check" && !check?.canInstall ? (
             <>
               <BlockerList blockers={blockers} />
               <ConnectorChecklist items={checklist} />
             </>
           ) : null}
 
-          {!checkLoading && (step === "confirm" || step === "installing") ? (
+          {!checkLoading && (activeStep === "confirm" || step === "installing") ? (
             <>
               <p className="text-sm text-muted-foreground">All required connectors are connected. Confirm to install into your workspace.</p>
               <ConnectorChecklist items={checklist} />
             </>
           ) : null}
 
-          {step === "done" ? (
+          {activeStep === "done" ? (
             <div className="space-y-3 rounded-lg border border-success/30 bg-success/5 p-4 text-sm">
               <p className="flex items-center gap-2 font-medium text-success">
                 <CheckCircle2 className="h-4 w-4" aria-hidden />
@@ -441,14 +445,14 @@ function InstallStepperSheet({
         </div>
 
         <SheetFooter className="border-t pt-4">
-          {step === "check" && !check?.canInstall ? (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          {activeStep === "check" && !check?.canInstall ? (
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Close
             </Button>
           ) : null}
-          {step === "confirm" ? (
+          {activeStep === "confirm" ? (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
               <Button onClick={runInstall}>Confirm install</Button>
@@ -460,8 +464,8 @@ function InstallStepperSheet({
               Installing…
             </Button>
           ) : null}
-          {step === "done" ? (
-            <Button onClick={() => onOpenChange(false)}>Done</Button>
+          {activeStep === "done" ? (
+            <Button onClick={() => handleOpenChange(false)}>Done</Button>
           ) : null}
         </SheetFooter>
       </SheetContent>
