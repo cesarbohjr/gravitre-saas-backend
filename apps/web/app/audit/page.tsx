@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
 import { auditApi } from "@/lib/api"
+import { ApiError } from "@/lib/fetcher"
 import type { AuditLog } from "@/types/api"
 import { toast } from "sonner"
 import {
@@ -112,7 +113,8 @@ export default function AuditPage() {
   const entityTypes = Object.keys(summaryData?.byEntityType ?? {}).sort()
 
   const isUpgradeRequired =
-    error instanceof Error && /upgrade|403|unauthorized/i.test(error.message)
+    (error instanceof ApiError && error.status === 403) ||
+    (error instanceof Error && /upgrade|forbidden|unauthorized/i.test(error.message))
 
   const auditErrorMessage = isUpgradeRequired
     ? "Audit logs require a plan with audit access. Upgrade your plan or contact support."
