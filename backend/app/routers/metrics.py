@@ -105,6 +105,50 @@ async def overview(
     return data
 
 
+_OVERVIEW_EXPORT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("totalRuns", "Total Runs"),
+    ("successRate", "Success Rate (%)"),
+    ("recordsProcessed", "Records Processed"),
+    ("avgLatency", "Avg Latency (ms)"),
+    ("activeConnectors", "Active Connectors"),
+    ("totalConnectors", "Total Connectors"),
+    ("totalWorkflows", "Total Workflows"),
+    ("activeWorkflows", "Active Workflows"),
+)
+
+
+@router.get("/export")
+async def export_metrics(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    range: Annotated[str | None, Query()] = "7d",
+    format: Annotated[str, Query(pattern="^(csv|json)$")] = "csv",
+) -> Response:
+    """Export dashboard overview metrics as CSV or JSON."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    rng = _validate_range(range)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    data = _build_dashboard_overview(client, org_id, settings, rng)
+
+    if format == "json":
+        return JSONResponse(content={"range": rng, "metrics": data})
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["metric", "value"])
+    writer.writerow(["range", rng])
+    for key, label in _OVERVIEW_EXPORT_FIELDS:
+        writer.writerow([label, data.get(key, "")])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="gravitre-metrics.csv"'},
+    )
+
+
 @router.get("/workflows")
 async def workflows(
     *,

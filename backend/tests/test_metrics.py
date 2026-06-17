@@ -98,6 +98,22 @@ def test_execution_volume_returns_time_series(mock_create):
     assert "series" in response.json()
 
 
+@patch("app.routers.metrics.create_client")
+def test_metrics_export_csv(mock_create):
+    mock_create.return_value = _metrics_client(
+        workflow_defs=chain_mock(data=[]),
+        runs=chain_mock(data=[]),
+        connectors=chain_mock(data=[]),
+    )
+    with patch("app.routers.metrics.overview_metrics", return_value={"range": "7d", "ingestion": {}, "rag": {}}):
+        authenticate()
+        response = client.get("/api/metrics/export?range=7d&format=csv")
+
+    assert response.status_code == 200
+    assert "text/csv" in response.headers.get("content-type", "")
+    assert "Total Runs" in response.text
+
+
 @patch("app.routers.metrics.weekly_throughput_metrics")
 def test_weekly_throughput_endpoint(mock_weekly):
     mock_weekly.return_value = {
