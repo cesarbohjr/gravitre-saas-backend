@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi } from "@/lib/api"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -28,7 +29,6 @@ import {
   Shield, 
   User, 
   Workflow, 
-  RefreshCw, 
   AlertCircle,
   Sparkles,
   ChevronRight,
@@ -441,7 +441,7 @@ export default function ApprovalsPage() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
-  const { data, error, isLoading, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
+  const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
     fallbackData: { approvals: [] as Approval[] },
     revalidateOnFocus: true,
     refreshInterval: 30000,
@@ -512,14 +512,11 @@ export default function ApprovalsPage() {
                   {pendingApprovals.length} pending request{pendingApprovals.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-9 sm:h-8 w-9 sm:w-auto gap-2" 
-                onClick={() => mutate()}
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-              </Button>
+              <DataFreshness
+                updatedAt={data ? Date.now() : null}
+                isRefreshing={isValidating}
+                onRefresh={() => mutate()}
+              />
             </div>
 
             {/* Quick stats */}

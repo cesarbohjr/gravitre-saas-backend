@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
@@ -13,6 +14,12 @@ import {
   ActivityIndicator,
   TypingIndicator
 } from "@/components/gravitre/premium-effects"
+import { EmptyState, ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
+import { CardSkeleton } from "@/components/gravitre/loading-state"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { useAuth } from "@/lib/auth-context"
+import type { Run, RunListResponse, RunStatus } from "@/types/api"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -49,67 +56,59 @@ interface Task {
   progress?: number
 }
 
-const tasks: Task[] = [
-  {
-    id: "1",
-    title: "Sync customer data from Salesforce",
-    description: "Pull latest customer records and update CRM",
-    status: "in_progress",
-    priority: "high",
-    assignedAgent: "Nexus",
-    createdAt: "2 hours ago",
-    progress: 65,
-  },
-  {
-    id: "2",
-    title: "Generate weekly marketing report",
-    description: "Compile campaign metrics and insights",
-    status: "completed",
-    priority: "medium",
-    assignedAgent: "Atlas",
-    createdAt: "1 day ago",
-    completedAt: "3 hours ago",
-  },
-  {
-    id: "3",
-    title: "Process invoice batch #4521",
-    description: "OCR and validate incoming invoices",
-    status: "pending",
-    priority: "medium",
-    assignedAgent: "Oracle",
-    createdAt: "30 minutes ago",
-    dueDate: "Today, 5:00 PM",
-  },
-  {
-    id: "4",
-    title: "Data quality check - Q4 records",
-    description: "Validate and deduplicate database records",
-    status: "completed",
-    priority: "low",
-    assignedAgent: "Sentinel",
-    createdAt: "2 days ago",
-    completedAt: "1 day ago",
-  },
-  {
-    id: "5",
-    title: "Route support tickets",
-    description: "Categorize and assign incoming tickets",
-    status: "failed",
-    priority: "critical",
-    assignedAgent: "Harbor",
-    createdAt: "1 hour ago",
-  },
-  {
-    id: "6",
-    title: "Update lead scoring model",
-    description: "Retrain model with latest conversion data",
-    status: "pending",
-    priority: "high",
-    assignedAgent: "Nexus",
-    dueDate: "Tomorrow, 9:00 AM",
-    createdAt: "4 hours ago",
-  },
-]
+function formatRelative(value?: string): string {
+  if (!value) return "—"
+  const ts = new Date(value).getTime()
+  if (Number.isNaN(ts)) return "—"
+  const diff = Date.now() - ts
+  const min = Math.round(diff / 60000)
+  if (min < 1) return "just now"
+  if (min < 60) return `${min} min ago`
+  const hr = Math.round(min / 60)
+  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`
+  const day = Math.round(hr / 24)
+  return `${day} day${day === 1 ? "" : "s"} ago`
+}
+
+function mapRunStatus(status: RunStatus | string): Task["status"] {
+  switch (status) {
+    case "running":
+      return "in_progress"
+    case "completed":
+      return "completed"
+    case "failed":
+    case "cancelled":
+    case "rejected":
+      return "failed"
+    default:
+      return "pending"
+  }
+}
+
+function mapRunPriority(run: Run): Task["priority"] {
+  if (run.status === "failed") return "critical"
+  if (run.environment === "production") return "high"
+  if (run.run_type === "manual") return "medium"
+  return "low"
+}
+
+function runToTask(run: Run): Task {
+  const status = mapRunStatus(run.status)
+  return {
+    id: run.id,
+    title: run.workflow_name || run.workflowName || `Run ${run.id.slice(0, 8)}`,
+    description:
+      run.error || run.errorMessage || run.error_message ||
+      `${run.run_type || "scheduled"} run${run.environment ? ` · ${run.environment}` : ""}`,
+    status,
+    priority: mapRunPriority(run),
+    assignedAgent: run.triggered_by || run.triggeredBy || run.created_by || "System",
+    createdAt: formatRelative(run.started_at || run.startedAt || run.created_at),
+    completedAt:
+      status === "completed" ? formatRelative(run.completed_at || run.completedAt) : undefined,
+    progress: status === "in_progress" ? 60 : status === "completed" ? 100 : undefined,
+  }
+}
 
 const statusConfig = {
   pending: { label: "Pending", color: "text-zinc-400", bg: "bg-zinc-500/10", icon: Clock },
@@ -216,9 +215,25 @@ function TaskCard({ task, isSelected, onClick, index }: { task: Task; isSelected
 }
 
 export default function TasksPage() {
-  const [selectedTask, setSelectedTask] = useState<string>("1")
+  const { user } = useAuth()
+  const [selectedTask, setSelectedTask] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+
+  const { data, error, isLoading, isValidating, mutate } = useSWR<RunListResponse>(
+    user ? "/api/runs?limit=50" : null,
+    apiFetcher,
+    {
+      revalidateOnFocus: false,
+      refreshInterval: 15000,
+      onError: (err) => console.error("[v0] Runs fetch error:", err),
+    }
+  )
+
+  const tasks = useMemo<Task[]>(() => {
+    const runs = Array.isArray(data?.runs) ? data!.runs : []
+    return runs.map(runToTask)
+  }, [data])
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
@@ -228,7 +243,7 @@ export default function TasksPage() {
     return matchesSearch && matchesStatus
   })
 
-  const selected = tasks.find((t) => t.id === selectedTask)
+  const selected = tasks.find((t) => t.id === selectedTask) ?? null
 
   const pendingCount = tasks.filter((t) => t.status === "pending").length
   const inProgressCount = tasks.filter((t) => t.status === "in_progress").length
@@ -316,7 +331,55 @@ export default function TasksPage() {
             {inProgressCount > 0 && (
               <ParticleField count={20} color="blue" interactive={false} className="opacity-30" />
             )}
-            
+
+            <div className="relative flex items-center justify-between pb-1">
+              <span className="text-xs text-muted-foreground">
+                {filteredTasks.length} of {tasks.length} run{tasks.length === 1 ? "" : "s"}
+              </span>
+              <DataFreshness
+                updatedAt={data ? Date.now() : null}
+                isRefreshing={isValidating}
+                onRefresh={() => mutate()}
+              />
+            </div>
+
+            {/* Loading */}
+            {isLoading && tasks.length === 0 && (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {/* Error */}
+            {error && tasks.length === 0 && (
+              <ErrorState
+                title="Failed to load runs"
+                description="We couldn't reach the execution timeline. Try again."
+                onRetry={() => mutate()}
+              />
+            )}
+
+            {/* Empty */}
+            {!isLoading && !error && tasks.length === 0 && (
+              <EmptyState
+                icon={Activity}
+                title="No runs yet"
+                description="Workflow executions will appear here as they run."
+              />
+            )}
+
+            {/* No results after filtering */}
+            {!isLoading && tasks.length > 0 && filteredTasks.length === 0 && (
+              <NoResultsState
+                onClear={() => {
+                  setSearchQuery("")
+                  setStatusFilter("all")
+                }}
+              />
+            )}
+
             <AnimatePresence mode="popLayout">
               {filteredTasks.map((task, index) => (
                 <TaskCard
@@ -492,7 +555,7 @@ export default function TasksPage() {
             </motion.div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              Select a task to view details
+              {tasks.length === 0 ? "No runs to display" : "Select a run to view details"}
             </div>
           )}
         </div>

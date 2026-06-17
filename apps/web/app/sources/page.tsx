@@ -42,6 +42,9 @@ import { useAuth } from "@/lib/auth-context"
 import { sourcesApi } from "@/lib/api"
 import type { CreateSourceRequest } from "@/types/api"
 import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
+import { EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
+import { CardSkeleton } from "@/components/gravitre/loading-state"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { toast } from "sonner"
 
 interface Source {
@@ -558,7 +561,7 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
+  const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
     onError: (err) => console.error("[v0] Sources fetch error:", err),
@@ -769,6 +772,42 @@ export default function SourcesPage() {
             <GridPattern size={50} color="blue" animated />
           </div>
           
+          <div className="relative z-10 mb-4 flex justify-end">
+            <DataFreshness
+              updatedAt={data ? Date.now() : null}
+              isRefreshing={isValidating}
+              onRefresh={() => mutate()}
+            />
+          </div>
+
+          {/* Loading skeletons */}
+          {isLoading && sources.length === 0 && (
+            <div className="relative z-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!isLoading && !error && sources.length === 0 && (
+            <div className="relative z-10">
+              <EmptyState
+                icon={Database}
+                title="No data sources yet"
+                description="Connect your first data source to ground your agents in real business data."
+                action={{ label: "Add Data Source", onClick: () => setAddModalOpen(true) }}
+              />
+            </div>
+          )}
+
+          {/* No results after filtering */}
+          {!isLoading && sources.length > 0 && categories.filter(cat => selectedCategory === null || cat === selectedCategory).length === 0 && (
+            <div className="relative z-10">
+              <NoResultsState onClear={() => setSelectedCategory(null)} />
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             {categories
               .filter(cat => selectedCategory === null || cat === selectedCategory)
