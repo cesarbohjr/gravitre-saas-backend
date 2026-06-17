@@ -4,7 +4,7 @@
 // Includes: Agent, Task, Connector, Tool, Source, Approval, Decision, and Council node types
 import { useState, useCallback, useEffect, useRef, useMemo, use, startTransition } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-drawer"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
@@ -2781,6 +2781,7 @@ node.type === "approval" && "bg-red-500",
 export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   // Persistence state
   const canPersist = isPersistableWorkflowId(id)
@@ -2890,6 +2891,46 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     
     loadGraph()
   }, [id, canPersist])
+  
+  // G4: deep-link seeding. When the builder is opened from a connector page with
+  // ?vendor=&action=, drop a pre-configured connector node onto a fresh canvas so
+  // the user lands ready to wire it up. Runs once after any graph load settles.
+  const deepLinkAppliedRef = useRef(false)
+  useEffect(() => {
+    if (deepLinkAppliedRef.current) return
+    if (isLoadingGraph) return
+    const vendor = searchParams?.get("vendor")?.trim()
+    if (!vendor) return
+    deepLinkAppliedRef.current = true
+
+    const rawAction = searchParams?.get("action")?.trim() || undefined
+    // Action keys arrive as `{vendor}.{actionId}`; strip the vendor prefix for selectedAction.
+    const selectedAction = rawAction
+      ? rawAction.includes(".")
+        ? rawAction.split(".").slice(1).join(".")
+        : rawAction
+      : undefined
+    const vendorLabel = vendor.charAt(0).toUpperCase() + vendor.slice(1)
+    const nodeName = selectedAction ? `${vendorLabel}: ${selectedAction}` : vendorLabel
+
+    setNodes((prev) => [
+      ...prev,
+      {
+        id: nextGeneratedNodeId(),
+        type: "connector",
+        name: nodeName,
+        description: `Added from the ${vendorLabel} connector`,
+        config: {},
+        position: { x: 240, y: 160 + prev.length * 40 },
+        connections: [],
+        vendor,
+        selectedAction,
+      },
+    ])
+    toast.success(`Added ${vendorLabel} step`, {
+      description: selectedAction ? `Action: ${selectedAction}` : "Configure the action to continue",
+    })
+  }, [isLoadingGraph, searchParams])
   
   // Elapsed time timer
   useEffect(() => {
