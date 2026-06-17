@@ -4,6 +4,8 @@ import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { EmptyState, ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -65,7 +67,7 @@ export default function AuditPage() {
     : null
   const summaryKey = user ? ["audit/summary", selectedDateRange] as const : null
 
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
     listKey,
     () =>
       auditApi.list({
@@ -109,10 +111,15 @@ export default function AuditPage() {
   const actions = Object.keys(summaryData?.byAction ?? {}).sort()
   const entityTypes = Object.keys(summaryData?.byEntityType ?? {}).sort()
 
-  const auditErrorMessage =
+  const isUpgradeRequired =
     error instanceof Error && /upgrade|403|unauthorized/i.test(error.message)
-      ? "Audit logs require a plan with audit access. Upgrade your plan or contact support."
-      : "Failed to load audit logs. Check your connection and try again."
+
+  const auditErrorMessage = isUpgradeRequired
+    ? "Audit logs require a plan with audit access. Upgrade your plan or contact support."
+    : "Failed to load audit logs. Check your connection and try again."
+
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || selectedAction !== "all" || selectedEntityType !== "all"
 
   async function handleExport(format: "csv" | "json") {
     try {
@@ -247,13 +254,36 @@ export default function AuditPage() {
         </div>
 
         {error && (
-          <div className="mx-4 md:mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>{auditErrorMessage}</span>
+          <div className="mx-4 md:mx-6 mt-4 flex items-center justify-between gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {auditErrorMessage}
+            </span>
+            {!isUpgradeRequired && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-destructive hover:text-destructive"
+                onClick={() => void mutate()}
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </Button>
+            )}
           </div>
         )}
 
         <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {filteredLogs.length} event{filteredLogs.length === 1 ? "" : "s"}
+            </span>
+            <DataFreshness
+              updatedAt={data ? Date.now() : null}
+              isRefreshing={isValidating}
+              onRefresh={() => void mutate()}
+            />
+          </div>
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -268,12 +298,21 @@ export default function AuditPage() {
               ))}
             </div>
           ) : filteredLogs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary mb-3">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">No events match your filters</p>
-            </div>
+            hasActiveFilters ? (
+              <NoResultsState
+                onClear={() => {
+                  setSearchQuery("")
+                  setSelectedAction("all")
+                  setSelectedEntityType("all")
+                }}
+              />
+            ) : (
+              <EmptyState
+                icon={Search}
+                title="No audit events yet"
+                description="Activity across your workspace will be recorded here."
+              />
+            )
           ) : (
             <div className="space-y-3">
               {filteredLogs.map((log, index) => (

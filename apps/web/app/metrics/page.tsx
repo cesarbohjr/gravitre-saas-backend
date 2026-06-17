@@ -530,39 +530,39 @@ export default function MetricsPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
               <MetricCard
                 title="Total Runs"
-                value={overview.totalRuns?.toLocaleString() ?? "1,247"}
-                change={overview.changes?.totalRuns ?? 12}
+                value={overview.totalRuns.toLocaleString()}
+                change={overview.changes.totalRuns}
                 icon={Activity}
                 accentColor="blue"
-                trend={[45, 32, 78, 124, 89, 156, 98, 67]}
               />
               <MetricCard
                 title="Success Rate"
-                value={`${overview.successRate ?? 98.7}%`}
-                change={overview.changes?.successRate ?? 0.5}
+                value={`${overview.successRate.toFixed(1)}%`}
+                change={overview.changes.successRate}
                 icon={CheckCircle2}
                 accentColor="emerald"
-                trend={[98, 97, 99, 98, 96, 99, 98, 99]}
               />
               <MetricCard
                 title="Records Processed"
-                value={overview.recordsProcessed ? `${(overview.recordsProcessed / 1000000).toFixed(1)}M` : "1.8M"}
-                change={overview.changes?.recordsProcessed ?? 24}
+                value={
+                  overview.recordsProcessed >= 1_000_000
+                    ? `${(overview.recordsProcessed / 1_000_000).toFixed(1)}M`
+                    : overview.recordsProcessed.toLocaleString()
+                }
+                change={overview.changes.recordsProcessed}
                 icon={Zap}
                 accentColor="blue"
-                trend={[245, 312, 287, 356, 298, 145, 123, 267]}
               />
               <MetricCard
                 title="Avg Latency"
-                value={`${overview.avgLatency ?? 142}ms`}
-                change={overview.changes?.avgLatency ?? -8}
+                value={`${Math.round(overview.avgLatency)}ms`}
+                change={overview.changes.avgLatency}
                 icon={Clock}
-                accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
-                trend={[120, 110, 145, 180, 320, 165, 130, 125]}
+                accentColor={overview.changes.avgLatency > 0 ? "amber" : "emerald"}
               />
               <MetricCard
                 title="Active Connectors"
-                value={`${overview.activeConnectors ?? 9}/${overview.totalConnectors ?? 12}`}
+                value={`${overview.activeConnectors}/${overview.totalConnectors}`}
                 icon={Activity}
                 accentColor="blue"
               />
