@@ -639,12 +639,9 @@ export default function AssignmentDetailPage({
   const approvalFromUrl = searchParams.get("approval") === "1"
   const [selectedDeliverable, setSelectedDeliverable] = useState<string | null>("primary-answer")
   const [approvedItems, setApprovedItems] = useState<string[]>([])
-  const [approvalDismissed, setApprovalDismissed] = useState(false)
+  const [approvalDismissedManual, setApprovalDismissedManual] = useState(false)
   const [isDecisionPending, setIsDecisionPending] = useState(false)
-
-  useEffect(() => {
-    if (approvalFromUrl) setApprovalDismissed(false)
-  }, [approvalFromUrl, id])
+  const approvalDismissed = approvalFromUrl ? false : approvalDismissedManual
 
   const { data: job, error: loadError, isLoading, mutate } = useSWR(
     id ? `agent-job-${id}` : null,
@@ -808,7 +805,7 @@ export default function AssignmentDetailPage({
       <AssignmentApprovalDialog
         open={approvalOpen}
         onOpenChange={(open) => {
-          if (!open) setApprovalDismissed(true)
+          if (!open) setApprovalDismissedManual(true)
         }}
         title={taskTitle}
         agentName={agentName}
@@ -864,7 +861,7 @@ export default function AssignmentDetailPage({
                     Review the generated output before it is sent to {handoff?.task?.description ? "destinations" : "downstream systems"}.
                   </p>
                 </div>
-                <Button size="sm" className="gap-1" onClick={() => setApprovalDismissed(false)}>
+                <Button size="sm" className="gap-1" onClick={() => setApprovalDismissedManual(false)}>
                   Review
                 </Button>
               </div>

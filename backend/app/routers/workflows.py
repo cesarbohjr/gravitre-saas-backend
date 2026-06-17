@@ -2988,7 +2988,7 @@ async def list_runs_alias(
         client.table("workflow_runs")
         .select(
             "id, workflow_id, run_type, status, approval_status, required_approvals, "
-            "created_at, started_at, completed_at, duration_ms, error_message, "
+            "created_at, completed_at, duration_ms, error_message, "
             "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id"
         )
         .eq("org_id", org_id)

@@ -185,3 +185,24 @@ def test_audit_events_written_on_connector_change(mock_pii, mock_siem):
     )
     insert_row = sb.table.return_value.insert.call_args[0][0]
     assert insert_row["action"] == "connector.auth.failed"
+
+
+def test_audit_fetch_rows_without_response_error_attr():
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from app.routers.audit import _fetch_rows
+
+    chain = MagicMock()
+    chain.select.return_value = chain
+    chain.eq.return_value = chain
+    chain.order.return_value = chain
+    chain.range.return_value = chain
+    chain.execute.return_value = SimpleNamespace(
+        data=[{"id": "log-1", "org_id": "org-1", "action": "test", "created_at": "2026-06-07T00:00:00+00:00"}]
+    )
+    client = MagicMock()
+    client.table.return_value = chain
+    rows = _fetch_rows(client, "org-1", None)
+    assert len(rows) == 1
+    assert rows[0]["action"] == "test"

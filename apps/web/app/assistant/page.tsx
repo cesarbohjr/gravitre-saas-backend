@@ -802,12 +802,15 @@ export default function AssistantPage() {
         setConversationMessagesLoading(false)
       }
     },
-    [setMessages],
+    [setMessages, setConversationMessagesLoading, setConversationMessagesError],
   )
 
   useEffect(() => {
     if (!user || !activeConversationId || messages.length > 0) return
-    void loadConversationMessages(activeConversationId)
+    const timer = window.setTimeout(() => {
+      void loadConversationMessages(activeConversationId)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [user, activeConversationId, messages.length, loadConversationMessages])
 
   // Persist ad-hoc sessions to localStorage (conversation threads are stored via API)
@@ -949,7 +952,7 @@ export default function AssistantPage() {
     setMessages(cleaned)
     const text = normalizeMessage(lastUserMessage).text
     if (text) sendMessage({ text })
-  }, [messages, setMessages, sendMessage])
+  }, [messages, setMessages, sendMessage, setStreamError])
 
   const submitText = useCallback(async (text: string) => {
     const trimmed = text.trim()

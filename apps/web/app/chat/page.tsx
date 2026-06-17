@@ -440,13 +440,20 @@ export default function ChatPage() {
       !isSearching,
   )
 
-  useEffect(() => {
-    setActiveTypeaheadIndex(typeaheadItems.length > 0 ? 0 : -1)
-  }, [typeaheadItems])
+  const typeaheadItemsKey = typeaheadItems.map((item) => item.id).join("|")
+  const placeholderKey = searchPlaceholders.join("|")
 
   useEffect(() => {
-    setPlaceholderIndex(0)
-  }, [searchPlaceholders])
+    const timer = window.setTimeout(() => {
+      setActiveTypeaheadIndex(typeaheadItems.length > 0 ? 0 : -1)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [typeaheadItemsKey, typeaheadItems.length])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPlaceholderIndex(0), 0)
+    return () => window.clearTimeout(timer)
+  }, [placeholderKey])
 
   useEffect(() => {
     if (query.trim() || inputFocused || searchPlaceholders.length <= 1) return

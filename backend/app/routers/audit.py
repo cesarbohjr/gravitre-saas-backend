@@ -100,14 +100,23 @@ def _fetch_rows(client, org_id: str, action: str | None):
     if action:
         query = query.eq("action", action)
 
-    created_query = query.order("created_at", desc=True).range(0, FETCH_MAX - 1).execute()
-    if not created_query.error:
-        return list(created_query.data or [])
+    last_error: Exception | None = None
+    for order_col in ("created_at", "timestamp"):
+        try:
+            response = query.order(order_col, desc=True).range(0, FETCH_MAX - 1).execute()
+            return list(response.data or [])
+        except Exception as exc:  # noqa: BLE001 — postgrest APIError on missing columns
+            last_error = exc
+            message = str(exc).lower()
+            if order_col == "created_at" and (
+                "42703" in str(exc) or "does not exist" in message
+            ):
+                continue
+            break
 
-    timestamp_query = query.order("timestamp", desc=True).range(0, FETCH_MAX - 1).execute()
-    if timestamp_query.error:
-        raise HTTPException(status_code=500, detail=str(timestamp_query.error))
-    return list(timestamp_query.data or [])
+    if last_error is not None:
+        raise HTTPException(status_code=500, detail=str(last_error)) from last_error
+    return []
 
 
 def _filter_logs(
@@ -319,8 +328,6 @@ async def get_audit_log(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     response = client.table("audit_logs").select("*").eq("org_id", org_id).eq("id", log_id).limit(1).execute()
-    if response.error:
-        raise HTTPException(status_code=500, detail=str(response.error))
     if not response.data:
         raise HTTPException(status_code=404, detail="Audit log not found")
     return _normalize_log(dict(response.data[0]))

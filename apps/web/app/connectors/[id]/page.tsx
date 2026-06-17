@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -153,30 +153,33 @@ export default function ConnectorDetailPage() {
     { revalidateOnFocus: false },
   )
 
-  const [connector, setConnector] = useState<
-    Omit<typeof mockConnector, "status" | "environment"> & { status: string; environment: string }
-  >(mockConnector)
+  const connector = useMemo(() => {
+    if (!liveConnector) return mockConnector
+    return {
+      ...mockConnector,
+      id: liveConnector.id,
+      name: liveConnector.name,
+      type: liveConnector.type || liveConnector.vendor,
+      status: liveConnector.status,
+      environment: liveConnector.environment || mockConnector.environment,
+      description: liveConnector.description || mockConnector.description,
+      category: mockConnector.category,
+      createdAt: liveConnector.created_at?.slice(0, 10) || mockConnector.createdAt,
+    }
+  }, [liveConnector])
+
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [demoStatusOverride, setDemoStatusOverride] = useState<string | null>(null)
 
-  // Merge the live connector record over the mock scaffold (charts/activity stay mocked).
-  useEffect(() => {
-    if (!liveConnector) return
-    setConnector((prev) => ({
-      ...prev,
-      id: liveConnector.id,
-      name: liveConnector.name,
-      type: liveConnector.type || liveConnector.vendor,
-      status: liveConnector.status,
-      environment: liveConnector.environment || prev.environment,
-      description: liveConnector.description || prev.description,
-      category: prev.category,
-      createdAt: liveConnector.created_at?.slice(0, 10) || prev.createdAt,
-    }))
-  }, [liveConnector])
+  const displayConnector = useMemo(
+    () =>
+      demoStatusOverride ? { ...connector, status: demoStatusOverride } : connector,
+    [connector, demoStatusOverride],
+  )
 
   // Resolve the vendor key the catalog is indexed by.
   const vendorKey = (liveConnector?.vendor || liveConnector?.type || connector.type || "").toLowerCase()
@@ -184,7 +187,7 @@ export default function ConnectorDetailPage() {
     catalogData?.vendors.find((v) => v.vendor.toLowerCase() === vendorKey) ?? null
   const workflows: Workflow[] = workflowsData?.workflows ?? []
 
-  const config = statusConfig[(connector.status as keyof typeof statusConfig) || "connected"]
+  const config = statusConfig[(displayConnector.status as keyof typeof statusConfig) || "connected"]
   const StatusIcon = config.icon
 
   const handleSync = async () => {
@@ -207,8 +210,8 @@ export default function ConnectorDetailPage() {
   }
 
   const handleToggleStatus = () => {
-    const newStatus = connector.status === "connected" ? "disconnected" : "connected"
-    setConnector((prev) => ({ ...prev, status: newStatus }))
+    const newStatus = displayConnector.status === "connected" ? "disconnected" : "connected"
+    setDemoStatusOverride(newStatus)
     toast.success(newStatus === "connected" ? "Connector enabled" : "Connector disabled")
   }
 
@@ -228,7 +231,7 @@ export default function ConnectorDetailPage() {
               <div className="flex items-center gap-4">
                 <ConnectorIcon 
                   vendor={connector.type}
-                  status={isSyncing ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
+                  status={isSyncing ? "syncing" : displayConnector.status === "connected" ? "connected" : displayConnector.status === "error" ? "error" : "disconnected"}
                   size="md"
                 />
                 <div>
@@ -260,7 +263,7 @@ export default function ConnectorDetailPage() {
                 size="sm" 
                 className="gap-2"
                 onClick={handleSync}
-                disabled={isSyncing || connector.status !== "connected"}
+                disabled={isSyncing || displayConnector.status !== "connected"}
               >
                 <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
                 {isSyncing ? "Syncing..." : "Sync Now"}
@@ -282,7 +285,7 @@ export default function ConnectorDetailPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleToggleStatus}>
-                    {connector.status === "connected" ? (
+                    {displayConnector.status === "connected" ? (
                       <><Pause className="h-4 w-4 mr-2" />Disable Connector</>
                     ) : (
                       <><Play className="h-4 w-4 mr-2" />Enable Connector</>
@@ -460,7 +463,7 @@ export default function ConnectorDetailPage() {
           {/* G4: live action readiness, workflow linkage, and starter workflows */}
           <ConnectorLinkage
             vendor={vendorKey}
-            connectorStatus={connector.status}
+            connectorStatus={displayConnector.status}
             catalog={vendorCatalog}
             workflows={workflows}
           />

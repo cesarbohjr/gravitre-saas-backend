@@ -2913,24 +2913,26 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     const vendorLabel = vendor.charAt(0).toUpperCase() + vendor.slice(1)
     const nodeName = selectedAction ? `${vendorLabel}: ${selectedAction}` : vendorLabel
 
-    setNodes((prev) => [
-      ...prev,
-      {
-        id: nextGeneratedNodeId(),
-        type: "connector",
-        name: nodeName,
-        description: `Added from the ${vendorLabel} connector`,
-        config: {},
-        position: { x: 240, y: 160 + prev.length * 40 },
-        connections: [],
-        state: "idle",
-        vendor,
-        selectedAction,
-      },
-    ])
-    toast.success(`Added ${vendorLabel} step`, {
-      description: selectedAction ? `Action: ${selectedAction}` : "Configure the action to continue",
-    })
+    window.setTimeout(() => {
+      setNodes((prev) => [
+        ...prev,
+        {
+          id: nextGeneratedNodeId(),
+          type: "connector",
+          name: nodeName,
+          description: `Added from the ${vendorLabel} connector`,
+          config: {},
+          position: { x: 240, y: 160 + prev.length * 40 },
+          connections: [],
+          state: "idle",
+          vendor,
+          selectedAction,
+        },
+      ])
+      toast.success(`Added ${vendorLabel} step`, {
+        description: selectedAction ? `Action: ${selectedAction}` : "Configure the action to continue",
+      })
+    }, 0)
   }, [isLoadingGraph, searchParams])
   
   // Elapsed time timer
