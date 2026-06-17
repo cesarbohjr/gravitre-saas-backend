@@ -133,7 +133,7 @@ export function PlatformLogoCard({ name, delay = 0, className = "" }: PlatformLo
       viewport={{ once: true }}
       transition={{ delay }}
       whileHover={{ scale: 1.05, y: -2 }}
-      className={`flex h-20 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-zinc-300 ${className}`}
+      className={`flex h-20 items-center justify-center rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:border-border/70 ${className}`}
     >
       <LogoComponent />
     </motion.div>
@@ -141,7 +141,10 @@ export function PlatformLogoCard({ name, delay = 0, className = "" }: PlatformLo
 }
 
 // Integration grid component for marketing pages
-export function IntegrationsGrid({ theme = "light" }: { theme?: "light" | "dark" }) {
+// `theme` is retained for backwards-compatible call sites but is no longer used
+// for coloring — cards follow the active theme via semantic tokens so the grid
+// stays consistent with the rest of the app in both light and dark mode.
+export function IntegrationsGrid(_props: { theme?: "light" | "dark" } = {}) {
   return (
     <div className="grid grid-cols-4 gap-3 sm:gap-4 md:grid-cols-6 lg:grid-cols-8">
       {MARKETING_INTEGRATION_APPS.map((name, i) => (
@@ -153,18 +156,10 @@ export function IntegrationsGrid({ theme = "light" }: { theme?: "light" | "dark"
           transition={{ delay: i * 0.02 }}
           whileHover={{ scale: 1.08, y: -3 }}
           title={name}
-          className={`flex h-16 sm:h-20 flex-col items-center justify-center gap-1 rounded-xl sm:rounded-2xl border px-1 transition-all ${
-            theme === "light"
-              ? "border-zinc-200 bg-white shadow-sm hover:shadow-md hover:border-zinc-300"
-              : "border-white/10 bg-zinc-900/50 hover:border-white/20"
-          }`}
+          className="flex h-16 sm:h-20 flex-col items-center justify-center gap-1 rounded-xl sm:rounded-2xl border border-border bg-card px-1 shadow-sm transition-all hover:border-border/70 hover:shadow-md"
         >
           <ConnectorIcon vendor={name} size="sm" showStatusIndicator={false} />
-          <span
-            className={`hidden sm:block max-w-full truncate px-1 text-[9px] font-medium ${
-              theme === "light" ? "text-zinc-500" : "text-zinc-400"
-            }`}
-          >
+          <span className="hidden sm:block max-w-full truncate px-1 text-[9px] font-medium text-muted-foreground">
             {name}
           </span>
         </motion.div>

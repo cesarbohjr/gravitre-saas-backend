@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { SourceQueryPanel } from "@/components/gravitre/source-query-panel"
 import { Button } from "@/components/ui/button"
@@ -16,7 +17,6 @@ import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import {
   ArrowLeft,
-  Database,
   RefreshCw,
   Trash2,
   Activity,
@@ -185,9 +185,12 @@ export default function SourceDetailPage() {
 
         <div className="mb-8 flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-400/10">
-              <Database className="h-7 w-7 text-blue-400" />
-            </div>
+            <ConnectorIcon
+              vendor={String(source.type ?? "")}
+              name={name}
+              size="md"
+              showStatusIndicator={false}
+            />
             <div>
               <h1 className="text-2xl font-semibold text-foreground">{name}</h1>
               <p className="text-sm text-muted-foreground mt-1">

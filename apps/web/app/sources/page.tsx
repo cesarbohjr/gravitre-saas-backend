@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import {
   MorphingBackground,
   GlowOrb,
@@ -20,9 +21,6 @@ import { cn } from "@/lib/utils"
 import { 
   Plus, 
   Database, 
-  Server,
-  HardDrive,
-  Cloud,
   Workflow,
   Bot,
   RefreshCw,
@@ -259,14 +257,6 @@ function normalizeSourcesResponse(payload: unknown): Source[] {
   return normalized
 }
 
-const typeConfig: Record<string, { icon: typeof Database; color: string; bgColor: string }> = {
-  PostgreSQL: { icon: Database, color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  MySQL: { icon: Database, color: "text-orange-400", bgColor: "bg-orange-500/20" },
-  MongoDB: { icon: HardDrive, color: "text-green-400", bgColor: "bg-green-500/20" },
-  Snowflake: { icon: Cloud, color: "text-cyan-400", bgColor: "bg-cyan-500/20" },
-  BigQuery: { icon: Server, color: "text-yellow-400", bgColor: "bg-yellow-500/20" },
-}
-
 const categoryLabels = {
   sql: "SQL Databases",
   nosql: "NoSQL",
@@ -330,8 +320,6 @@ function SourceTile({
   isMutating: boolean
 }) {
   const router = useRouter()
-  const config = typeConfig[source.type] || { icon: Database, color: "text-muted-foreground", bgColor: "bg-secondary" }
-  const TypeIcon = config.icon
 
   return (
     <motion.div
@@ -381,19 +369,20 @@ function SourceTile({
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <motion.div 
-              className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-xl transition-all relative",
-                config.bgColor,
-                source.status === "connected" && "shadow-lg shadow-emerald-500/20"
-              )}
+            <motion.div
+              className="relative"
               animate={source.status === "syncing" ? { scale: [1, 1.05, 1] } : {}}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
-              <TypeIcon className={cn("h-5 w-5", config.color)} />
+              <ConnectorIcon
+                vendor={source.type}
+                name={source.name}
+                size="md"
+                showStatusIndicator={false}
+              />
               {source.status === "syncing" && (
-                <motion.div 
-                  className="absolute inset-0 rounded-xl border-2 border-blue-400"
+                <motion.div
+                  className="absolute inset-0 rounded-2xl border-2 border-blue-400"
                   animate={{ scale: [1, 1.2], opacity: [0.8, 0] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 />

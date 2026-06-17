@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { connectorVendorKey } from "@/lib/connectors"
+import brandLogoManifest from "@/lib/brand-logos-manifest.json"
 
 // ============================================================================
 // GRAVITRE CONNECTOR ICON + INTEGRATION TOKEN SYSTEM
@@ -721,6 +723,60 @@ function getVendorLogo(vendor?: string): React.ReactNode | null {
   return null
 }
 
+// ============================================================================
+// SIMPLE ICONS (self-hosted) — primary logo source for exact, official marks.
+// SVGs are generated offline from the `simple-icons` package into
+// public/brand-logos via scripts/fetch-brand-logos.mjs. The manifest lists the
+// vendorKeys that have a local logo; everything else (delisted brands such as
+// Slack, Salesforce, LinkedIn, Oracle, ...) falls back to inline logos/initials.
+// ============================================================================
+
+function getSimpleIconSlug(vendor?: string): string | null {
+  const key = resolveVendorLogoKey(vendor)
+  if (!key) return null
+  return (brandLogoManifest as Record<string, string>)[key] ?? null
+}
+
+/**
+ * Renders an exact, self-hosted brand logo (Simple Icons).
+ * - Light theme: official brand color.
+ * - Dark theme: white (guarantees contrast on dark surfaces).
+ * On load failure, renders `fallback`.
+ */
+function BrandLogo({
+  slug,
+  alt,
+  fallback,
+}: {
+  slug: string
+  alt: string
+  fallback: React.ReactNode
+}) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <>{fallback}</>
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/brand-logos/${slug}.svg`}
+        alt={alt}
+        loading="lazy"
+        className="h-full w-full object-contain dark:hidden"
+        onError={() => setFailed(true)}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/brand-logos/${slug}-white.svg`}
+        alt=""
+        aria-hidden
+        loading="lazy"
+        className="hidden h-full w-full object-contain dark:block"
+        onError={() => setFailed(true)}
+      />
+    </>
+  )
+}
+
 // Brand monogram fallback for connectors without a dedicated logo.
 function getConnectorInitials(name: string): string {
   return name
@@ -744,13 +800,29 @@ export function ConnectorIcon({
   className,
   onClick,
 }: ConnectorIconProps) {
-  const brandKey = brand || getBrandKey(vendor)
-  const brandToken = connectorBrandTokens[brandKey]
   const statusToken = connectorStatusTokens[status]
   const sizeToken = connectorIconSizes[size]
-  
-  const logo = icon || getVendorLogo(vendor)
+
   const displayName = name || vendor || "Connector"
+  const inlineLogo = getVendorLogo(vendor)
+  const initials = (
+    <span
+      className={cn(
+        "font-semibold leading-none text-muted-foreground",
+        size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm"
+      )}
+    >
+      {getConnectorInitials(displayName)}
+    </span>
+  )
+  // Simple Icons CDN is the primary logo source for exact official marks;
+  // fall back to inline/asset logo, then to brand initials.
+  const simpleSlug = icon ? null : getSimpleIconSlug(vendor)
+  const logo = icon
+    ? icon
+    : simpleSlug
+      ? <BrandLogo slug={simpleSlug} alt={`${displayName} logo`} fallback={inlineLogo ?? initials} />
+      : (inlineLogo ?? null)
 
   return (
     <div className={cn("relative inline-flex", className)} onClick={onClick}>
@@ -762,24 +834,15 @@ export function ConnectorIcon({
           "hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_36px_rgba(15,23,42,0.08)]",
           sizeToken.container,
           sizeToken.radius,
-          brandToken.bg,
-          brandToken.border,
-          selected && "ring-2 ring-offset-2 ring-blue-500/30 dark:ring-offset-zinc-950",
+          // Uniform neutral surface for every connector — no per-brand tints
+          // or black boxes, so icons stay visually consistent across themes.
+          "bg-muted border-border",
+          selected && "ring-2 ring-offset-2 ring-blue-500/30 dark:ring-offset-background",
           onClick && "cursor-pointer"
         )}
       >
         <div className={cn("flex items-center justify-center", sizeToken.icon)}>
-          {logo || (
-            <span
-              className={cn(
-                "font-semibold leading-none",
-                brandToken.text,
-                size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : "text-sm"
-              )}
-            >
-              {getConnectorInitials(displayName)}
-            </span>
-          )}
+          {logo || initials}
         </div>
       </div>
 
