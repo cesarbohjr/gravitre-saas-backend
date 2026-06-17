@@ -439,12 +439,23 @@ export default function RunsPage() {
             </Button>
           </div>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs text-muted-foreground">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  error
+                    ? "bg-amber-500"
+                    : isLoading
+                      ? "bg-blue-500 animate-pulse"
+                      : "bg-emerald-500",
+                )}
+                aria-hidden="true"
+              />
               {error
-                ? "Connection: retrying via poll (API unavailable)"
+                ? "Reconnecting — retrying every 10s"
                 : isLoading
-                  ? "Connection: syncing..."
-                  : "Connection: live (10s poll)"}
+                  ? "Syncing…"
+                  : "Live — updates every 10s"}
             </p>
             <p className="text-xs text-muted-foreground">Last refresh: {refreshLabel}</p>
           </div>

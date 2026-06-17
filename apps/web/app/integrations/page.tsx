@@ -111,8 +111,8 @@ export default function IntegrationsPage() {
         )}
 
         {/* Table */}
-        <div className="rounded-lg border border-border bg-card">
-          <table className="w-full">
+        <div className="rounded-lg border border-border bg-card overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">

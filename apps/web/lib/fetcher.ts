@@ -92,6 +92,15 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   return response
 }
 
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
+  }
+}
+
 export async function fetcher<T>(url: string): Promise<T> {
   const response = await apiFetch(url)
 
@@ -107,7 +116,7 @@ export async function fetcher<T>(url: string): Promise<T> {
     } catch {
       // Keep default detail when body is not JSON.
     }
-    throw new Error(detail)
+    throw new ApiError(detail, response.status)
   }
 
   return response.json() as Promise<T>

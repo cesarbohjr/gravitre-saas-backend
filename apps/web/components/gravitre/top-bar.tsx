@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import useSWR from "swr"
 import Link from "next/link"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -42,6 +44,28 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
   const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
+
+  // Live profile stats (real data, no mocks). Falls back to "—" while loading/unavailable.
+  const { data: overviewData } = useSWR<{ activeWorkflows?: number; successRate?: number }>(
+    user ? "/api/metrics/overview" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, refreshInterval: 60_000 },
+  )
+  const { data: approvalsData } = useSWR<{ approvals?: unknown[] } | unknown[]>(
+    user ? "/api/approvals" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, refreshInterval: 60_000 },
+  )
+
+  const activeWorkflows =
+    typeof overviewData?.activeWorkflows === "number" ? overviewData.activeWorkflows : null
+  const successRate =
+    typeof overviewData?.successRate === "number" ? overviewData.successRate : null
+  const pendingApprovals = Array.isArray((approvalsData as { approvals?: unknown[] })?.approvals)
+    ? (approvalsData as { approvals: unknown[] }).approvals.length
+    : Array.isArray(approvalsData)
+      ? approvalsData.length
+      : null
 
   // Derive user info from auth context
   const userEmail = user?.email ?? "john@acmecorp.com"
@@ -263,15 +287,21 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               {/* Quick stats */}
               <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
                 <div className="px-3 py-2.5 text-center">
-                  <p className="text-lg font-semibold text-foreground">47</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {activeWorkflows ?? "—"}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Workflows</p>
                 </div>
                 <div className="px-3 py-2.5 text-center">
-                  <p className="text-lg font-semibold text-foreground">156</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {pendingApprovals ?? "—"}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Approvals</p>
                 </div>
                 <div className="px-3 py-2.5 text-center">
-                  <p className="text-lg font-semibold text-foreground">98%</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {successRate !== null ? `${Math.round(successRate)}%` : "—"}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Success</p>
                 </div>
               </div>
