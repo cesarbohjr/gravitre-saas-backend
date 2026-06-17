@@ -25,6 +25,7 @@ import {
 } from "@/lib/assignments-list"
 import { NewAssignmentModal } from "@/components/gravitre/assignments/new-assignment-modal"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
+import { useMotionPrefs, entranceContainer, reducedEntranceContainer, entranceItem, reducedEntranceItem } from "@/lib/animations"
 import { useAuth } from "@/lib/auth-context"
 import { 
   Megaphone, 
@@ -157,20 +158,18 @@ function AssignmentCard({
   onOpenApproval?: () => void
 }) {
   const status = statusConfig[assignment.status]
+  const { reduced } = useMotionPrefs()
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-      whileHover={{ 
+      variants={reduced ? reducedEntranceItem : entranceItem}
+      whileHover={reduced ? undefined : { 
         y: -6, 
         scale: 1.01,
         transition: { duration: 0.15, ease: [0.2, 0, 0, 1] }
       }}
-      whileTap={{ scale: 0.99 }}
-      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      whileTap={reduced ? undefined : { scale: 0.99 }}
       role="button"
       tabIndex={0}
       aria-label={`Open assignment: ${assignment.title}`}
@@ -479,6 +478,7 @@ function AssignmentFilterTabs({
 export default function AssignmentsPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { reduced } = useMotionPrefs()
   const [localAssignments, setLocalAssignments] = useState<Assignment[]>([])
   const [filter, setFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
@@ -689,7 +689,13 @@ export default function AssignmentsPage() {
             <AssignmentListSkeleton />
           ) : (
           <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-1 gap-4">
+            <motion.div
+              layout
+              className="grid grid-cols-1 gap-4"
+              variants={reduced ? reducedEntranceContainer : entranceContainer}
+              initial="initial"
+              animate="animate"
+            >
               {filteredAssignments.map((assignment) => (
                 <AssignmentCard
                   key={assignment.id}
