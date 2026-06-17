@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
+import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -1623,7 +1624,7 @@ function ConnectorsPageContent() {
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
 
   // Fetch connectors from API with SWR
-  const { data, error, isLoading, mutate } = useSWR<{ connectors: Connector[] }>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
     user ? "/api/connectors" : null,
     apiFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
@@ -1999,6 +2000,15 @@ function ConnectorsPageContent() {
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">
+          {connectors.length > 0 && (
+            <div className="mb-4 flex justify-end">
+              <DataFreshness
+                updatedAt={data ? Date.now() : null}
+                isRefreshing={isValidating}
+                onRefresh={() => mutate()}
+              />
+            </div>
+          )}
           {isLoading && connectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-4" />

@@ -74,6 +74,9 @@ export {
 // Form Components
 export { SearchInput, DebouncedSearchInput } from "./search-input"
 
+// Data State Components
+export { DataFreshness } from "./data-freshness"
+
 // Onboarding Components
 export { 
   OnboardingProvider, 
