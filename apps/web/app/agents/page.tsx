@@ -334,12 +334,12 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       layout
-      initial={{ opacity: 0, y: 30, scale: 0.8 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 30, scale: 0.8 }}
+      animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
-      transition={{ delay: Math.min(index, 8) * 0.05, type: "spring", stiffness: 100 }}
+      transition={reduced ? { duration: 0.12 } : { delay: Math.min(index, 8) * 0.05, type: "spring", stiffness: 100 }}
       whileHover={reduced ? undefined : { scale: 1.01, y: -2 }}
-      whileTap={{ scale: 0.98 }}
+      whileTap={reduced ? undefined : { scale: 0.98 }}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
       className={cn(
         "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",

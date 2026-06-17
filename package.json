@@ -70,6 +70,7 @@
     "@supabase/supabase-js": "^2.105.0",
     "@vercel/analytics": "^2.0.1",
     "ai": "^6.0.194",
+    "date-fns": "^4.4.0",
     "framer-motion": "^12.38.0",
     "highlight.js": "^11.11.1",
     "lottie-web": "^5.13.0",

@@ -4,6 +4,8 @@ import { useState, use, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
+import { PulseRing } from "@/components/gravitre/premium-effects"
+import { useMotionPrefs } from "@/lib/animations"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
@@ -454,6 +456,7 @@ function AssignmentApprovalDialog({
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [decisionSuccess, setDecisionSuccess] = useState<"approved" | "rejected" | null>(null)
+  const { reduced } = useMotionPrefs()
 
   const handleRejectSubmit = async () => {
     if (!rejectReason.trim()) {
@@ -495,20 +498,27 @@ function AssignmentApprovalDialog({
       <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0">
         {decisionSuccess ? (
           <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={cn(
-                "mb-4 flex h-14 w-14 items-center justify-center rounded-full",
-                decisionSuccess === "approved" ? "bg-emerald-500/15" : "bg-red-500/15",
+            <div className="relative mb-4 flex h-14 w-14 items-center justify-center">
+              {decisionSuccess === "approved" && !reduced && (
+                <div className="pointer-events-none absolute left-1/2 top-1/2">
+                  <PulseRing color="emerald" size={56} />
+                </div>
               )}
-            >
-              <Icon
-                name={decisionSuccess === "approved" ? "check" : "warning"}
-                size="lg"
-                className={decisionSuccess === "approved" ? "text-emerald-400" : "text-red-400"}
-              />
-            </motion.div>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={cn(
+                  "relative flex h-14 w-14 items-center justify-center rounded-full",
+                  decisionSuccess === "approved" ? "bg-emerald-500/15" : "bg-red-500/15",
+                )}
+              >
+                <Icon
+                  name={decisionSuccess === "approved" ? "check" : "warning"}
+                  size="lg"
+                  className={decisionSuccess === "approved" ? "text-emerald-400" : "text-red-400"}
+                />
+              </motion.div>
+            </div>
             <p className="text-lg font-semibold text-foreground">
               {decisionSuccess === "approved" ? "Approved" : "Rejected"}
             </p>
