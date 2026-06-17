@@ -264,7 +264,8 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
             <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
             <span className="text-xs text-muted-foreground">{scheduleList.length} schedule{scheduleList.length !== 1 ? "s" : ""}</span>
           </div>
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -362,6 +363,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </AppShell>

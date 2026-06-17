@@ -174,8 +174,8 @@ export default function MarketplaceSandboxPage() {
                 {demoResult.auditTrail.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Audit trail</p>
-                    <div className="rounded border border-border overflow-hidden">
-                      <table className="w-full text-xs">
+                    <div className="rounded border border-border overflow-x-auto">
+                      <table className="w-full text-xs min-w-[460px]">
                         <thead className="bg-muted/50">
                           <tr>
                             <th className="text-left px-3 py-2 font-medium">Action</th>

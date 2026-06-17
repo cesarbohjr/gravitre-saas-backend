@@ -235,8 +235,8 @@ export default function MarketplaceBillingPage() {
             {data?.recentUsage && data.recentUsage.length > 0 && (
               <div className="space-y-2">
                 <h2 className="text-sm font-medium">Recent usage</h2>
-                <div className="rounded border border-border overflow-hidden">
-                  <table className="w-full text-xs">
+                <div className="rounded border border-border overflow-x-auto">
+                  <table className="w-full text-xs min-w-[460px]">
                     <thead className="bg-muted/50">
                       <tr>
                         <th className="text-left px-3 py-2 font-medium">Action</th>
