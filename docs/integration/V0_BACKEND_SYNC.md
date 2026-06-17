@@ -40,7 +40,9 @@ git checkout main
 | Run detail / pause / cancel | `GET /api/runs/{id}`, `POST …/pause`, `…/cancel` | explicit run routes | `runsApi` |
 | Failure predictions | `GET/POST …/failure-predictions/*` | rewrite | `workflowsApi.scanFailurePredictions` |
 | CS integration health | `GET/POST /api/enterprise/integration-health*` | rewrite | `enterpriseApi` |
-| Role packs | `GET/POST /api/marketplace/role-packs*` | rewrite | `marketplaceApi.listRolePacks` |
+| Role packs (legacy) | `GET/POST /api/marketplace/role-packs*` | rewrite | `marketplaceApi.listRolePacks` — redirects UI to `/marketplace/assets` |
+| Unified assets | `GET/POST /api/marketplace/assets*` | rewrite | `marketplaceApi.listAssets`, `installAsset`, `cloneAsset` |
+| Installs / saves / categories | `/api/marketplace/installs`, `/saves`, `/categories`, `/analytics/summary` | rewrite | supporting endpoints (MKT-5.3) |
 | Federation | `/api/federation/*` | rewrite | `federationApi` |
 | Run interrupt | `POST /api/agent-interrupts` | explicit route | `agentInterruptsApi` |
 

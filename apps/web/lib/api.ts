@@ -88,6 +88,10 @@ import type {
   MarketplacePartnerPricing,
   DepartmentRolePack,
   DepartmentRolePackInstallResult,
+  MarketplaceAssetCloneResult,
+  MarketplaceAssetInstallResult,
+  MarketplaceAssetsListResponse,
+  MarketplaceInstallBlocker,
   FederationPartnership,
   FederationHandoff,
   FederationConnectorGrant,
@@ -663,6 +667,46 @@ export const marketplaceApi = {
     postJson<DepartmentRolePackInstallResult>(
       apiUrl(`/api/marketplace/role-packs/${packId}/install`),
       {},
+    ),
+
+  // Unified marketplace assets (MKT-5 / MKT-6)
+  listAssets: (params?: {
+    assetType?: string
+    category?: string
+    department?: string
+    pricingType?: string
+    search?: string
+    limit?: number
+    offset?: number
+  }) => {
+    const query = new URLSearchParams()
+    if (params?.assetType) query.set("assetType", params.assetType)
+    if (params?.category) query.set("category", params.category)
+    if (params?.department) query.set("department", params.department)
+    if (params?.pricingType) query.set("pricingType", params.pricingType)
+    if (params?.search) query.set("search", params.search)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/assets${suffix}`))
+  },
+  getAsset: (assetRef: string) =>
+    fetcher<{ asset: MarketplaceAssetSummary & { config?: Record<string, unknown>; blockers?: MarketplaceInstallBlocker[] } }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
+    ),
+  installAsset: (assetRef: string, installVariables?: Record<string, string>) =>
+    postJson<MarketplaceAssetInstallResult>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install`),
+      installVariables ? { installVariables } : {},
+    ),
+  cloneAsset: (assetRef: string) =>
+    postJson<MarketplaceAssetCloneResult>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/clone`),
+      {},
+    ),
+  listCategories: () =>
+    fetcher<{ categories: { key: string; count: number }[]; departments: { key: string; count: number }[]; assetTypes: { key: string; count: number }[]; totalAssets: number }>(
+      apiUrl("/api/marketplace/categories"),
     ),
 }
 
