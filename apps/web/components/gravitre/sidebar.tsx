@@ -77,6 +77,7 @@ const adminNavigation: NavGroup[] = [
   {
     group: "BUILD",
     items: [
+      { name: "Marketplace", href: "/marketplace", icon: "package" },
       { name: "Automations", href: "/workflows", icon: "waypoints" },
       { name: "Training", href: "/training", icon: "brain" },
       { name: "Apps", href: "/connectors", icon: "blocks" },
