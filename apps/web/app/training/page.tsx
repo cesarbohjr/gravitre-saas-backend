@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { trainingApi, agentsApi } from "@/lib/api"
@@ -110,18 +111,20 @@ function TrainingPageContent() {
   }, [user])
 
   const swrKey = user && orgReady ? "training" : null
+  const { updatedAt, markFresh } = useFreshnessTimestamp()
 
-  const { data: datasetsData, error: datasetsError, mutate: mutateDatasets, dataUpdatedAt: datasetsUpdatedAt } = useSWR(
+  const { data: datasetsData, error: datasetsError, mutate: mutateDatasets } = useSWR(
     swrKey ? "training/datasets" : null,
     () => trainingApi.listDatasets(),
-    { fallbackData: { datasets: [] as TrainingDataset[] }, revalidateOnFocus: false }
+    { fallbackData: { datasets: [] as TrainingDataset[] }, revalidateOnFocus: false, onSuccess: markFresh }
   )
-  const { data: jobsData, error: jobsError, mutate: mutateJobs, dataUpdatedAt: jobsUpdatedAt } = useSWR(
+  const { data: jobsData, error: jobsError, mutate: mutateJobs } = useSWR(
     swrKey ? "training/jobs" : null,
     () => trainingApi.listJobs(),
     {
       fallbackData: { jobs: [] as TrainingJob[] },
       revalidateOnFocus: false,
+      onSuccess: markFresh,
       refreshInterval: (latest) => {
         const active = (latest?.jobs ?? []).some(
           (job) => job.status === "queued" || job.status === "training"
@@ -453,7 +456,7 @@ function TrainingPageContent() {
         <div className="relative grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="col-span-2 md:col-span-6 flex justify-end">
             <DataFreshness
-              updatedAt={Math.max(datasetsUpdatedAt || 0, jobsUpdatedAt || 0) || null}
+              updatedAt={updatedAt}
               onRefresh={() => {
                 void mutateDatasets()
                 void mutateJobs()
