@@ -42,9 +42,15 @@ def test_summary_calculates_from_real_data(mock_create):
                 {"id": "r2", "status": "failed", "duration_ms": 200},
             ]
         ),
+        connectors=chain_mock(
+            data=[
+                {"id": "c1", "status": "active"},
+                {"id": "c2", "status": "inactive"},
+            ]
+        ),
     )
 
-    with patch("app.routers.metrics.overview_metrics", return_value={"range": "7d"}):
+    with patch("app.routers.metrics.overview_metrics", return_value={"range": "7d", "ingestion": {"chunks_embedded_total": 1200}, "rag": {"retrieval_requests_total": 0}}):
         authenticate()
         response = client.get("/api/metrics/overview?range=7d")
 
@@ -52,13 +58,22 @@ def test_summary_calculates_from_real_data(mock_create):
     body = response.json()
     assert body["totalRuns"] == 2
     assert body["successRate"] == 50.0
+    assert body["recordsProcessed"] == 1200
+    assert body["avgLatency"] == 150.0
+    assert body["activeConnectors"] == 1
+    assert body["totalConnectors"] == 2
 
 
 @patch("app.routers.metrics.create_client")
 def test_no_hardcoded_values_in_insights(mock_create):
     mock_create.return_value = _metrics_client(
         runs=chain_mock(data=[]),
-        connectors=chain_mock(data=[{"id": "c1", "type": "hubspot", "status": "inactive"}]),
+        connectors=chain_mock(
+            data=[
+                {"id": "c1", "status": "active"},
+                {"id": "c2", "status": "inactive"},
+            ]
+        ),
     )
     authenticate()
     response = client.get("/api/metrics/insights?range=7d")

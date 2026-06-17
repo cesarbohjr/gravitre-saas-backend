@@ -1,11 +1,14 @@
 """MT-00: Metrics endpoints. Org-scoped, no PII."""
 from __future__ import annotations
 
+import csv
+import io
 import time
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from supabase import create_client
+from fastapi.responses import JSONResponse, Response
+from supabase import Client, create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -31,6 +34,52 @@ def _validate_range(range_str: str | None) -> str:
     return r
 
 
+def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, rng: str) -> dict[str, Any]:
+    """Flatten service metrics plus connector/run aggregates for the dashboard cards."""
+    data = overview_metrics(settings, org_id, rng)
+    wf_rows = client.table("workflow_defs").select("id, status").eq("org_id", org_id).execute().data or []
+    runs_rows = (
+        client.table("workflow_runs")
+        .select("id, status, duration_ms")
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    connector_rows = (
+        client.table("connectors").select("id, status").eq("org_id", org_id).execute().data or []
+    )
+
+    total_runs = len(runs_rows)
+    completed = len([r for r in runs_rows if r.get("status") == "completed"])
+    failed = len([r for r in runs_rows if r.get("status") == "failed"])
+    success_rate = round((completed / (completed + failed)) * 100, 2) if (completed + failed) > 0 else 0
+    durations = [float(r.get("duration_ms") or 0) for r in runs_rows if r.get("duration_ms") is not None]
+    avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
+
+    ingestion = data.get("ingestion") if isinstance(data.get("ingestion"), dict) else {}
+    rag = data.get("rag") if isinstance(data.get("rag"), dict) else {}
+    records_processed = int(ingestion.get("chunks_embedded_total") or 0)
+    rag_total = int(rag.get("retrieval_requests_total") or 0)
+    avg_latency = round(float(rag.get("avg_latency_ms") or 0), 2) if rag_total > 0 else avg_duration
+
+    active_connectors = len([c for c in connector_rows if (c.get("status") or "") == "active"])
+    data.update(
+        {
+            "totalWorkflows": len(wf_rows),
+            "activeWorkflows": len([w for w in wf_rows if w.get("status") == "active"]),
+            "totalRuns": total_runs,
+            "successRate": success_rate,
+            "avgDuration": avg_duration,
+            "recordsProcessed": records_processed,
+            "avgLatency": avg_latency,
+            "activeConnectors": active_connectors,
+            "totalConnectors": len(connector_rows),
+        }
+    )
+    return data
+
+
 @router.get("/overview")
 async def overview(
     *,
@@ -43,27 +92,8 @@ async def overview(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     start = time.perf_counter()
     rng = _validate_range(range)
-    data = overview_metrics(settings, org_id, rng)
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    wf_rows = client.table("workflow_defs").select("id, status").eq("org_id", org_id).execute().data or []
-    total_workflows = len(wf_rows)
-    active_workflows = len([w for w in wf_rows if w.get("status") == "active"])
-    runs_rows = client.table("workflow_runs").select("id, status, duration_ms").eq("org_id", org_id).execute().data or []
-    total_runs = len(runs_rows)
-    completed = len([r for r in runs_rows if r.get("status") == "completed"])
-    failed = len([r for r in runs_rows if r.get("status") == "failed"])
-    success_rate = round((completed / (completed + failed)) * 100, 2) if (completed + failed) > 0 else 0
-    durations = [float(r.get("duration_ms") or 0) for r in runs_rows if r.get("duration_ms") is not None]
-    avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
-    data.update(
-        {
-            "totalWorkflows": total_workflows,
-            "activeWorkflows": active_workflows,
-            "totalRuns": total_runs,
-            "successRate": success_rate,
-            "avgDuration": avg_duration,
-        }
-    )
+    data = _build_dashboard_overview(client, org_id, settings, rng)
     latency_ms = int((time.perf_counter() - start) * 1000)
     logger.info(
         "metrics_overview request_id=%s org_id=%s range=%s latency_ms=%s",

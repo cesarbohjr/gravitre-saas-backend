@@ -120,6 +120,12 @@ function parseNumber(value: unknown, defaultValue = 0): number {
   return defaultValue
 }
 
+function formatRecordsCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`
+  return count.toLocaleString()
+}
+
 function normalizeOverview(payload: unknown): MetricsOverview {
   const empty: MetricsOverview = {
     totalRuns: 0,
@@ -531,34 +537,30 @@ export default function MetricsPage() {
               <MetricCard
                 title="Total Runs"
                 value={overview.totalRuns.toLocaleString()}
-                change={overview.changes.totalRuns}
+                change={overview.changes?.totalRuns}
                 icon={Activity}
                 accentColor="blue"
               />
               <MetricCard
                 title="Success Rate"
                 value={`${overview.successRate.toFixed(1)}%`}
-                change={overview.changes.successRate}
+                change={overview.changes?.successRate}
                 icon={CheckCircle2}
                 accentColor="emerald"
               />
               <MetricCard
                 title="Records Processed"
-                value={
-                  overview.recordsProcessed >= 1_000_000
-                    ? `${(overview.recordsProcessed / 1_000_000).toFixed(1)}M`
-                    : overview.recordsProcessed.toLocaleString()
-                }
-                change={overview.changes.recordsProcessed}
+                value={formatRecordsCount(overview.recordsProcessed)}
+                change={overview.changes?.recordsProcessed}
                 icon={Zap}
                 accentColor="blue"
               />
               <MetricCard
                 title="Avg Latency"
                 value={`${Math.round(overview.avgLatency)}ms`}
-                change={overview.changes.avgLatency}
+                change={overview.changes?.avgLatency}
                 icon={Clock}
-                accentColor={overview.changes.avgLatency > 0 ? "amber" : "emerald"}
+                accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
               />
               <MetricCard
                 title="Active Connectors"
