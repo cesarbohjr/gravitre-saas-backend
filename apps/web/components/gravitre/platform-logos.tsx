@@ -140,10 +140,10 @@ export function PlatformLogoCard({ name, delay = 0, className = "" }: PlatformLo
   )
 }
 
-// Integration grid for the marketing pages. A single unified, bordered logo
-// wall (hairline dividers on a clean light surface) — reads as an intentional,
-// premium grid on the light marketing theme instead of a field of floating
-// dark/white boxes. `theme` is retained for backwards-compatible call sites.
+// Integration grid for the marketing pages. A clean, borderless wall of
+// consistent light icon tiles (no dividers, no dark boxes) — every logo gets
+// the same fixed light treatment via `forceLight` so the section reads as a
+// cohesive, modern grid on the always-light marketing theme.
 export function IntegrationsGrid(_props: { theme?: "light" | "dark" } = {}) {
   return (
     <motion.div
@@ -151,15 +151,15 @@ export function IntegrationsGrid(_props: { theme?: "light" | "dark" } = {}) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className="mx-auto grid max-w-5xl grid-cols-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
+      className="mx-auto grid max-w-5xl grid-cols-3 gap-x-4 gap-y-8 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
     >
       {MARKETING_INTEGRATION_APPS.map((name) => (
         <div
           key={name}
           title={name}
-          className="group flex flex-col items-center justify-center gap-2.5 border-b border-r border-zinc-200 p-5 transition-colors duration-200 hover:bg-zinc-50"
+          className="group flex flex-col items-center justify-center gap-3"
         >
-          <ConnectorIcon vendor={name} size="md" showStatusIndicator={false} />
+          <ConnectorIcon vendor={name} size="md" showStatusIndicator={false} forceLight />
           <span className="max-w-full truncate text-center text-xs font-medium text-zinc-500 transition-colors group-hover:text-zinc-900">
             {name}
           </span>
