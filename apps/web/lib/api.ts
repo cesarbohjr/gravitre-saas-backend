@@ -95,6 +95,7 @@ import type {
   MarketplaceAssetInstallCheck,
   MarketplaceAssetInstallResult,
   MarketplaceAssetsListResponse,
+  MarketplacePublisherProfile,
   MarketplaceInstallBlocker,
   MarketplaceInstallsListResponse,
   FederationPartnership,
@@ -679,6 +680,7 @@ export const marketplaceApi = {
     department?: string
     pricingType?: string
     visibility?: string
+    featured?: boolean
     search?: string
     limit?: number
     offset?: number
@@ -689,6 +691,7 @@ export const marketplaceApi = {
     if (params?.department) query.set("department", params.department)
     if (params?.pricingType) query.set("pricingType", params.pricingType)
     if (params?.visibility) query.set("visibility", params.visibility)
+    if (params?.featured) query.set("featured", "true")
     if (params?.search) query.set("search", params.search)
     if (params?.limit != null) query.set("limit", String(params.limit))
     if (params?.offset != null) query.set("offset", String(params.offset))
@@ -789,6 +792,50 @@ export const marketplaceApi = {
     postJson<{ uninstalled: boolean; installId: string; assetId: string; slug?: string }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/uninstall`),
       {},
+    ),
+  getPublisherProfile: () =>
+    fetcher<{ publisher: MarketplacePublisherProfile | null }>(apiUrl("/api/marketplace/publisher/me")),
+  onboardPublisher: (body: {
+    displayName: string
+    slug?: string
+    description?: string
+    websiteUrl?: string
+    logoUrl?: string
+  }) => postJson<{ onboarded: boolean; publisher: MarketplacePublisherProfile }>(
+    apiUrl("/api/marketplace/publisher/onboard"),
+    body,
+  ),
+  submitAssetForPublicReview: (assetRef: string) =>
+    postJson<{ submitted: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/submit-for-public-review`),
+      {},
+    ),
+  listPlatformReviewQueue: (params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/platform/review-queue${suffix}`))
+  },
+  approvePlatformAsset: (assetRef: string) =>
+    postJson<{ approved: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/approve`),
+      {},
+    ),
+  rejectPlatformAsset: (assetRef: string, reason: string) =>
+    postJson<{ rejected: boolean; reason: string; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/reject`),
+      { reason },
+    ),
+  setPlatformAssetFeatured: (assetRef: string, enabled: boolean) =>
+    postJson<{ featured: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/featured`),
+      { enabled },
+    ),
+  setPlatformAssetVerified: (assetRef: string, enabled: boolean) =>
+    postJson<{ verified: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/verified`),
+      { enabled },
     ),
 }
 

@@ -1584,6 +1584,9 @@ export interface MarketplaceAssetSummary {
   installCount?: number
   averageRating?: number | null
   reviewCount?: number
+  featured?: boolean
+  verified?: boolean
+  reviewScope?: string | null
 }
 
 export interface MarketplaceAssetsListResponse {
@@ -1591,6 +1594,22 @@ export interface MarketplaceAssetsListResponse {
   total: number
   limit: number
   offset: number
+}
+
+export interface MarketplacePublisherProfile {
+  id: string
+  slug: string
+  displayName: string
+  description?: string | null
+  logoUrl?: string | null
+  websiteUrl?: string | null
+  verified: boolean
+  status: string
+  orgId?: string | null
+  publicPublishingEnabled: boolean
+  onboardedAt?: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface MarketplaceAssetInstallResult {

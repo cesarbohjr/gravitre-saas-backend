@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import (
+    get_current_user,
+    get_environment_context,
+    get_org_context,
+    require_admin,
+    require_platform_admin,
+)
 from app.config import Settings, get_settings
 from app.services.partner_marketplace_service import (
     AUDIT_CERTIFICATION_SCANNED,
@@ -72,9 +78,19 @@ from app.marketplace.crud import (
 from app.marketplace.publish import (
     MarketplacePublishError,
     approve_asset_for_internal_publish,
+    approve_asset_for_public_publish,
+    list_public_review_queue,
+    reject_asset_public_review,
     reject_asset_review,
+    submit_asset_for_public_review,
     submit_asset_for_review,
 )
+from app.marketplace.publishers import (
+    MarketplacePublisherError,
+    get_org_publisher_profile,
+    onboard_org_publisher,
+)
+from app.marketplace.flags import MarketplaceFlagsError, set_asset_featured, set_asset_verified
 from app.marketplace.browse import (
     MarketplaceBrowseError,
     get_marketplace_asset,
@@ -163,6 +179,14 @@ def _publish_http_error(exc: MarketplacePublishError) -> HTTPException:
     return _crud_http_error(MarketplaceCrudError(str(exc), code=exc.code))
 
 
+def _publisher_http_error(exc: MarketplacePublisherError) -> HTTPException:
+    return _crud_http_error(MarketplaceCrudError(str(exc), code=exc.code))
+
+
+def _flags_http_error(exc: MarketplaceFlagsError) -> HTTPException:
+    return _crud_http_error(MarketplaceCrudError(str(exc), code=exc.code))
+
+
 class InstallAssetRequest(BaseModel):
     install_variables: dict[str, str] = Field(default_factory=dict, alias="installVariables")
 
@@ -218,6 +242,20 @@ class UpdateMarketplaceAssetRequest(BaseModel):
 
 class RejectAssetReviewRequest(BaseModel):
     reason: str = Field(min_length=1)
+
+
+class PublisherOnboardRequest(BaseModel):
+    display_name: str = Field(min_length=1, max_length=120, alias="displayName")
+    slug: str | None = Field(default=None, max_length=80)
+    description: str | None = None
+    website_url: str | None = Field(default=None, alias="websiteUrl")
+    logo_url: str | None = Field(default=None, alias="logoUrl")
+
+    model_config = {"populate_by_name": True}
+
+
+class AssetFlagRequest(BaseModel):
+    enabled: bool
 
 
 class SecurityChecklistRequest(BaseModel):
@@ -1036,6 +1074,152 @@ async def reject_marketplace_asset_review(
         raise _publish_http_error(exc) from exc
 
 
+@router.get("/publisher/me")
+async def get_marketplace_publisher_profile(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    publisher = get_org_publisher_profile(client, org_id)
+    return {"publisher": publisher}
+
+
+@router.post("/publisher/onboard")
+async def onboard_marketplace_publisher(
+    body: PublisherOnboardRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return onboard_org_publisher(
+            client,
+            org_id,
+            actor_id=user["user_id"],
+            display_name=body.display_name,
+            slug=body.slug,
+            description=body.description,
+            website_url=body.website_url,
+            logo_url=body.logo_url,
+        )
+    except MarketplacePublisherError as exc:
+        raise _publisher_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/submit-for-public-review")
+async def submit_marketplace_asset_for_public_review(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return submit_asset_for_public_review(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+        )
+    except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.get("/platform/review-queue")
+async def list_platform_public_review_queue(
+    _user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return list_public_review_queue(client, limit=limit, offset=offset)
+
+
+@router.post("/platform/assets/{asset_ref}/approve")
+async def approve_platform_public_asset(
+    asset_ref: str,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return approve_asset_for_public_publish(
+            client,
+            asset_ref,
+            actor_id=user["user_id"],
+            org_id=org_id,
+        )
+    except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/reject")
+async def reject_platform_public_asset(
+    asset_ref: str,
+    body: RejectAssetReviewRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return reject_asset_public_review(
+            client,
+            asset_ref,
+            actor_id=user["user_id"],
+            reason=body.reason,
+            org_id=org_id,
+        )
+    except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/featured")
+async def set_platform_asset_featured(
+    asset_ref: str,
+    body: AssetFlagRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return set_asset_featured(
+            client,
+            asset_ref,
+            featured=body.enabled,
+            actor_id=user["user_id"],
+            org_id=org_id or "",
+        )
+    except MarketplaceFlagsError as exc:
+        raise _flags_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/verified")
+async def set_platform_asset_verified(
+    asset_ref: str,
+    body: AssetFlagRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return set_asset_verified(
+            client,
+            asset_ref,
+            verified=body.enabled,
+            actor_id=user["user_id"],
+            org_id=org_id or "",
+        )
+    except MarketplaceFlagsError as exc:
+        raise _flags_http_error(exc) from exc
+
+
 @router.get("/assets")
 async def list_marketplace_assets_route(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -1047,6 +1231,7 @@ async def list_marketplace_assets_route(
     asset_type: Annotated[str | None, Query(alias="assetType")] = None,
     pricing_type: Annotated[str | None, Query(alias="pricingType")] = None,
     visibility: Annotated[str | None, Query()] = None,
+    featured: Annotated[bool | None, Query()] = None,
     search: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -1065,6 +1250,7 @@ async def list_marketplace_assets_route(
             asset_type=asset_type,
             pricing_type=pricing_type,
             visibility=visibility,
+            featured=featured,
             search=search,
             limit=limit,
             offset=offset,

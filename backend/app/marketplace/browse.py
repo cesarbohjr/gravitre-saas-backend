@@ -12,6 +12,7 @@ BROWSE_LIST_COLUMNS = (
     "visibility, status, pricing_type, price_cents, currency, required_connectors, "
     "install_count, clone_count, average_rating, review_count, current_version, "
     "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
+    "featured, verified, review_scope, "
     "created_at, updated_at"
 )
 
@@ -102,6 +103,9 @@ def _serialize_asset_summary(
         "businessOutcome": row.get("business_outcome"),
         "useCase": row.get("use_case"),
         "estimatedHoursSaved": row.get("estimated_hours_saved"),
+        "featured": bool(row.get("featured")),
+        "verified": bool(row.get("verified")),
+        "reviewScope": row.get("review_scope"),
         "installed": install is not None,
         "installedAt": install.get("installed_at") if install else None,
         "installId": install.get("id") if install else None,
@@ -225,6 +229,7 @@ def list_marketplace_assets(
     asset_type: str | None = None,
     pricing_type: str | None = None,
     visibility: str | None = None,
+    featured: bool | None = None,
     search: str | None = None,
     limit: int = 50,
     offset: int = 0,
@@ -257,6 +262,8 @@ def list_marketplace_assets(
         query = query.eq("asset_type", asset_type)
     if pricing_type:
         query = query.eq("pricing_type", pricing_type)
+    if featured is True:
+        query = query.eq("featured", True)
     if search:
         term = _sanitize_search(search)
         if term:

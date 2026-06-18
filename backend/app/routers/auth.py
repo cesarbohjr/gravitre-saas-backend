@@ -126,6 +126,7 @@ async def me(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """GET /api/auth/me — returns backwards-compatible + structured user payload."""
+    from app.auth.platform_admin import is_platform_admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     auth_user_id = current_user["user_id"]
     user_row = _resolve_user_row(client, auth_user_id)
@@ -160,6 +161,7 @@ async def me(
         "org_id": resolved_org_id,
         "email": current_user.get("email"),
         "role": role,
+        "platformAdmin": is_platform_admin(client, auth_user_id),
         "user": merged_user,
         "organizations": [
             {"id": org["id"], "name": org.get("name"), "role": org.get("role")}

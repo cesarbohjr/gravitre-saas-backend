@@ -235,6 +235,22 @@ async def require_admin(
     return current_user, org_id
 
 
+async def require_platform_admin(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Require platform (Gravitre) admin. Returns user dict."""
+    from supabase import create_client
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if not is_platform_admin(client, current_user["user_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform admin required",
+        )
+    return current_user
+
+
 async def get_environment_context(
     x_environment: Annotated[str | None, Header()] = None,
 ) -> str:

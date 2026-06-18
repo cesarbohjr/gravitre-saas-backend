@@ -100,6 +100,9 @@ def _serialize_asset(row: dict[str, Any]) -> dict[str, Any]:
         "useCase": row.get("use_case"),
         "estimatedHoursSaved": row.get("estimated_hours_saved"),
         "reviewFeedback": row.get("review_feedback"),
+        "reviewScope": row.get("review_scope"),
+        "featured": bool(row.get("featured")),
+        "verified": bool(row.get("verified")),
         "currentVersion": row.get("current_version"),
         "orgId": row.get("org_id"),
         "publisherId": row.get("publisher_id"),
@@ -407,6 +410,8 @@ def list_org_assets(
     )
     if status:
         query = query.eq("status", status)
+        if status == "pending_review":
+            query = query.eq("review_scope", "internal")
 
     result = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
     assets = [_serialize_asset(dict(row)) for row in (result.data or [])]

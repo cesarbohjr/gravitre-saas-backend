@@ -24,8 +24,10 @@ import {
   BarChart3,
   Building2,
   Shield,
+  Globe,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
+import { fetcher } from "@/lib/fetcher"
 import { FlipPackCard } from "@/components/marketplace/flip-pack-card"
 import { PackFrontArt } from "@/components/marketplace/pack-front-art"
 import type { MarketplaceAssetSummary } from "@/types/api"
@@ -69,7 +71,15 @@ function FeaturedPackCardBack({ asset }: { asset: MarketplaceAssetSummary }) {
         </span>
         <ReadinessPill asset={asset} />
       </div>
-      <h3 className="mt-4 text-base font-semibold text-foreground">{asset.title}</h3>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <h3 className="text-base font-semibold text-foreground">{asset.title}</h3>
+        {asset.verified ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <ShieldCheck className="h-3 w-3" aria-hidden />
+            Verified
+          </span>
+        ) : null}
+      </div>
       <p className="mt-1.5 line-clamp-2 flex-1 text-sm text-muted-foreground text-pretty">
         {asset.description}
       </p>
@@ -126,10 +136,15 @@ function MarketplaceHome() {
   const { user } = useAuth()
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
+  const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
+  const isPlatformAdmin = Boolean((me as { platformAdmin?: boolean } | undefined)?.platformAdmin)
 
   const { data, error, isLoading, mutate } = useSWR(
     user ? "marketplace-department-packs" : null,
     () => marketplaceApi.listAssets({ assetType: "department_pack", limit: 50 }),
+  )
+  const { data: featuredData } = useSWR(user ? "marketplace-featured" : null, () =>
+    marketplaceApi.listAssets({ featured: true, limit: 6 }),
   )
   const { data: categories } = useSWR(user ? "marketplace-categories" : null, () =>
     marketplaceApi.listCategories(),
@@ -141,6 +156,8 @@ function MarketplaceHome() {
   const departments = categories?.departments ?? []
 
   const featured = useMemo(() => {
+    const curated = featuredData?.assets ?? []
+    if (curated.length > 0) return curated
     return [...packs]
       .sort((a, b) => {
         const aScore = a.installed ? 2 : a.connectorsReady ? 0 : 1
@@ -148,7 +165,7 @@ function MarketplaceHome() {
         return aScore - bScore
       })
       .slice(0, 6)
-  }, [packs])
+  }, [featuredData?.assets, packs])
 
   const exploreCards = [
     {
@@ -185,6 +202,20 @@ function MarketplaceHome() {
       href: "/marketplace/org-admin",
       icon: Shield,
       show: isAdmin,
+    },
+    {
+      title: "Become a publisher",
+      description: "Onboard your org to submit assets to the public catalog.",
+      href: "/marketplace/publisher",
+      icon: Sparkles,
+      show: isAdmin,
+    },
+    {
+      title: "Public review",
+      description: "Gravitre platform queue for community submissions.",
+      href: "/marketplace/platform-admin",
+      icon: Globe,
+      show: isPlatformAdmin,
     },
     {
       title: "Installed",
