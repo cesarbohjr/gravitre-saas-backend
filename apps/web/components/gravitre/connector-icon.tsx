@@ -665,12 +665,6 @@ interface ConnectorIconProps {
   className?: string
   /** Click handler */
   onClick?: () => void
-  /**
-   * Force a fixed light treatment (light tile + official-color logo),
-   * ignoring the active theme. Used in always-light marketing surfaces so
-   * icons stay consistent instead of flipping to dark/monochrome tiles.
-   */
-  forceLight?: boolean
 }
 
 // Brand logos served as static SVG assets (sourced from theSVG.org).
@@ -753,28 +747,13 @@ function BrandLogo({
   slug,
   alt,
   fallback,
-  forceColor = false,
 }: {
   slug: string
   alt: string
   fallback: React.ReactNode
-  /** Always render the official-color logo, ignoring the active theme. */
-  forceColor?: boolean
 }) {
   const [failed, setFailed] = useState(false)
   if (failed) return <>{fallback}</>
-  if (forceColor) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={`/brand-logos/${slug}.svg`}
-        alt={alt}
-        loading="lazy"
-        className="h-full w-full object-contain"
-        onError={() => setFailed(true)}
-      />
-    )
-  }
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -820,7 +799,6 @@ export function ConnectorIcon({
   showStatusIndicator = true,
   className,
   onClick,
-  forceLight = false,
 }: ConnectorIconProps) {
   const statusToken = connectorStatusTokens[status]
   const sizeToken = connectorIconSizes[size]
@@ -843,7 +821,7 @@ export function ConnectorIcon({
   const logo = icon
     ? icon
     : simpleSlug
-      ? <BrandLogo slug={simpleSlug} alt={`${displayName} logo`} fallback={inlineLogo ?? initials} forceColor={forceLight} />
+      ? <BrandLogo slug={simpleSlug} alt={`${displayName} logo`} fallback={inlineLogo ?? initials} />
       : (inlineLogo ?? null)
 
   return (
@@ -858,7 +836,7 @@ export function ConnectorIcon({
           sizeToken.radius,
           // Uniform neutral surface for every connector — no per-brand tints
           // or black boxes, so icons stay visually consistent across themes.
-          forceLight ? "bg-zinc-50 border-zinc-200/70" : "bg-muted border-border",
+          "bg-muted border-border",
           selected && "ring-2 ring-offset-2 ring-blue-500/30 dark:ring-offset-background",
           onClick && "cursor-pointer"
         )}

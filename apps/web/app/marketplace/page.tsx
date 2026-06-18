@@ -24,6 +24,8 @@ import {
   BarChart3,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
+import { FlipPackCard } from "@/components/marketplace/flip-pack-card"
+import { PackFrontArt } from "@/components/marketplace/pack-front-art"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
 function ReadinessPill({ asset }: { asset: MarketplaceAssetSummary }) {
@@ -51,50 +53,69 @@ function ReadinessPill({ asset }: { asset: MarketplaceAssetSummary }) {
   )
 }
 
-function FeaturedPackCard({ asset, index }: { asset: MarketplaceAssetSummary; index: number }) {
-  const reduced = useReducedMotion()
+// Back face of the flip card — the detailed pack info, matching the unified
+// asset model. The card surface (border/bg/rounded) is provided by the flip
+// face shell; this owns the inner padding, layout, and the "View & install" CTA.
+function FeaturedPackCardBack({ asset }: { asset: MarketplaceAssetSummary }) {
   const theme = departmentTheme(asset.department)
   const DeptIcon = theme.icon
+  return (
+    <div className="flex h-full flex-col p-5">
+      <div className="flex items-start justify-between gap-3">
+        <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", theme.soft)}>
+          <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
+        </span>
+        <ReadinessPill asset={asset} />
+      </div>
+      <h3 className="mt-4 text-base font-semibold text-foreground">{asset.title}</h3>
+      <p className="mt-1.5 line-clamp-2 flex-1 text-sm text-muted-foreground text-pretty">
+        {asset.description}
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        {asset.department ? (
+          <span className="capitalize">{asset.department.replace(/-/g, " ")}</span>
+        ) : null}
+        <span className="inline-flex items-center gap-1.5">
+          <Plug className="h-3.5 w-3.5" aria-hidden />
+          {asset.requiredConnectorsTotal} apps
+        </span>
+        {(asset.installCount ?? 0) > 0 ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            {asset.installCount} installs
+          </span>
+        ) : null}
+      </div>
+      {/* stopPropagation so clicking the CTA navigates instead of re-toggling
+          the card's flip handler. */}
+      <Link
+        href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
+        onClick={(e) => e.stopPropagation()}
+        className="group/cta mt-4 inline-flex w-fit items-center rounded text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {asset.installed ? "Manage pack" : "View & install"}
+        <ArrowRight
+          className="ml-1 h-4 w-4 transition-transform group-hover/cta:translate-x-0.5"
+          aria-hidden
+        />
+      </Link>
+    </div>
+  )
+}
+
+function FeaturedPackCard({ asset, index }: { asset: MarketplaceAssetSummary; index: number }) {
+  const reduced = useReducedMotion()
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: reduced ? 0 : index * 0.05 }}
     >
-      <Link
-        href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
-        className="group flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", theme.soft)}>
-            <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
-          </span>
-          <ReadinessPill asset={asset} />
-        </div>
-        <h3 className="mt-4 text-base font-semibold text-foreground">{asset.title}</h3>
-        <p className="mt-1.5 line-clamp-2 flex-1 text-sm text-muted-foreground text-pretty">
-          {asset.description}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-          {asset.department ? (
-            <span className="capitalize">{asset.department.replace(/-/g, " ")}</span>
-          ) : null}
-          <span className="inline-flex items-center gap-1.5">
-            <Plug className="h-3.5 w-3.5" aria-hidden />
-            {asset.requiredConnectorsTotal} apps
-          </span>
-          {(asset.installCount ?? 0) > 0 ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden />
-              {asset.installCount} installs
-            </span>
-          ) : null}
-        </div>
-        <span className="mt-4 inline-flex items-center text-sm font-medium text-primary">
-          {asset.installed ? "Manage pack" : "View & install"}
-          <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-        </span>
-      </Link>
+      <FlipPackCard
+        packId={asset.slug}
+        frontContent={<PackFrontArt department={asset.department} packName={asset.title} />}
+        backContent={<FeaturedPackCardBack asset={asset} />}
+      />
     </motion.div>
   )
 }
