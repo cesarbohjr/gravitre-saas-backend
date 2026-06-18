@@ -167,6 +167,12 @@ async def process_agent_execution_job(job_id: str) -> None:
             raise ValueError(f"no handler for kind={job.get('kind')}")
         result = await asyncio.wait_for(handler(settings, job), timeout=timeout_s)
         await asyncio.to_thread(jobs.complete_job, client, job["id"], result)
+        try:
+            from app.marketplace.adoption import maybe_record_agent_adoption
+
+            await asyncio.to_thread(maybe_record_agent_adoption, client, job)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("marketplace adoption hook skipped job_id=%s error=%s", job_id, str(exc))
         logger.info("agent_execution_completed job_id=%s kind=%s", job_id, job.get("kind"))
     except TimeoutError:
         await asyncio.to_thread(

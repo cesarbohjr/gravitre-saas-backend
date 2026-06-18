@@ -30,6 +30,35 @@ function StatCard({
   )
 }
 
+function TopAssetsTable({
+  rows,
+}: {
+  rows: { assetId: string; slug?: string | null; title?: string | null; usageEvents: number }[]
+}) {
+  if (!rows.length) return null
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 lg:col-span-3">
+      <h2 className="mb-3 text-sm font-semibold text-foreground">Top assets by usage</h2>
+      <ul className="space-y-2 text-sm">
+        {rows.map((row) => (
+          <li key={row.assetId} className="flex items-center justify-between gap-2">
+            {row.slug ? (
+              <Link
+                href={`/marketplace/assets/${encodeURIComponent(row.slug)}`}
+                className="truncate text-foreground hover:text-primary"
+              >
+                {row.title ?? row.slug}
+              </Link>
+            ) : (
+              <span className="truncate text-muted-foreground">{row.title ?? row.assetId}</span>
+            )}
+            <span className="shrink-0 tabular-nums text-muted-foreground">{row.usageEvents}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 function FacetTable({ title, rows }: { title: string; rows: { key: string; count: number }[] }) {
   if (!rows.length) return null
   return (
@@ -109,12 +138,14 @@ export default function MarketplaceAnalyticsPage() {
                 <StatCard label="Your active installs" value={data.org.activeInstalls} icon={Package} />
                 <StatCard label="Your saved assets" value={data.org.savedAssets} icon={Star} />
                 <StatCard label="Your reviews" value={data.org.reviewsSubmitted} icon={Star} />
+                <StatCard label="Usage events" value={data.org.usageEvents ?? 0} icon={BarChart3} />
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
                 <FacetTable title="By department" rows={data.catalog.byDepartment} />
                 <FacetTable title="By category" rows={data.catalog.byCategory} />
                 <FacetTable title="By asset type" rows={data.catalog.byAssetType} />
               </div>
+              <TopAssetsTable rows={data.org.topAssetsByUsage ?? []} />
             </>
           ) : null}
         </div>

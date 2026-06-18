@@ -1658,6 +1658,13 @@ export interface MarketplaceAnalyticsSummary {
     activeInstalls: number
     savedAssets: number
     reviewsSubmitted: number
+    usageEvents: number
+    topAssetsByUsage: {
+      assetId: string
+      slug?: string | null
+      title?: string | null
+      usageEvents: number
+    }[]
   }
 }
 

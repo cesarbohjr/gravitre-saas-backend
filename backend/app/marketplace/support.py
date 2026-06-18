@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from app.marketplace.adoption import count_adoption_events, top_assets_by_adoption
 from app.marketplace.browse import (
     BROWSE_LIST_COLUMNS,
     MarketplaceBrowseError,
@@ -512,6 +513,8 @@ def marketplace_analytics_summary(client: Any, org_id: str) -> dict[str, Any]:
             "activeInstalls": getattr(installs, "count", None) or len(installs.data or []),
             "savedAssets": getattr(saves, "count", None) or len(saves.data or []),
             "reviewsSubmitted": getattr(reviews, "count", None) or len(reviews.data or []),
+            "usageEvents": count_adoption_events(client, org_id),
+            "topAssetsByUsage": top_assets_by_adoption(client, org_id, limit=10),
         },
     }
 

@@ -369,6 +369,22 @@ def execute_workflow_steps(
             )
     else:
         emit_execute_completed(client, org_id, user_id, run_id, final_status)
+    try:
+        from app.marketplace.adoption import maybe_record_workflow_adoption
+
+        maybe_record_workflow_adoption(
+            client,
+            org_id=org_id,
+            run_id=run_id,
+            final_status=final_status,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "marketplace adoption hook skipped org_id=%s run_id=%s error=%s",
+            org_id,
+            run_id,
+            str(exc),
+        )
     transparency_log_id = parameters.get("_transparency_log_id")
     if transparency_log_id:
         try:

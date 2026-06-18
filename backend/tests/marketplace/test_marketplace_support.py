@@ -122,6 +122,10 @@ def test_marketplace_analytics_summary():
     installs = make_counter(2)
     saves = make_counter(1)
     reviews = make_counter(1)
+    adoption = MagicMock()
+    adoption.select.return_value = adoption
+    adoption.eq.return_value = adoption
+    adoption.execute.return_value = MagicMock(data=[], count=0)
 
     client = MagicMock()
 
@@ -134,6 +138,8 @@ def test_marketplace_analytics_summary():
             return saves
         if name == "marketplace_reviews":
             return reviews
+        if name == "marketplace_asset_adoption_events":
+            return adoption
         return MagicMock()
 
     client.table.side_effect = table
@@ -142,3 +148,5 @@ def test_marketplace_analytics_summary():
     assert result["catalog"]["totalInstallCount"] == 3
     assert result["org"]["activeInstalls"] == 2
     assert result["org"]["savedAssets"] == 1
+    assert result["org"]["usageEvents"] == 0
+    assert result["org"]["topAssetsByUsage"] == []

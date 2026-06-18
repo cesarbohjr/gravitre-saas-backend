@@ -158,6 +158,22 @@ def _finalize_run(
         emit_execute_failed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, run_error_message)
     elif final_status == RUN_STATUS_COMPLETED:
         emit_execute_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, final_status)
+        try:
+            from app.marketplace.adoption import maybe_record_workflow_adoption
+
+            maybe_record_workflow_adoption(
+                ctx.client,
+                org_id=ctx.org_id,
+                run_id=ctx.run_id,
+                final_status=final_status,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "marketplace adoption hook skipped org_id=%s run_id=%s error=%s",
+                ctx.org_id,
+                ctx.run_id,
+                str(exc),
+            )
     return final_status, step_rows, errors, rate_limited
 
 
