@@ -14,13 +14,34 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  TrendingUp,
+  Megaphone,
+  Headphones,
+  DollarSign,
+  Briefcase,
   Bot,
   Workflow,
   Database,
   AlertTriangle,
 } from "lucide-react"
-import { departmentTheme } from "@/lib/department-theme"
-import type { MarketplaceInstall } from "@/types/api"
+import type { DepartmentRolePack } from "@/types/api"
+
+const DEPARTMENT_THEME: Record<string, { icon: typeof Briefcase; ring: string; soft: string }> = {
+  sales: { icon: TrendingUp, ring: "text-primary", soft: "bg-primary/10" },
+  marketing: { icon: Megaphone, ring: "text-warning", soft: "bg-warning/10" },
+  support: { icon: Headphones, ring: "text-success", soft: "bg-success/10" },
+  finance: { icon: DollarSign, ring: "text-primary", soft: "bg-primary/10" },
+}
+
+function themeFor(department: string) {
+  return (
+    DEPARTMENT_THEME[department.toLowerCase()] ?? {
+      icon: Briefcase,
+      ring: "text-primary",
+      soft: "bg-primary/10",
+    }
+  )
+}
 
 function formatInstalledAt(value?: string | null) {
   if (!value) return null
@@ -29,25 +50,14 @@ function formatInstalledAt(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-function entityPath(deepLinks: MarketplaceInstall["deepLinks"], entityType: string, fallback: string) {
-  const link = deepLinks.find((row) => row.entityType === entityType)
-  return link?.path ?? fallback
-}
-
-function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; index: number }) {
+function InstalledPackCard({ pack, index }: { pack: DepartmentRolePack; index: number }) {
   const reduced = useReducedMotion()
-  const asset = install.asset
-  const department = asset?.department ?? asset?.category
-  const theme = departmentTheme(department)
+  const theme = themeFor(pack.department)
   const DeptIcon = theme.icon
-  const installedAt = formatInstalledAt(install.installedAt)
-  const meta = install.metadata ?? {}
-  const agentCount = meta.agentIds?.length ?? install.deepLinks.filter((l) => l.entityType === "agent").length
-  const workflowCount =
-    meta.workflowIds?.length ?? install.deepLinks.filter((l) => l.entityType === "workflow").length
-  const sourceCount =
-    meta.ragSourceIds?.length ?? install.deepLinks.filter((l) => l.entityType === "rag_source").length
-  const slug = asset?.slug
+  const installedAt = formatInstalledAt(pack.installedAt)
+  const agentCount = pack.agentIds?.length ?? 0
+  const workflowCount = pack.workflowIds?.length ?? 0
+  const sourceCount = pack.ragSourceIds?.length ?? 0
 
   return (
     <motion.div
@@ -62,10 +72,8 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
             <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
           </span>
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-foreground">{asset?.title ?? "Installed asset"}</h3>
-            <p className="text-xs capitalize text-muted-foreground">
-              {(department ?? asset?.assetType ?? "marketplace").replace(/_/g, " ").replace(/-/g, " ")}
-            </p>
+            <h3 className="text-base font-semibold text-foreground">{pack.name}</h3>
+            <p className="text-xs capitalize text-muted-foreground">{pack.department}</p>
           </div>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
@@ -74,9 +82,14 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
         </span>
       </div>
 
+      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground text-pretty">
+        {pack.description}
+      </p>
+
+      {/* What this pack deployed */}
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Link
-          href={entityPath(install.deepLinks, "agent", "/agents")}
+          href="/agents"
           className="group rounded-lg border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
         >
           <Bot className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
@@ -84,7 +97,7 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
           <p className="text-[11px] text-muted-foreground">Agents</p>
         </Link>
         <Link
-          href={entityPath(install.deepLinks, "workflow", "/workflows")}
+          href="/workflows"
           className="group rounded-lg border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
         >
           <Workflow className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
@@ -92,7 +105,7 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
           <p className="text-[11px] text-muted-foreground">Workflows</p>
         </Link>
         <Link
-          href={entityPath(install.deepLinks, "rag_source", "/sources")}
+          href="/sources"
           className="group rounded-lg border border-border bg-muted/30 p-2.5 text-center transition-colors hover:border-primary/40"
         >
           <Database className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
@@ -101,28 +114,16 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
         </Link>
       </div>
 
-      {install.deepLinks.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {install.deepLinks.slice(0, 4).map((link) => (
-            <Button key={`${link.entityType}-${link.entityId}`} variant="outline" size="sm" asChild>
-              <Link href={link.path}>{link.label}</Link>
-            </Button>
-          ))}
-        </div>
-      ) : null}
-
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <span className="text-xs text-muted-foreground">
           {installedAt ? `Installed ${installedAt}` : "Installed"}
         </span>
-        {slug ? (
-          <Button variant="ghost" size="sm" asChild className="-mr-2">
-            <Link href={`/marketplace/assets?slug=${encodeURIComponent(slug)}`}>
-              Manage
-              <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
-            </Link>
-          </Button>
-        ) : null}
+        <Button variant="ghost" size="sm" asChild className="-mr-2">
+          <Link href={`/marketplace/role-packs?pack=${encodeURIComponent(pack.packId)}`}>
+            Manage
+            <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
+          </Link>
+        </Button>
       </div>
     </motion.div>
   )
@@ -130,15 +131,17 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
 
 function InstalledContent() {
   const { user } = useAuth()
-  const { data, error, isLoading, mutate } = useSWR(user ? "marketplace-installs" : null, () =>
-    marketplaceApi.listInstalls({ status: "active", limit: 50 }),
+  const { data, error, isLoading, mutate } = useSWR(
+    user ? "marketplace-role-packs" : null,
+    () => marketplaceApi.listRolePacks(),
   )
 
-  const installs = data?.installs ?? []
+  const installed = (data?.packs ?? []).filter((p) => p.installed)
 
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
+        {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="mb-3 -ml-2" asChild>
             <Link href="/marketplace">
@@ -150,10 +153,10 @@ function InstalledContent() {
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-success/10">
               <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
             </span>
-            Installed assets
+            Installed packs
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground text-pretty md:text-base">
-            Marketplace assets your team has deployed, with quick links to the agents, workflows, and
+            Department packs your team has deployed, with quick links to the agents, workflows, and
             knowledge sources they created.
           </p>
         </div>
@@ -166,7 +169,7 @@ function InstalledContent() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
-                Could not load installed assets
+                Could not load installed packs
               </p>
               <p className="text-sm text-muted-foreground">
                 {error instanceof Error ? error.message : "Check backend connectivity and try again."}
@@ -184,21 +187,21 @@ function InstalledContent() {
               <div key={i} className="h-64 animate-pulse rounded-xl border border-border bg-muted/40" />
             ))}
           </div>
-        ) : installs.length === 0 ? (
+        ) : installed.length === 0 ? (
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card py-16 text-center">
             <GridPattern className="absolute inset-0 opacity-[0.3]" />
             <div className="relative">
               <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary/10">
                 <Package className="h-7 w-7 text-primary" aria-hidden />
               </span>
-              <p className="text-base font-medium text-foreground">Nothing installed yet</p>
+              <p className="text-base font-medium text-foreground">No packs installed yet</p>
               <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground text-pretty">
-                Install a department pack or marketplace asset to deploy agents, workflows, and knowledge
+                Install a department pack to deploy a full set of agents, workflows, and knowledge
                 sources in one click.
               </p>
               <Button asChild className="mt-5">
-                <Link href="/marketplace/assets">
-                  Browse catalog
+                <Link href="/marketplace/role-packs">
+                  Browse department packs
                   <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden />
                 </Link>
               </Button>
@@ -206,8 +209,8 @@ function InstalledContent() {
           </div>
         ) : (
           <div className="grid items-start gap-4 sm:grid-cols-2">
-            {installs.map((install, index) => (
-              <InstalledAssetCard key={install.id} install={install} index={index} />
+            {installed.map((pack, index) => (
+              <InstalledPackCard key={pack.packId} pack={pack} index={index} />
             ))}
           </div>
         )}

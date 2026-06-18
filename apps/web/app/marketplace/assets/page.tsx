@@ -34,7 +34,6 @@ import {
   Package,
   Plug,
   Search,
-  Sparkles,
   Star,
   Workflow,
 } from "lucide-react"
@@ -46,6 +45,8 @@ import type {
   MarketplaceConnectorChecklistItem,
   MarketplaceInstallBlocker,
 } from "@/types/api"
+import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
+import type { AssetCategory } from "@/lib/marketplace-category-icons"
 
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
@@ -54,13 +55,6 @@ const TYPE_FILTERS = [
   { id: "knowledge_pack", label: "Knowledge", icon: Database },
   { id: "department_pack", label: "Department packs", icon: Package },
 ] as const
-
-const TYPE_ICONS: Record<string, typeof Bot> = {
-  ai_agent: Bot,
-  workflow: Workflow,
-  knowledge_pack: Database,
-  department_pack: Package,
-}
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
 
@@ -210,7 +204,6 @@ function AssetCard({
   onInstall: (asset: MarketplaceAssetSummary) => void
   onClone: (asset: MarketplaceAssetSummary) => void
 }) {
-  const Icon = TYPE_ICONS[asset.assetType] ?? Sparkles
   const ready = asset.connectorsReady || asset.requiredConnectorsTotal === 0
   const blocked = !ready && !asset.installed
 
@@ -231,9 +224,11 @@ function AssetCard({
           onClick={() => onOpenDetail(asset)}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Icon className="h-5 w-5" aria-hidden />
-          </div>
+          <CategoryIconChip
+            assetType={asset.assetType as AssetCategory}
+            department={asset.department}
+            size="md"
+          />
           <div className="min-w-0">
             <h3 className="font-semibold leading-tight">{asset.title}</h3>
             <p className="text-xs text-muted-foreground">{asset.department ?? asset.assetType}</p>

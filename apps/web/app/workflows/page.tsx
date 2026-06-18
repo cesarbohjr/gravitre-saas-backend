@@ -9,7 +9,6 @@ import { WorkflowCard, WorkflowGrid } from "@/components/gravitre/workflow-card"
 import { ErrorState, EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
 import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { DataTable } from "@/components/gravitre/data-table"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -192,7 +191,6 @@ export default function WorkflowsPage() {
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [envFilter, setEnvFilter] = useState<string[]>([])
-  const { updatedAt, markFresh } = useFreshnessTimestamp()
   
   // Fetch workflows - only when user is authenticated
   const { data, error, isLoading, isValidating, mutate } = useSWR(
@@ -201,7 +199,6 @@ export default function WorkflowsPage() {
     {
       revalidateOnFocus: false,
       revalidateOnMount: true,
-      onSuccess: markFresh,
       onError: (err) => {
         console.error("[v0] Workflows fetch error:", err)
       },
@@ -568,7 +565,7 @@ export default function WorkflowsPage() {
               {filteredWorkflows.length} of {workflows.length} workflow{workflows.length === 1 ? "" : "s"}
             </span>
             <DataFreshness
-              updatedAt={updatedAt}
+              updatedAt={data ? Date.now() : null}
               isRefreshing={isValidating}
               onRefresh={() => mutate()}
             />

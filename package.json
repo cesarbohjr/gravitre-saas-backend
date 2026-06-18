@@ -30,8 +30,6 @@
     "smoke:ai-intelligence:report": "python scripts/smoke-ai-production.py --json docs/delivery/smoke-ai-production-latest.json",
     "smoke:build-insights": "python scripts/smoke-build-insights-spotcheck.py",
     "smoke:build-insights:report": "python scripts/smoke-build-insights-spotcheck.py --json docs/delivery/build-insights-spotcheck-latest.json",
-    "smoke:marketplace-production": "python scripts/smoke-marketplace-production.py",
-    "brand-logos:fetch": "node apps/web/scripts/fetch-brand-logos.mjs",
     "airtable:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-airtable-operator-env.ps1",
     "airtable:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-airtable-oauth.ps1",
     "asana:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-asana-operator-env.ps1",
@@ -70,6 +68,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.195",
+    "@phosphor-icons/react": "^2.1.10",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.0",
     "@vercel/analytics": "^2.0.1",

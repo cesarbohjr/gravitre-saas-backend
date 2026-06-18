@@ -6,7 +6,6 @@ import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -68,7 +67,6 @@ export default function AuditPage() {
     ? ["audit/list", selectedAction, selectedEntityType, selectedDateRange, offset] as const
     : null
   const summaryKey = user ? ["audit/summary", selectedDateRange] as const : null
-  const { updatedAt, markFresh } = useFreshnessTimestamp()
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     listKey,
@@ -83,7 +81,6 @@ export default function AuditPage() {
     {
       fallbackData: { logs: [] as AuditLog[], total: 0, hasMore: false },
       revalidateOnFocus: false,
-      onSuccess: markFresh,
     }
   )
   const { data: summaryData } = useSWR(summaryKey, () => auditApi.summary(selectedDateRange), {
@@ -284,7 +281,7 @@ export default function AuditPage() {
               {filteredLogs.length} event{filteredLogs.length === 1 ? "" : "s"}
             </span>
             <DataFreshness
-              updatedAt={updatedAt}
+              updatedAt={data ? Date.now() : null}
               isRefreshing={isValidating}
               onRefresh={() => void mutate()}
             />
