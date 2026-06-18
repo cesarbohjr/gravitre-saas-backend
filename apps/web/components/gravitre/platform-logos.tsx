@@ -140,30 +140,31 @@ export function PlatformLogoCard({ name, delay = 0, className = "" }: PlatformLo
   )
 }
 
-// Integration grid component for marketing pages
-// `theme` is retained for backwards-compatible call sites but is no longer used
-// for coloring — cards follow the active theme via semantic tokens so the grid
-// stays consistent with the rest of the app in both light and dark mode.
+// Integration grid for the marketing pages. A single unified, bordered logo
+// wall (hairline dividers on a clean light surface) — reads as an intentional,
+// premium grid on the light marketing theme instead of a field of floating
+// dark/white boxes. `theme` is retained for backwards-compatible call sites.
 export function IntegrationsGrid(_props: { theme?: "light" | "dark" } = {}) {
   return (
-    <div className="grid grid-cols-4 gap-3 sm:gap-4 md:grid-cols-6 lg:grid-cols-8">
-      {MARKETING_INTEGRATION_APPS.map((name, i) => (
-        <motion.div
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+      className="mx-auto grid max-w-5xl grid-cols-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
+    >
+      {MARKETING_INTEGRATION_APPS.map((name) => (
+        <div
           key={name}
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: i * 0.02 }}
-          whileHover={{ scale: 1.08, y: -3 }}
           title={name}
-          className="flex h-16 sm:h-20 flex-col items-center justify-center gap-1 rounded-xl sm:rounded-2xl border border-border bg-card px-1 shadow-sm transition-all hover:border-border/70 hover:shadow-md"
+          className="group flex flex-col items-center justify-center gap-2.5 border-b border-r border-zinc-200 p-5 transition-colors duration-200 hover:bg-zinc-50"
         >
-          <ConnectorIcon vendor={name} size="sm" showStatusIndicator={false} />
-          <span className="hidden sm:block max-w-full truncate px-1 text-[9px] font-medium text-muted-foreground">
+          <ConnectorIcon vendor={name} size="md" showStatusIndicator={false} />
+          <span className="max-w-full truncate text-center text-xs font-medium text-zinc-500 transition-colors group-hover:text-zinc-900">
             {name}
           </span>
-        </motion.div>
+        </div>
       ))}
-    </div>
+    </motion.div>
   )
 }
