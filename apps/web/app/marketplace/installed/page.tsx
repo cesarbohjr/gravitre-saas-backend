@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
@@ -23,7 +24,10 @@ import {
   Workflow,
   Database,
   AlertTriangle,
+  Loader2,
+  Trash2,
 } from "lucide-react"
+import { toast } from "sonner"
 import type { MarketplaceInstall } from "@/types/api"
 
 const DEPARTMENT_THEME: Record<string, { icon: typeof Briefcase; ring: string; soft: string }> = {
@@ -50,7 +54,17 @@ function formatInstalledAt(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; index: number }) {
+function InstalledAssetCard({
+  install,
+  index,
+  busy,
+  onUninstall,
+}: {
+  install: MarketplaceInstall
+  index: number
+  busy: string | null
+  onUninstall: (install: MarketplaceInstall) => void
+}) {
   const reduced = useReducedMotion()
   const asset = install.asset
   const department = asset?.department ?? "general"
@@ -112,18 +126,36 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
         </Link>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <span className="text-xs text-muted-foreground">
           {installedAt ? `Installed ${installedAt}` : "Installed"}
         </span>
-        {slug ? (
-          <Button variant="ghost" size="sm" asChild className="-mr-2">
-            <Link href={`/marketplace/assets/${encodeURIComponent(slug)}`}>
-              Manage
-              <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {slug ? (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/marketplace/assets/${encodeURIComponent(slug)}`}>
+                Manage
+                <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
+              </Link>
+            </Button>
+          ) : null}
+          {slug ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              disabled={Boolean(busy)}
+              onClick={() => onUninstall(install)}
+            >
+              {busy === install.id ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              )}
+              Uninstall
+            </Button>
+          ) : null}
+        </div>
       </div>
     </motion.div>
   )
@@ -131,12 +163,31 @@ function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; i
 
 function InstalledContent() {
   const { user } = useAuth()
+  const [busy, setBusy] = useState<string | null>(null)
   const { data, error, isLoading, mutate } = useSWR(
     user ? "marketplace-installs" : null,
     () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
   )
 
   const installed = data?.installs ?? []
+
+  const handleUninstall = async (install: MarketplaceInstall) => {
+    const slug = install.asset?.slug
+    if (!slug) return
+    if (!window.confirm(`Uninstall "${install.asset?.title ?? slug}"? This removes the marketplace install record.`)) {
+      return
+    }
+    setBusy(install.id)
+    try {
+      await marketplaceApi.uninstallAsset(slug)
+      toast.success("Asset uninstalled")
+      await mutate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Uninstall failed")
+    } finally {
+      setBusy(null)
+    }
+  }
 
   return (
     <AppShell>
@@ -207,7 +258,13 @@ function InstalledContent() {
         ) : (
           <div className="grid items-start gap-4 sm:grid-cols-2">
             {installed.map((install, index) => (
-              <InstalledAssetCard key={install.id} install={install} index={index} />
+              <InstalledAssetCard
+                key={install.id}
+                install={install}
+                index={index}
+                busy={busy}
+                onUninstall={handleUninstall}
+              />
             ))}
           </div>
         )}

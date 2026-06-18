@@ -224,6 +224,7 @@ def list_marketplace_assets(
     department: str | None = None,
     asset_type: str | None = None,
     pricing_type: str | None = None,
+    visibility: str | None = None,
     search: str | None = None,
     limit: int = 50,
     offset: int = 0,
@@ -233,16 +234,21 @@ def list_marketplace_assets(
         raise MarketplaceBrowseError(f"invalid asset_type: {asset_type}", code="VALIDATION_ERROR")
     if pricing_type and pricing_type not in _PRICING_TYPES:
         raise MarketplaceBrowseError(f"invalid pricing_type: {pricing_type}", code="VALIDATION_ERROR")
+    if visibility and visibility not in {"public", "internal"}:
+        raise MarketplaceBrowseError(f"invalid visibility: {visibility}", code="VALIDATION_ERROR")
 
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
 
-    query = (
-        client.table("marketplace_assets")
-        .select(BROWSE_LIST_COLUMNS, count="exact")
-        .eq("status", "published")
-        .or_(f"visibility.eq.public,and(visibility.eq.internal,org_id.eq.{org_id})")
+    query = client.table("marketplace_assets").select(BROWSE_LIST_COLUMNS, count="exact").eq(
+        "status", "published"
     )
+    if visibility == "internal":
+        query = query.eq("visibility", "internal").eq("org_id", org_id)
+    elif visibility == "public":
+        query = query.eq("visibility", "public")
+    else:
+        query = query.or_(f"visibility.eq.public,and(visibility.eq.internal,org_id.eq.{org_id})")
     if category:
         query = query.eq("category", category)
     if department:

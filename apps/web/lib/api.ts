@@ -678,6 +678,7 @@ export const marketplaceApi = {
     category?: string
     department?: string
     pricingType?: string
+    visibility?: string
     search?: string
     limit?: number
     offset?: number
@@ -687,6 +688,7 @@ export const marketplaceApi = {
     if (params?.category) query.set("category", params.category)
     if (params?.department) query.set("department", params.department)
     if (params?.pricingType) query.set("pricingType", params.pricingType)
+    if (params?.visibility) query.set("visibility", params.visibility)
     if (params?.search) query.set("search", params.search)
     if (params?.limit != null) query.set("limit", String(params.limit))
     if (params?.offset != null) query.set("offset", String(params.offset))
@@ -760,6 +762,34 @@ export const marketplaceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<MarketplaceInstallsListResponse>(apiUrl(`/api/marketplace/installs${suffix}`))
   },
+  listOrgAssets: (params?: { status?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set("status", params.status)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/org/assets${suffix}`))
+  },
+  submitAssetForReview: (assetRef: string) =>
+    postJson<{ submitted: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/submit-for-review`),
+      {},
+    ),
+  approveOrgAsset: (assetRef: string) =>
+    postJson<{ approved: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/approve`),
+      {},
+    ),
+  rejectOrgAsset: (assetRef: string, reason: string) =>
+    postJson<{ rejected: boolean; reason: string; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reject`),
+      { reason },
+    ),
+  uninstallAsset: (assetRef: string) =>
+    postJson<{ uninstalled: boolean; installId: string; assetId: string; slug?: string }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/uninstall`),
+      {},
+    ),
 }
 
 // ============ Approvals ============

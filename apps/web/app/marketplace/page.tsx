@@ -22,6 +22,8 @@ import {
   Sparkles,
   Briefcase,
   BarChart3,
+  Building2,
+  Shield,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
 import { FlipPackCard } from "@/components/marketplace/flip-pack-card"
@@ -169,6 +171,20 @@ function MarketplaceHome() {
       href: "/marketplace/assets?type=department_pack",
       icon: Briefcase,
       show: true,
+    },
+    {
+      title: "Your organization",
+      description: "Internal assets shared only within your org.",
+      href: "/marketplace/org",
+      icon: Building2,
+      show: true,
+    },
+    {
+      title: "Publish queue",
+      description: "Review org-owned drafts before internal publish.",
+      href: "/marketplace/org-admin",
+      icon: Shield,
+      show: isAdmin,
     },
     {
       title: "Installed",

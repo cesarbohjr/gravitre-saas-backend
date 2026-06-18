@@ -385,3 +385,32 @@ def fetch_archived_asset_for_install_lookup(client: Any, asset_id: str) -> dict[
     if not result.data:
         return None
     return dict(result.data[0])
+
+
+def list_org_assets(
+    client: Any,
+    org_id: str,
+    *,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """List org-owned marketplace assets for admin queue and org publisher views."""
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+
+    query = (
+        client.table("marketplace_assets")
+        .select("*", count="exact")
+        .eq("org_id", org_id)
+        .neq("status", "archived")
+    )
+    if status:
+        query = query.eq("status", status)
+
+    result = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
+    assets = [_serialize_asset(dict(row)) for row in (result.data or [])]
+    total = getattr(result, "count", None)
+    if total is None:
+        total = len(assets) + offset
+    return {"assets": assets, "total": total, "limit": limit, "offset": offset}

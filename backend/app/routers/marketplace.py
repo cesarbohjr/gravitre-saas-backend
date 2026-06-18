@@ -66,6 +66,7 @@ from app.marketplace.crud import (
     MarketplaceCrudError,
     archive_org_asset,
     create_org_asset,
+    list_org_assets,
     update_org_asset,
 )
 from app.marketplace.publish import (
@@ -91,6 +92,7 @@ from app.marketplace.support import (
     marketplace_analytics_summary,
     save_asset,
     support_error_to_browse_error,
+    uninstall_marketplace_asset,
     unsave_asset,
     upsert_my_asset_review,
 )
@@ -882,6 +884,26 @@ async def get_marketplace_analytics_summary(
     return marketplace_analytics_summary(client, org_id)
 
 
+@router.get("/org/assets")
+async def list_org_marketplace_assets(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    """Org-owned assets for internal publish admin queue (MKT-AUDIT-9.3)."""
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return list_org_assets(
+        client,
+        org_id,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @router.post("/assets", status_code=status.HTTP_201_CREATED)
 async def create_marketplace_asset_route(
     body: CreateMarketplaceAssetRequest,
@@ -1024,6 +1046,7 @@ async def list_marketplace_assets_route(
     department: Annotated[str | None, Query()] = None,
     asset_type: Annotated[str | None, Query(alias="assetType")] = None,
     pricing_type: Annotated[str | None, Query(alias="pricingType")] = None,
+    visibility: Annotated[str | None, Query()] = None,
     search: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -1041,6 +1064,7 @@ async def list_marketplace_assets_route(
             department=department,
             asset_type=asset_type,
             pricing_type=pricing_type,
+            visibility=visibility,
             search=search,
             limit=limit,
             offset=offset,
@@ -1179,6 +1203,26 @@ async def unsave_marketplace_asset(
         raise _support_http_error(exc) from exc
     except MarketplaceBrowseError as exc:
         raise _browse_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/uninstall")
+async def uninstall_marketplace_asset_route(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Mark org install inactive (MKT-AUDIT-8.1)."""
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return uninstall_marketplace_asset(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+        )
+    except MarketplaceSupportError as exc:
+        raise _support_http_error(exc) from exc
 
 
 @router.post("/assets/{asset_ref}/clone", status_code=status.HTTP_201_CREATED)

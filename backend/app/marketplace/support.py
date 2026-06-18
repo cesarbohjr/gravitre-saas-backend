@@ -219,6 +219,55 @@ def list_org_installs(
     return {"installs": installs, "total": total, "limit": limit, "offset": offset}
 
 
+AUDIT_ASSET_UNINSTALLED = "marketplace.asset.uninstalled"
+
+
+def uninstall_marketplace_asset(
+    client: Any,
+    org_id: str,
+    asset_ref: str,
+    *,
+    actor_id: str,
+) -> dict[str, Any]:
+    """Mark the org's active install as uninstalled (MKT-AUDIT-8.1)."""
+    asset = resolve_browsable_asset(client, org_id, asset_ref)
+    existing = (
+        client.table("marketplace_installs")
+        .select("id, status")
+        .eq("org_id", org_id)
+        .eq("asset_id", asset["id"])
+        .eq("status", "active")
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise MarketplaceSupportError("No active install found for this asset", code="NOT_FOUND")
+
+    install_id = str(existing.data[0]["id"])
+    now = _now()
+    client.table("marketplace_installs").update(
+        {"status": "uninstalled", "updated_at": now}
+    ).eq("id", install_id).execute()
+
+    from app.workflows.audit import write_audit_event
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=actor_id,
+        action=AUDIT_ASSET_UNINSTALLED,
+        resource_type="marketplace_install",
+        resource_id=install_id,
+        metadata={"assetId": asset["id"], "slug": asset.get("slug")},
+    )
+    return {
+        "uninstalled": True,
+        "installId": install_id,
+        "assetId": asset["id"],
+        "slug": asset.get("slug"),
+    }
+
+
 def list_asset_reviews(
     client: Any,
     org_id: str,
