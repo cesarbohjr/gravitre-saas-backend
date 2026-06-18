@@ -235,8 +235,8 @@ function AssetCard({
           </div>
         </button>
         <ReadinessRing
-          connected={asset.requiredConnectorsConnected}
-          total={asset.requiredConnectorsTotal}
+          connected={asset.requiredConnectorsConnected ?? 0}
+          total={asset.requiredConnectorsTotal ?? 0}
           ready={ready}
         />
       </div>
@@ -364,7 +364,8 @@ function InstallStepperSheet({
           ? {
               label: "Connect apps",
               onClick: () => {
-                window.location.href = check.blockers[0].action_url
+                const url = check?.blockers?.[0]?.action_url
+                if (url) window.location.href = url
               },
             }
           : undefined,

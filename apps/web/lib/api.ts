@@ -87,6 +87,12 @@ import type {
   MarketplaceBillingStatus,
   MarketplacePartnerPricing,
   DepartmentRolePack,
+  MarketplaceAssetListResponse,
+  MarketplaceAssetDetailResponse,
+  MarketplaceAssetInstallCheck,
+  MarketplaceAssetInstallResult,
+  MarketplaceAssetCloneResult,
+  MarketplaceCategoriesResponse,
   DepartmentRolePackInstallResult,
   FederationPartnership,
   FederationHandoff,
@@ -653,6 +659,39 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/billing/pricing/${registryId}`),
       data
     ),
+
+  // Asset catalog (agents, workflows, knowledge packs, department packs)
+  listAssets: (params?: { assetType?: string; search?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.assetType) query.set("asset_type", params.assetType)
+    if (params?.search) query.set("search", params.search)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const qs = query.toString()
+    return fetcher<MarketplaceAssetListResponse>(
+      apiUrl(`/api/marketplace/assets${qs ? `?${qs}` : ""}`)
+    )
+  },
+  getAsset: (assetRef: string) =>
+    fetcher<MarketplaceAssetDetailResponse>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`)
+    ),
+  installCheck: (assetRef: string) =>
+    fetcher<MarketplaceAssetInstallCheck>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install-check`)
+    ),
+  installAsset: (assetRef: string) =>
+    postJson<MarketplaceAssetInstallResult>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install`),
+      {}
+    ),
+  cloneAsset: (assetRef: string) =>
+    postJson<MarketplaceAssetCloneResult>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/clone`),
+      {}
+    ),
+  listCategories: () =>
+    fetcher<MarketplaceCategoriesResponse>(apiUrl("/api/marketplace/categories")),
 
   // Department role packs (STA-121)
   listRolePacks: () =>

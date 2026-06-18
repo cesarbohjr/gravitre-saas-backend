@@ -1583,6 +1583,138 @@ export interface DepartmentRolePackInstallResult {
   connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
 }
 
+// Marketplace asset catalog (browse.py serialization)
+export type MarketplaceAssetType =
+  | "ai_agent"
+  | "workflow"
+  | "knowledge_pack"
+  | "department_pack"
+  | "connector_config"
+
+export interface MarketplaceConnectorChecklistItem {
+  connectorType: string
+  label: string
+  required: boolean
+  connected: boolean
+  connectPath: string
+  /** Snake-cased URL also emitted by the backend for legacy callers. */
+  action_url?: string
+  ready?: boolean
+}
+
+export interface MarketplaceInstallBlocker {
+  connector: string
+  reason: string
+  action_url?: string
+  /** Optional explicit action label/url used by some blocker shapes. */
+  action?: string
+}
+
+export interface MarketplaceAssetPackItem {
+  sortOrder?: number
+  required?: boolean
+  child: {
+    id: string
+    slug: string
+    title: string
+    assetType: MarketplaceAssetType
+    category?: string | null
+    department?: string | null
+    pricingType?: string | null
+    priceCents?: number | null
+  }
+}
+
+export interface MarketplaceAssetSummary {
+  id: string
+  slug: string
+  title: string
+  description?: string | null
+  assetType: MarketplaceAssetType
+  category?: string | null
+  department?: string | null
+  tags: string[]
+  visibility?: string | null
+  status?: string | null
+  pricingType?: string | null
+  priceCents?: number | null
+  currency?: string | null
+  installCount?: number | null
+  cloneCount?: number | null
+  averageRating?: number | null
+  reviewCount?: number | null
+  currentVersion?: string | null
+  publishedAt?: string | null
+  publisherId?: string | null
+  orgId?: string | null
+  installed?: boolean
+  installedAt?: string | null
+  installId?: string | null
+  // Connector readiness summary (spread from _checklist_summary)
+  requiredConnectorsTotal?: number
+  requiredConnectorsConnected?: number
+  connectorsReady?: boolean
+  canInstall?: boolean
+  connectorChecklist?: MarketplaceConnectorChecklistItem[]
+  requiredConnectors?: unknown[]
+}
+
+export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
+  config?: Record<string, unknown>
+  installVariables?: unknown[]
+  requiredPermissions?: unknown[]
+  clonedFromAssetId?: string | null
+  blockers?: MarketplaceInstallBlocker[]
+  packItems?: MarketplaceAssetPackItem[]
+}
+
+export interface MarketplaceAssetListResponse {
+  assets: MarketplaceAssetSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface MarketplaceAssetDetailResponse {
+  asset: MarketplaceAssetDetail
+}
+
+export interface MarketplaceAssetInstallCheck {
+  assetId: string
+  slug?: string | null
+  assetType?: MarketplaceAssetType
+  canInstall: boolean
+  blockers: MarketplaceInstallBlocker[]
+  connectorChecklist: MarketplaceConnectorChecklistItem[]
+}
+
+export interface MarketplaceAssetInstallResult {
+  installed: boolean
+  assetId: string
+  assetType: MarketplaceAssetType
+  slug?: string | null
+  install?: Record<string, unknown>
+  entities?: Record<string, unknown>
+  connectorChecklist?: MarketplaceConnectorChecklistItem[]
+}
+
+export interface MarketplaceAssetCloneResult {
+  asset: MarketplaceAssetSummary
+  [key: string]: unknown
+}
+
+export interface MarketplaceCategoryCount {
+  key: string
+  count: number
+}
+
+export interface MarketplaceCategoriesResponse {
+  categories: MarketplaceCategoryCount[]
+  departments: MarketplaceCategoryCount[]
+  assetTypes: MarketplaceCategoryCount[]
+  totalAssets: number
+}
+
 // Federation & B2B (STA-115/116/117/118)
 export type FederationPartnershipStatus =
   | "pending_partner"
