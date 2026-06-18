@@ -28,16 +28,25 @@ import {
   ExternalLink,
   Loader2,
   Plug,
+  ShoppingCart,
 } from "lucide-react"
 import { toast } from "sonner"
 import type {
   MarketplaceAssetDetail,
+  MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
   MarketplaceConnectorChecklistItem,
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
+
+function formatPrice(cents?: number, currency = "usd") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format((cents ?? 0) / 100)
+}
 
 function checklistTone(item: MarketplaceConnectorChecklistItem) {
   if (item.connected) return "text-success"
@@ -91,16 +100,61 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   )
 }
 
+function PurchaseButton({
+  asset,
+  check,
+  onPurchased,
+}: {
+  asset: MarketplaceAssetSummary
+  check: MarketplaceAssetInstallCheck
+  onPurchased: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const runCheckout = async () => {
+    setBusy(true)
+    try {
+      const origin = window.location.origin
+      const result = await marketplaceApi.assetCheckout(asset.slug, {
+        successUrl: `${origin}/marketplace/assets/${encodeURIComponent(asset.slug)}?purchase=success`,
+        cancelUrl: `${origin}/marketplace/assets/${encodeURIComponent(asset.slug)}?purchase=cancelled`,
+      })
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl
+        return
+      }
+      onPurchased()
+    } catch (err) {
+      toast.error("Checkout failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Button className="w-full" disabled={busy} onClick={() => void runCheckout()}>
+      {busy ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+      ) : (
+        <ShoppingCart className="mr-2 h-4 w-4" aria-hidden />
+      )}
+      Purchase {formatPrice(check.priceCents, check.currency)} to unlock install
+    </Button>
+  )
+}
+
 function InstallStepperSheet({
   asset,
   open,
   onOpenChange,
   onComplete,
+  isAdmin,
 }: {
   asset: MarketplaceAssetSummary | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onComplete: () => void
+  isAdmin: boolean
 }) {
   const [step, setStep] = useState<InstallStep>("check")
   const [installResult, setInstallResult] = useState<Record<string, unknown> | null>(null)
@@ -164,6 +218,9 @@ function InstallStepperSheet({
             <>
               <BlockerList blockers={check?.blockers ?? []} />
               <ConnectorChecklist items={check?.connectorChecklist ?? asset?.connectorChecklist ?? []} />
+              {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
+                <PurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
+              ) : null}
             </>
           ) : null}
           {!checkLoading && (activeStep === "confirm" || step === "installing") ? (
@@ -274,6 +331,9 @@ function MarketplaceAssetDetailContent() {
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
                 {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
+                {asset.pricingType !== "free" && (asset.priceCents ?? 0) > 0 ? (
+                  <Badge variant="outline">{formatPrice(asset.priceCents, "usd")}</Badge>
+                ) : null}
                 {asset.installed ? <Badge>Installed</Badge> : null}
               </div>
               <h1 className="text-2xl font-semibold text-foreground">{asset.title}</h1>
@@ -355,6 +415,7 @@ function MarketplaceAssetDetailContent() {
         open={installOpen}
         onOpenChange={setInstallOpen}
         onComplete={() => void mutate()}
+        isAdmin={isAdmin}
       />
     </AppShell>
   )

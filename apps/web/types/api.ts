@@ -1628,6 +1628,57 @@ export interface MarketplaceAssetInstallCheck {
   connectorsReady?: boolean
   requiredConnectorsConnected?: number
   requiredConnectorsTotal?: number
+  requiresPayment?: boolean
+  hasEntitlement?: boolean
+  pricingType?: string
+  priceCents?: number
+  currency?: string
+}
+
+export interface MarketplaceAssetEntitlementStatus {
+  requiresPayment: boolean
+  hasEntitlement: boolean
+  pricingType: string
+  priceCents: number
+  currency: string
+}
+
+export interface MarketplaceAssetCheckoutResult {
+  checkoutUrl: string
+  sessionId: string
+  entitlementId: string
+  mode: string
+}
+
+export interface MarketplaceRoiAssetRow {
+  assetId: string
+  installId: string
+  slug?: string | null
+  title?: string | null
+  estimatedHoursSaved: number
+  realizedHoursSaved: number
+  usageEvents: number
+  installedAt?: string | null
+  businessOutcome?: string | null
+  useCase?: string | null
+}
+
+export interface MarketplaceRoiSummary {
+  orgId: string
+  activeInstalls: number
+  assetsWithUsage: number
+  totalUsageEvents: number
+  totalEstimatedHoursSaved: number
+  totalRealizedHoursSaved: number
+  realizationRate: number
+  byAsset: MarketplaceRoiAssetRow[]
+}
+
+export interface MarketplaceFederatedConnectorSummary extends MarketplaceAssetSummary {
+  source?: string
+  registryId?: string
+  vendor?: string
+  federated?: boolean
 }
 
 export interface MarketplacePackItemChild {

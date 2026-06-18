@@ -176,6 +176,13 @@ function MarketplaceHome() {
       show: true,
     },
     {
+      title: "Partner connectors",
+      description: "Federated partner registry in unified catalog shape.",
+      href: "/marketplace/connectors",
+      icon: Plug,
+      show: true,
+    },
+    {
       title: "Analytics",
       description: "Catalog adoption and your org install activity.",
       href: "/marketplace/analytics",

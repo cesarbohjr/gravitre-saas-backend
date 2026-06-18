@@ -112,6 +112,16 @@ async def stripe_webhook(
         org_id = resolve_org_id_from_checkout_metadata(client, metadata)
 
     if event_type == "checkout.session.completed":
+        from app.marketplace.entitlements import fulfill_entitlement_from_checkout
+
+        marketplace_entitlement = fulfill_entitlement_from_checkout(client, settings, session=data)
+        if marketplace_entitlement:
+            _write_event(
+                client,
+                org_id,
+                "marketplace.checkout.completed",
+                {"entitlement": marketplace_entitlement, "sessionId": data.get("id")},
+            )
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:

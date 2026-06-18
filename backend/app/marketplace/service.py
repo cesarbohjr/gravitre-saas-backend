@@ -616,6 +616,10 @@ def install_asset(
     asset = fetch_marketplace_asset(client, asset_id)
     _assert_asset_installable(asset)
 
+    from app.marketplace.entitlements import assert_install_entitlement
+
+    assert_install_entitlement(client, org_id, asset)
+
     legacy_pack = get_pack_spec(str(asset.get("slug") or ""))
     config_payload = asset.get("config") or {}
     if (
@@ -768,11 +772,27 @@ def preview_install(
         asset.get("required_connectors") or [],
         environment_name=environment_name,
     )
+    from app.marketplace.entitlements import get_entitlement_status
+
+    entitlement = get_entitlement_status(client, org_id, asset)
+    payment_blockers: list[dict[str, Any]] = []
+    can_install = validation["can_install"] and (
+        not entitlement["requiresPayment"] or entitlement["hasEntitlement"]
+    )
+    if entitlement["requiresPayment"] and not entitlement["hasEntitlement"]:
+        payment_blockers.append(
+            {
+                "connector": "payment",
+                "reason": "Purchase required before install",
+                "action_url": f"/marketplace/assets/{asset.get('slug')}?purchase=1",
+            }
+        )
     return {
         "assetId": asset_id,
         "slug": asset.get("slug"),
         "assetType": asset.get("asset_type"),
-        "canInstall": validation["can_install"],
-        "blockers": validation["blockers"],
+        "canInstall": can_install,
+        "blockers": validation["blockers"] + payment_blockers,
         "connectorChecklist": validation["checklist"],
+        **entitlement,
     }

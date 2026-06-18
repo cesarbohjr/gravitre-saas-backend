@@ -114,6 +114,17 @@ from app.marketplace.support import (
 )
 from app.marketplace.service import MarketplaceError, install_asset, preview_install
 from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
+from app.marketplace.entitlements import (
+    AUDIT_CHECKOUT_CREATED,
+    MarketplaceEntitlementError,
+    RESOURCE_TYPE_MARKETPLACE_ENTITLEMENT,
+    create_asset_checkout_session,
+    get_entitlement_status,
+)
+from app.marketplace.convergence import list_federated_connector_assets
+from app.marketplace.payouts import get_publisher_payout_summary, sync_pending_payouts
+from app.marketplace.roi import marketplace_roi_summary
+from app.marketplace.service import fetch_marketplace_asset
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
@@ -129,6 +140,8 @@ def _marketplace_http_error(exc: MarketplaceError) -> HTTPException:
         status_code = status.HTTP_409_CONFLICT
     elif exc.code == "LIMIT_EXCEEDED":
         status_code = status.HTTP_400_BAD_REQUEST
+    elif exc.code == "PAYMENT_REQUIRED":
+        status_code = status.HTTP_402_PAYMENT_REQUIRED
     detail: dict[str, Any] | str = str(exc)
     if exc.blockers or exc.details:
         detail = {
@@ -185,6 +198,22 @@ def _publisher_http_error(exc: MarketplacePublisherError) -> HTTPException:
 
 def _flags_http_error(exc: MarketplaceFlagsError) -> HTTPException:
     return _crud_http_error(MarketplaceCrudError(str(exc), code=exc.code))
+
+
+def _entitlement_http_error(exc: MarketplaceEntitlementError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_PUBLISHED":
+        status_code = status.HTTP_404_NOT_FOUND
+    elif exc.code == "ALREADY_ENTITLED":
+        status_code = status.HTTP_409_CONFLICT
+    return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
+
+
+class AssetCheckoutRequest(BaseModel):
+    success_url: str = Field(alias="successUrl")
+    cancel_url: str = Field(alias="cancelUrl")
+
+    model_config = {"populate_by_name": True}
 
 
 class InstallAssetRequest(BaseModel):
@@ -922,6 +951,36 @@ async def get_marketplace_analytics_summary(
     return marketplace_analytics_summary(client, org_id)
 
 
+@router.get("/analytics/roi")
+async def get_marketplace_roi_summary(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: Annotated[int, Query(ge=1, le=50)] = 15,
+) -> dict:
+    """Strategic hours-saved ROI dashboard (MKT-AUDIT-13.2)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return marketplace_roi_summary(client, org_id, limit=limit)
+
+
+@router.get("/federated-connectors")
+async def list_federated_connectors(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    search: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    """Partner registry entries in unified catalog shape (MKT-AUDIT-13.1)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return list_federated_connector_assets(client, search=search, limit=limit, offset=offset)
+
+
 @router.get("/org/assets")
 async def list_org_marketplace_assets(
     admin: Annotated[tuple, Depends(require_admin)],
@@ -1470,9 +1529,9 @@ async def rollback_marketplace_asset_version(
         raise _version_http_error(exc) from exc
 
 
-@router.get("/assets/{asset_id}/install-check")
+@router.get("/assets/{asset_ref}/install-check")
 async def marketplace_asset_install_check(
-    asset_id: str,
+    asset_ref: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1485,16 +1544,75 @@ async def marketplace_asset_install_check(
         return preview_install(
             client,
             org_id,
-            asset_id,
+            asset_ref,
             environment_name=environment_name,
         )
     except MarketplaceError as exc:
         raise _marketplace_http_error(exc) from exc
 
 
-@router.post("/assets/{asset_id}/install")
+@router.get("/assets/{asset_ref}/entitlement")
+async def marketplace_asset_entitlement(
+    asset_ref: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    asset = fetch_marketplace_asset(client, asset_ref)
+    return get_entitlement_status(client, org_id, asset)
+
+
+@router.post("/assets/{asset_ref}/checkout")
+async def marketplace_asset_checkout(
+    asset_ref: str,
+    body: AssetCheckoutRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = create_asset_checkout_session(
+            client,
+            settings,
+            org_id=org_id,
+            asset_ref=asset_ref,
+            actor_id=user["user_id"],
+            success_url=body.success_url,
+            cancel_url=body.cancel_url,
+        )
+    except MarketplaceEntitlementError as exc:
+        raise _entitlement_http_error(exc) from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action=AUDIT_CHECKOUT_CREATED,
+        resource_type=RESOURCE_TYPE_MARKETPLACE_ENTITLEMENT,
+        resource_id=result["entitlementId"],
+        metadata={"sessionId": result["sessionId"], "assetRef": asset_ref},
+    )
+    return result
+
+
+@router.post("/publisher/payouts/sync")
+async def marketplace_publisher_payouts_sync(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    result = sync_pending_payouts(client, settings, partner_org_id=org_id)
+    summary = get_publisher_payout_summary(client, org_id)
+    return {"sync": result, "summary": summary}
+
+
+@router.post("/assets/{asset_ref}/install")
 async def marketplace_asset_install(
-    asset_id: str,
+    asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1506,7 +1624,7 @@ async def marketplace_asset_install(
         return install_asset(
             client,
             org_id,
-            asset_id,
+            asset_ref,
             actor_id=user["user_id"],
             environment_name=environment_name,
             install_variables=(body.install_variables if body else None),

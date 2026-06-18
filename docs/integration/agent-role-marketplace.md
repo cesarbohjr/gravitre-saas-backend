@@ -161,7 +161,7 @@ Gravitre currently runs **two parallel marketplace tracks**:
 1. **Unified catalog** (`marketplace_assets`) — agents, workflows, knowledge packs, department packs. This is the **canonical Stage 1–2 surface** for browse, install, clone, reviews, and org-internal publishing.
 2. **Partner connector track** — partner submissions, sandbox, billing, and `marketplace_registry` connectors. These remain a **separate federation layer** for Stage 1–2.
 
-**Decision (June 2026):** Do **not** merge partner connectors into `marketplace_assets` until Stage 3 community work (see [STA-252](https://linear.app/staqbot/issue/STA-252)). Unified-asset features (CRUD, publish workflow, org tab) apply only to track 1. Partner connector UX continues via `/marketplace/submit`, sandbox, and registry APIs.
+**Decision (June 2026):** Stage 4 **federates** partner connectors into browse via `GET /api/marketplace/federated-connectors` and optional `marketplace_assets.partner_registry_id` links — without merging partner submission/sandbox/billing flows into unified asset CRUD. Unified-asset features apply to track 1; partner connector UX continues via `/marketplace/submit`, sandbox, registry, and `/marketplace/connectors`.
 
 ## Analytics counters (MKT-10.1)
 

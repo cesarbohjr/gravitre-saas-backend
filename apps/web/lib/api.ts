@@ -87,7 +87,11 @@ import type {
   MarketplaceBillingStatus,
   MarketplacePartnerPricing,
   MarketplaceAnalyticsSummary,
+  MarketplaceAssetCheckoutResult,
+  MarketplaceAssetEntitlementStatus,
   MarketplaceCategoriesResponse,
+  MarketplaceFederatedConnectorSummary,
+  MarketplaceRoiSummary,
   MarketplaceReviewsResponse,
   MarketplaceSavesListResponse,
   MarketplaceAssetCloneResult,
@@ -719,6 +723,36 @@ export const marketplaceApi = {
   listCategories: () => fetcher<MarketplaceCategoriesResponse>(apiUrl("/api/marketplace/categories")),
   analyticsSummary: () =>
     fetcher<MarketplaceAnalyticsSummary>(apiUrl("/api/marketplace/analytics/summary")),
+  analyticsRoi: (params?: { limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceRoiSummary>(apiUrl(`/api/marketplace/analytics/roi${suffix}`))
+  },
+  listFederatedConnectors: (params?: { search?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.search) query.set("search", params.search)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ assets: MarketplaceFederatedConnectorSummary[]; total: number }>(
+      apiUrl(`/api/marketplace/federated-connectors${suffix}`),
+    )
+  },
+  assetEntitlement: (assetRef: string) =>
+    fetcher<MarketplaceAssetEntitlementStatus>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/entitlement`),
+    ),
+  assetCheckout: (assetRef: string, data: { successUrl: string; cancelUrl: string }) =>
+    postJson<MarketplaceAssetCheckoutResult>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/checkout`),
+      data,
+    ),
+  syncPublisherPayouts: () =>
+    postJson<{ sync: { transferred: number; failed: number }; summary: Record<string, number> }>(
+      apiUrl("/api/marketplace/publisher/payouts/sync"),
+      {},
+    ),
   listAssetReviews: (assetRef: string, params?: { limit?: number; offset?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))
