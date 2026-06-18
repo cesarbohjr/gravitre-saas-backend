@@ -9,6 +9,7 @@ import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -1622,12 +1623,18 @@ function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
+  const { updatedAt, markFresh } = useFreshnessTimestamp()
 
   // Fetch connectors from API with SWR
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
     user ? "/api/connectors" : null,
     apiFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+      onSuccess: markFresh,
+      onError: (err) => console.error("[connectors] fetch error:", err),
+    }
   )
 
   const { data: registryData } = useSWR<{
@@ -2003,7 +2010,7 @@ function ConnectorsPageContent() {
           {connectors.length > 0 && (
             <div className="mb-4 flex justify-end">
               <DataFreshness
-                updatedAt={data ? Date.now() : null}
+                updatedAt={updatedAt}
                 isRefreshing={isValidating}
                 onRefresh={() => mutate()}
               />
