@@ -24,7 +24,7 @@ import {
   Database,
   AlertTriangle,
 } from "lucide-react"
-import type { DepartmentRolePack } from "@/types/api"
+import type { MarketplaceInstall } from "@/types/api"
 
 const DEPARTMENT_THEME: Record<string, { icon: typeof Briefcase; ring: string; soft: string }> = {
   sales: { icon: TrendingUp, ring: "text-primary", soft: "bg-primary/10" },
@@ -50,14 +50,17 @@ function formatInstalledAt(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-function InstalledPackCard({ pack, index }: { pack: DepartmentRolePack; index: number }) {
+function InstalledAssetCard({ install, index }: { install: MarketplaceInstall; index: number }) {
   const reduced = useReducedMotion()
-  const theme = themeFor(pack.department)
+  const asset = install.asset
+  const department = asset?.department ?? "general"
+  const theme = themeFor(department)
   const DeptIcon = theme.icon
-  const installedAt = formatInstalledAt(pack.installedAt)
-  const agentCount = pack.agentIds?.length ?? 0
-  const workflowCount = pack.workflowIds?.length ?? 0
-  const sourceCount = pack.ragSourceIds?.length ?? 0
+  const installedAt = formatInstalledAt(install.installedAt)
+  const agentCount = install.metadata?.agentIds?.length ?? 0
+  const workflowCount = install.metadata?.workflowIds?.length ?? 0
+  const sourceCount = install.metadata?.ragSourceIds?.length ?? 0
+  const slug = asset?.slug
 
   return (
     <motion.div
@@ -72,8 +75,8 @@ function InstalledPackCard({ pack, index }: { pack: DepartmentRolePack; index: n
             <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
           </span>
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-foreground">{pack.name}</h3>
-            <p className="text-xs capitalize text-muted-foreground">{pack.department}</p>
+            <h3 className="text-base font-semibold text-foreground">{asset?.title ?? "Installed asset"}</h3>
+            <p className="text-xs capitalize text-muted-foreground">{department.replace(/-/g, " ")}</p>
           </div>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
@@ -82,11 +85,6 @@ function InstalledPackCard({ pack, index }: { pack: DepartmentRolePack; index: n
         </span>
       </div>
 
-      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground text-pretty">
-        {pack.description}
-      </p>
-
-      {/* What this pack deployed */}
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Link
           href="/agents"
@@ -118,12 +116,14 @@ function InstalledPackCard({ pack, index }: { pack: DepartmentRolePack; index: n
         <span className="text-xs text-muted-foreground">
           {installedAt ? `Installed ${installedAt}` : "Installed"}
         </span>
-        <Button variant="ghost" size="sm" asChild className="-mr-2">
-          <Link href={`/marketplace/role-packs?pack=${encodeURIComponent(pack.packId)}`}>
-            Manage
-            <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
-          </Link>
-        </Button>
+        {slug ? (
+          <Button variant="ghost" size="sm" asChild className="-mr-2">
+            <Link href={`/marketplace/assets/${encodeURIComponent(slug)}`}>
+              Manage
+              <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </motion.div>
   )
@@ -132,16 +132,15 @@ function InstalledPackCard({ pack, index }: { pack: DepartmentRolePack; index: n
 function InstalledContent() {
   const { user } = useAuth()
   const { data, error, isLoading, mutate } = useSWR(
-    user ? "marketplace-role-packs" : null,
-    () => marketplaceApi.listRolePacks(),
+    user ? "marketplace-installs" : null,
+    () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
   )
 
-  const installed = (data?.packs ?? []).filter((p) => p.installed)
+  const installed = data?.installs ?? []
 
   return (
     <AppShell>
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
-        {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" size="sm" className="mb-3 -ml-2" asChild>
             <Link href="/marketplace">
@@ -153,11 +152,10 @@ function InstalledContent() {
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-success/10">
               <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
             </span>
-            Installed packs
+            Installed assets
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground text-pretty md:text-base">
-            Department packs your team has deployed, with quick links to the agents, workflows, and
-            knowledge sources they created.
+            Marketplace assets your team has deployed, with quick links to agents, workflows, and knowledge sources.
           </p>
         </div>
 
@@ -169,7 +167,7 @@ function InstalledContent() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
-                Could not load installed packs
+                Could not load installed assets
               </p>
               <p className="text-sm text-muted-foreground">
                 {error instanceof Error ? error.message : "Check backend connectivity and try again."}
@@ -194,13 +192,12 @@ function InstalledContent() {
               <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary/10">
                 <Package className="h-7 w-7 text-primary" aria-hidden />
               </span>
-              <p className="text-base font-medium text-foreground">No packs installed yet</p>
+              <p className="text-base font-medium text-foreground">Nothing installed yet</p>
               <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground text-pretty">
-                Install a department pack to deploy a full set of agents, workflows, and knowledge
-                sources in one click.
+                Install a department pack or catalog asset to deploy agents, workflows, and knowledge in one click.
               </p>
               <Button asChild className="mt-5">
-                <Link href="/marketplace/role-packs">
+                <Link href="/marketplace/assets?type=department_pack">
                   Browse department packs
                   <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden />
                 </Link>
@@ -209,8 +206,8 @@ function InstalledContent() {
           </div>
         ) : (
           <div className="grid items-start gap-4 sm:grid-cols-2">
-            {installed.map((pack, index) => (
-              <InstalledPackCard key={pack.packId} pack={pack} index={index} />
+            {installed.map((install, index) => (
+              <InstalledAssetCard key={install.id} install={install} index={index} />
             ))}
           </div>
         )}
