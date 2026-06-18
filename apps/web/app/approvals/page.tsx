@@ -11,6 +11,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi } from "@/lib/api"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -440,11 +441,13 @@ export default function ApprovalsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { updatedAt, markFresh } = useFreshnessTimestamp()
   
   const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
     fallbackData: { approvals: [] as Approval[] },
     revalidateOnFocus: true,
     refreshInterval: 30000,
+    onSuccess: markFresh,
     onError: (err) => console.error("[v0] Approvals fetch error:", err),
   })
 
@@ -513,7 +516,7 @@ export default function ApprovalsPage() {
                 </p>
               </div>
               <DataFreshness
-                updatedAt={data ? Date.now() : null}
+                updatedAt={updatedAt}
                 isRefreshing={isValidating}
                 onRefresh={() => mutate()}
               />

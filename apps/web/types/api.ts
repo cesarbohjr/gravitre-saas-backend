@@ -1583,6 +1583,147 @@ export interface DepartmentRolePackInstallResult {
   connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
 }
 
+// Unified marketplace assets (MKT-5 / MKT-6)
+export interface MarketplaceConnectorChecklistItem {
+  connectorType: string
+  label: string
+  required: boolean
+  connected: boolean
+  connectPath: string
+  action_url?: string
+  ready: boolean
+}
+
+export interface MarketplaceInstallBlocker {
+  connector: string
+  reason: string
+  action_url: string
+}
+
+export interface MarketplaceAssetSummary {
+  id: string
+  slug: string
+  title: string
+  description?: string | null
+  assetType: string
+  category?: string | null
+  department?: string | null
+  tags: string[]
+  pricingType: string
+  priceCents?: number
+  canInstall: boolean
+  installed: boolean
+  installedAt?: string | null
+  connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorsReady: boolean
+  requiredConnectorsConnected: number
+  requiredConnectorsTotal: number
+  installCount?: number
+  averageRating?: number | null
+  reviewCount?: number
+}
+
+export interface MarketplaceAssetsListResponse {
+  assets: MarketplaceAssetSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface MarketplaceAssetInstallResult {
+  installed: boolean
+  assetId: string
+  slug?: string
+  assetType?: string
+  entities?: Record<string, unknown>
+  connectorChecklist?: MarketplaceConnectorChecklistItem[]
+}
+
+export interface MarketplaceAssetInstallCheck {
+  canInstall: boolean
+  blockers: MarketplaceInstallBlocker[]
+  connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorsReady?: boolean
+  requiredConnectorsConnected?: number
+  requiredConnectorsTotal?: number
+}
+
+export interface MarketplacePackItemChild {
+  id: string
+  slug: string
+  title: string
+  assetType: string
+  category?: string | null
+  department?: string | null
+}
+
+export interface MarketplacePackItem {
+  sortOrder: number
+  required: boolean
+  child: MarketplacePackItemChild
+}
+
+export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
+  config?: Record<string, unknown>
+  blockers?: MarketplaceInstallBlocker[]
+  packItems?: MarketplacePackItem[]
+  installVariables?: unknown[]
+}
+
+export interface MarketplaceAssetCloneResult {
+  cloned: boolean
+  sourceAssetId: string
+  asset: {
+    id: string
+    slug: string
+    title: string
+    assetType: string
+    status: string
+    visibility: string
+    clonedFromAssetId?: string | null
+  }
+}
+
+export interface MarketplaceInstallDeepLink {
+  label: string
+  entityType: string
+  entityId: string
+  path: string
+}
+
+export interface MarketplaceInstall {
+  id: string
+  assetId: string
+  assetVersion?: string | null
+  status: string
+  installedEntityType?: string | null
+  installedEntityId?: string | null
+  installedAt?: string | null
+  updatedAt?: string | null
+  metadata?: {
+    agentIds?: string[]
+    workflowIds?: string[]
+    ragSourceIds?: string[]
+    operatorId?: string
+  }
+  deepLinks: MarketplaceInstallDeepLink[]
+  asset?: {
+    id: string
+    slug: string
+    title: string
+    assetType: string
+    category?: string | null
+    department?: string | null
+  } | null
+}
+
+export interface MarketplaceInstallsListResponse {
+  installs: MarketplaceInstall[]
+  total: number
+  limit: number
+  offset: number
+}
+
 // Federation & B2B (STA-115/116/117/118)
 export type FederationPartnershipStatus =
   | "pending_partner"

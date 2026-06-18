@@ -68,6 +68,8 @@ def create_operator(
         "approval_roles": payload.get("approval_roles") or [],
         "created_by": created_by,
     }
+    if payload.get("id"):
+        row["id"] = payload["id"]
     if payload.get("environment_id"):
         row["environment_id"] = payload.get("environment_id")
     if payload.get("icon") is not None:
