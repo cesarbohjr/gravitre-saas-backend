@@ -22,6 +22,14 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   echo "✅ Auth gate working (got 401)" || \
   echo "⚠️  Expected 401, got $STATUS"
 
+# 4. Marketplace browse auth gate
+echo "→ Marketplace browse auth gate..."
+MKT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  "$BACKEND_URL/api/marketplace/assets?limit=1")
+[ "$MKT_STATUS" = "401" ] && \
+  echo "✅ Marketplace assets auth gate working (got 401)" || \
+  echo "⚠️  Expected 401 for marketplace/assets, got $MKT_STATUS"
+
 # 3. Killswitch check (informational)
 echo "→ Checking killswitch status..."
 curl -sf "$BACKEND_URL/health" | python3 -c \

@@ -237,12 +237,7 @@ def parse_asset_config(
     *,
     publish: bool = False,
 ) -> BaseModel:
-    """
-    Validate asset `config` JSONB for draft save or publish transition.
-
-    ``publish=True`` re-validates with the same rules today; reserved for stricter gates.
-    """
-    _ = publish
+    """Validate asset ``config`` JSONB for draft save or publish transition."""
     if asset_type not in ASSET_CONFIG_MODELS:
         raise MarketplaceValidationError(
             f"unsupported asset_type: {asset_type!r}",
@@ -256,12 +251,54 @@ def parse_asset_config(
     assert_no_forbidden_secrets(config, field_label="config")
     model_cls = ASSET_CONFIG_MODELS[asset_type]
     try:
-        return model_cls.model_validate(config)
+        parsed = model_cls.model_validate(config)
     except ValidationError as exc:
         raise MarketplaceValidationError(
             f"invalid {asset_type} config",
             errors=_format_pydantic_errors(exc),
         ) from exc
+
+    if publish:
+        _assert_publish_ready(asset_type, parsed)
+
+    return parsed
+
+
+def _assert_publish_ready(asset_type: str, parsed: BaseModel) -> None:
+    """Stricter validation gate for submit/approve transitions."""
+    if asset_type == "ai_agent":
+        agent = parsed  # type: ignore[assignment]
+        if not agent.purpose.strip():  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "ai_agent config requires a non-empty purpose for publish",
+                errors=["purpose_required"],
+            )
+    elif asset_type == "workflow":
+        workflow = parsed  # type: ignore[assignment]
+        if not workflow.description.strip():  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "workflow config requires a description for publish",
+                errors=["description_required"],
+            )
+    elif asset_type == "knowledge_pack":
+        pack = parsed  # type: ignore[assignment]
+        if not pack.documents:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "knowledge_pack requires at least one document for publish",
+                errors=["documents_required"],
+            )
+    elif asset_type == "department_pack":
+        pack = parsed  # type: ignore[assignment]
+        if not pack.agents:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "department_pack requires at least one agent for publish",
+                errors=["agents_required"],
+            )
+        if not pack.workflow_steps:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "department_pack requires workflow_steps for publish",
+                errors=["workflow_steps_required"],
+            )
 
 
 def validate_asset_payload(

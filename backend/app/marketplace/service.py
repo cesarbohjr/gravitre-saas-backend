@@ -223,15 +223,36 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
     plan = get_plan_for_org(client, org_id)
     if asset_type in {"ai_agent", "department_pack"}:
         limit = plan.get("agents_limit")
-        if limit is not None and len(list_operators(client, org_id)) >= int(limit):
-            raise MarketplaceError("Agent limit reached for current plan", code="LIMIT_EXCEEDED")
+        current = len(list_operators(client, org_id))
+        if limit is not None and current >= int(limit):
+            raise MarketplaceError(
+                "Agent limit reached for current plan",
+                code="LIMIT_EXCEEDED",
+                details={
+                    "error": "plan_limit_exceeded",
+                    "limit_type": "agent_count",
+                    "current": current,
+                    "max": int(limit),
+                    "upgrade_url": "/settings/billing",
+                },
+            )
     if asset_type in {"workflow", "department_pack"}:
         limit = plan.get("workflows_limit")
         if limit is not None:
             result = client.table("workflow_defs").select("id").eq("org_id", org_id).execute()
             current = len(result.data or [])
             if current >= int(limit):
-                raise MarketplaceError("Workflow limit reached for current plan", code="LIMIT_EXCEEDED")
+                raise MarketplaceError(
+                    "Workflow limit reached for current plan",
+                    code="LIMIT_EXCEEDED",
+                    details={
+                        "error": "plan_limit_exceeded",
+                        "limit_type": "workflow_count",
+                        "current": current,
+                        "max": int(limit),
+                        "upgrade_url": "/settings/billing",
+                    },
+                )
 
 
 def _resolve_workflow_steps(

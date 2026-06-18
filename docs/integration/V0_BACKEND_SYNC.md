@@ -1,7 +1,7 @@
 # v0 ↔ Backend sync (production-ready)
 
 **Canonical branch:** `main`  
-**v0 import branch:** `v0/cesarbohorquezjr-4251-8b623736` (local: `v0-sync`)  
+**v0 import branch:** `v0/cesarbohorquezjr-4251-c5e410cc` (local: `v0-sync`)  
 **Cursor branch:** `cursor/auth-config-cli-0dd3`
 
 Keep these branches **fast-forwarded to `main`** so v0 and Cursor always see the same backend + proxy wiring as production.
@@ -14,7 +14,7 @@ git pull origin main
 
 git checkout v0-sync
 git merge --ff-only main
-git push origin v0-sync:v0/cesarbohorquezjr-4251-8b623736
+git push origin v0-sync:v0/cesarbohorquezjr-4251-c5e410cc
 
 git checkout cursor/auth-config-cli-0dd3
 git merge --ff-only main
@@ -40,7 +40,9 @@ git checkout main
 | Run detail / pause / cancel | `GET /api/runs/{id}`, `POST …/pause`, `…/cancel` | explicit run routes | `runsApi` |
 | Failure predictions | `GET/POST …/failure-predictions/*` | rewrite | `workflowsApi.scanFailurePredictions` |
 | CS integration health | `GET/POST /api/enterprise/integration-health*` | rewrite | `enterpriseApi` |
-| Role packs | `GET/POST /api/marketplace/role-packs*` | rewrite | `marketplaceApi.listRolePacks` |
+| Unified marketplace assets | `GET/POST /api/marketplace/assets*` | rewrite + explicit routes | `marketplaceApi.listAssets`, `getAsset`, `installAsset` |
+| Marketplace analytics | `GET /api/marketplace/analytics/summary` | explicit route | `marketplaceApi.analyticsSummary` |
+| Legacy role packs (deprecated) | `GET/POST /api/marketplace/role-packs*` | rewrite | backend-only; UI uses unified assets |
 | Federation | `/api/federation/*` | rewrite | `federationApi` |
 | Run interrupt | `POST /api/agent-interrupts` | explicit route | `agentInterruptsApi` |
 

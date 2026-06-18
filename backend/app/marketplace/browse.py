@@ -11,7 +11,8 @@ BROWSE_LIST_COLUMNS = (
     "id, slug, title, description, asset_type, category, department, tags, "
     "visibility, status, pricing_type, price_cents, currency, required_connectors, "
     "install_count, clone_count, average_rating, review_count, current_version, "
-    "published_at, publisher_id, org_id, created_at, updated_at"
+    "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
+    "created_at, updated_at"
 )
 
 BROWSE_DETAIL_COLUMNS = f"{BROWSE_LIST_COLUMNS}, config, install_variables, required_permissions, cloned_from_asset_id"
@@ -98,6 +99,9 @@ def _serialize_asset_summary(
         "publishedAt": row.get("published_at"),
         "publisherId": row.get("publisher_id"),
         "orgId": row.get("org_id"),
+        "businessOutcome": row.get("business_outcome"),
+        "useCase": row.get("use_case"),
+        "estimatedHoursSaved": row.get("estimated_hours_saved"),
         "installed": install is not None,
         "installedAt": install.get("installed_at") if install else None,
         "installId": install.get("id") if install else None,
@@ -237,7 +241,7 @@ def list_marketplace_assets(
         client.table("marketplace_assets")
         .select(BROWSE_LIST_COLUMNS, count="exact")
         .eq("status", "published")
-        .or_(f"visibility.eq.public,org_id.eq.{org_id}")
+        .or_(f"visibility.eq.public,and(visibility.eq.internal,org_id.eq.{org_id})")
     )
     if category:
         query = query.eq("category", category)
@@ -303,13 +307,18 @@ def _fetch_asset_row(client: Any, *, asset_id: str | None = None, slug: str | No
 
 
 def _assert_asset_browsable(row: dict[str, Any], org_id: str) -> None:
-    if row.get("status") != "published" and str(row.get("org_id") or "") != org_id:
-        raise MarketplaceBrowseError("Marketplace asset not found", code="NOT_FOUND")
-    visibility = row.get("visibility")
     row_org = str(row.get("org_id") or "")
-    if visibility == "public" and row.get("status") == "published":
-        return
-    if row_org and row_org == org_id:
+    status = str(row.get("status") or "")
+    visibility = row.get("visibility")
+
+    if status == "published":
+        if visibility == "public":
+            return
+        if visibility == "internal" and row_org == org_id:
+            return
+        raise MarketplaceBrowseError("Marketplace asset not found", code="NOT_FOUND")
+
+    if row_org == org_id and status in {"draft", "pending_review"}:
         return
     raise MarketplaceBrowseError("Marketplace asset not found", code="NOT_FOUND")
 

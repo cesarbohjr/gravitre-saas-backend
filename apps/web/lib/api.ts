@@ -86,14 +86,17 @@ import type {
   MarketplaceRegistryConnector,
   MarketplaceBillingStatus,
   MarketplacePartnerPricing,
-  DepartmentRolePack,
-  MarketplaceAssetListResponse,
-  MarketplaceAssetDetailResponse,
+  MarketplaceAnalyticsSummary,
+  MarketplaceCategoriesResponse,
+  MarketplaceReviewsResponse,
+  MarketplaceSavesListResponse,
+  MarketplaceAssetCloneResult,
+  MarketplaceAssetDetail,
   MarketplaceAssetInstallCheck,
   MarketplaceAssetInstallResult,
-  MarketplaceAssetCloneResult,
-  MarketplaceCategoriesResponse,
-  DepartmentRolePackInstallResult,
+  MarketplaceAssetsListResponse,
+  MarketplaceInstallBlocker,
+  MarketplaceInstallsListResponse,
   FederationPartnership,
   FederationHandoff,
   FederationConnectorGrant,
@@ -192,6 +195,15 @@ async function patchJson<T>(url: string, data: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+  }
+  return response.json()
+}
+
+async function deleteJson<T>(url: string): Promise<T> {
+  const response = await apiFetch(url, { method: "DELETE" })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
@@ -660,49 +672,94 @@ export const marketplaceApi = {
       data
     ),
 
-  // Asset catalog (agents, workflows, knowledge packs, department packs)
-  listAssets: (params?: { assetType?: string; search?: string; limit?: number; offset?: number }) => {
+  // Unified marketplace assets (MKT-5 / MKT-6)
+  listAssets: (params?: {
+    assetType?: string
+    category?: string
+    department?: string
+    pricingType?: string
+    search?: string
+    limit?: number
+    offset?: number
+  }) => {
     const query = new URLSearchParams()
-    if (params?.assetType) query.set("asset_type", params.assetType)
+    if (params?.assetType) query.set("assetType", params.assetType)
+    if (params?.category) query.set("category", params.category)
+    if (params?.department) query.set("department", params.department)
+    if (params?.pricingType) query.set("pricingType", params.pricingType)
     if (params?.search) query.set("search", params.search)
     if (params?.limit != null) query.set("limit", String(params.limit))
     if (params?.offset != null) query.set("offset", String(params.offset))
-    const qs = query.toString()
-    return fetcher<MarketplaceAssetListResponse>(
-      apiUrl(`/api/marketplace/assets${qs ? `?${qs}` : ""}`)
-    )
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/assets${suffix}`))
   },
   getAsset: (assetRef: string) =>
-    fetcher<MarketplaceAssetDetailResponse>(
-      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`)
+    fetcher<{ asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
     ),
   installCheck: (assetRef: string) =>
     fetcher<MarketplaceAssetInstallCheck>(
-      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install-check`)
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install-check`),
     ),
-  installAsset: (assetRef: string) =>
+  installAsset: (assetRef: string, installVariables?: Record<string, string>) =>
     postJson<MarketplaceAssetInstallResult>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/install`),
-      {}
+      installVariables ? { installVariables } : {},
     ),
   cloneAsset: (assetRef: string) =>
     postJson<MarketplaceAssetCloneResult>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/clone`),
-      {}
-    ),
-  listCategories: () =>
-    fetcher<MarketplaceCategoriesResponse>(apiUrl("/api/marketplace/categories")),
-
-  // Department role packs (STA-121)
-  listRolePacks: () =>
-    fetcher<{ packs: DepartmentRolePack[] }>(apiUrl("/api/marketplace/role-packs")),
-  getRolePack: (packId: string) =>
-    fetcher<DepartmentRolePack>(apiUrl(`/api/marketplace/role-packs/${packId}`)),
-  installRolePack: (packId: string) =>
-    postJson<DepartmentRolePackInstallResult>(
-      apiUrl(`/api/marketplace/role-packs/${packId}/install`),
       {},
     ),
+  listCategories: () => fetcher<MarketplaceCategoriesResponse>(apiUrl("/api/marketplace/categories")),
+  analyticsSummary: () =>
+    fetcher<MarketplaceAnalyticsSummary>(apiUrl("/api/marketplace/analytics/summary")),
+  listAssetReviews: (assetRef: string, params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceReviewsResponse>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reviews${suffix}`),
+    )
+  },
+  upsertAssetReview: (
+    assetRef: string,
+    data: { rating: number; title?: string; body?: string },
+  ) =>
+    putJson<{ review: import("@/types/api").MarketplaceReview }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reviews/mine`),
+      data,
+    ),
+  deleteAssetReview: (assetRef: string) =>
+    deleteJson<{ deleted: boolean; assetId: string }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reviews/mine`),
+    ),
+  saveAsset: (assetRef: string) =>
+    postJson<{ saved: boolean }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/save`),
+      {},
+    ),
+  unsaveAsset: (assetRef: string) =>
+    deleteJson<{ saved: boolean }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/save`),
+    ),
+  listSaves: (params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceSavesListResponse>(apiUrl(`/api/marketplace/saves${suffix}`))
+  },
+  listInstalls: (params?: { status?: string; assetId?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set("status", params.status)
+    if (params?.assetId) query.set("assetId", params.assetId)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceInstallsListResponse>(apiUrl(`/api/marketplace/installs${suffix}`))
+  },
 }
 
 // ============ Approvals ============

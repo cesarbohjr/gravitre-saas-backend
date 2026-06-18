@@ -2,10 +2,11 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { MarketplaceFacetSidebar } from "@/components/marketplace/marketplace-facet-sidebar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,7 +40,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type {
-  MarketplaceAssetDetail,
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
   MarketplaceConnectorChecklistItem,
@@ -470,106 +470,14 @@ function InstallStepperSheet({
   )
 }
 
-function AssetDetailDrawer({
-  assetRef,
-  open,
-  isAdmin,
-  onOpenChange,
-  onInstall,
-}: {
-  assetRef: string | null
-  open: boolean
-  isAdmin: boolean
-  onOpenChange: (open: boolean) => void
-  onInstall: (asset: MarketplaceAssetSummary) => void
-}) {
-  const { data, isLoading } = useSWR(open && assetRef ? ["marketplace-asset", assetRef] : null, () =>
-    marketplaceApi.getAsset(assetRef!),
-  )
-  const asset = data?.asset as MarketplaceAssetDetail | undefined
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>{asset?.title ?? "Asset details"}</SheetTitle>
-          <SheetDescription>{asset?.description ?? "Loading catalog entry…"}</SheetDescription>
-        </SheetHeader>
-
-        <div className="flex-1 space-y-4 px-4 pb-4">
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : asset ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{asset.assetType}</Badge>
-                {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
-              </div>
-
-              {asset.blockers?.length ? <BlockerList blockers={asset.blockers} /> : null}
-
-              {asset.connectorChecklist?.length ? (
-                <div className="rounded-lg border bg-muted/20 p-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Connectors</p>
-                  <ConnectorChecklist items={asset.connectorChecklist} />
-                </div>
-              ) : null}
-
-              {asset.packItems?.length ? (
-                <div className="rounded-lg border p-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pack contents</p>
-                  <ul className="space-y-2 text-sm">
-                    {asset.packItems.map((item) => (
-                      <li key={item.child.id} className="flex items-center justify-between gap-2">
-                        <span>{item.child.title}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {item.child.assetType}
-                        </Badge>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {asset.config && Object.keys(asset.config).length > 0 ? (
-                <div className="rounded-lg border bg-muted/10 p-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Config preview</p>
-                  <pre className="max-h-48 overflow-auto text-[11px] leading-relaxed text-muted-foreground">
-                    {JSON.stringify(asset.config, null, 2)}
-                  </pre>
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-
-        {asset && isAdmin && !asset.installed ? (
-          <SheetFooter className="border-t">
-            <Button
-              className="w-full"
-              disabled={!asset.canInstall}
-              onClick={() => {
-                onOpenChange(false)
-                onInstall(asset)
-              }}
-            >
-              {asset.canInstall ? "Install" : "Connect apps to install"}
-            </Button>
-          </SheetFooter>
-        ) : null}
-      </SheetContent>
-    </Sheet>
-  )
-}
-
 function MarketplaceAssetsContent() {
   const { user } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const initialSlug = searchParams.get("slug")
   const initialType = searchParams.get("type")
+  const initialDepartment = searchParams.get("department")
+  const initialCategory = searchParams.get("category")
   const reduceMotion = useReducedMotion()
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
@@ -577,19 +485,45 @@ function MarketplaceAssetsContent() {
   const [typeFilter, setTypeFilter] = useState<string>(
     initialType && validTypes.has(initialType as (typeof TYPE_FILTERS)[number]["id"]) ? initialType : "all",
   )
+  const [departmentFilter, setDepartmentFilter] = useState<string | null>(initialDepartment)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(initialCategory)
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search.trim())
   const [busy, setBusy] = useState<string | null>(null)
-  const [detailRef, setDetailRef] = useState<string | null>(initialSlug)
-  const [detailOpen, setDetailOpen] = useState(Boolean(initialSlug))
   const [installTarget, setInstallTarget] = useState<MarketplaceAssetSummary | null>(null)
   const [installOpen, setInstallOpen] = useState(false)
 
-  const swrKey = user ? (["marketplace-assets", typeFilter, debouncedSearch] as const) : null
+  useEffect(() => {
+    if (initialSlug) {
+      router.replace(`/marketplace/assets/${encodeURIComponent(initialSlug)}`)
+    }
+  }, [initialSlug, router])
+
+  const syncFiltersToUrl = useCallback(() => {
+    const params = new URLSearchParams()
+    if (typeFilter !== "all") params.set("type", typeFilter)
+    if (departmentFilter) params.set("department", departmentFilter)
+    if (categoryFilter) params.set("category", categoryFilter)
+    if (debouncedSearch) params.set("search", debouncedSearch)
+    const next = params.toString()
+    const current = searchParams.toString()
+    if (next === current) return
+    router.replace(next ? `/marketplace/assets?${next}` : "/marketplace/assets", { scroll: false })
+  }, [categoryFilter, debouncedSearch, departmentFilter, router, searchParams, typeFilter])
+
+  useEffect(() => {
+    syncFiltersToUrl()
+  }, [syncFiltersToUrl])
+
+  const swrKey = user
+    ? (["marketplace-assets", typeFilter, departmentFilter, categoryFilter, debouncedSearch] as const)
+    : null
 
   const { data, error, isLoading, mutate } = useSWR(swrKey, () =>
     marketplaceApi.listAssets({
       assetType: typeFilter === "all" ? undefined : typeFilter,
+      department: departmentFilter ?? undefined,
+      category: categoryFilter ?? undefined,
       search: debouncedSearch || undefined,
       limit: 100,
     }),
@@ -604,10 +538,12 @@ function MarketplaceAssetsContent() {
     setInstallOpen(true)
   }, [])
 
-  const openDetail = useCallback((asset: MarketplaceAssetSummary) => {
-    setDetailRef(asset.slug)
-    setDetailOpen(true)
-  }, [])
+  const openDetail = useCallback(
+    (asset: MarketplaceAssetSummary) => {
+      router.push(`/marketplace/assets/${encodeURIComponent(asset.slug)}`)
+    },
+    [router],
+  )
 
   const handleClone = async (asset: MarketplaceAssetSummary) => {
     setBusy(`clone:${asset.id}`)
@@ -627,10 +563,12 @@ function MarketplaceAssetsContent() {
 
   const emptyMessage = useMemo(() => {
     if (debouncedSearch) return "No assets match your search."
+    if (departmentFilter) return `No assets in department "${departmentFilter.replace(/_/g, " ")}".`
+    if (categoryFilter) return `No assets in category "${categoryFilter.replace(/_/g, " ")}".`
     if (typeFilter !== "all") return "No assets in this category yet."
     if (categories?.totalAssets === 0) return "The starter catalog is empty. Run backend/scripts/seed_marketplace.py."
     return "No assets found."
-  }, [debouncedSearch, typeFilter, categories?.totalAssets])
+  }, [debouncedSearch, departmentFilter, categoryFilter, typeFilter, categories?.totalAssets])
 
   return (
     <AppShell title="Marketplace">
@@ -638,18 +576,16 @@ function MarketplaceAssetsContent() {
         <GridPattern className="opacity-40" />
         <div className="relative flex flex-col gap-6 lg:flex-row">
           {categories ? (
-            <aside className="hidden w-52 shrink-0 space-y-4 lg:block">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Catalog</p>
-              <p className="text-2xl font-semibold tabular-nums">{categories.totalAssets}</p>
-              <div className="space-y-3 text-sm">
-                {categories.assetTypes.slice(0, 5).map((row) => (
-                  <div key={row.key} className="flex justify-between gap-2 text-muted-foreground">
-                    <span className="truncate">{row.key.replace(/_/g, " ")}</span>
-                    <span className="tabular-nums">{row.count}</span>
-                  </div>
-                ))}
-              </div>
-            </aside>
+            <MarketplaceFacetSidebar
+              className="hidden lg:block"
+              totalAssets={categories.totalAssets}
+              departments={categories.departments}
+              categories={categories.categories}
+              activeDepartment={departmentFilter}
+              activeCategory={categoryFilter}
+              onDepartmentChange={setDepartmentFilter}
+              onCategoryChange={setCategoryFilter}
+            />
           ) : null}
 
           <div className="min-w-0 flex-1 space-y-6">
@@ -695,6 +631,19 @@ function MarketplaceAssetsContent() {
               ))}
             </div>
 
+            {categories ? (
+              <MarketplaceFacetSidebar
+                className="lg:hidden"
+                totalAssets={categories.totalAssets}
+                departments={categories.departments.slice(0, 6)}
+                categories={categories.categories.slice(0, 6)}
+                activeDepartment={departmentFilter}
+                activeCategory={categoryFilter}
+                onDepartmentChange={setDepartmentFilter}
+                onCategoryChange={setCategoryFilter}
+              />
+            ) : null}
+
             {isLoading ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, index) => (
@@ -727,14 +676,6 @@ function MarketplaceAssetsContent() {
           </div>
         </div>
       </div>
-
-      <AssetDetailDrawer
-        assetRef={detailRef}
-        open={detailOpen}
-        isAdmin={isAdmin}
-        onOpenChange={setDetailOpen}
-        onInstall={openInstall}
-      />
 
       <InstallStepperSheet
         asset={installTarget}

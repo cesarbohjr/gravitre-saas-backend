@@ -179,7 +179,7 @@ def _published_catalog_query(client: Any, org_id: str):
         client.table("marketplace_assets")
         .select(BROWSE_LIST_COLUMNS)
         .eq("status", "published")
-        .or_(f"visibility.eq.public,org_id.eq.{org_id}")
+        .or_(f"visibility.eq.public,and(visibility.eq.internal,org_id.eq.{org_id})")
     )
 
 

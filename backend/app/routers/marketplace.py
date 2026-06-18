@@ -62,9 +62,160 @@ from app.services.agent_role_marketplace_service import (
     install_department_pack,
     list_department_packs,
 )
+from app.marketplace.crud import (
+    MarketplaceCrudError,
+    archive_org_asset,
+    create_org_asset,
+    update_org_asset,
+)
+from app.marketplace.publish import (
+    MarketplacePublishError,
+    approve_asset_for_internal_publish,
+    reject_asset_review,
+    submit_asset_for_review,
+)
+from app.marketplace.browse import (
+    MarketplaceBrowseError,
+    get_marketplace_asset,
+    list_marketplace_assets,
+    marketplace_browse_error_to_marketplace_error,
+)
+from app.marketplace.clone import MarketplaceCloneError, clone_asset
+from app.marketplace.support import (
+    MarketplaceSupportError,
+    delete_my_asset_review,
+    list_asset_reviews,
+    list_marketplace_categories,
+    list_my_saves,
+    list_org_installs,
+    marketplace_analytics_summary,
+    save_asset,
+    support_error_to_browse_error,
+    unsave_asset,
+    upsert_my_asset_review,
+)
+from app.marketplace.service import MarketplaceError, install_asset, preview_install
+from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
+
+
+def _marketplace_http_error(exc: MarketplaceError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_FOUND":
+        status_code = status.HTTP_404_NOT_FOUND
+    elif exc.code == "CONNECTORS_NOT_READY":
+        status_code = status.HTTP_409_CONFLICT
+    elif exc.code == "NOT_PUBLISHED":
+        status_code = status.HTTP_409_CONFLICT
+    elif exc.code == "LIMIT_EXCEEDED":
+        status_code = status.HTTP_400_BAD_REQUEST
+    detail: dict[str, Any] | str = str(exc)
+    if exc.blockers or exc.details:
+        detail = {
+            "message": str(exc),
+            "code": exc.code,
+            "can_install": False,
+            "blockers": exc.blockers,
+            **exc.details,
+        }
+    return HTTPException(status_code=status_code, detail=detail)
+
+
+def _browse_http_error(exc: MarketplaceBrowseError) -> HTTPException:
+    return _marketplace_http_error(marketplace_browse_error_to_marketplace_error(exc))
+
+
+def _support_http_error(exc: MarketplaceSupportError) -> HTTPException:
+    return _browse_http_error(support_error_to_browse_error(exc))
+
+
+def _clone_http_error(exc: MarketplaceCloneError) -> HTTPException:
+    return _browse_http_error(MarketplaceBrowseError(str(exc), code=exc.code))
+
+
+def _version_http_error(exc: MarketplaceVersionError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_FOUND":
+        status_code = status.HTTP_404_NOT_FOUND
+    elif exc.code == "FORBIDDEN":
+        status_code = status.HTTP_403_FORBIDDEN
+    elif exc.code == "ALREADY_CURRENT":
+        status_code = status.HTTP_409_CONFLICT
+    return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
+
+
+def _crud_http_error(exc: MarketplaceCrudError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_FOUND":
+        status_code = status.HTTP_404_NOT_FOUND
+    elif exc.code == "FORBIDDEN":
+        status_code = status.HTTP_403_FORBIDDEN
+    elif exc.code == "CONFLICT":
+        status_code = status.HTTP_409_CONFLICT
+    return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
+
+
+def _publish_http_error(exc: MarketplacePublishError) -> HTTPException:
+    return _crud_http_error(MarketplaceCrudError(str(exc), code=exc.code))
+
+
+class InstallAssetRequest(BaseModel):
+    install_variables: dict[str, str] = Field(default_factory=dict, alias="installVariables")
+
+    model_config = {"populate_by_name": True}
+
+
+class RollbackAssetRequest(BaseModel):
+    version: int = Field(ge=1)
+
+
+class AssetReviewRequest(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    title: str | None = None
+    body: str | None = None
+
+
+class CreateMarketplaceAssetRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=200)
+    asset_type: str = Field(alias="assetType")
+    config: dict[str, Any]
+    description: str | None = None
+    category: str | None = None
+    department: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    required_connectors: list[dict[str, Any]] = Field(default_factory=list, alias="requiredConnectors")
+    required_permissions: list[Any] = Field(default_factory=list, alias="requiredPermissions")
+    install_variables: list[dict[str, Any]] = Field(default_factory=list, alias="installVariables")
+    business_outcome: str | None = Field(default=None, alias="businessOutcome")
+    use_case: str | None = Field(default=None, alias="useCase")
+    estimated_hours_saved: float | None = Field(default=None, alias="estimatedHoursSaved")
+
+    model_config = {"populate_by_name": True}
+
+
+class UpdateMarketplaceAssetRequest(BaseModel):
+    slug: str | None = None
+    title: str | None = None
+    description: str | None = None
+    category: str | None = None
+    department: str | None = None
+    tags: list[str] | None = None
+    config: dict[str, Any] | None = None
+    required_connectors: list[dict[str, Any]] | None = Field(default=None, alias="requiredConnectors")
+    required_permissions: list[Any] | None = Field(default=None, alias="requiredPermissions")
+    install_variables: list[dict[str, Any]] | None = Field(default=None, alias="installVariables")
+    business_outcome: str | None = Field(default=None, alias="businessOutcome")
+    use_case: str | None = Field(default=None, alias="useCase")
+    estimated_hours_saved: float | None = Field(default=None, alias="estimatedHoursSaved")
+
+    model_config = {"populate_by_name": True}
+
+
+class RejectAssetReviewRequest(BaseModel):
+    reason: str = Field(min_length=1)
 
 
 class SecurityChecklistRequest(BaseModel):
@@ -655,3 +806,480 @@ async def install_role_pack(
         if exc.code == "CONNECTORS_NOT_READY":
             status_code = status.HTTP_409_CONFLICT
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
+@router.get("/installs")
+async def list_marketplace_installs(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    status_filter: Annotated[str | None, Query(alias="status")] = "active",
+    asset_id: Annotated[str | None, Query(alias="assetId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    """Org install ledger with deep links to installed agents, workflows, and sources."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return list_org_installs(
+            client,
+            org_id,
+            status=status_filter,
+            asset_id=asset_id,
+            limit=limit,
+            offset=offset,
+        )
+    except MarketplaceSupportError as exc:
+        raise _support_http_error(exc) from exc
+
+
+@router.get("/saves")
+async def list_marketplace_saves(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return list_my_saves(
+            client,
+            org_id,
+            current_user["user_id"],
+            limit=limit,
+            offset=offset,
+        )
+    except MarketplaceSupportError as exc:
+        raise _support_http_error(exc) from exc
+
+
+@router.get("/categories")
+async def get_marketplace_categories(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return list_marketplace_categories(client, org_id)
+
+
+@router.get("/analytics/summary")
+async def get_marketplace_analytics_summary(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return marketplace_analytics_summary(client, org_id)
+
+
+@router.post("/assets", status_code=status.HTTP_201_CREATED)
+async def create_marketplace_asset_route(
+    body: CreateMarketplaceAssetRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return create_org_asset(
+            client,
+            org_id,
+            actor_id=user["user_id"],
+            slug=body.slug,
+            title=body.title,
+            asset_type=body.asset_type,
+            config=body.config,
+            description=body.description,
+            category=body.category,
+            department=body.department,
+            tags=body.tags,
+            required_connectors=body.required_connectors,
+            required_permissions=body.required_permissions,
+            install_variables=body.install_variables,
+            business_outcome=body.business_outcome,
+            use_case=body.use_case,
+            estimated_hours_saved=body.estimated_hours_saved,
+        )
+    except MarketplaceCrudError as exc:
+        raise _crud_http_error(exc) from exc
+
+
+@router.patch("/assets/{asset_ref}")
+async def update_marketplace_asset_route(
+    asset_ref: str,
+    body: UpdateMarketplaceAssetRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    patch = body.model_dump(exclude_unset=True, by_alias=False)
+    try:
+        return update_org_asset(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+            patch=patch,
+        )
+    except MarketplaceCrudError as exc:
+        raise _crud_http_error(exc) from exc
+
+
+@router.delete("/assets/{asset_ref}")
+async def archive_marketplace_asset_route(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return archive_org_asset(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+        )
+    except MarketplaceCrudError as exc:
+        raise _crud_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/submit-for-review")
+async def submit_marketplace_asset_for_review(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return submit_asset_for_review(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+        )
+    except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/approve")
+async def approve_marketplace_asset_for_internal_publish(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return approve_asset_for_internal_publish(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+        )
+    except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/reject")
+async def reject_marketplace_asset_review(
+    asset_ref: str,
+    body: RejectAssetReviewRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return reject_asset_review(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=user["user_id"],
+            reason=body.reason,
+        )
+    except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.get("/assets")
+async def list_marketplace_assets_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    category: Annotated[str | None, Query()] = None,
+    department: Annotated[str | None, Query()] = None,
+    asset_type: Annotated[str | None, Query(alias="assetType")] = None,
+    pricing_type: Annotated[str | None, Query(alias="pricingType")] = None,
+    search: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    """Unified marketplace browse — published catalog with org install + connector readiness."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return list_marketplace_assets(
+            client,
+            org_id,
+            environment_name=environment_name,
+            category=category,
+            department=department,
+            asset_type=asset_type,
+            pricing_type=pricing_type,
+            search=search,
+            limit=limit,
+            offset=offset,
+        )
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}")
+async def get_marketplace_asset_route(
+    asset_ref: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+) -> dict:
+    """Asset detail by UUID or slug, including connector pre-check for the requesting org."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return get_marketplace_asset(
+            client,
+            org_id,
+            asset_ref,
+            environment_name=environment_name,
+        )
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}/reviews")
+async def list_marketplace_asset_reviews(
+    asset_ref: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return list_asset_reviews(
+            client,
+            org_id,
+            current_user["user_id"],
+            asset_ref,
+            limit=limit,
+            offset=offset,
+        )
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.put("/assets/{asset_ref}/reviews/mine")
+async def upsert_marketplace_asset_review(
+    asset_ref: str,
+    body: AssetReviewRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return upsert_my_asset_review(
+            client,
+            org_id,
+            current_user["user_id"],
+            asset_ref,
+            rating=body.rating,
+            title=body.title,
+            body=body.body,
+        )
+    except MarketplaceSupportError as exc:
+        raise _support_http_error(exc) from exc
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.delete("/assets/{asset_ref}/reviews/mine")
+async def delete_marketplace_asset_review(
+    asset_ref: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return delete_my_asset_review(
+            client,
+            org_id,
+            current_user["user_id"],
+            asset_ref,
+        )
+    except MarketplaceSupportError as exc:
+        raise _support_http_error(exc) from exc
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/save", status_code=status.HTTP_201_CREATED)
+async def save_marketplace_asset(
+    asset_ref: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return save_asset(client, org_id, current_user["user_id"], asset_ref)
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.delete("/assets/{asset_ref}/save")
+async def unsave_marketplace_asset(
+    asset_ref: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return unsave_asset(client, org_id, current_user["user_id"], asset_ref)
+    except MarketplaceSupportError as exc:
+        raise _support_http_error(exc) from exc
+    except MarketplaceBrowseError as exc:
+        raise _browse_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/clone", status_code=status.HTTP_201_CREATED)
+async def clone_marketplace_asset(
+    asset_ref: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Create a private draft copy of a published asset within the same org (MKT-7.2)."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return clone_asset(
+            client,
+            org_id,
+            asset_ref,
+            actor_id=current_user["user_id"],
+        )
+    except MarketplaceCloneError as exc:
+        raise _clone_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}/versions")
+async def list_marketplace_asset_versions(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """List version history for an org-owned asset (MKT-9.4)."""
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return list_asset_versions(client, org_id, asset_ref)
+    except MarketplaceVersionError as exc:
+        raise _version_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_ref}/rollback")
+async def rollback_marketplace_asset_version(
+    asset_ref: str,
+    body: RollbackAssetRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Restore an org-owned asset from ``marketplace_asset_versions`` (MKT-9.4)."""
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return rollback_asset_version(
+            client,
+            org_id,
+            asset_ref,
+            version_number=body.version,
+            actor_id=user["user_id"],
+        )
+    except MarketplaceVersionError as exc:
+        raise _version_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_id}/install-check")
+async def marketplace_asset_install_check(
+    asset_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return preview_install(
+            client,
+            org_id,
+            asset_id,
+            environment_name=environment_name,
+        )
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc
+
+
+@router.post("/assets/{asset_id}/install")
+async def marketplace_asset_install(
+    asset_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    body: InstallAssetRequest | None = None,
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return install_asset(
+            client,
+            org_id,
+            asset_id,
+            actor_id=user["user_id"],
+            environment_name=environment_name,
+            install_variables=(body.install_variables if body else None),
+        )
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc

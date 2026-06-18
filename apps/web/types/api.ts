@@ -1546,83 +1546,21 @@ export interface EnterpriseTransparencyExport {
   }
 }
 
-// Department role packs (STA-121)
-export interface DepartmentRolePackConnectorChecklistItem {
-  connectorType: string
-  label: string
-  required: boolean
-  connected: boolean
-  connectPath: string
-  ready: boolean
-}
-
-export interface DepartmentRolePack {
-  packId: string
-  name: string
-  department: string
-  description: string
-  tags: string[]
-  installed: boolean
-  installedAt?: string | null
-  agentIds?: string[]
-  workflowIds?: string[]
-  ragSourceIds?: string[]
-  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
-  connectorsReady: boolean
-  requiredConnectorsConnected: number
-  requiredConnectorsTotal: number
-}
-
-export interface DepartmentRolePackInstallResult {
-  packId: string
-  department: string
-  installed: boolean
-  agentIds: string[]
-  workflowIds: string[]
-  ragSourceIds: string[]
-  connectorChecklist: DepartmentRolePackConnectorChecklistItem[]
-}
-
-// Marketplace asset catalog (browse.py serialization)
-export type MarketplaceAssetType =
-  | "ai_agent"
-  | "workflow"
-  | "knowledge_pack"
-  | "department_pack"
-  | "connector_config"
-
+// Unified marketplace assets (MKT-5 / MKT-6)
 export interface MarketplaceConnectorChecklistItem {
   connectorType: string
   label: string
   required: boolean
   connected: boolean
   connectPath: string
-  /** Snake-cased URL also emitted by the backend for legacy callers. */
   action_url?: string
-  ready?: boolean
+  ready: boolean
 }
 
 export interface MarketplaceInstallBlocker {
   connector: string
   reason: string
-  action_url?: string
-  /** Optional explicit action label/url used by some blocker shapes. */
-  action?: string
-}
-
-export interface MarketplaceAssetPackItem {
-  sortOrder?: number
-  required?: boolean
-  child: {
-    id: string
-    slug: string
-    title: string
-    assetType: MarketplaceAssetType
-    category?: string | null
-    department?: string | null
-    pricingType?: string | null
-    priceCents?: number | null
-  }
+  action_url: string
 }
 
 export interface MarketplaceAssetSummary {
@@ -1630,89 +1568,185 @@ export interface MarketplaceAssetSummary {
   slug: string
   title: string
   description?: string | null
-  assetType: MarketplaceAssetType
+  assetType: string
   category?: string | null
   department?: string | null
   tags: string[]
-  visibility?: string | null
-  status?: string | null
-  pricingType?: string | null
-  priceCents?: number | null
-  currency?: string | null
-  installCount?: number | null
-  cloneCount?: number | null
-  averageRating?: number | null
-  reviewCount?: number | null
-  currentVersion?: string | null
-  publishedAt?: string | null
-  publisherId?: string | null
-  orgId?: string | null
-  installed?: boolean
+  pricingType: string
+  priceCents?: number
+  canInstall: boolean
+  installed: boolean
   installedAt?: string | null
-  installId?: string | null
-  // Connector readiness summary (spread from _checklist_summary)
-  requiredConnectorsTotal?: number
-  requiredConnectorsConnected?: number
-  connectorsReady?: boolean
-  canInstall?: boolean
-  connectorChecklist?: MarketplaceConnectorChecklistItem[]
-  requiredConnectors?: unknown[]
+  connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorsReady: boolean
+  requiredConnectorsConnected: number
+  requiredConnectorsTotal: number
+  installCount?: number
+  averageRating?: number | null
+  reviewCount?: number
 }
 
-export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
-  config?: Record<string, unknown>
-  installVariables?: unknown[]
-  requiredPermissions?: unknown[]
-  clonedFromAssetId?: string | null
-  blockers?: MarketplaceInstallBlocker[]
-  packItems?: MarketplaceAssetPackItem[]
-}
-
-export interface MarketplaceAssetListResponse {
+export interface MarketplaceAssetsListResponse {
   assets: MarketplaceAssetSummary[]
   total: number
   limit: number
   offset: number
 }
 
-export interface MarketplaceAssetDetailResponse {
-  asset: MarketplaceAssetDetail
-}
-
-export interface MarketplaceAssetInstallCheck {
-  assetId: string
-  slug?: string | null
-  assetType?: MarketplaceAssetType
-  canInstall: boolean
-  blockers: MarketplaceInstallBlocker[]
-  connectorChecklist: MarketplaceConnectorChecklistItem[]
-}
-
 export interface MarketplaceAssetInstallResult {
   installed: boolean
   assetId: string
-  assetType: MarketplaceAssetType
-  slug?: string | null
-  install?: Record<string, unknown>
+  slug?: string
+  assetType?: string
   entities?: Record<string, unknown>
   connectorChecklist?: MarketplaceConnectorChecklistItem[]
 }
 
-export interface MarketplaceAssetCloneResult {
-  asset: MarketplaceAssetSummary
-  [key: string]: unknown
+export interface MarketplaceAssetInstallCheck {
+  canInstall: boolean
+  blockers: MarketplaceInstallBlocker[]
+  connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorsReady?: boolean
+  requiredConnectorsConnected?: number
+  requiredConnectorsTotal?: number
 }
 
-export interface MarketplaceCategoryCount {
+export interface MarketplacePackItemChild {
+  id: string
+  slug: string
+  title: string
+  assetType: string
+  category?: string | null
+  department?: string | null
+}
+
+export interface MarketplacePackItem {
+  sortOrder: number
+  required: boolean
+  child: MarketplacePackItemChild
+}
+
+export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
+  config?: Record<string, unknown>
+  blockers?: MarketplaceInstallBlocker[]
+  packItems?: MarketplacePackItem[]
+  installVariables?: unknown[]
+}
+
+export interface MarketplaceFacetCount {
   key: string
   count: number
 }
 
 export interface MarketplaceCategoriesResponse {
-  categories: MarketplaceCategoryCount[]
-  departments: MarketplaceCategoryCount[]
-  assetTypes: MarketplaceCategoryCount[]
+  categories: MarketplaceFacetCount[]
+  departments: MarketplaceFacetCount[]
+  assetTypes: MarketplaceFacetCount[]
   totalAssets: number
+}
+
+export interface MarketplaceAnalyticsSummary {
+  catalog: {
+    totalAssets: number
+    byCategory: MarketplaceFacetCount[]
+    byDepartment: MarketplaceFacetCount[]
+    byAssetType: MarketplaceFacetCount[]
+    totalInstallCount: number
+    totalCloneCount: number
+  }
+  org: {
+    activeInstalls: number
+    savedAssets: number
+    reviewsSubmitted: number
+  }
+}
+
+export interface MarketplaceReview {
+  id: string
+  assetId: string
+  rating: number
+  title?: string | null
+  body?: string | null
+  createdAt?: string
+  updatedAt?: string
+  mine?: boolean
+}
+
+export interface MarketplaceReviewsResponse {
+  assetId: string
+  reviews: MarketplaceReview[]
+  myReview: MarketplaceReview | null
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface MarketplaceSaveEntry {
+  id: string
+  assetId: string
+  createdAt?: string
+  asset?: MarketplaceAssetSummary
+}
+
+export interface MarketplaceSavesListResponse {
+  saves: MarketplaceSaveEntry[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface MarketplaceAssetCloneResult {
+  cloned: boolean
+  sourceAssetId: string
+  asset: {
+    id: string
+    slug: string
+    title: string
+    assetType: string
+    status: string
+    visibility: string
+    clonedFromAssetId?: string | null
+  }
+}
+
+export interface MarketplaceInstallDeepLink {
+  label: string
+  entityType: string
+  entityId: string
+  path: string
+}
+
+export interface MarketplaceInstall {
+  id: string
+  assetId: string
+  assetVersion?: string | null
+  status: string
+  installedEntityType?: string | null
+  installedEntityId?: string | null
+  installedAt?: string | null
+  updatedAt?: string | null
+  metadata?: {
+    agentIds?: string[]
+    workflowIds?: string[]
+    ragSourceIds?: string[]
+    operatorId?: string
+  }
+  deepLinks: MarketplaceInstallDeepLink[]
+  asset?: {
+    id: string
+    slug: string
+    title: string
+    assetType: string
+    category?: string | null
+    department?: string | null
+  } | null
+}
+
+export interface MarketplaceInstallsListResponse {
+  installs: MarketplaceInstall[]
+  total: number
+  limit: number
+  offset: number
 }
 
 // Federation & B2B (STA-115/116/117/118)

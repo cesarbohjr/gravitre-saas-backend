@@ -45,6 +45,9 @@ class CatalogAsset:
     required_connectors: list[dict[str, Any]] = field(default_factory=list)
     install_variables: list[dict[str, Any]] = field(default_factory=list)
     pack_children: list[str] = field(default_factory=list)
+    business_outcome: str | None = None
+    use_case: str | None = None
+    estimated_hours_saved: float | None = None
 
 
 def _agent_seed(slug: str) -> str:
@@ -513,7 +516,15 @@ def _department_packs() -> list[CatalogAsset]:
 
 def list_catalog_assets() -> list[CatalogAsset]:
     """Return the full Gravitre starter library in dependency order (children before packs)."""
-    assets = _ai_agents() + _workflows() + _knowledge_packs() + _department_packs()
+    from app.marketplace.seed_catalog_expansion import expansion_catalog_assets
+
+    assets = (
+        _ai_agents()
+        + _workflows()
+        + _knowledge_packs()
+        + expansion_catalog_assets()
+        + _department_packs()
+    )
     slugs = [asset.slug for asset in assets]
     if len(slugs) != len(set(slugs)):
         duplicates = sorted({slug for slug in slugs if slugs.count(slug) > 1})

@@ -62,6 +62,7 @@
     "platform:github-secrets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/configure-github-secrets.ps1",
     "auth:sync-jwt": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-supabase-jwt-secret.ps1",
     "linear:ai-intelligence": "node scripts/create-ai-intelligence-linear-issues.mjs",
+    "linear:marketplace-audit": "node scripts/create-marketplace-audit-linear-issues.mjs",
     "deploy:web": "vercel deploy --prod --yes",
     "deploy:web:preview": "vercel deploy --yes",
     "vercel:link": "vercel link --yes --project gravitre-saas-backend"

@@ -58,6 +58,9 @@ def _asset_row(publisher_id: str, asset: CatalogAsset, *, validated: dict[str, A
         "current_version": 1,
         "published_at": now,
         "updated_at": now,
+        "business_outcome": asset.business_outcome,
+        "use_case": asset.use_case,
+        "estimated_hours_saved": asset.estimated_hours_saved,
     }
 
 

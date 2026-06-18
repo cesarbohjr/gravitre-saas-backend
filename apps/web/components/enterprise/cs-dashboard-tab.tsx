@@ -343,7 +343,9 @@ function SuggestionCard({
 
   const installHref =
     suggestion.suggestionType === "install_department_pack"
-      ? `/marketplace/role-packs${suggestion.packId ? `?pack=${encodeURIComponent(suggestion.packId)}` : ""}`
+      ? suggestion.packId
+        ? `/marketplace/assets/${encodeURIComponent(suggestion.packId)}`
+        : "/marketplace/assets?type=department_pack"
       : null
 
   return (

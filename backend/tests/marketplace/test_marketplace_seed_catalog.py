@@ -12,11 +12,11 @@ def test_catalog_asset_counts():
     by_type: dict[str, int] = {}
     for asset in assets:
         by_type[asset.asset_type] = by_type.get(asset.asset_type, 0) + 1
-    assert by_type["ai_agent"] == 8
-    assert by_type["workflow"] == 8
-    assert by_type["knowledge_pack"] == 6
+    assert by_type["ai_agent"] == 14
+    assert by_type["workflow"] == 17
+    assert by_type["knowledge_pack"] == 14
     assert by_type["department_pack"] == 5
-    assert len(assets) == 27
+    assert len(assets) == 50
 
 
 @pytest.mark.parametrize("asset_slug", sorted(catalog_assets_by_slug()))

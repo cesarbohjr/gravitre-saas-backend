@@ -1,0 +1,176 @@
+{
+  "createdAt": "2026-06-18T01:26:21.058Z",
+  "project": "Gravitre Marketplace",
+  "milestones": {
+    "m1": "STA-223",
+    "m2": "STA-224",
+    "m3": "STA-225",
+    "m4": "STA-226"
+  },
+  "created": [
+    {
+      "ref": "MKT-AUDIT-ARCH-1",
+      "linear": "STA-227",
+      "title": "Document dual-marketplace convergence decision",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-4.6",
+      "linear": "STA-228",
+      "title": "Add business_outcome, use_case, estimated_hours_saved columns",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-4.5",
+      "linear": "STA-229",
+      "title": "Expand starter catalog 27 → 50 assets",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-5.4",
+      "linear": "STA-230",
+      "title": "Fix internal visibility in browse query",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-5.5",
+      "linear": "STA-231",
+      "title": "Tests for department_pack and knowledge_pack install paths",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-5.6",
+      "linear": "STA-232",
+      "title": "Surface LIMIT_EXCEEDED structured error on install",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-6.2",
+      "linear": "STA-233",
+      "title": "Clickable category and department facet filters",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-6.3",
+      "linear": "STA-234",
+      "title": "Dedicated /marketplace/assets/[slug] route",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-6.4",
+      "linear": "STA-235",
+      "title": "Marketplace analytics dashboard UI",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-6.5",
+      "linear": "STA-236",
+      "title": "Reviews and saves UI",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-6.6",
+      "linear": "STA-237",
+      "title": "Remove legacy role-pack client and fix CS dashboard links",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-DOC-1",
+      "linear": "STA-238",
+      "title": "Update V0_BACKEND_SYNC.md branch reference",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-QA-1",
+      "linear": "STA-239",
+      "title": "E2E marketplace smoke in CI",
+      "milestone": "m1"
+    },
+    {
+      "ref": "MKT-AUDIT-9.1",
+      "linear": "STA-240",
+      "title": "Asset CRUD API (POST/PATCH/DELETE draft assets)",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-9.2",
+      "linear": "STA-241",
+      "title": "Internal publish workflow (draft → review → published)",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-9.3",
+      "linear": "STA-242",
+      "title": "Admin approval queue UI for org-published assets",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-9.4",
+      "linear": "STA-243",
+      "title": "Version snapshot on org asset publish",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-8.1",
+      "linear": "STA-244",
+      "title": "Uninstall / disable installed asset flow",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-10.2",
+      "linear": "STA-245",
+      "title": "Per-asset adoption events table",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-6.7",
+      "linear": "STA-246",
+      "title": "Org marketplace tab (shared in your organization)",
+      "milestone": "m2"
+    },
+    {
+      "ref": "MKT-AUDIT-11.1",
+      "linear": "STA-247",
+      "title": "Creator publisher onboarding (org → publisher profile)",
+      "milestone": "m3"
+    },
+    {
+      "ref": "MKT-AUDIT-11.2",
+      "linear": "STA-248",
+      "title": "Gravitre review queue for unified public assets",
+      "milestone": "m3"
+    },
+    {
+      "ref": "MKT-AUDIT-11.3",
+      "linear": "STA-249",
+      "title": "Featured and verified asset flags",
+      "milestone": "m3"
+    },
+    {
+      "ref": "MKT-AUDIT-12.1",
+      "linear": "STA-250",
+      "title": "Paid install entitlement check + Stripe checkout stub",
+      "milestone": "m4"
+    },
+    {
+      "ref": "MKT-AUDIT-12.2",
+      "linear": "STA-251",
+      "title": "Creator revenue share → Stripe transfers",
+      "milestone": "m4"
+    },
+    {
+      "ref": "MKT-AUDIT-13.1",
+      "linear": "STA-252",
+      "title": "Converge partner registry with connector_config assets",
+      "milestone": "m4"
+    },
+    {
+      "ref": "MKT-AUDIT-13.2",
+      "linear": "STA-253",
+      "title": "Strategic hours saved ROI dashboard",
+      "milestone": "m4"
+    }
+  ],
+  "skipped": [],
+  "projectUrl": "https://linear.app/staqbot/project/gravitre-marketplace"
+}
