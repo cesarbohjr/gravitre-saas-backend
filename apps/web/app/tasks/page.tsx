@@ -17,7 +17,6 @@ import {
 import { EmptyState, ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
 import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import type { Run, RunListResponse, RunStatus } from "@/types/api"
@@ -220,7 +219,6 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const { updatedAt, markFresh } = useFreshnessTimestamp()
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<RunListResponse>(
     user ? "/api/runs?limit=50" : null,
@@ -228,7 +226,6 @@ export default function TasksPage() {
     {
       revalidateOnFocus: false,
       refreshInterval: 15000,
-      onSuccess: markFresh,
       onError: (err) => console.error("[v0] Runs fetch error:", err),
     }
   )
@@ -340,7 +337,7 @@ export default function TasksPage() {
                 {filteredTasks.length} of {tasks.length} run{tasks.length === 1 ? "" : "s"}
               </span>
               <DataFreshness
-                updatedAt={updatedAt}
+                updatedAt={data ? Date.now() : null}
                 isRefreshing={isValidating}
                 onRefresh={() => mutate()}
               />

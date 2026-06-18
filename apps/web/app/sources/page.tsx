@@ -43,7 +43,6 @@ import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
 import { EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
 import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { useFreshnessTimestamp } from "@/hooks/use-freshness-timestamp"
 import { toast } from "sonner"
 
 interface Source {
@@ -551,11 +550,9 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
-  const { updatedAt, markFresh } = useFreshnessTimestamp()
   const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
-    onSuccess: markFresh,
     onError: (err) => console.error("[v0] Sources fetch error:", err),
   })
   const sources = normalizeSourcesResponse(data)
@@ -766,7 +763,7 @@ export default function SourcesPage() {
           
           <div className="relative z-10 mb-4 flex justify-end">
             <DataFreshness
-              updatedAt={updatedAt}
+              updatedAt={data ? Date.now() : null}
               isRefreshing={isValidating}
               onRefresh={() => mutate()}
             />
