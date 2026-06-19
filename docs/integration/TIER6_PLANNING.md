@@ -2,7 +2,7 @@
 
 Tier 5 (STA-100–124) and marketplace M1–M5 are **code-complete**. Production verification is **green** except Clio browser OAuth (C.6).
 
-**Current focus:** **Lane B P1 UI** — workflow pre-run simulate/scan, federation B2B tabs; Lane C skipped audit documented.
+**Current focus:** **Lane C + D** — STA-239 CI smoke, STA-229 catalog guard, M1 polish, nightly prod hardening.
 
 ---
 
@@ -23,8 +23,8 @@ Tier 5 (STA-100–124) and marketplace M1–M5 are **code-complete**. Production
 |------|-------|----|----|
 | **A — Tier 6 product** | CS workspace, recommendation apply, mobile approvals, partner analytics | Escalate, alert inbox, apply toasts, SLA countdown | PWA push, partner revenue dashboards |
 | **B — P1 UI gaps** | APIs exist; thin/missing surfaces | STA-233 facet filters on unified catalog | STA-234 slug route, STA-236 reviews |
-| **C — Marketplace M1** | Audit leftovers | Install blocker UX polish (`V0_MARKETPLACE_UNIFIED_PROMPT.md`) | STA-239 E2E prod smoke in CI |
-| **D — Enterprise polish** | White-label + workforce | Branding live preview panel | DNS stepper UX, workforce KPI sparklines |
+| **C — Marketplace M1** | Audit leftovers | Install blocker + plan limit UX | **STA-239 CI smoke** ✅ |
+| **D — Prod hardening** | Nightly verification | Post-tier5 + marketplace + AI smokes | `production-hardening-smoke.yml` |
 
 ---
 
@@ -104,8 +104,10 @@ Skipped items: **`docs/integration/MARKETPLACE_AUDIT_SKIPPED.md`** (still open i
 | STA-233 | Facet filters | ✅ Shipped |
 | STA-234 | Asset slug route | ✅ Route exists |
 | STA-236 | Reviews/saves | Skipped → v3 |
-| STA-239 | E2E prod smoke | Skipped → v3 |
-| STA-229 | Catalog ≥50 | ✅ prod `total=51` |
+| STA-239 | E2E prod smoke | ✅ GitHub Actions nightly |
+| STA-229 | Catalog ≥50 | ✅ seed + prod smoke |
+| STA-232 | Plan limit install UX | ✅ structured toast + upgrade link |
+| STA-235 | Analytics polish | ✅ asset type on publisher table |
 
 IDs: `docs/integration/marketplace-audit-linear-ids.json`.
 

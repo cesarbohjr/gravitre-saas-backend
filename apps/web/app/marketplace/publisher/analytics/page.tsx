@@ -52,10 +52,11 @@ function TopAssetsTable({
     <div className="rounded-xl border border-border bg-card p-5">
       <h2 className="mb-3 text-sm font-semibold text-foreground">{title}</h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[520px]">
+        <table className="w-full text-sm min-w-[620px]">
           <thead className="text-xs text-muted-foreground">
             <tr>
               <th className="pb-2 text-left font-medium">Asset</th>
+              <th className="pb-2 text-left font-medium">Type</th>
               <th className="pb-2 text-left font-medium">Sales</th>
               <th className="pb-2 text-left font-medium">Gross</th>
               <th className="pb-2 text-left font-medium">Your share</th>
@@ -76,6 +77,7 @@ function TopAssetsTable({
                     <span className="text-muted-foreground">{row.title ?? row.assetId}</span>
                   )}
                 </td>
+                <td className="py-2 capitalize text-muted-foreground">{row.assetType?.replace(/_/g, " ") ?? "—"}</td>
                 <td className="py-2 tabular-nums">{row.saleCount}</td>
                 <td className="py-2 tabular-nums">{formatUsd(row.grossCents)}</td>
                 <td className="py-2 tabular-nums">{formatUsd(row.partnerEarningsCents)}</td>
@@ -153,6 +155,9 @@ export default function MarketplacePublisherAnalyticsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/marketplace/analytics">Org adoption analytics</Link>
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href="/marketplace/billing">Billing & payouts</Link>
             </Button>

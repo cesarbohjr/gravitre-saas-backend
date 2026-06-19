@@ -4,7 +4,7 @@ Items below remain **open in Linear** for tracking but were **skipped** in the M
 
 Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
-**Current focus for Lane C:** STA-233 ✅ (facets), STA-234 partial (slug route exists). Remaining skipped items are v3 unless promoted.
+**Current focus for Lane C:** STA-239 ✅ CI workflow; STA-232 ✅ plan limit UX; STA-235 ✅ publisher asset type column.
 
 ---
 
@@ -17,14 +17,14 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 | MKT-AUDIT-4.5 | STA-229 | Expand catalog 27 → 50 | ✅ **Done** — prod `total=51`; close in Linear |
 | MKT-AUDIT-5.4 | STA-230 | Fix internal visibility in browse | Backend shipped; verify in staging |
 | MKT-AUDIT-5.5 | STA-231 | department_pack / knowledge_pack install tests | Test debt — backlog |
-| MKT-AUDIT-5.6 | STA-232 | LIMIT_EXCEEDED on install | Partial — install sheet handles blockers |
+| MKT-AUDIT-5.6 | STA-232 | LIMIT_EXCEEDED on install | ✅ Install sheet + `plan_limit_exceeded` toast |
 | MKT-AUDIT-6.2 | STA-233 | Facet filters | ✅ **Done** — unified catalog sidebar + URL sync |
 | MKT-AUDIT-6.3 | STA-234 | `/marketplace/assets/[slug]` | ✅ **Route exists** — polish OG/share v3 |
-| MKT-AUDIT-6.4 | STA-235 | Analytics dashboard UI | Partial — publisher analytics page |
+| MKT-AUDIT-6.4 | STA-235 | Analytics dashboard UI | ✅ Publisher revenue + org adoption link |
 | MKT-AUDIT-6.5 | STA-236 | Reviews and saves UI | v3 — API stubs exist |
 | MKT-AUDIT-6.6 | STA-237 | Remove legacy role-pack client | Redirect to unified catalog ✅ |
-| MKT-AUDIT-DOC-1 | STA-238 | Update V0_BACKEND_SYNC branch ref | Doc-only |
-| MKT-AUDIT-QA-1 | STA-239 | E2E marketplace smoke in CI | v3 — needs GitHub secrets |
+| MKT-AUDIT-DOC-1 | STA-238 | Update V0_BACKEND_SYNC branch ref | ✅ `docs/integration/V0_BACKEND_SYNC.md` |
+| MKT-AUDIT-QA-1 | STA-239 | E2E marketplace smoke in CI | ✅ `.github/workflows/marketplace-production-smoke.yml` |
 
 ---
 
@@ -60,9 +60,8 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 When picking up Lane C again, prefer in order:
 
-1. **STA-239** — E2E marketplace smoke (CI secrets)
-2. **STA-236** — Reviews/saves UI
-3. **STA-235** — Analytics dashboard polish
-4. **STA-242** — Admin approval queue (M2)
+1. **STA-236** — Reviews/saves UI polish
+2. **STA-234** — Slug route OG/share metadata
+3. **STA-242** — Admin approval queue (M2)
 
 Linear project: [Gravitre Marketplace](https://linear.app/staqbot/project/gravitre-marketplace)

@@ -29,6 +29,7 @@ def _aggregate_top_assets(rows: list[dict[str, Any]], *, limit: int) -> list[dic
             "assetId": "",
             "slug": None,
             "title": None,
+            "assetType": None,
             "grossCents": 0,
             "partnerEarningsCents": 0,
             "saleCount": 0,
@@ -43,6 +44,7 @@ def _aggregate_top_assets(rows: list[dict[str, Any]], *, limit: int) -> list[dic
         bucket["assetId"] = asset_id
         bucket["slug"] = asset.get("slug")
         bucket["title"] = asset.get("title")
+        bucket["assetType"] = asset.get("asset_type")
         bucket["grossCents"] += int(row.get("gross_amount_cents") or 0)
         bucket["partnerEarningsCents"] += int(row.get("partner_earnings_cents") or 0)
         bucket["saleCount"] += 1
@@ -86,7 +88,7 @@ def top_assets_by_earnings(
     rows = (
         client.table("marketplace_payouts")
         .select(
-            "asset_id, gross_amount_cents, partner_earnings_cents, marketplace_assets(slug, title)"
+            "asset_id, gross_amount_cents, partner_earnings_cents, marketplace_assets(slug, title, asset_type)"
         )
         .eq("partner_org_id", partner_org_id)
         .execute()
@@ -98,7 +100,7 @@ def platform_top_earning_assets(client: Any, *, limit: int = 10) -> list[dict[st
     rows = (
         client.table("marketplace_payouts")
         .select(
-            "asset_id, gross_amount_cents, partner_earnings_cents, marketplace_assets(slug, title)"
+            "asset_id, gross_amount_cents, partner_earnings_cents, marketplace_assets(slug, title, asset_type)"
         )
         .execute()
     )

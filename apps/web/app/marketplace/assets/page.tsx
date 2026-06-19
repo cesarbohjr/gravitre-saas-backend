@@ -39,6 +39,7 @@ import {
   Workflow,
 } from "lucide-react"
 import { toast } from "sonner"
+import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
@@ -357,18 +358,8 @@ function InstallStepperSheet({
       onComplete()
       toast.success(`${asset.title} installed`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Install failed"
-      toast.error(/connect required apps/i.test(message) ? "Connect required apps first" : "Install failed", {
-        description: message,
-        action: check?.blockers?.[0]?.action_url
-          ? {
-              label: "Connect apps",
-              onClick: () => {
-                const url = check?.blockers?.[0]?.action_url
-                if (url) window.location.href = url
-              },
-            }
-          : undefined,
+      toastMarketplaceInstallFailure(err, {
+        blockerActionUrl: check?.blockers?.[0]?.action_url,
       })
       await refreshCheck()
       setStep("check")

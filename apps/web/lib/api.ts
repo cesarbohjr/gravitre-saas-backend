@@ -188,6 +188,18 @@ function extractErrorMessage(payload: unknown): string | null {
   return null
 }
 
+export class ApiRequestError extends Error {
+  status: number
+  payload: unknown
+
+  constructor(message: string, status: number, payload: unknown) {
+    super(message)
+    this.name = "ApiRequestError"
+    this.status = status
+    this.payload = payload
+  }
+}
+
 function unwrapAgent(payload: unknown): Agent {
   if (payload && typeof payload === "object" && "agent" in payload) {
     return (payload as { agent: Agent }).agent
@@ -203,7 +215,11 @@ async function postJson<T>(url: string, data: unknown): Promise<T> {
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+    throw new ApiRequestError(
+      extractErrorMessage(error) || `Request failed: ${response.status}`,
+      response.status,
+      error,
+    )
   }
   return response.json()
 }
@@ -216,7 +232,11 @@ async function patchJson<T>(url: string, data: unknown): Promise<T> {
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+    throw new ApiRequestError(
+      extractErrorMessage(error) || `Request failed: ${response.status}`,
+      response.status,
+      error,
+    )
   }
   return response.json()
 }

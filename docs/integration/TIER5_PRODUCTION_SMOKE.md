@@ -100,6 +100,40 @@ npm run smoke:tier5-manual   # writes docs/delivery/smoke-tier5-manual-latest.js
 
 ---
 
+## Marketplace production smoke (STA-229 / STA-239)
+
+Requires the same Supabase secrets as other prod smokes (`backend/.env.operator.local` locally; GitHub Actions secrets in CI).
+
+```bash
+npm run smoke:marketplace-production
+npm run smoke:marketplace-production:report   # writes docs/delivery/smoke-marketplace-production-latest.json
+```
+
+Asserts unified catalog `total ≥ 50` (STA-229), browse/detail/entitlement/install-check, analytics, billing, and publisher routes.
+
+**CI:** `.github/workflows/marketplace-production-smoke.yml` (nightly 04:30 UTC) and Lane D `.github/workflows/production-hardening-smoke.yml` (05:00 UTC). Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`.
+
+---
+
+## Lane D — Production hardening (nightly)
+
+Automated read-only verification against Railway production:
+
+| Workflow | Schedule | Scripts |
+|----------|----------|---------|
+| `marketplace-production-smoke.yml` | 04:30 UTC | `smoke-marketplace-production.py` |
+| `production-hardening-smoke.yml` | 05:00 UTC | seed catalog test + `smoke-post-tier5` + marketplace + `smoke-ai-production` |
+
+Manual:
+
+```bash
+npm run smoke:post-tier5
+npm run smoke:marketplace-production:report
+npm run smoke:ai-production:report
+```
+
+---
+
 ## Post–Tier 5 automated smoke
 
 ```bash

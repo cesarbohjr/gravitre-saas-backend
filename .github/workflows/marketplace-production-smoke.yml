@@ -1,0 +1,57 @@
+name: Marketplace Production Smoke
+
+# STA-239 — E2E marketplace smoke against Railway production API.
+on:
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+
+concurrency:
+  group: marketplace-production-smoke
+  cancel-in-progress: false
+
+jobs:
+  marketplace-smoke:
+    name: Marketplace API smoke (STA-229 / STA-239)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run marketplace production smoke
+        env:
+          BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SUPABASE_JWT_SECRET" ]; then
+            echo "Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_JWT_SECRET in repo Actions secrets." >&2
+            exit 1
+          fi
+          python scripts/smoke-marketplace-production.py \
+            --json docs/delivery/smoke-marketplace-production-latest.json
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-marketplace-production
+          path: docs/delivery/smoke-marketplace-production-latest.json
+          if-no-files-found: ignore

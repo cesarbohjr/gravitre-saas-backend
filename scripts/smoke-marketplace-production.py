@@ -1,12 +1,20 @@
-"""Production smoke: unified marketplace assets browse API."""
+"""Production smoke: unified marketplace assets browse API (STA-229 / STA-239).
+
+Usage:
+  npm run smoke:marketplace-production
+  python scripts/smoke-marketplace-production.py --json docs/delivery/smoke-marketplace-production-latest.json
+"""
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
 import time
 import urllib.error
 import urllib.request
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 import jwt
@@ -18,6 +26,28 @@ API_BASE = os.environ.get(
     "https://gravitre-saas-backend-production.up.railway.app",
 ).rstrip("/")
 SMOKE_PAID_SLUG = "smoke-paid-operator-pack"
+MIN_CATALOG_ASSETS = 50
+
+
+@dataclass
+class StepResult:
+    label: str
+    status: str  # pass | warn | fail
+    detail: str = ""
+
+
+@dataclass
+class SmokeReport:
+    target: str
+    org_id: str
+    started_at: str
+    finished_at: str = ""
+    catalog_total: int | None = None
+    steps: list[StepResult] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return all(step.status != "fail" for step in self.steps)
 
 
 def _load_env() -> dict[str, str]:
@@ -70,13 +100,12 @@ def _request(
         return json.loads(resp.read().decode("utf-8") or "{}")
 
 
-def main() -> int:
-    env = _load_env()
+def _admin_context(env: dict[str, str]) -> tuple[str, str, str]:
+    from supabase import create_client
+
     for key in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET"):
         if env.get(key) and not os.environ.get(key):
             os.environ[key] = env[key]
-
-    from supabase import create_client
 
     client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     members = (
@@ -92,55 +121,91 @@ def main() -> int:
     users = client.auth.admin.get_user_by_id(user_id)
     email = (users.user.email if users and users.user else None) or f"{user_id}@gravitre.local"
     token = _mint_token(env, user_id, email)
-    print(f"using org_id={org_id}")
+    return org_id, user_id, token
 
+
+def run_smoke(report: SmokeReport, token: str, org_id: str, client) -> None:
     assets = _request("/api/marketplace/assets?limit=5&environment=production", token, org_id)
     asset_list = assets.get("assets") or []
-    total = assets.get("total")
-    print(f"assets: {len(asset_list)} returned, total={total}")
-    if int(total or 0) < 20:
-        print("expected seeded catalog with 20+ assets", file=sys.stderr)
-        return 1
+    total = int(assets.get("total") or 0)
+    report.catalog_total = total
+    detail = f"{len(asset_list)} returned, total={total}"
+    if total < MIN_CATALOG_ASSETS:
+        report.steps.append(
+            StepResult(
+                "catalog_assets",
+                "fail",
+                f"{detail}; expected ≥{MIN_CATALOG_ASSETS} (STA-229)",
+            )
+        )
+    else:
+        report.steps.append(StepResult("catalog_assets", "pass", detail))
 
     categories = _request("/api/marketplace/categories?environment=production", token, org_id)
-    print(f"categories: {len(categories.get('categories') or [])}")
+    cat_count = len(categories.get("categories") or [])
+    report.steps.append(StepResult("categories", "pass", f"count={cat_count}"))
 
     summary = _request("/api/marketplace/analytics/summary?environment=production", token, org_id)
-    print(f"analytics summary keys: {sorted(summary.keys())}")
-
-    roi = _request("/api/marketplace/analytics/roi?limit=5&environment=production", token, org_id)
-    print(
-        f"roi: installs={roi.get('activeInstalls')} "
-        f"realizedHours={roi.get('totalRealizedHoursSaved')}"
+    report.steps.append(
+        StepResult("analytics_summary", "pass", f"keys={len(summary.keys())}")
     )
 
-    federated = _request("/api/marketplace/federated-connectors?limit=5&environment=production", token, org_id)
-    print(f"federated connectors: total={federated.get('total')}")
+    roi = _request("/api/marketplace/analytics/roi?limit=5&environment=production", token, org_id)
+    report.steps.append(
+        StepResult(
+            "analytics_roi",
+            "pass",
+            f"installs={roi.get('activeInstalls')} hours={roi.get('totalRealizedHoursSaved')}",
+        )
+    )
+
+    federated = _request(
+        "/api/marketplace/federated-connectors?limit=5&environment=production",
+        token,
+        org_id,
+    )
+    report.steps.append(StepResult("federated_connectors", "pass", f"total={federated.get('total')}"))
 
     billing = _request("/api/marketplace/billing/status?environment=production", token, org_id)
     asset_payouts = billing.get("assetPayouts") or {}
-    print(
-        f"billing: connectStatus={(billing.get('account') or {}).get('connectStatus')} "
-        f"assetPayoutCount={asset_payouts.get('payoutCount', 0)}"
+    report.steps.append(
+        StepResult(
+            "billing_status",
+            "pass",
+            f"connect={(billing.get('account') or {}).get('connectStatus')} "
+            f"payouts={asset_payouts.get('payoutCount', 0)}",
+        )
     )
 
-    publisher_analytics = _request("/api/marketplace/publisher/analytics?environment=production", token, org_id)
+    publisher_analytics = _request(
+        "/api/marketplace/publisher/analytics?environment=production",
+        token,
+        org_id,
+    )
     combined = (publisher_analytics.get("earnings") or {}).get("combined") or {}
-    print(
-        f"publisher analytics: grossCents={combined.get('grossCents')} "
-        f"topAssets={len(publisher_analytics.get('topAssetsByEarnings') or [])}"
+    report.steps.append(
+        StepResult(
+            "publisher_analytics",
+            "pass",
+            f"grossCents={combined.get('grossCents')} "
+            f"topAssets={len(publisher_analytics.get('topAssetsByEarnings') or [])}",
+        )
     )
 
     slug = asset_list[0].get("slug") if asset_list else None
     if slug:
-        detail = _request(f"/api/marketplace/assets/{slug}?environment=production", token, org_id)
-        title = (detail.get("asset") or {}).get("title")
-        print(f"detail: {slug} -> {title}")
+        detail_resp = _request(f"/api/marketplace/assets/{slug}?environment=production", token, org_id)
+        title = (detail_resp.get("asset") or {}).get("title")
+        report.steps.append(StepResult("asset_detail", "pass", f"{slug} -> {title}"))
 
         entitlement = _request(f"/api/marketplace/assets/{slug}/entitlement", token, org_id)
-        print(
-            f"entitlement ({slug}): requiresPayment={entitlement.get('requiresPayment')} "
-            f"hasEntitlement={entitlement.get('hasEntitlement')}"
+        report.steps.append(
+            StepResult(
+                "asset_entitlement",
+                "pass",
+                f"requiresPayment={entitlement.get('requiresPayment')} "
+                f"hasEntitlement={entitlement.get('hasEntitlement')}",
+            )
         )
 
         install_check = _request(
@@ -148,10 +213,16 @@ def main() -> int:
             token,
             org_id,
         )
-        print(
-            f"install-check: canInstall={install_check.get('canInstall')} "
-            f"requiresPayment={install_check.get('requiresPayment')}"
+        report.steps.append(
+            StepResult(
+                "install_check",
+                "pass",
+                f"canInstall={install_check.get('canInstall')} "
+                f"requiresPayment={install_check.get('requiresPayment')}",
+            )
         )
+    else:
+        report.steps.append(StepResult("asset_detail", "warn", "no assets returned for detail checks"))
 
     paid = (
         client.table("marketplace_assets")
@@ -163,21 +234,71 @@ def main() -> int:
     if paid.data:
         paid_slug = paid.data[0]["slug"]
         paid_ent = _request(f"/api/marketplace/assets/{paid_slug}/entitlement", token, org_id)
-        print(
-            f"paid smoke asset entitlement: requiresPayment={paid_ent.get('requiresPayment')} "
-            f"priceCents={paid_ent.get('priceCents')}"
+        report.steps.append(
+            StepResult(
+                "paid_asset_entitlement",
+                "pass",
+                f"requiresPayment={paid_ent.get('requiresPayment')} priceCents={paid_ent.get('priceCents')}",
+            )
         )
     else:
-        print(f"warn: run scripts/ensure_marketplace_smoke_paid_asset.py for paid-path smoke")
+        report.steps.append(
+            StepResult(
+                "paid_asset_entitlement",
+                "warn",
+                "run scripts/ensure_marketplace_smoke_paid_asset.py for paid-path smoke",
+            )
+        )
 
-    print("OK")
-    return 0
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Marketplace production smoke (STA-229 / STA-239)")
+    parser.add_argument("--json", dest="json_path", help="Write structured report JSON")
+    args = parser.parse_args()
+
+    env = _load_env()
+    report = SmokeReport(
+        target=API_BASE,
+        org_id="",
+        started_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    try:
+        from supabase import create_client
+
+        org_id, _user_id, token = _admin_context(env)
+        report.org_id = org_id
+        print(f"using org_id={org_id}")
+
+        client = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
+        run_smoke(report, token, org_id, client)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        report.steps.append(StepResult("http_error", "fail", f"HTTP {exc.code}: {body[:240]}"))
+    except Exception as exc:
+        report.steps.append(StepResult("unexpected_error", "fail", str(exc)))
+
+    report.finished_at = datetime.now(timezone.utc).isoformat()
+
+    for step in report.steps:
+        prefix = {"pass": "OK", "warn": "WARN", "fail": "FAIL"}.get(step.status, step.status.upper())
+        print(f"{prefix} {step.label}: {step.detail}")
+
+    if args.json_path:
+        out_path = Path(args.json_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = asdict(report)
+        payload["ok"] = report.ok
+        payload["min_catalog_assets"] = MIN_CATALOG_ASSETS
+        out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        print(f"wrote {out_path}")
+
+    if report.ok:
+        print("OK")
+        return 0
+    print("FAILED", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        print(f"HTTP {exc.code} on {getattr(exc, 'url', 'unknown')}: {body}", file=sys.stderr)
-        raise SystemExit(1) from exc
+    raise SystemExit(main())

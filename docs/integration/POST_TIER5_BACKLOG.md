@@ -2,7 +2,7 @@
 
 Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and Tier 6 product work.
 
-**Current focus:** **Lane B follow-ups** — federation propose grant + delegate task dialogs; Lane C skipped audit documented.
+**Current focus:** **Lane C + D** — marketplace CI smoke (STA-239), catalog ≥50 guard (STA-229), M1 polish, production hardening workflows.
 
 ---
 
@@ -47,8 +47,10 @@ Audit items remain in Linear but are **documented as skipped/deferred** — see 
 | STA-233 facet filters | ✅ Shipped |
 | STA-234 slug route | ✅ Route exists; OG polish v3 |
 | STA-236 reviews/saves | Skipped → v3 |
-| STA-239 E2E smoke | Skipped → v3 |
-| STA-229 catalog ≥50 | ✅ prod `total=51` — close in Linear |
+| STA-239 E2E smoke | ✅ `.github/workflows/marketplace-production-smoke.yml` |
+| STA-229 catalog ≥50 | ✅ seed `list_catalog_assets()` = 50; prod smoke asserts `total≥50` |
+| STA-232 plan limits | ✅ Install sheet surfaces `plan_limit_exceeded` |
+| STA-235 analytics | ✅ Publisher table shows unified asset type + org adoption link |
 
 ---
 
@@ -65,7 +67,10 @@ npm run smoke:tier5
 npm run smoke:tier5-manual
 npm run smoke:post-tier5
 npm run smoke:marketplace-production
+npm run smoke:marketplace-production:report
 ```
+
+**CI (GitHub Actions secrets):** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` — workflows `marketplace-production-smoke.yml` (04:30 UTC) and `production-hardening-smoke.yml` (05:00 UTC).
 
 Requires `backend/.env.operator.local` with Supabase JWT + service role.
 

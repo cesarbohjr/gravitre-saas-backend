@@ -31,6 +31,7 @@ import {
   ShoppingCart,
 } from "lucide-react"
 import { toast } from "sonner"
+import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetDetail,
   MarketplaceAssetInstallCheck,
@@ -193,8 +194,8 @@ function InstallStepperSheet({
       onComplete()
       toast.success(`${asset.title} installed`)
     } catch (err) {
-      toast.error("Install failed", {
-        description: err instanceof Error ? err.message : "Try again",
+      toastMarketplaceInstallFailure(err, {
+        blockerActionUrl: check?.blockers?.[0]?.action_url,
       })
       await refreshCheck()
       setStep("check")

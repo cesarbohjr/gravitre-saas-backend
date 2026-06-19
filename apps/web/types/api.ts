@@ -1267,6 +1267,7 @@ export interface MarketplaceTopEarningAsset {
   assetId: string
   slug?: string | null
   title?: string | null
+  assetType?: string | null
   grossCents: number
   partnerEarningsCents: number
   saleCount: number
