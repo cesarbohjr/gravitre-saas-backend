@@ -1218,6 +1218,33 @@ export interface MarketplaceEarningsSummary {
   activeInstallCount: number
 }
 
+export interface MarketplaceAssetPayoutSummary {
+  grossCents: number
+  platformFeeCents: number
+  partnerEarningsCents: number
+  transferredCents: number
+  pendingTransferCents: number
+  payoutCount: number
+}
+
+export interface MarketplaceAssetPayoutRow {
+  id: string
+  assetId?: string | null
+  assetSlug?: string | null
+  assetTitle?: string | null
+  grossCents: number
+  partnerEarningsCents: number
+  status: string
+  currency: string
+  createdAt?: string | null
+}
+
+export interface MarketplacePublisherPayoutSyncResult {
+  transferred: number
+  failed: number
+  pendingReviewed: number
+}
+
 export interface MarketplaceUsageEvent {
   id: string
   action: string
@@ -1248,6 +1275,8 @@ export interface MarketplaceBillingStatus {
   account: MarketplacePartnerAccount
   pricingCount: number
   earnings: MarketplaceEarningsSummary
+  assetPayouts?: MarketplaceAssetPayoutSummary
+  recentAssetPayouts?: MarketplaceAssetPayoutRow[]
   platformFeeBps: number
   recentUsage: MarketplaceUsageEvent[]
 }

@@ -85,6 +85,8 @@ import type {
   MetricInsight,
   MarketplaceRegistryConnector,
   MarketplaceBillingStatus,
+  MarketplaceAssetPayoutSummary,
+  MarketplacePublisherPayoutSyncResult,
   MarketplacePartnerPricing,
   MarketplaceAnalyticsSummary,
   MarketplaceAssetCheckoutResult,
@@ -749,10 +751,10 @@ export const marketplaceApi = {
       data,
     ),
   syncPublisherPayouts: () =>
-    postJson<{ sync: { transferred: number; failed: number }; summary: Record<string, number> }>(
-      apiUrl("/api/marketplace/publisher/payouts/sync"),
-      {},
-    ),
+    postJson<{
+      sync: MarketplacePublisherPayoutSyncResult
+      summary: MarketplaceAssetPayoutSummary
+    }>(apiUrl("/api/marketplace/publisher/payouts/sync"), {}),
   listAssetReviews: (assetRef: string, params?: { limit?: number; offset?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))

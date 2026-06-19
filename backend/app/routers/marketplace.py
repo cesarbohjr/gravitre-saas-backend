@@ -127,7 +127,7 @@ from app.marketplace.entitlements import (
     get_entitlement_status,
 )
 from app.marketplace.convergence import list_federated_connector_assets
-from app.marketplace.payouts import get_publisher_payout_summary, sync_pending_payouts
+from app.marketplace.payouts import get_publisher_payout_summary, list_recent_asset_payouts, sync_pending_payouts
 from app.marketplace.roi import marketplace_roi_summary
 from app.marketplace.service import fetch_marketplace_asset
 from app.workflows.audit import write_audit_event
@@ -636,6 +636,8 @@ async def marketplace_billing_status(
     status_payload = get_partner_billing_status(client, org_id)
     status_payload["platformFeeBps"] = settings.marketplace_platform_fee_bps
     status_payload["recentUsage"] = list_recent_usage_events(client, org_id)
+    status_payload["assetPayouts"] = get_publisher_payout_summary(client, org_id)
+    status_payload["recentAssetPayouts"] = list_recent_asset_payouts(client, org_id)
     return status_payload
 
 

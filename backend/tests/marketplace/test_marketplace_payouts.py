@@ -40,6 +40,35 @@ def test_get_publisher_payout_summary():
     assert summary["pendingTransferCents"] == 2400
 
 
+def test_list_recent_asset_payouts():
+    from app.marketplace.payouts import list_recent_asset_payouts
+
+    payouts = MagicMock()
+    payouts.select.return_value = payouts
+    payouts.eq.return_value = payouts
+    payouts.order.return_value = payouts
+    payouts.limit.return_value = payouts
+    payouts.execute.return_value = MagicMock(
+        data=[
+            {
+                "id": "payout-1",
+                "asset_id": "asset-1",
+                "gross_amount_cents": 5000,
+                "partner_earnings_cents": 4000,
+                "status": "transferred",
+                "currency": "usd",
+                "created_at": "2026-06-19T00:00:00Z",
+                "marketplace_assets": {"slug": "sales-pack", "title": "Sales Pack"},
+            }
+        ]
+    )
+    client = MagicMock()
+    client.table.return_value = payouts
+    rows = list_recent_asset_payouts(client, "partner-org")
+    assert rows[0]["assetSlug"] == "sales-pack"
+    assert rows[0]["partnerEarningsCents"] == 4000
+
+
 @patch("app.marketplace.payouts._maybe_transfer_payout")
 @patch("app.marketplace.payouts._load_publisher_id", return_value=("pub-1", "partner-org"))
 def test_record_asset_purchase_payout(mock_publisher, mock_transfer):

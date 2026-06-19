@@ -188,3 +188,40 @@ def get_publisher_payout_summary(client: Any, partner_org_id: str) -> dict[str, 
         "pendingTransferCents": max(0, earnings - transferred),
         "payoutCount": len(data),
     }
+
+
+def list_recent_asset_payouts(
+    client: Any,
+    partner_org_id: str,
+    *,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    limit = max(1, min(limit, 50))
+    rows = (
+        client.table("marketplace_payouts")
+        .select(
+            "id, asset_id, gross_amount_cents, partner_earnings_cents, status, currency, created_at, "
+            "marketplace_assets(slug, title)"
+        )
+        .eq("partner_org_id", partner_org_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    results: list[dict[str, Any]] = []
+    for row in rows.data or []:
+        asset = row.get("marketplace_assets") or {}
+        results.append(
+            {
+                "id": row["id"],
+                "assetId": row.get("asset_id"),
+                "assetSlug": asset.get("slug"),
+                "assetTitle": asset.get("title"),
+                "grossCents": int(row.get("gross_amount_cents") or 0),
+                "partnerEarningsCents": int(row.get("partner_earnings_cents") or 0),
+                "status": row.get("status") or "pending",
+                "currency": row.get("currency") or "usd",
+                "createdAt": row.get("created_at"),
+            }
+        )
+    return results
