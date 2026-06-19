@@ -565,7 +565,7 @@ export default function BillingPage() {
               </div>
             </section>
 
-            {/* Usage Trend Chart - Premium */}
+            {/* Usage trajectory — projected against plan allowance */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -575,88 +575,93 @@ export default function BillingPage() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-foreground">Usage Trends</h2>
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Usage trajectory</h2>
+                    <p className="text-xs text-muted-foreground">Projected against your plan allowance for this billing period.</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    Workflows
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-blue-500" />
-                    API Calls (k)
-                  </span>
-                </div>
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium", forecastStatus.soft, forecastStatus.accent)}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", forecastStatus.dot)} />
+                  {forecastStatus.label}
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Area Chart */}
-                <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Projection chart */}
+                <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden lg:col-span-3">
                   <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none">
                     <GlowOrb size={100} color="emerald" intensity={0.2} />
                   </div>
-                  <h3 className="text-xs font-medium text-muted-foreground mb-4">Monthly Overview</h3>
+                  <div className="flex items-end justify-between mb-4">
+                    <div>
+                      <h3 className="text-xs font-medium text-muted-foreground">Workflow runs · this period</h3>
+                      <p className="mt-1 text-2xl font-bold text-foreground tabular-nums">
+                        {projectedTotal.toLocaleString()}
+                        <span className="ml-1.5 text-sm font-normal text-muted-foreground">projected of {WORKFLOW_LIMIT.toLocaleString()}</span>
+                      </p>
+                    </div>
+                    <p className={cn("text-sm font-semibold tabular-nums", forecastStatus.accent)}>{projectedPct}%</p>
+                  </div>
                   <div className="h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={monthlyUsageData}>
+                      <ComposedChart data={forecastSeries} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                         <defs>
-                          <linearGradient id="colorWorkflows" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorApi" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          <linearGradient id="forecastActual" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--success)" stopOpacity={0.25} />
+                            <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                        <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            fontSize: '12px'
-                          }} 
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.4} vertical={false} />
+                        <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} width={36}
+                          tickFormatter={(v) => (Number(v) >= 1000 ? `${Math.round(Number(v) / 1000)}k` : `${v}`)} />
+                        <Tooltip
+                          formatter={(value) => (typeof value === "number" ? value.toLocaleString() : value)}
+                          contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
                         />
-                        <Area type="monotone" dataKey="workflows" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorWorkflows)" />
-                        <Area type="monotone" dataKey="api" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorApi)" />
-                      </AreaChart>
+                        <ReferenceLine y={WORKFLOW_LIMIT} stroke="var(--warning)" strokeDasharray="4 4"
+                          label={{ value: `Plan limit ${(WORKFLOW_LIMIT / 1000)}k`, position: 'insideTopRight', fontSize: 10, fill: 'var(--warning)' }} />
+                        <Area type="monotone" dataKey="actual" stroke="var(--success)" strokeWidth={2.5} fill="url(#forecastActual)" connectNulls={false} dot={{ r: 2 }} />
+                        <Line type="monotone" dataKey="projected" stroke="var(--muted-foreground)" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {willExceed
+                      ? `At your recent pace, you'll pass the ${WORKFLOW_LIMIT.toLocaleString()} limit before ${PERIOD_END_LABEL}.`
+                      : `At your recent pace, you'll use about ${projectedTotal.toLocaleString()} runs by ${PERIOD_END_LABEL} — ${WORKFLOW_LIMIT - projectedTotal > 0 ? `${(WORKFLOW_LIMIT - projectedTotal).toLocaleString()} to spare.` : "right at the limit."}`}
+                  </p>
                 </div>
 
-                {/* Bar Chart */}
-                <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none">
-                    <GlowOrb size={100} color="violet" intensity={0.2} />
+                {/* Closest to limit — which resource is the binding constraint */}
+                <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden lg:col-span-2">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-4">Closest to limit</h3>
+                  <div className="space-y-4">
+                    {[...usageMetrics]
+                      .map((m) => ({ ...m, pct: Math.round((m.used / m.limit) * 100) }))
+                      .sort((a, b) => b.pct - a.pct)
+                      .map((m, i) => {
+                        const tone = m.pct >= 85 ? "destructive" : m.pct >= 60 ? "warning" : "success"
+                        const bar = tone === "destructive" ? "bg-destructive" : tone === "warning" ? "bg-warning" : "bg-success"
+                        const text = tone === "destructive" ? "text-destructive" : tone === "warning" ? "text-warning" : "text-success"
+                        return (
+                          <div key={m.name}>
+                            <div className="flex items-center justify-between text-xs mb-1.5">
+                              <span className="flex items-center gap-1.5 text-foreground">
+                                <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                                {m.name}
+                                {i === 0 && <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">tightest</span>}
+                              </span>
+                              <span className={cn("font-semibold tabular-nums", text)}>{m.pct}%</span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                              <div className={cn("h-full rounded-full transition-all", bar)} style={{ width: `${Math.min(100, m.pct)}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
                   </div>
-                  <h3 className="text-xs font-medium text-muted-foreground mb-4">This Month by Week</h3>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={weeklyData}>
-                        <defs>
-                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8b5cf6" />
-                            <stop offset="100%" stopColor="#6366f1" />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                        <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            fontSize: '12px'
-                          }} 
-                        />
-                        <Bar dataKey="value" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <p className="mt-4 text-xs text-muted-foreground">Percent of each plan allowance used this period.</p>
                 </div>
               </div>
             </motion.section>
