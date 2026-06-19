@@ -165,5 +165,5 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        print(f"HTTP {exc.code}: {body}", file=sys.stderr)
+        print(f"HTTP {exc.code} on {getattr(exc, 'url', 'unknown')}: {body}", file=sys.stderr)
         raise SystemExit(1) from exc

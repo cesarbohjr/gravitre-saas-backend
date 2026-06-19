@@ -133,11 +133,6 @@ def main() -> int:
         print("skip-stripe: checkout probe skipped")
         return 0
 
-    stripe_key = env.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_SECRET_KEY", "")
-    if not stripe_key.strip():
-        print("STRIPE_SECRET_KEY not set — checkout probe skipped (set key for full path)", file=sys.stderr)
-        return 0
-
     # Clear prior active entitlement so checkout can be recreated.
     client.table("marketplace_asset_entitlements").update({"status": "cancelled"}).eq(
         "org_id", org_id
@@ -174,7 +169,13 @@ def main() -> int:
     print(f"checkout session: {session_id}")
     print(f"checkout url: {checkout_url}")
 
+    stripe_key = env.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_SECRET_KEY", "")
+    if not stripe_key.strip():
+        print("STRIPE_SECRET_KEY not set locally — checkout created on API; open URL to complete payment")
+        return 0
+
     sys.path.insert(0, str(REPO / "backend"))
+    os.environ.setdefault("STRIPE_SECRET_KEY", stripe_key)
     from app.config import get_settings
     from app.billing.stripe import init_stripe
 
