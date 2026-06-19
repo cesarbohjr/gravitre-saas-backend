@@ -2,7 +2,7 @@
 
 Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and Tier 6 product work.
 
-**Current focus:** **Lane B P1 UI** — workflow pre-run intelligence, federation B2B tabs, marketplace skipped audit docs.
+**Current focus:** **Lane B follow-ups** — federation propose grant + delegate task dialogs; Lane C skipped audit documented.
 
 ---
 
@@ -28,7 +28,7 @@ See **`docs/integration/TIER6_PLANNING.md`** for CS workspace, apply, approvals,
 | Item | Status | Notes |
 |------|--------|-------|
 | Agent swarm | ✅ `/agents/swarm` | — |
-| Federation | ✅ `/settings/federation` | Handoffs + **connector grants** + **delegated tasks** tabs |
+| Federation | ✅ `/settings/federation` | Handoffs + grants/tasks tabs + **propose grant / delegate task dialogs** |
 | Digital twin + failure scan | ✅ | Builder drawer + **`/workflows/[id]` pre-run panel** (Simulate + scan) |
 | Integration apply | ✅ | Apply result sheet (T6-2 v2) |
 | Role packs → catalog | ✅ | Unified catalog + facet filters |

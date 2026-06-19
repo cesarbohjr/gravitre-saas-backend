@@ -85,7 +85,7 @@ Tier 5 (STA-100–124) and marketplace M1–M5 are **code-complete**. Production
 | Item | v1 | v2 | v3 |
 |------|----|----|-----|
 | Agent swarm | `/agents/swarm` | Run detail polish (aggregate UX) | Swarm templates |
-| Federation | `/settings/federation` handoffs | **Grants + delegated tasks tabs** ✅ | Partner invite email preview |
+| Federation | `/settings/federation` handoffs | **Grants + delegated tasks + create dialogs** ✅ | Partner invite email preview |
 | Digital twin + risk scan | Builder intelligence drawer | **Workflow detail pre-run panel** ✅ | Risk → fix suggestions |
 | Role packs → unified catalog | Unified catalog + facets | — | **STA-234** slug polish |
 | Integration apply | CS dashboard Apply + result sheet | — | — |

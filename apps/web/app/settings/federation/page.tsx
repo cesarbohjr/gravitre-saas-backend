@@ -35,6 +35,8 @@ import { FederationGrantList } from "@/components/federation/federation-grant-li
 import { FederationDelegatedTaskList } from "@/components/federation/federation-delegated-task-list"
 import { InvitePartnerDialog } from "@/components/federation/invite-partner-dialog"
 import { CreateHandoffDialog } from "@/components/federation/create-handoff-dialog"
+import { ProposeGrantDialog } from "@/components/federation/propose-grant-dialog"
+import { CreateDelegatedTaskDialog } from "@/components/federation/create-delegated-task-dialog"
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
@@ -64,6 +66,8 @@ function FederationContent() {
   const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
   const [handoffOpen, setHandoffOpen] = useState(false)
+  const [grantOpen, setGrantOpen] = useState(false)
+  const [taskOpen, setTaskOpen] = useState(false)
 
   const {
     data: partnershipsData,
@@ -388,15 +392,61 @@ function FederationContent() {
               </PageHeaderlessSection>
             </TabsContent>
 
-            <TabsContent value="grants">
+            <TabsContent value="grants" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Connector grants
+                  </h2>
+                </div>
+                {isAdmin ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => setGrantOpen(true)}
+                    disabled={activePartnerships.length === 0}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Propose grant
+                  </Button>
+                ) : null}
+              </div>
               {loadingGrants ? (
                 <LoadingPlaceholder />
               ) : (
-                <FederationGrantList grants={grants} currentOrgId={currentOrgId} onAction={handleGrantAction} />
+                <FederationGrantList
+                  grants={grants}
+                  currentOrgId={currentOrgId}
+                  onAction={handleGrantAction}
+                  onPropose={isAdmin ? () => setGrantOpen(true) : undefined}
+                  canPropose={isAdmin && activePartnerships.length > 0}
+                />
               )}
             </TabsContent>
 
-            <TabsContent value="tasks">
+            <TabsContent value="tasks" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Inbox className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Delegated tasks
+                  </h2>
+                </div>
+                {isAdmin ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => setTaskOpen(true)}
+                    disabled={activePartnerships.length === 0}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Delegate task
+                  </Button>
+                ) : null}
+              </div>
               {loadingTasks ? (
                 <LoadingPlaceholder />
               ) : (
@@ -404,6 +454,8 @@ function FederationContent() {
                   tasks={delegatedTasks}
                   currentOrgId={currentOrgId}
                   onAction={handleDelegatedTaskAction}
+                  onCreate={isAdmin ? () => setTaskOpen(true) : undefined}
+                  canCreate={isAdmin && activePartnerships.length > 0}
                 />
               )}
             </TabsContent>
@@ -420,6 +472,20 @@ function FederationContent() {
       <CreateHandoffDialog
         open={handoffOpen}
         onOpenChange={setHandoffOpen}
+        disabled={!isAdmin}
+        activePartnerships={activePartnerships}
+        onCreated={() => refreshAll()}
+      />
+      <ProposeGrantDialog
+        open={grantOpen}
+        onOpenChange={setGrantOpen}
+        disabled={!isAdmin}
+        activePartnerships={activePartnerships}
+        onCreated={() => refreshAll()}
+      />
+      <CreateDelegatedTaskDialog
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
         disabled={!isAdmin}
         activePartnerships={activePartnerships}
         onCreated={() => refreshAll()}

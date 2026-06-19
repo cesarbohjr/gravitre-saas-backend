@@ -38,6 +38,8 @@ import type {
   ConnectorListResponse,
   CreateConnectorRequest,
   CreateFederationHandoffRequest,
+  CreateFederationConnectorGrantRequest,
+  CreateFederationDelegatedTaskRequest,
   Source,
   SourceListResponse,
   CreateSourceRequest,
@@ -1616,6 +1618,8 @@ export const federationApi = {
   // Connector grants
   listConnectorGrants: () =>
     fetcher<{ grants: FederationConnectorGrant[] }>("/api/federation/connector-grants"),
+  proposeConnectorGrant: (data: CreateFederationConnectorGrantRequest) =>
+    postJson<{ grant: FederationConnectorGrant }>("/api/federation/connector-grants", data),
   acceptConnectorGrant: (grantId: string) =>
     postJson<{ grant: FederationConnectorGrant }>(
       `/api/federation/connector-grants/${grantId}/accept`,
@@ -1640,6 +1644,8 @@ export const federationApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<{ tasks: FederationDelegatedTask[] }>(`/api/federation/delegated-tasks${suffix}`)
   },
+  createDelegatedTask: (data: CreateFederationDelegatedTaskRequest) =>
+    postJson<{ task: FederationDelegatedTask }>("/api/federation/delegated-tasks", data),
   acceptDelegatedTask: (taskId: string) =>
     postJson<{ task: FederationDelegatedTask }>(`/api/federation/delegated-tasks/${taskId}/accept`, {}),
   rejectDelegatedTask: (taskId: string, reason?: string) =>

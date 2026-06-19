@@ -2055,6 +2055,24 @@ export interface CreateFederationHandoffRequest {
   sourceOutput?: Record<string, unknown>
 }
 
+export interface CreateFederationConnectorGrantRequest {
+  granteeOrgId: string
+  connectorId: string
+  allowedActions: string[]
+  label?: string
+  expiresInHours?: number
+}
+
+export interface CreateFederationDelegatedTaskRequest {
+  delegateOrgId: string
+  title: string
+  instructions?: string
+  payload?: Record<string, unknown>
+  parentReference?: Record<string, unknown>
+  delegatorAgentId?: string
+  delegateAgentId?: string
+}
+
 export interface FederationConnectorGrant {
   id: string
   partnershipId?: string | null

@@ -22,18 +22,30 @@ export function FederationDelegatedTaskList({
   tasks,
   currentOrgId,
   onAction,
+  onCreate,
+  canCreate,
 }: {
   tasks: FederationDelegatedTask[]
   currentOrgId?: string
   onAction: (action: "accept" | "reject", task: FederationDelegatedTask) => Promise<void>
+  onCreate?: () => void
+  canCreate?: boolean
 }) {
   const [busy, setBusy] = useState<string | null>(null)
 
   if (tasks.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
-        No delegated tasks yet. Partner orgs can assign work once a partnership is active.
-      </p>
+      <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center space-y-3">
+        <p className="text-sm text-muted-foreground">
+          No delegated tasks yet. Assign work to a partner once your partnership is active.
+        </p>
+        {canCreate && onCreate ? (
+          <Button size="sm" variant="outline" onClick={onCreate}>
+            <ClipboardList className="h-3.5 w-3.5 mr-1" />
+            Delegate task
+          </Button>
+        ) : null}
+      </div>
     )
   }
 

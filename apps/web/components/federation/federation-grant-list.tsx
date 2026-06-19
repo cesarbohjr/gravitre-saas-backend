@@ -19,18 +19,30 @@ export function FederationGrantList({
   grants,
   currentOrgId,
   onAction,
+  onPropose,
+  canPropose,
 }: {
   grants: FederationConnectorGrant[]
   currentOrgId?: string
   onAction: (action: "accept" | "reject" | "revoke", grant: FederationConnectorGrant) => Promise<void>
+  onPropose?: () => void
+  canPropose?: boolean
 }) {
   const [busy, setBusy] = useState<string | null>(null)
 
   if (grants.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
-        No connector grants yet. Propose a grant from the API or partner onboarding flow.
-      </p>
+      <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center space-y-3">
+        <p className="text-sm text-muted-foreground">
+          No connector grants yet. Propose read-only connector access to an active partner.
+        </p>
+        {canPropose && onPropose ? (
+          <Button size="sm" variant="outline" onClick={onPropose}>
+            <Plug className="h-3.5 w-3.5 mr-1" />
+            Propose grant
+          </Button>
+        ) : null}
+      </div>
     )
   }
 
