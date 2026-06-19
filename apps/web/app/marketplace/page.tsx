@@ -25,6 +25,7 @@ import {
   Building2,
   Shield,
   Globe,
+  HeartPulse,
   TrendingUp,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
@@ -230,6 +231,13 @@ function MarketplaceHome() {
       description: "Gravitre platform queue for community submissions.",
       href: "/marketplace/platform-admin",
       icon: Globe,
+      show: isPlatformAdmin,
+    },
+    {
+      title: "CS workspace",
+      description: "Cross-org tenant health rollups and alert queues.",
+      href: "/platform/cs-workspace",
+      icon: HeartPulse,
       show: isPlatformAdmin,
     },
     {

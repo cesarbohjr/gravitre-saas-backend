@@ -443,3 +443,75 @@ def list_integration_health_history(
         .limit(limit),
     )
     return [_serialize_snapshot(row) for row in rows]
+
+
+def org_ids_missing_health_snapshots(client: Any, *, limit: int = 100) -> list[str]:
+    """Return org ids with no recorded integration health snapshot."""
+    orgs = _select_rows(
+        client,
+        "organizations",
+        lambda table: table.select("id").order("created_at", desc=True).limit(limit),
+    )
+    if not orgs:
+        return []
+    snapshots = _select_rows(
+        client,
+        "integration_health_snapshots",
+        lambda table: table.select("org_id").order("recorded_at", desc=True).limit(max(limit * 4, 40)),
+    )
+    snapshot_org_ids = {str(row.get("org_id")) for row in snapshots if row.get("org_id")}
+    missing: list[str] = []
+    for row in orgs:
+        org_id = str(row.get("id") or "")
+        if org_id and org_id not in snapshot_org_ids:
+            missing.append(org_id)
+    return missing
+
+
+def backfill_missing_integration_health_snapshots(
+    client: Any,
+    *,
+    limit: int = 25,
+    lookback_days: int = DEFAULT_LOOKBACK_DAYS,
+    actor_id: str | None = None,
+) -> dict[str, Any]:
+    """Record first integration health snapshot for orgs that have none."""
+    limit = max(1, min(limit, 100))
+    missing_org_ids = org_ids_missing_health_snapshots(client, limit=limit * 2)[:limit]
+    results: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for org_id in missing_org_ids:
+        try:
+            payload = record_integration_health_snapshot(
+                client,
+                org_id,
+                lookback_days=lookback_days,
+                actor_id=actor_id,
+            )
+            snapshot = payload.get("snapshot")
+            health = payload.get("health") or {}
+            results.append(
+                {
+                    "orgId": org_id,
+                    "score": health.get("score"),
+                    "grade": health.get("grade"),
+                    "snapshotId": snapshot.get("id") if snapshot else None,
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("integration_health_backfill_failed org_id=%s error=%s", org_id, str(exc))
+            errors.append({"orgId": org_id, "message": str(exc)})
+
+    logger.info(
+        "integration_health_backfill completed=%s errors=%s",
+        len(results),
+        len(errors),
+    )
+    return {
+        "requested": len(missing_org_ids),
+        "backfilled": len(results),
+        "errors": errors,
+        "results": results,
+        "lookbackDays": lookback_days,
+    }

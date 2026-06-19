@@ -1,67 +1,112 @@
 # Post–Tier 5 backlog
 
-Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and the next product slice.
+Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and Tier 6 product work.
 
-**Current focus:** P0 production smoke + CS dashboard + department role packs UI.
+**Current focus:** **Tier 6 v2** — see version map in **`docs/integration/TIER6_PLANNING.md`**.
 
 ---
 
-## P0 — Ship & verify (now)
+## Version map (Tier 6)
 
-| Item | Status | Notes |
-|------|--------|-------|
-| CS dashboard UI (`/settings/enterprise?tab=cs`) | ✅ | Health score, suggestions, failure alerts |
-| `npm run smoke:post-tier5` | ✅ | Platform intelligence + role packs API smoke |
-| Extend `TIER5_PRODUCTION_SMOKE.md` (Epics D–F) | ✅ | Federation, workforce, intelligence |
-| Commit + deploy web + API | ☐ | Railway + Vercel |
+| Version | Shipped | Next up |
+|---------|---------|---------|
+| **v0** | CS workspace rollups, apply API, mobile approvals, agent swarm UI | — |
+| **v1** | Org drill-down, snapshot backfill, assign/snooze, Meson apply | — |
+| **v2** | — | Escalate, alert inbox, apply UX, approvals SLA, marketplace facets (STA-233) |
+| **v3** | — | PWA push, partner analytics, slug/reviews/CI (STA-234/236/239), enterprise polish |
 
-## P1 — UI gaps for shipped APIs
+---
 
-| Item | API | UI target |
-|------|-----|-----------|
-| Department role packs | `GET/POST /api/marketplace/role-packs` | `/marketplace/role-packs` |
-| Workflow digital twin | `POST /api/workflows/digital-twin` | Workflow builder “Simulate” action |
-| Failure prediction scan | `POST /api/workflows/{id}/failure-predictions/scan` | Workflow detail pre-run panel |
-| Federation / B2B handoffs | `/api/federation/*` | Settings or partner admin page |
-| Agent swarm runs | `/api/agent-swarm/*` | Operators or assignments UI |
+## Lane A — Tier 6 product
 
-## P2 — Enterprise admin polish
+| Epic | v0 | v1 | v2 | v3 |
+|------|----|----|-----|-----|
+| **T6-1 CS workspace** | Tenant rollups + UI | Drill-down, backfill, assign/snooze | Escalate, alert inbox, cron backfill | Trend sparklines, CSV export |
+| **T6-2 Recommendation apply** | Apply API + button | GoalService/Meson draft | Apply result panel + builder evidence | Meson re-gen, install stepper |
+| **T6-3 Partner analytics** | Publisher page (partial) | — | Time-series by asset | Payout reconciliation export |
+| **T6-4 Mobile approvals** | Mobile layout + deep links | — | SLA countdown, swipe (optional) | PWA + web push |
 
-Per `docs/design/ENTERPRISE_UI_V0_PROMPT.md`:
+### v1 shipped (reference)
 
-- Premium sub-nav layout refinements
-- Branding live preview panel
-- DNS verification stepper UX
-- Workforce KPI sparklines (when backend exposes series)
+| API | UI |
+|-----|-----|
+| `GET /api/platform/cs-workspace/tenants` | `/platform/cs-workspace` |
+| `POST /api/platform/cs-workspace/snapshots/backfill` | Backfill snapshots button |
+| `POST …/tenants/{id}/assign`, `…/snooze` | Assign / Snooze controls |
+| Platform org context | View CS dashboard → `/settings/enterprise?tab=cs` |
+| `POST …/integration-suggestions/{id}/apply` | CS dashboard **Apply** (Meson draft) |
 
-## P3 — Tier 6 candidates (planning)
+---
 
-Not yet in Linear. Candidates for the next epic batch:
+## Lane B — P1 UI gaps
 
-1. **Multi-tenant CS workspace** — cross-org health rollups for Gravitre operators
-2. **Workflow recommendation apply** — one-click create workflow from STA-123 suggestions
-3. **Partner revenue analytics** — marketplace billing + usage dashboards
-4. **Mobile operator approvals** — push-friendly approval queue
+| Item | Status | v2 | v3 |
+|------|--------|-----|-----|
+| Agent swarm | ✅ `/agents/swarm` | Detail polish | — |
+| Federation | ✅ `/settings/federation` | — | — |
+| Digital twin + risk scan | ✅ Builder drawer | Workflow detail pre-run panel | — |
+| Integration apply | ✅ | Result UX (T6-2 v2) | — |
+| Role packs → catalog | ⚠️ Redirect only | **STA-233** facets | **STA-234** slug route |
+| Clio OAuth (C.6) | ⚠️ Browser required | Smoke checklist | Prod sign-off |
 
-Create Linear epics when prioritizing Tier 6.
+Design: `docs/design/V0_MARKETPLACE_UNIFIED_PROMPT.md`.
+
+---
+
+## Lane C — Marketplace M1 (v2 / v3)
+
+| Item | v2 | v3 |
+|------|-----|-----|
+| STA-233 facet filters | Unified catalog filter bar | — |
+| STA-234 asset slug route | — | Shareable `/marketplace/assets/[slug]` |
+| STA-236 reviews/saves | — | Asset community signals |
+| STA-239 E2E smoke | GitHub secrets setup | Scheduled prod/staging smoke |
+| Install blocker UX | Per `V0_MARKETPLACE_UNIFIED_PROMPT.md` | — |
+
+---
+
+## P0 — Ship & verify (done)
+
+| Item | Status |
+|------|--------|
+| CS dashboard UI | ✅ |
+| `smoke:post-tier5`, `smoke:tier5-manual`, `smoke:ai-production:report` | ✅ |
+| `smoke:marketplace-production` (51 assets) | ✅ |
+| Agent swarm UI | ✅ |
+| Tier 6 v1 (backfill, queue, drill-down, Meson apply) | ✅ |
+
+---
+
+## P2 — Enterprise admin polish (v3)
+
+- Branding live preview (v2)
+- DNS verification stepper (v3)
+- Workforce KPI sparklines (v3)
+- Premium Enterprise sub-nav
+
+See `docs/design/ENTERPRISE_UI_V0_PROMPT.md`.
 
 ---
 
 ## Smoke commands
 
 ```bash
-npm run smoke:tier5        # Vertical packs (legal, real estate) + Clio
-npm run smoke:post-tier5    # Platform intelligence + role packs (STA-122–124, STA-121)
+npm run smoke:tier5
+npm run smoke:tier5-manual
+npm run smoke:post-tier5
+npm run smoke:marketplace-production
+npm run smoke:marketplace-stripe:fulfill   # needs STRIPE_SECRET_KEY locally
 ```
 
-Requires `backend/.env.operator.local` with Supabase JWT + service role (same as Tier 5 smoke).
+Requires `backend/.env.operator.local` with Supabase JWT + service role.
 
 ---
 
 ## Related docs
 
-- `LINEAR_INTEGRATION_BACKLOG.md` — Tier 1–5 complete
+- `TIER6_PLANNING.md` — full v2/v3 breakdown + Linear checklist
+- `marketplace-audit-linear-ids.json` — STA-233–239
+- `V0_MARKETPLACE_UNIFIED_PROMPT.md` — unified catalog UX v2
 - `integration-health-score.md` — STA-124
-- `auto-suggest-connectors-workflows.md` — STA-123
+- `auto-suggest-connectors-workflows.md` — STA-123 + apply
 - `predictive-workflow-failure.md` — STA-122
-- `agent-role-marketplace.md` — STA-121

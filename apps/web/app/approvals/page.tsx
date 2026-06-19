@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import useSWR from "swr"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -11,6 +12,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi } from "@/lib/api"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { ApprovalSlaCountdown } from "@/components/approvals/sla-countdown"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -38,7 +40,8 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
-  Bot
+  Bot,
+  ArrowLeft,
 } from "lucide-react"
 
 interface Approval {
@@ -56,6 +59,9 @@ interface Approval {
     confidence: number
     reason: string
   }
+  slaDeadline?: string | null
+  slaMinutesRemaining?: number | null
+  slaBreached?: boolean
   context: {
     entity: string
     action: string
@@ -98,6 +104,14 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
     priority: priority === "high" || priority === "low" ? priority : "medium",
     status: status === "approved" || status === "rejected" ? status : "pending",
     aiRecommendation,
+    slaDeadline: input.slaDeadline != null ? String(input.slaDeadline) : input.sla_deadline != null ? String(input.sla_deadline) : null,
+    slaMinutesRemaining:
+      input.slaMinutesRemaining != null
+        ? Number(input.slaMinutesRemaining)
+        : input.sla_minutes_remaining != null
+          ? Number(input.sla_minutes_remaining)
+          : null,
+    slaBreached: Boolean(input.slaBreached ?? input.sla_breached),
     context:
       rawContext && typeof rawContext === "object"
         ? {
@@ -209,6 +223,11 @@ function DecisionCard({
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
             {approval.type}
           </span>
+          <ApprovalSlaCountdown
+            requestedAt={approval.requestedAt}
+            slaMinutesRemaining={approval.slaMinutesRemaining}
+            slaBreached={approval.slaBreached}
+          />
         </div>
 
         {/* AI Recommendation - prominent */}
@@ -284,10 +303,11 @@ function DecisionCard({
 }
 
 // Detail Panel Component
-function DetailPanel({ approval, onApprove, onReject }: { 
+function DetailPanel({ approval, onApprove, onReject, onBack }: { 
   approval: Approval | null
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  onBack?: () => void
 }) {
   if (!approval) {
     return (
@@ -312,6 +332,12 @@ function DetailPanel({ approval, onApprove, onReject }: {
     >
       {/* Header */}
       <div className={cn("p-4 sm:p-6 border-b border-border", config.bg)}>
+        {onBack ? (
+          <Button variant="ghost" size="sm" className="mb-3 -ml-2 lg:hidden" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to queue
+          </Button>
+        ) : null}
         <div className="flex items-start gap-3 sm:gap-4">
           <div className={cn(
             "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg sm:rounded-xl",
@@ -405,6 +431,14 @@ function DetailPanel({ approval, onApprove, onReject }: {
               <span className="text-sm text-muted-foreground">Requested by</span>
               <span className="text-sm font-medium text-foreground">{approval.requestedBy}</span>
             </div>
+            <div className="flex items-center justify-between py-2 border-t border-border/50 pt-3">
+              <span className="text-sm text-muted-foreground">SLA</span>
+              <ApprovalSlaCountdown
+                requestedAt={approval.requestedAt}
+                slaMinutesRemaining={approval.slaMinutesRemaining}
+                slaBreached={approval.slaBreached}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -436,6 +470,17 @@ function DetailPanel({ approval, onApprove, onReject }: {
 }
 
 export default function ApprovalsPage() {
+  return (
+    <AppShell title="Approvals">
+      <Suspense fallback={null}>
+        <ApprovalsContent />
+      </Suspense>
+    </AppShell>
+  )
+}
+
+function ApprovalsContent() {
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
@@ -451,6 +496,13 @@ export default function ApprovalsPage() {
   const approvals = normalizeApprovalsResponse(data)
   const pendingApprovals = approvals.filter(a => a.status === "pending")
   const selectedApproval = approvals.find(a => a.id === selectedId) || null
+
+  useEffect(() => {
+    const deepLinkId = searchParams.get("id") || searchParams.get("approval")
+    if (deepLinkId) {
+      setSelectedId(deepLinkId)
+    }
+  }, [searchParams])
 
   // Stats
   const highPriorityCount = pendingApprovals.filter(a => a.priority === "high").length
@@ -499,10 +551,13 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <AppShell title="Approvals">
-      <div className="flex flex-col lg:flex-row h-full">
+    <>
+      <div className="flex flex-col lg:flex-row h-full pb-24 lg:pb-0">
         {/* Left: Queue */}
-        <div className="w-full lg:w-[420px] flex-shrink-0 lg:border-r border-border flex flex-col">
+        <div className={cn(
+          "w-full lg:w-[420px] flex-shrink-0 lg:border-r border-border flex flex-col",
+          selectedApproval ? "hidden lg:flex" : "flex",
+        )}>
           {/* Header */}
           <div className="flex-shrink-0 p-3 sm:p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -572,14 +627,37 @@ export default function ApprovalsPage() {
         </div>
 
         {/* Right: Detail Panel - Hidden on mobile unless item selected */}
-        <div className={`flex-1 bg-card/30 border-t lg:border-t-0 border-border ${!selectedApproval ? 'hidden lg:block' : ''}`}>
+        <div className={`flex-1 bg-card/30 border-t lg:border-t-0 border-border ${!selectedApproval ? "hidden lg:block" : ""}`}>
           <DetailPanel 
             approval={selectedApproval} 
             onApprove={handleApprove}
             onReject={handleRejectWithPrompt}
+            onBack={() => setSelectedId(null)}
           />
         </div>
       </div>
+
+      {selectedApproval ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-lg gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-11"
+              disabled={isSubmitting}
+              onClick={() => handleRejectWithPrompt(selectedApproval.id)}
+            >
+              Reject
+            </Button>
+            <Button
+              className="flex-1 h-11"
+              disabled={isSubmitting}
+              onClick={() => void handleApprove(selectedApproval.id)}
+            >
+              Approve
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <AlertDialog open={Boolean(rejectTargetId)} onOpenChange={(open) => !open && setRejectTargetId(null)}>
         <AlertDialogContent>
@@ -606,6 +684,6 @@ export default function ApprovalsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppShell>
+    </>
   )
 }

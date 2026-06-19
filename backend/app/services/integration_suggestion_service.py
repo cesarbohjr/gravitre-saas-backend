@@ -14,6 +14,7 @@ from app.workflows.audit import write_audit_event
 logger = logging.getLogger(__name__)
 
 AUDIT_INTEGRATION_SUGGESTIONS_SCANNED = "integration.suggestions.scanned"
+AUDIT_INTEGRATION_SUGGESTION_APPLIED = "integration.suggestion.applied"
 RESOURCE_TYPE_INTEGRATION_SUGGESTION = "integration_suggestion"
 
 MANUAL_PCT_THRESHOLD = 0.40
@@ -399,6 +400,40 @@ def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _build_apply_summary(result: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
+    entities: list[dict[str, Any]] = []
+    if result.get("workflowId"):
+        entities.append(
+            {
+                "type": "workflow",
+                "id": str(result["workflowId"]),
+                "label": row.get("title") or "Workflow draft",
+            }
+        )
+    install = result.get("installResult") or {}
+    if isinstance(install, dict):
+        for agent_id in install.get("agentIds") or install.get("agent_ids") or []:
+            entities.append({"type": "agent", "id": str(agent_id), "label": "Agent"})
+        for wf_id in install.get("workflowIds") or install.get("workflow_ids") or []:
+            entities.append({"type": "workflow", "id": str(wf_id), "label": "Workflow"})
+        if install.get("workflowId"):
+            entities.append({"type": "workflow", "id": str(install["workflowId"]), "label": "Pack workflow"})
+
+    evidence = row.get("evidence") or {}
+    highlights: list[str] = []
+    if isinstance(evidence, dict):
+        for key, value in list(evidence.items())[:5]:
+            highlights.append(f"{key}: {value}")
+
+    return {
+        "suggestionType": row.get("suggestion_type"),
+        "title": row.get("title"),
+        "entities": entities,
+        "evidenceHighlights": highlights,
+        "redirectPath": result.get("redirectPath"),
+    }
+
+
 def list_integration_suggestions(
     client: Any,
     org_id: str,
@@ -445,6 +480,237 @@ def dismiss_integration_suggestion(client: Any, org_id: str, suggestion_id: str)
     )
     row = (updated.data or existing.data)[0]
     return _serialize_suggestion(row)
+
+
+def _create_workflow_from_suggestion_stub(
+    client: Any,
+    org_id: str,
+    suggestion: dict[str, Any],
+    *,
+    actor_id: str | None = None,
+) -> str:
+    from app.workflows.constants import SCHEMA_VERSION
+
+    evidence = suggestion.get("evidence") or {}
+    uncovered = evidence.get("uncoveredActions") or []
+    connector_type = suggestion.get("connector_type") or suggestion.get("connectorType") or ""
+    steps: list[dict[str, Any]] = []
+    for index, action in enumerate(uncovered[:5]):
+        if not action:
+            continue
+        steps.append(
+            {
+                "id": f"step-{index + 1}",
+                "name": str(action).replace(".", " ").replace("_", " ").title(),
+                "type": "invoke_tool",
+                "config": {
+                    "connectorType": connector_type,
+                    "action": action,
+                },
+            }
+        )
+    if not steps:
+        steps.append(
+            {
+                "id": "step-1",
+                "name": "Review manual tasks",
+                "type": "noop",
+                "config": {"note": suggestion.get("message") or suggestion.get("title")},
+            }
+        )
+    edges = [
+        {"from": steps[i]["id"], "to": steps[i + 1]["id"]}
+        for i in range(len(steps) - 1)
+    ]
+    definition = {"schema_version": SCHEMA_VERSION, "steps": steps, "edges": edges}
+    row = {
+        "org_id": org_id,
+        "name": suggestion.get("title") or "Recommended workflow",
+        "goal": (suggestion.get("message") or suggestion.get("title") or "")[:500],
+        "description": "Created from integration recommendation (STA-123 apply)",
+        "definition": definition,
+        "schema_version": SCHEMA_VERSION,
+        "status": "draft",
+        "stage": "build",
+        "version": "v1.0.0",
+        "created_by": actor_id,
+    }
+    created = client.table("workflow_defs").insert(row).execute()
+    if not created.data:
+        raise IntegrationSuggestionError("Workflow create failed", code="WORKFLOW_CREATE_FAILED")
+    return str(created.data[0]["id"])
+
+
+def _definition_from_generated_workflow(generated: Any) -> dict[str, Any]:
+    from app.workflows.constants import SCHEMA_VERSION
+
+    steps = [
+        {
+            "id": node.id,
+            "name": node.name,
+            "type": node.type,
+            "config": node.config,
+            "metadata": {
+                "description": node.description,
+                "position": node.position,
+                "mesonGenerated": True,
+            },
+        }
+        for node in generated.nodes
+    ]
+    edges = [
+        {
+            "id": edge.id,
+            "from": edge.source,
+            "to": edge.target,
+            "label": edge.label,
+        }
+        for edge in generated.edges
+    ]
+    return {"schema_version": SCHEMA_VERSION, "steps": steps, "edges": edges}
+
+
+async def _create_workflow_from_suggestion(
+    client: Any,
+    org_id: str,
+    suggestion: dict[str, Any],
+    *,
+    actor_id: str | None = None,
+) -> str:
+    """Meson/goal-service enriched workflow draft with invoke_tool fallback."""
+    from app.services.goal_service import GoalService
+    from app.workflows.constants import SCHEMA_VERSION
+
+    goal = (suggestion.get("message") or suggestion.get("title") or "Automate manual integration tasks").strip()
+    connector_type = suggestion.get("connector_type") or suggestion.get("connectorType") or ""
+    evidence = suggestion.get("evidence") or {}
+    uncovered = evidence.get("uncoveredActions") or []
+    org_context = None
+    if uncovered:
+        org_context = "Prioritize automating these manual tool actions: " + ", ".join(str(a) for a in uncovered[:5])
+
+    try:
+        generated = await GoalService().generate_workflow(
+            goal=goal,
+            department=None,
+            connectors=[connector_type] if connector_type else None,
+            approval_required=True,
+            org_context=org_context,
+            org_id=org_id,
+        )
+        definition = _definition_from_generated_workflow(generated)
+        row = {
+            "org_id": org_id,
+            "name": generated.name,
+            "goal": generated.goal[:500],
+            "description": generated.description or "Created from integration recommendation (Meson apply)",
+            "definition": definition,
+            "schema_version": SCHEMA_VERSION,
+            "status": "draft",
+            "stage": "build",
+            "version": "v1.0.0",
+            "created_by": actor_id,
+        }
+        created = client.table("workflow_defs").insert(row).execute()
+        if not created.data:
+            raise IntegrationSuggestionError("Workflow create failed", code="WORKFLOW_CREATE_FAILED")
+        return str(created.data[0]["id"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "integration_suggestion_meson_fallback org_id=%s error=%s",
+            org_id,
+            str(exc),
+        )
+        return _create_workflow_from_suggestion_stub(client, org_id, suggestion, actor_id=actor_id)
+
+
+async def apply_integration_suggestion(
+    client: Any,
+    org_id: str,
+    suggestion_id: str,
+    *,
+    actor_id: str | None = None,
+) -> dict[str, Any]:
+    """Apply an open integration suggestion (STA-123 Tier 6)."""
+    existing = (
+        client.table("integration_suggestions")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("id", suggestion_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise IntegrationSuggestionError("Suggestion not found", code="SUGGESTION_NOT_FOUND")
+    row = existing.data[0]
+    if row.get("status") != "open":
+        raise IntegrationSuggestionError("Suggestion is not open", code="SUGGESTION_NOT_OPEN")
+
+    suggestion_type = row.get("suggestion_type")
+    result: dict[str, Any] = {
+        "workflowId": None,
+        "redirectPath": None,
+        "installResult": None,
+    }
+
+    if suggestion_type == "connect_connector":
+        connector_type = row.get("connector_type")
+        result["redirectPath"] = f"/connectors?type={connector_type}" if connector_type else "/connectors"
+    elif suggestion_type == "install_department_pack":
+        pack_id = row.get("pack_id")
+        if not pack_id:
+            raise IntegrationSuggestionError("Pack id missing on suggestion", code="PACK_ID_MISSING")
+        from app.services.agent_role_marketplace_service import install_department_pack
+
+        result["installResult"] = install_department_pack(
+            client,
+            org_id,
+            pack_id,
+            actor_id=actor_id,
+        )
+        result["redirectPath"] = f"/marketplace/assets/{pack_id}"
+    elif suggestion_type == "automate_workflow":
+        workflow_id = await _create_workflow_from_suggestion(client, org_id, row, actor_id=actor_id)
+        result["workflowId"] = workflow_id
+        result["redirectPath"] = f"/workflows/{workflow_id}/builder"
+    else:
+        raise IntegrationSuggestionError("Unsupported suggestion type", code="UNSUPPORTED_SUGGESTION_TYPE")
+
+    now = _now_iso()
+    updated = (
+        client.table("integration_suggestions")
+        .update({"status": "applied", "updated_at": now})
+        .eq("org_id", org_id)
+        .eq("id", suggestion_id)
+        .execute()
+    )
+    applied_row = (updated.data or existing.data)[0]
+    suggestion = _serialize_suggestion(applied_row)
+    result["suggestion"] = suggestion
+    result["applySummary"] = _build_apply_summary(result, row)
+
+    if actor_id:
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            AUDIT_INTEGRATION_SUGGESTION_APPLIED,
+            RESOURCE_TYPE_INTEGRATION_SUGGESTION,
+            suggestion_id,
+            metadata={
+                "suggestionType": suggestion_type,
+                "workflowId": result.get("workflowId"),
+                "redirectPath": result.get("redirectPath"),
+            },
+        )
+
+    logger.info(
+        "integration_suggestion_applied org_id=%s suggestion_id=%s type=%s",
+        org_id,
+        suggestion_id,
+        suggestion_type,
+    )
+    return result
 
 
 def scan_integration_suggestions(

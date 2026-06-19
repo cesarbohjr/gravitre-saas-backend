@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   Activity,
@@ -17,6 +18,7 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
+  Wand2,
   X,
 } from "lucide-react"
 import {
@@ -38,10 +40,12 @@ import type {
   IntegrationHealthScore,
   IntegrationHealthSnapshot,
   IntegrationSuggestion,
+  IntegrationSuggestionApplyResponse,
   WorkflowFailureAlert,
 } from "@/types/api"
 import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { TabSkeleton } from "./enterprise-skeletons"
+import { ApplySuggestionResultSheet } from "./apply-suggestion-result-sheet"
 
 const LOOKBACK_DAYS = 30
 
@@ -328,11 +332,15 @@ function HealthTrendChart({ snapshots }: { snapshots: IntegrationHealthSnapshot[
 function SuggestionCard({
   suggestion,
   onDismiss,
+  onApply,
   dismissing,
+  applying,
 }: {
   suggestion: IntegrationSuggestion
   onDismiss: (id: string) => void
+  onApply: (id: string) => void
   dismissing: string | null
+  applying: string | null
 }) {
   const Icon =
     suggestion.suggestionType === "connect_connector"
@@ -369,6 +377,21 @@ function SuggestionCard({
         </div>
         <p className="text-sm text-muted-foreground text-pretty">{suggestion.message}</p>
         <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            size="sm"
+            className="gap-1"
+            disabled={applying === suggestion.id || dismissing === suggestion.id}
+            onClick={() => onApply(suggestion.id)}
+          >
+            {applying === suggestion.id ? (
+              "Applying…"
+            ) : (
+              <>
+                <Wand2 className="h-3.5 w-3.5" />
+                Apply
+              </>
+            )}
+          </Button>
           {installHref ? (
             <Button variant="outline" size="sm" asChild>
               <Link href={installHref}>Install department pack</Link>
@@ -445,7 +468,11 @@ function FailureAlertRow({
 }
 
 export function CsDashboardTab() {
+  const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
+  const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [applyResult, setApplyResult] = useState<IntegrationSuggestionApplyResponse | null>(null)
+  const [applyResultOpen, setApplyResultOpen] = useState(false)
   const [dismissingFailureId, setDismissingFailureId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -538,6 +565,36 @@ export function CsDashboardTab() {
     } finally {
       setBusy(null)
     }
+  }
+
+  const applySuggestion = async (id: string) => {
+    setApplyingId(id)
+    try {
+      const result = await enterpriseApi.applyIntegrationSuggestion(id)
+      await mutateSuggestions()
+      setApplyResult(result)
+      setApplyResultOpen(true)
+    } catch {
+      showToast("Failed to apply recommendation")
+    } finally {
+      setApplyingId(null)
+    }
+  }
+
+  function continueAfterApply() {
+    if (!applyResult) {
+      setApplyResultOpen(false)
+      return
+    }
+    const suggestionId = applyResult.suggestion?.id
+    if (applyResult.workflowId) {
+      const suffix = suggestionId ? `?suggestionId=${encodeURIComponent(suggestionId)}` : ""
+      router.push(`/workflows/${applyResult.workflowId}/builder${suffix}`)
+    } else if (applyResult.redirectPath) {
+      router.push(applyResult.redirectPath)
+    }
+    setApplyResultOpen(false)
+    setApplyResult(null)
   }
 
   const dismissFailure = async (id: string) => {
@@ -723,7 +780,9 @@ export function CsDashboardTab() {
                   key={s.id}
                   suggestion={s}
                   onDismiss={(id) => void dismissSuggestion(id)}
+                  onApply={(id) => void applySuggestion(id)}
                   dismissing={busy}
+                  applying={applyingId}
                 />
               ))}
             </AnimatePresence>
@@ -781,6 +840,13 @@ export function CsDashboardTab() {
           )}
         </CardContent>
       </Card>
+
+      <ApplySuggestionResultSheet
+        result={applyResult}
+        open={applyResultOpen}
+        onOpenChange={setApplyResultOpen}
+        onContinue={continueAfterApply}
+      />
     </div>
   )
 }

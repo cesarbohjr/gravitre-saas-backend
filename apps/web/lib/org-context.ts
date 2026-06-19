@@ -2,10 +2,17 @@ export const DEFAULT_DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 export const SECONDARY_DEMO_ORG_ID = "11111111-1111-4111-8111-111111111111"
 
 export const ORG_STORAGE_KEY = "gravitre:selectedOrg"
+export const PLATFORM_ORG_VIEW_KEY = "gravitre:platformOrgView"
 
 export interface SelectedOrg {
   id: string
   name: string
+}
+
+export interface PlatformOrgViewState {
+  active: boolean
+  returnOrg?: SelectedOrg | null
+  returnPath?: string
 }
 
 let cachedOrgId: string | null | undefined
@@ -50,6 +57,73 @@ export function setSelectedOrgInStorage(org: SelectedOrg) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(ORG_STORAGE_KEY, JSON.stringify(org))
   cachedOrgId = org.id
+}
+
+export function getPlatformOrgViewState(): PlatformOrgViewState | null {
+  if (typeof window === "undefined") return null
+  const raw = window.localStorage.getItem(PLATFORM_ORG_VIEW_KEY)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as Partial<PlatformOrgViewState>
+    if (!parsed.active) return null
+    return {
+      active: true,
+      returnOrg: parsed.returnOrg ?? null,
+      returnPath: parsed.returnPath ?? "/platform/cs-workspace",
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Platform admin: switch org context to inspect a tenant CS dashboard. */
+export function enterPlatformOrgView(tenant: SelectedOrg, returnPath = "/platform/cs-workspace") {
+  if (typeof window === "undefined") return
+  const existing = getPlatformOrgViewState()
+  if (existing?.active) {
+    setSelectedOrgInStorage(tenant)
+    invalidateOrgCache()
+    return
+  }
+  const current = getSelectedOrgFromStorage()
+  const payload: PlatformOrgViewState = {
+    active: true,
+    returnOrg: current,
+    returnPath,
+  }
+  window.localStorage.setItem(PLATFORM_ORG_VIEW_KEY, JSON.stringify(payload))
+  setSelectedOrgInStorage(tenant)
+  invalidateOrgCache()
+}
+
+/** Exit platform tenant view and restore the prior org selection. */
+export function exitPlatformOrgView(): SelectedOrg | null {
+  if (typeof window === "undefined") return null
+  const state = getPlatformOrgViewState()
+  window.localStorage.removeItem(PLATFORM_ORG_VIEW_KEY)
+  const restore = state?.returnOrg ?? null
+  if (restore?.id) {
+    setSelectedOrgInStorage(restore)
+  } else {
+    window.localStorage.removeItem(ORG_STORAGE_KEY)
+  }
+  invalidateOrgCache()
+  return restore
+}
+
+export function navigateToPlatformOrgView(
+  tenant: SelectedOrg,
+  targetPath = "/settings/enterprise?tab=cs",
+  returnPath = "/platform/cs-workspace",
+) {
+  enterPlatformOrgView(tenant, returnPath)
+  window.location.assign(targetPath)
+}
+
+export function navigateFromPlatformOrgView(fallbackPath = "/platform/cs-workspace") {
+  const state = getPlatformOrgViewState()
+  exitPlatformOrgView()
+  window.location.assign(state?.returnPath || fallbackPath)
 }
 
 function pickPreferredOrg(
@@ -103,6 +177,15 @@ export async function ensureSelectedOrg(force = false): Promise<string | null> {
 
   syncInFlight = (async () => {
     try {
+      const platformView = getPlatformOrgViewState()
+      if (platformView?.active) {
+        const stored = getSelectedOrgFromStorage()
+        if (stored?.id) {
+          cachedOrgId = stored.id
+          return stored.id
+        }
+      }
+
       const { organizationsApi } = await import("@/lib/api")
       const { organizations } = await organizationsApi.list()
       const rows = organizations ?? []

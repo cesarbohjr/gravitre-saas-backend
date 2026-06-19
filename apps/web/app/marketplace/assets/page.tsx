@@ -629,6 +629,20 @@ function MarketplaceAssetsContent() {
                   {filter.label}
                 </Button>
               ))}
+              {typeFilter !== "all" || departmentFilter || categoryFilter || debouncedSearch ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setTypeFilter("all")
+                    setDepartmentFilter(null)
+                    setCategoryFilter(null)
+                    setSearch("")
+                  }}
+                >
+                  Clear filters
+                </Button>
+              ) : null}
             </div>
 
             {categories ? (

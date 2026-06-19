@@ -118,3 +118,27 @@ Types: `apps/web/types/api.ts` — `MarketplaceAssetSummary`, `MarketplaceConnec
 - Seed catalog: `python backend/scripts/seed_marketplace.py`
 - Backend router: `backend/app/routers/marketplace.py`
 - Legacy packs doc: `docs/integration/agent-role-marketplace.md` (superseded for browse by unified assets API)
+- Tier 6 roadmap: `docs/integration/TIER6_PLANNING.md` (Lane B/C v2/v3)
+
+---
+
+## Roadmap — v2 / v3 (unified catalog)
+
+Aligned with `POST_TIER5_BACKLOG.md` and Linear STA-233–239.
+
+### v2 (next)
+
+| Item | Linear | Scope |
+|------|--------|--------|
+| Facet filters | STA-233 | Clickable category + department chips; URL-synced `?assetType=&department=` |
+| Install blocker UX | MKT-6.1 | Blocker list in drawer, 409 toast with connector deep links (see sections 3–5 above) |
+| CS suggestion links | — | Department pack suggestions deep-link to filtered catalog, not legacy `/role-packs` |
+
+### v3 (later)
+
+| Item | Linear | Scope |
+|------|--------|--------|
+| Asset slug route | STA-234 | `/marketplace/assets/[slug]` shareable URLs + OG metadata |
+| Reviews & saves | STA-236 | Community signals on cards; saved assets list |
+| E2E prod smoke | STA-239 | CI workflow against staging/prod API with GitHub secrets |
+| Analytics polish | STA-235 | Publisher dashboard charts tied to unified asset IDs |

@@ -256,18 +256,23 @@ export function WorkflowIntelligenceDrawer({
     setRiskLoading(true)
     setRiskError(null)
     try {
-      const res = await workflowsApi.listFailurePredictions({
-        workflowId,
-        status: "active",
-      })
-      setAlerts(res.alerts)
+      if (isPersisted) {
+        const scanned = await workflowsApi.scanFailurePredictions(workflowId)
+        setAlerts(scanned.alerts)
+      } else {
+        const res = await workflowsApi.listFailurePredictions({
+          workflowId,
+          status: "active",
+        })
+        setAlerts(res.alerts)
+      }
     } catch (err) {
       setRiskError(err instanceof Error ? err.message : "Failed to scan for risks")
       setAlerts([])
     } finally {
       setRiskLoading(false)
     }
-  }, [workflowId])
+  }, [isPersisted, workflowId])
 
   const runDryRun = useCallback(async () => {
     setDryRunLoading(true)
