@@ -1226,7 +1226,40 @@ async def list_agents_route(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     operators = list_operators(client, org_id)
-    active_refs = list_active_versions(client, org_id, [str(op["id"]) for op in operators], environment)
+    operator_ids = [str(op["id"]) for op in operators]
+    bindings = list_operator_bindings(client, org_id, operator_ids)
+    connectors_by_operator: dict[str, list[str]] = {}
+    connector_ids: list[str] = []
+    for binding in bindings:
+        op_id = str(binding.get("operator_id"))
+        conn_id = binding.get("connector_id")
+        if not op_id or not conn_id:
+            continue
+        connectors_by_operator.setdefault(op_id, []).append(str(conn_id))
+        connector_ids.append(str(conn_id))
+    connectors = list_connectors_by_ids(client, org_id, list(set(connector_ids)), environment)
+    connector_map = {str(conn["id"]): conn for conn in connectors}
+    workflow_counts: dict[str, int] = {}
+    if operator_ids:
+        nodes = (
+            client.table("workflow_nodes")
+            .select("operator_id, workflow_id")
+            .eq("org_id", org_id)
+            .eq("environment", environment)
+            .in_("operator_id", operator_ids)
+            .execute()
+            .data
+            or []
+        )
+        workflow_sets: dict[str, set[str]] = {}
+        for node in nodes:
+            op_id = node.get("operator_id")
+            wf_id = node.get("workflow_id")
+            if not op_id or not wf_id:
+                continue
+            workflow_sets.setdefault(str(op_id), set()).add(str(wf_id))
+        workflow_counts = {op_id: len(wfs) for op_id, wfs in workflow_sets.items()}
+    active_refs = list_active_versions(client, org_id, operator_ids, environment)
     active_by_operator = {str(ref["operator_id"]): str(ref["active_version_id"]) for ref in active_refs}
     active_versions = list_operator_versions_by_ids(
         client, org_id, list(active_by_operator.values())
