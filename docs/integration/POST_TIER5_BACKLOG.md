@@ -2,7 +2,7 @@
 
 Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and Tier 6 product work.
 
-**Current focus:** **Lane C + D** — marketplace CI smoke (STA-239), catalog ≥50 guard (STA-229), M1 polish, production hardening workflows.
+**Current focus:** **M2 marketplace** — org tab (STA-246), uninstall UI (STA-244), asset CRUD polish.
 
 ---
 
@@ -45,8 +45,9 @@ Audit items remain in Linear but are **documented as skipped/deferred** — see 
 | Item | Status |
 |------|--------|
 | STA-233 facet filters | ✅ Shipped |
-| STA-234 slug route | ✅ Route exists; OG polish v3 |
-| STA-236 reviews/saves | Skipped → v3 |
+| STA-236 reviews/saves | ✅ Saved list + catalog save buttons |
+| STA-234 slug route | ✅ OG metadata + opengraph image |
+| STA-242 admin queue | ✅ Pending counts on marketplace hub |
 | STA-239 E2E smoke | ✅ `.github/workflows/marketplace-production-smoke.yml` |
 | STA-229 catalog ≥50 | ✅ seed `list_catalog_assets()` = 50; prod smoke asserts `total≥50` |
 | STA-232 plan limits | ✅ Install sheet surfaces `plan_limit_exceeded` |

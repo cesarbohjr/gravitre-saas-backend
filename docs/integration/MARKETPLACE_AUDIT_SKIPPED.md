@@ -19,9 +19,9 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 | MKT-AUDIT-5.5 | STA-231 | department_pack / knowledge_pack install tests | Test debt — backlog |
 | MKT-AUDIT-5.6 | STA-232 | LIMIT_EXCEEDED on install | ✅ Install sheet + `plan_limit_exceeded` toast |
 | MKT-AUDIT-6.2 | STA-233 | Facet filters | ✅ **Done** — unified catalog sidebar + URL sync |
-| MKT-AUDIT-6.3 | STA-234 | `/marketplace/assets/[slug]` | ✅ **Route exists** — polish OG/share v3 |
+| MKT-AUDIT-6.3 | STA-234 | `/marketplace/assets/[slug]` | ✅ **OG metadata + opengraph image** |
 | MKT-AUDIT-6.4 | STA-235 | Analytics dashboard UI | ✅ Publisher revenue + org adoption link |
-| MKT-AUDIT-6.5 | STA-236 | Reviews and saves UI | v3 — API stubs exist |
+| MKT-AUDIT-6.5 | STA-236 | Reviews and saves UI | ✅ Saved list + catalog save buttons |
 | MKT-AUDIT-6.6 | STA-237 | Remove legacy role-pack client | Redirect to unified catalog ✅ |
 | MKT-AUDIT-DOC-1 | STA-238 | Update V0_BACKEND_SYNC branch ref | ✅ `docs/integration/V0_BACKEND_SYNC.md` |
 | MKT-AUDIT-QA-1 | STA-239 | E2E marketplace smoke in CI | ✅ `.github/workflows/marketplace-production-smoke.yml` |
@@ -34,7 +34,7 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 |-----|--------|-------|-------------|
 | MKT-AUDIT-9.1 | STA-240 | Asset CRUD API | M2 — partner submit flow partial |
 | MKT-AUDIT-9.2 | STA-241 | Internal publish workflow | M2 |
-| MKT-AUDIT-9.3 | STA-242 | Admin approval queue UI | M2 |
+| MKT-AUDIT-9.3 | STA-242 | Admin approval queue UI | ✅ `/marketplace/platform-admin` + hub pending counts |
 | MKT-AUDIT-9.4 | STA-243 | Version snapshot on publish | M2 |
 | MKT-AUDIT-8.1 | STA-244 | Uninstall flow | API exists; UI on asset detail |
 | MKT-AUDIT-10.2 | STA-245 | Per-asset adoption events | M2 analytics |
@@ -58,10 +58,10 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 ## Promote to active work
 
-When picking up Lane C again, prefer in order:
+When picking up marketplace backlog again, prefer in order:
 
-1. **STA-236** — Reviews/saves UI polish
-2. **STA-234** — Slug route OG/share metadata
-3. **STA-242** — Admin approval queue (M2)
+1. **STA-246** — Org marketplace tab (M2)
+2. **STA-244** — Uninstall flow UI on asset detail
+3. **STA-240** — Asset CRUD API polish (M2)
 
 Linear project: [Gravitre Marketplace](https://linear.app/staqbot/project/gravitre-marketplace)
