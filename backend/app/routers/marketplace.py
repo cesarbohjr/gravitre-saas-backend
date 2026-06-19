@@ -1561,8 +1561,11 @@ async def marketplace_asset_entitlement(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    asset = fetch_marketplace_asset(client, asset_ref)
-    return get_entitlement_status(client, org_id, asset)
+    try:
+        asset = fetch_marketplace_asset(client, asset_ref)
+        return get_entitlement_status(client, org_id, asset)
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc
 
 
 @router.post("/assets/{asset_ref}/checkout")

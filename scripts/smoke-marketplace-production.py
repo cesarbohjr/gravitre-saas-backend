@@ -17,6 +17,7 @@ API_BASE = os.environ.get(
     "BACKEND_URL",
     "https://gravitre-saas-backend-production.up.railway.app",
 ).rstrip("/")
+SMOKE_PAID_SLUG = "smoke-paid-operator-pack"
 
 
 def _load_env() -> dict[str, str]:
@@ -46,12 +47,25 @@ def _mint_token(env: dict[str, str], user_id: str, email: str) -> str:
     )
 
 
-def _request(path: str, token: str, org_id: str) -> dict:
+def _request(
+    path: str,
+    token: str,
+    org_id: str,
+    *,
+    method: str = "GET",
+    body: dict | None = None,
+) -> dict:
     url = f"{API_BASE}{path}"
-    req = urllib.request.Request(url)
-    req.add_header("Authorization", f"Bearer {token}")
-    req.add_header("X-Org-Id", org_id)
-    req.add_header("X-Environment", "production")
+    data = None
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Org-Id": org_id,
+        "X-Environment": "production",
+    }
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode("utf-8") or "{}")
 
@@ -94,11 +108,53 @@ def main() -> int:
     summary = _request("/api/marketplace/analytics/summary?environment=production", token, org_id)
     print(f"analytics summary keys: {sorted(summary.keys())}")
 
+    roi = _request("/api/marketplace/analytics/roi?limit=5&environment=production", token, org_id)
+    print(
+        f"roi: installs={roi.get('activeInstalls')} "
+        f"realizedHours={roi.get('totalRealizedHoursSaved')}"
+    )
+
+    federated = _request("/api/marketplace/federated-connectors?limit=5&environment=production", token, org_id)
+    print(f"federated connectors: total={federated.get('total')}")
+
     slug = asset_list[0].get("slug") if asset_list else None
     if slug:
         detail = _request(f"/api/marketplace/assets/{slug}?environment=production", token, org_id)
         title = (detail.get("asset") or {}).get("title")
         print(f"detail: {slug} -> {title}")
+
+        entitlement = _request(f"/api/marketplace/assets/{slug}/entitlement", token, org_id)
+        print(
+            f"entitlement ({slug}): requiresPayment={entitlement.get('requiresPayment')} "
+            f"hasEntitlement={entitlement.get('hasEntitlement')}"
+        )
+
+        install_check = _request(
+            f"/api/marketplace/assets/{slug}/install-check?environment=production",
+            token,
+            org_id,
+        )
+        print(
+            f"install-check: canInstall={install_check.get('canInstall')} "
+            f"requiresPayment={install_check.get('requiresPayment')}"
+        )
+
+    paid = (
+        client.table("marketplace_assets")
+        .select("slug")
+        .eq("slug", SMOKE_PAID_SLUG)
+        .limit(1)
+        .execute()
+    )
+    if paid.data:
+        paid_slug = paid.data[0]["slug"]
+        paid_ent = _request(f"/api/marketplace/assets/{paid_slug}/entitlement", token, org_id)
+        print(
+            f"paid smoke asset entitlement: requiresPayment={paid_ent.get('requiresPayment')} "
+            f"priceCents={paid_ent.get('priceCents')}"
+        )
+    else:
+        print(f"warn: run scripts/ensure_marketplace_smoke_paid_asset.py for paid-path smoke")
 
     print("OK")
     return 0
