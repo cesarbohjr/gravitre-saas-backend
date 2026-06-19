@@ -2,7 +2,7 @@
 
 Tier 5 (STA-100–124) and marketplace M1–M5 are **code-complete**. Production verification is **green** except Clio browser OAuth (C.6).
 
-**Current focus:** **Tier 6 v2** (CS workspace escalate + alert inbox, apply UX polish, approvals SLA, marketplace facets).
+**Current focus:** **Lane B P1 UI** — workflow pre-run simulate/scan, federation B2B tabs; Lane C skipped audit documented.
 
 ---
 
@@ -12,7 +12,7 @@ Tier 5 (STA-100–124) and marketplace M1–M5 are **code-complete**. Production
 |---------|--------|--------|
 | **v0** | CS workspace rollups, recommendation apply API, mobile approvals baseline, agent swarm UI | ✅ Shipped |
 | **v1** | Org drill-down, snapshot backfill, assign/snooze queue, Meson/GoalService apply | ✅ Shipped |
-| **v2** | Escalate + alert inbox, apply result UX, approvals SLA, marketplace facet UX | **Next** |
+| **v2** | Escalate + alert inbox, apply result UX, approvals SLA, marketplace facet UX | ✅ Shipped |
 | **v3** | PWA push, partner analytics, slug/reviews/CI smoke, enterprise polish | Backlog |
 
 ---
@@ -85,10 +85,10 @@ Tier 5 (STA-100–124) and marketplace M1–M5 are **code-complete**. Production
 | Item | v1 | v2 | v3 |
 |------|----|----|-----|
 | Agent swarm | `/agents/swarm` | Run detail polish (aggregate UX) | Swarm templates |
-| Federation | `/settings/federation` | — | Partner invite email preview |
-| Digital twin + risk scan | Builder intelligence drawer | Pre-run scan on workflow **detail** page (not only builder) | Risk → fix suggestions |
-| Role packs → unified catalog | Redirect to `/marketplace/assets?type=department_pack` | **STA-233** facet filters + department chips | **STA-234** `/marketplace/assets/[slug]` |
-| Integration apply | CS dashboard Apply | Apply result panel (T6-2 v2) | — |
+| Federation | `/settings/federation` handoffs | **Grants + delegated tasks tabs** ✅ | Partner invite email preview |
+| Digital twin + risk scan | Builder intelligence drawer | **Workflow detail pre-run panel** ✅ | Risk → fix suggestions |
+| Role packs → unified catalog | Unified catalog + facets | — | **STA-234** slug polish |
+| Integration apply | CS dashboard Apply + result sheet | — | — |
 | Clio OAuth (C.6) | — | Browser smoke checklist | Production sign-off |
 
 Design reference: `docs/design/V0_MARKETPLACE_UNIFIED_PROMPT.md`.
@@ -97,13 +97,15 @@ Design reference: `docs/design/V0_MARKETPLACE_UNIFIED_PROMPT.md`.
 
 ## C — Marketplace audit (M1 leftovers)
 
-| Linear | Item | v2 | v3 |
-|--------|------|----|----|
-| STA-233 | Clickable category/department facets | Unified catalog filter bar | — |
-| STA-234 | Dedicated asset slug route | — | Shareable asset URLs |
-| STA-236 | Reviews and saves UI | — | Community signals on asset cards |
-| STA-239 | E2E marketplace smoke in CI | GitHub secrets + staging backend | Scheduled prod smoke |
-| STA-229 | Catalog ≥50 | ✅ prod `total=51` | — |
+Skipped items: **`docs/integration/MARKETPLACE_AUDIT_SKIPPED.md`** (still open in Linear for tracking).
+
+| Linear | Item | Status |
+|--------|------|--------|
+| STA-233 | Facet filters | ✅ Shipped |
+| STA-234 | Asset slug route | ✅ Route exists |
+| STA-236 | Reviews/saves | Skipped → v3 |
+| STA-239 | E2E prod smoke | Skipped → v3 |
+| STA-229 | Catalog ≥50 | ✅ prod `total=51` |
 
 IDs: `docs/integration/marketplace-audit-linear-ids.json`.
 

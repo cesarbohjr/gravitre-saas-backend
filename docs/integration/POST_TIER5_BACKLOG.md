@@ -2,7 +2,7 @@
 
 Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and Tier 6 product work.
 
-**Current focus:** **Tier 6 v2** — see version map in **`docs/integration/TIER6_PLANNING.md`**.
+**Current focus:** **Lane B P1 UI** — workflow pre-run intelligence, federation B2B tabs, marketplace skipped audit docs.
 
 ---
 
@@ -12,79 +12,49 @@ Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hard
 |---------|---------|---------|
 | **v0** | CS workspace rollups, apply API, mobile approvals, agent swarm UI | — |
 | **v1** | Org drill-down, snapshot backfill, assign/snooze, Meson apply | — |
-| **v2** | — | Escalate, alert inbox, apply UX, approvals SLA, marketplace facets (STA-233) |
-| **v3** | — | PWA push, partner analytics, slug/reviews/CI (STA-234/236/239), enterprise polish |
+| **v2** | Escalate, alert inbox, apply UX, approvals SLA, marketplace facets | ✅ Shipped |
+| **v3** | PWA push, partner analytics, slug/reviews/CI, enterprise polish | Backlog |
 
 ---
 
 ## Lane A — Tier 6 product
 
-| Epic | v0 | v1 | v2 | v3 |
-|------|----|----|-----|-----|
-| **T6-1 CS workspace** | Tenant rollups + UI | Drill-down, backfill, assign/snooze | Escalate, alert inbox, cron backfill | Trend sparklines, CSV export |
-| **T6-2 Recommendation apply** | Apply API + button | GoalService/Meson draft | Apply result panel + builder evidence | Meson re-gen, install stepper |
-| **T6-3 Partner analytics** | Publisher page (partial) | — | Time-series by asset | Payout reconciliation export |
-| **T6-4 Mobile approvals** | Mobile layout + deep links | — | SLA countdown, swipe (optional) | PWA + web push |
-
-### v1 shipped (reference)
-
-| API | UI |
-|-----|-----|
-| `GET /api/platform/cs-workspace/tenants` | `/platform/cs-workspace` |
-| `POST /api/platform/cs-workspace/snapshots/backfill` | Backfill snapshots button |
-| `POST …/tenants/{id}/assign`, `…/snooze` | Assign / Snooze controls |
-| Platform org context | View CS dashboard → `/settings/enterprise?tab=cs` |
-| `POST …/integration-suggestions/{id}/apply` | CS dashboard **Apply** (Meson draft) |
+See **`docs/integration/TIER6_PLANNING.md`** for CS workspace, apply, approvals, partner analytics.
 
 ---
 
 ## Lane B — P1 UI gaps
 
-| Item | Status | v2 | v3 |
-|------|--------|-----|-----|
-| Agent swarm | ✅ `/agents/swarm` | Detail polish | — |
-| Federation | ✅ `/settings/federation` | — | — |
-| Digital twin + risk scan | ✅ Builder drawer | Workflow detail pre-run panel | — |
-| Integration apply | ✅ | Result UX (T6-2 v2) | — |
-| Role packs → catalog | ⚠️ Redirect only | **STA-233** facets | **STA-234** slug route |
-| Clio OAuth (C.6) | ⚠️ Browser required | Smoke checklist | Prod sign-off |
+| Item | Status | Notes |
+|------|--------|-------|
+| Agent swarm | ✅ `/agents/swarm` | — |
+| Federation | ✅ `/settings/federation` | Handoffs + **connector grants** + **delegated tasks** tabs |
+| Digital twin + failure scan | ✅ | Builder drawer + **`/workflows/[id]` pre-run panel** (Simulate + scan) |
+| Integration apply | ✅ | Apply result sheet (T6-2 v2) |
+| Role packs → catalog | ✅ | Unified catalog + facet filters |
+| Clio OAuth (C.6) | ⚠️ Browser required | Smoke checklist |
 
 Design: `docs/design/V0_MARKETPLACE_UNIFIED_PROMPT.md`.
 
 ---
 
-## Lane C — Marketplace M1 (v2 / v3)
+## Lane C — Marketplace M1 (skipped in Linear)
 
-| Item | v2 | v3 |
-|------|-----|-----|
-| STA-233 facet filters | Unified catalog filter bar | — |
-| STA-234 asset slug route | — | Shareable `/marketplace/assets/[slug]` |
-| STA-236 reviews/saves | — | Asset community signals |
-| STA-239 E2E smoke | GitHub secrets setup | Scheduled prod/staging smoke |
-| Install blocker UX | Per `V0_MARKETPLACE_UNIFIED_PROMPT.md` | — |
+Audit items remain in Linear but are **documented as skipped/deferred** — see **`docs/integration/MARKETPLACE_AUDIT_SKIPPED.md`**.
+
+| Item | Status |
+|------|--------|
+| STA-233 facet filters | ✅ Shipped |
+| STA-234 slug route | ✅ Route exists; OG polish v3 |
+| STA-236 reviews/saves | Skipped → v3 |
+| STA-239 E2E smoke | Skipped → v3 |
+| STA-229 catalog ≥50 | ✅ prod `total=51` — close in Linear |
 
 ---
 
 ## P0 — Ship & verify (done)
 
-| Item | Status |
-|------|--------|
-| CS dashboard UI | ✅ |
-| `smoke:post-tier5`, `smoke:tier5-manual`, `smoke:ai-production:report` | ✅ |
-| `smoke:marketplace-production` (51 assets) | ✅ |
-| Agent swarm UI | ✅ |
-| Tier 6 v1 (backfill, queue, drill-down, Meson apply) | ✅ |
-
----
-
-## P2 — Enterprise admin polish (v3)
-
-- Branding live preview (v2)
-- DNS verification stepper (v3)
-- Workforce KPI sparklines (v3)
-- Premium Enterprise sub-nav
-
-See `docs/design/ENTERPRISE_UI_V0_PROMPT.md`.
+CS workspace, agent swarm, Tier 6 v2, nightly backfill GitHub Action — see git history and `TIER6_PLANNING.md`.
 
 ---
 
@@ -95,7 +65,6 @@ npm run smoke:tier5
 npm run smoke:tier5-manual
 npm run smoke:post-tier5
 npm run smoke:marketplace-production
-npm run smoke:marketplace-stripe:fulfill   # needs STRIPE_SECRET_KEY locally
 ```
 
 Requires `backend/.env.operator.local` with Supabase JWT + service role.
@@ -104,9 +73,7 @@ Requires `backend/.env.operator.local` with Supabase JWT + service role.
 
 ## Related docs
 
-- `TIER6_PLANNING.md` — full v2/v3 breakdown + Linear checklist
-- `marketplace-audit-linear-ids.json` — STA-233–239
-- `V0_MARKETPLACE_UNIFIED_PROMPT.md` — unified catalog UX v2
-- `integration-health-score.md` — STA-124
-- `auto-suggest-connectors-workflows.md` — STA-123 + apply
+- `TIER6_PLANNING.md`
+- `MARKETPLACE_AUDIT_SKIPPED.md`
+- `marketplace-audit-linear-ids.json`
 - `predictive-workflow-failure.md` — STA-122

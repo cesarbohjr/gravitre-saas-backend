@@ -1616,10 +1616,37 @@ export const federationApi = {
   // Connector grants
   listConnectorGrants: () =>
     fetcher<{ grants: FederationConnectorGrant[] }>("/api/federation/connector-grants"),
+  acceptConnectorGrant: (grantId: string) =>
+    postJson<{ grant: FederationConnectorGrant }>(
+      `/api/federation/connector-grants/${grantId}/accept`,
+      {},
+    ),
+  rejectConnectorGrant: (grantId: string) =>
+    postJson<{ grant: FederationConnectorGrant }>(
+      `/api/federation/connector-grants/${grantId}/reject`,
+      {},
+    ),
+  revokeConnectorGrant: (grantId: string) =>
+    postJson<{ grant: FederationConnectorGrant }>(
+      `/api/federation/connector-grants/${grantId}/revoke`,
+      {},
+    ),
 
   // Delegated tasks
-  listDelegatedTasks: () =>
-    fetcher<{ tasks: FederationDelegatedTask[] }>("/api/federation/delegated-tasks"),
+  listDelegatedTasks: (params?: { direction?: "all" | "inbound" | "outbound"; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.direction) query.set("direction", params.direction)
+    if (params?.status) query.set("status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ tasks: FederationDelegatedTask[] }>(`/api/federation/delegated-tasks${suffix}`)
+  },
+  acceptDelegatedTask: (taskId: string) =>
+    postJson<{ task: FederationDelegatedTask }>(`/api/federation/delegated-tasks/${taskId}/accept`, {}),
+  rejectDelegatedTask: (taskId: string, reason?: string) =>
+    postJson<{ task: FederationDelegatedTask }>(
+      `/api/federation/delegated-tasks/${taskId}/reject`,
+      { reason: reason ?? "Declined by operator" },
+    ),
 }
 
 // ============ Agent swarm (STA-119) ============
