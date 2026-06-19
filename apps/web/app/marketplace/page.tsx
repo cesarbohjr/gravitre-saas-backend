@@ -25,6 +25,7 @@ import {
   Building2,
   Shield,
   Globe,
+  TrendingUp,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
 import { fetcher } from "@/lib/fetcher"
@@ -215,6 +216,13 @@ function MarketplaceHome() {
       description: "Onboard your org to submit assets to the public catalog.",
       href: "/marketplace/publisher",
       icon: Sparkles,
+      show: isAdmin,
+    },
+    {
+      title: "Publisher revenue",
+      description: "Earnings from connector usage and paid asset sales.",
+      href: "/marketplace/publisher/analytics",
+      icon: TrendingUp,
       show: isAdmin,
     },
     {

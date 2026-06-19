@@ -87,6 +87,7 @@ import type {
   MarketplaceBillingStatus,
   MarketplaceAssetPayoutSummary,
   MarketplacePublisherPayoutSyncResult,
+  MarketplacePublisherRevenueAnalytics,
   MarketplacePartnerPricing,
   MarketplaceAnalyticsSummary,
   MarketplaceAssetCheckoutResult,
@@ -755,6 +756,8 @@ export const marketplaceApi = {
       sync: MarketplacePublisherPayoutSyncResult
       summary: MarketplaceAssetPayoutSummary
     }>(apiUrl("/api/marketplace/publisher/payouts/sync"), {}),
+  publisherRevenueAnalytics: () =>
+    fetcher<MarketplacePublisherRevenueAnalytics>(apiUrl("/api/marketplace/publisher/analytics")),
   listAssetReviews: (assetRef: string, params?: { limit?: number; offset?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))

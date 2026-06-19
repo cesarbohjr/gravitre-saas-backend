@@ -198,6 +198,9 @@ export default function MarketplaceBillingPage() {
               Submit
             </Link>
           </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/marketplace/publisher/analytics">Revenue analytics</Link>
+          </Button>
         </div>
 
         {isLoading ? (

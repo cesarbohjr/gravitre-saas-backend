@@ -14,6 +14,7 @@ from app.auth.dependencies import (
     require_admin,
     require_platform_admin,
 )
+from app.auth.platform_admin import is_platform_admin
 from app.config import Settings, get_settings
 from app.services.partner_marketplace_service import (
     AUDIT_CERTIFICATION_SCANNED,
@@ -128,6 +129,7 @@ from app.marketplace.entitlements import (
 )
 from app.marketplace.convergence import list_federated_connector_assets
 from app.marketplace.payouts import get_publisher_payout_summary, list_recent_asset_payouts, sync_pending_payouts
+from app.marketplace.publisher_analytics import get_publisher_revenue_analytics
 from app.marketplace.roi import marketplace_roi_summary
 from app.marketplace.service import fetch_marketplace_asset
 from app.workflows.audit import write_audit_event
@@ -1658,6 +1660,22 @@ async def marketplace_publisher_payouts_sync(
     result = sync_pending_payouts(client, settings, partner_org_id=org_id)
     summary = get_publisher_payout_summary(client, org_id)
     return {"sync": result, "summary": summary}
+
+
+@router.get("/publisher/analytics")
+async def get_marketplace_publisher_analytics(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Publisher revenue dashboard: payouts, usage, and adoption (STA-255)."""
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    include_platform = is_platform_admin(client, user["user_id"])
+    return get_publisher_revenue_analytics(
+        client,
+        org_id,
+        include_platform_insights=include_platform,
+    )
 
 
 @router.post("/assets/{asset_ref}/install")

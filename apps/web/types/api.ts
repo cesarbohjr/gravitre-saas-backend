@@ -1245,6 +1245,47 @@ export interface MarketplacePublisherPayoutSyncResult {
   pendingReviewed: number
 }
 
+export interface MarketplacePublisherEarningsBreakdown {
+  grossCents: number
+  platformFeeCents: number
+  partnerEarningsCents: number
+  transferredCents: number
+  pendingTransferCents: number
+  usageEventCount?: number
+  activeInstallCount?: number
+  payoutCount?: number
+}
+
+export interface MarketplacePublisherAdoptionSummary {
+  publishedAssets: number
+  totalInstalls: number
+  usageEventCount: number
+  paidSaleCount: number
+}
+
+export interface MarketplaceTopEarningAsset {
+  assetId: string
+  slug?: string | null
+  title?: string | null
+  grossCents: number
+  partnerEarningsCents: number
+  saleCount: number
+}
+
+export interface MarketplacePublisherRevenueAnalytics {
+  partnerOrgId: string
+  earnings: {
+    combined: MarketplacePublisherEarningsBreakdown
+    connectorUsage: MarketplacePublisherEarningsBreakdown
+    assetSales: MarketplacePublisherEarningsBreakdown
+  }
+  adoption: MarketplacePublisherAdoptionSummary
+  topAssetsByEarnings: MarketplaceTopEarningAsset[]
+  recentAssetPayouts: MarketplaceAssetPayoutRow[]
+  recentUsageEvents: MarketplaceUsageEvent[]
+  platformTopAssets?: MarketplaceTopEarningAsset[]
+}
+
 export interface MarketplaceUsageEvent {
   id: string
   action: string
