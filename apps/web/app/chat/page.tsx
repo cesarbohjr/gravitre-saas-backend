@@ -86,6 +86,21 @@ const SEARCH_GROUP_CONFIG: Array<{
   { key: "document", label: "Documents", icon: FileText },
 ]
 
+// Worked examples that teach how to phrase a search and what comes back.
+// These are phrasing templates, not claims about specific records.
+const SEARCH_QUERY_PATTERNS: Array<{ query: string; returns: string; icon: LucideIcon }> = [
+  {
+    query: "failed runs in the last 24 hours",
+    returns: "Recent workflow runs that errored, newest first.",
+    icon: Zap,
+  },
+  {
+    query: "workflows using the Slack connector",
+    returns: "Workflows wired to a specific connector or source.",
+    icon: Workflow,
+  },
+]
+
 function resolveResultStatus(result: SearchResult): string | null {
   const fromMeta = result.metadata?.status
   if (typeof fromMeta === "string" && fromMeta.trim()) return fromMeta.trim()
