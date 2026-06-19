@@ -117,6 +117,20 @@ def main() -> int:
     federated = _request("/api/marketplace/federated-connectors?limit=5&environment=production", token, org_id)
     print(f"federated connectors: total={federated.get('total')}")
 
+    billing = _request("/api/marketplace/billing/status?environment=production", token, org_id)
+    asset_payouts = billing.get("assetPayouts") or {}
+    print(
+        f"billing: connectStatus={(billing.get('account') or {}).get('connectStatus')} "
+        f"assetPayoutCount={asset_payouts.get('payoutCount', 0)}"
+    )
+
+    publisher_analytics = _request("/api/marketplace/publisher/analytics?environment=production", token, org_id)
+    combined = (publisher_analytics.get("earnings") or {}).get("combined") or {}
+    print(
+        f"publisher analytics: grossCents={combined.get('grossCents')} "
+        f"topAssets={len(publisher_analytics.get('topAssetsByEarnings') or [])}"
+    )
+
     slug = asset_list[0].get("slug") if asset_list else None
     if slug:
         detail = _request(f"/api/marketplace/assets/{slug}?environment=production", token, org_id)
