@@ -11,7 +11,11 @@ import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { ArrowLeft, CreditCard, DollarSign, Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import type { MarketplaceBillingStatus, MarketplacePartnerPricing } from "@/types/api"
+import type {
+  MarketplaceAssetPayoutRow,
+  MarketplaceBillingStatus,
+  MarketplacePartnerPricing,
+} from "@/types/api"
 
 function formatUsd(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100)
@@ -145,6 +149,35 @@ export default function MarketplaceBillingPage() {
     }
   }
 
+  const handlePayoutSync = async () => {
+    setIsWorking(true)
+    try {
+      const result = await marketplaceApi.syncPublisherPayouts()
+      const { transferred, failed, pendingReviewed } = result.sync
+      if (pendingReviewed === 0) {
+        toast.success("No pending asset payouts to sync")
+      } else if (transferred > 0) {
+        toast.success(`Transferred ${transferred} asset payout${transferred === 1 ? "" : "s"}`)
+      } else if (failed > 0) {
+        toast.error(`${failed} payout transfer${failed === 1 ? "" : "s"} failed`, {
+          description: "Check Stripe Connect status and try again",
+        })
+      } else {
+        toast.message("Pending payouts reviewed", {
+          description: "Connect may still be onboarding — transfers retry when active",
+        })
+      }
+      await mutate()
+    } catch (err) {
+      toast.error("Payout sync failed", { description: err instanceof Error ? err.message : "Try again" })
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  const assetPayouts = data?.assetPayouts
+  const recentAssetPayouts: MarketplaceAssetPayoutRow[] = data?.recentAssetPayouts ?? []
+
   return (
     <AppShell title="Partner billing">
       <div className="mx-auto max-w-3xl p-6 space-y-8">
@@ -164,6 +197,9 @@ export default function MarketplaceBillingPage() {
               <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
               Submit
             </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/marketplace/publisher/analytics">Revenue analytics</Link>
           </Button>
         </div>
 
@@ -201,9 +237,9 @@ export default function MarketplaceBillingPage() {
             {earnings && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { label: "Gross volume", value: formatUsd(earnings.grossCents) },
-                  { label: "Your earnings", value: formatUsd(earnings.partnerEarningsCents) },
-                  { label: "Transferred", value: formatUsd(earnings.transferredCents) },
+                  { label: "Connector gross", value: formatUsd(earnings.grossCents) },
+                  { label: "Connector earnings", value: formatUsd(earnings.partnerEarningsCents) },
+                  { label: "Connector transferred", value: formatUsd(earnings.transferredCents) },
                   { label: "Active installs", value: String(earnings.activeInstallCount) },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-md border border-border bg-muted/20 p-4">
@@ -213,6 +249,76 @@ export default function MarketplaceBillingPage() {
                 ))}
               </div>
             )}
+
+            <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Unified asset payouts</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Revenue from paid marketplace asset purchases (one-time and subscription).
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handlePayoutSync()}
+                  disabled={isWorking}
+                  className="gap-2"
+                >
+                  {isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Sync pending payouts
+                </Button>
+              </div>
+
+              {assetPayouts && assetPayouts.payoutCount > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { label: "Asset sales", value: formatUsd(assetPayouts.grossCents) },
+                    { label: "Your share", value: formatUsd(assetPayouts.partnerEarningsCents) },
+                    { label: "Transferred", value: formatUsd(assetPayouts.transferredCents) },
+                    { label: "Pending transfer", value: formatUsd(assetPayouts.pendingTransferCents) },
+                  ].map((stat) => (
+                    <div key={stat.label} className="rounded-md border border-border bg-muted/20 p-4">
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                      <p className="text-lg font-semibold mt-1">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No paid asset sales recorded yet.</p>
+              )}
+
+              {recentAssetPayouts.length > 0 ? (
+                <div className="rounded border border-border overflow-x-auto">
+                  <table className="w-full text-xs min-w-[520px]">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium">Asset</th>
+                        <th className="text-left px-3 py-2 font-medium">Gross</th>
+                        <th className="text-left px-3 py-2 font-medium">Earnings</th>
+                        <th className="text-left px-3 py-2 font-medium">Status</th>
+                        <th className="text-left px-3 py-2 font-medium">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentAssetPayouts.map((row) => (
+                        <tr key={row.id} className="border-t border-border">
+                          <td className="px-3 py-2">
+                            {row.assetTitle ?? row.assetSlug ?? row.assetId ?? "Asset"}
+                          </td>
+                          <td className="px-3 py-2">{formatUsd(row.grossCents)}</td>
+                          <td className="px-3 py-2">{formatUsd(row.partnerEarningsCents)}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{row.status}</td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {row.createdAt ? new Date(row.createdAt).toLocaleString() : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
 
             <div className="space-y-3">
               <h2 className="text-sm font-medium">Connector pricing</h2>

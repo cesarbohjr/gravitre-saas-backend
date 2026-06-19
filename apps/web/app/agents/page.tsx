@@ -1172,6 +1172,10 @@ export default function AgentsPage() {
                   onClick={() => setMesonWizardOpen(true)}
                   isOpen={mesonWizardOpen}
                 />
+                <Button variant="outline" onClick={() => router.push("/agents/swarm")} className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Swarm
+                </Button>
                 <Button onClick={() => router.push("/agents/new")} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
                   <Plus className="h-4 w-4" />
                   New Agent

@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.marketplace.flags import MarketplaceFlagsError, set_asset_featured, set_asset_verified
+from app.marketplace.flags import (
+    MarketplaceFlagsError,
+    set_asset_featured,
+    set_asset_pricing,
+    set_asset_verified,
+)
 
 ORG_ID = "org-11111111-1111-1111-1111-111111111111"
 
@@ -79,3 +84,44 @@ def test_set_asset_verified(mock_fetch, mock_audit):
         org_id=ORG_ID,
     )
     assert result["verified"] is True
+
+
+@patch("app.marketplace.flags.write_audit_event")
+@patch("app.marketplace.flags._fetch_asset")
+def test_set_asset_pricing_on_public_published(mock_fetch, mock_audit):
+    mock_fetch.side_effect = [
+        _asset(pricing_type="free", price_cents=0),
+        _asset(pricing_type="paid", price_cents=499),
+    ]
+    assets = MagicMock()
+    assets.update.return_value = assets
+    assets.eq.return_value = assets
+    assets.execute.return_value = MagicMock(data=[{"id": "asset-1"}])
+    client = MagicMock()
+    client.table.return_value = assets
+
+    result = set_asset_pricing(
+        client,
+        "sales-pack",
+        pricing_type="paid",
+        price_cents=499,
+        actor_id="platform-1",
+        org_id=ORG_ID,
+    )
+    assert result["updated"] is True
+    assert result["asset"]["priceCents"] == 499
+    mock_audit.assert_called_once()
+
+
+@patch("app.marketplace.flags._fetch_asset")
+def test_set_asset_pricing_rejects_internal_published(mock_fetch):
+    mock_fetch.return_value = _asset(visibility="internal", status="published")
+    client = MagicMock()
+    with pytest.raises(MarketplaceFlagsError):
+        set_asset_pricing(
+            client,
+            "sales-pack",
+            pricing_type="paid",
+            price_cents=499,
+            actor_id="platform-1",
+        )

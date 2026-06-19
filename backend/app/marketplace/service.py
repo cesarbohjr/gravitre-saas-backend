@@ -174,15 +174,15 @@ def validate_connectors_for_asset(
     }
 
 
-def fetch_marketplace_asset(client: Any, asset_id: str) -> dict[str, Any]:
+def fetch_marketplace_asset(client: Any, asset_ref: str) -> dict[str, Any]:
+    """Load asset by UUID or slug."""
     try:
-        result = (
-            client.table("marketplace_assets")
-            .select("*")
-            .eq("id", asset_id)
-            .limit(1)
-            .execute()
-        )
+        query = client.table("marketplace_assets").select("*")
+        if _looks_like_uuid(asset_ref):
+            query = query.eq("id", asset_ref)
+        else:
+            query = query.eq("slug", asset_ref)
+        result = query.limit(1).execute()
     except Exception as exc:
         if _is_missing_table_error(exc):
             raise MarketplaceError("Marketplace assets are not available", code="NOT_AVAILABLE") from exc
@@ -190,6 +190,16 @@ def fetch_marketplace_asset(client: Any, asset_id: str) -> dict[str, Any]:
     if not result.data:
         raise MarketplaceError("Marketplace asset not found", code="NOT_FOUND")
     return dict(result.data[0])
+
+
+def _looks_like_uuid(value: str) -> bool:
+    try:
+        import uuid
+
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False
 
 
 def _assert_asset_installable(asset: dict[str, Any]) -> None:

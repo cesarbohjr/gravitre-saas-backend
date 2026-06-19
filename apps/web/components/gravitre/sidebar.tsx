@@ -71,6 +71,7 @@ const adminNavigation: NavGroup[] = [
       { name: "Assistant", href: "/assistant", icon: "chat", badge: "Chat" },
       { name: "Search", href: "/chat", icon: "search" },
       { name: "Agents", href: "/agents", icon: "team" },
+      { name: "Agent Swarm", href: "/agents/swarm", icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
     ],
   },

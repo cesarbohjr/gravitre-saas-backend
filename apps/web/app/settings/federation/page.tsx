@@ -26,12 +26,19 @@ import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import type {
   FederationPartnership,
   FederationHandoff,
+  FederationConnectorGrant,
+  FederationDelegatedTask,
 } from "@/types/api"
 import { PartnerCard, awaitingOurConsent } from "@/components/federation/partner-card"
 import { HandoffTimeline } from "@/components/federation/handoff-timeline"
+import { FederationGrantList } from "@/components/federation/federation-grant-list"
+import { FederationDelegatedTaskList } from "@/components/federation/federation-delegated-task-list"
 import { InvitePartnerDialog } from "@/components/federation/invite-partner-dialog"
 import { CreateHandoffDialog } from "@/components/federation/create-handoff-dialog"
+import { ProposeGrantDialog } from "@/components/federation/propose-grant-dialog"
+import { CreateDelegatedTaskDialog } from "@/components/federation/create-delegated-task-dialog"
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
 const fadeUp = {
@@ -59,6 +66,8 @@ function FederationContent() {
   const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
   const [handoffOpen, setHandoffOpen] = useState(false)
+  const [grantOpen, setGrantOpen] = useState(false)
+  const [taskOpen, setTaskOpen] = useState(false)
 
   const {
     data: partnershipsData,
@@ -74,11 +83,27 @@ function FederationContent() {
     mutate: mutateHandoffs,
   } = useSWR("federation/handoffs", () => federationApi.listHandoffs({ direction: "all" }))
 
+  const {
+    data: grantsData,
+    error: grantsError,
+    isLoading: loadingGrants,
+    mutate: mutateGrants,
+  } = useSWR("federation/grants", () => federationApi.listConnectorGrants())
+
+  const {
+    data: tasksData,
+    error: tasksError,
+    isLoading: loadingTasks,
+    mutate: mutateTasks,
+  } = useSWR("federation/delegated-tasks", () => federationApi.listDelegatedTasks({ direction: "all" }))
+
   const partnerships = useMemo(
     () => partnershipsData?.partnerships ?? [],
     [partnershipsData],
   )
   const handoffs = useMemo(() => handoffsData?.handoffs ?? [], [handoffsData])
+  const grants = useMemo(() => grantsData?.grants ?? [], [grantsData])
+  const delegatedTasks = useMemo(() => tasksData?.tasks ?? [], [tasksData])
 
   const stats = useMemo(() => {
     const active = partnerships.filter((p) => p.status === "active").length
@@ -99,10 +124,10 @@ function FederationContent() {
     [partnerships],
   )
 
-  const loadError = partnershipsError || handoffsError
+  const loadError = partnershipsError || handoffsError || grantsError || tasksError
 
   async function refreshAll() {
-    await Promise.all([mutatePartners(), mutateHandoffs()])
+    await Promise.all([mutatePartners(), mutateHandoffs(), mutateGrants(), mutateTasks()])
   }
 
   async function handlePartnerAction(
@@ -136,6 +161,38 @@ function FederationContent() {
       await mutateHandoffs()
     } catch (err) {
       toast.error("Action failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    }
+  }
+
+  async function handleGrantAction(
+    action: "accept" | "reject" | "revoke",
+    grant: FederationConnectorGrant,
+  ) {
+    try {
+      if (action === "accept") await federationApi.acceptConnectorGrant(grant.id)
+      if (action === "reject") await federationApi.rejectConnectorGrant(grant.id)
+      if (action === "revoke") await federationApi.revokeConnectorGrant(grant.id)
+      toast.success(
+        action === "accept" ? "Grant accepted" : action === "reject" ? "Grant declined" : "Grant revoked",
+      )
+      await mutateGrants()
+    } catch (err) {
+      toast.error("Grant action failed", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    }
+  }
+
+  async function handleDelegatedTaskAction(action: "accept" | "reject", task: FederationDelegatedTask) {
+    try {
+      if (action === "accept") await federationApi.acceptDelegatedTask(task.id)
+      if (action === "reject") await federationApi.rejectDelegatedTask(task.id)
+      toast.success(action === "accept" ? "Task accepted" : "Task declined")
+      await mutateTasks()
+    } catch (err) {
+      toast.error("Task action failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     }
@@ -278,53 +335,131 @@ function FederationContent() {
           </PageHeaderlessSection>
         </section>
 
-        {/* Handoffs */}
+        {/* B2B activity tabs */}
         <section className="lg:col-span-2">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Cross-org handoffs
-              </h2>
-            </div>
-            {isAdmin ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5"
-                onClick={() => setHandoffOpen(true)}
-                disabled={activePartnerships.length === 0}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Send handoff
-              </Button>
-            ) : null}
-          </div>
-          <PageHeaderlessSection
-            loading={loadingHandoffs}
-            empty={handoffs.length === 0}
-            emptyState={
-              <FederationEmptyState
-                icon={ArrowLeftRight}
-                title="No handoffs yet"
-                description="When agents pass work to a partner org, the exchange appears here as a consent-gated timeline."
-                action={
-                  isAdmin && activePartnerships.length > 0 ? (
-                    <Button onClick={() => setHandoffOpen(true)} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Send your first handoff
-                    </Button>
-                  ) : undefined
+          <Tabs defaultValue="handoffs" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="handoffs">Handoffs</TabsTrigger>
+              <TabsTrigger value="grants">Connector grants</TabsTrigger>
+              <TabsTrigger value="tasks">Delegated tasks</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="handoffs" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Send className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Cross-org handoffs
+                  </h2>
+                </div>
+                {isAdmin ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => setHandoffOpen(true)}
+                    disabled={activePartnerships.length === 0}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Send handoff
+                  </Button>
+                ) : null}
+              </div>
+              <PageHeaderlessSection
+                loading={loadingHandoffs}
+                empty={handoffs.length === 0}
+                emptyState={
+                  <FederationEmptyState
+                    icon={ArrowLeftRight}
+                    title="No handoffs yet"
+                    description="When agents pass work to a partner org, the exchange appears here as a consent-gated timeline."
+                    action={
+                      isAdmin && activePartnerships.length > 0 ? (
+                        <Button onClick={() => setHandoffOpen(true)} className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          Send your first handoff
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 }
-              />
-            }
-          >
-            <HandoffTimeline
-              handoffs={handoffs}
-              currentOrgId={currentOrgId}
-              onAction={handleHandoffAction}
-            />
-          </PageHeaderlessSection>
+              >
+                <HandoffTimeline
+                  handoffs={handoffs}
+                  currentOrgId={currentOrgId}
+                  onAction={handleHandoffAction}
+                />
+              </PageHeaderlessSection>
+            </TabsContent>
+
+            <TabsContent value="grants" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Connector grants
+                  </h2>
+                </div>
+                {isAdmin ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => setGrantOpen(true)}
+                    disabled={activePartnerships.length === 0}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Propose grant
+                  </Button>
+                ) : null}
+              </div>
+              {loadingGrants ? (
+                <LoadingPlaceholder />
+              ) : (
+                <FederationGrantList
+                  grants={grants}
+                  currentOrgId={currentOrgId}
+                  onAction={handleGrantAction}
+                  onPropose={isAdmin ? () => setGrantOpen(true) : undefined}
+                  canPropose={isAdmin && activePartnerships.length > 0}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="tasks" className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Inbox className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Delegated tasks
+                  </h2>
+                </div>
+                {isAdmin ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => setTaskOpen(true)}
+                    disabled={activePartnerships.length === 0}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Delegate task
+                  </Button>
+                ) : null}
+              </div>
+              {loadingTasks ? (
+                <LoadingPlaceholder />
+              ) : (
+                <FederationDelegatedTaskList
+                  tasks={delegatedTasks}
+                  currentOrgId={currentOrgId}
+                  onAction={handleDelegatedTaskAction}
+                  onCreate={isAdmin ? () => setTaskOpen(true) : undefined}
+                  canCreate={isAdmin && activePartnerships.length > 0}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </section>
       </div>
 
@@ -341,6 +476,30 @@ function FederationContent() {
         activePartnerships={activePartnerships}
         onCreated={() => refreshAll()}
       />
+      <ProposeGrantDialog
+        open={grantOpen}
+        onOpenChange={setGrantOpen}
+        disabled={!isAdmin}
+        activePartnerships={activePartnerships}
+        onCreated={() => refreshAll()}
+      />
+      <CreateDelegatedTaskDialog
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
+        disabled={!isAdmin}
+        activePartnerships={activePartnerships}
+        onCreated={() => refreshAll()}
+      />
+    </div>
+  )
+}
+
+function LoadingPlaceholder() {
+  return (
+    <div className="grid gap-4">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-24 animate-pulse rounded-xl border border-border/60 bg-muted/40" />
+      ))}
     </div>
   )
 }

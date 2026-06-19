@@ -29,8 +29,10 @@ import {
   Loader2,
   Plug,
   ShoppingCart,
+  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
+import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetDetail,
   MarketplaceAssetInstallCheck,
@@ -193,8 +195,8 @@ function InstallStepperSheet({
       onComplete()
       toast.success(`${asset.title} installed`)
     } catch (err) {
-      toast.error("Install failed", {
-        description: err instanceof Error ? err.message : "Try again",
+      toastMarketplaceInstallFailure(err, {
+        blockerActionUrl: check?.blockers?.[0]?.action_url,
       })
       await refreshCheck()
       setStep("check")
@@ -290,6 +292,27 @@ function MarketplaceAssetDetailContent() {
       toast.success("Draft copy created", { description: result.asset.title })
     } catch (err) {
       toast.error("Clone failed", { description: err instanceof Error ? err.message : "Try again" })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleUninstall = async () => {
+    if (!asset || !isAdmin) return
+    if (
+      !window.confirm(
+        `Uninstall "${asset.title}"? This removes the marketplace install record from your org.`,
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    try {
+      await marketplaceApi.uninstallAsset(asset.slug)
+      toast.success("Asset uninstalled")
+      await mutate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Uninstall failed")
     } finally {
       setBusy(false)
     }
@@ -391,12 +414,24 @@ function MarketplaceAssetDetailContent() {
                 Clone
               </Button>
               {asset.installed ? (
-                <Button variant="outline" asChild>
-                  <Link href="/marketplace/installed">
-                    Manage installed
-                    <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
-                  </Link>
-                </Button>
+                <>
+                  <Button variant="outline" asChild>
+                    <Link href="/marketplace/installed">
+                      Manage installed
+                      <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
+                    </Link>
+                  </Button>
+                  {isAdmin ? (
+                    <Button variant="ghost" className="text-destructive" disabled={busy} onClick={handleUninstall}>
+                      {busy ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : (
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                      )}
+                      Uninstall
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
             </div>
 

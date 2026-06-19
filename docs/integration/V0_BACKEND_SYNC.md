@@ -29,7 +29,7 @@ git checkout main
 - **Do not** edit v0 pages/components in Cursor for backend wiring — use existing `apps/web/lib/api.ts` + Next proxy.
 - API traffic: `apps/web/next.config.mjs` rewrites `/api/:path*` → `FASTAPI_BASE_URL` (Railway prod).
 
-## Live backend APIs (Epic I + prod smoke, 2026-06-09)
+## Live backend APIs (Epic I + prod smoke, 2026-06-07)
 
 | Feature | Backend | Next proxy | Client (`lib/api.ts`) |
 |---------|---------|------------|------------------------|
@@ -50,10 +50,11 @@ git checkout main
 
 ```bash
 npm run smoke:ai-production   # IMPL 8 + core AI APIs vs Railway
-npm run smoke:post-tier5      # enterprise health + role packs catalog
+npm run smoke:post-tier5      # enterprise health + unified marketplace catalog
+npm run smoke:marketplace-production:report
 ```
 
-Requires `backend/.env.operator.local` with Supabase JWT + service role.
+Requires `backend/.env.operator.local` with Supabase JWT + service role, or GitHub Actions secrets for CI workflows (`marketplace-production-smoke.yml`, `production-hardening-smoke.yml`).
 
 ## v0 prompt notes
 

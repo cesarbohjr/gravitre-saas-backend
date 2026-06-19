@@ -39,6 +39,7 @@ import {
   Workflow,
 } from "lucide-react"
 import { toast } from "sonner"
+import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
@@ -46,6 +47,7 @@ import type {
   MarketplaceInstallBlocker,
 } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
+import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import type { AssetCategory } from "@/lib/marketplace-category-icons"
 
 const TYPE_FILTERS = [
@@ -234,11 +236,14 @@ function AssetCard({
             <p className="text-xs text-muted-foreground">{asset.department ?? asset.assetType}</p>
           </div>
         </button>
-        <ReadinessRing
-          connected={asset.requiredConnectorsConnected ?? 0}
-          total={asset.requiredConnectorsTotal ?? 0}
-          ready={ready}
-        />
+        <div className="flex shrink-0 items-center gap-1">
+          <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="outline" />
+          <ReadinessRing
+            connected={asset.requiredConnectorsConnected ?? 0}
+            total={asset.requiredConnectorsTotal ?? 0}
+            ready={ready}
+          />
+        </div>
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -250,6 +255,9 @@ function AssetCard({
           <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
             <Star className="h-3 w-3 fill-warning text-warning" aria-hidden />
             {asset.averageRating.toFixed(1)}
+            {asset.reviewCount ? (
+              <span className="text-muted-foreground/80"> · {asset.reviewCount} reviews</span>
+            ) : null}
           </span>
         ) : null}
       </div>
@@ -357,18 +365,8 @@ function InstallStepperSheet({
       onComplete()
       toast.success(`${asset.title} installed`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Install failed"
-      toast.error(/connect required apps/i.test(message) ? "Connect required apps first" : "Install failed", {
-        description: message,
-        action: check?.blockers?.[0]?.action_url
-          ? {
-              label: "Connect apps",
-              onClick: () => {
-                const url = check?.blockers?.[0]?.action_url
-                if (url) window.location.href = url
-              },
-            }
-          : undefined,
+      toastMarketplaceInstallFailure(err, {
+        blockerActionUrl: check?.blockers?.[0]?.action_url,
       })
       await refreshCheck()
       setStep("check")
@@ -629,6 +627,20 @@ function MarketplaceAssetsContent() {
                   {filter.label}
                 </Button>
               ))}
+              {typeFilter !== "all" || departmentFilter || categoryFilter || debouncedSearch ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setTypeFilter("all")
+                    setDepartmentFilter(null)
+                    setCategoryFilter(null)
+                    setSearch("")
+                  }}
+                >
+                  Clear filters
+                </Button>
+              ) : null}
             </div>
 
             {categories ? (

@@ -65,6 +65,8 @@ from app.routers import (
     verticals_healthcare,
     verticals_legal,
     verticals_real_estate,
+    platform,
+    platform_cs_internal,
 )
 from app.routers import (
     hubspot_triggers,
@@ -329,6 +331,7 @@ app.include_router(knowledge_sync.internal_router)
 app.include_router(knowledge_sync.admin_router)
 app.include_router(knowledge_sync.webhook_router)
 app.include_router(workflow_schedules_internal.router)
+app.include_router(platform_cs_internal.router)
 app.include_router(connectors.router)
 app.include_router(connectors.connectors_router)
 app.include_router(connector_oauth.router)
@@ -350,6 +353,7 @@ app.include_router(entitlements.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(enterprise.router)
+app.include_router(platform.router)
 app.include_router(federation.router)
 app.include_router(verticals_healthcare.router)
 app.include_router(verticals_legal.router)

@@ -1,67 +1,85 @@
 # Post–Tier 5 backlog
 
-Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and the next product slice.
+Tier 5 (STA-100–STA-124) is **code-complete**. This doc tracks production hardening, UI wiring, and Tier 6 product work.
 
-**Current focus:** P0 production smoke + CS dashboard + department role packs UI.
+**Current focus:** **M2 marketplace** — org tab (STA-246), uninstall UI (STA-244), asset CRUD polish.
 
 ---
 
-## P0 — Ship & verify (now)
+## Version map (Tier 6)
+
+| Version | Shipped | Next up |
+|---------|---------|---------|
+| **v0** | CS workspace rollups, apply API, mobile approvals, agent swarm UI | — |
+| **v1** | Org drill-down, snapshot backfill, assign/snooze, Meson apply | — |
+| **v2** | Escalate, alert inbox, apply UX, approvals SLA, marketplace facets | ✅ Shipped |
+| **v3** | PWA push, partner analytics, slug/reviews/CI, enterprise polish | Backlog |
+
+---
+
+## Lane A — Tier 6 product
+
+See **`docs/integration/TIER6_PLANNING.md`** for CS workspace, apply, approvals, partner analytics.
+
+---
+
+## Lane B — P1 UI gaps
 
 | Item | Status | Notes |
 |------|--------|-------|
-| CS dashboard UI (`/settings/enterprise?tab=cs`) | ✅ | Health score, suggestions, failure alerts |
-| `npm run smoke:post-tier5` | ✅ | Platform intelligence + role packs API smoke |
-| Extend `TIER5_PRODUCTION_SMOKE.md` (Epics D–F) | ✅ | Federation, workforce, intelligence |
-| Commit + deploy web + API | ☐ | Railway + Vercel |
+| Agent swarm | ✅ `/agents/swarm` | — |
+| Federation | ✅ `/settings/federation` | Handoffs + grants/tasks tabs + **propose grant / delegate task dialogs** |
+| Digital twin + failure scan | ✅ | Builder drawer + **`/workflows/[id]` pre-run panel** (Simulate + scan) |
+| Integration apply | ✅ | Apply result sheet (T6-2 v2) |
+| Role packs → catalog | ✅ | Unified catalog + facet filters |
+| Clio OAuth (C.6) | ⚠️ Browser required | Smoke checklist |
 
-## P1 — UI gaps for shipped APIs
+Design: `docs/design/V0_MARKETPLACE_UNIFIED_PROMPT.md`.
 
-| Item | API | UI target |
-|------|-----|-----------|
-| Department role packs | `GET/POST /api/marketplace/role-packs` | `/marketplace/role-packs` |
-| Workflow digital twin | `POST /api/workflows/digital-twin` | Workflow builder “Simulate” action |
-| Failure prediction scan | `POST /api/workflows/{id}/failure-predictions/scan` | Workflow detail pre-run panel |
-| Federation / B2B handoffs | `/api/federation/*` | Settings or partner admin page |
-| Agent swarm runs | `/api/agent-swarm/*` | Operators or assignments UI |
+---
 
-## P2 — Enterprise admin polish
+## Lane C — Marketplace M1 (skipped in Linear)
 
-Per `docs/design/ENTERPRISE_UI_V0_PROMPT.md`:
+Audit items remain in Linear but are **documented as skipped/deferred** — see **`docs/integration/MARKETPLACE_AUDIT_SKIPPED.md`**.
 
-- Premium sub-nav layout refinements
-- Branding live preview panel
-- DNS verification stepper UX
-- Workforce KPI sparklines (when backend exposes series)
+| Item | Status |
+|------|--------|
+| STA-233 facet filters | ✅ Shipped |
+| STA-236 reviews/saves | ✅ Saved list + catalog save buttons |
+| STA-234 slug route | ✅ OG metadata + opengraph image |
+| STA-242 admin queue | ✅ Pending counts on marketplace hub |
+| STA-239 E2E smoke | ✅ `.github/workflows/marketplace-production-smoke.yml` |
+| STA-229 catalog ≥50 | ✅ seed `list_catalog_assets()` = 50; prod smoke asserts `total≥50` |
+| STA-232 plan limits | ✅ Install sheet surfaces `plan_limit_exceeded` |
+| STA-235 analytics | ✅ Publisher table shows unified asset type + org adoption link |
 
-## P3 — Tier 6 candidates (planning)
+---
 
-Not yet in Linear. Candidates for the next epic batch:
+## P0 — Ship & verify (done)
 
-1. **Multi-tenant CS workspace** — cross-org health rollups for Gravitre operators
-2. **Workflow recommendation apply** — one-click create workflow from STA-123 suggestions
-3. **Partner revenue analytics** — marketplace billing + usage dashboards
-4. **Mobile operator approvals** — push-friendly approval queue
-
-Create Linear epics when prioritizing Tier 6.
+CS workspace, agent swarm, Tier 6 v2, nightly backfill GitHub Action — see git history and `TIER6_PLANNING.md`.
 
 ---
 
 ## Smoke commands
 
 ```bash
-npm run smoke:tier5        # Vertical packs (legal, real estate) + Clio
-npm run smoke:post-tier5    # Platform intelligence + role packs (STA-122–124, STA-121)
+npm run smoke:tier5
+npm run smoke:tier5-manual
+npm run smoke:post-tier5
+npm run smoke:marketplace-production
+npm run smoke:marketplace-production:report
 ```
 
-Requires `backend/.env.operator.local` with Supabase JWT + service role (same as Tier 5 smoke).
+**CI (GitHub Actions secrets):** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` — workflows `marketplace-production-smoke.yml` (04:30 UTC) and `production-hardening-smoke.yml` (05:00 UTC).
+
+Requires `backend/.env.operator.local` with Supabase JWT + service role.
 
 ---
 
 ## Related docs
 
-- `LINEAR_INTEGRATION_BACKLOG.md` — Tier 1–5 complete
-- `integration-health-score.md` — STA-124
-- `auto-suggest-connectors-workflows.md` — STA-123
+- `TIER6_PLANNING.md`
+- `MARKETPLACE_AUDIT_SKIPPED.md`
+- `marketplace-audit-linear-ids.json`
 - `predictive-workflow-failure.md` — STA-122
-- `agent-role-marketplace.md` — STA-121

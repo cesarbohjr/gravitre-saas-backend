@@ -2,8 +2,8 @@
   "target": "https://gravitre-saas-backend-production.up.railway.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
   "userId": "09c29672-beff-4a65-b525-261fa3de5923",
-  "startedAt": "2026-06-16T17:53:56.332706+00:00",
-  "finishedAt": "2026-06-16T17:55:14.913473+00:00",
+  "startedAt": "2026-06-19T08:46:34.946999+00:00",
+  "finishedAt": "2026-06-19T08:47:34.273282+00:00",
   "summary": {
     "pass": 15,
     "warn": 0,
@@ -30,13 +30,13 @@
     {
       "label": "meson_interpret",
       "status": "pass",
-      "detail": "meson_interpret: agent=Overdue Invoice Monitor",
+      "detail": "meson_interpret: agent=Weekly Overdue Invoice Monitor",
       "linear": "STA-164"
     },
     {
       "label": "agents_list",
       "status": "pass",
-      "detail": "agents_list: count=0",
+      "detail": "agents_list: count=1",
       "linear": null
     },
     {
@@ -48,19 +48,19 @@
     {
       "label": "assistant_chat",
       "status": "pass",
-      "detail": "assistant_chat: deltas=20 chars=89 bytes=2807",
+      "detail": "assistant_chat: deltas=21 chars=109 bytes=3034",
       "linear": "STA-163"
     },
     {
       "label": "workflow_dry_run_abc",
       "status": "pass",
-      "detail": "workflow_dry_run: run_id=cb0ba0b8-648b-48ec-aacc-13172b71701c steps=['step_a', 'step_b', 'step_c']",
+      "detail": "workflow_dry_run: run_id=cf4c3a3f-2309-44f8-ae2d-393c3510c7a8 steps=['step_a', 'step_b', 'step_c']",
       "linear": "STA-166"
     },
     {
       "label": "workflow_execute_abc",
       "status": "pass",
-      "detail": "workflow_execute: run_id=e195d9b7-8292-44c7-bcd8-8f6ea3e93cf0 status=completed steps=3",
+      "detail": "workflow_execute: run_id=4ef41a15-1d03-4b9f-b32d-13e4dda146a9 status=completed steps=3",
       "linear": "STA-166"
     },
     {
@@ -72,13 +72,13 @@
     {
       "label": "failure_predictions_scan",
       "status": "pass",
-      "detail": "failure_predictions_scan: {\"workflowCount\": 3, \"alertCount\": 6, \"scannedAt\": \"2026-06-16T17:55:08.310338+00:00\"}",
+      "detail": "failure_predictions_scan: {\"workflowCount\": 4, \"alertCount\": 7, \"scannedAt\": \"2026-06-19T08:47:28.857534+00:00\"}",
       "linear": "STA-167"
     },
     {
       "label": "integration_health",
       "status": "pass",
-      "detail": "integration_health: score=96 grade=healthy",
+      "detail": "integration_health: score=71 grade=at_risk",
       "linear": "STA-167"
     },
     {
@@ -102,7 +102,7 @@
     {
       "label": "agent_interrupt_channel",
       "status": "pass",
-      "detail": "agent_interrupt: accepted id=707c227d-318e-4861-b028-d0929dbdbcf4 signal=pause",
+      "detail": "agent_interrupt: accepted id=c28a71b5-237d-43ca-9889-53a04be0a02a signal=pause",
       "linear": null
     },
     {

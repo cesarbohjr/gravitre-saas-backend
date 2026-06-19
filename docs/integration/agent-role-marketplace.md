@@ -117,9 +117,12 @@ Production smoke (optional, requires `backend/.env.operator.local`):
 
 ```powershell
 npm run smoke:marketplace-production
+npm run marketplace:ensure-smoke-paid-asset
+npm run smoke:marketplace-stripe
+npm run smoke:marketplace-stripe:fulfill
 ```
 
-Hits live Railway `/api/marketplace/assets`, `/categories`, and `/analytics/summary` with a minted admin JWT.
+Hits live Railway browse, M4 routes (`/analytics/roi`, `/federated-connectors`, `/assets/{ref}/entitlement`, `/install-check`), and optionally creates a real Stripe Checkout session for `smoke-paid-operator-pack`. Use `--simulate-fulfillment` to validate entitlement + payout backend after session creation (no browser payment).
 
 ## RLS (MKT-2.3 / MKT-13.1)
 

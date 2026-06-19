@@ -38,6 +38,8 @@ import type {
   ConnectorListResponse,
   CreateConnectorRequest,
   CreateFederationHandoffRequest,
+  CreateFederationConnectorGrantRequest,
+  CreateFederationDelegatedTaskRequest,
   Source,
   SourceListResponse,
   CreateSourceRequest,
@@ -85,6 +87,9 @@ import type {
   MetricInsight,
   MarketplaceRegistryConnector,
   MarketplaceBillingStatus,
+  MarketplaceAssetPayoutSummary,
+  MarketplacePublisherPayoutSyncResult,
+  MarketplacePublisherRevenueAnalytics,
   MarketplacePartnerPricing,
   MarketplaceAnalyticsSummary,
   MarketplaceAssetCheckoutResult,
@@ -128,6 +133,12 @@ import type {
   IntegrationSuggestion,
   IntegrationSuggestionsResponse,
   IntegrationSuggestionScanResponse,
+  IntegrationSuggestionApplyResponse,
+  PlatformCsWorkspaceResponse,
+  PlatformCsAlertsResponse,
+  PlatformCsEscalateResponse,
+  PlatformCsSnapshotBackfillResponse,
+  PlatformCsTenantQueueActionResponse,
   WorkflowFailureAlert,
   WorkflowFailureAlertsResponse,
   WorkflowFailurePredictionScanResponse,
@@ -141,6 +152,9 @@ import type {
   EnterpriseHipaaStatus,
   EnterpriseTransparencyLogsResponse,
   EnterpriseTransparencyExport,
+  AgentSwarmRun,
+  AgentSwarmListResponse,
+  AgentSwarmStartRequest,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -174,6 +188,18 @@ function extractErrorMessage(payload: unknown): string | null {
   return null
 }
 
+export class ApiRequestError extends Error {
+  status: number
+  payload: unknown
+
+  constructor(message: string, status: number, payload: unknown) {
+    super(message)
+    this.name = "ApiRequestError"
+    this.status = status
+    this.payload = payload
+  }
+}
+
 function unwrapAgent(payload: unknown): Agent {
   if (payload && typeof payload === "object" && "agent" in payload) {
     return (payload as { agent: Agent }).agent
@@ -189,7 +215,11 @@ async function postJson<T>(url: string, data: unknown): Promise<T> {
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+    throw new ApiRequestError(
+      extractErrorMessage(error) || `Request failed: ${response.status}`,
+      response.status,
+      error,
+    )
   }
   return response.json()
 }
@@ -202,7 +232,11 @@ async function patchJson<T>(url: string, data: unknown): Promise<T> {
   })
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(extractErrorMessage(error) || `Request failed: ${response.status}`)
+    throw new ApiRequestError(
+      extractErrorMessage(error) || `Request failed: ${response.status}`,
+      response.status,
+      error,
+    )
   }
   return response.json()
 }
@@ -749,10 +783,12 @@ export const marketplaceApi = {
       data,
     ),
   syncPublisherPayouts: () =>
-    postJson<{ sync: { transferred: number; failed: number }; summary: Record<string, number> }>(
-      apiUrl("/api/marketplace/publisher/payouts/sync"),
-      {},
-    ),
+    postJson<{
+      sync: MarketplacePublisherPayoutSyncResult
+      summary: MarketplaceAssetPayoutSummary
+    }>(apiUrl("/api/marketplace/publisher/payouts/sync"), {}),
+  publisherRevenueAnalytics: () =>
+    fetcher<MarketplacePublisherRevenueAnalytics>(apiUrl("/api/marketplace/publisher/analytics")),
   listAssetReviews: (assetRef: string, params?: { limit?: number; offset?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))
@@ -817,6 +853,18 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/approve`),
       {},
     ),
+  updateOrgAsset: (
+    assetRef: string,
+    body: {
+      pricingType?: "free" | "paid" | "subscription"
+      priceCents?: number
+      currency?: string
+    },
+  ) =>
+    patchJson<{ updated: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
+      body,
+    ),
   rejectOrgAsset: (assetRef: string, reason: string) =>
     postJson<{ rejected: boolean; reason: string; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reject`),
@@ -870,6 +918,14 @@ export const marketplaceApi = {
     postJson<{ verified: boolean; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/verified`),
       { enabled },
+    ),
+  updatePlatformAssetPricing: (
+    assetRef: string,
+    body: { pricingType: "free" | "paid" | "subscription"; priceCents: number; currency?: string },
+  ) =>
+    patchJson<{ updated: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/pricing`),
+      body,
     ),
 }
 
@@ -1483,6 +1539,55 @@ export const enterpriseApi = {
       apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/dismiss`),
       {},
     ),
+  applyIntegrationSuggestion: (suggestionId: string) =>
+    postJson<IntegrationSuggestionApplyResponse>(
+      apiUrl(`/api/enterprise/integration-suggestions/${suggestionId}/apply`),
+      {},
+    ),
+}
+
+export const platformApi = {
+  getCsWorkspaceTenants: (params?: { limit?: number; grade?: string; hideSnoozed?: boolean }) => {
+    const query = new URLSearchParams()
+    if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.grade) query.set("grade", params.grade)
+    if (params?.hideSnoozed) query.set("hideSnoozed", "true")
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<PlatformCsWorkspaceResponse>(apiUrl(`/api/platform/cs-workspace/tenants${suffix}`))
+  },
+  backfillHealthSnapshots: (params?: { limit?: number; lookbackDays?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.lookbackDays) query.set("lookbackDays", String(params.lookbackDays))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return postJson<PlatformCsSnapshotBackfillResponse>(
+      apiUrl(`/api/platform/cs-workspace/snapshots/backfill${suffix}`),
+      {},
+    )
+  },
+  assignTenant: (orgId: string, data?: { note?: string }) =>
+    postJson<PlatformCsTenantQueueActionResponse>(
+      apiUrl(`/api/platform/cs-workspace/tenants/${encodeURIComponent(orgId)}/assign`),
+      data ?? {},
+    ),
+  snoozeTenant: (orgId: string, hours: number) =>
+    postJson<PlatformCsTenantQueueActionResponse>(
+      apiUrl(`/api/platform/cs-workspace/tenants/${encodeURIComponent(orgId)}/snooze`),
+      { hours },
+    ),
+  getCsAlerts: (params?: { limit?: number; offset?: number; alertType?: "failure" | "suggestion" }) => {
+    const query = new URLSearchParams()
+    if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.offset) query.set("offset", String(params.offset))
+    if (params?.alertType) query.set("alertType", params.alertType)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<PlatformCsAlertsResponse>(apiUrl(`/api/platform/cs-workspace/alerts${suffix}`))
+  },
+  escalateTenant: (orgId: string, data?: { note?: string }) =>
+    postJson<PlatformCsEscalateResponse>(
+      apiUrl(`/api/platform/cs-workspace/tenants/${encodeURIComponent(orgId)}/escalate`),
+      data ?? {},
+    ),
 }
 
 export const federationApi = {
@@ -1533,10 +1638,41 @@ export const federationApi = {
   // Connector grants
   listConnectorGrants: () =>
     fetcher<{ grants: FederationConnectorGrant[] }>("/api/federation/connector-grants"),
+  proposeConnectorGrant: (data: CreateFederationConnectorGrantRequest) =>
+    postJson<{ grant: FederationConnectorGrant }>("/api/federation/connector-grants", data),
+  acceptConnectorGrant: (grantId: string) =>
+    postJson<{ grant: FederationConnectorGrant }>(
+      `/api/federation/connector-grants/${grantId}/accept`,
+      {},
+    ),
+  rejectConnectorGrant: (grantId: string) =>
+    postJson<{ grant: FederationConnectorGrant }>(
+      `/api/federation/connector-grants/${grantId}/reject`,
+      {},
+    ),
+  revokeConnectorGrant: (grantId: string) =>
+    postJson<{ grant: FederationConnectorGrant }>(
+      `/api/federation/connector-grants/${grantId}/revoke`,
+      {},
+    ),
 
   // Delegated tasks
-  listDelegatedTasks: () =>
-    fetcher<{ tasks: FederationDelegatedTask[] }>("/api/federation/delegated-tasks"),
+  listDelegatedTasks: (params?: { direction?: "all" | "inbound" | "outbound"; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.direction) query.set("direction", params.direction)
+    if (params?.status) query.set("status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ tasks: FederationDelegatedTask[] }>(`/api/federation/delegated-tasks${suffix}`)
+  },
+  createDelegatedTask: (data: CreateFederationDelegatedTaskRequest) =>
+    postJson<{ task: FederationDelegatedTask }>("/api/federation/delegated-tasks", data),
+  acceptDelegatedTask: (taskId: string) =>
+    postJson<{ task: FederationDelegatedTask }>(`/api/federation/delegated-tasks/${taskId}/accept`, {}),
+  rejectDelegatedTask: (taskId: string, reason?: string) =>
+    postJson<{ task: FederationDelegatedTask }>(
+      `/api/federation/delegated-tasks/${taskId}/reject`,
+      { reason: reason ?? "Declined by operator" },
+    ),
 }
 
 // ============ Agent swarm (STA-119) ============
@@ -1546,20 +1682,15 @@ export const agentSwarmApi = {
     if (params?.status) query.set("status", params.status)
     if (params?.limit) query.set("limit", String(params.limit))
     const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<{ runs: Record<string, unknown>[] }>(apiUrl(`/api/agent-swarm${suffix}`))
+    return fetcher<AgentSwarmListResponse>(apiUrl(`/api/agent-swarm${suffix}`))
   },
-  get: (swarmRunId: string) =>
-    fetcher<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}`)),
-  start: (data: {
-    parentAgentId: string
-    objective: string
-    subtasks: Record<string, unknown>[]
-    decisionMethod?: string
-  }) => postJson<{ run: Record<string, unknown> }>(apiUrl("/api/agent-swarm/start"), data),
+  get: (swarmRunId: string) => fetcher<AgentSwarmRun>(apiUrl(`/api/agent-swarm/${swarmRunId}`)),
+  start: (data: AgentSwarmStartRequest) =>
+    postJson<AgentSwarmRun>(apiUrl("/api/agent-swarm/start"), data),
   aggregate: (swarmRunId: string) =>
-    postJson<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}/aggregate`), {}),
+    postJson<AgentSwarmRun>(apiUrl(`/api/agent-swarm/${swarmRunId}/aggregate`), {}),
   cancel: (swarmRunId: string) =>
-    postJson<{ run: Record<string, unknown> }>(apiUrl(`/api/agent-swarm/${swarmRunId}/cancel`), {}),
+    postJson<AgentSwarmRun>(apiUrl(`/api/agent-swarm/${swarmRunId}/cancel`), {}),
 }
 
 // ============ Vertical industry packs (STA-113–115) ============
@@ -1598,6 +1729,7 @@ export const api = {
   enterprise: enterpriseApi,
   federation: federationApi,
   agentSwarm: agentSwarmApi,
+  platform: platformApi,
   verticals: verticalsApi,
 }
 

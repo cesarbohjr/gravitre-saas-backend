@@ -1,13 +1,15 @@
 """STA-123: Integration suggestion service."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.services.integration_suggestion_service import (
     IntegrationSuggestionError,
     aggregate_tool_usage,
+    apply_integration_suggestion,
     build_integration_suggestions,
     dismiss_integration_suggestion,
     list_integration_suggestions,
@@ -240,4 +242,76 @@ def test_scan_integration_suggestions_persists(mock_build, mock_fetch, mock_audi
 
     summary = scan_integration_suggestions(client, "org-1", actor_id="user-1")
     assert summary["suggestionCount"] == 1
+    mock_audit.assert_called_once()
+
+
+@patch("app.services.integration_suggestion_service.write_audit_event")
+def test_apply_connect_connector_suggestion(mock_audit):
+    existing_row = {
+        "id": "sug-1",
+        "org_id": "org-1",
+        "suggestion_type": "connect_connector",
+        "connector_type": "hubspot",
+        "pack_id": None,
+        "workflow_template_id": None,
+        "title": "Connect HubSpot",
+        "message": "Connect HubSpot",
+        "evidence": {},
+        "confidence": 0.9,
+        "priority": 90,
+        "status": "open",
+        "suggested_at": "2026-06-09T00:00:00+00:00",
+        "dismissed_at": None,
+        "created_at": "2026-06-09T00:00:00+00:00",
+        "updated_at": "2026-06-09T00:00:00+00:00",
+    }
+    table = _table([existing_row])
+    table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{**existing_row, "status": "applied"}]
+    )
+    client = MagicMock()
+    client.table.return_value = table
+
+    result = asyncio.run(apply_integration_suggestion(client, "org-1", "sug-1", actor_id="user-1"))
+    assert result["redirectPath"] == "/connectors?type=hubspot"
+    assert result["suggestion"]["status"] == "applied"
+    mock_audit.assert_called_once()
+
+
+@patch("app.services.integration_suggestion_service.write_audit_event")
+@patch(
+    "app.services.integration_suggestion_service._create_workflow_from_suggestion",
+    new_callable=AsyncMock,
+)
+def test_apply_automate_workflow_creates_draft(mock_create, mock_audit):
+    mock_create.return_value = "wf-1"
+    existing_row = {
+        "id": "sug-2",
+        "org_id": "org-1",
+        "suggestion_type": "automate_workflow",
+        "connector_type": "hubspot",
+        "pack_id": None,
+        "workflow_template_id": None,
+        "title": "Automate HubSpot workflows",
+        "message": "Create workflow for manual tasks",
+        "evidence": {"uncoveredActions": ["hubspot.contacts.update"]},
+        "confidence": 0.8,
+        "priority": 65,
+        "status": "open",
+        "suggested_at": "2026-06-09T00:00:00+00:00",
+        "dismissed_at": None,
+        "created_at": "2026-06-09T00:00:00+00:00",
+        "updated_at": "2026-06-09T00:00:00+00:00",
+    }
+    suggestions_table = _table([existing_row])
+    suggestions_table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{**existing_row, "status": "applied"}]
+    )
+    client = MagicMock()
+    client.table.return_value = suggestions_table
+
+    result = asyncio.run(apply_integration_suggestion(client, "org-1", "sug-2", actor_id="user-1"))
+    assert result["workflowId"] == "wf-1"
+    assert result["redirectPath"] == "/workflows/wf-1/builder"
+    mock_create.assert_awaited_once()
     mock_audit.assert_called_once()

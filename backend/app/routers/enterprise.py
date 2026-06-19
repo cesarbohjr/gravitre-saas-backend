@@ -38,6 +38,7 @@ from app.services.siem_export_service import build_siem_event, dispatch_siem_eve
 from app.services.workforce_analytics_service import build_workforce_analytics
 from app.services.integration_suggestion_service import (
     IntegrationSuggestionError,
+    apply_integration_suggestion,
     dismiss_integration_suggestion,
     list_integration_suggestions,
     scan_integration_suggestions,
@@ -429,6 +430,29 @@ async def dismiss_integration_suggestion_route(
     except IntegrationSuggestionError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"suggestion": suggestion}
+
+
+@router.post("/integration-suggestions/{suggestion_id}/apply")
+async def apply_integration_suggestion_route(
+    suggestion_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Apply an integration suggestion — install pack, open connectors, or seed workflow (Tier 6)."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return await apply_integration_suggestion(
+            client,
+            org_id,
+            suggestion_id,
+            actor_id=current_user["user_id"],
+        )
+    except IntegrationSuggestionError as exc:
+        status_code = 404 if exc.code == "SUGGESTION_NOT_FOUND" else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 class IntegrationHealthResponse(BaseModel):

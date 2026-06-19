@@ -194,6 +194,11 @@ class Settings(BaseSettings):
     private_connector_sandbox_timeout_sec: int = 10
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
     internal_api_secret: str = ""
+    # Tier 6 v2: platform CS escalation (Slack incoming webhook or generic JSON POST)
+    platform_cs_escalation_webhook_url: str = ""
+    # Tier 6 v2: approval SLA targets (minutes) for mobile countdown UI
+    approval_sla_minutes_high: int = 60
+    approval_sla_minutes_medium: int = 240
     # In-process knowledge sync scheduler (STA-45). 0 = disabled.
     knowledge_sync_interval_seconds: int = 3600
     source_sync_interval_seconds: int = 300

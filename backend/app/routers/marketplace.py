@@ -14,6 +14,7 @@ from app.auth.dependencies import (
     require_admin,
     require_platform_admin,
 )
+from app.auth.platform_admin import is_platform_admin
 from app.config import Settings, get_settings
 from app.services.partner_marketplace_service import (
     AUDIT_CERTIFICATION_SCANNED,
@@ -90,7 +91,12 @@ from app.marketplace.publishers import (
     get_org_publisher_profile,
     onboard_org_publisher,
 )
-from app.marketplace.flags import MarketplaceFlagsError, set_asset_featured, set_asset_verified
+from app.marketplace.flags import (
+    MarketplaceFlagsError,
+    set_asset_featured,
+    set_asset_pricing,
+    set_asset_verified,
+)
 from app.marketplace.browse import (
     MarketplaceBrowseError,
     get_marketplace_asset,
@@ -122,7 +128,8 @@ from app.marketplace.entitlements import (
     get_entitlement_status,
 )
 from app.marketplace.convergence import list_federated_connector_assets
-from app.marketplace.payouts import get_publisher_payout_summary, sync_pending_payouts
+from app.marketplace.payouts import get_publisher_payout_summary, list_recent_asset_payouts, sync_pending_payouts
+from app.marketplace.publisher_analytics import get_publisher_revenue_analytics
 from app.marketplace.roi import marketplace_roi_summary
 from app.marketplace.service import fetch_marketplace_asset
 from app.workflows.audit import write_audit_event
@@ -247,6 +254,9 @@ class CreateMarketplaceAssetRequest(BaseModel):
     business_outcome: str | None = Field(default=None, alias="businessOutcome")
     use_case: str | None = Field(default=None, alias="useCase")
     estimated_hours_saved: float | None = Field(default=None, alias="estimatedHoursSaved")
+    pricing_type: str = Field(default="free", alias="pricingType")
+    price_cents: int = Field(default=0, ge=0, alias="priceCents")
+    currency: str = Field(default="usd")
 
     model_config = {"populate_by_name": True}
 
@@ -265,6 +275,17 @@ class UpdateMarketplaceAssetRequest(BaseModel):
     business_outcome: str | None = Field(default=None, alias="businessOutcome")
     use_case: str | None = Field(default=None, alias="useCase")
     estimated_hours_saved: float | None = Field(default=None, alias="estimatedHoursSaved")
+    pricing_type: str | None = Field(default=None, alias="pricingType")
+    price_cents: int | None = Field(default=None, ge=0, alias="priceCents")
+    currency: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+class AssetPricingRequest(BaseModel):
+    pricing_type: str = Field(alias="pricingType")
+    price_cents: int = Field(ge=0, alias="priceCents")
+    currency: str = Field(default="usd")
 
     model_config = {"populate_by_name": True}
 
@@ -617,6 +638,8 @@ async def marketplace_billing_status(
     status_payload = get_partner_billing_status(client, org_id)
     status_payload["platformFeeBps"] = settings.marketplace_platform_fee_bps
     status_payload["recentUsage"] = list_recent_usage_events(client, org_id)
+    status_payload["assetPayouts"] = get_publisher_payout_summary(client, org_id)
+    status_payload["recentAssetPayouts"] = list_recent_asset_payouts(client, org_id)
     return status_payload
 
 
@@ -1028,6 +1051,9 @@ async def create_marketplace_asset_route(
             business_outcome=body.business_outcome,
             use_case=body.use_case,
             estimated_hours_saved=body.estimated_hours_saved,
+            pricing_type=body.pricing_type,
+            price_cents=body.price_cents,
+            currency=body.currency,
         )
     except MarketplaceCrudError as exc:
         raise _crud_http_error(exc) from exc
@@ -1272,6 +1298,29 @@ async def set_platform_asset_verified(
             client,
             asset_ref,
             verified=body.enabled,
+            actor_id=user["user_id"],
+            org_id=org_id or "",
+        )
+    except MarketplaceFlagsError as exc:
+        raise _flags_http_error(exc) from exc
+
+
+@router.patch("/platform/assets/{asset_ref}/pricing")
+async def update_platform_asset_pricing(
+    asset_ref: str,
+    body: AssetPricingRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return set_asset_pricing(
+            client,
+            asset_ref,
+            pricing_type=body.pricing_type,
+            price_cents=body.price_cents,
+            currency=body.currency,
             actor_id=user["user_id"],
             org_id=org_id or "",
         )
@@ -1561,8 +1610,11 @@ async def marketplace_asset_entitlement(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    asset = fetch_marketplace_asset(client, asset_ref)
-    return get_entitlement_status(client, org_id, asset)
+    try:
+        asset = fetch_marketplace_asset(client, asset_ref)
+        return get_entitlement_status(client, org_id, asset)
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc
 
 
 @router.post("/assets/{asset_ref}/checkout")
@@ -1608,6 +1660,22 @@ async def marketplace_publisher_payouts_sync(
     result = sync_pending_payouts(client, settings, partner_org_id=org_id)
     summary = get_publisher_payout_summary(client, org_id)
     return {"sync": result, "summary": summary}
+
+
+@router.get("/publisher/analytics")
+async def get_marketplace_publisher_analytics(
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Publisher revenue dashboard: payouts, usage, and adoption (STA-255)."""
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    include_platform = is_platform_admin(client, user["user_id"])
+    return get_publisher_revenue_analytics(
+        client,
+        org_id,
+        include_platform_insights=include_platform,
+    )
 
 
 @router.post("/assets/{asset_ref}/install")

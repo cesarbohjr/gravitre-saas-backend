@@ -40,6 +40,7 @@ sequenceDiagram
 | GET | `/api/enterprise/integration-suggestions` | List suggestions (`status`, `connectorType`) |
 | POST | `/api/enterprise/integration-suggestions/scan?lookbackDays=30` | Scan audit data and persist open suggestions |
 | POST | `/api/enterprise/integration-suggestions/{id}/dismiss` | Dismiss a suggestion |
+| POST | `/api/enterprise/integration-suggestions/{id}/apply` | Apply — install pack, open connectors, or seed workflow draft |
 
 ### Scan response
 

@@ -25,6 +25,9 @@ import {
   Building2,
   Shield,
   Globe,
+  HeartPulse,
+  TrendingUp,
+  Bookmark,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
 import { fetcher } from "@/lib/fetcher"
@@ -149,6 +152,25 @@ function MarketplaceHome() {
   const { data: categories } = useSWR(user ? "marketplace-categories" : null, () =>
     marketplaceApi.listCategories(),
   )
+  const { data: savesData } = useSWR(user ? "marketplace-saves" : null, () =>
+    marketplaceApi.listSaves({ limit: 100 }),
+  )
+  const { data: orgQueueData } = useSWR(
+    user && isAdmin ? "marketplace-org-queue-count" : null,
+    () => marketplaceApi.listOrgAssets({ status: "pending_review", limit: 1 }),
+  )
+  const { data: platformQueueData } = useSWR(
+    user && isPlatformAdmin ? "marketplace-platform-queue-count" : null,
+    () => marketplaceApi.listPlatformReviewQueue({ limit: 1 }),
+  )
+  const { data: orgInternalData } = useSWR(user ? "marketplace-org-internal-count" : null, () =>
+    marketplaceApi.listAssets({ visibility: "internal", limit: 1 }),
+  )
+
+  const savedCount = savesData?.total ?? savesData?.saves?.length ?? 0
+  const orgPendingCount = orgQueueData?.total ?? 0
+  const platformPendingCount = platformQueueData?.total ?? 0
+  const orgInternalCount = orgInternalData?.total ?? 0
 
   const packs = data?.assets ?? []
   const installedCount = packs.filter((p) => p.installed).length
@@ -167,85 +189,113 @@ function MarketplaceHome() {
       .slice(0, 6)
   }, [featuredData?.assets, packs])
 
-  const exploreCards = [
-    {
-      title: "Browse catalog",
-      description: "Agents, workflows, knowledge packs, and department outcomes.",
-      href: "/marketplace/assets",
-      icon: Package,
-      show: true,
-    },
-    {
-      title: "Partner connectors",
-      description: "Federated partner registry in unified catalog shape.",
-      href: "/marketplace/connectors",
-      icon: Plug,
-      show: true,
-    },
-    {
-      title: "Analytics",
-      description: "Catalog adoption and your org install activity.",
-      href: "/marketplace/analytics",
-      icon: BarChart3,
-      show: isAdmin,
-    },
-    {
-      title: "Department packs",
-      description: "Sales, Marketing, Support, Finance, and HR department outcomes.",
-      href: "/marketplace/assets?type=department_pack",
-      icon: Briefcase,
-      show: true,
-    },
-    {
-      title: "Your organization",
-      description: "Internal assets shared only within your org.",
-      href: "/marketplace/org",
-      icon: Building2,
-      show: true,
-    },
-    {
-      title: "Publish queue",
-      description: "Review org-owned drafts before internal publish.",
-      href: "/marketplace/org-admin",
-      icon: Shield,
-      show: isAdmin,
-    },
-    {
-      title: "Become a publisher",
-      description: "Onboard your org to submit assets to the public catalog.",
-      href: "/marketplace/publisher",
-      icon: Sparkles,
-      show: isAdmin,
-    },
-    {
-      title: "Public review",
-      description: "Gravitre platform queue for community submissions.",
-      href: "/marketplace/platform-admin",
-      icon: Globe,
-      show: isPlatformAdmin,
-    },
-    {
-      title: "Installed",
-      description: "Manage assets your team has already deployed.",
-      href: "/marketplace/installed",
-      icon: CheckCircle2,
-      show: true,
-    },
-    {
-      title: "Private bundles",
-      description: "Upload and activate signed in-house connector bundles.",
-      href: "/marketplace/private",
-      icon: Lock,
-      show: isAdmin,
-    },
-    {
-      title: "Submit a connector",
-      description: "Publish a partner connector for security review.",
-      href: "/marketplace/submit",
-      icon: Upload,
-      show: isAdmin,
-    },
-  ].filter((c) => c.show)
+  const exploreCards = useMemo(
+    () =>
+      [
+        {
+          title: "Browse catalog",
+          description: "Agents, workflows, knowledge packs, and department outcomes.",
+          href: "/marketplace/assets",
+          icon: Package,
+          show: true,
+        },
+        {
+          title: savedCount > 0 ? `Saved (${savedCount})` : "Saved assets",
+          description: "Bookmarked catalog items and community signals.",
+          href: "/marketplace/saved",
+          icon: Bookmark,
+          show: true,
+        },
+        {
+          title: "Partner connectors",
+          description: "Federated partner registry in unified catalog shape.",
+          href: "/marketplace/connectors",
+          icon: Plug,
+          show: true,
+        },
+        {
+          title: "Analytics",
+          description: "Catalog adoption and your org install activity.",
+          href: "/marketplace/analytics",
+          icon: BarChart3,
+          show: isAdmin,
+        },
+        {
+          title: "Department packs",
+          description: "Sales, Marketing, Support, Finance, and HR department outcomes.",
+          href: "/marketplace/assets?type=department_pack",
+          icon: Briefcase,
+          show: true,
+        },
+        {
+          title: orgInternalCount > 0 ? `Your organization (${orgInternalCount})` : "Your organization",
+          description: "Internal assets shared only within your org.",
+          href: "/marketplace/org",
+          icon: Building2,
+          show: true,
+        },
+        {
+          title: orgPendingCount > 0 ? `Publish queue (${orgPendingCount})` : "Publish queue",
+          description: "Review org-owned drafts before internal publish.",
+          href: "/marketplace/org-admin",
+          icon: Shield,
+          show: isAdmin,
+        },
+        {
+          title: "Become a publisher",
+          description: "Onboard your org to submit assets to the public catalog.",
+          href: "/marketplace/publisher",
+          icon: Sparkles,
+          show: isAdmin,
+        },
+        {
+          title: "Publisher revenue",
+          description: "Earnings from connector usage and paid asset sales.",
+          href: "/marketplace/publisher/analytics",
+          icon: TrendingUp,
+          show: isAdmin,
+        },
+        {
+          title:
+            platformPendingCount > 0
+              ? `Public review (${platformPendingCount})`
+              : "Public review",
+          description: "Gravitre platform queue for community submissions.",
+          href: "/marketplace/platform-admin",
+          icon: Globe,
+          show: isPlatformAdmin,
+        },
+        {
+          title: "CS workspace",
+          description: "Cross-org tenant health rollups and alert queues.",
+          href: "/platform/cs-workspace",
+          icon: HeartPulse,
+          show: isPlatformAdmin,
+        },
+        {
+          title: "Installed",
+          description: "Manage assets your team has already deployed.",
+          href: "/marketplace/installed",
+          icon: CheckCircle2,
+          show: true,
+        },
+        {
+          title: "Private bundles",
+          description: "Upload and activate signed in-house connector bundles.",
+          href: "/marketplace/private",
+          icon: Lock,
+          show: isAdmin,
+        },
+        {
+          title: "Submit a connector",
+          description: "Publish a partner connector for security review.",
+          href: "/marketplace/submit",
+          icon: Upload,
+          show: isAdmin,
+        },
+      ].filter((c) => c.show),
+    [isAdmin, isPlatformAdmin, orgInternalCount, orgPendingCount, platformPendingCount, savedCount],
+  )
 
   return (
     <AppShell>

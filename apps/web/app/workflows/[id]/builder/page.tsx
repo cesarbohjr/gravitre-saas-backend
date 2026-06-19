@@ -7,6 +7,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-drawer"
+import { IntegrationSuggestionEvidenceBanner } from "@/components/workflows/integration-suggestion-evidence-banner"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -2782,6 +2783,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const { id } = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const suggestionIdParam = searchParams?.get("suggestionId")?.trim() || null
+  const [showSuggestionEvidence, setShowSuggestionEvidence] = useState(Boolean(suggestionIdParam))
   
   // Persistence state
   const canPersist = isPersistableWorkflowId(id)
@@ -2934,6 +2937,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       })
     }, 0)
   }, [isLoadingGraph, searchParams])
+
+  useEffect(() => {
+    if (suggestionIdParam) {
+      setShowSuggestionEvidence(true)
+    }
+  }, [suggestionIdParam])
   
   // Elapsed time timer
   useEffect(() => {
@@ -3793,6 +3802,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         {/* Main builder UI */}
         {!isLoadingGraph && !loadError && (
           <>
+        {showSuggestionEvidence && suggestionIdParam ? (
+          <div className="flex-shrink-0 border-b border-border bg-card/50 px-3 md:px-4 py-3">
+            <IntegrationSuggestionEvidenceBanner
+              suggestionId={suggestionIdParam}
+              onDismiss={() => setShowSuggestionEvidence(false)}
+            />
+          </div>
+        ) : null}
         {/* Top toolbar */}
         <div className="flex-shrink-0 border-b border-border bg-card px-3 md:px-4 py-2 md:py-3">
           <div className="flex items-center justify-between gap-2">

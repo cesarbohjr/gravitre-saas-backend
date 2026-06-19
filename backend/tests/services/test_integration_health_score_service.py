@@ -183,3 +183,30 @@ def test_list_integration_health_history_missing_table():
     client = MagicMock()
     client.table.return_value = table
     assert list_integration_health_history(client, "org-1") == []
+
+
+@patch("app.services.integration_health_score_service.record_integration_health_snapshot")
+def test_backfill_missing_integration_health_snapshots(mock_record):
+    orgs = _table([{"id": "org-1"}, {"id": "org-2"}])
+    snapshots = _table([{"org_id": "org-2"}])
+
+    def table_router(name: str):
+        if name == "organizations":
+            return orgs
+        if name == "integration_health_snapshots":
+            return snapshots
+        return _table([])
+
+    mock_record.return_value = {
+        "snapshot": {"id": "snap-1"},
+        "health": {"score": 72, "grade": "at_risk"},
+    }
+    client = MagicMock()
+    client.table.side_effect = table_router
+
+    from app.services.integration_health_score_service import backfill_missing_integration_health_snapshots
+
+    payload = backfill_missing_integration_health_snapshots(client, limit=10, actor_id="user-1")
+    assert payload["requested"] == 1
+    assert payload["backfilled"] == 1
+    mock_record.assert_called_once_with(client, "org-1", lookback_days=30, actor_id="user-1")

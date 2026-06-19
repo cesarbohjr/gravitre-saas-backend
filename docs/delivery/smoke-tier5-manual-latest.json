@@ -1,0 +1,105 @@
+{
+  "target": "https://gravitre-saas-backend-production.up.railway.app",
+  "appUrl": "https://gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "userId": "09c29672-beff-4a65-b525-261fa3de5923",
+  "startedAt": "2026-06-19T08:58:20.829775+00:00",
+  "finishedAt": "2026-06-19T08:58:38.221428+00:00",
+  "summary": {
+    "pass": 14,
+    "warn": 1,
+    "fail": 0
+  },
+  "steps": [
+    {
+      "epic": "A",
+      "step": "A.1",
+      "status": "pass",
+      "detail": "auto-execute enabled; unsafe admin step blocked for agent eb962141"
+    },
+    {
+      "epic": "A",
+      "step": "A.2",
+      "status": "pass",
+      "detail": "paused workflow run ea5fd33c"
+    },
+    {
+      "epic": "A",
+      "step": "A.3",
+      "status": "pass",
+      "detail": "budget gate blocked dimension=actions"
+    },
+    {
+      "epic": "A",
+      "step": "A.4",
+      "status": "pass",
+      "detail": "compensate route reachable run=aeb5aeb1 keys=['runId', 'compensated', 'failed', 'skipped', 'results']"
+    },
+    {
+      "epic": "B",
+      "step": "B.1",
+      "status": "pass",
+      "detail": "HIPAA status enabled=False healthcare=True phi=True"
+    },
+    {
+      "epic": "B",
+      "step": "B.2",
+      "status": "pass",
+      "detail": "soc2-export keys=['orgId', 'generatedAt', 'window', 'controls', 'summary']"
+    },
+    {
+      "epic": "B",
+      "step": "B.3",
+      "status": "pass",
+      "detail": "transparency export decisions=0"
+    },
+    {
+      "epic": "C",
+      "step": "C.6",
+      "status": "warn",
+      "detail": "Clio OAuth start OK (connector status=pending_auth); complete browser connect at https://gravitre.app/connectors"
+    },
+    {
+      "epic": "D",
+      "step": "D.1",
+      "status": "pass",
+      "detail": "partnership active id=820fe8a8 partner=00000000"
+    },
+    {
+      "epic": "D",
+      "step": "D.2",
+      "status": "pass",
+      "detail": "grant 2d320078 status=active"
+    },
+    {
+      "epic": "D",
+      "step": "D.3",
+      "status": "pass",
+      "detail": "delegated task id=5fade7fe status=pending_delegate"
+    },
+    {
+      "epic": "E",
+      "step": "E.1",
+      "status": "pass",
+      "detail": "swarm run id=b36c7237 status=running"
+    },
+    {
+      "epic": "E",
+      "step": "E.4",
+      "status": "pass",
+      "detail": "sales-ops already installed or prerequisites pending (409)"
+    },
+    {
+      "epic": "E",
+      "step": "E.5",
+      "status": "pass",
+      "detail": "GET /marketplace/role-packs HTTP 200 url=https://gravitre.app/login"
+    },
+    {
+      "epic": "F",
+      "step": "F.5",
+      "status": "pass",
+      "detail": "CS dashboard APIs OK (integration-health, health-history, suggestions-open, failure-predictions); page HTTP 200 url=https://gravitre.app/login"
+    }
+  ]
+}

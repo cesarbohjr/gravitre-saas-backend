@@ -1218,6 +1218,75 @@ export interface MarketplaceEarningsSummary {
   activeInstallCount: number
 }
 
+export interface MarketplaceAssetPayoutSummary {
+  grossCents: number
+  platformFeeCents: number
+  partnerEarningsCents: number
+  transferredCents: number
+  pendingTransferCents: number
+  payoutCount: number
+}
+
+export interface MarketplaceAssetPayoutRow {
+  id: string
+  assetId?: string | null
+  assetSlug?: string | null
+  assetTitle?: string | null
+  grossCents: number
+  partnerEarningsCents: number
+  status: string
+  currency: string
+  createdAt?: string | null
+}
+
+export interface MarketplacePublisherPayoutSyncResult {
+  transferred: number
+  failed: number
+  pendingReviewed: number
+}
+
+export interface MarketplacePublisherEarningsBreakdown {
+  grossCents: number
+  platformFeeCents: number
+  partnerEarningsCents: number
+  transferredCents: number
+  pendingTransferCents: number
+  usageEventCount?: number
+  activeInstallCount?: number
+  payoutCount?: number
+}
+
+export interface MarketplacePublisherAdoptionSummary {
+  publishedAssets: number
+  totalInstalls: number
+  usageEventCount: number
+  paidSaleCount: number
+}
+
+export interface MarketplaceTopEarningAsset {
+  assetId: string
+  slug?: string | null
+  title?: string | null
+  assetType?: string | null
+  grossCents: number
+  partnerEarningsCents: number
+  saleCount: number
+}
+
+export interface MarketplacePublisherRevenueAnalytics {
+  partnerOrgId: string
+  earnings: {
+    combined: MarketplacePublisherEarningsBreakdown
+    connectorUsage: MarketplacePublisherEarningsBreakdown
+    assetSales: MarketplacePublisherEarningsBreakdown
+  }
+  adoption: MarketplacePublisherAdoptionSummary
+  topAssetsByEarnings: MarketplaceTopEarningAsset[]
+  recentAssetPayouts: MarketplaceAssetPayoutRow[]
+  recentUsageEvents: MarketplaceUsageEvent[]
+  platformTopAssets?: MarketplaceTopEarningAsset[]
+}
+
 export interface MarketplaceUsageEvent {
   id: string
   action: string
@@ -1248,6 +1317,8 @@ export interface MarketplaceBillingStatus {
   account: MarketplacePartnerAccount
   pricingCount: number
   earnings: MarketplaceEarningsSummary
+  assetPayouts?: MarketplaceAssetPayoutSummary
+  recentAssetPayouts?: MarketplaceAssetPayoutRow[]
   platformFeeBps: number
   recentUsage: MarketplaceUsageEvent[]
 }
@@ -1402,6 +1473,111 @@ export interface IntegrationSuggestionScanResponse {
   suggestionCount: number
   suggestions: IntegrationSuggestion[]
   scannedAt: string
+}
+
+export interface IntegrationSuggestionApplyResponse {
+  suggestion: IntegrationSuggestion
+  workflowId?: string | null
+  redirectPath?: string | null
+  installResult?: Record<string, unknown> | null
+  applySummary?: IntegrationSuggestionApplySummary | null
+}
+
+export interface IntegrationSuggestionApplySummary {
+  suggestionType?: string
+  title?: string
+  entities?: Array<{ type: string; id: string; label?: string | null }>
+  evidenceHighlights?: string[]
+  redirectPath?: string | null
+}
+
+export interface PlatformCsAlertItem {
+  id: string
+  orgId: string
+  orgName: string
+  kind: "failure" | "suggestion"
+  severity?: string | null
+  title?: string | null
+  message?: string | null
+  workflowId?: string | null
+  alertType?: string | null
+  suggestionType?: string | null
+  priority?: number | null
+  occurredAt?: string | null
+}
+
+export interface PlatformCsAlertsResponse {
+  alerts: PlatformCsAlertItem[]
+  count: number
+}
+
+export interface PlatformCsEscalateResponse {
+  orgId: string
+  orgName: string
+  delivered: boolean
+  deliveryError?: string | null
+  deepLink?: string | null
+  note?: string | null
+  escalatedAt?: string
+}
+
+export interface PlatformCsTenantSummary {
+  orgId: string
+  name: string
+  slug?: string | null
+  createdAt?: string | null
+  healthScore?: number | null
+  healthGrade?: "healthy" | "at_risk" | "critical" | null
+  healthRecordedAt?: string | null
+  lookbackDays?: number | null
+  riskCount: number
+  openSuggestions: number
+  activeFailureAlerts: number
+  assignedTo?: string | null
+  assignedEmail?: string | null
+  assignedAt?: string | null
+  snoozedUntil?: string | null
+  isSnoozed?: boolean
+  queueNote?: string | null
+  needsAttention?: boolean
+}
+
+export interface PlatformCsWorkspaceResponse {
+  tenants: PlatformCsTenantSummary[]
+  summary: {
+    total: number
+    healthy: number
+    atRisk: number
+    critical: number
+    noSnapshot: number
+    needsAttention?: number
+  }
+}
+
+export interface PlatformCsSnapshotBackfillResponse {
+  requested: number
+  backfilled: number
+  lookbackDays: number
+  results: Array<{
+    orgId: string
+    score?: number | null
+    grade?: string | null
+    snapshotId?: string | null
+  }>
+  errors: Array<{ orgId: string; message: string }>
+}
+
+export interface PlatformCsTenantQueueActionResponse {
+  queue: {
+    orgId: string
+    assignedTo?: string | null
+    assignedEmail?: string | null
+    assignedAt?: string | null
+    snoozedUntil?: string | null
+    isSnoozed?: boolean
+    note?: string | null
+    snoozeHours?: number
+  }
 }
 
 export interface WorkflowFailureAlert {
@@ -1880,6 +2056,24 @@ export interface CreateFederationHandoffRequest {
   sourceOutput?: Record<string, unknown>
 }
 
+export interface CreateFederationConnectorGrantRequest {
+  granteeOrgId: string
+  connectorId: string
+  allowedActions: string[]
+  label?: string
+  expiresInHours?: number
+}
+
+export interface CreateFederationDelegatedTaskRequest {
+  delegateOrgId: string
+  title: string
+  instructions?: string
+  payload?: Record<string, unknown>
+  parentReference?: Record<string, unknown>
+  delegatorAgentId?: string
+  delegateAgentId?: string
+}
+
 export interface FederationConnectorGrant {
   id: string
   partnershipId?: string | null
@@ -1940,4 +2134,69 @@ export interface RunCompensationSummary {
 export interface ResumeGraphRunRequest {
   decision: "approved" | "rejected"
   comment?: string | null
+}
+
+// Agent swarm (STA-119)
+export type AgentSwarmRunStatus =
+  | "pending"
+  | "running"
+  | "aggregating"
+  | "completed"
+  | "failed"
+  | "cancelled"
+
+export type AgentSwarmSubtaskStatus = "queued" | "running" | "completed" | "failed" | "cancelled"
+
+export type AgentSwarmDecisionMethod =
+  | "majority_vote"
+  | "unanimous"
+  | "weighted_vote"
+  | "chair_decides"
+
+export interface AgentSwarmSubtask {
+  id: string
+  swarmRunId: string
+  agentId: string
+  taskPrompt: string
+  scopedTools: Record<string, unknown>[]
+  sortOrder: number
+  status: AgentSwarmSubtaskStatus
+  agentJobId: string | null
+  result: Record<string, unknown> | null
+  errorMessage: string | null
+  createdAt: string | null
+  completedAt: string | null
+}
+
+export interface AgentSwarmRun {
+  id: string
+  orgId: string
+  parentAgentId: string | null
+  objective: string
+  status: AgentSwarmRunStatus
+  decisionMethod: AgentSwarmDecisionMethod
+  councilSessionId: string | null
+  finalRecommendation: string | null
+  finalConfidence: number | null
+  aggregateResult: Record<string, unknown>
+  errorMessage: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  completedAt: string | null
+  subtasks?: AgentSwarmSubtask[]
+}
+
+export interface AgentSwarmStartRequest {
+  parentAgentId: string
+  objective: string
+  subtasks: Array<{
+    agentId: string
+    task: string
+    scopedTools?: Record<string, unknown>[]
+  }>
+  decisionMethod?: AgentSwarmDecisionMethod
+}
+
+export interface AgentSwarmListResponse {
+  runs: AgentSwarmRun[]
 }

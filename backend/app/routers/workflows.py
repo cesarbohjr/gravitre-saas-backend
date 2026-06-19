@@ -2751,6 +2751,30 @@ async def list_approvals_alias(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
+
+    def _parse_time(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    def _sla_fields(created_at: str | None, pri: str) -> dict[str, object]:
+        started = _parse_time(created_at)
+        if not started:
+            return {"sla_deadline": None, "sla_minutes_remaining": None, "sla_breached": False}
+        sla_minutes = (
+            settings.approval_sla_minutes_high if pri == "high" else settings.approval_sla_minutes_medium
+        )
+        deadline = started + timedelta(minutes=max(1, sla_minutes))
+        remaining = (deadline - datetime.now(timezone.utc)).total_seconds() / 60.0
+        return {
+            "sla_deadline": deadline.isoformat(),
+            "sla_minutes_remaining": max(0, round(remaining, 1)),
+            "sla_breached": remaining < 0,
+        }
+
     q = (
         client.table("workflow_runs")
         .select("id, workflow_id, created_at, required_approvals, approval_status, triggered_by")
@@ -2783,6 +2807,7 @@ async def list_approvals_alias(
             continue
         if type and type != "workflow":
             continue
+        sla = _sla_fields(run.get("created_at"), pri)
         approvals.append(
             {
                 "id": str(run["id"]),
@@ -2798,6 +2823,9 @@ async def list_approvals_alias(
                 "reviewed_at": None,
                 "context": {"workflow_id": str(run.get("workflow_id")) if run.get("workflow_id") else None},
                 "environment": environment_name,
+                "sla_deadline": sla["sla_deadline"],
+                "sla_minutes_remaining": sla["sla_minutes_remaining"],
+                "sla_breached": sla["sla_breached"],
             }
         )
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)

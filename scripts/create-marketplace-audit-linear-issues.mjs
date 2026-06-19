@@ -79,6 +79,14 @@ const MILESTONES = [
       "Paid assets, revenue share, connector marketplace convergence, ROI/strategic-hours dashboard.",
     priority: P.P2,
   },
+  {
+    key: "m5",
+    ref: "M5",
+    title: "[M5] Production hardening & publisher growth",
+    description:
+      "Harden M4 monetization in production, publisher revenue analytics, and paid asset authoring UI.",
+    priority: P.P1,
+  },
 ];
 
 const ISSUES = [
@@ -612,6 +620,62 @@ Stage 2 UX centerpiece.`,
     deps: ["MKT-AUDIT-10.2"],
     description: `Placeholder — Correlate install → usage → estimated_hours_saved for executive ROI reporting.`,
   },
+  // ── M5 ──
+  {
+    milestone: "m5",
+    ref: "MKT-AUDIT-14.1",
+    title: "Publisher revenue analytics dashboard",
+    priority: P.P1,
+    estimate: 8,
+    deps: ["MKT-AUDIT-12.2"],
+    description: `## Description
+Executive and publisher-facing dashboard for marketplace revenue: gross sales, platform fees, pending/transferred payouts, and usage correlation.
+
+## Technical requirements
+- Aggregate \`marketplace_payouts\`, \`marketplace_usage_events\`, and asset adoption metrics
+- Publisher org admin view on \`/marketplace/billing\` or dedicated analytics route
+- API: \`GET /api/marketplace/publisher/analytics\`
+
+## Acceptance criteria
+- [ ] Publisher sees earnings summary + recent payout rows
+- [ ] Platform admin can spot-check top earning assets (optional v1 scope)
+- [ ] Tests for aggregation service`,
+  },
+  {
+    milestone: "m5",
+    ref: "MKT-AUDIT-14.2",
+    title: "Paid asset pricing in org/platform admin UI",
+    priority: P.P1,
+    estimate: 5,
+    deps: ["MKT-AUDIT-12.1"],
+    description: `## Description
+Allow org admins and platform admins to set \`pricing_type\` and \`price_cents\` on unified marketplace assets.
+
+## Technical requirements
+- Extend asset PATCH/create forms in org-admin and platform-admin
+- Validate pricing_type in (free, paid, subscription) and price_cents >= 0
+- Surface price badge on browse/detail (already partial)
+
+## Acceptance criteria
+- [ ] Org admin can mark internal asset as paid with price
+- [ ] Platform admin can set pricing on public catalog assets
+- [ ] Backend validation + tests`,
+  },
+  {
+    milestone: "m5",
+    ref: "MKT-AUDIT-14.3",
+    title: "Publisher payout sync UI on marketplace billing",
+    priority: P.P2,
+    estimate: 3,
+    deps: ["MKT-AUDIT-12.2"],
+    description: `## Description
+Wire existing \`POST /api/marketplace/publisher/payouts/sync\` to the partner billing page with status feedback.
+
+## Acceptance criteria
+- [ ] Billing page shows payout summary from \`marketplace_payouts\`
+- [ ] Sync button retries pending Connect transfers
+- [ ] Toast + refreshed summary after sync`,
+  },
 ];
 
 function run(cmd, opts = {}) {
@@ -743,6 +807,17 @@ function main() {
   const created = [];
   const skipped = [];
   const refToLinear = {};
+  const idsPath = path.join(__dirname, "..", "docs", "integration", "marketplace-audit-linear-ids.json");
+  if (fs.existsSync(idsPath)) {
+    try {
+      const doc = JSON.parse(fs.readFileSync(idsPath, "utf-8"));
+      for (const item of doc.created || []) {
+        if (item.ref && item.linear) refToLinear[item.ref] = item.linear;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   console.log("\n📝 Audit issues...");
   for (const issue of ISSUES) {
@@ -790,15 +865,26 @@ function main() {
 
   const outPath = path.join(__dirname, "..", "docs", "integration", "marketplace-audit-linear-ids.json");
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  let existingDoc = { milestones: {}, created: [], skipped: [] };
+  if (fs.existsSync(outPath)) {
+    try {
+      existingDoc = JSON.parse(fs.readFileSync(outPath, "utf-8"));
+    } catch {
+      /* fresh write */
+    }
+  }
+  const mergedMilestones = { ...(existingDoc.milestones || {}), ...milestoneIds };
+  const mergedCreated = [...(existingDoc.created || []), ...created];
+  const mergedSkipped = [...new Set([...(existingDoc.skipped || []), ...skipped])];
   fs.writeFileSync(
     outPath,
     JSON.stringify(
       {
         createdAt: new Date().toISOString(),
         project: PROJECT,
-        milestones: milestoneIds,
-        created,
-        skipped,
+        milestones: mergedMilestones,
+        created: mergedCreated,
+        skipped: mergedSkipped,
         projectUrl: `https://linear.app/${WORKSPACE}/project/gravitre-marketplace`,
       },
       null,
@@ -806,15 +892,17 @@ function main() {
     ),
   );
 
-  const m1 = created.filter((c) => c.milestone === "m1").length;
-  const m2 = created.filter((c) => c.milestone === "m2").length;
-  const m3 = created.filter((c) => c.milestone === "m3").length;
-  const m4 = created.filter((c) => c.milestone === "m4").length;
+  const m1 = mergedCreated.filter((c) => c.milestone === "m1").length;
+  const m2 = mergedCreated.filter((c) => c.milestone === "m2").length;
+  const m3 = mergedCreated.filter((c) => c.milestone === "m3").length;
+  const m4 = mergedCreated.filter((c) => c.milestone === "m4").length;
+  const m5 = mergedCreated.filter((c) => c.milestone === "m5").length;
 
   console.log("\n✅ LINEAR BACKLOG CREATED");
   console.log(`   M1 — Stage 1 hardening: ${m1} issues created (${skipped.filter(() => false)})`);
   console.log(`   M2 — Stage 2: ${m2} issues created`);
-  console.log(`   M3/M4 — placeholders: ${m3 + m4} issues created`);
+  console.log(`   M3/M4 — placeholders: ${m3 + m4} issues in registry`);
+  console.log(`   M5 — publisher growth: ${m5} issues created this run`);
   console.log(`   Skipped (already existed): ${skipped.length} refs`);
   if (skipped.length) console.log(`     ${skipped.join(", ")}`);
   console.log(`\n   Linear project: https://linear.app/${WORKSPACE}/project/gravitre-marketplace`);

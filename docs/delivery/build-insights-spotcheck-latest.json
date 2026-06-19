@@ -1,0 +1,74 @@
+{
+  "target": "https://gravitre-saas-backend-production.up.railway.app",
+  "appUrl": "https://gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "startedAt": "2026-06-19T08:48:23.120498+00:00",
+  "summary": {
+    "pass": 6,
+    "fail": 0
+  },
+  "checks": [
+    {
+      "check": "audit_logs",
+      "status": "pass",
+      "http": 200,
+      "detail": {
+        "total": 748,
+        "logs_count": 5,
+        "hasMore": true
+      }
+    },
+    {
+      "check": "workflows_stats",
+      "status": "pass",
+      "http": 200,
+      "detail": {
+        "overallSuccessRate": 100.0,
+        "totalRunsThisWeek": 73
+      }
+    },
+    {
+      "check": "metrics_overview",
+      "status": "pass",
+      "http": 200,
+      "detail": {
+        "totalRuns": 97,
+        "successRate": 100.0,
+        "recordsProcessed": 0,
+        "avgLatency": 0
+      }
+    },
+    {
+      "check": "metrics_insights",
+      "status": "pass",
+      "http": 200,
+      "detail": {
+        "insights_count": 1,
+        "generatedAt": "2026-06-19T08:48:21.516230+00:00"
+      }
+    },
+    {
+      "check": "weekly_throughput",
+      "status": "pass",
+      "http": 200,
+      "detail": {
+        "target": 3,
+        "days_len": 7
+      }
+    },
+    {
+      "check": "runs_list",
+      "status": "pass",
+      "http": 200,
+      "detail": {
+        "runs_count": 10,
+        "total": 97
+      }
+    }
+  ],
+  "uiNotes": [
+    "Protected app routes redirect unauthenticated users to /login (expected).",
+    "metrics/page.tsx still has display fallbacks (1,247 / 98.7% / 1.8M / 142ms) when API fields are null.",
+    "audit/page.tsx uses empty fallbackData (does not mask errors with fake rows)."
+  ]
+}

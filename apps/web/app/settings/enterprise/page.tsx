@@ -2,9 +2,11 @@
 
 import { Suspense } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { useAuth } from "@/lib/auth-context"
+import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse } from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
@@ -13,6 +15,7 @@ import { WorkforceTab } from "@/components/enterprise/workforce-tab"
 import { CostTab } from "@/components/enterprise/cost-tab"
 import { SiemTab } from "@/components/enterprise/siem-tab"
 import { CsDashboardTab } from "@/components/enterprise/cs-dashboard-tab"
+import { PlatformOrgViewBanner } from "@/components/enterprise/platform-org-view-banner"
 
 type TabId = "cs" | "region" | "branding" | "workforce" | "cost" | "siem"
 
@@ -43,6 +46,8 @@ function EnterprisePageContent() {
   // The URL is the single source of truth for the active tab (supports deep links).
   const activeTab: TabId = TAB_IDS.includes(tabParam as TabId) ? (tabParam as TabId) : "cs"
   const { user, loading } = useAuth()
+  const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
+  const isPlatformAdmin = Boolean((me as { platformAdmin?: boolean } | undefined)?.platformAdmin)
 
   const selectTab = (id: TabId) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()))
@@ -52,6 +57,7 @@ function EnterprisePageContent() {
 
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
+  const canAccessEnterprise = isAdmin || isPlatformAdmin
 
   return (
     <AppShell>
@@ -61,7 +67,11 @@ function EnterprisePageContent() {
           description="Advanced controls for data residency, white labeling, workforce analytics, and security."
         />
 
-        {!loading && !isAdmin ? (
+        <div className="mt-4">
+          <PlatformOrgViewBanner />
+        </div>
+
+        {!loading && !canAccessEnterprise ? (
           <div className="mt-8 flex flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-16 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <Lock className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
@@ -111,11 +121,11 @@ function EnterprisePageContent() {
             {/* Tab content */}
             <div className="min-w-0 flex-1">
               {activeTab === "cs" && <CsDashboardTab />}
-              {activeTab === "region" && <RegionTab isAdmin={isAdmin} />}
-              {activeTab === "branding" && <BrandingTab isAdmin={isAdmin} />}
+              {activeTab === "region" && <RegionTab isAdmin={isAdmin || isPlatformAdmin} />}
+              {activeTab === "branding" && <BrandingTab isAdmin={isAdmin || isPlatformAdmin} />}
               {activeTab === "workforce" && <WorkforceTab />}
               {activeTab === "cost" && <CostTab />}
-              {activeTab === "siem" && <SiemTab isAdmin={isAdmin} />}
+              {activeTab === "siem" && <SiemTab isAdmin={isAdmin || isPlatformAdmin} />}
             </div>
           </div>
         )}

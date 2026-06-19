@@ -1,0 +1,51 @@
+name: Platform CS Snapshot Backfill
+
+# Nightly integration health snapshot backfill for orgs missing history (Tier 6 v2).
+# Manual trigger available for ops when onboarding new tenants.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual trigger"
+        required: false
+
+concurrency:
+  group: platform-cs-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill-snapshots:
+    name: Backfill missing integration health snapshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger platform CS snapshot backfill
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        run: |
+          if [ -z "$INTERNAL_API_SECRET" ]; then
+            echo "INTERNAL_API_SECRET secret is not set; add it in repo Settings → Secrets and variables → Actions." >&2
+            exit 1
+          fi
+          GRAVITRE_BACKEND="https://gravitre-saas-backend-production.up.railway.app"
+          echo "Triggering platform CS snapshot backfill at $(date -u)"
+          RESPONSE=$(curl -sf \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 5 \
+            -X POST \
+            "${GRAVITRE_BACKEND}/api/internal/platform/cs-workspace/snapshots/backfill-due?limit=50&lookbackDays=30" \
+            -H "X-Internal-Secret: ${INTERNAL_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP_STATUS:%{http_code}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS")
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Platform CS snapshot backfill failed with status $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Platform CS snapshot backfill completed successfully"
