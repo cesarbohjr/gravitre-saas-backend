@@ -21,6 +21,7 @@
     "clio:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-clio-operator-env.ps1",
     "clio:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-clio-oauth.ps1",
     "smoke:tier5": "python scripts/smoke-tier5-verticals.py",
+    "smoke:tier5-manual": "python scripts/smoke-tier5-manual-epics.py --json docs/delivery/smoke-tier5-manual-latest.json",
     "smoke:post-tier5": "python scripts/smoke-post-tier5-platform.py",
     "smoke:ai-production": "python scripts/smoke-ai-production.py",
     "smoke:ai-production:report": "python scripts/smoke-ai-production.py --json docs/delivery/smoke-ai-production-latest.json",

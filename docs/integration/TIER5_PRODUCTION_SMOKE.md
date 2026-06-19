@@ -24,18 +24,18 @@ Optional: set `BACKEND_URL` to target a non-production host.
 
 | Step | Action | Pass |
 |------|--------|------|
-| A.1 | Enable auto-execute on an operator; policy gate blocks unsafe runs | ☐ |
-| A.2 | `POST /api/runs/{id}/interrupt` pauses in-flight autonomous run | ☐ |
-| A.3 | Daily autonomous budgets block over-limit runs | ☐ |
-| A.4 | Failed run triggers compensating transaction where supported | ☐ |
+| A.1 | Enable auto-execute on an operator; policy gate blocks unsafe runs | ☑ |
+| A.2 | `POST /api/runs/{id}/interrupt` pauses in-flight autonomous run | ☑ |
+| A.3 | Daily autonomous budgets block over-limit runs | ☑ |
+| A.4 | Failed run triggers compensating transaction where supported | ☑ |
 
 ## Epic B — Regulated compliance (STA-110–112)
 
 | Step | Action | Pass |
 |------|--------|------|
-| B.1 | HIPAA PHI controls on healthcare connector/tools | ☐ |
-| B.2 | FedRAMP gap assessment export | ☐ |
-| B.3 | EU AI Act transparency log export | ☐ |
+| B.1 | HIPAA PHI controls on healthcare connector/tools | ☑ |
+| B.2 | FedRAMP gap assessment export | ☑ |
+| B.3 | EU AI Act transparency log export | ☑ |
 
 ## Epic C — Industry vertical packs (STA-113–115)
 
@@ -46,7 +46,7 @@ Optional: set `BACKEND_URL` to target a non-production host.
 | C.3 | `npm run clio:check` → `configured: true` | ☐ |
 | C.4 | `POST /api/workflows/execute` with legal `intakeWorkflowId` queues run | ☐ |
 | C.5 | `POST /api/verticals/real-estate/install` seeds listing workflow + agents | ☐ |
-| C.6 | Connect Clio OAuth at `/connectors` (redirect URI on Clio developer app) | ☐ |
+| C.6 | Connect Clio OAuth at `/connectors` (redirect URI on Clio developer app) | ⚠ OAuth start OK; finish in browser |
 
 **Docs:** `docs/integration/legal-vertical-pack.md`, `docs/integration/real-estate-vertical-pack.md`
 
@@ -56,9 +56,9 @@ Optional: set `BACKEND_URL` to target a non-production host.
 
 | Step | Action | Pass |
 |------|--------|------|
-| D.1 | `POST /api/federation/partnerships` creates B2B partnership | ☐ |
-| D.2 | Federated connector consent flow completes | ☐ |
-| D.3 | `POST /api/federation/delegated-tasks` queues cross-org task | ☐ |
+| D.1 | `POST /api/federation/partnerships` creates B2B partnership | ☑ |
+| D.2 | Federated connector consent flow completes | ☑ |
+| D.3 | `POST /api/federation/delegated-tasks` queues cross-org task | ☑ |
 
 **Docs:** `docs/integration/b2b-handoff-protocol.md`, `docs/integration/delegated-external-tasks.md`
 
@@ -66,11 +66,11 @@ Optional: set `BACKEND_URL` to target a non-production host.
 
 | Step | Action | Pass |
 |------|--------|------|
-| E.1 | `POST /api/agent-swarm` coordinates multi-agent run | ☐ |
-| E.2 | `POST /api/workflows/digital-twin` simulates without side effects | ☐ |
-| E.3 | `GET /api/marketplace/role-packs` lists department packs | ☐ |
-| E.4 | `POST /api/marketplace/role-packs/sales-ops/install` (admin) | ☐ |
-| E.5 | `/marketplace/role-packs` UI install flow | ☐ |
+| E.1 | `POST /api/agent-swarm` coordinates multi-agent run | ☑ |
+| E.2 | `POST /api/workflows/digital-twin` simulates without side effects | ☑ |
+| E.3 | `GET /api/marketplace/role-packs` lists department packs | ☑ |
+| E.4 | `POST /api/marketplace/role-packs/sales-ops/install` (admin) | ☑ |
+| E.5 | `/marketplace/role-packs` UI install flow | ☑ |
 
 **Docs:** `docs/integration/multi-agent-swarm-coordinator.md`, `docs/integration/workflow-digital-twin.md`, `docs/integration/agent-role-marketplace.md`
 
@@ -78,13 +78,25 @@ Optional: set `BACKEND_URL` to target a non-production host.
 
 | Step | Action | Pass |
 |------|--------|------|
-| F.1 | `POST /api/workflows/{id}/failure-predictions/scan` persists alerts | ☐ |
-| F.2 | `POST /api/enterprise/integration-suggestions/scan` persists suggestions | ☐ |
-| F.3 | `GET /api/enterprise/integration-health` returns composite score | ☐ |
-| F.4 | `POST /api/enterprise/integration-health/snapshot` records trend point | ☐ |
-| F.5 | `/settings/enterprise?tab=cs` CS dashboard loads all panels | ☐ |
+| F.1 | `POST /api/workflows/{id}/failure-predictions/scan` persists alerts | ☑ |
+| F.2 | `POST /api/enterprise/integration-suggestions/scan` persists suggestions | ☑ |
+| F.3 | `GET /api/enterprise/integration-health` returns composite score | ☑ |
+| F.4 | `POST /api/enterprise/integration-health/snapshot` records trend point | ☑ |
+| F.5 | `/settings/enterprise?tab=cs` CS dashboard loads all panels | ☑ |
 
 **Docs:** `docs/integration/predictive-workflow-failure.md`, `docs/integration/auto-suggest-connectors-workflows.md`, `docs/integration/integration-health-score.md`
+
+---
+
+## Manual epic smoke (Epics A–F API + app routes)
+
+Runs policy gates, compliance exports, federation, swarm, role packs, and CS dashboard APIs against production.
+
+```bash
+npm run smoke:tier5-manual   # writes docs/delivery/smoke-tier5-manual-latest.json
+```
+
+**Note:** C.6 (Clio OAuth connect) requires completing the browser OAuth flow at [https://gravitre.app/connectors](https://gravitre.app/connectors) after `POST /api/connectors/oauth/clio/start` returns an authorization URL.
 
 ---
 
