@@ -62,6 +62,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { inferAgentDepartment, resolveAgentRoleIcon } from "@/lib/agent-display"
+import { departmentTheme } from "@/lib/department-theme"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
@@ -327,6 +328,28 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
     y.set(0)
   }
 
+  // Demote the decorative rainbow orb to a department-tinted soft tile with a
+  // meaningful role icon. Liveness now reads from a left-edge accent + the
+  // status pill, so active-vs-idle is legible at a glance without a gradient.
+  const theme = departmentTheme(agent.department)
+  const isLive = agent.status === "active" || agent.status === "processing"
+  const recentTasks = getAgentRecentTasks(agent)
+  // Honest outcome pips from real recent-task statuses (no fabricated series).
+  const outcomePips = recentTasks.slice(0, 5).map((t) => {
+    const s = t.status?.toLowerCase() ?? ""
+    if (s.includes("error") || s.includes("fail")) return "error"
+    if (s.includes("run") || s.includes("process") || s.includes("active")) return "running"
+    return "done"
+  })
+  const liveAccent =
+    agent.status === "error"
+      ? "bg-destructive"
+      : agent.status === "processing"
+        ? "bg-info"
+        : agent.status === "active"
+          ? "bg-success"
+          : "bg-border"
+
   return (
     <motion.button
       type="button"
@@ -342,89 +365,50 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       whileTap={reduced ? undefined : { scale: 0.98 }}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
       className={cn(
-        "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
+        "relative group flex w-[168px] sm:w-[184px] flex-col items-center overflow-hidden rounded-2xl border px-3 py-4 pl-4 text-left transition-[colors,box-shadow] duration-200",
         isSelected
-          ? "border-emerald-500/30 bg-card/70 shadow-lg z-10"
-          : "hover:border-border/60 hover:bg-card/40 hover:shadow-xl hover:shadow-black/20",
-        agent.status === "active" && !isSelected && "shadow-[0_0_24px_rgba(16,185,129,0.08)]",
-        agent.status === "idle" && "opacity-85",
+          ? "border-primary/40 bg-card shadow-lg z-10"
+          : "border-border bg-card/60 hover:border-border hover:bg-card hover:shadow-lg",
+        agent.status === "idle" && "opacity-90",
       )}
     >
-      <motion.div
-        className={cn(
-          "pointer-events-none absolute inset-x-4 top-6 h-24 rounded-full blur-2xl transition-opacity duration-500",
-          `bg-gradient-to-br ${agent.personality.gradient}`,
-        )}
-        animate={{ opacity: isSelected ? 0.35 : 0.18 }}
-      />
+      {/* Left-edge liveness accent — the primary active-vs-idle signal */}
+      <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1", liveAccent)} />
+      {isLive && !reduced && (
+        <motion.span
+          aria-hidden
+          className={cn("absolute inset-y-0 left-0 w-1", agent.status === "processing" ? "bg-info" : "bg-success")}
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+      )}
 
-      <div className="relative mb-4 flex h-28 w-28 items-center justify-center">
-        {(agent.status === "active" || agent.status === "processing") && (
-          <>
-            <motion.div
-              className={cn(
-                "absolute inset-0 rounded-full border-2",
-                agent.status === "processing" ? "border-blue-500/40" : "border-emerald-500/30",
-              )}
-              animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
-            />
-            <motion.div
-              className={cn(
-                "absolute inset-0 rounded-full border",
-                agent.status === "processing" ? "border-blue-500/20" : "border-emerald-500/20",
-              )}
-              animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0, 0.4] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
-            />
-          </>
-        )}
-
+      <div className="relative mb-3 flex h-16 w-16 items-center justify-center">
         {agent.model ? (
           <AgentModelBadge
             model={agent.model}
             variant="orb"
-            className="absolute -top-1 right-0 z-20 max-w-[92px] truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm transition-colors group-hover:border-foreground/20 group-hover:text-foreground"
+            className="absolute -top-2 right-0 z-20 max-w-[92px] translate-x-2 truncate rounded-full border border-border bg-card/95 px-2 py-0.5 text-[9px] font-medium text-muted-foreground shadow-sm transition-colors group-hover:border-foreground/20 group-hover:text-foreground"
           />
         ) : null}
 
-        {agent.stats.tasksToday > 0 && (
-          <motion.div
-            className="absolute -top-1 left-0 z-20 flex h-6 min-w-6 items-center justify-center rounded-full border border-border bg-card px-1 shadow-lg"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: index * 0.1 + 0.3 }}
-          >
-            <span className="text-[10px] font-bold text-foreground">
-              {agent.stats.tasksToday > 99 ? "99+" : agent.stats.tasksToday}
-            </span>
-          </motion.div>
-        )}
-
         <div
           className={cn(
-            "relative flex h-24 w-24 items-center justify-center rounded-full transition-all duration-300",
-            `bg-gradient-to-br ${agent.personality.gradient}`,
-            isSelected ? "ring-2 ring-white/20 shadow-lg" : "shadow-md",
-            agent.status === "error" && "opacity-50 grayscale-[30%]",
+            "relative flex h-16 w-16 items-center justify-center rounded-2xl border transition-all duration-300",
+            theme.soft,
+            isSelected ? "border-primary/30" : "border-border",
+            agent.status === "error" && "opacity-60 grayscale",
           )}
-          style={{ transform: "translateZ(20px)" }}
         >
-          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 to-transparent" />
           {createElement(getAgentIcon(agent), {
-            className: "relative z-10 h-10 w-10 text-white drop-shadow-lg",
+            className: cn("relative z-10 h-7 w-7", agent.status === "error" ? "text-destructive" : theme.ring),
           })}
-          {agent.status === "processing" && (
+          {agent.status === "processing" && !reduced && (
             <motion.div
-              className="absolute inset-0 rounded-full border-[3px] border-white/20 border-t-white"
+              className="absolute inset-0 rounded-2xl border-2 border-info/30 border-t-info"
               animate={{ rotate: 360 }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             />
-          )}
-          {agent.status === "error" && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-red-900/30">
-              <Shield className="h-5 w-5 text-red-400" />
-            </div>
           )}
         </div>
       </div>
@@ -432,20 +416,58 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
       <div className="relative z-10 w-full space-y-2 text-center">
         <div className="space-y-0.5">
           <p className="truncate text-sm font-semibold text-foreground">{agent.name}</p>
-          <p className="truncate text-[11px] text-muted-foreground">{agent.role}</p>
+          <p className={cn("truncate text-[11px]", theme.text)}>{agent.role}</p>
         </div>
 
-        <p className="text-[10px] text-muted-foreground">
-          {shouldShowSuccessRate(agent) ? (
-            <span className={successRateColorClass(agent.stats.successRate)}>
-              {agent.stats.successRate}%
+        {/* Status pill — instant active/idle/error read */}
+        <div
+          className={cn(
+            "relative mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1",
+            agent.status === "error"
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : agent.status === "processing"
+                ? "border-info/30 bg-info/10 text-info"
+                : agent.status === "active"
+                  ? "border-success/40 bg-success/10 text-success"
+                  : "border-border bg-muted text-muted-foreground",
+          )}
+        >
+          <StatusBeacon
+            status={
+              agent.status === "error"
+                ? "error"
+                : agent.status === "processing"
+                  ? "processing"
+                  : agent.status === "active"
+                    ? "active"
+                    : "idle"
+            }
+            size="sm"
+            pulse={isLive}
+          />
+          <span className="text-[10px] font-semibold uppercase tracking-wider">{status.label}</span>
+        </div>
+
+        {/* Honest activity row: outcome pips + today count */}
+        <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+          {outcomePips.length > 0 ? (
+            <span className="flex items-center gap-0.5" aria-label="Recent task outcomes">
+              {outcomePips.map((p, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    p === "error" ? "bg-destructive" : p === "running" ? "bg-info" : "bg-success",
+                  )}
+                />
+              ))}
             </span>
           ) : (
             <span className="text-muted-foreground/70">No tasks yet</span>
           )}
-          <span className="mx-1">·</span>
-          <span>{agent.stats.tasksToday} today</span>
-        </p>
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">{agent.stats.tasksToday} today</span>
+        </div>
 
         {(agent.knowledgeDocCount ?? 0) > 0 ? (
           <a
@@ -466,60 +488,6 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
             Add training
           </a>
         )}
-
-        {agent.status === "processing" ? (
-          <p className="flex items-center justify-center gap-1 text-[10px] text-blue-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-            Running task…
-          </p>
-        ) : (
-          <p className="line-clamp-2 min-h-[2rem] text-[10px] leading-4 text-muted-foreground/80">
-            Last ran {agent.lastActionTime}
-          </p>
-        )}
-
-        <div
-          className={cn(
-            "relative mx-auto flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur-sm",
-            agent.status === "error"
-              ? "border-red-500/50 bg-red-500/90 text-white"
-              : agent.status === "processing"
-                ? "border-blue-500/30 bg-blue-500/10"
-                : agent.status === "active"
-                  ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_14px_rgba(16,185,129,0.35)]"
-                  : "border-border bg-card/80",
-          )}
-        >
-          {agent.status === "active" && !reduced ? (
-            <motion.span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-full border border-emerald-400/40"
-              animate={{ opacity: [0.35, 0.75, 0.35], scale: [1, 1.06, 1] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            />
-          ) : null}
-          <StatusBeacon
-            status={
-              agent.status === "error"
-                ? "error"
-                : agent.status === "processing"
-                  ? "processing"
-                  : agent.status === "active"
-                    ? "active"
-                    : "idle"
-            }
-            size="sm"
-            pulse={agent.status === "active" || agent.status === "processing"}
-          />
-          <span
-            className={cn(
-              "text-[10px] font-semibold uppercase tracking-wider",
-              agent.status === "error" ? "text-white" : status.color,
-            )}
-          >
-            {status.label}
-          </span>
-        </div>
       </div>
     </motion.button>
   )

@@ -38,6 +38,7 @@ import { CreateHandoffDialog } from "@/components/federation/create-handoff-dial
 import { ProposeGrantDialog } from "@/components/federation/propose-grant-dialog"
 import { CreateDelegatedTaskDialog } from "@/components/federation/create-delegated-task-dialog"
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
+import { TrustBoundaryVisual } from "@/components/federation/trust-boundary-visual"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -312,6 +313,7 @@ function FederationContent() {
             emptyState={
               <FederationEmptyState
                 icon={Handshake}
+                visual={<TrustBoundaryVisual className="mb-3" />}
                 title="No partner organizations yet"
                 description="Invite a partner organization to start exchanging agent handoffs, connector grants, and delegated tasks under mutual consent."
                 action={
