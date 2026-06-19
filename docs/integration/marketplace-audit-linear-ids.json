@@ -1,11 +1,12 @@
 {
-  "createdAt": "2026-06-18T01:26:21.058Z",
+  "createdAt": "2026-06-19T07:00:47.494Z",
   "project": "Gravitre Marketplace",
   "milestones": {
     "m1": "STA-223",
     "m2": "STA-224",
     "m3": "STA-225",
-    "m4": "STA-226"
+    "m4": "STA-226",
+    "m5": "STA-254"
   },
   "created": [
     {
@@ -169,8 +170,54 @@
       "linear": "STA-253",
       "title": "Strategic hours saved ROI dashboard",
       "milestone": "m4"
+    },
+    {
+      "ref": "MKT-AUDIT-14.1",
+      "linear": "STA-255",
+      "title": "Publisher revenue analytics dashboard",
+      "milestone": "m5"
+    },
+    {
+      "ref": "MKT-AUDIT-14.2",
+      "linear": "STA-256",
+      "title": "Paid asset pricing in org/platform admin UI",
+      "milestone": "m5"
+    },
+    {
+      "ref": "MKT-AUDIT-14.3",
+      "linear": "STA-257",
+      "title": "Publisher payout sync UI on marketplace billing",
+      "milestone": "m5"
     }
   ],
-  "skipped": [],
+  "skipped": [
+    "MKT-AUDIT-ARCH-1",
+    "MKT-AUDIT-4.6",
+    "MKT-AUDIT-4.5",
+    "MKT-AUDIT-5.4",
+    "MKT-AUDIT-5.5",
+    "MKT-AUDIT-5.6",
+    "MKT-AUDIT-6.2",
+    "MKT-AUDIT-6.3",
+    "MKT-AUDIT-6.4",
+    "MKT-AUDIT-6.5",
+    "MKT-AUDIT-6.6",
+    "MKT-AUDIT-DOC-1",
+    "MKT-AUDIT-QA-1",
+    "MKT-AUDIT-9.1",
+    "MKT-AUDIT-9.2",
+    "MKT-AUDIT-9.3",
+    "MKT-AUDIT-9.4",
+    "MKT-AUDIT-8.1",
+    "MKT-AUDIT-10.2",
+    "MKT-AUDIT-6.7",
+    "MKT-AUDIT-11.1",
+    "MKT-AUDIT-11.2",
+    "MKT-AUDIT-11.3",
+    "MKT-AUDIT-12.1",
+    "MKT-AUDIT-12.2",
+    "MKT-AUDIT-13.1",
+    "MKT-AUDIT-13.2"
+  ],
   "projectUrl": "https://linear.app/staqbot/project/gravitre-marketplace"
 }
