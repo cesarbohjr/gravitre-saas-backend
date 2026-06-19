@@ -36,9 +36,9 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 | MKT-AUDIT-9.2 | STA-241 | Internal publish workflow | M2 |
 | MKT-AUDIT-9.3 | STA-242 | Admin approval queue UI | ✅ `/marketplace/platform-admin` + hub pending counts |
 | MKT-AUDIT-9.4 | STA-243 | Version snapshot on publish | M2 |
-| MKT-AUDIT-8.1 | STA-244 | Uninstall flow | API exists; UI on asset detail |
+| MKT-AUDIT-8.1 | STA-244 | Uninstall flow | ✅ Asset detail + installed pages |
 | MKT-AUDIT-10.2 | STA-245 | Per-asset adoption events | M2 analytics |
-| MKT-AUDIT-6.7 | STA-246 | Org marketplace tab | M2 |
+| MKT-AUDIT-6.7 | STA-246 | Org marketplace tab | ✅ `/marketplace/org` + hub counts |
 
 ---
 
@@ -60,8 +60,8 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 When picking up marketplace backlog again, prefer in order:
 
-1. **STA-246** — Org marketplace tab (M2)
-2. **STA-244** — Uninstall flow UI on asset detail
-3. **STA-240** — Asset CRUD API polish (M2)
+1. **STA-240** — Asset CRUD API polish (M2)
+2. **STA-241** — Internal publish workflow
+3. **STA-243** — Version snapshot on publish
 
 Linear project: [Gravitre Marketplace](https://linear.app/staqbot/project/gravitre-marketplace)

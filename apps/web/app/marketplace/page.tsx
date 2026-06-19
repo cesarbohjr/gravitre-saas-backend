@@ -163,10 +163,14 @@ function MarketplaceHome() {
     user && isPlatformAdmin ? "marketplace-platform-queue-count" : null,
     () => marketplaceApi.listPlatformReviewQueue({ limit: 1 }),
   )
+  const { data: orgInternalData } = useSWR(user ? "marketplace-org-internal-count" : null, () =>
+    marketplaceApi.listAssets({ visibility: "internal", limit: 1 }),
+  )
 
   const savedCount = savesData?.total ?? savesData?.saves?.length ?? 0
   const orgPendingCount = orgQueueData?.total ?? 0
   const platformPendingCount = platformQueueData?.total ?? 0
+  const orgInternalCount = orgInternalData?.total ?? 0
 
   const packs = data?.assets ?? []
   const installedCount = packs.filter((p) => p.installed).length
@@ -224,7 +228,7 @@ function MarketplaceHome() {
           show: true,
         },
         {
-          title: "Your organization",
+          title: orgInternalCount > 0 ? `Your organization (${orgInternalCount})` : "Your organization",
           description: "Internal assets shared only within your org.",
           href: "/marketplace/org",
           icon: Building2,
@@ -290,7 +294,7 @@ function MarketplaceHome() {
           show: isAdmin,
         },
       ].filter((c) => c.show),
-    [isAdmin, isPlatformAdmin, orgPendingCount, platformPendingCount, savedCount],
+    [isAdmin, isPlatformAdmin, orgInternalCount, orgPendingCount, platformPendingCount, savedCount],
   )
 
   return (
