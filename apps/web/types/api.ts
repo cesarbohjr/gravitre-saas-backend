@@ -1679,6 +1679,7 @@ export interface MarketplaceFederatedConnectorSummary extends MarketplaceAssetSu
   registryId?: string
   vendor?: string
   federated?: boolean
+  currency?: string
 }
 
 export interface MarketplacePackItemChild {
