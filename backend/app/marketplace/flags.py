@@ -4,11 +4,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from app.marketplace.crud import MarketplaceCrudError, _fetch_asset, _serialize_asset
+from app.marketplace.crud import MarketplaceCrudError, _fetch_asset, _serialize_asset, validate_asset_pricing
 from app.workflows.audit import write_audit_event
 
 AUDIT_ASSET_FEATURED = "marketplace.asset.featured_updated"
 AUDIT_ASSET_VERIFIED = "marketplace.asset.verified_updated"
+AUDIT_ASSET_PRICING = "marketplace.asset.pricing_updated"
 RESOURCE_TYPE_MARKETPLACE_ASSET = "marketplace_asset"
 
 
@@ -99,3 +100,55 @@ def set_asset_verified(
         metadata={"slug": refreshed.get("slug"), "verified": verified},
     )
     return {"verified": verified, "asset": _serialize_asset(refreshed)}
+
+
+def set_asset_pricing(
+    client: Any,
+    asset_ref: str,
+    *,
+    pricing_type: str,
+    price_cents: int,
+    currency: str = "usd",
+    actor_id: str,
+    org_id: str = "",
+) -> dict[str, Any]:
+    try:
+        asset = _fetch_asset(client, asset_ref)
+    except MarketplaceCrudError as exc:
+        raise _crud_to_flags(exc) from exc
+
+    status = str(asset.get("status") or "")
+    visibility = str(asset.get("visibility") or "")
+    allowed = status in {"draft", "pending_review"} or (
+        status == "published" and visibility == "public"
+    )
+    if not allowed:
+        raise MarketplaceFlagsError(
+            "Pricing can only be updated on draft, pending review, or published public assets",
+            code="VALIDATION_ERROR",
+        )
+
+    try:
+        pricing = validate_asset_pricing(pricing_type, price_cents, currency=currency)
+    except MarketplaceCrudError as exc:
+        raise _crud_to_flags(exc) from exc
+
+    client.table("marketplace_assets").update(
+        {**pricing, "updated_at": _now()}
+    ).eq("id", asset["id"]).execute()
+    refreshed = _fetch_asset(client, str(asset["id"]))
+
+    write_audit_event(
+        client,
+        org_id=org_id or str(asset.get("org_id") or ""),
+        actor_id=actor_id,
+        action=AUDIT_ASSET_PRICING,
+        resource_type=RESOURCE_TYPE_MARKETPLACE_ASSET,
+        resource_id=str(asset["id"]),
+        metadata={
+            "slug": refreshed.get("slug"),
+            "pricingType": pricing["pricing_type"],
+            "priceCents": pricing["price_cents"],
+        },
+    )
+    return {"updated": True, "asset": _serialize_asset(refreshed)}

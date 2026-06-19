@@ -90,7 +90,12 @@ from app.marketplace.publishers import (
     get_org_publisher_profile,
     onboard_org_publisher,
 )
-from app.marketplace.flags import MarketplaceFlagsError, set_asset_featured, set_asset_verified
+from app.marketplace.flags import (
+    MarketplaceFlagsError,
+    set_asset_featured,
+    set_asset_pricing,
+    set_asset_verified,
+)
 from app.marketplace.browse import (
     MarketplaceBrowseError,
     get_marketplace_asset,
@@ -247,6 +252,9 @@ class CreateMarketplaceAssetRequest(BaseModel):
     business_outcome: str | None = Field(default=None, alias="businessOutcome")
     use_case: str | None = Field(default=None, alias="useCase")
     estimated_hours_saved: float | None = Field(default=None, alias="estimatedHoursSaved")
+    pricing_type: str = Field(default="free", alias="pricingType")
+    price_cents: int = Field(default=0, ge=0, alias="priceCents")
+    currency: str = Field(default="usd")
 
     model_config = {"populate_by_name": True}
 
@@ -265,6 +273,17 @@ class UpdateMarketplaceAssetRequest(BaseModel):
     business_outcome: str | None = Field(default=None, alias="businessOutcome")
     use_case: str | None = Field(default=None, alias="useCase")
     estimated_hours_saved: float | None = Field(default=None, alias="estimatedHoursSaved")
+    pricing_type: str | None = Field(default=None, alias="pricingType")
+    price_cents: int | None = Field(default=None, ge=0, alias="priceCents")
+    currency: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+class AssetPricingRequest(BaseModel):
+    pricing_type: str = Field(alias="pricingType")
+    price_cents: int = Field(ge=0, alias="priceCents")
+    currency: str = Field(default="usd")
 
     model_config = {"populate_by_name": True}
 
@@ -1028,6 +1047,9 @@ async def create_marketplace_asset_route(
             business_outcome=body.business_outcome,
             use_case=body.use_case,
             estimated_hours_saved=body.estimated_hours_saved,
+            pricing_type=body.pricing_type,
+            price_cents=body.price_cents,
+            currency=body.currency,
         )
     except MarketplaceCrudError as exc:
         raise _crud_http_error(exc) from exc
@@ -1272,6 +1294,29 @@ async def set_platform_asset_verified(
             client,
             asset_ref,
             verified=body.enabled,
+            actor_id=user["user_id"],
+            org_id=org_id or "",
+        )
+    except MarketplaceFlagsError as exc:
+        raise _flags_http_error(exc) from exc
+
+
+@router.patch("/platform/assets/{asset_ref}/pricing")
+async def update_platform_asset_pricing(
+    asset_ref: str,
+    body: AssetPricingRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return set_asset_pricing(
+            client,
+            asset_ref,
+            pricing_type=body.pricing_type,
+            price_cents=body.price_cents,
+            currency=body.currency,
             actor_id=user["user_id"],
             org_id=org_id or "",
         )

@@ -817,6 +817,18 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/approve`),
       {},
     ),
+  updateOrgAsset: (
+    assetRef: string,
+    body: {
+      pricingType?: "free" | "paid" | "subscription"
+      priceCents?: number
+      currency?: string
+    },
+  ) =>
+    patchJson<{ updated: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
+      body,
+    ),
   rejectOrgAsset: (assetRef: string, reason: string) =>
     postJson<{ rejected: boolean; reason: string; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reject`),
@@ -870,6 +882,14 @@ export const marketplaceApi = {
     postJson<{ verified: boolean; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/verified`),
       { enabled },
+    ),
+  updatePlatformAssetPricing: (
+    assetRef: string,
+    body: { pricingType: "free" | "paid" | "subscription"; priceCents: number; currency?: string },
+  ) =>
+    patchJson<{ updated: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/pricing`),
+      body,
     ),
 }
 

@@ -19,6 +19,7 @@ AUDIT_ASSET_ARCHIVED = "marketplace.asset.archived"
 RESOURCE_TYPE_MARKETPLACE_ASSET = "marketplace_asset"
 
 _EDITABLE_STATUSES = frozenset({"draft", "pending_review"})
+_PRICING_TYPES = frozenset({"free", "paid", "subscription"})
 _ASSET_TYPES = frozenset({
     "ai_agent",
     "workflow",
@@ -61,6 +62,43 @@ def _fetch_asset(client: Any, asset_ref: str) -> dict[str, Any]:
     if not result.data:
         raise MarketplaceCrudError("Marketplace asset not found", code="NOT_FOUND")
     return dict(result.data[0])
+
+
+def validate_asset_pricing(
+    pricing_type: str,
+    price_cents: int,
+    *,
+    currency: str | None = None,
+) -> dict[str, Any]:
+    normalized_type = str(pricing_type or "free").strip().lower()
+    if normalized_type not in _PRICING_TYPES:
+        raise MarketplaceCrudError(
+            f"invalid pricing_type: {pricing_type}",
+            code="VALIDATION_ERROR",
+        )
+    cents = int(price_cents or 0)
+    if normalized_type == "free":
+        if cents != 0:
+            raise MarketplaceCrudError(
+                "Free assets must have price_cents of 0",
+                code="VALIDATION_ERROR",
+            )
+    elif cents <= 0:
+        raise MarketplaceCrudError(
+            "Paid assets must have price_cents greater than 0",
+            code="VALIDATION_ERROR",
+        )
+    normalized_currency = (currency or "usd").strip().lower()
+    if normalized_currency != "usd":
+        raise MarketplaceCrudError(
+            f"unsupported currency: {currency}",
+            code="VALIDATION_ERROR",
+        )
+    return {
+        "pricing_type": normalized_type,
+        "price_cents": cents,
+        "currency": normalized_currency,
+    }
 
 
 def _assert_org_owns_asset(asset: dict[str, Any], org_id: str) -> None:
@@ -176,6 +214,9 @@ def create_org_asset(
     business_outcome: str | None = None,
     use_case: str | None = None,
     estimated_hours_saved: float | None = None,
+    pricing_type: str = "free",
+    price_cents: int = 0,
+    currency: str = "usd",
 ) -> dict[str, Any]:
     if asset_type not in _ASSET_TYPES:
         raise MarketplaceCrudError(f"invalid asset_type: {asset_type}", code="VALIDATION_ERROR")
@@ -203,6 +244,7 @@ def create_org_asset(
         raise MarketplaceCrudError(exc.message, code="VALIDATION_ERROR") from exc
 
     publisher_id = resolve_org_publisher_id(client, org_id, org_name=org_name)
+    pricing = validate_asset_pricing(pricing_type, price_cents, currency=currency)
     now = _now()
     row = {
         "publisher_id": publisher_id,
@@ -216,9 +258,9 @@ def create_org_asset(
         "tags": tags or [],
         "visibility": "private",
         "status": "draft",
-        "pricing_type": "free",
-        "price_cents": 0,
-        "currency": "usd",
+        "pricing_type": pricing["pricing_type"],
+        "price_cents": pricing["price_cents"],
+        "currency": pricing["currency"],
         "config": validated["config"],
         "required_connectors": validated["required_connectors"],
         "required_permissions": required_permissions or [],
@@ -326,6 +368,15 @@ def update_org_asset(
             if conflict.data and str(conflict.data[0]["id"]) != str(asset["id"]):
                 raise MarketplaceCrudError(f"slug already exists: {new_slug}", code="CONFLICT")
             update_row["slug"] = new_slug
+
+    if any(field in patch for field in ("pricing_type", "price_cents", "currency")):
+        update_row.update(
+            validate_asset_pricing(
+                patch.get("pricing_type", asset.get("pricing_type") or "free"),
+                patch.get("price_cents", asset.get("price_cents") or 0),
+                currency=patch.get("currency", asset.get("currency") or "usd"),
+            )
+        )
 
     client.table("marketplace_assets").update(update_row).eq("id", asset["id"]).execute()
     refreshed = _fetch_asset(client, str(asset["id"]))

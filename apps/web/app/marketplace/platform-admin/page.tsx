@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AssetPricingEditor } from "@/components/marketplace/asset-pricing-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,38 +28,52 @@ function QueueRow({
   busy,
   onApprove,
   onReject,
+  onPricingSaved,
 }: {
   asset: MarketplaceAssetSummary
   busy: string | null
   onApprove: (asset: MarketplaceAssetSummary) => void
   onReject: (asset: MarketplaceAssetSummary) => void
+  onPricingSaved: () => Promise<void>
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold">{asset.title}</h3>
-          <Badge variant="secondary">public review</Badge>
+    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold">{asset.title}</h3>
+            <Badge variant="secondary">public review</Badge>
+          </div>
+          {asset.description ? (
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{asset.description}</p>
+          ) : null}
+          <p className="mt-1 text-xs text-muted-foreground">{asset.slug}</p>
         </div>
-        {asset.description ? (
-          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{asset.description}</p>
-        ) : null}
-        <p className="mt-1 text-xs text-muted-foreground">{asset.slug}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" disabled={Boolean(busy)} onClick={() => onApprove(asset)}>
+            {busy === asset.id ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            )}
+            Approve
+          </Button>
+          <Button size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => onReject(asset)}>
+            <XCircle className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            Reject
+          </Button>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" disabled={Boolean(busy)} onClick={() => onApprove(asset)}>
-          {busy === asset.id ? (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          )}
-          Approve
-        </Button>
-        <Button size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => onReject(asset)}>
-          <XCircle className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          Reject
-        </Button>
-      </div>
+      <AssetPricingEditor
+        pricingType={asset.pricingType}
+        priceCents={asset.priceCents}
+        disabled={Boolean(busy)}
+        onSave={async (payload) => {
+          await marketplaceApi.updatePlatformAssetPricing(asset.slug, payload)
+          toast.success("Pricing saved", { description: asset.title })
+          await onPricingSaved()
+        }}
+      />
     </div>
   )
 }
@@ -138,7 +153,7 @@ export default function MarketplacePlatformAdminPage() {
             Gravitre public review queue
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review community submissions before they appear in the public catalog.
+            Set paid pricing and review community submissions before they appear in the public catalog.
           </p>
         </header>
 
@@ -161,6 +176,9 @@ export default function MarketplacePlatformAdminPage() {
                 busy={busy}
                 onApprove={handleApprove}
                 onReject={setRejectTarget}
+                onPricingSaved={async () => {
+                  await mutate()
+                }}
               />
             ))}
           </div>

@@ -10,6 +10,7 @@ from app.marketplace.crud import (
     archive_org_asset,
     create_org_asset,
     update_org_asset,
+    validate_asset_pricing,
 )
 from app.workflows.constants import SCHEMA_VERSION
 
@@ -191,3 +192,40 @@ def test_create_rejects_invalid_slug():
             },
         )
     assert exc.value.code == "VALIDATION_ERROR"
+
+
+def test_validate_asset_pricing_free():
+    result = validate_asset_pricing("free", 0)
+    assert result == {"pricing_type": "free", "price_cents": 0, "currency": "usd"}
+
+
+def test_validate_asset_pricing_paid_requires_positive_cents():
+    result = validate_asset_pricing("paid", 499)
+    assert result["pricing_type"] == "paid"
+    assert result["price_cents"] == 499
+
+    with pytest.raises(MarketplaceCrudError) as exc:
+        validate_asset_pricing("paid", 0)
+    assert exc.value.code == "VALIDATION_ERROR"
+
+
+@patch("app.marketplace.crud.write_audit_event")
+@patch("app.marketplace.crud._fetch_asset")
+def test_update_asset_pricing(mock_fetch, mock_audit):
+    updated = _draft_agent_asset(pricing_type="paid", price_cents=999)
+    mock_fetch.side_effect = [_draft_agent_asset(status="draft"), updated]
+    assets = _table()
+    assets.update.return_value = assets
+    client = MagicMock()
+    client.table.return_value = assets
+
+    result = update_org_asset(
+        client,
+        ORG_ID,
+        "asset-1",
+        actor_id="user-1",
+        patch={"pricing_type": "paid", "price_cents": 999},
+    )
+    assert result["updated"] is True
+    assert result["asset"]["pricingType"] == "paid"
+    assert result["asset"]["priceCents"] == 999
