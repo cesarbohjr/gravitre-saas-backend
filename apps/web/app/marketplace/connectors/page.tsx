@@ -1,14 +1,16 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { ArrowLeft, Plug } from "lucide-react"
+import { ArrowLeft, Plug, Search } from "lucide-react"
 
 function formatPrice(cents?: number, currency = "usd") {
   return new Intl.NumberFormat("en-US", {
@@ -17,11 +19,26 @@ function formatPrice(cents?: number, currency = "usd") {
   }).format((cents ?? 0) / 100)
 }
 
+function useDebouncedValue(value: string, delayMs = 300): string {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(timer)
+  }, [value, delayMs])
+  return debounced
+}
+
 export default function FederatedConnectorsPage() {
   const { user } = useAuth()
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search.trim())
   const { data, error, isLoading } = useSWR(
-    user ? "marketplace-federated-connectors" : null,
-    () => marketplaceApi.listFederatedConnectors({ limit: 100 }),
+    user ? (["marketplace-federated-connectors", debouncedSearch] as const) : null,
+    () =>
+      marketplaceApi.listFederatedConnectors({
+        search: debouncedSearch || undefined,
+        limit: 100,
+      }),
   )
 
   return (
@@ -33,14 +50,28 @@ export default function FederatedConnectorsPage() {
             Marketplace home
           </Link>
         </Button>
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
-            <Plug className="h-5 w-5 text-primary" aria-hidden />
-            Federated partner connectors
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Partner registry entries surfaced in unified catalog shape. Install via the partner connector track.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+              <Plug className="h-5 w-5 text-primary" aria-hidden />
+              Federated partner connectors
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Partner registry entries surfaced in unified catalog shape. Linked entries also appear in the main catalog.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/marketplace/assets?type=connector_config">Browse in catalog</Link>
+          </Button>
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search partner connectors…"
+            className="pl-9"
+          />
         </div>
         {isLoading && !data ? (
           <div className="space-y-3">
@@ -75,15 +106,24 @@ export default function FederatedConnectorsPage() {
                       <p className="mt-1 text-xs text-muted-foreground">Vendor: {asset.vendor}</p>
                     ) : null}
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/marketplace/submit">Partner track</Link>
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    {asset.slug ? (
+                      <Button variant="default" size="sm" asChild>
+                        <Link href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}>Catalog detail</Link>
+                      </Button>
+                    ) : null}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/marketplace/submit">Partner track</Link>
+                    </Button>
+                  </div>
                 </div>
               </li>
             ))}
             {!data?.assets?.length ? (
               <li className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No published partner connectors yet.
+                {debouncedSearch
+                  ? "No partner connectors match your search."
+                  : "No published partner connectors yet."}
               </li>
             ) : null}
           </ul>

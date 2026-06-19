@@ -12,7 +12,7 @@ BROWSE_LIST_COLUMNS = (
     "visibility, status, pricing_type, price_cents, currency, required_connectors, "
     "install_count, clone_count, average_rating, review_count, current_version, "
     "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
-    "featured, verified, review_scope, "
+    "featured, verified, review_scope, partner_registry_id, "
     "created_at, updated_at"
 )
 
@@ -106,6 +106,9 @@ def _serialize_asset_summary(
         "featured": bool(row.get("featured")),
         "verified": bool(row.get("verified")),
         "reviewScope": row.get("review_scope"),
+        "partnerRegistryId": row.get("partner_registry_id"),
+        "source": "partner_registry" if row.get("partner_registry_id") else None,
+        "federated": bool(row.get("partner_registry_id")),
         "installed": install is not None,
         "installedAt": install.get("installed_at") if install else None,
         "installId": install.get("id") if install else None,

@@ -108,3 +108,31 @@ def test_get_asset_not_found(monkeypatch):
     monkeypatch.setattr("app.routers.marketplace.get_marketplace_asset", _raise)
     response = client.get("/api/marketplace/assets/missing-slug")
     assert response.status_code == 404
+
+
+def test_list_assets_visibility_internal(monkeypatch):
+    _authenticate(org_id="org-a")
+    captured: dict[str, str | None] = {}
+
+    def _list(*_args, **kwargs):
+        captured["visibility"] = kwargs.get("visibility")
+        return {"assets": [], "total": 0, "limit": 50, "offset": 0}
+
+    monkeypatch.setattr("app.routers.marketplace.list_marketplace_assets", _list)
+    response = client.get("/api/marketplace/assets?visibility=internal")
+    assert response.status_code == 200
+    assert captured["visibility"] == "internal"
+
+
+def test_list_assets_visibility_public(monkeypatch):
+    _authenticate(org_id="org-a")
+    captured: dict[str, str | None] = {}
+
+    def _list(*_args, **kwargs):
+        captured["visibility"] = kwargs.get("visibility")
+        return {"assets": [], "total": 0, "limit": 50, "offset": 0}
+
+    monkeypatch.setattr("app.routers.marketplace.list_marketplace_assets", _list)
+    response = client.get("/api/marketplace/assets?visibility=public")
+    assert response.status_code == 200
+    assert captured["visibility"] == "public"

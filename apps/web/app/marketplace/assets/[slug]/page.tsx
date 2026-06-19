@@ -1,11 +1,13 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-button"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
+import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -28,7 +30,6 @@ import {
   ExternalLink,
   Loader2,
   Plug,
-  ShoppingCart,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -99,49 +100,6 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function PurchaseButton({
-  asset,
-  check,
-  onPurchased,
-}: {
-  asset: MarketplaceAssetSummary
-  check: MarketplaceAssetInstallCheck
-  onPurchased: () => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const runCheckout = async () => {
-    setBusy(true)
-    try {
-      const origin = window.location.origin
-      const result = await marketplaceApi.assetCheckout(asset.slug, {
-        successUrl: `${origin}/marketplace/assets/${encodeURIComponent(asset.slug)}?purchase=success`,
-        cancelUrl: `${origin}/marketplace/assets/${encodeURIComponent(asset.slug)}?purchase=cancelled`,
-      })
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl
-        return
-      }
-      onPurchased()
-    } catch (err) {
-      toast.error("Checkout failed", {
-        description: err instanceof Error ? err.message : "Try again",
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <Button className="w-full" disabled={busy} onClick={() => void runCheckout()}>
-      {busy ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-      ) : (
-        <ShoppingCart className="mr-2 h-4 w-4" aria-hidden />
-      )}
-      Purchase {formatPrice(check.priceCents, check.currency)} to unlock install
-    </Button>
   )
 }
 
@@ -221,7 +179,7 @@ function InstallStepperSheet({
               <BlockerList blockers={check?.blockers ?? []} />
               <ConnectorChecklist items={check?.connectorChecklist ?? asset?.connectorChecklist ?? []} />
               {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
-                <PurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
+                <AssetPurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
               ) : null}
             </>
           ) : null}
@@ -271,6 +229,8 @@ function InstallStepperSheet({
 
 function MarketplaceAssetDetailContent() {
   const params = useParams<{ slug: string }>()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const slug = decodeURIComponent(params.slug)
   const { user } = useAuth()
   const role = user?.role
@@ -283,6 +243,30 @@ function MarketplaceAssetDetailContent() {
     () => marketplaceApi.getAsset(slug),
   )
   const asset = data?.asset as MarketplaceAssetDetail | undefined
+
+  const { data: entitlement, mutate: mutateEntitlement } = useSWR(
+    user && asset ? ["marketplace-entitlement", slug] : null,
+    () => marketplaceApi.assetEntitlement(slug),
+  )
+
+  useEffect(() => {
+    const purchase = searchParams.get("purchase")
+    if (!purchase) return
+    if (purchase === "success") {
+      toast.success("Purchase complete", { description: "You can install this asset now." })
+      void mutateEntitlement()
+      setInstallOpen(true)
+    } else if (purchase === "cancelled") {
+      toast.message("Checkout cancelled")
+    } else if (purchase === "1") {
+      setInstallOpen(true)
+    }
+    router.replace(`/marketplace/assets/${encodeURIComponent(slug)}`, { scroll: false })
+  }, [mutateEntitlement, router, searchParams, slug])
+
+  const needsPurchase = Boolean(
+    entitlement?.requiresPayment && !entitlement?.hasEntitlement && !asset?.installed,
+  )
 
   const handleClone = async () => {
     if (!asset) return
@@ -351,17 +335,48 @@ function MarketplaceAssetDetailContent() {
         ) : asset ? (
           <>
             <header className="space-y-3">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
                 {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
+                <AssetTrustBadges asset={asset} />
                 {asset.pricingType !== "free" && (asset.priceCents ?? 0) > 0 ? (
                   <Badge variant="outline">{formatPrice(asset.priceCents, "usd")}</Badge>
                 ) : null}
+                {entitlement?.hasEntitlement ? <Badge>Purchased</Badge> : null}
                 {asset.installed ? <Badge>Installed</Badge> : null}
               </div>
               <h1 className="text-2xl font-semibold text-foreground">{asset.title}</h1>
+              {needsPurchase && isAdmin ? (
+                <p className="text-sm text-muted-foreground">
+                  Purchase required before install ({formatPrice(entitlement?.priceCents, entitlement?.currency)}).
+                </p>
+              ) : null}
               {asset.description ? (
                 <p className="text-sm text-muted-foreground text-pretty">{asset.description}</p>
+              ) : null}
+              {asset.businessOutcome || asset.useCase || asset.estimatedHoursSaved != null ? (
+                <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Outcome
+                  </p>
+                  {asset.businessOutcome ? (
+                    <p className="text-foreground">{asset.businessOutcome}</p>
+                  ) : null}
+                  <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {asset.useCase ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Use case</dt>
+                        <dd>{asset.useCase}</dd>
+                      </div>
+                    ) : null}
+                    {asset.estimatedHoursSaved != null ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Est. hours saved / month</dt>
+                        <dd>{asset.estimatedHoursSaved}h</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </div>
               ) : null}
             </header>
 
@@ -401,8 +416,12 @@ function MarketplaceAssetDetailContent() {
 
             <div className="flex flex-wrap gap-2">
               {isAdmin && !asset.installed ? (
-                <Button disabled={!asset.canInstall} onClick={openInstall}>
-                  {asset.canInstall ? "Install" : "Connect apps to install"}
+                <Button disabled={!asset.canInstall && !needsPurchase} onClick={openInstall}>
+                  {needsPurchase
+                    ? "Purchase to install"
+                    : asset.canInstall
+                      ? "Install"
+                      : "Connect apps to install"}
                 </Button>
               ) : null}
               <Button variant="secondary" disabled={busy} onClick={handleClone}>

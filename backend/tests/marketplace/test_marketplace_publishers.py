@@ -28,6 +28,48 @@ def _table(*, data=None):
 
 
 @patch("app.marketplace.publishers.write_audit_event")
+@patch("app.marketplace.publishers.resolve_org_publisher_id", return_value="pub-new")
+def test_onboard_org_publisher_creates_profile(mock_resolve, mock_audit):
+    existing = _table(data=[])
+    refreshed = _table(
+        data=[
+            {
+                "id": "pub-new",
+                "slug": "acme-studio",
+                "display_name": "Acme Studio",
+                "org_id": ORG_ID,
+                "public_publishing_enabled": True,
+                "verified": False,
+                "status": "active",
+            }
+        ]
+    )
+    client = MagicMock()
+    call_count = {"n": 0}
+
+    def table(name):
+        if name != "marketplace_publishers":
+            return MagicMock()
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return existing
+        return refreshed
+
+    client.table.side_effect = table
+    result = onboard_org_publisher(
+        client,
+        ORG_ID,
+        actor_id="admin-1",
+        display_name="Acme Studio",
+        slug="acme-studio",
+        description="Public AI agents",
+    )
+    assert result["onboarded"] is True
+    assert result["publisher"]["publicPublishingEnabled"] is True
+    mock_resolve.assert_called_once()
+
+
+@patch("app.marketplace.publishers.write_audit_event")
 def test_onboard_org_publisher_updates_existing(mock_audit):
     existing = _table(
         data=[

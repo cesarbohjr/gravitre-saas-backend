@@ -313,11 +313,53 @@ def list_public_review_queue(
         .range(offset, offset + limit - 1)
         .execute()
     )
-    assets = [_serialize_asset(dict(row)) for row in (result.data or [])]
+    assets: list[dict[str, Any]] = []
+    for row in result.data or []:
+        serialized = _serialize_asset(dict(row))
+        publisher_id = row.get("publisher_id")
+        if publisher_id:
+            pub = (
+                client.table("marketplace_publishers")
+                .select("display_name, slug")
+                .eq("id", publisher_id)
+                .limit(1)
+                .execute()
+            )
+            if pub.data:
+                serialized["publisherDisplayName"] = pub.data[0].get("display_name")
+                serialized["publisherSlug"] = pub.data[0].get("slug")
+        assets.append(serialized)
     total = getattr(result, "count", None)
     if total is None:
         total = len(assets) + offset
     return {"assets": assets, "total": total, "limit": limit, "offset": offset}
+
+
+def get_public_review_asset_detail(client: Any, asset_ref: str) -> dict[str, Any]:
+    """Platform admin detail for a public pending_review asset (cross-org preview)."""
+    asset = _fetch_asset(client, asset_ref)
+    if asset.get("status") != "pending_review" or asset.get("review_scope") != "public":
+        raise MarketplacePublishError(
+            "Only public pending_review assets can be reviewed",
+            code="NOT_FOUND",
+        )
+    serialized = _serialize_asset(asset)
+    publisher_id = asset.get("publisher_id")
+    if publisher_id:
+        pub = (
+            client.table("marketplace_publishers")
+            .select("display_name, slug, website_url, verified")
+            .eq("id", publisher_id)
+            .limit(1)
+            .execute()
+        )
+        if pub.data:
+            row = pub.data[0]
+            serialized["publisherDisplayName"] = row.get("display_name")
+            serialized["publisherSlug"] = row.get("slug")
+            serialized["publisherWebsiteUrl"] = row.get("website_url")
+            serialized["publisherVerified"] = bool(row.get("verified"))
+    return {"asset": serialized}
 
 
 def approve_asset_for_public_publish(

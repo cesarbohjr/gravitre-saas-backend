@@ -144,6 +144,7 @@ def _serialize_asset(row: dict[str, Any]) -> dict[str, Any]:
         "currentVersion": row.get("current_version"),
         "orgId": row.get("org_id"),
         "publisherId": row.get("publisher_id"),
+        "partnerRegistryId": row.get("partner_registry_id"),
         "createdAt": row.get("created_at"),
         "updatedAt": row.get("updated_at"),
     }
@@ -446,6 +447,7 @@ def list_org_assets(
     org_id: str,
     *,
     status: str | None = None,
+    review_scope: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -461,8 +463,10 @@ def list_org_assets(
     )
     if status:
         query = query.eq("status", status)
-        if status == "pending_review":
-            query = query.eq("review_scope", "internal")
+    if status == "pending_review":
+        scope = (review_scope or "internal").strip().lower()
+        if scope not in {"all", ""}:
+            query = query.eq("review_scope", scope)
 
     result = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
     assets = [_serialize_asset(dict(row)) for row in (result.data or [])]

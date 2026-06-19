@@ -7,6 +7,8 @@ import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { MarketplaceFacetSidebar } from "@/components/marketplace/marketplace-facet-sidebar"
+import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-button"
+import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,6 +58,7 @@ const TYPE_FILTERS = [
   { id: "workflow", label: "Workflows", icon: Workflow },
   { id: "knowledge_pack", label: "Knowledge", icon: Database },
   { id: "department_pack", label: "Department packs", icon: Package },
+  { id: "connector_config", label: "Connectors", icon: Plug },
 ] as const
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
@@ -248,6 +251,13 @@ function AssetCard({
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {asset.installed ? <Badge variant="secondary">Installed</Badge> : null}
+        {asset.federated || asset.source === "partner_registry" ? (
+          <Badge variant="outline">Partner registry</Badge>
+        ) : null}
+        {asset.visibility === "internal" ? (
+          <Badge variant="outline">Internal</Badge>
+        ) : null}
+        <AssetTrustBadges asset={asset} />
         {asset.installCount != null && asset.installCount > 0 ? (
           <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
         ) : null}
@@ -322,11 +332,13 @@ function InstallStepperSheet({
   open,
   onOpenChange,
   onComplete,
+  isAdmin,
 }: {
   asset: MarketplaceAssetSummary | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onComplete: () => void
+  isAdmin: boolean
 }) {
   const [step, setStep] = useState<InstallStep>("check")
   const [installResult, setInstallResult] = useState<Record<string, unknown> | null>(null)
@@ -411,6 +423,9 @@ function InstallStepperSheet({
             <>
               <BlockerList blockers={blockers} />
               <ConnectorChecklist items={checklist} />
+              {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
+                <AssetPurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
+              ) : null}
             </>
           ) : null}
 
@@ -527,9 +542,46 @@ function MarketplaceAssetsContent() {
     }),
   )
 
+  const includeFederated =
+    (typeFilter === "all" || typeFilter === "connector_config") && !departmentFilter && !categoryFilter
+  const federatedKey =
+    user && includeFederated
+      ? (["marketplace-federated-connectors", debouncedSearch] as const)
+      : null
+  const { data: federatedData } = useSWR(federatedKey, () =>
+    marketplaceApi.listFederatedConnectors({
+      search: debouncedSearch || undefined,
+      limit: 100,
+    }),
+  )
+
   const { data: categories } = useSWR(user ? "marketplace-categories" : null, () => marketplaceApi.listCategories())
 
-  const assets = data?.assets ?? []
+  const assets = useMemo(() => {
+    const catalog = data?.assets ?? []
+    if (!includeFederated || !federatedData?.assets?.length) return catalog
+
+    const linkedRegistryIds = new Set(
+      catalog.map((asset) => asset.partnerRegistryId).filter((id): id is string => Boolean(id)),
+    )
+    const federatedExtras = federatedData.assets
+      .filter((asset) => !linkedRegistryIds.has(asset.registryId ?? asset.id))
+      .map(
+        (asset): MarketplaceAssetSummary => ({
+          ...asset,
+          connectorChecklist: asset.connectorChecklist ?? [],
+          connectorsReady: asset.connectorsReady ?? true,
+          requiredConnectorsConnected: asset.requiredConnectorsConnected ?? 0,
+          requiredConnectorsTotal: asset.requiredConnectorsTotal ?? 0,
+          tags: asset.tags ?? [],
+          canInstall: asset.canInstall ?? false,
+          installed: asset.installed ?? false,
+          federated: true,
+          source: asset.source ?? "partner_registry",
+        }),
+      )
+    return [...catalog, ...federatedExtras]
+  }, [data?.assets, federatedData?.assets, includeFederated])
 
   const openInstall = useCallback((asset: MarketplaceAssetSummary) => {
     setInstallTarget(asset)
@@ -599,6 +651,10 @@ function MarketplaceAssetsContent() {
                 <span aria-hidden>·</span>
                 <Link href="/marketplace/submit" className="hover:text-foreground">
                   Partner submissions
+                </Link>
+                <span aria-hidden>·</span>
+                <Link href="/marketplace/connectors" className="hover:text-foreground">
+                  Partner connectors
                 </Link>
                 <span aria-hidden>·</span>
                 <Link href="/connectors" className="hover:text-foreground">
@@ -694,6 +750,7 @@ function MarketplaceAssetsContent() {
         open={installOpen}
         onOpenChange={setInstallOpen}
         onComplete={() => void mutate()}
+        isAdmin={isAdmin}
       />
     </AppShell>
   )

@@ -105,6 +105,42 @@ def test_internal_assets_hidden_from_other_orgs():
     assert exc.value.code == "NOT_FOUND"
 
 
+def test_list_internal_filter_scoped_to_org():
+    assets = _table([])
+    installs = _table([])
+    client = MagicMock()
+    client.table.side_effect = lambda name: installs if name == "marketplace_installs" else assets
+
+    with patch(
+        "app.marketplace.browse.validate_connectors_for_asset",
+        return_value={"can_install": True, "checklist": []},
+    ):
+        list_marketplace_assets(client, "org-a", visibility="internal", limit=10)
+
+    assets.eq.assert_any_call("visibility", "internal")
+    assets.eq.assert_any_call("org_id", "org-a")
+
+
+def test_list_public_filter_excludes_internal_only():
+    assets = _table([])
+    installs = _table([])
+    client = MagicMock()
+    client.table.side_effect = lambda name: installs if name == "marketplace_installs" else assets
+
+    with patch(
+        "app.marketplace.browse.validate_connectors_for_asset",
+        return_value={"can_install": True, "checklist": []},
+    ):
+        list_marketplace_assets(client, "org-a", visibility="public", limit=10)
+
+    assets.eq.assert_any_call("visibility", "public")
+    assert not any(
+        call.args[0] == "org_id"
+        for call in assets.eq.call_args_list
+        if call.args
+    )
+
+
 def test_private_draft_assets_never_in_browse_results():
     assets = _table([])
     installs = _table([])

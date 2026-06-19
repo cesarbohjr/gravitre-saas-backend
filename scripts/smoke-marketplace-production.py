@@ -250,6 +250,170 @@ def run_smoke(report: SmokeReport, token: str, org_id: str, client) -> None:
             )
         )
 
+    verify_internal_visibility(report, token, org_id, client)
+
+
+def verify_internal_visibility(
+    report: SmokeReport,
+    token: str,
+    org_id: str,
+    client,
+) -> None:
+    """STA-230 / MKT-AUDIT-5.4: internal assets scoped to owning org only."""
+    other_internal = (
+        client.table("marketplace_assets")
+        .select("slug,org_id,visibility")
+        .eq("visibility", "internal")
+        .eq("status", "published")
+        .neq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    other_row = (other_internal.data or [None])[0]
+
+    public_resp = _request(
+        "/api/marketplace/assets?visibility=public&limit=100&environment=production",
+        token,
+        org_id,
+    )
+    public_assets = public_resp.get("assets") or []
+    bad_public = [a for a in public_assets if a.get("visibility") == "internal"]
+    if bad_public:
+        report.steps.append(
+            StepResult(
+                "visibility_public_filter",
+                "fail",
+                f"{len(bad_public)} internal assets in public browse",
+            )
+        )
+    else:
+        report.steps.append(
+            StepResult(
+                "visibility_public_filter",
+                "pass",
+                f"count={len(public_assets)} all public",
+            )
+        )
+
+    internal_resp = _request(
+        "/api/marketplace/assets?visibility=internal&limit=100&environment=production",
+        token,
+        org_id,
+    )
+    internal_assets = internal_resp.get("assets") or []
+    bad_internal = [
+        a
+        for a in internal_assets
+        if a.get("visibility") != "internal"
+        or (a.get("orgId") and a.get("orgId") != org_id)
+    ]
+    if bad_internal:
+        report.steps.append(
+            StepResult(
+                "visibility_internal_filter",
+                "fail",
+                f"{len(bad_internal)} out-of-scope assets",
+            )
+        )
+    else:
+        report.steps.append(
+            StepResult(
+                "visibility_internal_filter",
+                "pass",
+                f"count={len(internal_assets)} org-scoped",
+            )
+        )
+
+    default_resp = _request(
+        "/api/marketplace/assets?limit=100&environment=production",
+        token,
+        org_id,
+    )
+    default_assets = default_resp.get("assets") or []
+    bad_default = [
+        a
+        for a in default_assets
+        if a.get("visibility") == "internal"
+        and a.get("orgId")
+        and a.get("orgId") != org_id
+    ]
+    if bad_default:
+        report.steps.append(
+            StepResult(
+                "visibility_default_browse",
+                "fail",
+                f"{len(bad_default)} leaked internal assets",
+            )
+        )
+    elif other_row:
+        other_slug = other_row["slug"]
+        slugs = {a.get("slug") for a in default_assets}
+        if other_slug in slugs:
+            report.steps.append(
+                StepResult(
+                    "visibility_default_browse",
+                    "fail",
+                    f"other-org internal {other_slug} in default browse",
+                )
+            )
+        else:
+            report.steps.append(
+                StepResult(
+                    "visibility_default_browse",
+                    "pass",
+                    f"other-org internal {other_slug} hidden",
+                )
+            )
+    else:
+        report.steps.append(
+            StepResult(
+                "visibility_default_browse",
+                "warn",
+                "no other-org internal asset to cross-check",
+            )
+        )
+
+    if other_row:
+        other_slug = other_row["slug"]
+        try:
+            _request(
+                f"/api/marketplace/assets/{other_slug}?environment=production",
+                token,
+                org_id,
+            )
+            report.steps.append(
+                StepResult(
+                    "visibility_detail_block",
+                    "fail",
+                    f"{other_slug} accessible cross-org",
+                )
+            )
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                report.steps.append(
+                    StepResult(
+                        "visibility_detail_block",
+                        "pass",
+                        f"{other_slug} returns 404",
+                    )
+                )
+            else:
+                report.steps.append(
+                    StepResult(
+                        "visibility_detail_block",
+                        "fail",
+                        f"HTTP {exc.code}",
+                    )
+                )
+    else:
+        report.steps.append(
+            StepResult(
+                "visibility_detail_block",
+                "warn",
+                "no other-org internal asset for detail check",
+            )
+        )
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Marketplace production smoke (STA-229 / STA-239)")

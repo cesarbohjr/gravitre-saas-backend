@@ -88,6 +88,33 @@ def test_submit_applies_stricter_validation(mock_fetch):
 
 @patch("app.marketplace.publish.write_audit_event")
 @patch("app.marketplace.publish._fetch_asset")
+def test_approve_creates_version_snapshot(mock_fetch, mock_audit):
+    mock_fetch.side_effect = [
+        _draft_asset(status="pending_review"),
+        _draft_asset(status="published", visibility="internal", current_version=2),
+    ]
+    assets = _table()
+    versions = _table()
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_asset_versions":
+            return versions
+        return assets
+
+    client.table.side_effect = table
+
+    result = approve_asset_for_internal_publish(client, ORG_ID, "asset-1", actor_id="admin-1")
+    assert result["approved"] is True
+    assert result["asset"]["currentVersion"] == 2
+    versions.insert.assert_called_once()
+    insert_payload = versions.insert.call_args.args[0]
+    assert insert_payload["version_number"] == 2
+    assert insert_payload["change_summary"] == "Internal publish approval"
+
+
+@patch("app.marketplace.publish.write_audit_event")
+@patch("app.marketplace.publish._fetch_asset")
 def test_approve_sets_internal_visibility(mock_fetch, mock_audit):
     mock_fetch.side_effect = [
         _draft_asset(status="pending_review"),

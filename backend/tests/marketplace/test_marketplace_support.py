@@ -150,3 +150,63 @@ def test_marketplace_analytics_summary():
     assert result["org"]["savedAssets"] == 1
     assert result["org"]["usageEvents"] == 0
     assert result["org"]["topAssetsByUsage"] == []
+
+
+def test_marketplace_analytics_summary_ranks_adoption():
+    assets = MagicMock()
+    assets.select.return_value = assets
+    assets.eq.return_value = assets
+    assets.or_.return_value = assets
+    assets.execute.side_effect = [
+        MagicMock(data=[{"category": "ai_agent", "department": "Sales", "asset_type": "ai_agent"}]),
+        MagicMock(data=[{"install_count": 1, "clone_count": 0}]),
+    ]
+
+    def make_counter(count: int) -> MagicMock:
+        mock = MagicMock()
+        mock.select.return_value = mock
+        mock.eq.return_value = mock
+        mock.execute.return_value = MagicMock(data=[{"id": "x"}] * count, count=count)
+        return mock
+
+    adoption = MagicMock()
+    adoption.select.return_value = adoption
+    adoption.eq.return_value = adoption
+    adoption.execute.return_value = MagicMock(
+        data=[
+            {
+                "asset_id": "asset-1",
+                "marketplace_assets": {"slug": "sales-pack", "title": "Sales Pack"},
+            },
+            {
+                "asset_id": "asset-1",
+                "marketplace_assets": {"slug": "sales-pack", "title": "Sales Pack"},
+            },
+            {
+                "asset_id": "asset-2",
+                "marketplace_assets": {"slug": "ops-pack", "title": "Ops Pack"},
+            },
+        ],
+        count=3,
+    )
+
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        if name == "marketplace_installs":
+            return make_counter(1)
+        if name == "marketplace_saves":
+            return make_counter(0)
+        if name == "marketplace_reviews":
+            return make_counter(0)
+        if name == "marketplace_asset_adoption_events":
+            return adoption
+        return MagicMock()
+
+    client.table.side_effect = table
+    result = marketplace_analytics_summary(client, "org-1")
+    assert result["org"]["usageEvents"] == 3
+    assert result["org"]["topAssetsByUsage"][0]["slug"] == "sales-pack"
+    assert result["org"]["topAssetsByUsage"][0]["usageEvents"] == 2

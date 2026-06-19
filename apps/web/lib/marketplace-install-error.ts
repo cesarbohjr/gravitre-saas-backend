@@ -37,6 +37,21 @@ export function parsePlanLimitDetail(err: unknown): PlanLimitDetail | null {
   return { limitType, current, max, upgradeUrl }
 }
 
+export function parsePaymentRequiredDetail(err: unknown): { priceCents?: number; currency?: string } | null {
+  const payload =
+    err && typeof err === "object" && "payload" in err
+      ? (err as { payload: unknown }).payload
+      : null
+  const detail = detailObject(payload)
+  if (!detail) return null
+  if (detail.code !== "PAYMENT_REQUIRED" && detail.error !== "PAYMENT_REQUIRED") return null
+  const nested = detail.details && typeof detail.details === "object" ? (detail.details as Record<string, unknown>) : detail
+  return {
+    priceCents: Number(nested.priceCents ?? nested.price_cents ?? 0) || undefined,
+    currency: typeof nested.currency === "string" ? nested.currency : undefined,
+  }
+}
+
 export function toastMarketplaceInstallFailure(
   err: unknown,
   options?: { blockerActionUrl?: string | null },
@@ -53,6 +68,14 @@ export function toastMarketplaceInstallFailure(
             },
           }
         : undefined,
+    })
+    return
+  }
+
+  const payment = parsePaymentRequiredDetail(err)
+  if (payment) {
+    toast.error("Purchase required", {
+      description: "Complete checkout for this asset before installing.",
     })
     return
   }

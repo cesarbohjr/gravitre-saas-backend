@@ -329,6 +329,12 @@ def review_submission(
         if not created.data:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Registry publish failed")
         registry_entry = _normalize_registry(created.data[0])
+        from app.marketplace.convergence import upsert_connector_asset_from_registry
+
+        try:
+            upsert_connector_asset_from_registry(client, created.data[0])
+        except Exception:
+            pass  # registry publish succeeds even if unified asset sync fails
 
     return {"submission": submission, "registry": registry_entry}
 

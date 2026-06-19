@@ -835,14 +835,34 @@ export const marketplaceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<MarketplaceInstallsListResponse>(apiUrl(`/api/marketplace/installs${suffix}`))
   },
-  listOrgAssets: (params?: { status?: string; limit?: number; offset?: number }) => {
+  listOrgAssets: (params?: { status?: string; reviewScope?: string; limit?: number; offset?: number }) => {
     const query = new URLSearchParams()
     if (params?.status) query.set("status", params.status)
+    if (params?.reviewScope) query.set("reviewScope", params.reviewScope)
     if (params?.limit != null) query.set("limit", String(params.limit))
     if (params?.offset != null) query.set("offset", String(params.offset))
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/org/assets${suffix}`))
   },
+  createOrgAsset: (body: {
+    slug: string
+    title: string
+    assetType: "ai_agent" | "workflow" | "knowledge_pack" | "department_pack" | "connector_config"
+    config: Record<string, unknown>
+    description?: string
+    category?: string
+    department?: string
+    tags?: string[]
+    businessOutcome?: string
+    useCase?: string
+    estimatedHoursSaved?: number
+    pricingType?: "free" | "paid" | "subscription"
+    priceCents?: number
+  }) =>
+    postJson<{ created: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl("/api/marketplace/assets"),
+      body,
+    ),
   submitAssetForReview: (assetRef: string) =>
     postJson<{ submitted: boolean; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/submit-for-review`),
@@ -856,6 +876,16 @@ export const marketplaceApi = {
   updateOrgAsset: (
     assetRef: string,
     body: {
+      slug?: string
+      title?: string
+      description?: string
+      category?: string
+      department?: string
+      tags?: string[]
+      config?: Record<string, unknown>
+      businessOutcome?: string
+      useCase?: string
+      estimatedHoursSaved?: number
       pricingType?: "free" | "paid" | "subscription"
       priceCents?: number
       currency?: string
@@ -865,6 +895,32 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
       body,
     ),
+  archiveOrgAsset: (assetRef: string) =>
+    deleteJson<{ archived: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
+    ),
+  listAssetVersions: (assetRef: string) =>
+    fetcher<{
+      assetId: string
+      slug?: string
+      currentVersion: number
+      versions: {
+        versionNumber: number
+        changeSummary?: string | null
+        publishedAt?: string | null
+        publishedBy?: string | null
+        isCurrent: boolean
+      }[]
+    }>(apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/versions`)),
+  rollbackAssetVersion: (assetRef: string, version: number) =>
+    postJson<{
+      rolledBack: boolean
+      assetId: string
+      slug?: string
+      previousVersion: number
+      currentVersion: number
+      restoredFromVersion: number
+    }>(apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/rollback`), { version }),
   rejectOrgAsset: (assetRef: string, reason: string) =>
     postJson<{ rejected: boolean; reason: string; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/reject`),
@@ -898,6 +954,26 @@ export const marketplaceApi = {
     if (params?.offset != null) query.set("offset", String(params.offset))
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/platform/review-queue${suffix}`))
+  },
+  getPlatformReviewAsset: (assetRef: string) =>
+    fetcher<{ asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/review`),
+    ),
+  listPlatformCatalog: (params?: {
+    featured?: boolean
+    verified?: boolean
+    search?: string
+    limit?: number
+    offset?: number
+  }) => {
+    const query = new URLSearchParams()
+    if (params?.featured) query.set("featured", "true")
+    if (params?.verified) query.set("verified", "true")
+    if (params?.search) query.set("search", params.search)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MarketplaceAssetsListResponse>(apiUrl(`/api/marketplace/platform/catalog${suffix}`))
   },
   approvePlatformAsset: (assetRef: string) =>
     postJson<{ approved: boolean; asset: MarketplaceAssetDetail }>(

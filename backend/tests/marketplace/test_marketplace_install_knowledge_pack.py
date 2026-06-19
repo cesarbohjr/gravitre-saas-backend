@@ -67,7 +67,7 @@ def test_install_creates_rag_source(mock_plan, mock_counter, mock_audit):
 @patch("app.marketplace.service.write_audit_event")
 @patch("app.marketplace.service.increment_marketplace_counter")
 @patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
-def test_knowledge_pack_install_respects_plan_limits(mock_plan, mock_counter, mock_audit):
+def test_knowledge_pack_install_does_not_require_agent_quota(mock_plan, mock_counter, mock_audit):
     asset = _knowledge_pack_asset()
     assets = _table([asset])
     installs = _table([])
@@ -83,4 +83,4 @@ def test_knowledge_pack_install_respects_plan_limits(mock_plan, mock_counter, mo
 
     result = install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
     assert result["installed"] is True
-    mock_plan.assert_called()
+    mock_plan.assert_called_once()

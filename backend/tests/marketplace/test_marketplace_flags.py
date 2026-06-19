@@ -7,6 +7,7 @@ import pytest
 
 from app.marketplace.flags import (
     MarketplaceFlagsError,
+    list_platform_public_catalog,
     set_asset_featured,
     set_asset_pricing,
     set_asset_verified,
@@ -63,6 +64,35 @@ def test_set_asset_featured_requires_public_published(mock_fetch):
     client = MagicMock()
     with pytest.raises(MarketplaceFlagsError):
         set_asset_featured(client, "sales-pack", featured=True, actor_id="platform-1")
+
+
+@patch("app.marketplace.flags._fetch_asset")
+def test_set_asset_verified_requires_published(mock_fetch):
+    mock_fetch.return_value = _asset(status="draft")
+    client = MagicMock()
+    with pytest.raises(MarketplaceFlagsError):
+        set_asset_verified(client, "sales-pack", verified=True, actor_id="platform-1")
+
+
+@patch("app.marketplace.flags._serialize_asset")
+def test_list_platform_public_catalog(mock_serialize):
+    assets = MagicMock()
+    assets.select.return_value = assets
+    assets.eq.return_value = assets
+    assets.order.return_value = assets
+    assets.range.return_value = assets
+    assets.execute.return_value = MagicMock(
+        data=[_asset(featured=True, verified=True)],
+        count=1,
+    )
+    client = MagicMock()
+    client.table.return_value = assets
+    mock_serialize.return_value = {"slug": "sales-pack", "featured": True, "verified": True}
+
+    result = list_platform_public_catalog(client, featured=True, limit=10)
+    assert result["total"] == 1
+    assert len(result["assets"]) == 1
+    assets.eq.assert_any_call("featured", True)
 
 
 @patch("app.marketplace.flags.write_audit_event")

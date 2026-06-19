@@ -49,6 +49,11 @@ ASSET_ROW = {
     "published_at": "2026-06-17T00:00:00+00:00",
     "publisher_id": "pub-1",
     "org_id": None,
+    "business_outcome": "Reduce manual reporting time.",
+    "use_case": "Weekly marketing review",
+    "estimated_hours_saved": 4.0,
+    "featured": False,
+    "verified": False,
     "config": {"name": "Marketing Analyst"},
     "install_variables": [],
     "required_permissions": [],
@@ -83,6 +88,31 @@ def test_list_marketplace_assets_serializes_summary():
     assert result["total"] == 1
     assert result["assets"][0]["slug"] == "marketing-analyst"
     assert result["assets"][0]["canInstall"] is True
+    assert result["assets"][0]["businessOutcome"] == "Reduce manual reporting time."
+    assert result["assets"][0]["useCase"] == "Weekly marketing review"
+    assert result["assets"][0]["estimatedHoursSaved"] == 4.0
+
+
+def test_list_marketplace_assets_featured_filter():
+    assets = _table([{**ASSET_ROW, "featured": True}], count=1)
+    installs = _table([])
+    connectors = _table([{"type": "hubspot"}])
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        if name == "marketplace_installs":
+            return installs
+        if name == "connectors":
+            return connectors
+        return _table([])
+
+    client.table.side_effect = table
+    result = list_marketplace_assets(client, "org-1", featured=True)
+    assert result["total"] == 1
+    assert result["assets"][0]["featured"] is True
+    assets.eq.assert_any_call("featured", True)
 
 
 def test_get_marketplace_asset_by_slug():

@@ -102,6 +102,42 @@ def set_asset_verified(
     return {"verified": verified, "asset": _serialize_asset(refreshed)}
 
 
+def list_platform_public_catalog(
+    client: Any,
+    *,
+    featured: bool | None = None,
+    verified: bool | None = None,
+    search: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Platform admin list of published public assets for featured/verified curation."""
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    query = (
+        client.table("marketplace_assets")
+        .select("*", count="exact")
+        .eq("status", "published")
+        .eq("visibility", "public")
+    )
+    if featured is True:
+        query = query.eq("featured", True)
+    if verified is True:
+        query = query.eq("verified", True)
+    if search:
+        term = search.strip()
+        if term:
+            pattern = f'"%{term}%"'
+            query = query.or_(f"title.ilike.{pattern},description.ilike.{pattern},slug.ilike.{pattern}")
+    query = query.order("featured", desc=True).order("install_count", desc=True).order("published_at", desc=True)
+    result = query.range(offset, offset + limit - 1).execute()
+    assets = [_serialize_asset(dict(row)) for row in (result.data or [])]
+    total = getattr(result, "count", None)
+    if total is None:
+        total = len(assets) + offset
+    return {"assets": assets, "total": total, "limit": limit, "offset": offset}
+
+
 def set_asset_pricing(
     client: Any,
     asset_ref: str,

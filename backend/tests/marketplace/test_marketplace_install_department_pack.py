@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.marketplace.service import install_asset
 from app.workflows.constants import SCHEMA_VERSION
 
@@ -131,3 +133,20 @@ def test_partial_pack_failure_returns_summary_not_total_failure(
 
     assert result["installed"] is True
     assert result["entities"]["failures"]
+
+
+@patch("app.marketplace.service.write_audit_event")
+@patch("app.marketplace.service.list_operators", return_value=[{"id": "op-1"}, {"id": "op-2"}])
+@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": 2, "workflows_limit": 10})
+def test_department_pack_agent_limit_raises_structured_error(mock_plan, mock_operators, mock_audit):
+    asset = _department_pack_asset()
+    assets = _table([asset])
+    client = MagicMock()
+    client.table.side_effect = lambda name: assets if name == "marketplace_assets" else _table([])
+
+    from app.marketplace.service import MarketplaceError
+
+    with pytest.raises(MarketplaceError) as exc:
+        install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
+    assert exc.value.code == "LIMIT_EXCEEDED"
+    assert exc.value.details["limit_type"] == "agent_count"

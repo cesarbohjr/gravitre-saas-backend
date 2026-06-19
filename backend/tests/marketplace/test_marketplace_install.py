@@ -182,3 +182,27 @@ def test_preview_install_reports_blockers():
     preview = preview_install(client, "org-1", ASSET_ID)
     assert preview["canInstall"] is False
     assert preview["blockers"]
+
+
+@patch("app.marketplace.entitlements.get_entitlement_status")
+def test_preview_install_blocks_without_entitlement(mock_entitlement):
+    asset = _published_agent_asset()
+    asset["org_id"] = "publisher-org"
+    asset["pricing_type"] = "paid"
+    asset["price_cents"] = 9900
+    assets = _table([asset])
+    connectors = _table([])
+    client = MagicMock()
+    client.table.side_effect = lambda name: assets if name == "marketplace_assets" else connectors
+    mock_entitlement.return_value = {
+        "requiresPayment": True,
+        "hasEntitlement": False,
+        "pricingType": "paid",
+        "priceCents": 9900,
+        "currency": "usd",
+    }
+
+    preview = preview_install(client, "buyer-org", ASSET_ID)
+    assert preview["canInstall"] is False
+    assert preview["requiresPayment"] is True
+    assert any(blocker.get("connector") == "payment" for blocker in preview["blockers"])

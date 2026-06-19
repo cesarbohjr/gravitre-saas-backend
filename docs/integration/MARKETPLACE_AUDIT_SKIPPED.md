@@ -4,7 +4,9 @@ Items below remain **open in Linear** for tracking but were **skipped** in the M
 
 Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
-**Current focus for Lane C:** STA-239 ✅ CI workflow; STA-232 ✅ plan limit UX; STA-235 ✅ publisher asset type column.
+**M2 complete.** **M3 complete.** **M4 complete.** STA-250 ✅ paid checkout; STA-251 ✅ creator revenue share transfers; STA-252 ✅ partner registry ↔ connector_config; STA-253 ✅ hours saved ROI dashboard.
+
+**Next queue (M5):** STA-255 (publisher revenue analytics dashboard).
 
 ---
 
@@ -13,10 +15,10 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 | Ref | Linear | Title | Skip reason |
 |-----|--------|-------|-------------|
 | MKT-AUDIT-ARCH-1 | STA-227 | Document dual-marketplace convergence | Doc-only; covered in `V0_MARKETPLACE_UNIFIED_PROMPT.md` |
-| MKT-AUDIT-4.6 | STA-228 | business_outcome, use_case columns | Deferred — not blocking unified catalog |
+| MKT-AUDIT-4.6 | STA-228 | business_outcome, use_case columns | ✅ Migration + browse/detail/create UI + seed backfill |
 | MKT-AUDIT-4.5 | STA-229 | Expand catalog 27 → 50 | ✅ **Done** — prod `total=51`; close in Linear |
-| MKT-AUDIT-5.4 | STA-230 | Fix internal visibility in browse | Backend shipped; verify in staging |
-| MKT-AUDIT-5.5 | STA-231 | department_pack / knowledge_pack install tests | Test debt — backlog |
+| MKT-AUDIT-5.4 | STA-230 | Fix internal visibility in browse | ✅ Browse filters + smoke `visibility_*` steps + Internal badge |
+| MKT-AUDIT-5.5 | STA-231 | department_pack / knowledge_pack install tests | ✅ Unit + router install coverage |
 | MKT-AUDIT-5.6 | STA-232 | LIMIT_EXCEEDED on install | ✅ Install sheet + `plan_limit_exceeded` toast |
 | MKT-AUDIT-6.2 | STA-233 | Facet filters | ✅ **Done** — unified catalog sidebar + URL sync |
 | MKT-AUDIT-6.3 | STA-234 | `/marketplace/assets/[slug]` | ✅ **OG metadata + opengraph image** |
@@ -32,12 +34,12 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 | Ref | Linear | Title | Skip reason |
 |-----|--------|-------|-------------|
-| MKT-AUDIT-9.1 | STA-240 | Asset CRUD API | M2 — partner submit flow partial |
-| MKT-AUDIT-9.2 | STA-241 | Internal publish workflow | M2 |
+| MKT-AUDIT-9.1 | STA-240 | Asset CRUD API | ✅ POST/PATCH/DELETE routes + create draft UI |
+| MKT-AUDIT-9.2 | STA-241 | Internal publish workflow | ✅ Submit/approve/reject + org-admin queue |
 | MKT-AUDIT-9.3 | STA-242 | Admin approval queue UI | ✅ `/marketplace/platform-admin` + hub pending counts |
-| MKT-AUDIT-9.4 | STA-243 | Version snapshot on publish | M2 |
+| MKT-AUDIT-9.4 | STA-243 | Version snapshot on publish | ✅ Approve snapshots + org-admin version history/rollback |
 | MKT-AUDIT-8.1 | STA-244 | Uninstall flow | ✅ Asset detail + installed pages |
-| MKT-AUDIT-10.2 | STA-245 | Per-asset adoption events | M2 analytics |
+| MKT-AUDIT-10.2 | STA-245 | Per-asset adoption events | ✅ Table + agent/workflow hooks + analytics dashboard |
 | MKT-AUDIT-6.7 | STA-246 | Org marketplace tab | ✅ `/marketplace/org` + hub counts |
 
 ---
@@ -46,13 +48,13 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 | Ref | Linear | Title | Milestone |
 |-----|--------|-------|-----------|
-| MKT-AUDIT-11.1 | STA-247 | Creator publisher onboarding | M3 |
-| MKT-AUDIT-11.2 | STA-248 | Gravitre review queue | M3 |
-| MKT-AUDIT-11.3 | STA-249 | Featured / verified flags | M3 |
-| MKT-AUDIT-12.1 | STA-250 | Paid install + Stripe checkout | M4 |
-| MKT-AUDIT-12.2 | STA-251 | Creator revenue share transfers | M4 |
-| MKT-AUDIT-13.1 | STA-252 | Partner registry ↔ connector_config | M4 |
-| MKT-AUDIT-13.2 | STA-253 | Hours saved ROI dashboard | M4 |
+| MKT-AUDIT-11.1 | STA-247 | Creator publisher onboarding | ✅ Onboard API + `/marketplace/publisher` + public submit from org-admin |
+| MKT-AUDIT-11.2 | STA-248 | Gravitre review queue | ✅ Queue API + platform-admin UI + cross-org review preview |
+| MKT-AUDIT-11.3 | STA-249 | Featured / verified flags | ✅ Platform curation UI + home featured rail + catalog badges |
+| MKT-AUDIT-12.1 | STA-250 | Paid install + Stripe checkout | ✅ Entitlement gate + checkout + install UI + webhook fulfillment |
+| MKT-AUDIT-12.2 | STA-251 | Creator revenue share transfers | ✅ Ledger + 80/20 split + Connect transfers + sync UI |
+| MKT-AUDIT-13.1 | STA-252 | Partner registry ↔ connector_config | ✅ Upsert on publish + federated browse + platform link/sync routes |
+| MKT-AUDIT-13.2 | STA-253 | Hours saved ROI dashboard | ✅ `/analytics/roi` API + `/marketplace/analytics/roi` dashboard |
 
 ---
 
@@ -60,8 +62,8 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 When picking up marketplace backlog again, prefer in order:
 
-1. **STA-240** — Asset CRUD API polish (M2)
-2. **STA-241** — Internal publish workflow
-3. **STA-243** — Version snapshot on publish
+1. **STA-255** — Publisher revenue analytics dashboard (M5) — partial publisher analytics exists
+
+**M1 doc-only (optional):** STA-227 dual-marketplace convergence doc polish.
 
 Linear project: [Gravitre Marketplace](https://linear.app/staqbot/project/gravitre-marketplace)

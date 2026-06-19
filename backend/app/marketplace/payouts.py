@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings
+from app.workflows.audit import write_audit_event
 
 AUDIT_PAYOUT_RECORDED = "marketplace.payout.recorded"
 AUDIT_PAYOUT_TRANSFERRED = "marketplace.payout.transferred"
@@ -82,6 +83,22 @@ def record_asset_purchase_payout(
     if not inserted.data:
         return None
     payout = dict(inserted.data[0])
+    if partner_org_id:
+        write_audit_event(
+            client,
+            org_id=str(partner_org_id),
+            actor_id=str(partner_org_id),
+            action=AUDIT_PAYOUT_RECORDED,
+            resource_type=RESOURCE_TYPE_MARKETPLACE_PAYOUT,
+            resource_id=str(payout["id"]),
+            metadata={
+                "assetId": asset_id,
+                "grossCents": gross_cents,
+                "partnerEarningsCents": partner_earnings,
+                "platformFeeCents": platform_fee,
+                "entitlementId": entitlement_id,
+            },
+        )
     _maybe_transfer_payout(client, settings, payout)
     return payout
 
@@ -131,6 +148,19 @@ def _maybe_transfer_payout(client: Any, settings: Settings, payout: dict[str, An
                 "stripe_transfer_id": transfer.id,
             }
         ).eq("id", payout["id"]).execute()
+        write_audit_event(
+            client,
+            org_id=str(partner_org_id),
+            actor_id=str(partner_org_id),
+            action=AUDIT_PAYOUT_TRANSFERRED,
+            resource_type=RESOURCE_TYPE_MARKETPLACE_PAYOUT,
+            resource_id=str(payout.get("id")),
+            metadata={
+                "stripeTransferId": transfer.id,
+                "partnerEarningsCents": earnings,
+                "assetId": str(payout.get("asset_id") or ""),
+            },
+        )
     except Exception:
         client.table("marketplace_payouts").update({"status": "failed"}).eq("id", payout["id"]).execute()
 

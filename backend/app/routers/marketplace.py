@@ -80,6 +80,7 @@ from app.marketplace.publish import (
     MarketplacePublishError,
     approve_asset_for_internal_publish,
     approve_asset_for_public_publish,
+    get_public_review_asset_detail,
     list_public_review_queue,
     reject_asset_public_review,
     reject_asset_review,
@@ -93,6 +94,7 @@ from app.marketplace.publishers import (
 )
 from app.marketplace.flags import (
     MarketplaceFlagsError,
+    list_platform_public_catalog,
     set_asset_featured,
     set_asset_pricing,
     set_asset_verified,
@@ -127,8 +129,19 @@ from app.marketplace.entitlements import (
     create_asset_checkout_session,
     get_entitlement_status,
 )
-from app.marketplace.convergence import list_federated_connector_assets
-from app.marketplace.payouts import get_publisher_payout_summary, list_recent_asset_payouts, sync_pending_payouts
+from app.marketplace.convergence import (
+    MarketplaceConvergenceError,
+    link_asset_to_registry,
+    list_federated_connector_assets,
+    upsert_connector_asset_from_registry,
+)
+from app.marketplace.payouts import (
+    AUDIT_PAYOUT_TRANSFERRED,
+    RESOURCE_TYPE_MARKETPLACE_PAYOUT,
+    get_publisher_payout_summary,
+    list_recent_asset_payouts,
+    sync_pending_payouts,
+)
 from app.marketplace.publisher_analytics import get_publisher_revenue_analytics
 from app.marketplace.roi import marketplace_roi_summary
 from app.marketplace.service import fetch_marketplace_asset
@@ -213,6 +226,13 @@ def _entitlement_http_error(exc: MarketplaceEntitlementError) -> HTTPException:
         status_code = status.HTTP_404_NOT_FOUND
     elif exc.code == "ALREADY_ENTITLED":
         status_code = status.HTTP_409_CONFLICT
+    return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
+
+
+def _convergence_http_error(exc: MarketplaceConvergenceError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_FOUND":
+        status_code = status.HTTP_404_NOT_FOUND
     return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
 
 
@@ -306,6 +326,12 @@ class PublisherOnboardRequest(BaseModel):
 
 class AssetFlagRequest(BaseModel):
     enabled: bool
+
+
+class LinkRegistryRequest(BaseModel):
+    registry_id: str = Field(alias="registryId")
+
+    model_config = {"populate_by_name": True}
 
 
 class SecurityChecklistRequest(BaseModel):
@@ -1004,11 +1030,59 @@ async def list_federated_connectors(
     return list_federated_connector_assets(client, search=search, limit=limit, offset=offset)
 
 
+@router.post("/platform/registry/{registry_id}/sync-asset")
+async def platform_sync_registry_asset(
+    registry_id: str,
+    _user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Materialize or refresh connector_config asset from partner registry (MKT-AUDIT-13.1)."""
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    registry = (
+        client.table("partner_connector_registry")
+        .select("*")
+        .eq("id", registry_id)
+        .limit(1)
+        .execute()
+    )
+    if not registry.data or registry.data[0].get("status") != "published":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registry entry not found")
+    try:
+        return upsert_connector_asset_from_registry(client, dict(registry.data[0]))
+    except MarketplaceConvergenceError as exc:
+        raise _convergence_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/link-registry")
+async def platform_link_asset_registry(
+    asset_ref: str,
+    body: LinkRegistryRequest,
+    _user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    from app.marketplace.crud import _fetch_asset
+
+    try:
+        asset = _fetch_asset(client, asset_ref)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found") from exc
+    try:
+        return link_asset_to_registry(
+            client,
+            asset_id=str(asset["id"]),
+            registry_id=body.registry_id,
+        )
+    except MarketplaceConvergenceError as exc:
+        raise _convergence_http_error(exc) from exc
+
+
 @router.get("/org/assets")
 async def list_org_marketplace_assets(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
+    review_scope: Annotated[str | None, Query(alias="reviewScope")] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict:
@@ -1019,6 +1093,7 @@ async def list_org_marketplace_assets(
         client,
         org_id,
         status=status_filter,
+        review_scope=review_scope,
         limit=limit,
         offset=offset,
     )
@@ -1223,6 +1298,27 @@ async def list_platform_public_review_queue(
     return list_public_review_queue(client, limit=limit, offset=offset)
 
 
+@router.get("/platform/catalog")
+async def list_platform_catalog_route(
+    _user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    featured: Annotated[bool | None, Query()] = None,
+    verified: Annotated[bool | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return list_platform_public_catalog(
+        client,
+        featured=featured,
+        verified=verified,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @router.post("/platform/assets/{asset_ref}/approve")
 async def approve_platform_public_asset(
     asset_ref: str,
@@ -1260,6 +1356,21 @@ async def reject_platform_public_asset(
             org_id=org_id,
         )
     except MarketplacePublishError as exc:
+        raise _publish_http_error(exc) from exc
+
+
+@router.get("/platform/assets/{asset_ref}/review")
+async def platform_public_review_asset_detail(
+    asset_ref: str,
+    _user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return get_public_review_asset_detail(client, asset_ref)
+    except MarketplacePublishError as exc:
+        if exc.code == "NOT_FOUND":
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         raise _publish_http_error(exc) from exc
 
 
@@ -1655,10 +1766,20 @@ async def marketplace_publisher_payouts_sync(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id = admin
+    user, org_id = admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     result = sync_pending_payouts(client, settings, partner_org_id=org_id)
     summary = get_publisher_payout_summary(client, org_id)
+    if result.get("transferred"):
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user["user_id"],
+            action=AUDIT_PAYOUT_TRANSFERRED,
+            resource_type=RESOURCE_TYPE_MARKETPLACE_PAYOUT,
+            resource_id=org_id,
+            metadata={"sync": result, "source": "publisher_payout_sync"},
+        )
     return {"sync": result, "summary": summary}
 
 

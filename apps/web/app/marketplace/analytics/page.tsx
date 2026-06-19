@@ -151,13 +151,20 @@ export default function MarketplaceAnalyticsPage() {
               </div>
               <TopAssetsTable rows={data.org.topAssetsByUsage ?? []} />
               <div className="rounded-xl border border-border bg-card p-5 lg:col-span-3">
-                <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
-                  Strategic hours saved (ROI)
-                </h2>
-                <p className="mb-4 text-xs text-muted-foreground">
-                  Realized hours count when an installed asset has at least one usage event.
-                </p>
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
+                      Strategic hours saved (ROI)
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Realized hours count when an installed asset has at least one usage event.
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/marketplace/analytics/roi">Open ROI dashboard</Link>
+                  </Button>
+                </div>
                 {roiLoading && !roi ? (
                   <Skeleton className="h-24 w-full rounded-lg" />
                 ) : roi ? (
@@ -180,25 +187,10 @@ export default function MarketplaceAnalyticsPage() {
                       />
                     </div>
                     {roi.byAsset.length ? (
-                      <ul className="space-y-2 text-sm">
-                        {roi.byAsset.map((row) => (
-                          <li key={row.installId} className="flex items-center justify-between gap-2">
-                            {row.slug ? (
-                              <Link
-                                href={`/marketplace/assets/${encodeURIComponent(row.slug)}`}
-                                className="truncate text-foreground hover:text-primary"
-                              >
-                                {row.title ?? row.slug}
-                              </Link>
-                            ) : (
-                              <span className="truncate text-muted-foreground">{row.title ?? row.assetId}</span>
-                            )}
-                            <span className="shrink-0 tabular-nums text-muted-foreground">
-                              {row.realizedHoursSaved}/{row.estimatedHoursSaved}h · {row.usageEvents} events
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-sm text-muted-foreground">
+                        {roi.byAsset.length} installed asset{roi.byAsset.length === 1 ? "" : "s"} with ROI metadata ·{" "}
+                        {roi.assetsWithUsage} with usage events
+                      </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">No active installs with ROI metadata yet.</p>
                     )}

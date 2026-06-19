@@ -256,6 +256,9 @@ export default function MarketplaceBillingPage() {
                   <p className="text-sm font-medium">Unified asset payouts</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Revenue from paid marketplace asset purchases (one-time and subscription).
+                    {data?.platformFeeBps != null
+                      ? ` Creator share: ${100 - data.platformFeeBps / 100}% after ${data.platformFeeBps / 100}% platform fee.`
+                      : null}
                   </p>
                 </div>
                 <Button
@@ -274,6 +277,7 @@ export default function MarketplaceBillingPage() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     { label: "Asset sales", value: formatUsd(assetPayouts.grossCents) },
+                    { label: "Platform fees", value: formatUsd(assetPayouts.platformFeeCents) },
                     { label: "Your share", value: formatUsd(assetPayouts.partnerEarningsCents) },
                     { label: "Transferred", value: formatUsd(assetPayouts.transferredCents) },
                     { label: "Pending transfer", value: formatUsd(assetPayouts.pendingTransferCents) },

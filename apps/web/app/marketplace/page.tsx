@@ -28,6 +28,7 @@ import {
   HeartPulse,
   TrendingUp,
   Bookmark,
+  Clock,
 } from "lucide-react"
 import { departmentTheme } from "@/lib/department-theme"
 import { fetcher } from "@/lib/fetcher"
@@ -166,11 +167,16 @@ function MarketplaceHome() {
   const { data: orgInternalData } = useSWR(user ? "marketplace-org-internal-count" : null, () =>
     marketplaceApi.listAssets({ visibility: "internal", limit: 1 }),
   )
+  const { data: publisherData } = useSWR(
+    user && isAdmin ? "marketplace-publisher-profile-hub" : null,
+    () => marketplaceApi.getPublisherProfile(),
+  )
 
   const savedCount = savesData?.total ?? savesData?.saves?.length ?? 0
   const orgPendingCount = orgQueueData?.total ?? 0
   const platformPendingCount = platformQueueData?.total ?? 0
   const orgInternalCount = orgInternalData?.total ?? 0
+  const publisherOnboarded = Boolean(publisherData?.publisher?.publicPublishingEnabled)
 
   const packs = data?.assets ?? []
   const installedCount = packs.filter((p) => p.installed).length
@@ -215,9 +221,16 @@ function MarketplaceHome() {
         },
         {
           title: "Analytics",
-          description: "Catalog adoption and your org install activity.",
+          description: "Catalog adoption, install activity, and hours-saved ROI.",
           href: "/marketplace/analytics",
           icon: BarChart3,
+          show: isAdmin,
+        },
+        {
+          title: "Hours saved ROI",
+          description: "Estimated vs realized time savings from installed assets.",
+          href: "/marketplace/analytics/roi",
+          icon: Clock,
           show: isAdmin,
         },
         {
@@ -242,8 +255,10 @@ function MarketplaceHome() {
           show: isAdmin,
         },
         {
-          title: "Become a publisher",
-          description: "Onboard your org to submit assets to the public catalog.",
+          title: publisherOnboarded ? "Publisher profile" : "Become a publisher",
+          description: publisherOnboarded
+            ? `${publisherData?.publisher?.displayName ?? "Your org"} can submit public catalog assets.`
+            : "Onboard your org to submit assets to the public catalog.",
           href: "/marketplace/publisher",
           icon: Sparkles,
           show: isAdmin,
@@ -294,7 +309,7 @@ function MarketplaceHome() {
           show: isAdmin,
         },
       ].filter((c) => c.show),
-    [isAdmin, isPlatformAdmin, orgInternalCount, orgPendingCount, platformPendingCount, savedCount],
+    [isAdmin, isPlatformAdmin, orgInternalCount, orgPendingCount, platformPendingCount, publisherData, publisherOnboarded, savedCount],
   )
 
   return (

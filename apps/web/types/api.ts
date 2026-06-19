@@ -1748,6 +1748,9 @@ export interface MarketplaceAssetSummary {
   category?: string | null
   department?: string | null
   tags: string[]
+  visibility?: string | null
+  orgId?: string | null
+  status?: string | null
   pricingType: string
   priceCents?: number
   canInstall: boolean
@@ -1763,6 +1766,20 @@ export interface MarketplaceAssetSummary {
   featured?: boolean
   verified?: boolean
   reviewScope?: string | null
+  reviewFeedback?: string | null
+  publisherDisplayName?: string | null
+  publisherSlug?: string | null
+  publisherWebsiteUrl?: string | null
+  publisherVerified?: boolean
+  businessOutcome?: string | null
+  useCase?: string | null
+  estimatedHoursSaved?: number | null
+  currentVersion?: number | null
+  partnerRegistryId?: string | null
+  source?: string | null
+  federated?: boolean
+  registryId?: string
+  vendor?: string
 }
 
 export interface MarketplaceAssetsListResponse {
