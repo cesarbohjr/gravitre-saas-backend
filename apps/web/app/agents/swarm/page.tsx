@@ -19,6 +19,7 @@ import type { AgentSwarmRun } from "@/types/api"
 import { StartSwarmDialog } from "@/components/agent-swarm/start-swarm-dialog"
 import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
 import { SwarmRunStatusBadge } from "@/components/agent-swarm/swarm-status-badge"
+import { SwarmConvergenceDiagram } from "@/components/agent-swarm/swarm-convergence-diagram"
 import { cn } from "@/lib/utils"
 
 const ACTIVE = new Set(["pending", "running", "aggregating"])
@@ -77,8 +78,8 @@ function AgentSwarmContent() {
       <div className="relative z-10 mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 ring-1 ring-white/10">
-              <Network className="h-5 w-5 text-violet-500" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-border">
+              <Network className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Agent swarm</h1>
@@ -116,9 +117,12 @@ function AgentSwarmContent() {
               {isLoading && runs.length === 0 ? (
                 <p className="text-sm text-muted-foreground px-1">Loading runs…</p>
               ) : runs.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-3">
-                  <Network className="h-10 w-10 mx-auto text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">No swarm runs yet.</p>
+                <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                  <SwarmConvergenceDiagram variant="hero" className="mb-5" />
+                  <p className="text-sm font-medium text-foreground">No swarm runs yet</p>
+                  <p className="mx-auto mt-1 mb-4 max-w-sm text-xs text-muted-foreground">
+                    A swarm splits one objective across parallel agents, then merges their work into a single council recommendation.
+                  </p>
                   <Button size="sm" onClick={() => setStartOpen(true)}>
                     Start your first swarm
                   </Button>
@@ -145,8 +149,11 @@ function AgentSwarmContent() {
                 onMutateList={() => void mutate()}
               />
             ) : (
-              <div className="hidden lg:flex rounded-xl border border-dashed border-border items-center justify-center p-8 text-sm text-muted-foreground text-center">
-                Select a run to view subtasks, aggregate results, or cancel in-flight work.
+              <div className="hidden lg:flex flex-col rounded-xl border border-dashed border-border items-center justify-center gap-4 p-8 text-center">
+                <SwarmConvergenceDiagram variant="panel" />
+                <p className="text-sm text-muted-foreground">
+                  Select a run to view subtasks, aggregate results, or cancel in-flight work.
+                </p>
               </div>
             )}
           </div>
@@ -200,7 +207,7 @@ function SwarmRunRow({
         className={cn(
           "w-full text-left rounded-xl border p-4 transition-colors",
           selected
-            ? "border-violet-500/40 bg-violet-500/5"
+            ? "border-primary/40 bg-primary/5"
             : "border-border/70 bg-card/40 hover:bg-muted/30",
         )}
       >

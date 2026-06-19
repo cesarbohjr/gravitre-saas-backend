@@ -738,8 +738,35 @@ export default function ChatPage() {
                   <h2 className="text-lg font-semibold text-foreground mb-2">
                     What do you want to find?
                   </h2>
-                  <p className="text-sm text-muted-foreground mb-8 max-w-md">
+                  <p className="text-sm text-muted-foreground mb-6 max-w-md">
                     Use natural language to search your workflows, runs, connectors, agents, and documents.
+                  </p>
+
+                  {/* Worked query patterns — teach phrasing + what each returns */}
+                  <div className="mb-6 grid w-full max-w-xl gap-3 sm:grid-cols-2">
+                    {SEARCH_QUERY_PATTERNS.map((pattern) => (
+                      <button
+                        key={pattern.query}
+                        type="button"
+                        disabled={isSearching}
+                        onClick={() => handleSampleQuery(pattern.query)}
+                        className={cn(
+                          "group flex flex-col gap-1.5 rounded-xl border border-border bg-card/50 p-4 text-left transition-colors",
+                          "hover:border-foreground/20 hover:bg-card",
+                          isSearching && "pointer-events-none opacity-60",
+                        )}
+                      >
+                        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <pattern.icon className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="truncate">{`"${pattern.query}"`}</span>
+                        </span>
+                        <span className="text-xs leading-relaxed text-muted-foreground">{pattern.returns}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
+                    Or try
                   </p>
                   <SearchSuggestionChips
                     chips={suggestionChips}

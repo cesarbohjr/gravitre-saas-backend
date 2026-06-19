@@ -11,15 +11,15 @@ import {
   ActivityIndicator
 } from "@/components/gravitre/premium-effects"
 import { 
-  AreaChart, 
+  ComposedChart,
   Area, 
+  Line,
+  ReferenceLine,
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
+  ResponsiveContainer
 } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -182,21 +182,52 @@ const colorClasses = {
   }
 }
 
-// Monthly usage data for charts
-const monthlyUsageData = [
-  { month: "Jan", workflows: 8200, api: 95000, storage: 2.8 },
-  { month: "Feb", workflows: 9100, api: 102000, storage: 3.1 },
-  { month: "Mar", workflows: 10800, api: 115000, storage: 3.6 },
-  { month: "Apr", workflows: 12450, api: 125000, storage: 4.2 },
-]
-
-// Weekly breakdown for current month
+// Weekly workflow-run volume so far this billing period.
 const weeklyData = [
   { week: "Week 1", value: 2800 },
   { week: "Week 2", value: 3200 },
   { week: "Week 3", value: 3100 },
   { week: "Week 4", value: 3350 },
 ]
+
+// --- Usage forecast (derived entirely from existing usage data; no backend) ---
+// Answers the one question a usage chart should answer: "will I run out before
+// the period resets?" We project the primary consumption metric (workflow runs)
+// from its recent weekly pace against the plan allowance.
+const WORKFLOW_LIMIT = 50000
+const WEEKS_IN_PERIOD = 4.345 // average weeks per monthly billing period
+const PERIOD_END_LABEL = "Apr 30"
+
+const workflowCumulative = (() => {
+  let acc = 0
+  return weeklyData.map((w) => {
+    acc += w.value
+    return acc
+  })
+})()
+const workflowUsed = workflowCumulative[workflowCumulative.length - 1]
+const weeksElapsed = weeklyData.length
+const recentRate =
+  weeklyData.slice(-2).reduce((sum, w) => sum + w.value, 0) / Math.min(2, weeklyData.length)
+const projectedTotal = Math.round(workflowUsed + recentRate * Math.max(0, WEEKS_IN_PERIOD - weeksElapsed))
+const projectedPct = Math.round((projectedTotal / WORKFLOW_LIMIT) * 100)
+const willExceed = projectedTotal > WORKFLOW_LIMIT
+
+// Chart series: solid actual cumulative line for elapsed weeks, then a dashed
+// projected continuation to period end. The shared last point bridges them.
+type ForecastPoint = { label: string; actual: number | null; projected: number | null }
+const forecastSeries: ForecastPoint[] = workflowCumulative.map((v, i) => ({
+  label: `W${i + 1}`,
+  actual: v,
+  projected: i === workflowCumulative.length - 1 ? v : null,
+}))
+forecastSeries.push({ label: PERIOD_END_LABEL, actual: null, projected: projectedTotal })
+
+const forecastStatus = willExceed
+  ? { label: "Will exceed limit", accent: "text-destructive", soft: "bg-destructive/10", dot: "bg-destructive" }
+  : projectedPct >= 75
+    ? { label: "Approaching limit", accent: "text-warning", soft: "bg-warning/10", dot: "bg-warning" }
+    : { label: "On track", accent: "text-success", soft: "bg-success/10", dot: "bg-success" }
 
 export default function BillingPage() {
   const { user } = useAuth()
