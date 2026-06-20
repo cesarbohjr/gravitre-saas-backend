@@ -50,15 +50,17 @@ def test_registry_size():
     assert len(GENERIC_OAUTH_VENDORS) == len(OAUTH_PROVIDER_REGISTRY)
 
 
-def test_generic_redirect_uri_uses_api_public_url():
+def test_generic_redirect_uri_uses_public_app_url():
     settings = Settings(
         supabase_url="https://x.supabase.co",
         supabase_anon_key="a",
         supabase_service_role_key="b",
         supabase_jwt_secret="c",
         api_public_url="https://api.gravitre.app",
+        public_app_url="https://gravitre.app",
+        NEXT_PUBLIC_APP_URL="https://gravitre.app",
     )
     assert (
         generic_redirect_uri(settings, "mailchimp")
-        == "https://api.gravitre.app/api/connectors/oauth/mailchimp/callback"
+        == "https://gravitre.app/api/connectors/oauth/mailchimp/callback"
     )

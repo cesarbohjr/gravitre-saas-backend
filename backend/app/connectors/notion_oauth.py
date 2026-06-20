@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 import httpx
 
 from app.config import Settings
+from app.public_urls import connector_oauth_callback_url
 from app.connectors.hubspot_oauth import (
     _connector_environment,
     load_oauth_tokens,
@@ -43,13 +44,11 @@ def notion_oauth_configured(settings: Settings, environment_name: str | None = N
 
 
 def notion_redirect_uri(settings: Settings) -> str:
-    api_base = (settings.api_public_url or "").strip().rstrip("/")
-    if api_base:
-        return f"{api_base}/api/connectors/oauth/notion/callback"
-    base = (settings.public_app_url or "").strip().rstrip("/")
-    if base:
-        return f"{base}/api/connectors/oauth/notion/callback"
-    return "http://localhost:8000/api/connectors/oauth/notion/callback"
+    return connector_oauth_callback_url(
+        public_app_url=settings.public_app_url,
+        api_public_url=settings.api_public_url,
+        vendor="notion",
+    )
 
 
 def notion_authorize_url(client_id: str, redirect_uri: str, state: str) -> str:

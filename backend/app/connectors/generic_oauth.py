@@ -23,8 +23,9 @@ from app.connectors.oauth_provider_registry import (
     OAUTH_PROVIDER_REGISTRY,
     provider_context_from_connector_config,
     resolve_url_template,
+    TokenRequestStyle,
 )
-from app.connectors.oauth_provider_registry import TokenRequestStyle
+from app.public_urls import connector_oauth_callback_url
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +51,11 @@ def generic_oauth_configured(settings: Settings, vendor: str, environment_name: 
 
 
 def generic_redirect_uri(settings: Settings, vendor: str) -> str:
-    api_base = (settings.api_public_url or "").strip().rstrip("/")
-    if api_base:
-        return f"{api_base}/api/connectors/oauth/{vendor}/callback"
-    base = (settings.public_app_url or "").strip().rstrip("/")
-    if base:
-        return f"{base}/api/connectors/oauth/{vendor}/callback"
-    return f"http://localhost:8000/api/connectors/oauth/{vendor}/callback"
+    return connector_oauth_callback_url(
+        public_app_url=settings.public_app_url,
+        api_public_url=settings.api_public_url,
+        vendor=vendor,
+    )
 
 
 def _token_payload_from_response(

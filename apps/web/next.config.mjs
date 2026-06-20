@@ -6,7 +6,10 @@ const nextConfig = {
   },
   // Proxy /api/* requests to the FastAPI backend
   async rewrites() {
-    const backendUrl = process.env.FASTAPI_BASE_URL || "http://localhost:8000"
+    const backendUrl = (process.env.FASTAPI_BASE_URL || "http://localhost:8000")
+      .trim()
+      .replace(/[\r\n]+/g, "")
+      .replace(/\/+$/, "")
     return [
       {
         source: "/api/:path*",

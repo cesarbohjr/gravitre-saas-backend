@@ -1,8 +1,15 @@
 /** Canonical production URLs (custom domains on Vercel / Railway). */
 export const PRODUCTION_APP_URL = "https://gravitre.app"
 export const PRODUCTION_API_URL = "https://api.gravitre.app"
+/** Server-side proxy target until api.gravitre.app DNS points at Railway. */
+export const PRODUCTION_BACKEND_URL =
+  "https://gravitre-saas-backend-production.up.railway.app"
 
 const LEGACY_PUBLIC_HOSTS = ["vercel.app", "railway.app", "up.railway.app"]
+
+function trimUrl(url: string | undefined): string {
+  return (url ?? "").trim().replace(/[\r\n]+/g, "").replace(/\/+$/, "")
+}
 
 function isLegacyPlatformHost(url: string): boolean {
   const lowered = url.trim().toLowerCase()
@@ -10,9 +17,9 @@ function isLegacyPlatformHost(url: string): boolean {
 }
 
 export function normalizePublicUrl(url: string | undefined, fallback: string): string {
-  const cleaned = (url ?? "").trim().replace(/\/+$/, "")
+  const cleaned = trimUrl(url)
   if (!cleaned || isLegacyPlatformHost(cleaned)) {
-    return fallback.replace(/\/+$/, "")
+    return trimUrl(fallback)
   }
   return cleaned
 }
@@ -21,19 +28,20 @@ export function publicAppUrl(): string {
   return normalizePublicUrl(process.env.NEXT_PUBLIC_APP_URL, PRODUCTION_APP_URL)
 }
 
-/** Server-side backend base (OAuth proxy routes). Never expose Railway/Vercel defaults to users. */
+/** Server-side backend base for /api rewrites and OAuth proxy routes — must be reachable. */
 export function backendBaseUrl(): string {
-  const candidates = [
-    process.env.FASTAPI_BASE_URL,
-    process.env.NEXT_PUBLIC_API_URL,
-  ]
-  for (const candidate of candidates) {
-    const normalized = normalizePublicUrl(candidate, "")
-    if (normalized) return normalized
+  const raw = trimUrl(process.env.FASTAPI_BASE_URL)
+  if (!raw || raw.includes("api.gravitre.app")) {
+    return PRODUCTION_BACKEND_URL
   }
-  return PRODUCTION_API_URL
+  return raw
 }
 
+/** User-visible API base (webhooks, docs) — routed through the app domain until api.gravitre.app is live. */
 export function publicApiUrl(): string {
-  return normalizePublicUrl(process.env.NEXT_PUBLIC_API_URL, PRODUCTION_API_URL)
+  const explicit = trimUrl(process.env.NEXT_PUBLIC_API_URL)
+  if (explicit && !isLegacyPlatformHost(explicit) && !explicit.includes("api.gravitre.app")) {
+    return explicit
+  }
+  return `${publicAppUrl()}/api`
 }

@@ -18,3 +18,20 @@ def normalize_public_url(url: str, *, fallback: str) -> str:
     if not cleaned or is_legacy_platform_host(cleaned):
         return fallback.rstrip("/")
     return cleaned
+
+
+def connector_oauth_callback_url(
+    *,
+    public_app_url: str,
+    api_public_url: str,
+    vendor: str,
+) -> str:
+    """OAuth redirect URI shown to users — prefer app domain (/api rewrite) over direct API host."""
+    path = f"/api/connectors/oauth/{vendor}/callback"
+    app_base = (public_app_url or "").strip().rstrip("/")
+    if app_base and not is_legacy_platform_host(app_base):
+        return f"{app_base}{path}"
+    api_base = (api_public_url or "").strip().rstrip("/")
+    if api_base and not is_legacy_platform_host(api_base):
+        return f"{api_base}{path}"
+    return f"http://localhost:8000{path}"
