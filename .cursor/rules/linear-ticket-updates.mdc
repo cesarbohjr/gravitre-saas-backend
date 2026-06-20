@@ -1,0 +1,15 @@
+---
+description: Append-only updates for Linear tickets — never replace audit evidence
+alwaysApply: true
+---
+
+# Linear ticket updates (append-only)
+
+When updating Linear issues (status changes, Done, Shipped, Reassessment, Sign-off):
+
+1. **Never replace** the existing description. Do not overwrite root-cause evidence, file-path citations, line numbers, open questions, or creation-time checklist items.
+2. **Append** a new top-level section instead, e.g. `## Shipped (YYYY-MM-DD)`, `## Resolution`, `## Reassessment`, or `## Sign-off`.
+3. If original content was already lost, restore it under `## Original audit evidence (preserved)` at the **bottom** of the description — do not delete newer resolution sections.
+4. Production/data actions (migrations, row disposition, force-fail) require **explicit human choice** among documented options — not agent recommendation, not "complete the three items" interpreted as adopting one option.
+5. **When a numbered list item contains an explicitly flagged open question with named options** (e.g. relabel / archive / force-fail), a general instruction to "complete" that item is **not sufficient authorization** — re-present the options and obtain a **specific named choice**, even if a broader instruction (e.g. "complete 1, 2, 3 in order") seems to cover it.
+6. Record process notes plainly when an action may have bypassed sign-off (what ran, when, prod verification query result, ratification pending). When ratified later, append ratification as a **separate section** — do not erase the process miss.

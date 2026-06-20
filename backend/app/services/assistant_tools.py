@@ -44,37 +44,41 @@ async def tool_knowledge_base(
     agent_id: str | None = None,
 ) -> dict[str, Any]:
     try:
-        from app.services.rag_service import RAGService
+        from app.services.unified_retrieval_service import (
+            RetrievalScopes,
+            get_unified_retrieval_service,
+        )
 
+        client = get_supabase_client(settings)
         scope = "agent" if agent_id else "organization"
-        resp = await RAGService().query(
+        bundle = await get_unified_retrieval_service().retrieve(
             org_id=org_id,
             query=query,
-            scope=scope,
-            top_k=5,
-            include_sources=True,
-            agent_id=agent_id,
+            client=client,
+            agent={"id": agent_id or ""},
+            parameters={"rag_top_k": 5},
+            scopes=RetrievalScopes(knowledge=True, org_context=False, agent_memory=False),
         )
         results = [
             {
-                "title": chunk.source or "Knowledge Source",
-                "snippet": (chunk.content or "")[:280],
-                "relevance": round(float(chunk.score or 0.0), 2),
+                "title": item.get("source") or "Knowledge Source",
+                "snippet": (item.get("content") or "")[:280],
+                "relevance": round(float(item.get("score") or 0.0), 2),
             }
-            for chunk in resp.chunks
+            for item in bundle.rag_sources
         ]
         sources = [
             {
-                "title": chunk.source or "Knowledge Source",
-                "excerpt": (chunk.content or "")[:280],
+                "title": item.get("source") or "Knowledge Source",
+                "excerpt": (item.get("content") or "")[:280],
             }
-            for chunk in resp.chunks
+            for item in bundle.rag_sources
         ]
         return {
             "results": results,
             "sources": sources,
             "totalResults": len(results),
-            "method": str(resp.metrics.get("embedding_method") or "keyword"),
+            "method": str(bundle.metrics.get("embedding_method") or "unified_retrieval"),
             "scope": scope,
             **({"agentId": agent_id} if agent_id else {}),
         }
