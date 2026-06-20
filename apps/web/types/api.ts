@@ -1225,6 +1225,8 @@ export interface MarketplaceAssetPayoutSummary {
   transferredCents: number
   pendingTransferCents: number
   payoutCount: number
+  pendingPayoutCount?: number
+  failedPayoutCount?: number
 }
 
 export interface MarketplaceAssetPayoutRow {
