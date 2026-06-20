@@ -12,7 +12,7 @@ Stage 1 ships a **unified asset registry** (`marketplace_assets`) for agents, wo
 | `department_pack` | agents + RAG + workflow (embedded pack config) |
 | `connector_config` | connector readiness checklist only |
 
-Gravitre starter catalog: **27 published assets** (seed CLI below).
+Gravitre starter catalog: **51 published assets** (seed CLI below; expanded in STA-229).
 
 ## Flow (unified)
 
@@ -89,7 +89,7 @@ cd backend
 # Validate catalog only (no DB writes)
 python scripts/seed_marketplace.py --dry-run
 
-# Upsert Gravitre publisher + 27 starter assets
+# Upsert Gravitre publisher + starter assets (51 in catalog)
 python scripts/seed_marketplace.py
 
 # Optional: backfill legacy org_department_pack_installs → marketplace_installs
@@ -157,14 +157,99 @@ POST /api/marketplace/assets/{ref}/rollback
 
 Rollback restores `config`, connector requirements, and install variables from the selected snapshot and sets `current_version` to that version number. Gravitre catalog assets (`org_id` null) are not rollbackable via this API. Tests: `test_marketplace_versions.py`.
 
-## Dual marketplace architecture (MKT-AUDIT-ARCH-1)
+## Dual marketplace architecture (MKT-AUDIT-ARCH-1 / STA-227)
 
-Gravitre currently runs **two parallel marketplace tracks**:
+Gravitre runs **two parallel marketplace tracks**. They share org context and Stripe Connect billing, but differ in data model, lifecycle, and which product features apply.
 
-1. **Unified catalog** (`marketplace_assets`) — agents, workflows, knowledge packs, department packs. This is the **canonical Stage 1–2 surface** for browse, install, clone, reviews, and org-internal publishing.
-2. **Partner connector track** — partner submissions, sandbox, billing, and `marketplace_registry` connectors. These remain a **separate federation layer** for Stage 1–2.
+### Decision (June 2026)
 
-**Decision (June 2026):** Stage 4 **federates** partner connectors into browse via `GET /api/marketplace/federated-connectors` and optional `marketplace_assets.partner_registry_id` links — without merging partner submission/sandbox/billing flows into unified asset CRUD. Unified-asset features apply to track 1; partner connector UX continues via `/marketplace/submit`, sandbox, registry, and `/marketplace/connectors`.
+| Option | Outcome |
+|--------|---------|
+| **Full merge** — partner connectors become first-class unified assets with the same CRUD/review/install flows | **Rejected for Stage 1–4.** Partner submission, sandbox certification, and registry billing are materially different from agent/workflow/pack publishing. |
+| **Federated browse + optional materialization** — partner registry stays canonical; unified catalog **projects** connectors at browse time and can **link** rows via `partner_registry_id` | **Chosen.** Implemented in STA-252 (M4). |
+
+**Summary:** Track 1 (`marketplace_assets`) remains the canonical surface for agents, workflows, knowledge packs, and department packs. Track 2 (`partner_connector_registry`) remains canonical for partner connector submissions, sandbox scans, certification, and usage billing. Stage 4 **federates** track 2 into unified browse (and optional `connector_config` rows) without merging submission or billing flows.
+
+### Architecture
+
+```mermaid
+flowchart TB
+  subgraph track1 [Track 1 — Unified catalog]
+    MA[marketplace_assets]
+    UI1["/marketplace/assets"]
+    CRUD[Org CRUD + platform review]
+    INST[Install / clone / reviews / saves]
+    MA --> UI1
+    MA --> CRUD
+    MA --> INST
+  end
+
+  subgraph track2 [Track 2 — Partner connectors]
+    REG[partner_connector_registry]
+    SUB["/marketplace/submit"]
+    SBX[sandbox + certification]
+    BILL["/marketplace/billing"]
+    REG --> SUB
+    REG --> SBX
+    REG --> BILL
+  end
+
+  subgraph federation [Federation layer — STA-252]
+    FC["GET /federated-connectors"]
+    SYNC["POST /platform/registry/{id}/sync-asset"]
+    LINK["POST /platform/assets/{ref}/link-registry"]
+    PUB[publish_submission → upsert_connector_asset_from_registry]
+  end
+
+  REG --> FC
+  REG --> SYNC
+  REG --> PUB
+  MA -. partner_registry_id .-> REG
+  FC --> UI1
+  SYNC --> MA
+  LINK --> MA
+```
+
+### How federation works
+
+1. **Browse-time projection** — `list_federated_connector_assets()` reads published registry rows, enriches pricing, and returns unified-shaped cards (`assetType: connector_config`, `source: partner_registry`, `federated: true`). The unified assets page merges these when the Connectors facet is active; `/marketplace/connectors` lists them directly.
+2. **Optional materialization** — On registry publish, `upsert_connector_asset_from_registry()` creates or updates a `connector_config` row linked by `partner_registry_id`. Platform admins can also call `POST /api/marketplace/platform/registry/{registry_id}/sync-asset` or link an existing asset via `link-registry`.
+3. **Non-blocking sync** — Registry publish succeeds even if unified asset upsert fails (logged; retried via platform sync).
+
+### Scope matrix
+
+| Capability | Unified assets (track 1) | Partner connectors (track 2) | Federated `connector_config` |
+|------------|--------------------------|------------------------------|------------------------------|
+| Browse in `/marketplace/assets` | Yes | Via federation merge | Yes (read-only card) |
+| Org draft → review → publish | Yes | No (submission flow) | Materialized from registry only |
+| Install into org (agents/workflows/RAG) | Yes | No | No (`canInstall: false`) |
+| Reviews / saves / clone | Yes | No | No |
+| Paid checkout + entitlements | Yes (STA-250) | Usage billing (partner pricing) | Pricing shown; install N/A |
+| Publisher payout sync | Asset sales (STA-251/257) | Connector usage (billing page) | N/A |
+| Platform featured / verified flags | Yes (STA-249) | Certification badge on registry | Inherits badge when linked |
+
+**Out of scope for federated connectors (by design):** unified-asset install, clone, org-internal publish workflow, Gravitre public review queue, and paid asset checkout — partners continue via submit → sandbox → registry → billing.
+
+### API routes (federation)
+
+| Method | Path | Role |
+|--------|------|------|
+| GET | `/api/marketplace/federated-connectors` | Org member — federated browse |
+| POST | `/api/marketplace/platform/registry/{registry_id}/sync-asset` | Platform admin — materialize/update asset |
+| POST | `/api/marketplace/platform/assets/{asset_ref}/link-registry` | Platform admin — attach `partner_registry_id` |
+
+Implementation: `backend/app/marketplace/convergence.py`. Tests: `test_marketplace_convergence.py`, `test_marketplace_convergence_routes.py`.
+
+### Follow-up (closed)
+
+| Linear | Title | Status |
+|--------|-------|--------|
+| STA-252 | Converge partner registry with `connector_config` assets | Done — federation + upsert on publish |
+| STA-255–257 | Publisher analytics, pricing UI, payout sync | Done — applies to track 1 asset sales; track 2 billing unchanged |
+
+### Future convergence (not planned)
+
+A later **full merge** (single CRUD path for all asset types including connectors) would require migrating partner submissions into unified publish, retiring `partner_connector_registry` as canonical, and re-homing usage billing onto asset entitlements. No Linear issue is open for this; revisit only if product requires one submission UX for all marketplace content.
 
 ## Analytics counters (MKT-10.1)
 
@@ -187,6 +272,8 @@ Gravitre currently runs **two parallel marketplace tracks**:
 | Versions / rollback | `backend/app/marketplace/versions.py` |
 | Atomic counters | `backend/app/marketplace/counters.py`, `supabase/migrations/20260617140000_marketplace_atomic_counters.sql` |
 | Browse / support | `backend/app/marketplace/browse.py`, `support.py` |
+| Federation / convergence | `backend/app/marketplace/convergence.py` |
+| Federated UI | `apps/web/app/marketplace/connectors/page.tsx`, federated merge in `assets/page.tsx` |
 | Unified UI | `apps/web/app/marketplace/assets/page.tsx`, `assets/[slug]/page.tsx`, `analytics/page.tsx` |
 | API router | `backend/app/routers/marketplace.py` |
 | Legacy catalog | `backend/app/services/department_pack_catalog.py`, `agent_role_marketplace_service.py` |
