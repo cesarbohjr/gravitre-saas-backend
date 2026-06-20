@@ -12,15 +12,17 @@ export type DepartmentGradient = {
   gradient: string
   /** Tailwind shadow color class for the orb's colored glow. */
   glow: string
+  /** Tailwind `border-*` class for hover/active states that need the department hue. */
+  border: string
 }
 
-const TEAL: DepartmentGradient = { gradient: "from-teal-400 to-cyan-600", glow: "shadow-teal-500/30" }
-const ROSE: DepartmentGradient = { gradient: "from-rose-400 to-pink-600", glow: "shadow-rose-500/30" }
-const BLUE: DepartmentGradient = { gradient: "from-blue-400 to-indigo-600", glow: "shadow-blue-500/30" }
-const AMBER: DepartmentGradient = { gradient: "from-amber-400 to-orange-600", glow: "shadow-amber-500/30" }
-const VIOLET: DepartmentGradient = { gradient: "from-violet-400 to-fuchsia-600", glow: "shadow-violet-500/30" }
-const EMERALD: DepartmentGradient = { gradient: "from-emerald-400 to-green-600", glow: "shadow-emerald-500/30" }
-const SLATE: DepartmentGradient = { gradient: "from-slate-400 to-slate-600", glow: "shadow-slate-500/30" }
+const TEAL: DepartmentGradient = { gradient: "from-teal-400 to-cyan-600", glow: "shadow-teal-500/30", border: "border-teal-500/60" }
+const ROSE: DepartmentGradient = { gradient: "from-rose-400 to-pink-600", glow: "shadow-rose-500/30", border: "border-rose-500/60" }
+const BLUE: DepartmentGradient = { gradient: "from-blue-400 to-indigo-600", glow: "shadow-blue-500/30", border: "border-blue-500/60" }
+const AMBER: DepartmentGradient = { gradient: "from-amber-400 to-orange-600", glow: "shadow-amber-500/30", border: "border-amber-500/60" }
+const VIOLET: DepartmentGradient = { gradient: "from-violet-400 to-fuchsia-600", glow: "shadow-violet-500/30", border: "border-violet-500/60" }
+const EMERALD: DepartmentGradient = { gradient: "from-emerald-400 to-green-600", glow: "shadow-emerald-500/30", border: "border-emerald-500/60" }
+const SLATE: DepartmentGradient = { gradient: "from-slate-400 to-slate-600", glow: "shadow-slate-500/30", border: "border-slate-500/60" }
 
 // Canonical department key -> gradient.
 const GRADIENTS: Record<string, DepartmentGradient> = {

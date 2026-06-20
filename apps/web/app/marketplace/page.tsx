@@ -30,10 +30,9 @@ import {
   Bookmark,
   Clock,
 } from "lucide-react"
-import { departmentTheme } from "@/lib/department-theme"
+import { departmentGradient } from "@/lib/department-gradient"
 import { fetcher } from "@/lib/fetcher"
-import { FlipPackCard } from "@/components/marketplace/flip-pack-card"
-import { PackFrontArt } from "@/components/marketplace/pack-front-art"
+import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
 function ReadinessPill({ asset }: { asset: MarketplaceAssetSummary }) {
@@ -61,77 +60,73 @@ function ReadinessPill({ asset }: { asset: MarketplaceAssetSummary }) {
   )
 }
 
-// Back face of the flip card — the detailed pack info, matching the unified
-// asset model. The card surface (border/bg/rounded) is provided by the flip
-// face shell; this owns the inner padding, layout, and the "View & install" CTA.
-function FeaturedPackCardBack({ asset }: { asset: MarketplaceAssetSummary }) {
-  const theme = departmentTheme(asset.department)
-  const DeptIcon = theme.icon
-  return (
-    <div className="flex h-full flex-col p-5">
-      <div className="flex items-start justify-between gap-3">
-        <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", theme.soft)}>
-          <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
-        </span>
-        <ReadinessPill asset={asset} />
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <h3 className="text-base font-semibold text-foreground">{asset.title}</h3>
-        {asset.verified ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-            <ShieldCheck className="h-3 w-3" aria-hidden />
-            Verified
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-1.5 line-clamp-2 flex-1 text-sm text-muted-foreground text-pretty">
-        {asset.description}
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-        {asset.department ? (
-          <span className="capitalize">{asset.department.replace(/-/g, " ")}</span>
-        ) : null}
-        <span className="inline-flex items-center gap-1.5">
-          <Plug className="h-3.5 w-3.5" aria-hidden />
-          {asset.requiredConnectorsTotal} apps
-        </span>
-        {(asset.installCount ?? 0) > 0 ? (
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            {asset.installCount} installs
-          </span>
-        ) : null}
-      </div>
-      {/* stopPropagation so clicking the CTA navigates instead of re-toggling
-          the card's flip handler. */}
-      <Link
-        href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
-        onClick={(e) => e.stopPropagation()}
-        className="group/cta mt-4 inline-flex w-fit items-center rounded text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {asset.installed ? "Manage pack" : "View & install"}
-        <ArrowRight
-          className="ml-1 h-4 w-4 transition-transform group-hover/cta:translate-x-0.5"
-          aria-hidden
-        />
-      </Link>
-    </div>
-  )
-}
-
+// Hover-reveal pack card. At rest it shows only the catalog orb + name +
+// department (a calm, equal grid). On hover/focus the card lifts, gains a 1px
+// border in its own department hue, and fades/slides in the description, the
+// readiness pill, and a single CTA — the same card revealing more of itself
+// (no flip, no front/back swap). The orb is the catalog's CategoryIconChip so
+// the icon/color/shape match the browse grid exactly.
 function FeaturedPackCard({ asset, index }: { asset: MarketplaceAssetSummary; index: number }) {
   const reduced = useReducedMotion()
+  const { border } = departmentGradient(asset.department)
+  const departmentLabel = asset.department ? asset.department.replace(/[-_]/g, " ") : "Department pack"
+
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: reduced ? 0 : index * 0.05 }}
     >
-      <FlipPackCard
-        packId={asset.slug}
-        frontContent={<PackFrontArt department={asset.department} packName={asset.title} />}
-        backContent={<FeaturedPackCardBack asset={asset} />}
-      />
+      <Link
+        href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
+        className={cn(
+          "group/pack relative flex h-full flex-col rounded-2xl border border-border bg-card/60 p-5 text-left",
+          "transition-[transform,box-shadow,background-color] duration-200 ease-out",
+          "hover:-translate-y-1 hover:bg-card hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        )}
+      >
+        {/* Department-hued border overlay — fades in on hover/focus so a card
+            lifts out of the flat resting grid in its own color. */}
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 rounded-2xl border-2 opacity-0 transition-opacity duration-200 ease-out",
+            "group-hover/pack:opacity-100 group-focus-within/pack:opacity-100",
+            border,
+          )}
+        />
+
+        {/* Resting content: orb + name + department label */}
+        <div className="flex flex-col items-center text-center">
+          <CategoryIconChip assetType="department_pack" department={asset.department} size="lg" />
+          <h3 className="mt-4 text-base font-semibold text-foreground text-balance">{asset.title}</h3>
+          <p className="mt-0.5 text-xs capitalize text-muted-foreground">{departmentLabel}</p>
+        </div>
+
+        {/* Revealed-on-hover content: description, readiness, CTA */}
+        <div
+          className={cn(
+            "grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-200 ease-out",
+            "group-hover/pack:grid-rows-[1fr] group-hover/pack:opacity-100",
+            "group-focus-within/pack:grid-rows-[1fr] group-focus-within/pack:opacity-100",
+            reduced && "motion-reduce:transition-none",
+          )}
+        >
+          <div className="overflow-hidden">
+            <div className="mt-4 flex flex-col items-center gap-3 text-center">
+              <p className="line-clamp-2 text-sm text-muted-foreground text-pretty">{asset.description}</p>
+              <ReadinessPill asset={asset} />
+              <span
+                className="mt-1 inline-flex items-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                aria-hidden
+              >
+                {asset.installed ? "Manage pack" : "View pack"}
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
     </motion.div>
   )
 }
