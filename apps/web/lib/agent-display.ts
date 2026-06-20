@@ -6,6 +6,16 @@ import {
   PieChart,
   TrendingUp,
   Users,
+  Mail,
+  Calendar,
+  Search,
+  DollarSign,
+  ShieldCheck,
+  Workflow,
+  Sparkles,
+  HeartHandshake,
+  Settings2,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react"
 
@@ -82,13 +92,36 @@ export function mapAgentStatusToOperator(status: string | null | undefined): str
   return "inactive"
 }
 
+// Ordered most-specific -> most-general; the first keyword match wins. Specific
+// task words (report, invoice, email) come first, then department/function
+// words (marketing, sales, finance, support, hr). Generic words like
+// "operations" and "workflow" sit LAST so that, e.g., "Sales Operations"
+// resolves to the sales glyph rather than a generic operations gear.
 export function resolveAgentRoleIcon(role: string, name = ""): LucideIcon {
   const text = `${role} ${name}`.toLowerCase()
+  // Specific task / artifact words.
+  if (text.includes("report") || text.includes("analytic") || text.includes("insight") || text.includes("dashboard"))
+    return PieChart
+  if (text.includes("revenue") || text.includes("pipeline") || text.includes("forecast")) return BarChart3
+  if (text.includes("invoice") || text.includes("billing") || text.includes("payment")) return DollarSign
+  if (text.includes("compliance") || text.includes("legal") || text.includes("security") || text.includes("risk"))
+    return ShieldCheck
+  if (text.includes("schedul") || text.includes("calendar") || text.includes("meeting")) return Calendar
+  if (text.includes("research") || text.includes("discovery")) return Search
+  if (text.includes("email") || text.includes("inbox")) return Mail
+  if (text.includes("campaign") || text.includes("content") || text.includes("brand")) return Megaphone
+  // Department / function words.
   if (text.includes("marketing")) return Megaphone
   if (text.includes("sales")) return TrendingUp
+  if (text.includes("finance") || text.includes("accounting")) return DollarSign
+  if (text.includes("support") || text.includes("customer") || text.includes("service")) return Headphones
+  if (text.includes("hr") || text.includes("human resource") || text.includes("people") || text.includes("talent"))
+    return Users
+  if (text.includes("engagement") || text.includes("retention")) return HeartHandshake
   if (text.includes("data") || text.includes("quality")) return Database
-  if (text.includes("finance") || text.includes("report")) return PieChart
-  if (text.includes("support") || text.includes("customer")) return Headphones
-  if (text.includes("hr") || text.includes("human resource") || text.includes("people")) return Users
+  // Generic fallbacks (lowest priority).
+  if (text.includes("workflow") || text.includes("automation") || text.includes("orchestrat")) return Workflow
+  if (text.includes("operations") || text.includes("ops")) return Settings2
+  if (text.includes("assistant") || text.includes("copilot")) return Sparkles
   return Bot
 }
