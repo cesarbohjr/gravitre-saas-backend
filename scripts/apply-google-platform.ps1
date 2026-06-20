@@ -17,7 +17,7 @@ param(
     [string] $ClientSecret,
     [string] $GcpProjectId = "gravitre-ai",
     [string] $ProjectRef = "smyeexlrqdpymwjmgzqu",
-    [string] $ApiPublicUrl = "https://gravitre-saas-backend-production.up.railway.app",
+    [string] $ApiPublicUrl = "https://api.gravitre.app",
     [string] $AppUrl = "https://gravitre.app",
     [switch] $SkipGcloud,
     [switch] $SkipSupabase

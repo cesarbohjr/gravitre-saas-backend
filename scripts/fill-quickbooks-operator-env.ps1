@@ -53,7 +53,7 @@ function Set-EnvLine {
 $lines = Set-EnvLine $lines "QUICKBOOKS_CLIENT_ID" $ClientId
 $lines = Set-EnvLine $lines "QUICKBOOKS_CLIENT_SECRET" $ClientSecret
 if (-not ($lines -join "`n" -match "API_PUBLIC_URL=")) {
-    $lines += "API_PUBLIC_URL=https://gravitre-saas-backend-production.up.railway.app"
+    $lines += "API_PUBLIC_URL=https://api.gravitre.app"
 }
 Set-Content -Path $OperatorFile -Value ($lines -join "`r`n") -Encoding utf8
 Write-Host "Updated $OperatorFile" -ForegroundColor Green

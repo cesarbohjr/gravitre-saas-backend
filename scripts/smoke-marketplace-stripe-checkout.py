@@ -15,7 +15,7 @@ from dotenv import dotenv_values
 REPO = Path(__file__).resolve().parent.parent
 API_BASE = os.environ.get(
     "BACKEND_URL",
-    "https://gravitre-saas-backend-production.up.railway.app",
+    "https://api.gravitre.app",
 ).rstrip("/")
 SMOKE_PAID_SLUG = "smoke-paid-operator-pack"
 
@@ -144,7 +144,7 @@ def main() -> int:
     app_url = (
         env.get("NEXT_PUBLIC_APP_URL")
         or os.environ.get("NEXT_PUBLIC_APP_URL")
-        or "https://web-7zhjl86og-gravitre-ai.vercel.app"
+        or "https://gravitre.app"
     ).rstrip("/")
     status, checkout = _request(
         f"/api/marketplace/assets/{slug}/checkout",

@@ -6,6 +6,7 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.connectors.secret_key import validate_connector_secrets_encryption_key
+from app.public_urls import PRODUCTION_API_URL, PRODUCTION_APP_URL, normalize_public_url
 
 
 class Settings(BaseSettings):
@@ -292,6 +293,14 @@ class Settings(BaseSettings):
                 missing.append("CONNECTOR_SECRETS_ENCRYPTION_KEY")
             if missing:
                 raise ValueError(f"Missing required settings for {env}: {', '.join(missing)}")
+            self.public_app_url = normalize_public_url(
+                self.public_app_url,
+                fallback=PRODUCTION_APP_URL,
+            )
+            self.api_public_url = normalize_public_url(
+                self.api_public_url,
+                fallback=PRODUCTION_API_URL,
+            )
         return self
 
 

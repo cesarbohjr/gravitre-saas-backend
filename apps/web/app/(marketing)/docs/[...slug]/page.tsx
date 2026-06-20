@@ -329,7 +329,7 @@ const gravitre = new Gravitre({
 });
 
 // Or with HTTP headers
-fetch('https://api.gravitre.com/v1/workflows', {
+fetch('https://api.gravitre.app/v1/workflows', {
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
     'X-Org-Id': 'YOUR_ORG_ID'
@@ -340,7 +340,7 @@ fetch('https://api.gravitre.com/v1/workflows', {
         title: "OAuth 2.0",
         content: "For applications that need to act on behalf of users, use OAuth 2.0 authorization code flow.",
         code: `// OAuth authorization URL
-const authUrl = \`https://auth.gravitre.com/oauth/authorize?
+const authUrl = \`https://gravitre.app/auth/callback?
   client_id=YOUR_CLIENT_ID&
   redirect_uri=YOUR_REDIRECT_URI&
   response_type=code&
@@ -412,14 +412,14 @@ const tokens = await gravitre.oauth.exchangeCode(code);`
       {
         title: "Authentication",
         content: "All API requests require authentication using an API key. Generate your API key from the dashboard under Settings > API Keys.",
-        code: `curl -X GET "https://api.gravitre.com/v1/workflows" \\
+        code: `curl -X GET "https://api.gravitre.app/v1/workflows" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json"`
       },
       {
         title: "Your First Request",
         content: "Let's create a simple workflow using the API. This example creates a workflow that triggers daily and syncs data between two systems.",
-        code: `const response = await fetch('https://api.gravitre.com/v1/workflows', {
+        code: `const response = await fetch('https://api.gravitre.app/v1/workflows', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
@@ -442,7 +442,7 @@ const tokens = await gravitre.oauth.exchangeCode(code);`
     sections: [
       {
         title: "Base URL",
-        content: "All API requests should be made to: https://api.gravitre.com/v1",
+        content: "All API requests should be made to: https://api.gravitre.app/v1",
       },
       {
         title: "Workflows",

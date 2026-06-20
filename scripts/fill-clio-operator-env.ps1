@@ -17,7 +17,7 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "Clio OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. https://app.clio.com/settings/developer_applications" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/clio/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/clio/callback" -ForegroundColor White
     Write-Host "3. Scopes: contacts_read matters_read" -ForegroundColor Yellow
     Write-Host "4. Run:" -ForegroundColor Yellow
     Write-Host '   $env:CLIO_CLIENT_ID="<id>"; $env:CLIO_CLIENT_SECRET="<secret>"; npm run clio:fill-env' -ForegroundColor White

@@ -1,8 +1,10 @@
 import type { NextRequest, NextResponse } from "next/server"
 
+import { publicAppUrl } from "@/lib/public-urls"
+
 /** Canonical browser origin for auth redirects (avoids www/non-www cookie splits). */
 export function getAppOrigin(request?: NextRequest): string {
-  const configured = (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/+$/, "")
+  const configured = publicAppUrl()
   if (configured) return configured
 
   if (request) {

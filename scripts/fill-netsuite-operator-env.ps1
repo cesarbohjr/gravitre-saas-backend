@@ -17,7 +17,7 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "NetSuite OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. NetSuite Setup -> Integration -> Manage Integrations -> New (OAuth 2.0)" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/netsuite/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/netsuite/callback" -ForegroundColor White
     Write-Host "3. Run:" -ForegroundColor Yellow
     Write-Host '   $env:NETSUITE_CLIENT_ID="<id>"; $env:NETSUITE_CLIENT_SECRET="<secret>"; npm run netsuite:fill-env' -ForegroundColor White
     exit 1

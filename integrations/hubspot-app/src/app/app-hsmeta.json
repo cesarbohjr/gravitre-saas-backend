@@ -8,7 +8,7 @@
     "auth": {
       "type": "oauth",
       "redirectUrls": [
-        "https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/hubspot/callback",
+        "https://api.gravitre.app/api/connectors/oauth/hubspot/callback",
         "http://localhost:8000/api/connectors/oauth/hubspot/callback"
       ],
       "requiredScopes": [

@@ -4,7 +4,7 @@
   Print Google OAuth redirect URIs and API checklist for the Gravitre OAuth client.
 #>
 param(
-    [string] $ApiPublicUrl = $(if ($env:API_PUBLIC_URL) { $env:API_PUBLIC_URL } else { "https://gravitre-saas-backend-production.up.railway.app" }),
+    [string] $ApiPublicUrl = $(if ($env:API_PUBLIC_URL) { $env:API_PUBLIC_URL } else { "https://api.gravitre.app" }),
     [string] $AppUrl = $(if ($env:NEXT_PUBLIC_APP_URL) { $env:NEXT_PUBLIC_APP_URL } else { "https://gravitre.app" }),
     [string] $SupabaseProjectRef = "smyeexlrqdpymwjmgzqu"
 )

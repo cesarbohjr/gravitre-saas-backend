@@ -13,7 +13,7 @@
   Only patch config files; do not upload.
 #>
 param(
-    [string] $ApiPublicUrl = $(if ($env:API_PUBLIC_URL) { $env:API_PUBLIC_URL } else { "https://gravitre-saas-backend-production.up.railway.app" }),
+    [string] $ApiPublicUrl = $(if ($env:API_PUBLIC_URL) { $env:API_PUBLIC_URL } else { "https://api.gravitre.app" }),
     [switch] $SkipAuth,
     [switch] $SkipUpload
 )

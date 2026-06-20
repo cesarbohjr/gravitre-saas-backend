@@ -17,7 +17,7 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "Asana OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. https://app.asana.com/0/my-apps -> Create app" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/asana/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/asana/callback" -ForegroundColor White
     Write-Host "3. Scopes: default (or tasks/projects as needed in Asana app settings)" -ForegroundColor Yellow
     Write-Host "4. Run:" -ForegroundColor Yellow
     Write-Host '   $env:ASANA_CLIENT_ID="<id>"; $env:ASANA_CLIENT_SECRET="<secret>"; npm run asana:fill-env' -ForegroundColor White

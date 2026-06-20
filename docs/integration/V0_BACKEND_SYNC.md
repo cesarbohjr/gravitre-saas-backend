@@ -65,6 +65,6 @@ Requires `backend/.env.operator.local` with Supabase JWT + service role, or GitH
 
 | Variable | Where | Purpose |
 |----------|-------|---------|
-| `FASTAPI_BASE_URL` | Vercel | Railway backend (`https://gravitre-saas-backend-production.up.railway.app`) |
+| `FASTAPI_BASE_URL` | Vercel | Railway custom domain (`https://api.gravitre.app`) |
 | `NEXT_PUBLIC_APP_URL` | Vercel | `https://gravitre.app` |
 | Supabase keys | Vercel + Railway | Auth + org context |

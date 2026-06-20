@@ -93,7 +93,7 @@ const mockConnector = {
   createdAt: "2024-01-15",
   config: {
     apiKey: "sf_live_xxxxxxxxxxxxxxxx",
-    webhookUrl: "https://api.gravitre.io/webhooks/salesforce/abc123",
+    webhookUrl: "https://api.gravitre.app/webhooks/salesforce/abc123",
     syncInterval: "5m",
   },
 }

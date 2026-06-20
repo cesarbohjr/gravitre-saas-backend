@@ -67,6 +67,7 @@ import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { connectorsApi } from "@/lib/api"
+import { publicApiUrl } from "@/lib/public-urls"
 import {
   CONNECTOR_CATEGORIES,
   OAUTH_CONNECTOR_TYPE_SET,
@@ -708,7 +709,7 @@ function AddConnectorModal({
     connector?.vendorKey || connectorVendorKey(type)
 
   // Webhook URL for webhook-based connectors
-  const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
+  const webhookUrl = `${publicApiUrl()}/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
 
   const filteredModalConnectors = catalogConnectors.filter((c) => {
     const matchesSearch = c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
