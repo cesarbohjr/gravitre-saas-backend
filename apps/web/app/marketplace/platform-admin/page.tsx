@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { AssetPricingEditor } from "@/components/marketplace/asset-pricing-editor"
+import { AssetPricingEditor, formatAssetPriceLabel } from "@/components/marketplace/asset-pricing-editor"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -58,6 +58,7 @@ function QueueRow({
             <h3 className="font-semibold">{asset.title}</h3>
             <Badge variant="secondary">public review</Badge>
             <Badge variant="outline">{formatAssetType(asset.assetType)}</Badge>
+            <Badge variant="outline">{formatAssetPriceLabel(asset.pricingType, asset.priceCents)}</Badge>
           </div>
           {asset.description ? (
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{asset.description}</p>
@@ -150,48 +151,63 @@ function CurationRow({
   busy,
   onToggleFeatured,
   onToggleVerified,
+  onPricingSaved,
 }: {
   asset: MarketplaceAssetSummary
   busy: string | null
   onToggleFeatured: (asset: MarketplaceAssetSummary, enabled: boolean) => void
   onToggleVerified: (asset: MarketplaceAssetSummary, enabled: boolean) => void
+  onPricingSaved: () => Promise<void>
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold">{asset.title}</h3>
-          <Badge variant="outline">{formatAssetType(asset.assetType)}</Badge>
-          <AssetTrustBadges asset={asset} />
+    <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold">{asset.title}</h3>
+            <Badge variant="outline">{formatAssetType(asset.assetType)}</Badge>
+            <Badge variant="outline">{formatAssetPriceLabel(asset.pricingType, asset.priceCents)}</Badge>
+            <AssetTrustBadges asset={asset} />
+          </div>
+          <p className="text-xs text-muted-foreground">{asset.slug}</p>
         </div>
-        <p className="text-xs text-muted-foreground">{asset.slug}</p>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`featured-${asset.id}`}
+              checked={Boolean(asset.featured)}
+              disabled={busy === asset.id}
+              onCheckedChange={(enabled) => onToggleFeatured(asset, enabled)}
+            />
+            <Label htmlFor={`featured-${asset.id}`} className="inline-flex items-center gap-1 text-sm">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              Featured
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`verified-${asset.id}`}
+              checked={Boolean(asset.verified)}
+              disabled={busy === asset.id}
+              onCheckedChange={(enabled) => onToggleVerified(asset, enabled)}
+            />
+            <Label htmlFor={`verified-${asset.id}`} className="inline-flex items-center gap-1 text-sm">
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+              Verified
+            </Label>
+          </div>
+        </div>
       </div>
-      <div className="flex flex-col gap-3 sm:items-end">
-        <div className="flex items-center gap-2">
-          <Switch
-            id={`featured-${asset.id}`}
-            checked={Boolean(asset.featured)}
-            disabled={busy === asset.id}
-            onCheckedChange={(enabled) => onToggleFeatured(asset, enabled)}
-          />
-          <Label htmlFor={`featured-${asset.id}`} className="inline-flex items-center gap-1 text-sm">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Featured
-          </Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id={`verified-${asset.id}`}
-            checked={Boolean(asset.verified)}
-            disabled={busy === asset.id}
-            onCheckedChange={(enabled) => onToggleVerified(asset, enabled)}
-          />
-          <Label htmlFor={`verified-${asset.id}`} className="inline-flex items-center gap-1 text-sm">
-            <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-            Verified
-          </Label>
-        </div>
-      </div>
+      <AssetPricingEditor
+        pricingType={asset.pricingType}
+        priceCents={asset.priceCents}
+        disabled={Boolean(busy)}
+        onSave={async (payload) => {
+          await marketplaceApi.updatePlatformAssetPricing(asset.slug, payload)
+          toast.success("Pricing saved", { description: asset.title })
+          await onPricingSaved()
+        }}
+      />
     </div>
   )
 }
@@ -403,6 +419,9 @@ export default function MarketplacePlatformAdminPage() {
                   busy={busy}
                   onToggleFeatured={handleToggleFeatured}
                   onToggleVerified={handleToggleVerified}
+                  onPricingSaved={async () => {
+                    await mutateCatalog()
+                  }}
                 />
               ))}
             </div>

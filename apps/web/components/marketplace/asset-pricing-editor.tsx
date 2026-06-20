@@ -15,6 +15,13 @@ const PRICING_LABELS: Record<MarketplaceAssetPricingType, string> = {
   subscription: "Subscription",
 }
 
+export function formatAssetPriceLabel(pricingType: string, priceCents = 0) {
+  const model = normalizePricingType(pricingType)
+  if (model === "free" || priceCents <= 0) return "Free"
+  const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(priceCents / 100)
+  return model === "subscription" ? `${amount}/mo` : amount
+}
+
 function normalizePricingType(value: string): MarketplaceAssetPricingType {
   if (value === "paid" || value === "subscription") return value
   return "free"

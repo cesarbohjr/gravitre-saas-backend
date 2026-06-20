@@ -155,3 +155,26 @@ def test_set_asset_pricing_rejects_internal_published(mock_fetch):
             price_cents=499,
             actor_id="platform-1",
         )
+
+
+@patch("app.marketplace.flags.write_audit_event")
+@patch("app.marketplace.flags.set_asset_pricing")
+@patch("app.marketplace.crud._assert_org_owns_asset")
+@patch("app.marketplace.crud._fetch_asset")
+def test_set_org_asset_pricing_delegates_with_ownership(mock_fetch, mock_assert, mock_set, mock_audit):
+    mock_fetch.return_value = {"id": "asset-1", "org_id": ORG_ID}
+    mock_set.return_value = {"updated": True, "asset": {"slug": "sales-pack"}}
+
+    from app.marketplace.flags import set_org_asset_pricing
+
+    result = set_org_asset_pricing(
+        object(),
+        ORG_ID,
+        "sales-pack",
+        pricing_type="paid",
+        price_cents=499,
+        actor_id="user-1",
+    )
+    assert result["updated"] is True
+    mock_assert.assert_called_once()
+    mock_set.assert_called_once()

@@ -6,9 +6,9 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 **M2 complete.** **M3 complete.** **M4 complete.** STA-250 ✅ paid checkout; STA-251 ✅ creator revenue share transfers; STA-252 ✅ partner registry ↔ connector_config; STA-253 ✅ hours saved ROI dashboard.
 
-**M5 in progress:** STA-255 ✅ publisher revenue analytics dashboard.
+**M5 in progress:** STA-255 ✅ publisher revenue analytics; STA-256 ✅ paid asset pricing UI.
 
-**Next queue (M5):** STA-256 (paid asset pricing UI).
+**Next queue (M5):** STA-257 (publisher payout sync UI on billing).
 
 ---
 
@@ -65,6 +65,7 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 | Ref | Linear | Title | Milestone |
 |-----|--------|-------|-----------|
 | MKT-AUDIT-14.1 | STA-255 | Publisher revenue analytics dashboard | ✅ Combined earnings API + `/marketplace/publisher/analytics` dashboard |
+| MKT-AUDIT-14.2 | STA-256 | Paid asset pricing in org/platform admin UI | ✅ Org + platform pricing editors, org pricing route, create draft pricing |
 
 ---
 
@@ -72,7 +73,7 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 When picking up marketplace backlog again, prefer in order:
 
-1. **STA-256** — Paid asset pricing in org/platform admin UI (M5)
+1. **STA-257** — Publisher payout sync UI on marketplace billing (M5)
 
 **M1 doc-only (optional):** STA-227 dual-marketplace convergence doc polish.
 

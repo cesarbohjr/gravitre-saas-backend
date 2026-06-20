@@ -97,6 +97,7 @@ from app.marketplace.flags import (
     list_platform_public_catalog,
     set_asset_featured,
     set_asset_pricing,
+    set_org_asset_pricing,
     set_asset_verified,
 )
 from app.marketplace.browse import (
@@ -1154,6 +1155,30 @@ async def update_marketplace_asset_route(
         )
     except MarketplaceCrudError as exc:
         raise _crud_http_error(exc) from exc
+
+
+@router.patch("/assets/{asset_ref}/pricing")
+async def update_org_asset_pricing_route(
+    asset_ref: str,
+    body: AssetPricingRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Org-admin pricing updates for owned assets (STA-256)."""
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return set_org_asset_pricing(
+            client,
+            org_id,
+            asset_ref,
+            pricing_type=body.pricing_type,
+            price_cents=body.price_cents,
+            currency=body.currency,
+            actor_id=user["user_id"],
+        )
+    except MarketplaceFlagsError as exc:
+        raise _flags_http_error(exc) from exc
 
 
 @router.delete("/assets/{asset_ref}")

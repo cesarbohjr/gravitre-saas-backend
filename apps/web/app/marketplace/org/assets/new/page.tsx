@@ -36,6 +36,8 @@ export default function CreateOrgAssetPage() {
   const [businessOutcome, setBusinessOutcome] = useState("")
   const [useCase, setUseCase] = useState("")
   const [estimatedHours, setEstimatedHours] = useState("")
+  const [pricingType, setPricingType] = useState<"free" | "paid" | "subscription">("free")
+  const [priceDollars, setPriceDollars] = useState("0")
 
   const handleTitleChange = (value: string) => {
     setTitle(value)
@@ -54,6 +56,8 @@ export default function CreateOrgAssetPage() {
     setBusy(true)
     try {
       const parsedHours = estimatedHours.trim() ? Number(estimatedHours) : undefined
+      const priceCents =
+        pricingType === "free" ? 0 : Math.max(0, Math.round(parseFloat(priceDollars || "0") * 100))
       const result = await marketplaceApi.createOrgAsset({
         slug: normalizedSlug,
         title: title.trim(),
@@ -71,6 +75,8 @@ export default function CreateOrgAssetPage() {
           department: department.trim(),
           systems: [],
         },
+        pricingType,
+        priceCents,
       })
       toast.success("Draft asset created")
       router.push(`/marketplace/org-admin?created=${encodeURIComponent(result.asset.slug)}`)
@@ -225,6 +231,39 @@ export default function CreateOrgAssetPage() {
                 placeholder="4"
               />
             </div>
+          </div>
+          <div className="space-y-2 rounded-md border border-border/80 bg-muted/20 p-3">
+            <p className="text-xs font-medium text-muted-foreground">Pricing</p>
+            <div className="flex flex-wrap gap-2">
+              {(["free", "paid", "subscription"] as const).map((option) => (
+                <Button
+                  key={option}
+                  type="button"
+                  size="sm"
+                  variant={pricingType === option ? "default" : "outline"}
+                  disabled={busy}
+                  onClick={() => setPricingType(option)}
+                >
+                  {option === "free" ? "Free" : option === "paid" ? "One-time" : "Subscription"}
+                </Button>
+              ))}
+            </div>
+            {pricingType !== "free" ? (
+              <div className="flex max-w-xs items-center gap-2">
+                <span className="text-sm text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={priceDollars}
+                  disabled={busy}
+                  onChange={(event) => setPriceDollars(event.target.value)}
+                />
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  {pricingType === "subscription" ? "/ month" : "once"}
+                </span>
+              </div>
+            ) : null}
           </div>
           <Button type="submit" disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
