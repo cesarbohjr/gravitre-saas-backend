@@ -5,7 +5,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AssetOutcomeEditor } from "@/components/marketplace/asset-outcome-editor"
-import { AssetPricingEditor } from "@/components/marketplace/asset-pricing-editor"
+import { AssetPricingEditor, formatAssetPriceLabel } from "@/components/marketplace/asset-pricing-editor"
 import { AssetVersionHistory } from "@/components/marketplace/asset-version-history"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,7 @@ function OrgAssetRow({
   showReviewActions,
   showDraftActions,
   showVersionHistory,
+  showPublishedPricing,
   canSubmitPublic,
 }: {
   asset: MarketplaceAssetSummary
@@ -49,8 +50,19 @@ function OrgAssetRow({
   showReviewActions?: boolean
   showDraftActions?: boolean
   showVersionHistory?: boolean
+  showPublishedPricing?: boolean
   canSubmitPublic?: boolean
 }) {
+  const savePricing = async (payload: { pricingType: "free" | "paid" | "subscription"; priceCents: number }) => {
+    if (showPublishedPricing) {
+      await marketplaceApi.updateOrgAssetPricing(asset.slug, payload)
+    } else {
+      await marketplaceApi.updateOrgAsset(asset.slug, payload)
+    }
+    toast.success("Pricing saved", { description: asset.title })
+    await onPricingSaved()
+  }
+
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -61,6 +73,8 @@ function OrgAssetRow({
             {showReviewActions ? <Badge variant="secondary">pending review</Badge> : null}
             {showDraftActions ? <Badge variant="secondary">draft</Badge> : null}
             {showVersionHistory ? <Badge variant="secondary">published</Badge> : null}
+            {showPublishedPricing ? <Badge variant="outline">public catalog</Badge> : null}
+            <Badge variant="outline">{formatAssetPriceLabel(asset.pricingType, asset.priceCents)}</Badge>
           </div>
           {asset.description ? (
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{asset.description}</p>
@@ -124,16 +138,12 @@ function OrgAssetRow({
           }}
         />
       ) : null}
-      {showDraftActions || showReviewActions ? (
+      {showDraftActions || showReviewActions || showPublishedPricing ? (
         <AssetPricingEditor
           pricingType={asset.pricingType}
           priceCents={asset.priceCents}
           disabled={Boolean(busy)}
-          onSave={async (payload) => {
-            await marketplaceApi.updateOrgAsset(asset.slug, payload)
-            toast.success("Pricing saved", { description: asset.title })
-            await onPricingSaved()
-          }}
+          onSave={savePricing}
         />
       ) : null}
       {showVersionHistory ? (
@@ -181,6 +191,7 @@ export default function MarketplaceOrgAdminPage() {
   const drafts = draftData?.assets ?? []
   const pending = data?.assets ?? []
   const published = (publishedData?.assets ?? []).filter((asset) => asset.visibility === "internal")
+  const publicPublished = (publishedData?.assets ?? []).filter((asset) => asset.visibility === "public")
   const publicPending = publicPendingData?.assets ?? []
   const canSubmitPublic = Boolean(publisherData?.publisher?.publicPublishingEnabled)
 
@@ -406,6 +417,24 @@ export default function MarketplaceOrgAdminPage() {
             ))
           )}
         </section>
+
+        {canSubmitPublic && publicPublished.length > 0 ? (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Published public catalog assets</h2>
+            <p className="text-xs text-muted-foreground">
+              Update pricing on live public assets without unpublishing.
+            </p>
+            {publicPublished.map((asset) => (
+              <OrgAssetRow
+                key={asset.id}
+                asset={asset}
+                busy={busy}
+                showPublishedPricing
+                onPricingSaved={refreshAll}
+              />
+            ))}
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Published internal assets</h2>

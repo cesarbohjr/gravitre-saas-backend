@@ -188,3 +188,31 @@ def set_asset_pricing(
         },
     )
     return {"updated": True, "asset": _serialize_asset(refreshed)}
+
+
+def set_org_asset_pricing(
+    client: Any,
+    org_id: str,
+    asset_ref: str,
+    *,
+    pricing_type: str,
+    price_cents: int,
+    currency: str = "usd",
+    actor_id: str,
+) -> dict[str, Any]:
+    from app.marketplace.crud import MarketplaceCrudError, _assert_org_owns_asset, _fetch_asset
+
+    try:
+        asset = _fetch_asset(client, asset_ref)
+    except MarketplaceCrudError as exc:
+        raise _crud_to_flags(exc) from exc
+    _assert_org_owns_asset(asset, org_id)
+    return set_asset_pricing(
+        client,
+        asset_ref,
+        pricing_type=pricing_type,
+        price_cents=price_cents,
+        currency=currency,
+        actor_id=actor_id,
+        org_id=org_id,
+    )

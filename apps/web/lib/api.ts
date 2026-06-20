@@ -895,6 +895,14 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
       body,
     ),
+  updateOrgAssetPricing: (
+    assetRef: string,
+    body: { pricingType: "free" | "paid" | "subscription"; priceCents: number; currency?: string },
+  ) =>
+    patchJson<{ updated: boolean; asset: MarketplaceAssetDetail }>(
+      apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}/pricing`),
+      body,
+    ),
   archiveOrgAsset: (assetRef: string) =>
     deleteJson<{ archived: boolean; asset: MarketplaceAssetDetail }>(
       apiUrl(`/api/marketplace/assets/${encodeURIComponent(assetRef)}`),
