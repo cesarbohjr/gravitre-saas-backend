@@ -210,6 +210,8 @@ def get_publisher_payout_summary(client: Any, partner_org_id: str) -> dict[str, 
         for r in data
         if r.get("status") == "transferred"
     )
+    pending_count = sum(1 for r in data if r.get("status") == "pending")
+    failed_count = sum(1 for r in data if r.get("status") == "failed")
     return {
         "grossCents": gross,
         "platformFeeCents": platform_fees,
@@ -217,6 +219,8 @@ def get_publisher_payout_summary(client: Any, partner_org_id: str) -> dict[str, 
         "transferredCents": transferred,
         "pendingTransferCents": max(0, earnings - transferred),
         "payoutCount": len(data),
+        "pendingPayoutCount": pending_count,
+        "failedPayoutCount": failed_count,
     }
 
 

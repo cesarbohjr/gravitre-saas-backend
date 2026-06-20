@@ -134,6 +134,8 @@ def test_get_publisher_payout_summary():
     assert summary["grossCents"] == 8000
     assert summary["transferredCents"] == 4000
     assert summary["pendingTransferCents"] == 2400
+    assert summary["pendingPayoutCount"] == 1
+    assert summary["failedPayoutCount"] == 0
 
 
 def test_list_recent_asset_payouts():
