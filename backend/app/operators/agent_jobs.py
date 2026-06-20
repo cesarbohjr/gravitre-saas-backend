@@ -413,6 +413,14 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             "react_trace": [],
             "persona": None,
             "tool_calls": [],
+            "execution_mode": "degraded",
+            "executionMode": "degraded",
+            "tools_available": 0,
+            "toolsAvailable": 0,
+            "tool_call_count": 0,
+            "toolCallCount": 0,
+            "execution_verified": False,
+            "executionVerified": False,
         }
         if ai_degraded:
             result["aiDegradedReason"] = ai_degraded_reason or "ai_unavailable"

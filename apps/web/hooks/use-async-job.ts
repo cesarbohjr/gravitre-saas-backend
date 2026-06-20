@@ -33,6 +33,14 @@ export interface AgentJobResult {
   human_input_prompt?: string
   error?: string
   persona?: string
+  execution_mode?: "tools_executed" | "advisory_only" | "degraded"
+  executionMode?: "tools_executed" | "advisory_only" | "degraded"
+  tools_available?: number
+  toolsAvailable?: number
+  tool_call_count?: number
+  toolCallCount?: number
+  execution_verified?: boolean
+  executionVerified?: boolean
 }
 
 export interface AgentJob {

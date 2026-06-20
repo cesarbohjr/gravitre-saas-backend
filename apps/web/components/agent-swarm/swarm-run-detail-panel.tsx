@@ -21,6 +21,7 @@ import {
   isSwarmExecutionUnverified,
   SwarmVerificationLabel,
 } from "@/components/agent-swarm/swarm-verification-label"
+import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { cn } from "@/lib/utils"
 
 const TERMINAL_SUBTASK = new Set(["completed", "failed", "cancelled"])
@@ -223,9 +224,12 @@ export function SwarmRunDetailPanel({
                     <p className="text-muted-foreground">{subtask.taskPrompt}</p>
                     {subtaskSummary(subtask) ? (
                       <div className="text-foreground/90 border-t border-border/50 pt-2 space-y-2">
-                        {isSwarmExecutionUnverified(subtask.executionVerified) ? (
-                          <SwarmVerificationLabel compact />
-                        ) : null}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <ExecutionModeBadge source={subtask.result} compact />
+                          {isSwarmExecutionUnverified(subtask.executionVerified) ? (
+                            <SwarmVerificationLabel compact />
+                          ) : null}
+                        </div>
                         <p>{subtaskSummary(subtask)}</p>
                       </div>
                     ) : null}

@@ -7,6 +7,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Timeline, TimelineItem } from "@/components/gravitre/timeline-item"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { cn } from "@/lib/utils"
+import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { MesonInsightsPanel } from "@/components/gravitre/ai-insights-panel"
 import { AIProcessingStatus } from "@/components/gravitre/ai-processing-status"
 import { AICommandInput } from "@/components/gravitre/ai-command-input"
@@ -1314,6 +1315,11 @@ export default function OperatorPage() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ type: "spring", stiffness: 100 }}
                   >
+                    {asyncJob?.result ? (
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        <ExecutionModeBadge source={asyncJob.result} showMeta />
+                      </div>
+                    ) : null}
                     <MesonInsightsPanel
                       confidence={analysisConfidence}
                       confidenceDataPoints={confidenceDataPoints}

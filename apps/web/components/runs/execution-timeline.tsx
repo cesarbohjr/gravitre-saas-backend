@@ -19,6 +19,8 @@ import {
   XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
+import { readExecutionModeFields } from "@/lib/execution-mode"
 import { cn } from "@/lib/utils"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { DataStream } from "@/components/gravitre/premium-effects"
@@ -279,6 +281,14 @@ function ExecutionStepRow({
   const modelInfo = step.outputSnapshot?.modelInfo ?? step.outputSnapshot?.model_info
   const tokens = step.outputSnapshot?.tokens ?? step.outputSnapshot?.tokenCount
   const invokeMeta = useMemo(() => parseInvokeTool(step), [step])
+  const executionModeSource = useMemo(
+    () => (step.stepType === "agent" ? step.outputSnapshot : null),
+    [step.outputSnapshot, step.stepType],
+  )
+  const executionMode = useMemo(
+    () => readExecutionModeFields(executionModeSource as Record<string, unknown> | null),
+    [executionModeSource],
+  )
 
   return (
     <motion.div
@@ -363,6 +373,9 @@ function ExecutionStepRow({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+              {executionMode.mode ? (
+                <ExecutionModeBadge source={executionModeSource as Record<string, unknown>} compact />
+              ) : null}
               <span>{step.startedAt}</span>
               {/* duration fades in once completed */}
               <motion.span

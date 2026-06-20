@@ -15,6 +15,7 @@ from app.core.logging import get_logger
 from app.operators.agent_prompts import build_agent_system_prompt, get_agent_persona
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.services.agent_finetune_service import resolve_agent_inference_model
+from app.services.execution_mode_service import resolve_execution_mode, resolve_execution_verified
 from app.services.org_context_service import get_org_context_service
 from app.services.plan_resolution_service import PlanResolutionRequest, resolve_plan
 from app.services.rag_service import RAGService
@@ -48,6 +49,10 @@ class AgentResult(BaseModel):
     provider: str = "openai"
     briefing_received: bool = False
     error: str | None = None
+    execution_mode: str = "advisory_only"
+    tools_available: int = 0
+    tool_call_count: int = 0
+    execution_verified: bool = False
 
     def to_handoff_dict(self) -> dict[str, Any]:
         """Shape compatible with handoff_service.run_agent_task consumers."""
@@ -69,6 +74,14 @@ class AgentResult(BaseModel):
             "react_trace": self.react_trace,
             "tool_calls": self.tool_calls,
             "persona": self.persona,
+            "execution_mode": self.execution_mode,
+            "executionMode": self.execution_mode,
+            "tools_available": self.tools_available,
+            "toolsAvailable": self.tools_available,
+            "tool_call_count": self.tool_call_count,
+            "toolCallCount": self.tool_call_count,
+            "execution_verified": self.execution_verified,
+            "executionVerified": self.execution_verified,
         }
         if self.decision:
             payload["decision"] = self.decision
@@ -374,6 +387,12 @@ class AgentIntelligence:
         )
         persona = get_agent_persona(agent)
         model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
+        available_tools = self.get_agent_tools(
+            agent,
+            list(connected),
+            permitted_tools=resolved_plan.permitted_tools,
+        )
+        tools_available = len(available_tools)
 
         ctx = ToolContext(
             settings=active_settings,
@@ -408,6 +427,7 @@ class AgentIntelligence:
             briefing=effective_briefing or briefing,
             rag_sources=rag_sources,
             persona=persona.key,
+            tools_available=tools_available,
         )
 
         write_audit_event(
@@ -427,6 +447,10 @@ class AgentIntelligence:
                 "needsHumanInput": agent_result.needs_human_input,
                 "planResolutionMode": resolved_plan.mode.value,
                 "planSource": resolved_plan.metadata.get("planSource"),
+                "executionMode": agent_result.execution_mode,
+                "toolCallCount": agent_result.tool_call_count,
+                "toolsAvailable": agent_result.tools_available,
+                "executionVerified": agent_result.execution_verified,
             },
         )
         return agent_result
@@ -467,6 +491,7 @@ class AgentIntelligence:
         briefing: dict[str, Any] | None,
         rag_sources: list[dict[str, Any]],
         persona: str | None = None,
+        tools_available: int = 0,
     ) -> AgentResult:
         status = react_result.status
         answer = react_result.answer or ""
@@ -477,6 +502,15 @@ class AgentIntelligence:
         recommended = _recommended_actions_from_tools(tool_calls, answer)
         needs_human = status == ReActStatus.NEEDS_HUMAN_INPUT
         overall_status = status.value if hasattr(status, "value") else str(status)
+        execution_mode = resolve_execution_mode(
+            react_status=overall_status,
+            tool_calls=tool_calls,
+            error=react_result.error,
+        )
+        execution_verified = resolve_execution_verified(
+            tools_available=tools_available,
+            tool_calls=tool_calls,
+        )
 
         decision: dict[str, Any] | None = None
         if status == ReActStatus.COMPLETED:
@@ -515,6 +549,10 @@ class AgentIntelligence:
             model=model,
             briefing_received=bool(briefing),
             error=react_result.error,
+            execution_mode=execution_mode,
+            tools_available=tools_available,
+            tool_call_count=len(tool_calls),
+            execution_verified=execution_verified,
         )
 
 

@@ -276,6 +276,10 @@ async def test_run_swarm_subtask_job_uses_execution_core(mock_client, mock_resol
     agent_result.confidence = 82
     agent_result.tool_calls = [{"tool": "hubspot_search_contacts", "result": {"success": True}}]
     agent_result.react_status = "completed"
+    agent_result.execution_verified = True
+    agent_result.execution_mode = "tools_executed"
+    agent_result.tool_call_count = 1
+    agent_result.tools_available = 1
     mock_intel_cls.return_value.execute_task = AsyncMock(return_value=agent_result)
 
     job = {
@@ -295,6 +299,7 @@ async def test_run_swarm_subtask_job_uses_execution_core(mock_client, mock_resol
     result = await run_swarm_subtask_job(MagicMock(), job)
 
     assert result["executionVerified"] is True
+    assert result["executionMode"] == "tools_executed"
     assert result["toolCallCount"] == 1
     assert result["recommendedAction"] == "approve vendor"
     mock_intel_cls.return_value.execute_task.assert_awaited_once()

@@ -65,6 +65,9 @@ def intelligence() -> AgentIntelligence:
     intel = AgentIntelligence(settings=settings, react_engine=react, rag_service=rag, unified_retrieval=unified)
     intel.tool_registry = MagicMock()
     intel.tool_registry.list_connected_integrations.return_value = ["hubspot"]
+    intel.tool_registry.get_tools_for_agent.return_value = [
+        {"type": "function", "function": {"name": "hubspot_update_deal"}},
+    ]
     return intel
 
 
@@ -213,6 +216,9 @@ async def test_execute_task_runs_react_with_context(agent_row: dict, intelligenc
     call_kwargs = intelligence.react_engine.run.await_args.kwargs
     assert "handoff_briefing" in call_kwargs["task"]
     assert call_kwargs["model"] == "gpt-5.5"
+    assert result.execution_mode == "tools_executed"
+    assert result.tool_call_count == 1
+    assert result.execution_verified is True
 
 
 @pytest.mark.asyncio

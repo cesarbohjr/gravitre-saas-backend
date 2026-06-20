@@ -211,6 +211,8 @@ def _fallback_swarm_result(
         "confidence": fb.confidence,
         "scopedTools": fb.scoped_tools,
         "executionVerified": False,
+        "executionMode": "degraded",
+        "toolsAvailable": 0,
         "toolCallCount": 0,
     }
 
@@ -606,7 +608,7 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
             scoped_tools=scoped_list,
         )
 
-    execution_verified = _swarm_execution_verified(scoped_list, agent_result.tool_calls)
+    execution_verified = agent_result.execution_verified
     finding = (agent_result.answer or agent_result.summary or "").strip()
     if not finding:
         finding = "Completed subtask analysis."
@@ -621,6 +623,8 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
         "confidence": confidence,
         "scopedTools": scoped_list,
         "executionVerified": execution_verified,
-        "toolCallCount": len(agent_result.tool_calls),
+        "executionMode": agent_result.execution_mode,
+        "toolsAvailable": agent_result.tools_available,
+        "toolCallCount": agent_result.tool_call_count,
         "reactStatus": agent_result.react_status,
     }
