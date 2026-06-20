@@ -1,4 +1,9 @@
-"""BE-20: Constrained execute engine. rag_retrieve, noop, slack_post_message (IN-10), email_send (IN-11)."""
+"""BE-20: Workflow execute entry façade (Decision 1 / STA-259 — 1A approved).
+
+Graph runs delegate to ``execution_engine.execute_workflow_graph``; linear step lists
+use the constrained handler registry in this module. Do not add alternate graph runtimes
+without updating UNIVERSAL_INTELLIGENCE_LAYER_SPEC.md Decision 1.
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone

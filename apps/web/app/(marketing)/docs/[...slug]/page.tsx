@@ -84,13 +84,13 @@ const workflow = await gravitre.workflows.create({
   },
   "ai-operator": {
     title: "AI Operator",
-    description: "Learn how to use natural language to automate tasks. The AI Operator understands your intent and executes complex workflows automatically.",
+    description: "Learn how to use natural language to plan and automate tasks. The AI Operator understands your intent and prepares execution plans; connected integrations enable actions when configured.",
     category: "Core Features",
     readTime: "8 min",
     sections: [
       {
         title: "What is the AI Operator?",
-        content: "The AI Operator is Gravitre's natural language interface. Instead of manually building workflows, you can describe what you want in plain English, and the AI will create and execute the automation for you.",
+        content: "The AI Operator is Gravitre's natural language interface. Describe what you want in plain English and the AI prepares an analysis and action plan. Execution through connected integrations depends on your setup; sensitive steps may require your approval before they run.",
       },
       {
         title: "How it works",
@@ -265,7 +265,7 @@ const myConnector = {
     sections: [
       {
         title: "What is Gravitre?",
-        content: "Gravitre is an AI-powered automation platform that helps teams automate complex business processes. Unlike traditional automation tools, Gravitre uses natural language understanding and intelligent planning to create and execute workflows automatically.",
+        content: "Gravitre is an AI-powered automation platform that helps teams automate complex business processes. Gravitre combines natural language planning with workflow execution. Connector actions run when integrations are linked and configured; the product shows what each run analyzed and executed.",
       },
       {
         title: "Key Concepts",

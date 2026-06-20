@@ -762,7 +762,7 @@ export default function HomePage() {
             {
               number: "02",
               title: "Agents solve your problems",
-              description: "The agents answer questions and access external systems to gather data and take actions automatically.",
+              description: "Agents answer questions and, when integrations are connected, can gather data and take actions through your linked systems. Each run shows what was analyzed and what was executed.",
               visual: (
                 <div className="bg-zinc-900 rounded-xl p-6 shadow-2xl border border-zinc-800">
                   <div className="space-y-3">

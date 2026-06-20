@@ -79,7 +79,7 @@ class RAGService:
         )
         return [Chunk(id=f"{doc['id']}:{i}", content=value, score=1.0, source=document.title) for i, value in enumerate(chunks)]
 
-    async def query(
+    async def retrieve_chunks(
         self,
         org_id: str,
         query: str,
@@ -88,7 +88,8 @@ class RAGService:
         filters: dict | None = None,
         include_sources: bool = True,
         agent_id: str | None = None,
-    ) -> RAGResponse:
+    ) -> tuple[list[Chunk], dict[str, Any]]:
+        """Hybrid retrieval without LLM answer synthesis (for agent/orchestrator context)."""
         filters = dict(filters or {})
         if agent_id and not filters.get("agent_id"):
             filters["agent_id"] = agent_id
@@ -114,40 +115,34 @@ class RAGService:
         except EmbeddingDimensionMismatchError as exc:
             logger.warning("rag dimension mismatch org_id=%s error=%s", org_id, str(exc))
             keyword_rows = self._keyword_search(org_id, query, top_k=top_k, environment=environment)
-            return RAGResponse(
-                answer="Semantic search degraded to keyword matching due to embedding dimension mismatch.",
-                chunks=[
-                    Chunk(
-                        id=str(row.get("id")),
-                        content=str(row.get("content") or ""),
-                        score=float(row.get("score") or 0.0),
-                        source=str(row.get("title") or "") if include_sources else None,
-                    )
-                    for row in keyword_rows[:top_k]
-                ],
-                metrics={
-                    "top_k": top_k,
-                    "semantic_candidates": 0,
-                    "keyword_candidates": len(keyword_rows),
-                    "reranked": 0,
-                    "embedding_method": "keyword_fallback_dimension_mismatch",
-                    "fallback": "voyage_dimension_mismatch",
-                },
-            )
+            chunks = [
+                Chunk(
+                    id=str(row.get("id")),
+                    content=str(row.get("content") or ""),
+                    score=float(row.get("score") or 0.0),
+                    source=str(row.get("title") or "") if include_sources else None,
+                )
+                for row in keyword_rows[:top_k]
+            ]
+            return chunks, {
+                "top_k": top_k,
+                "semantic_candidates": 0,
+                "keyword_candidates": len(keyword_rows),
+                "reranked": len(chunks),
+                "embedding_method": "keyword_fallback_dimension_mismatch",
+                "fallback": "voyage_dimension_mismatch",
+            }
         except Exception as exc:  # noqa: BLE001
             logger.warning("rag embedding unavailable org_id=%s error=%s", org_id, str(exc))
-            return RAGResponse(
-                answer="RAG is temporarily unavailable because embeddings are not configured.",
-                chunks=[],
-                metrics={
-                    "top_k": top_k,
-                    "semantic_candidates": 0,
-                    "keyword_candidates": 0,
-                    "reranked": 0,
-                    "embedding_method": "keyword_fallback",
-                    "fallback": "embedding_unavailable",
-                },
-            )
+            return [], {
+                "top_k": top_k,
+                "semantic_candidates": 0,
+                "keyword_candidates": 0,
+                "reranked": 0,
+                "embedding_method": "keyword_fallback",
+                "fallback": "embedding_unavailable",
+            }
+
         candidate_k = hybrid_candidate_k(self.settings)
         merge_k = candidate_k * 2
         semantic_rows = search_chunks(
@@ -187,8 +182,61 @@ class RAGService:
             len(merged),
             cross_encoder_enabled(self.settings),
         )
+        chunks = [
+            Chunk(
+                id=str(row.get("id")),
+                content=str(row.get("content") or ""),
+                score=float(row.get("score") or 0.0),
+                source=str(row.get("title") or "") if include_sources else None,
+            )
+            for row in reranked
+        ]
+        metrics = {
+            "top_k": top_k,
+            "semantic_candidates": len(semantic_rows),
+            "keyword_candidates": len(keyword_rows),
+            "reranked": len(reranked),
+            "embedding_method": embedding_method,
+            "hybrid_candidate_k": candidate_k,
+            "rerank_method": rerank_method,
+            "cross_encoder_enabled": cross_encoder_enabled(self.settings),
+            "rerank_threshold": rerank_score_threshold(self.settings),
+        }
+        return chunks, metrics
 
-        context_snippets = [str(row.get("content") or "").strip() for row in reranked]
+    async def query(
+        self,
+        org_id: str,
+        query: str,
+        scope: str = "organization",
+        top_k: int = 8,
+        filters: dict | None = None,
+        include_sources: bool = True,
+        agent_id: str | None = None,
+    ) -> RAGResponse:
+        chunks, metrics = await self.retrieve_chunks(
+            org_id,
+            query,
+            scope=scope,
+            top_k=top_k,
+            filters=filters,
+            include_sources=include_sources,
+            agent_id=agent_id,
+        )
+        if metrics.get("fallback") == "voyage_dimension_mismatch":
+            return RAGResponse(
+                answer="Semantic search degraded to keyword matching due to embedding dimension mismatch.",
+                chunks=chunks,
+                metrics=metrics,
+            )
+        if metrics.get("fallback") == "embedding_unavailable":
+            return RAGResponse(
+                answer="RAG is temporarily unavailable because embeddings are not configured.",
+                chunks=chunks,
+                metrics=metrics,
+            )
+
+        context_snippets = [snippet.content.strip() for snippet in chunks if snippet.content.strip()]
         context_snippets = [snippet for snippet in context_snippets if snippet]
         if context_snippets:
             context_block = "\n\n".join(
@@ -218,30 +266,7 @@ class RAGService:
         except Exception as exc:  # noqa: BLE001
             logger.warning("rag answer fallback org_id=%s error=%s", org_id, str(exc))
             answer_text = "I could not generate a model answer right now. Retrieved context is returned for review."
-        chunks = [
-            Chunk(
-                id=str(row.get("id")),
-                content=str(row.get("content") or ""),
-                score=float(row.get("score") or 0.0),
-                source=str(row.get("title") or "") if include_sources else None,
-            )
-            for row in reranked
-        ]
-        return RAGResponse(
-            answer=answer_text,
-            chunks=chunks,
-            metrics={
-                "top_k": top_k,
-                "semantic_candidates": len(semantic_rows),
-                "keyword_candidates": len(keyword_rows),
-                "reranked": len(reranked),
-                "embedding_method": embedding_method,
-                "hybrid_candidate_k": candidate_k,
-                "rerank_method": rerank_method,
-                "cross_encoder_enabled": cross_encoder_enabled(self.settings),
-                "rerank_threshold": rerank_score_threshold(self.settings),
-            },
-        )
+        return RAGResponse(answer=answer_text, chunks=chunks, metrics=metrics)
 
     def _keyword_search(self, org_id: str, query: str, top_k: int, environment: str) -> list[dict[str, Any]]:
         """Legacy ilike keyword fallback when embeddings are unavailable."""

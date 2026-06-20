@@ -9,8 +9,11 @@ from app.services.swarm_coordinator_service import (
     SwarmCoordinatorError,
     SwarmSubtaskSpec,
     _options_from_subtask_results,
+    _swarm_execution_verified,
+    _swarm_run_execution_verified,
     aggregate_swarm_run,
     cancel_swarm_run,
+    run_swarm_subtask_job,
     start_swarm,
 )
 
@@ -239,3 +242,62 @@ def test_cancel_swarm_run(mock_audit, mock_interrupt):
     assert result["status"] == "cancelled"
     mock_interrupt.assert_called_once()
     mock_audit.assert_called_once()
+
+
+def test_swarm_execution_verified_requires_successful_tool_calls():
+    scoped = [{"connectorType": "hubspot", "action": "search_contacts"}]
+    assert _swarm_execution_verified(scoped, []) is False
+    assert _swarm_execution_verified(scoped, [{"result": {"success": True}}]) is True
+    assert _swarm_execution_verified([], [{"result": {"success": True}}]) is False
+
+
+def test_swarm_run_execution_verified_all_scoped_subtasks():
+    subtasks = [
+        {"scoped_tools": [{"connectorType": "hubspot"}], "execution_verified": True},
+        {"scoped_tools": [], "execution_verified": False},
+        {"scoped_tools": [{"connectorType": "slack"}], "execution_verified": True},
+    ]
+    assert _swarm_run_execution_verified(subtasks) is True
+    subtasks[2]["execution_verified"] = False
+    assert _swarm_run_execution_verified(subtasks) is False
+
+
+@patch("app.operators.agent_intelligence.AgentIntelligence")
+@patch("app.operators.agent_intelligence.resolve_agent_record")
+@patch("app.workflows.repository.get_supabase_client")
+@pytest.mark.asyncio
+async def test_run_swarm_subtask_job_uses_execution_core(mock_client, mock_resolve, mock_intel_cls):
+    mock_client.return_value = MagicMock()
+    mock_resolve.return_value = {"id": "agent-1", "name": "Analyst"}
+    agent_result = MagicMock()
+    agent_result.summary = "Pricing looks competitive"
+    agent_result.answer = "Vendor pricing is within budget"
+    agent_result.recommended_actions = ["approve vendor"]
+    agent_result.confidence = 82
+    agent_result.tool_calls = [{"tool": "hubspot_search_contacts", "result": {"success": True}}]
+    agent_result.react_status = "completed"
+    mock_intel_cls.return_value.execute_task = AsyncMock(return_value=agent_result)
+
+    job = {
+        "id": "job-1",
+        "org_id": "org-1",
+        "created_by": "user-1",
+        "payload": {
+            "agentId": "agent-1",
+            "task": "Check pricing",
+            "objective": "Evaluate vendor",
+            "scopedTools": [{"connectorType": "hubspot", "action": "search_contacts"}],
+            "subtaskId": "sub-1",
+            "swarmRunId": "swarm-1",
+        },
+    }
+
+    result = await run_swarm_subtask_job(MagicMock(), job)
+
+    assert result["executionVerified"] is True
+    assert result["toolCallCount"] == 1
+    assert result["recommendedAction"] == "approve vendor"
+    mock_intel_cls.return_value.execute_task.assert_awaited_once()
+    call_kwargs = mock_intel_cls.return_value.execute_task.await_args.kwargs
+    assert call_kwargs["parameters"]["surface"] == "swarm"
+    assert call_kwargs["parameters"]["subtask_spec"]["scopedTools"][0]["connectorType"] == "hubspot"

@@ -19,6 +19,10 @@ import type { AgentSwarmRun } from "@/types/api"
 import { StartSwarmDialog } from "@/components/agent-swarm/start-swarm-dialog"
 import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
 import { SwarmRunStatusBadge } from "@/components/agent-swarm/swarm-status-badge"
+import {
+  isSwarmExecutionUnverified,
+  SwarmVerificationLabel,
+} from "@/components/agent-swarm/swarm-verification-label"
 import { SwarmConvergenceDiagram } from "@/components/agent-swarm/swarm-convergence-diagram"
 import { cn } from "@/lib/utils"
 
@@ -219,7 +223,12 @@ function SwarmRunRow({
             </div>
             <p className="font-medium line-clamp-2">{run.objective}</p>
             {run.finalRecommendation ? (
-              <p className="text-xs text-muted-foreground line-clamp-1">{run.finalRecommendation}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isSwarmExecutionUnverified(run.executionVerified) ? (
+                  <SwarmVerificationLabel compact />
+                ) : null}
+                <p className="text-xs text-muted-foreground line-clamp-1">{run.finalRecommendation}</p>
+              </div>
             ) : null}
           </div>
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground mt-1" />

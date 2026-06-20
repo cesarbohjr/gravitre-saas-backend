@@ -17,6 +17,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { agentSwarmApi } from "@/lib/api"
 import type { AgentSwarmRun, AgentSwarmSubtask } from "@/types/api"
 import { SwarmRunStatusBadge, SwarmSubtaskStatusBadge } from "@/components/agent-swarm/swarm-status-badge"
+import {
+  isSwarmExecutionUnverified,
+  SwarmVerificationLabel,
+} from "@/components/agent-swarm/swarm-verification-label"
 import { cn } from "@/lib/utils"
 
 const TERMINAL_SUBTASK = new Set(["completed", "failed", "cancelled"])
@@ -165,10 +169,21 @@ export function SwarmRunDetailPanel({
                 <dt className="text-muted-foreground">Decision</dt>
                 <dd className="capitalize">{run.decisionMethod.replace(/_/g, " ")}</dd>
               </div>
+              {isSwarmExecutionUnverified(run.executionVerified) &&
+              (run.finalRecommendation || (run.subtasks ?? []).some((s) => subtaskSummary(s))) ? (
+                <div className="col-span-2">
+                  <SwarmVerificationLabel />
+                </div>
+              ) : null}
               {run.finalRecommendation ? (
                 <div className="col-span-2">
                   <dt className="text-muted-foreground">Recommendation</dt>
-                  <dd className="mt-1 rounded-md bg-muted/50 p-2 text-foreground">{run.finalRecommendation}</dd>
+                  <dd className="mt-1 space-y-2">
+                    {isSwarmExecutionUnverified(run.executionVerified) ? (
+                      <SwarmVerificationLabel />
+                    ) : null}
+                    <div className="rounded-md bg-muted/50 p-2 text-foreground">{run.finalRecommendation}</div>
+                  </dd>
                 </div>
               ) : null}
               {run.finalConfidence != null ? (
@@ -181,6 +196,11 @@ export function SwarmRunDetailPanel({
                 <div className="col-span-2">
                   <dt className="text-muted-foreground">Error</dt>
                   <dd className="text-destructive">{run.errorMessage}</dd>
+                </div>
+              ) : null}
+              {run.status === "aggregating" ? (
+                <div className="col-span-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+                  Council aggregation did not finish. Subtask outputs below are advisory until verified tool execution is confirmed.
                 </div>
               ) : null}
             </dl>
@@ -202,7 +222,12 @@ export function SwarmRunDetailPanel({
                     </div>
                     <p className="text-muted-foreground">{subtask.taskPrompt}</p>
                     {subtaskSummary(subtask) ? (
-                      <p className="text-foreground/90 border-t border-border/50 pt-2">{subtaskSummary(subtask)}</p>
+                      <div className="text-foreground/90 border-t border-border/50 pt-2 space-y-2">
+                        {isSwarmExecutionUnverified(subtask.executionVerified) ? (
+                          <SwarmVerificationLabel compact />
+                        ) : null}
+                        <p>{subtaskSummary(subtask)}</p>
+                      </div>
                     ) : null}
                     {subtask.errorMessage ? (
                       <p className="text-destructive text-xs">{subtask.errorMessage}</p>

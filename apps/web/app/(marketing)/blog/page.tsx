@@ -6,8 +6,8 @@ import { ArrowRight, Clock } from "lucide-react"
 
 const featuredPost = {
   slug: "introducing-ai-operator-2",
-  title: "Introducing AI Operator 2.0: Multi-Agent Orchestration",
-  excerpt: "Today we're excited to announce AI Operator 2.0, featuring multi-agent orchestration, improved reasoning, and 10x faster task execution.",
+  title: "Introducing AI Operator 2.0: Smarter Operator Analysis",
+  excerpt: "AI Operator 2.0 brings durable async analysis, ReAct-style reasoning when integrations are connected, and clearer structured outputs. Connector actions depend on your setup and are verified per run.",
   author: {
     name: "Sarah Chen",
     role: "CEO",

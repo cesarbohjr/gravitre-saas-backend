@@ -2183,6 +2183,7 @@ export interface AgentSwarmSubtask {
   agentJobId: string | null
   result: Record<string, unknown> | null
   errorMessage: string | null
+  executionVerified?: boolean
   createdAt: string | null
   completedAt: string | null
 }
@@ -2199,6 +2200,7 @@ export interface AgentSwarmRun {
   finalConfidence: number | null
   aggregateResult: Record<string, unknown>
   errorMessage: string | null
+  executionVerified?: boolean
   createdAt: string | null
   updatedAt: string | null
   completedAt: string | null

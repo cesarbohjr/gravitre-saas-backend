@@ -15,9 +15,10 @@ from app.core.logging import get_logger
 from app.operators.agent_prompts import build_agent_system_prompt, get_agent_persona
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.services.agent_finetune_service import resolve_agent_inference_model
-from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
 from app.services.org_context_service import get_org_context_service
+from app.services.plan_resolution_service import PlanResolutionRequest, resolve_plan
 from app.services.rag_service import RAGService
+from app.services.unified_retrieval_service import UnifiedRetrievalService, get_unified_retrieval_service
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import ToolContext
 from app.workflows.audit import write_audit_event
@@ -262,10 +263,12 @@ class AgentIntelligence:
         settings: Settings | None = None,
         react_engine: ReActEngine | None = None,
         rag_service: RAGService | None = None,
+        unified_retrieval: UnifiedRetrievalService | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.react_engine = react_engine or get_react_engine()
         self.rag_service = rag_service or RAGService()
+        self.unified_retrieval = unified_retrieval or get_unified_retrieval_service()
         self.tool_registry = get_tool_registry()
 
     def get_agent_tools(
@@ -306,52 +309,40 @@ class AgentIntelligence:
         task_text = task.strip()
         params = parameters or {}
 
-        org_context = load_org_context(client, org_id, environment_name=environment_name)
+        resolved_plan = resolve_plan(
+            PlanResolutionRequest(
+                surface=str(params.get("surface") or "agent"),
+                task_text=task_text,
+                agent=agent,
+                existing_plan=params.get("existing_plan") if isinstance(params.get("existing_plan"), dict) else None,
+                subtask_spec=params.get("subtask_spec") if isinstance(params.get("subtask_spec"), dict) else None,
+                step_outputs=params.get("step_outputs") if isinstance(params.get("step_outputs"), dict) else None,
+                briefing=briefing,
+                parameters=params,
+            )
+        )
+        task_text = resolved_plan.task_text
+
+        retrieval = await self.unified_retrieval.retrieve(
+            org_id=org_id,
+            query=task_text,
+            client=client,
+            agent=agent,
+            parameters=params,
+            environment_name=environment_name,
+            user_id=actor_id,
+        )
+        org_context = retrieval.org_context
         connected = org_context.get("connectedIntegrations") or self.tool_registry.list_connected_integrations(
             client, org_id, environment_name=environment_name
         )
+        rag_sources = retrieval.rag_sources
+        rag_section = retrieval.rag_section
+        memory_section = retrieval.memory_section
 
-        rag_sources: list[dict[str, Any]] = []
-        rag_section = ""
-        try:
-            rag_response = await self.rag_service.query(
-                org_id,
-                task_text,
-                scope="agent",
-                top_k=int(params.get("rag_top_k") or active_settings.rag_top_k or 8),
-                agent_id=agent_id or None,
-                filters={"environment": environment_name},
-            )
-            rag_sources = [
-                {
-                    "id": chunk.id,
-                    "content": chunk.content[:500],
-                    "score": chunk.score,
-                    "source": chunk.source,
-                }
-                for chunk in rag_response.chunks
-            ]
-            if rag_response.chunks:
-                rag_section = (
-                    "<knowledge_base>\n"
-                    + json.dumps(
-                        [{"source": c.source, "content": c.content[:1200], "score": c.score} for c in rag_response.chunks],
-                        default=str,
-                    )[:12000]
-                    + "\n</knowledge_base>\n"
-                )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("agent_rag_query_skipped agent_id=%s error=%s", agent_id, exc)
-
-        memory_context = build_task_retrieval_context(
-            active_settings,
-            client,
-            org_id=org_id,
-            agent=agent,
-            task=task_text,
-            parameters=params,
-        )
-        memory_section = format_retrieval_prompt_section(memory_context)
+        effective_briefing = dict(briefing or {})
+        if resolved_plan.upstream_context:
+            effective_briefing.update(resolved_plan.upstream_context)
 
         include_history = params.get("include_task_history")
         if include_history is None:
@@ -368,7 +359,7 @@ class AgentIntelligence:
 
         task_prompt = self._build_task_prompt(
             task_text,
-            briefing=briefing,
+            briefing=effective_briefing or None,
             parameters=params,
             org_context=org_context,
             rag_section=rag_section,
@@ -402,6 +393,7 @@ class AgentIntelligence:
             agent=agent,
             model=model,
             connected_integrations=list(connected),
+            permitted_tools=resolved_plan.permitted_tools,
             max_iterations=max_iterations or int(params.get("max_react_iterations") or 10),
             audit_resource_type="workflow_run" if run_id else "agent_job",
             audit_resource_id=task_id or run_id or agent_id,
@@ -413,7 +405,7 @@ class AgentIntelligence:
             agent_name=agent_name,
             task=task_text,
             model=model,
-            briefing=briefing,
+            briefing=effective_briefing or briefing,
             rag_sources=rag_sources,
             persona=persona.key,
         )
@@ -433,6 +425,8 @@ class AgentIntelligence:
                 "toolCallCount": len(agent_result.tool_calls),
                 "ragSourceCount": len(rag_sources),
                 "needsHumanInput": agent_result.needs_human_input,
+                "planResolutionMode": resolved_plan.mode.value,
+                "planSource": resolved_plan.metadata.get("planSource"),
             },
         )
         return agent_result

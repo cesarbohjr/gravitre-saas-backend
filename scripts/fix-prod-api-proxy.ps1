@@ -1,11 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Fix production API proxy: point Vercel FASTAPI_BASE_URL at Railway and redeploy.
-
-.DESCRIPTION
-  api.gravitre.app is not wired to Railway yet. Until DNS is configured, the web app
-  must proxy /api/* to the live Railway backend host.
+  Fix production API proxy: point Vercel FASTAPI_BASE_URL at api.gravitre.app and redeploy.
 #>
 param(
     [switch] $SkipDeploy
@@ -13,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$BackendUrl = "https://gravitre-saas-backend-production.up.railway.app"
+$BackendUrl = "https://api.gravitre.app"
 $AppUrl = "https://gravitre.app"
 
 Write-Host "Updating Vercel production env..." -ForegroundColor Cyan
