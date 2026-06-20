@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react"
 
 const stats = [
   { value: "70%", label: "Time freed for strategy" },
-  { value: "10x", label: "Faster workflows" },
+  { value: "Per-run", label: "Execution visibility" },
   { value: "94%", label: "Team satisfaction" },
 ]
 

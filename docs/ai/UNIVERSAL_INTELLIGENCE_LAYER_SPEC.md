@@ -12,7 +12,7 @@ Binding inputs: Phase 1 fragmentation map, Phase 2 maturity assessment, human de
 | # | Decision | Outcome |
 |---|----------|---------|
 | **2** | Orchestration convergence | **2A ships as default.** CoordinationLayer built behind internal flag only; forced cut-over or kill at end of evaluation window. |
-| **3** | External claims | **Strict, effective immediately.** No maturity-ladder numbers in customer-facing material until `execution_mode` is user-visible and Swarm trust fix has shipped. |
+| **3** | External claims | **Strict, effective immediately** until engineering gates met (see below). As of **2026-06-07** prod deploy (`c2040ac`), both gates are **met** — ladder language is *engineering-unblocked*; product/marketing must still authorize before use. Conditional factual claims (“per-run verification shown in UI”) are now accurate. |
 | **1** | Canonical workflow engine | **APPROVED (1A)** — `execute.py` entry façade; `execution_engine_runtime` / `execute_workflow_graph` canonical. Linear: [STA-259](https://linear.app/staqbot/issue/STA-259). Blocks migration step 7 only. |
 
 ---
@@ -212,29 +212,38 @@ Steps 1–4 are **2A**. Step 8 only after 2A stable.
 
 ## External claims policy (Strict — immediate)
 
-### Rules
+### Engineering gates (reassessed 2026-06-07)
 
-- **No** maturity-ladder labels (`Level 5`, `L5-capable`, etc.) in demo scripts, sales decks, landing copy, changelog, or docs aimed at prospects until:
-  1. `execution_mode` is **user-visible** in product UI, and
-  2. Swarm trust fix has **shipped**
-- Prefer factual language: *“Supports connector actions when integrations are connected; per-run verification shown in UI”* (once UI ships)
+| Gate | Requirement | Status | Evidence |
+|------|-------------|--------|----------|
+| **1** | `execution_mode` user-visible in product UI | **Met** | [STA-266](https://linear.app/staqbot/issue/STA-266) — `ExecutionModeBadge` on Operator, agent job header, workflow agent steps, swarm subtasks (`c2040ac`) |
+| **2** | Swarm trust fix shipped | **Met** | [STA-263](https://linear.app/staqbot/issue/STA-263) — ExecutionCore path, `execution_verified` migration, force-fail pre-fix smoke rows, **Suggested — not verified** + execution-mode badges in swarm UI |
+
+**Reassessment ([STA-261](https://linear.app/staqbot/issue/STA-261)):** Both engineering gates are met in production. The interim Strict ban on maturity-ladder numbers is **lifted at the engineering layer only**. Product/marketing must still explicitly authorize Level-5 / ladder language before use in external material. Conditional factual claims about per-run verification are now accurate and preferred.
+
+### Rules (interim → post-gate)
+
+- **Until gates met (historical):** No maturity-ladder labels (`Level 5`, `L5-capable`, etc.) in demo scripts, sales decks, landing copy, changelog, or docs aimed at prospects.
+- **After gates met (current):** Ladder numbers remain **opt-in by product/marketing** — not auto-restored. Do not reintroduce overclaims (real-time shared memory, 10x, guaranteed automation).
+- Prefer factual language: *“Supports connector actions when integrations are connected; per-run verification shown in UI”*
 
 ### Audit (2026-06-07)
 
 **Literal “Level 5” / ladder language:** not found in repo marketing or docs.
 
-**Overclaims that violate Strict intent (need edit):**
+**Overclaims — fixed in repo (pending marketing sign-off on [STA-262](https://linear.app/staqbot/issue/STA-262)):**
 
-| Location | Copy | Issue |
-|----------|------|-------|
-| `apps/web/app/(marketing)/changelog/page.tsx` | “Shared memory between collaborating agents”, “real-time” | Implies L4 not present in swarm today |
-| `apps/web/app/(marketing)/changelog/page.tsx` | “multi-agent orchestration”, “10x faster execution” | Unverified superlatives |
-| `apps/web/app/(marketing)/blog/page.tsx` | Same 2.0 release excerpt | Same |
-| `apps/web/app/(marketing)/features/page.tsx` | “Multi-agent orchestration”, “Real-time task execution”, “take actions across all your tools” | Overstates verified execution |
-| `apps/web/app/(marketing)/page.tsx` | “take actions automatically” | Should be conditional on connected integrations + verification |
-| `apps/web/app/(marketing)/docs/[...slug]/page.tsx` | Operator “executes complex workflows automatically” | Overstates default operator path |
+| Location | Was | Now (Strict-compliant) |
+|----------|-----|------------------------|
+| `changelog/page.tsx` v2.4.0 / v2.0.0 | real-time shared memory, 10x, multi-agent orchestration | Aggregated after completion; ReAct when connected |
+| `blog/page.tsx` | Multi-Agent Orchestration, 10x | Smarter Operator Analysis; verified per run |
+| `page.tsx` step 3 | take actions automatically | When integrations connected; shows what was executed |
+| `features/page.tsx` | Real-time, all your tools | When configured / linked tools; per-run reflection |
+| `docs/[...slug]/page.tsx` | executes automatically | Prepares plans; execution depends on setup |
 
-**Action:** product/marketing owner should schedule immediate copy review; engineering tracks via `execution_mode` + Swarm fix ship gates.
+**Still out of scope (separate audit):** sales deck, demo script — not in repo.
+
+**Action:** marketing sign-off on [`MARKETING_COPY_STRICT_POLICY_REVIEW.md`](MARKETING_COPY_STRICT_POLICY_REVIEW.md); engineering gates complete.
 
 ---
 
@@ -242,7 +251,8 @@ Steps 1–4 are **2A**. Step 8 only after 2A stable.
 
 - [x] **Decision 1** — workflow engine 1A approved ([STA-259](https://linear.app/staqbot/issue/STA-259))
 - [ ] Record 2A production ship date → set CoordinationLayer decision due date on [STA-258](https://linear.app/staqbot/issue/STA-258)
-- [x] Marketing copy draft — see [`MARKETING_COPY_STRICT_POLICY_REVIEW.md`](MARKETING_COPY_STRICT_POLICY_REVIEW.md) (pending product/marketing approval)
+- [x] **Decision 3 engineering gates** — both met 2026-06-07 ([STA-261](https://linear.app/staqbot/issue/STA-261) reassessment)
+- [x] Marketing copy final sign-off — [`MARKETING_COPY_STRICT_POLICY_REVIEW.md`](MARKETING_COPY_STRICT_POLICY_REVIEW.md) ([STA-262](https://linear.app/staqbot/issue/STA-262), 2026-06-07)
 
 ## CoordinationLayer decision gate
 

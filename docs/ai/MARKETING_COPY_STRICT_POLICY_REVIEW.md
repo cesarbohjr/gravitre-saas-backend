@@ -1,8 +1,25 @@
 # Marketing copy — Strict policy review (Decision 3)
 
-**Status:** Draft applied in repo; **pending product/marketing approval** before treating as final.
+**Status:** **Signed off** — product/marketing approval recorded 2026-06-07.
 
-**Policy:** No maturity-ladder numbers. No guaranteed multi-agent real-time execution. Connector actions framed as conditional on connected integrations and per-run verification.
+**Policy:** No maturity-ladder numbers unless product explicitly authorizes. No guaranteed multi-agent real-time execution. Connector actions framed as conditional on connected integrations and per-run verification.
+
+**Sign-off:** Cesar Bohorquez Jr. (product) — repo marketing pages comply with Strict policy; Level-5 / ladder language **not authorized** for external use at this time.
+
+---
+
+## Engineering gate reassessment (2026-06-07)
+
+| Gate | Status | Ticket |
+|------|--------|--------|
+| `execution_mode` user-visible in UI | **Met** | [STA-266](https://linear.app/staqbot/issue/STA-266) — Operator, agent job, workflow steps, swarm subtasks |
+| Swarm trust fix shipped | **Met** | [STA-263](https://linear.app/staqbot/issue/STA-263) — ExecutionCore, migration, verification labels |
+
+**Strict policy ([STA-261](https://linear.app/staqbot/issue/STA-261)):** Engineering gates are met. Level-5 / ladder language is *engineering-unblocked* but still **opt-in by product/marketing**. Conditional factual claims about UI verification are now accurate.
+
+**Approved language (current):**
+
+> Supports connector actions when integrations are connected; per-run verification shown in UI
 
 ---
 
@@ -15,6 +32,7 @@
 | `apps/web/app/(marketing)/page.tsx` | Homepage “Monitor & act” step |
 | `apps/web/app/(marketing)/features/page.tsx` | Assistant + connectors bullets |
 | `apps/web/app/(marketing)/docs/[...slug]/page.tsx` | AI Operator + Introduction sections |
+| `apps/web/app/(marketing)/about/page.tsx` | Sign-off pass: removed unverified **10x** stat |
 
 ---
 
@@ -62,8 +80,9 @@
 
 ## Approver checklist
 
-- [ ] Product/marketing confirms no overclaim vs current product behavior
+- [x] Product/marketing confirms no overclaim vs current product behavior (signed off 2026-06-07; includes about-page 10x fix)
 - [ ] Sales deck + demo script audited separately (not in this PR)
-- [ ] Re-enable stronger claims only after `execution_mode` is user-visible and Swarm trust fix ships
+- [x] Engineering gates met — `execution_mode` UI + Swarm trust fix ([STA-266](https://linear.app/staqbot/issue/STA-266), [STA-263](https://linear.app/staqbot/issue/STA-263))
+- [x] Level-5 / maturity-ladder language **not authorized** for external use at this time (engineering-unblocked only; explicit product decision)
 
-**Route to:** product/marketing owner for sign-off on this diff.
+**Signed off by:** Cesar Bohorquez Jr. · **Date:** 2026-06-07 · **Ticket:** [STA-262](https://linear.app/staqbot/issue/STA-262)
