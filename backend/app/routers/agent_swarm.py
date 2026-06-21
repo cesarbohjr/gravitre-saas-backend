@@ -98,6 +98,7 @@ async def post_swarm_start(
             actor_id=user["user_id"],
             decision_method=body.decision_method.value,
             environment=environment,
+            settings=settings,
         )
     except SwarmCoordinatorError as exc:
         _raise_swarm(exc)

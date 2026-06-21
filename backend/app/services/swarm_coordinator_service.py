@@ -227,6 +227,7 @@ async def start_swarm(
     actor_id: str,
     decision_method: str = DecisionMethod.MAJORITY_VOTE.value,
     environment: str = "production",
+    settings: Settings | None = None,
 ) -> dict[str, Any]:
     if not objective.strip():
         raise SwarmCoordinatorError("Objective is required", code="VALIDATION_ERROR")
@@ -262,7 +263,21 @@ async def start_swarm(
     swarm = dict(swarm_insert.data[0])
     swarm_id = str(swarm["id"])
 
+    from app.config import get_settings
+    from app.coordination import ParallelFanout, is_coordination_layer_enabled
+
+    active_settings = settings or get_settings()
+    use_coordination = is_coordination_layer_enabled(active_settings, org_id)
+    fanout = ParallelFanout() if use_coordination else None
+    coordination_context = (
+        ParallelFanout.coordination_payload(objective=objective.strip(), swarm_run_id=swarm_id)
+        if use_coordination
+        else None
+    )
+
     serialized_subtasks: list[dict[str, Any]] = []
+    enqueue_items: list[tuple[str, Any]] = []
+
     for idx, spec in enumerate(subtasks):
         subtask_row = {
             "swarm_run_id": swarm_id,
@@ -278,20 +293,24 @@ async def start_swarm(
             raise RuntimeError("agent_swarm_subtasks insert returned no row")
         subtask = dict(sub_insert.data[0])
 
+        job_payload: dict[str, Any] = {
+            "swarmRunId": swarm_id,
+            "subtaskId": str(subtask["id"]),
+            "agentId": spec.agent_id,
+            "task": spec.task.strip(),
+            "scopedTools": spec.scoped_tools,
+            "objective": objective.strip(),
+            "parentAgentId": parent_agent_id,
+        }
+        if coordination_context:
+            job_payload["coordinationContext"] = coordination_context
+
         job = agent_jobs_mod.create_job(
             client,
             org_id,
             kind="swarm_subtask",
             environment=environment,
-            payload={
-                "swarmRunId": swarm_id,
-                "subtaskId": str(subtask["id"]),
-                "agentId": spec.agent_id,
-                "task": spec.task.strip(),
-                "scopedTools": spec.scoped_tools,
-                "objective": objective.strip(),
-                "parentAgentId": parent_agent_id,
-            },
+            payload=job_payload,
             created_by=actor_id,
         )
         job_id = str(job["id"])
@@ -306,10 +325,20 @@ async def start_swarm(
 
         from app.workers.queue import enqueue_agent_execution_job
 
-        try:
-            await enqueue_agent_execution_job(job_id)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("swarm subtask enqueue failed job_id=%s error=%s", job_id, str(exc))
+        if fanout is not None:
+
+            async def _enqueue(jid: str = job_id) -> None:
+                await enqueue_agent_execution_job(jid)
+
+            enqueue_items.append((job_id, _enqueue))
+        else:
+            try:
+                await enqueue_agent_execution_job(job_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("swarm subtask enqueue failed job_id=%s error=%s", job_id, str(exc))
+
+    if fanout is not None and enqueue_items:
+        await fanout.fanout(enqueue_items)
 
     write_audit_event(
         client,
@@ -320,7 +349,10 @@ async def start_swarm(
         resource_id=swarm_id,
         metadata={"subtaskCount": len(subtasks), "parentAgentId": parent_agent_id},
     )
-    return _serialize_swarm(swarm, serialized_subtasks)
+    result = _serialize_swarm(swarm, serialized_subtasks)
+    if use_coordination:
+        result["coordinationLayer"] = True
+    return result
 
 
 def list_swarm_runs(client: Any, org_id: str, *, limit: int = 20) -> list[dict[str, Any]]:
@@ -378,29 +410,48 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
 
     options = _options_from_subtask_results(subtasks)
     agents = _council_agents_from_subtasks(client, org_id, subtasks)
-    evidence = {
-        "subtasks": [
-            {
-                "agentId": str(row["agent_id"]),
-                "task": row["task_prompt"],
-                "result": row.get("result"),
-                "status": row["status"],
-            }
-            for row in subtasks
-        ]
-    }
+
+    from app.config import get_settings
+    from app.coordination import CouncilAggregate, is_coordination_layer_enabled
+
+    settings = get_settings()
+    use_coordination = is_coordination_layer_enabled(settings, org_id)
+    shared_context = None
+    if use_coordination:
+        ctx_payload = (swarm.get("aggregate_result") or {}).get("coordinationContext")
+        if isinstance(ctx_payload, dict):
+            shared_context = ctx_payload.get("channel") or ctx_payload
+
     council = get_council_service()
-    session = await council.start_council(
-        org_id=org_id,
-        workflow_id=f"swarm:{swarm_run_id}",
-        run_id=swarm_run_id,
-        objective=str(swarm["objective"]),
-        options=options,
-        agents=agents,
-        evidence=evidence,
-        decision_method=_decision_method(str(swarm.get("decision_method"))),
-        max_rounds=2,
-    )
+    decision = _decision_method(str(swarm.get("decision_method")))
+    council_kwargs = {
+        "org_id": org_id,
+        "workflow_id": f"swarm:{swarm_run_id}",
+        "run_id": swarm_run_id,
+        "objective": str(swarm["objective"]),
+        "options": options,
+        "agents": agents,
+        "decision_method": decision,
+        "max_rounds": 2,
+    }
+
+    if use_coordination:
+        aggregate = CouncilAggregate()
+        evidence = aggregate.build_swarm_evidence(subtasks, shared_context=shared_context)
+        session = await aggregate.start_council(council, evidence=evidence, **council_kwargs)
+    else:
+        evidence = {
+            "subtasks": [
+                {
+                    "agentId": str(row["agent_id"]),
+                    "task": row["task_prompt"],
+                    "result": row.get("result"),
+                    "status": row["status"],
+                }
+                for row in subtasks
+            ]
+        }
+        session = await council.start_council(evidence=evidence, **council_kwargs)
     aggregate_result = {
         "councilSessionId": session.id,
         "finalRecommendation": session.final_recommendation,
@@ -578,23 +629,31 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
         )
 
     intelligence = AgentIntelligence(settings=settings)
+    from app.coordination import SequentialContext, is_coordination_layer_enabled
+
+    task_parameters: dict[str, Any] = {
+        "surface": "swarm",
+        "subtask_spec": {
+            "task": task,
+            "objective": objective,
+            "scopedTools": scoped_list,
+            "subtaskId": payload.get("subtaskId"),
+            "swarmRunId": payload.get("swarmRunId"),
+        },
+        "include_task_history": False,
+    }
+    if is_coordination_layer_enabled(settings, org_id):
+        seq_ctx = SequentialContext.from_job_payload(payload)
+        if seq_ctx:
+            task_parameters["coordination_channel"] = seq_ctx.to_channel_payload()
+
     try:
         agent_result = await intelligence.execute_task(
             settings=settings,
             org_id=org_id,
             agent=agent,
             task=task,
-            parameters={
-                "surface": "swarm",
-                "subtask_spec": {
-                    "task": task,
-                    "objective": objective,
-                    "scopedTools": scoped_list,
-                    "subtaskId": payload.get("subtaskId"),
-                    "swarmRunId": payload.get("swarmRunId"),
-                },
-                "include_task_history": False,
-            },
+            parameters=task_parameters,
             actor_id=str(job.get("created_by") or agent_id or "system"),
             task_id=str(job.get("id") or ""),
             client=client,

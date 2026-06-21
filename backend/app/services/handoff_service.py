@@ -232,12 +232,26 @@ async def execute_agent_step_with_handoff(
     briefing_from_steps = bool(
         metadata.get("briefing_from_steps") or config.get("briefing_from_steps")
     )
+
+    from app.coordination import SequentialContext, is_coordination_layer_enabled
+
+    use_coordination = is_coordination_layer_enabled(settings, org_id)
+    seq_ctx = SequentialContext(
+        run_id=run_id,
+        step_outputs=step_outputs,
+        parameters=parameters,
+        current_step_id=step_id,
+    ) if use_coordination else None
+
     source_briefing = None
     if briefing_from_steps and step_outputs:
-        source_briefing = build_handoff_briefing(
-            parameters=parameters,
-            step_outputs=step_outputs,
-        )
+        if seq_ctx:
+            source_briefing = seq_ctx.to_briefing()
+        else:
+            source_briefing = build_handoff_briefing(
+                parameters=parameters,
+                step_outputs=step_outputs,
+            )
 
     source_output = await run_agent_task(
         settings,
@@ -265,10 +279,14 @@ async def execute_agent_step_with_handoff(
     if not receiver_agent:
         raise ValueError(f"Next agent not found: {next_agent_id}")
 
-    briefing = build_handoff_briefing(
-        parameters=parameters,
-        source_output=source_output,
-        step_outputs=step_outputs,
+    briefing = (
+        seq_ctx.to_briefing(source_output=source_output)
+        if seq_ctx
+        else build_handoff_briefing(
+            parameters=parameters,
+            source_output=source_output,
+            step_outputs=step_outputs,
+        )
     )
     handoff = create_handoff(
         client,

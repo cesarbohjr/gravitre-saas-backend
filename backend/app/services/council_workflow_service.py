@@ -209,6 +209,24 @@ async def execute_council_step(
     }
     objective = _resolve_objective(merged, parameters, step_outputs)
 
+    from app.coordination import CouncilAggregate, SequentialContext, is_coordination_layer_enabled
+
+    use_coordination = is_coordination_layer_enabled(settings, org_id)
+    if use_coordination:
+        seq_ctx = SequentialContext(
+            run_id=run_id,
+            step_outputs=step_outputs,
+            parameters=parameters,
+            current_step_id=step_id,
+        )
+        aggregate = CouncilAggregate()
+        evidence = aggregate.build_workflow_evidence(
+            parameters=parameters,
+            step_outputs=step_outputs,
+            source_output=source_output,
+            shared_context=seq_ctx.to_channel_payload(),
+        )
+
     session = await council.start_council(
         org_id=org_id,
         workflow_id=workflow_id or str(parameters.get("workflow_id") or ""),
