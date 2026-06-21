@@ -100,9 +100,23 @@ def test_analytics_returns_snapshot_counts(monkeypatch):
 def test_create_workflow_inserts_draft(monkeypatch):
     client = MagicMock()
     insert_builder = MagicMock()
-    insert_builder.execute.return_value = MagicMock(data=[{"id": "wf-1"}])
+    insert_builder.execute.return_value = MagicMock(
+        data=[
+            {
+                "id": "wf-1",
+                "org_id": "org-1",
+                "name": "Weekly pipeline review automation",
+                "status": "draft",
+                "created_by": "user-1",
+                "definition": {"schema_version": "2025.1", "steps": []},
+            }
+        ]
+    )
     table = MagicMock()
     table.insert.return_value = insert_builder
+    upsert_builder = MagicMock()
+    upsert_builder.execute.return_value = MagicMock(data=[{"id": "wf-1"}])
+    table.upsert.return_value = upsert_builder
     client.table.return_value = table
     monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: client)
 
