@@ -1,10 +1,10 @@
 {
   "target": "https://api.gravitre.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
-  "workflowId": "ce624485-984b-4210-bf0a-6a7811aea400",
-  "workflowName": "STA-271 dual-write smoke 20260621-224143",
-  "runId": "7171e758-a6ff-4227-a5af-0a2e048a34eb",
-  "finishedAt": "2026-06-21T22:41:50.797401+00:00",
+  "workflowId": "4e5cf70a-f255-408c-a0c6-501cd39a2426",
+  "workflowName": "STA-271 dual-write smoke 20260621-225435",
+  "runId": "09572a4b-b6b3-42c0-85dd-33a33ebb92fc",
+  "finishedAt": "2026-06-21T22:54:43.478829+00:00",
   "summary": {
     "pass": 9,
     "fail": 0
@@ -13,7 +13,7 @@
     {
       "label": "ui_create_workflows_row",
       "status": "pass",
-      "detail": "workflow_id=ce624485-984b-4210-bf0a-6a7811aea400"
+      "detail": "workflow_id=4e5cf70a-f255-408c-a0c6-501cd39a2426"
     },
     {
       "label": "schema_sync_from_contract",
@@ -23,7 +23,7 @@
     {
       "label": "fastapi_list_workflows",
       "status": "pass",
-      "detail": "STA-271 dual-write smoke 20260621-224143"
+      "detail": "STA-271 dual-write smoke 20260621-225435"
     },
     {
       "label": "bootstrap_active_version",
@@ -33,12 +33,12 @@
     {
       "label": "workflow_execute",
       "status": "pass",
-      "detail": "run_id=7171e758-a6ff-4227-a5af-0a2e048a34eb status=pending_approval"
+      "detail": "run_id=09572a4b-b6b3-42c0-85dd-33a33ebb92fc status=pending_approval"
     },
     {
       "label": "approve_run",
       "status": "pass",
-      "detail": "7171e758-a6ff-4227-a5af-0a2e048a34eb"
+      "detail": "09572a4b-b6b3-42c0-85dd-33a33ebb92fc"
     },
     {
       "label": "execute_poll",
@@ -53,7 +53,7 @@
     {
       "label": "legacy_workflow_run_exists",
       "status": "pass",
-      "detail": "7171e758-a6ff-4227-a5af-0a2e048a34eb"
+      "detail": "09572a4b-b6b3-42c0-85dd-33a33ebb92fc"
     }
   ]
 }

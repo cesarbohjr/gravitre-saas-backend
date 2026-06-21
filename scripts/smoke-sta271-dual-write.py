@@ -119,37 +119,7 @@ def _admin_org(env: dict[str, str]) -> tuple[str, str, str]:
     return org_id, user_id, email
 
 
-def _ensure_active_version(
-    client,
-    org_id: str,
-    user_id: str,
-    workflow_id: str,
-    *,
-    workflow_name: str,
-    legacy_writes_enabled: bool,
-) -> None:
-    legacy = (
-        client.table("workflow_defs")
-        .select("id")
-        .eq("id", workflow_id)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
-    )
-    if not legacy.data and not legacy_writes_enabled:
-        # workflow_versions FK still references workflow_defs post-C.6.
-        client.table("workflow_defs").insert(
-            {
-                "id": workflow_id,
-                "org_id": org_id,
-                "name": workflow_name,
-                "status": "active",
-                "definition": ABC_WORKFLOW,
-                "schema_version": "2025.1",
-                "created_by": user_id,
-            }
-        ).execute()
-
+def _ensure_active_version(client, org_id: str, user_id: str, workflow_id: str) -> None:
     active = (
         client.table("workflow_active_versions")
         .select("active_version_id")
@@ -187,19 +157,6 @@ def _ensure_active_version(
         },
         on_conflict="org_id,environment,workflow_id",
     ).execute()
-    # Post-C.6: keep legacy def in sync when row exists (execute/version FK path).
-    legacy = (
-        client.table("workflow_defs")
-        .select("id")
-        .eq("id", workflow_id)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
-    )
-    if legacy.data:
-        client.table("workflow_defs").update(
-            {"definition": ABC_WORKFLOW, "status": "active", "schema_version": "2025.1"}
-        ).eq("id", workflow_id).eq("org_id", org_id).execute()
 
 
 def _approve_run(token: str, org_id: str, run_id: str) -> None:
@@ -254,7 +211,6 @@ def run_smoke(*, json_path: Path | None = None) -> dict:
 
     # 2) C.2 reverse sync (Next.js → FastAPI schema-sync)
     sync = _request("POST", f"/api/workflows/{workflow_id}/schema-sync/from-contract", token, org_id)
-    legacy_writes_enabled = bool(sync.get("synced"))
     if sync.get("synced"):
         record("schema_sync_from_contract", "pass", "workflow_defs mirrored")
     elif sync.get("reason") == "legacy_writes_disabled":
@@ -272,14 +228,7 @@ def run_smoke(*, json_path: Path | None = None) -> dict:
         record("fastapi_list_workflows", "pass", smoke_name)
 
     # Bootstrap active version so execute can run (builder step user would do once)
-    _ensure_active_version(
-        client,
-        org_id,
-        user_id,
-        workflow_id,
-        workflow_name=smoke_name,
-        legacy_writes_enabled=legacy_writes_enabled,
-    )
+    _ensure_active_version(client, org_id, user_id, workflow_id)
     record("bootstrap_active_version", "pass", "noop ABC definition")
 
     runs_before = (
