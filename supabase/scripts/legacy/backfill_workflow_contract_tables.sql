@@ -1,13 +1,6 @@
--- Backfill legacy tables into frontend-contract tables
--- Safety rules:
--- - non-destructive only
--- - idempotent inserts (ON CONFLICT DO NOTHING)
--- - legacy tables are never dropped/renamed/deleted
--- - skipped rows are logged to audit_logs where possible
+-- STA-271 C.4: workflow-only backfill (workflow_defs/workflow_runs/workflow_steps -> contract tables)
+-- Idempotent; safe to re-run. Does not touch connectors/agents/approvals sections.
 
--- -----------------------------------------------------------------------------
--- Helper: log skipped legacy rows into audit_logs (if table exists and org_id known)
--- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.log_legacy_backfill_skipped(
   p_org_id uuid,
   p_legacy_table text,
@@ -58,9 +51,6 @@ BEGIN
 END;
 $$;
 
--- -----------------------------------------------------------------------------
--- Ensure contract target columns/checks needed by backfill mapping
--- -----------------------------------------------------------------------------
 DO $$
 BEGIN
   IF to_regclass('public.workflows') IS NOT NULL THEN
@@ -95,32 +85,10 @@ BEGIN
       ADD COLUMN IF NOT EXISTS error text,
       ADD COLUMN IF NOT EXISTS duration text;
   END IF;
-
-  IF to_regclass('public.connected_systems') IS NOT NULL THEN
-    ALTER TABLE public.connected_systems
-      ADD COLUMN IF NOT EXISTS connected_at timestamptz;
-
-    ALTER TABLE public.connected_systems DROP CONSTRAINT IF EXISTS connected_systems_status_check;
-    ALTER TABLE public.connected_systems
-      ADD CONSTRAINT connected_systems_status_check
-      CHECK (status IN ('connected', 'disconnected', 'error', 'pending', 'expired'));
-  END IF;
-
-  IF to_regclass('public.agents') IS NOT NULL THEN
-    ALTER TABLE public.agents
-      ADD COLUMN IF NOT EXISTS type text;
-
-    ALTER TABLE public.agents DROP CONSTRAINT IF EXISTS agents_status_check;
-    ALTER TABLE public.agents
-      ADD CONSTRAINT agents_status_check
-      CHECK (status IN ('draft', 'active', 'paused', 'inactive', 'error'));
-  END IF;
 END;
 $$;
 
--- -----------------------------------------------------------------------------
 -- 1) workflow_defs -> workflows
--- -----------------------------------------------------------------------------
 DO $$
 BEGIN
   IF to_regclass('public.workflow_defs') IS NULL OR to_regclass('public.workflows') IS NULL THEN
@@ -128,7 +96,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Log rows that cannot be mapped safely.
   PERFORM public.log_legacy_backfill_skipped(wd.org_id, 'workflow_defs', wd.id, 'missing_org_id')
   FROM public.workflow_defs wd
   WHERE wd.org_id IS NULL;
@@ -181,9 +148,7 @@ BEGIN
 END;
 $$;
 
--- -----------------------------------------------------------------------------
 -- 2) workflow_runs -> runs
--- -----------------------------------------------------------------------------
 DO $$
 BEGIN
   IF to_regclass('public.workflow_runs') IS NULL OR to_regclass('public.runs') IS NULL THEN
@@ -191,7 +156,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Log invalid rows before insert.
   PERFORM public.log_legacy_backfill_skipped(wr.org_id, 'workflow_runs', wr.id, 'missing_org_id')
   FROM public.workflow_runs wr
   WHERE wr.org_id IS NULL;
@@ -236,6 +200,7 @@ BEGIN
       WHEN 'cancelled' THEN 'cancelled'
       WHEN 'canceled' THEN 'cancelled'
       WHEN 'needs_approval' THEN 'needs_approval'
+      WHEN 'pending_approval' THEN 'needs_approval'
       ELSE 'queued'
     END AS mapped_status,
     coalesce(wr.trigger_type, 'manual') AS trigger_type,
@@ -264,9 +229,7 @@ BEGIN
 END;
 $$;
 
--- -----------------------------------------------------------------------------
 -- 3) workflow_steps -> run_steps
--- -----------------------------------------------------------------------------
 DO $$
 BEGIN
   IF to_regclass('public.workflow_steps') IS NULL OR to_regclass('public.run_steps') IS NULL THEN
@@ -344,136 +307,3 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 END;
 $$;
-
--- -----------------------------------------------------------------------------
--- 4) connectors -> connected_systems
--- -----------------------------------------------------------------------------
-DO $$
-BEGIN
-  IF to_regclass('public.connectors') IS NULL OR to_regclass('public.connected_systems') IS NULL THEN
-    RAISE NOTICE 'Skipping connectors -> connected_systems backfill (missing source or target table)';
-    RETURN;
-  END IF;
-
-  PERFORM public.log_legacy_backfill_skipped(c.org_id, 'connectors', c.id, 'missing_org_id')
-  FROM public.connectors c
-  WHERE c.org_id IS NULL;
-
-  INSERT INTO public.connected_systems (
-    id,
-    org_id,
-    system_key,
-    type,
-    name,
-    status,
-    config,
-    connected_at,
-    last_synced_at,
-    created_at,
-    updated_at
-  )
-  SELECT
-    c.id,
-    c.org_id,
-    coalesce(
-      nullif(c.name, ''),
-      nullif(c.type, ''),
-      concat('system-', substr(c.id::text, 1, 8))
-    ) AS system_key,
-    c.type,
-    coalesce(c.name, initcap(replace(c.type, '_', ' ')), 'Connected System') AS name,
-    CASE lower(coalesce(c.status, ''))
-      WHEN 'active' THEN 'connected'
-      WHEN 'connected' THEN 'connected'
-      WHEN 'error' THEN 'error'
-      WHEN 'expired' THEN 'expired'
-      WHEN 'pending' THEN 'pending'
-      WHEN 'disabled' THEN 'error'
-      ELSE 'pending'
-    END AS mapped_status,
-    coalesce(c.config, '{}'::jsonb) AS config,
-    coalesce((to_jsonb(c)->>'connected_at')::timestamptz, c.created_at, now()) AS connected_at,
-    c.last_sync_at,
-    coalesce(c.created_at, now()) AS created_at,
-    coalesce(c.updated_at, now()) AS updated_at
-  FROM public.connectors c
-  WHERE c.org_id IS NOT NULL
-  ON CONFLICT (org_id, system_key) DO NOTHING;
-END;
-$$;
-
--- -----------------------------------------------------------------------------
--- 5) operators -> agents
--- -----------------------------------------------------------------------------
-DO $$
-BEGIN
-  IF to_regclass('public.operators') IS NULL OR to_regclass('public.agents') IS NULL THEN
-    RAISE NOTICE 'Skipping operators -> agents backfill (missing source or target table)';
-    RETURN;
-  END IF;
-
-  PERFORM public.log_legacy_backfill_skipped(o.org_id, 'operators', o.id, 'missing_org_id')
-  FROM public.operators o
-  WHERE o.org_id IS NULL;
-
-  PERFORM public.log_legacy_backfill_skipped(o.org_id, 'operators', o.id, 'missing_name')
-  FROM public.operators o
-  WHERE o.org_id IS NOT NULL
-    AND (o.name IS NULL OR btrim(o.name) = '');
-
-  INSERT INTO public.agents (
-    id,
-    org_id,
-    name,
-    description,
-    status,
-    type,
-    capabilities,
-    model,
-    config,
-    created_at,
-    updated_at,
-    created_by
-  )
-  SELECT
-    o.id,
-    o.org_id,
-    o.name,
-    o.description,
-    CASE lower(coalesce(o.status, ''))
-      WHEN 'active' THEN 'active'
-      WHEN 'enabled' THEN 'active'
-      WHEN 'paused' THEN 'paused'
-      WHEN 'disabled' THEN 'paused'
-      WHEN 'error' THEN 'error'
-      WHEN 'draft' THEN 'draft'
-      ELSE 'draft'
-    END AS mapped_status,
-    CASE lower(coalesce(to_jsonb(o)->>'type', ''))
-      WHEN 'operator' THEN 'operator'
-      WHEN 'worker' THEN 'worker'
-      WHEN 'reviewer' THEN 'reviewer'
-      ELSE 'worker'
-    END AS mapped_type,
-    coalesce(o.capabilities, '[]'::jsonb) AS capabilities,
-    coalesce(to_jsonb(o)->>'model', 'auto') AS model,
-    coalesce(o.config, '{}'::jsonb) AS config,
-    coalesce(o.created_at, now()) AS created_at,
-    coalesce(o.updated_at, now()) AS updated_at,
-    o.created_by
-  FROM public.operators o
-  WHERE o.org_id IS NOT NULL
-    AND o.name IS NOT NULL
-    AND btrim(o.name) <> ''
-  ON CONFLICT (id) DO NOTHING;
-END;
-$$;
-
--- -----------------------------------------------------------------------------
--- Verification helpers (non-destructive; run manually)
--- -----------------------------------------------------------------------------
--- SELECT COUNT(*) FROM public.workflows;
--- SELECT COUNT(*) FROM public.runs;
--- SELECT COUNT(*) FROM public.run_steps;
--- SELECT COUNT(*) FROM public.connected_systems;
--- SELECT COUNT(*) FROM public.agents;
