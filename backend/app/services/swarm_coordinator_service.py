@@ -13,7 +13,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
-from app.services.council_service import DecisionMethod, get_council_service
+from app.services.council_service import DecisionMethod, coerce_council_agent_role, get_council_service
 from app.services.handoff_service import get_agent
 from app.workflows.audit import write_audit_event
 
@@ -165,10 +165,13 @@ def _council_agents_from_subtasks(client: Any, org_id: str, subtasks: list[dict[
         if not agent:
             continue
         config = agent.get("config") if isinstance(agent.get("config"), dict) else {}
+        council_role = coerce_council_agent_role(
+            str(agent.get("role") or config.get("council_role") or "analyst")
+        )
         agents.append(
             {
                 "name": agent.get("name") or "Sub-agent",
-                "role": agent.get("role") or config.get("council_role") or "analyst",
+                "role": council_role.value,
                 "weight": float(config.get("council_weight") or 1.0),
             }
         )

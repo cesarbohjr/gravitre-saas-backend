@@ -10,6 +10,7 @@ from app.services.council_service import (
     AgentRole,
     DecisionMethod,
     build_council_system_prompt,
+    coerce_council_agent_role,
 )
 
 
@@ -22,6 +23,31 @@ def test_build_council_system_prompt_includes_agent_identity():
     prompt = build_council_system_prompt({"name": "Analyst One", "role": "analyst"})
     assert "Analyst One" in prompt
     assert "analyst" in prompt
+
+
+def test_coerce_council_agent_role_maps_demo_agent_roles():
+    assert coerce_council_agent_role("Revenue Operations") == AgentRole.STRATEGIST
+    assert coerce_council_agent_role("Risk & Compliance") == AgentRole.COMPLIANCE
+    assert coerce_council_agent_role("Support Operations") == AgentRole.ADVOCATE
+    assert coerce_council_agent_role("Data Platform") == AgentRole.VALIDATOR
+    assert coerce_council_agent_role("analyst") == AgentRole.ANALYST
+
+
+@pytest.mark.asyncio
+async def test_generate_opinion_falls_back_with_demo_agent_role():
+    service = AgentCouncilService.__new__(AgentCouncilService)
+    service.model_router = AsyncMock()
+    service.model_router.complete = AsyncMock(side_effect=RuntimeError("llm unavailable"))
+    opinion = await service._generate_opinion(  # noqa: SLF001
+        "Assess vendor risk",
+        ["proceed", "defer"],
+        {"name": "Revenue Ops Agent", "role": "Revenue Operations", "weight": 1.0},
+        {"subtasks": []},
+        0,
+        "org-1",
+    )
+    assert opinion.position == "proceed"
+    assert opinion.agent_role == AgentRole.STRATEGIST
 
 
 def test_resolve_vote_weighted(service: AgentCouncilService):

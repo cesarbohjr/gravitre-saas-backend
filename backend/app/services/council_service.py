@@ -45,6 +45,44 @@ class AgentRole(StrEnum):
     SKEPTIC = "skeptic"
 
 
+def coerce_council_agent_role(raw: str | None) -> AgentRole:
+    """Map persisted agent roles (e.g. demo 'Revenue Operations') to council enum values."""
+    text = (raw or "analyst").strip().lower()
+    if not text:
+        return AgentRole.ANALYST
+    normalized = text.replace("&", " and ").replace("-", " ").replace("_", " ")
+    slug = "_".join(normalized.split())
+    try:
+        return AgentRole(slug)
+    except ValueError:
+        pass
+    if any(token in text for token in ("compliance", "risk", "legal", "policy")):
+        return AgentRole.COMPLIANCE
+    if any(token in text for token in ("skeptic", "critical", "devil")):
+        return AgentRole.SKEPTIC
+    if any(token in text for token in ("validator", "quality", "data platform", "data")):
+        return AgentRole.VALIDATOR
+    if any(token in text for token in ("advocate", "support", "customer")):
+        return AgentRole.ADVOCATE
+    if any(token in text for token in ("strateg", "revenue", "marketing", "analytics")):
+        return AgentRole.STRATEGIST
+    return AgentRole.ANALYST
+
+
+def _persistable_workflow_id(workflow_id: str) -> str | None:
+    raw = (workflow_id or "").strip()
+    if not raw:
+        return None
+    if raw.startswith("swarm:"):
+        raw = raw[6:].strip()
+    try:
+        from uuid import UUID
+
+        return str(UUID(raw))
+    except ValueError:
+        return None
+
+
 class DecisionMethod(StrEnum):
     MAJORITY_VOTE = "majority_vote"
     UNANIMOUS = "unanimous"
@@ -148,7 +186,7 @@ class AgentCouncilService:
         )
         fallback = AgentOpinion(
             agent_name=str(agent.get("name") or "agent"),
-            agent_role=AgentRole(str(agent.get("role") or "analyst")),
+            agent_role=coerce_council_agent_role(str(agent.get("role") or "analyst")),
             position=options[0] if options else "defer",
             confidence=0.55,
             reasoning="Insufficient information; defaulting to first viable option.",
@@ -166,6 +204,7 @@ class AgentCouncilService:
             )
             if response.parsed:
                 parsed = AgentOpinion.model_validate(response.parsed)
+                parsed.agent_role = coerce_council_agent_role(parsed.agent_role.value)
                 parsed.vote_weight = float(agent.get("weight") or parsed.vote_weight or 1.0)
                 return parsed
         except Exception as exc:  # noqa: BLE001
@@ -217,7 +256,7 @@ class AgentCouncilService:
             client.table("agent_councils").insert(
                 {
                     "org_id": org_id,
-                    "workflow_id": session.workflow_id,
+                    "workflow_id": _persistable_workflow_id(session.workflow_id),
                     "run_id": session.run_id,
                     "objective": session.objective,
                     "options": session.options,
