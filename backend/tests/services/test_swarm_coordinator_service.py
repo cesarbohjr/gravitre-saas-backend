@@ -1,8 +1,10 @@
 """STA-119: Multi-agent swarm coordinator."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncio
 import pytest
 
 from app.services.swarm_coordinator_service import (
@@ -199,6 +201,181 @@ async def test_aggregate_swarm_run_uses_council(mock_audit, mock_get_council):
     assert result["finalRecommendation"] == "approve"
     council.start_council.assert_awaited_once()
     mock_audit.assert_called_once()
+
+
+@patch("app.services.swarm_coordinator_service.get_council_service")
+@patch("app.services.swarm_coordinator_service.write_audit_event")
+@pytest.mark.asyncio
+async def test_aggregate_swarm_run_rejects_fresh_aggregating(mock_audit, mock_get_council):
+    swarm = {
+        "id": "swarm-1",
+        "org_id": "org-1",
+        "objective": "Pick vendor",
+        "status": "aggregating",
+        "decision_method": "majority_vote",
+        "created_by": "user-1",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    runs = _table([swarm])
+    client = MagicMock()
+    client.table.side_effect = lambda name: runs if name == "agent_swarm_runs" else _table([])
+
+    with pytest.raises(SwarmCoordinatorError, match="already aggregating"):
+        await aggregate_swarm_run(client, "org-1", "swarm-1")
+
+    mock_get_council.assert_not_called()
+
+
+@patch("app.services.swarm_coordinator_service.get_council_service")
+@patch("app.services.swarm_coordinator_service.write_audit_event")
+@pytest.mark.asyncio
+async def test_aggregate_swarm_run_retries_stale_aggregating(mock_audit, mock_get_council):
+    stale_ts = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
+    swarm = {
+        "id": "swarm-1",
+        "org_id": "org-1",
+        "objective": "Pick vendor",
+        "status": "aggregating",
+        "decision_method": "majority_vote",
+        "created_by": "user-1",
+        "updated_at": stale_ts,
+    }
+    subtasks = [
+        {
+            "id": "sub-1",
+            "swarm_run_id": "swarm-1",
+            "agent_id": "agent-1",
+            "task_prompt": "Pricing",
+            "status": "completed",
+            "sort_order": 0,
+            "result": {"recommendedAction": "approve", "summary": "Good pricing"},
+        }
+    ]
+    runs = _table([swarm])
+    runs.update.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                **swarm,
+                "status": "completed",
+                "final_recommendation": "approve",
+                "final_confidence": 0.9,
+                "aggregate_result": {},
+            }
+        ]
+    )
+    subtasks_table = _table(subtasks)
+
+    council = MagicMock()
+    mock_session = MagicMock()
+    mock_session.id = "council-1"
+    mock_session.final_recommendation = "approve"
+    mock_session.final_confidence = 0.9
+    mock_session.dissenting_opinions = []
+    mock_session.debate_rounds = []
+    council.start_council = AsyncMock(return_value=mock_session)
+    mock_get_council.return_value = council
+
+    client = MagicMock()
+    client.table.side_effect = lambda name: runs if name == "agent_swarm_runs" else subtasks_table
+
+    with patch("app.services.swarm_coordinator_service.get_agent", return_value={"name": "A", "role": "analyst"}):
+        result = await aggregate_swarm_run(client, "org-1", "swarm-1")
+
+    assert result["status"] == "completed"
+    council.start_council.assert_awaited_once()
+
+
+@patch("app.services.swarm_coordinator_service.get_council_service")
+@patch("app.services.swarm_coordinator_service.write_audit_event")
+@pytest.mark.asyncio
+async def test_aggregate_swarm_run_marks_failed_when_council_raises(mock_audit, mock_get_council):
+    swarm = {
+        "id": "swarm-1",
+        "org_id": "org-1",
+        "objective": "Pick vendor",
+        "status": "running",
+        "decision_method": "majority_vote",
+        "created_by": "user-1",
+    }
+    subtasks = [
+        {
+            "id": "sub-1",
+            "swarm_run_id": "swarm-1",
+            "agent_id": "agent-1",
+            "task_prompt": "Pricing",
+            "status": "completed",
+            "sort_order": 0,
+            "result": {"recommendedAction": "approve", "summary": "Good pricing"},
+        }
+    ]
+    runs = _table([swarm])
+    runs.update.return_value.execute.return_value = MagicMock(
+        data=[{**swarm, "status": "failed", "error_message": "council timeout"}]
+    )
+    subtasks_table = _table(subtasks)
+
+    council = MagicMock()
+    council.start_council = AsyncMock(side_effect=RuntimeError("council boom"))
+    mock_get_council.return_value = council
+
+    client = MagicMock()
+    client.table.side_effect = lambda name: runs if name == "agent_swarm_runs" else subtasks_table
+
+    with patch("app.services.swarm_coordinator_service.get_agent", return_value={"name": "A", "role": "analyst"}):
+        with pytest.raises(SwarmCoordinatorError, match="council aggregation failed"):
+            await aggregate_swarm_run(client, "org-1", "swarm-1")
+
+    failed_update = runs.update.call_args_list[-1]
+    assert failed_update[0][0]["status"] == "failed"
+
+
+@patch("app.services.swarm_coordinator_service.get_council_service")
+@patch("app.services.swarm_coordinator_service.write_audit_event")
+@pytest.mark.asyncio
+async def test_aggregate_swarm_run_marks_failed_when_council_times_out(mock_audit, mock_get_council):
+    swarm = {
+        "id": "swarm-1",
+        "org_id": "org-1",
+        "objective": "Pick vendor",
+        "status": "running",
+        "decision_method": "majority_vote",
+        "created_by": "user-1",
+    }
+    subtasks = [
+        {
+            "id": "sub-1",
+            "swarm_run_id": "swarm-1",
+            "agent_id": "agent-1",
+            "task_prompt": "Pricing",
+            "status": "completed",
+            "sort_order": 0,
+            "result": {"recommendedAction": "approve", "summary": "Good pricing"},
+        }
+    ]
+    runs = _table([swarm])
+    runs.update.return_value.execute.return_value = MagicMock(
+        data=[{**swarm, "status": "failed", "error_message": "timed out"}]
+    )
+    subtasks_table = _table(subtasks)
+
+    council = MagicMock()
+
+    async def _slow_council(*args, **kwargs):
+        await asyncio.sleep(999)
+
+    council.start_council = _slow_council
+    mock_get_council.return_value = council
+
+    client = MagicMock()
+    client.table.side_effect = lambda name: runs if name == "agent_swarm_runs" else subtasks_table
+
+    with patch("app.services.swarm_coordinator_service.get_agent", return_value={"name": "A", "role": "analyst"}):
+        with patch(
+            "app.services.swarm_coordinator_service.COUNCIL_AGGREGATE_TIMEOUT_SECONDS",
+            0.01,
+        ):
+            with pytest.raises(SwarmCoordinatorError, match="timed out"):
+                await aggregate_swarm_run(client, "org-1", "swarm-1")
 
 
 @patch("app.services.agent_interrupt_service.request_interrupt")

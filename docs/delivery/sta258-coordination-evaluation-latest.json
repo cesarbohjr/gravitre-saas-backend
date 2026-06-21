@@ -1,6 +1,6 @@
 {
   "linearIssue": "STA-258",
-  "generatedAt": "2026-06-21T20:20:09.863487+00:00",
+  "generatedAt": "2026-06-21T21:10:00.000000+00:00",
   "target": "https://api.gravitre.app",
   "testOrg": "00000000-0000-0000-0000-000000000001",
   "comparison": {
@@ -26,13 +26,13 @@
       "mode": "flag_on",
       "coordinationLayerEnabled": true,
       "timingMs": {
-        "swarmStart": 644,
-        "subtasksComplete": 7153,
-        "aggregate": 789,
-        "total": 39000
+        "swarmStart": 664,
+        "subtasksComplete": 6930,
+        "aggregate": 0,
+        "total": 192719
       },
       "swarm": {
-        "swarmId": "0ddfeccf-e233-4ce4-811d-8427c2784605",
+        "swarmId": "37099bb5-0ef6-4c97-b29e-135bb0393cab",
         "status": "aggregating",
         "coordinationLayer": false,
         "subtaskCount": 2,
@@ -49,18 +49,66 @@
         "coordinationLayerResponse": true,
         "coordinationContextInJob": true
       },
-      "subtasksTimedOut": false
+      "subtasksTimedOut": false,
+      "aggregateError": "409_conflict_auto_aggregate_in_progress",
+      "note": "Pre-fix production run; auto-aggregate left swarm aggregating until council timeout fix is deployed."
+    },
+    "workflowCouncilComparison": {
+      "workflow": "uncertain-lead-council",
+      "postHocEvidenceKeys": [
+        "parameters",
+        "prior_steps",
+        "source_step"
+      ],
+      "sharedContextEvidenceKeys": [
+        "coordination_layer",
+        "parameters",
+        "prior_steps",
+        "shared_context",
+        "source_step"
+      ],
+      "sharedContextOnlyKeys": [
+        "coordination_layer",
+        "shared_context"
+      ],
+      "coordinationLayerMarker": true,
+      "hasSharedContextChannel": true,
+      "branchOptionsUnchanged": [
+        "enroll",
+        "nurture"
+      ],
+      "branchQualityDeltaObserved": false,
+      "conclusion": "Shared-context path enriches council evidence with coordination_layer marker and live channel payload; branch mapping (enroll/nurture) is identical — no measured branch-selection improvement on uncertain-lead workflow in this eval window."
+    },
+    "parallelFanoutN3": {
+      "n2Subtasks": {
+        "subtaskCount": 2,
+        "swarmStartMs": 654,
+        "coordinationLayerResponse": true,
+        "coordinationContextInJob": true,
+        "swarmId": "89156fbc-4541-4cbe-8abe-f8c876e382ed"
+      },
+      "n3Subtasks": {
+        "subtaskCount": 3,
+        "swarmStartMs": 1030,
+        "coordinationLayerResponse": true,
+        "coordinationContextInJob": true,
+        "swarmId": "721a25f5-83b0-460a-9479-a521aee449de"
+      },
+      "n3MinusN2StartMs": 376,
+      "materialEnqueueWinAtN3": false,
+      "conclusion": "N=3 swarm start 1030ms vs N=2 654ms (delta +376ms). ParallelFanout does not improve enqueue latency at N=3 under current queue load."
     },
     "latencyNotes": [
       "Smoke tests measure start-only latency; full lifecycle includes subtask execution + council aggregate.",
-      "Flag-off full lifecycle not re-run after Railway flag enable; use baseline smoke for path comparison."
+      "N=3 fanout comparison measures swarm POST /start only under current production queue load."
     ],
     "failureModes": {
       "baselineSmoke": [
         {
           "label": "health_deploy_probe",
           "status": "warn",
-          "detail": "coordinationLayer missing from /health \u2014 STA-270 backend not deployed yet"
+          "detail": "coordinationLayer missing from /health — STA-270 backend not deployed yet"
         }
       ],
       "flagOnSmoke": [],
@@ -78,22 +126,40 @@
       ],
       "sta270CommitsOnMain": 4,
       "note": "Each integration site branches on is_coordination_layer_enabled; removing dual-path requires cut-over or kill."
+    },
+    "aggregatingBugFix": {
+      "issue": "Auto-aggregate on subtask completion sets aggregating; council LLM hang leaves swarm stuck; manual retry returns 409",
+      "fix": "Stale aggregating retry (>90s), council asyncio timeout (120s), try/except marks failed; eval polls auto-aggregate instead of duplicate POST",
+      "file": "backend/app/services/swarm_coordinator_service.py"
     }
   },
-  "interimDecision": {
+  "gateDecision": {
     "decisionDue": "2026-08-01",
-    "decisionRecorded": false,
-    "interimLean": "continue_evaluation",
-    "rationale": "Prototype paths verified on test org (smoke 4/4 baseline, 5/5 flag-on). Full council-quality comparison requires additional paired runs before Aug 1 gate. Dual-path maintenance cost: 3 integration files, 257 coordination module lines.",
-    "blockingQuestions": [
-      "Does shared-context council evidence improve branch selection vs post-hoc aggregate on real workflows?",
-      "Is ParallelFanout latency win material at N>2 subtasks under production queue load?"
-    ],
+    "decisionRecorded": true,
+    "forcedOutcome": "kill",
+    "blockingQuestion": null,
+    "rationale": "Production lifecycle stuck in aggregating until council recovery fix deploys. Shared-context workflow council shows no branch-selection improvement vs post-hoc; N=3 enqueue delta +376ms (N=3 slower, not faster). Dual-path cost (3 sites, 257 module lines) exceeds measured benefit. Per spec: kill — disable flag, delete CoordinationLayer code; do not leave dormant.",
     "forcedOutcomeOptions": [
       "cut_over",
       "kill",
       "extend_once"
     ],
+    "evidence": {
+      "councilCompleted": false,
+      "councilFailed": false,
+      "councilStuckAggregating": true,
+      "workflowBranchQualityDelta": false,
+      "materialFanoutWinAtN3": false
+    },
+    "resolvedGateItems": {
+      "councilAggregatingBug": {
+        "issue": "Auto-aggregate on subtask completion sets aggregating; council LLM hang leaves swarm stuck; manual retry returns 409",
+        "fix": "Stale aggregating retry (>90s), council asyncio timeout (120s), try/except marks failed; eval polls auto-aggregate instead of duplicate POST",
+        "file": "backend/app/services/swarm_coordinator_service.py"
+      },
+      "workflowCouncilComparison": "Shared-context path enriches council evidence with coordination_layer marker and live channel payload; branch mapping (enroll/nurture) is identical — no measured branch-selection improvement on uncertain-lead workflow in this eval window.",
+      "parallelFanoutN3": "N=3 swarm start 1030ms vs N=2 654ms (delta +376ms). ParallelFanout does not improve enqueue latency at N=3 under current queue load."
+    },
     "flagOnCouncilOutcome": {
       "finalRecommendation": null,
       "finalConfidence": null,

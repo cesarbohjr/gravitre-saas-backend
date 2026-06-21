@@ -5,8 +5,9 @@ When all subtasks finish, results are aggregated through the council pattern.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -31,6 +32,26 @@ SWARM_CANCELLED = "cancelled"
 
 SUBTASK_TERMINAL = {"completed", "failed", "cancelled"}
 MAX_SUBTASKS = 10
+AGGREGATING_STALE_SECONDS = 90
+COUNCIL_AGGREGATE_TIMEOUT_SECONDS = 120
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _aggregating_stale(swarm: dict[str, Any], *, seconds: int = AGGREGATING_STALE_SECONDS) -> bool:
+    if str(swarm.get("status") or "") != SWARM_AGGREGATING:
+        return False
+    updated = _parse_ts(swarm.get("updated_at"))
+    if updated is None:
+        return True
+    return (datetime.now(timezone.utc) - updated).total_seconds() > seconds
 
 
 class SwarmCoordinatorError(Exception):
@@ -378,7 +399,9 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
     if swarm["status"] in {SWARM_COMPLETED, SWARM_CANCELLED}:
         return get_swarm_run(client, org_id, swarm_run_id)
     if swarm["status"] == SWARM_AGGREGATING:
-        raise SwarmCoordinatorError("Swarm is already aggregating", code="CONFLICT")
+        if not _aggregating_stale(swarm):
+            raise SwarmCoordinatorError("Swarm is already aggregating", code="CONFLICT")
+        logger.warning("retrying stale aggregating swarm org_id=%s swarm_run_id=%s", org_id, swarm_run_id)
 
     subtasks = _load_subtasks(client, swarm_run_id)
     if not subtasks:
@@ -435,23 +458,59 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
         "max_rounds": 2,
     }
 
-    if use_coordination:
-        aggregate = CouncilAggregate()
-        evidence = aggregate.build_swarm_evidence(subtasks, shared_context=shared_context)
-        session = await aggregate.start_council(council, evidence=evidence, **council_kwargs)
-    else:
-        evidence = {
-            "subtasks": [
+    try:
+        if use_coordination:
+            aggregate = CouncilAggregate()
+            evidence = aggregate.build_swarm_evidence(subtasks, shared_context=shared_context)
+            council_call = aggregate.start_council(council, evidence=evidence, **council_kwargs)
+        else:
+            evidence = {
+                "subtasks": [
+                    {
+                        "agentId": str(row["agent_id"]),
+                        "task": row["task_prompt"],
+                        "result": row.get("result"),
+                        "status": row["status"],
+                    }
+                    for row in subtasks
+                ]
+            }
+            council_call = council.start_council(evidence=evidence, **council_kwargs)
+        session = await asyncio.wait_for(council_call, timeout=COUNCIL_AGGREGATE_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError as exc:
+        logger.warning("swarm council aggregate timed out swarm_run_id=%s", swarm_run_id)
+        client.table("agent_swarm_runs").update(
+            {
+                "status": SWARM_FAILED,
+                "error_message": f"Council aggregation timed out after {COUNCIL_AGGREGATE_TIMEOUT_SECONDS}s",
+                "updated_at": _now(),
+                "completed_at": _now(),
+            }
+        ).eq("id", swarm_run_id).execute()
+        raise SwarmCoordinatorError(
+            f"Swarm council aggregation timed out after {COUNCIL_AGGREGATE_TIMEOUT_SECONDS}s",
+            code="SWARM_ERROR",
+        ) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("swarm council aggregate failed swarm_run_id=%s error=%s", swarm_run_id, str(exc))
+        failed = (
+            client.table("agent_swarm_runs")
+            .update(
                 {
-                    "agentId": str(row["agent_id"]),
-                    "task": row["task_prompt"],
-                    "result": row.get("result"),
-                    "status": row["status"],
+                    "status": SWARM_FAILED,
+                    "error_message": str(exc)[:500],
+                    "updated_at": _now(),
+                    "completed_at": _now(),
                 }
-                for row in subtasks
-            ]
-        }
-        session = await council.start_council(evidence=evidence, **council_kwargs)
+            )
+            .eq("id", swarm_run_id)
+            .execute()
+        )
+        row = dict((failed.data or [swarm])[0])
+        raise SwarmCoordinatorError(
+            f"Swarm council aggregation failed: {exc}",
+            code="SWARM_ERROR",
+        ) from exc
     aggregate_result = {
         "councilSessionId": session.id,
         "finalRecommendation": session.final_recommendation,
