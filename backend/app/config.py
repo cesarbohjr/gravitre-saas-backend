@@ -227,10 +227,6 @@ class Settings(BaseSettings):
     # STA-271 Phase C: when false, stop writing legacy workflow_defs/workflow_runs (contract tables only).
     workflow_legacy_writes: bool = True
 
-    # STA-270 Migration 8/8: CoordinationLayer prototype — internal test orgs only (no customer UI).
-    coordination_layer_enabled: bool = False
-    coordination_layer_allowed_org_ids: str = "00000000-0000-0000-0000-000000000001"
-
     # Phase 6: kill switches (default off)
     disable_execute: bool = False
     disable_connectors: bool = False

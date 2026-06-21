@@ -198,26 +198,20 @@ def root() -> dict:
 def health() -> dict:
     """Unauthenticated liveness probe for Railway / deployment monitors."""
     ai_disabled = False
-    coordination_layer: dict[str, int | bool] | None = None
     try:
         from app.config import get_settings
-        from app.coordination.flags import coordination_layer_health
 
         settings = get_settings()
         ai_disabled = bool(settings.disable_ai)
-        coordination_layer = coordination_layer_health(settings)
     except Exception:
         # Health must succeed even when Settings cannot load (misconfigured env).
         pass
-    payload: dict = {
+    return {
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": app.version,
         "ai_disabled": ai_disabled,
     }
-    if coordination_layer is not None:
-        payload["coordinationLayer"] = coordination_layer
-    return payload
 
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

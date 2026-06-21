@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -284,20 +284,7 @@ async def start_swarm(
     swarm = dict(swarm_insert.data[0])
     swarm_id = str(swarm["id"])
 
-    from app.config import get_settings
-    from app.coordination import ParallelFanout, is_coordination_layer_enabled
-
-    active_settings = settings or get_settings()
-    use_coordination = is_coordination_layer_enabled(active_settings, org_id)
-    fanout = ParallelFanout() if use_coordination else None
-    coordination_context = (
-        ParallelFanout.coordination_payload(objective=objective.strip(), swarm_run_id=swarm_id)
-        if use_coordination
-        else None
-    )
-
     serialized_subtasks: list[dict[str, Any]] = []
-    enqueue_items: list[tuple[str, Any]] = []
 
     for idx, spec in enumerate(subtasks):
         subtask_row = {
@@ -323,8 +310,6 @@ async def start_swarm(
             "objective": objective.strip(),
             "parentAgentId": parent_agent_id,
         }
-        if coordination_context:
-            job_payload["coordinationContext"] = coordination_context
 
         job = agent_jobs_mod.create_job(
             client,
@@ -346,20 +331,10 @@ async def start_swarm(
 
         from app.workers.queue import enqueue_agent_execution_job
 
-        if fanout is not None:
-
-            async def _enqueue(jid: str = job_id) -> None:
-                await enqueue_agent_execution_job(jid)
-
-            enqueue_items.append((job_id, _enqueue))
-        else:
-            try:
-                await enqueue_agent_execution_job(job_id)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("swarm subtask enqueue failed job_id=%s error=%s", job_id, str(exc))
-
-    if fanout is not None and enqueue_items:
-        await fanout.fanout(enqueue_items)
+        try:
+            await enqueue_agent_execution_job(job_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("swarm subtask enqueue failed job_id=%s error=%s", job_id, str(exc))
 
     write_audit_event(
         client,
@@ -371,8 +346,6 @@ async def start_swarm(
         metadata={"subtaskCount": len(subtasks), "parentAgentId": parent_agent_id},
     )
     result = _serialize_swarm(swarm, serialized_subtasks)
-    if use_coordination:
-        result["coordinationLayer"] = True
     return result
 
 
@@ -434,19 +407,19 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
     options = _options_from_subtask_results(subtasks)
     agents = _council_agents_from_subtasks(client, org_id, subtasks)
 
-    from app.config import get_settings
-    from app.coordination import CouncilAggregate, is_coordination_layer_enabled
-
-    settings = get_settings()
-    use_coordination = is_coordination_layer_enabled(settings, org_id)
-    shared_context = None
-    if use_coordination:
-        ctx_payload = (swarm.get("aggregate_result") or {}).get("coordinationContext")
-        if isinstance(ctx_payload, dict):
-            shared_context = ctx_payload.get("channel") or ctx_payload
-
     council = get_council_service()
     decision = _decision_method(str(swarm.get("decision_method")))
+    evidence = {
+        "subtasks": [
+            {
+                "agentId": str(row["agent_id"]),
+                "task": row["task_prompt"],
+                "result": row.get("result"),
+                "status": row["status"],
+            }
+            for row in subtasks
+        ]
+    }
     council_kwargs = {
         "org_id": org_id,
         "workflow_id": f"swarm:{swarm_run_id}",
@@ -459,23 +432,7 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
     }
 
     try:
-        if use_coordination:
-            aggregate = CouncilAggregate()
-            evidence = aggregate.build_swarm_evidence(subtasks, shared_context=shared_context)
-            council_call = aggregate.start_council(council, evidence=evidence, **council_kwargs)
-        else:
-            evidence = {
-                "subtasks": [
-                    {
-                        "agentId": str(row["agent_id"]),
-                        "task": row["task_prompt"],
-                        "result": row.get("result"),
-                        "status": row["status"],
-                    }
-                    for row in subtasks
-                ]
-            }
-            council_call = council.start_council(evidence=evidence, **council_kwargs)
+        council_call = council.start_council(evidence=evidence, **council_kwargs)
         session = await asyncio.wait_for(council_call, timeout=COUNCIL_AGGREGATE_TIMEOUT_SECONDS)
     except asyncio.TimeoutError as exc:
         logger.warning("swarm council aggregate timed out swarm_run_id=%s", swarm_run_id)
@@ -688,7 +645,6 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
         )
 
     intelligence = AgentIntelligence(settings=settings)
-    from app.coordination import SequentialContext, is_coordination_layer_enabled
 
     task_parameters: dict[str, Any] = {
         "surface": "swarm",
@@ -701,10 +657,6 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
         },
         "include_task_history": False,
     }
-    if is_coordination_layer_enabled(settings, org_id):
-        seq_ctx = SequentialContext.from_job_payload(payload)
-        if seq_ctx:
-            task_parameters["coordination_channel"] = seq_ctx.to_channel_payload()
 
     try:
         agent_result = await intelligence.execute_task(
