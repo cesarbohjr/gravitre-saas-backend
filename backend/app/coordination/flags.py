@@ -19,7 +19,8 @@ def parse_allowed_org_ids(raw: str) -> frozenset[str]:
 
 def is_coordination_layer_enabled(settings: Settings, org_id: str) -> bool:
     """True when env flag is on and org is in the allowlist."""
-    if not settings.coordination_layer_enabled:
+    if not getattr(settings, "coordination_layer_enabled", False):
         return False
-    allowed = parse_allowed_org_ids(settings.coordination_layer_allowed_org_ids)
+    raw = getattr(settings, "coordination_layer_allowed_org_ids", "")
+    allowed = parse_allowed_org_ids(raw if isinstance(raw, str) else "")
     return org_id in allowed
