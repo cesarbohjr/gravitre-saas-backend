@@ -1,0 +1,103 @@
+{
+  "linearIssue": "STA-258",
+  "generatedAt": "2026-06-21T20:20:09.863487+00:00",
+  "target": "https://api.gravitre.app",
+  "testOrg": "00000000-0000-0000-0000-000000000001",
+  "comparison": {
+    "baselineSmoke": {
+      "coordinationLayerEnabled": false,
+      "summary": {
+        "pass": 4,
+        "fail": 0,
+        "total": 5
+      },
+      "path": "2A sequential enqueue, no coordinationLayer marker"
+    },
+    "flagOnSmoke": {
+      "coordinationLayerEnabled": true,
+      "summary": {
+        "pass": 5,
+        "fail": 0,
+        "total": 5
+      },
+      "path": "ParallelFanout + coordinationContext in job payload"
+    },
+    "fullLifecycleCurrent": {
+      "mode": "flag_on",
+      "coordinationLayerEnabled": true,
+      "timingMs": {
+        "swarmStart": 644,
+        "subtasksComplete": 7153,
+        "aggregate": 789,
+        "total": 39000
+      },
+      "swarm": {
+        "swarmId": "0ddfeccf-e233-4ce4-811d-8427c2784605",
+        "status": "aggregating",
+        "coordinationLayer": false,
+        "subtaskCount": 2,
+        "subtaskStatuses": [
+          "completed",
+          "completed"
+        ],
+        "finalRecommendation": null,
+        "finalConfidence": null,
+        "councilSessionId": null,
+        "executionVerified": false
+      },
+      "pathMarkers": {
+        "coordinationLayerResponse": true,
+        "coordinationContextInJob": true
+      },
+      "subtasksTimedOut": false
+    },
+    "latencyNotes": [
+      "Smoke tests measure start-only latency; full lifecycle includes subtask execution + council aggregate.",
+      "Flag-off full lifecycle not re-run after Railway flag enable; use baseline smoke for path comparison."
+    ],
+    "failureModes": {
+      "baselineSmoke": [
+        {
+          "label": "health_deploy_probe",
+          "status": "warn",
+          "detail": "coordinationLayer missing from /health \u2014 STA-270 backend not deployed yet"
+        }
+      ],
+      "flagOnSmoke": [],
+      "fullLifecycle": "aggregating"
+    },
+    "maintenanceCost": {
+      "coordinationModuleFiles": 5,
+      "coordinationModuleLines": 257,
+      "coordinationTestFiles": 1,
+      "dualPathIntegrationSites": 3,
+      "dualPathFiles": [
+        "backend/app/services/swarm_coordinator_service.py",
+        "backend/app/services/council_workflow_service.py",
+        "backend/app/services/handoff_service.py"
+      ],
+      "sta270CommitsOnMain": 4,
+      "note": "Each integration site branches on is_coordination_layer_enabled; removing dual-path requires cut-over or kill."
+    }
+  },
+  "interimDecision": {
+    "decisionDue": "2026-08-01",
+    "decisionRecorded": false,
+    "interimLean": "continue_evaluation",
+    "rationale": "Prototype paths verified on test org (smoke 4/4 baseline, 5/5 flag-on). Full council-quality comparison requires additional paired runs before Aug 1 gate. Dual-path maintenance cost: 3 integration files, 257 coordination module lines.",
+    "blockingQuestions": [
+      "Does shared-context council evidence improve branch selection vs post-hoc aggregate on real workflows?",
+      "Is ParallelFanout latency win material at N>2 subtasks under production queue load?"
+    ],
+    "forcedOutcomeOptions": [
+      "cut_over",
+      "kill",
+      "extend_once"
+    ],
+    "flagOnCouncilOutcome": {
+      "finalRecommendation": null,
+      "finalConfidence": null,
+      "executionVerified": false
+    }
+  }
+}

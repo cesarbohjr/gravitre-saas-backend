@@ -32,6 +32,8 @@
     "coordination:railway-on": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-coordination-layer.ps1",
     "coordination:railway-off": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-coordination-layer.ps1 -Disable",
     "coordination:paired-eval": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-sta270-paired-evaluation.ps1",
+    "eval:sta258-coordination": "python scripts/evaluate-sta258-coordination-layer.py",
+    "eval:sta258-coordination:report": "python scripts/evaluate-sta258-coordination-layer.py --json docs/delivery/sta258-coordination-evaluation-latest.json",
     "workflow:c6-railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-workflow-legacy-writes-off.ps1",
     "rag:cross-encoder:check": "python scripts/check-rag-cross-encoder-prod.py",
     "rag:cross-encoder:report": "python scripts/check-rag-cross-encoder-prod.py --json docs/delivery/rag-cross-encoder-prod-latest.json",
