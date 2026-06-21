@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-06-21T22:10:53.941489+00:00",
+  "target": "https://api.gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "swarmId": "1485a650-6143-4056-9872-37dd0192c966",
+  "status": "completed",
+  "finalRecommendation": "CS handoff JSON:\n{\n  \"summary\": \"Acme Corp currently has no active vendor integrations (connectorCount: 0, connectedIntegrations: []). Two critical alerts are open: (1) Clio connector authentication is pending, which will likely cause workf",
+  "finalConfidence": 1,
+  "councilSessionId": "1485a650-6143-4056-9872-37dd0192c966:Swarm council lifecycle ",
+  "errorMessage": null,
+  "timingMs": {
+    "total": 28398
+  },
+  "pass": true
+}

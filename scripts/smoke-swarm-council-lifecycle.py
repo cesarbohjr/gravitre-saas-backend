@@ -111,13 +111,36 @@ def _pick_agents(client, org_id: str, *, count: int = 2) -> tuple[str, list[str]
     return parent_id, sub_ids
 
 
+def _org_actor(env: dict[str, str], org_id: str) -> tuple[str, str]:
+    client = _supabase_client(env)
+    members = (
+        client.table("organization_members")
+        .select("user_id, role")
+        .eq("org_id", org_id)
+        .eq("role", "admin")
+        .limit(1)
+        .execute()
+    )
+    if not members.data:
+        members = (
+            client.table("organization_members")
+            .select("user_id, role")
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+    if not members.data:
+        raise SystemExit(f"No organization_members row found for org {org_id}")
+    user_id = str(members.data[0]["user_id"])
+    users = client.auth.admin.get_user_by_id(user_id)
+    email = (users.user.email if users and users.user else None) or f"{user_id}@gravitre.local"
+    return user_id, email
+
+
 def run_smoke() -> dict:
     env = _load_env()
-    user_id = env.get("SMOKE_USER_ID") or env.get("PLATFORM_ADMIN_USER_ID") or ""
-    email = env.get("SMOKE_USER_EMAIL") or env.get("PLATFORM_ADMIN_EMAIL") or "admin@example.com"
-    if not user_id:
-        raise SystemExit("SMOKE_USER_ID or PLATFORM_ADMIN_USER_ID required in env")
     org_id = TEST_ORG
+    user_id, email = _org_actor(env, org_id)
     token = _mint_token(env, user_id, email)
     client = _supabase_client(env)
     parent_id, sub_ids = _pick_agents(client, org_id, count=2)
