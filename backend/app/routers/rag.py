@@ -18,8 +18,7 @@ from app.billing.service import (
 )
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
-from app.rag.embedding import get_embedding
-from app.rag.retrieval import search_chunks
+from app.services.unified_retrieval_service import get_unified_retrieval_service
 
 logger = get_logger(__name__)
 
@@ -80,34 +79,19 @@ async def retrieve(
     query_id = str(uuid.uuid4())
     start = time.perf_counter()
 
+    retrieval = get_unified_retrieval_service()
     try:
-        embedding = get_embedding(body.query, settings)
-    except Exception as e:
-        logger.warning("rag_embedding_failure request_id=%s", request_id_ctx.get(), exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Retrieval temporarily unavailable",
-        ) from e
-
-    from supabase import create_client
-
-    sb = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    department_id = str(body.department_id) if body.department_id else None
-    agent_id = str(body.agent_id) if body.agent_id else None
-    if agent_id and not department_id:
-        department_id, agent_id = resolve_department_id_for_agent(sb, org_id, agent_id)
-
-    try:
-        rows = search_chunks(
-            settings=settings,
+        rows, _metrics = await retrieval.retrieve_knowledge_rows(
             org_id=org_id,
-            query_embedding=embedding,
+            query=body.query,
             top_k=body.top_k,
+            environment_name=environment_name,
+            agent_id=str(body.agent_id) if body.agent_id else None,
+            department_id=str(body.department_id) if body.department_id else None,
             source_id=str(body.source_id) if body.source_id else None,
             document_id=str(body.document_id) if body.document_id else None,
-            environment_name=environment_name,
-            department_id=department_id,
-            agent_id=agent_id,
+            min_score=body.min_score,
+            scope="agent" if body.agent_id else "organization",
         )
     except Exception as e:
         logger.warning("rag_search_failure request_id=%s", request_id_ctx.get(), exc_info=True)
@@ -115,9 +99,6 @@ async def retrieve(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Retrieval temporarily unavailable",
         ) from e
-
-    if body.min_score is not None:
-        rows = [r for r in rows if (r.get("score") or 0) >= body.min_score]
 
     try:
         from supabase import create_client

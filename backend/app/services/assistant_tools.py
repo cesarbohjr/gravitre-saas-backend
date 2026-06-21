@@ -431,6 +431,9 @@ def tool_create_workflow(
         if not result.data:
             return {"error": "workflow create failed"}
         workflow_id = str(result.data[0]["id"])
+        from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
+
+        mirror_legacy_workflow_row_to_contract(client, dict(result.data[0]))
         return {
             "id": workflow_id,
             "name": name,

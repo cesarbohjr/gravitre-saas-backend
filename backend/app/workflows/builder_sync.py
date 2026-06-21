@@ -15,6 +15,11 @@ from app.workflows.repository import (
     set_active_workflow_version,
 )
 from app.workflows.schema import validate_definition
+from app.workflows.schema_sync import (
+    contract_edges_from_builder,
+    contract_nodes_from_builder,
+    sync_legacy_workflow_to_contract,
+)
 
 
 def _is_uuid(value: str) -> bool:
@@ -383,5 +388,29 @@ def sync_builder_graph(
         environment_name=environment_name,
         version_id=str(version_row["id"]),
         updated_by=created_by,
+    )
+    wf_meta = (
+        client.table("workflow_defs")
+        .select("name, description, status, config, version, created_by")
+        .eq("id", workflow_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    meta = dict(wf_meta.data[0]) if wf_meta.data else {}
+    sync_legacy_workflow_to_contract(
+        client,
+        workflow_id=workflow_id,
+        org_id=org_id,
+        name=str(meta.get("name") or "Workflow"),
+        description=meta.get("description"),
+        status=meta.get("status"),
+        definition=definition,
+        config=meta.get("config") if isinstance(meta.get("config"), dict) else {},
+        environment_name=environment_name,
+        created_by=str(meta["created_by"]) if meta.get("created_by") else created_by,
+        version=str(meta.get("version")) if meta.get("version") else None,
+        nodes=contract_nodes_from_builder(stored_nodes),
+        edges=contract_edges_from_builder(stored_edges),
     )
     return stored_nodes, stored_edges, definition

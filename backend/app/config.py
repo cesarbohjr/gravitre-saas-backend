@@ -224,6 +224,9 @@ class Settings(BaseSettings):
     # Deployment region for RLS enforcement (us|eu). Set per regional Supabase/API deployment.
     deployment_data_region: str = "us"
 
+    # STA-271 Phase C: when false, stop writing legacy workflow_defs/workflow_runs (contract tables only).
+    workflow_legacy_writes: bool = True
+
     # Phase 6: kill switches (default off)
     disable_execute: bool = False
     disable_connectors: bool = False

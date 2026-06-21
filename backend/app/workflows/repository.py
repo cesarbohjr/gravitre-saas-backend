@@ -9,6 +9,7 @@ from supabase import Client, create_client
 
 from app.config import Settings
 from app.workflows.audit import write_audit_event
+from app.workflows.schema_sync import contract_row_to_legacy_def, mirror_legacy_run_to_contract
 from app.workflows.constants import (
     AUDIT_ACTION_DRY_RUN_COMPLETED,
     AUDIT_ACTION_DRY_RUN_STARTED,
@@ -35,6 +36,16 @@ def get_supabase_client(settings: Settings) -> Client:
 
 
 def get_workflow_def(client: Client, org_id: str, workflow_id: str) -> dict | None:
+    contract = (
+        client.table("workflows")
+        .select("*")
+        .eq("id", workflow_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if contract.data:
+        return contract_row_to_legacy_def(dict(contract.data[0]))
     r = (
         client.table("workflow_defs")
         .select("*")
@@ -49,11 +60,28 @@ def get_workflow_def(client: Client, org_id: str, workflow_id: str) -> dict | No
 
 
 def list_workflows(client: Client, org_id: str) -> list[dict]:
+    contract_rows: list[dict] = []
+    try:
+        contract_result = (
+            client.table("workflows")
+            .select("id, name, description, status, version, updated_at, created_at")
+            .eq("org_id", org_id)
+            .order("updated_at", desc=True)
+            .execute()
+        )
+        contract_rows = [contract_row_to_legacy_def(dict(row)) for row in (contract_result.data or [])]
+    except Exception as exc:
+        message = str(exc).lower()
+        if "42703" not in message and not ("column" in message and "does not exist" in message):
+            raise
+
+    contract_ids = {str(row.get("id")) for row in contract_rows if row.get("id")}
     base_columns = (
         "id, name, description, status, version, schema_version, "
         "run_count, success_rate, last_run_at, updated_at"
     )
     extended_columns = f"{base_columns}, goal, stage, next_run_at"
+    legacy_rows: list[dict] = []
     for columns in (extended_columns, base_columns):
         try:
             r = (
@@ -63,13 +91,20 @@ def list_workflows(client: Client, org_id: str) -> list[dict]:
                 .order("updated_at", desc=True)
                 .execute()
             )
-            return list(r.data) if r.data else []
+            legacy_rows = list(r.data) if r.data else []
+            break
         except Exception as exc:
             message = str(exc).lower()
             if "42703" in message or ("column" in message and "does not exist" in message):
                 continue
             raise
-    return []
+
+    merged = list(contract_rows)
+    for row in legacy_rows:
+        if str(row.get("id")) not in contract_ids:
+            merged.append(dict(row))
+    merged.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+    return merged
 
 
 def list_workflow_versions(
@@ -246,7 +281,9 @@ def create_run(
     r = client.table("workflow_runs").insert(row).execute()
     if not r.data or len(r.data) == 0:
         raise RuntimeError("workflow_runs insert returned no row")
-    return dict(r.data[0])
+    created = dict(r.data[0])
+    mirror_legacy_run_to_contract(client, str(created["id"]))
+    return created
 
 
 def update_run(
@@ -268,6 +305,7 @@ def update_run(
     if parameters is not None:
         payload["parameters"] = parameters
     client.table("workflow_runs").update(payload).eq("id", run_id).execute()
+    mirror_legacy_run_to_contract(client, run_id)
 
 
 def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> dict[str, Any]:
@@ -290,6 +328,8 @@ def try_mark_run_running(client: Client, run_id: str, org_id: str) -> bool:
         .eq("approval_status", "pending_approval")
         .execute()
     )
+    if r.data:
+        mirror_legacy_run_to_contract(client, run_id)
     return bool(r.data)
 
 
@@ -337,7 +377,9 @@ def create_execute_run(
     r = client.table("workflow_runs").insert(row).execute()
     if not r.data or len(r.data) == 0:
         raise RuntimeError("workflow_runs insert returned no row")
-    return dict(r.data[0])
+    created = dict(r.data[0])
+    mirror_legacy_run_to_contract(client, str(created["id"]))
+    return created
 
 
 def insert_run_approval(

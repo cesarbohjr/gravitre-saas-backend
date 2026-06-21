@@ -23,11 +23,12 @@ from app.services.tool_service import (
     params_for_step,
     tool_context_from_step,
 )
-from app.rag.department import resolve_department_id_for_agent
-from app.rag.embedding import get_embedding
-from app.rag.retrieval import search_chunks
-from app.workflows.constants import OUTPUT_SNAPSHOT_MAX_BYTES
 from app.services.handoff_service import execute_agent_step_with_handoff
+from app.services.unified_retrieval_service import (
+    be10_rows_to_workflow_chunks,
+    get_unified_retrieval_service,
+)
+from app.workflows.constants import OUTPUT_SNAPSHOT_MAX_BYTES
 from app.workflows.registry import StepContext, StepHandler, register_handler
 
 
@@ -46,7 +47,7 @@ def _rag_retrieve(
     environment_name: str = "default",
     client: Any | None = None,
 ) -> dict[str, Any]:
-    """Call BE-10 retrieval (read-only). Returns output for output_snapshot; raises on failure."""
+    """Call unified retrieval (read-only). Returns output for output_snapshot; raises on failure."""
     query_key = config.get("query_input_key", "query")
     query = parameters.get(query_key)
     if not isinstance(query, str) or not query.strip():
@@ -54,37 +55,29 @@ def _rag_retrieve(
     top_k = min(int(config.get("top_k", 10)), 50)
     if top_k < 1:
         top_k = 10
-    embedding = get_embedding(query.strip(), settings)
-    department_id = config.get("department_id")
-    agent_id = config.get("agent_id")
-    if client and agent_id and not department_id:
-        department_id, agent_id = resolve_department_id_for_agent(
-            client, org_id, str(agent_id)
+    agent_id = str(config.get("agent_id")) if config.get("agent_id") else None
+    department_id = str(config.get("department_id")) if config.get("department_id") else None
+    source_id = str(config.get("source_id")) if config.get("source_id") else None
+
+    async def _run() -> list[dict[str, Any]]:
+        rows, _metrics = await get_unified_retrieval_service().retrieve_knowledge_rows(
+            org_id=org_id,
+            query=query.strip(),
+            top_k=top_k,
+            environment_name=environment_name,
+            agent_id=agent_id,
+            department_id=department_id,
+            source_id=source_id,
+            scope="agent" if agent_id else "organization",
         )
-    rows = search_chunks(
-        settings=settings,
-        org_id=org_id,
-        query_embedding=embedding,
-        top_k=top_k,
-        source_id=config.get("source_id"),
-        document_id=None,
-        environment_name=environment_name,
-        department_id=str(department_id) if department_id else None,
-        agent_id=str(agent_id) if agent_id else None,
-    )
-    chunks = [
-        {
-            "id": str(r["chunk_id"]),
-            "text": r["content"],
-            "source_id": str(r["source_id"]),
-            "source_title": r.get("source_title") or "",
-            "document_id": str(r["document_id"]),
-            "document_title": r.get("document_title"),
-            "chunk_index": r["chunk_index"],
-            "score": round(float(r["score"]), 6),
-        }
-        for r in rows
-    ]
+        return rows
+
+    try:
+        rows = asyncio.run(_run())
+    except Exception as exc:
+        raise ValueError(f"rag_retrieve failed: {exc}") from exc
+
+    chunks = be10_rows_to_workflow_chunks(rows)
     import uuid
     output = {"query_id": str(uuid.uuid4()), "chunks": chunks, "total": len(chunks)}
     return _truncate_output_snapshot(output)

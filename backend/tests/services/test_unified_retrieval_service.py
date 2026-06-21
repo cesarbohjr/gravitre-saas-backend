@@ -70,3 +70,52 @@ async def test_unified_retrieval_respects_scopes():
     rag.retrieve_chunks.assert_not_awaited()
     assert bundle.rag_sources == []
     assert bundle.org_context == {}
+
+
+@pytest.mark.asyncio
+async def test_retrieve_knowledge_rows_maps_be10_shape():
+    rag = MagicMock()
+    rag.retrieve_hybrid_rows = AsyncMock(
+        return_value=(
+            [
+                {
+                    "chunk_id": "c1",
+                    "content": "Policy text",
+                    "source_id": "src-1",
+                    "source_title": "HR",
+                    "document_id": "doc-1",
+                    "document_title": "Handbook",
+                    "chunk_index": 2,
+                    "score": 0.91,
+                }
+            ],
+            {"reranked": 1},
+        )
+    )
+    service = UnifiedRetrievalService(settings=SimpleNamespace(rag_top_k=5), rag_service=rag)
+
+    rows, metrics = await service.retrieve_knowledge_rows(
+        org_id="org-1",
+        query="refund policy",
+        top_k=5,
+        environment_name="production",
+        agent_id="agent-1",
+        min_score=0.5,
+    )
+
+    rag.retrieve_hybrid_rows.assert_awaited_once()
+    assert metrics["reranked"] == 1
+    assert rows[0]["chunk_id"] == "c1"
+    assert rows[0]["content"] == "Policy text"
+    assert rows[0]["source_id"] == "src-1"
+    assert rows[0]["chunk_index"] == 2
+
+
+def test_hybrid_row_to_be10_row_defaults_missing_metadata():
+    from app.services.unified_retrieval_service import hybrid_row_to_be10_row
+
+    row = hybrid_row_to_be10_row({"id": "abc", "content": "hello", "score": 0.5, "title": "Doc"})
+    assert row["chunk_id"] == "abc"
+    assert row["source_title"] == "Doc"
+    assert row["source_id"] == ""
+    assert row["chunk_index"] == 0

@@ -79,17 +79,16 @@ class RAGService:
         )
         return [Chunk(id=f"{doc['id']}:{i}", content=value, score=1.0, source=document.title) for i, value in enumerate(chunks)]
 
-    async def retrieve_chunks(
+    async def retrieve_hybrid_rows(
         self,
         org_id: str,
         query: str,
         scope: str = "organization",
         top_k: int = 8,
         filters: dict | None = None,
-        include_sources: bool = True,
         agent_id: str | None = None,
-    ) -> tuple[list[Chunk], dict[str, Any]]:
-        """Hybrid retrieval without LLM answer synthesis (for agent/orchestrator context)."""
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Hybrid retrieval rows with BE-10 metadata preserved for API/workflow callers."""
         filters = dict(filters or {})
         if agent_id and not filters.get("agent_id"):
             filters["agent_id"] = agent_id
@@ -115,20 +114,12 @@ class RAGService:
         except EmbeddingDimensionMismatchError as exc:
             logger.warning("rag dimension mismatch org_id=%s error=%s", org_id, str(exc))
             keyword_rows = self._keyword_search(org_id, query, top_k=top_k, environment=environment)
-            chunks = [
-                Chunk(
-                    id=str(row.get("id")),
-                    content=str(row.get("content") or ""),
-                    score=float(row.get("score") or 0.0),
-                    source=str(row.get("title") or "") if include_sources else None,
-                )
-                for row in keyword_rows[:top_k]
-            ]
-            return chunks, {
+            rows = [normalize_chunk_row(row) for row in keyword_rows[:top_k]]
+            return rows, {
                 "top_k": top_k,
                 "semantic_candidates": 0,
                 "keyword_candidates": len(keyword_rows),
-                "reranked": len(chunks),
+                "reranked": len(rows),
                 "embedding_method": "keyword_fallback_dimension_mismatch",
                 "fallback": "voyage_dimension_mismatch",
             }
@@ -182,15 +173,6 @@ class RAGService:
             len(merged),
             cross_encoder_enabled(self.settings),
         )
-        chunks = [
-            Chunk(
-                id=str(row.get("id")),
-                content=str(row.get("content") or ""),
-                score=float(row.get("score") or 0.0),
-                source=str(row.get("title") or "") if include_sources else None,
-            )
-            for row in reranked
-        ]
         metrics = {
             "top_k": top_k,
             "semantic_candidates": len(semantic_rows),
@@ -202,6 +184,38 @@ class RAGService:
             "cross_encoder_enabled": cross_encoder_enabled(self.settings),
             "rerank_threshold": rerank_score_threshold(self.settings),
         }
+        return reranked, metrics
+
+    async def retrieve_chunks(
+        self,
+        org_id: str,
+        query: str,
+        scope: str = "organization",
+        top_k: int = 8,
+        filters: dict | None = None,
+        include_sources: bool = True,
+        agent_id: str | None = None,
+    ) -> tuple[list[Chunk], dict[str, Any]]:
+        """Hybrid retrieval without LLM answer synthesis (for agent/orchestrator context)."""
+        rows, metrics = await self.retrieve_hybrid_rows(
+            org_id,
+            query,
+            scope=scope,
+            top_k=top_k,
+            filters=filters,
+            agent_id=agent_id,
+        )
+        chunks = [
+            Chunk(
+                id=str(row.get("id") or row.get("chunk_id") or ""),
+                content=str(row.get("content") or ""),
+                score=float(row.get("score") or 0.0),
+                source=str(row.get("title") or row.get("source_title") or "")
+                if include_sources
+                else None,
+            )
+            for row in rows
+        ]
         return chunks, metrics
 
     async def query(
@@ -298,12 +312,17 @@ class RAGService:
             title_map = {str(doc["id"]): str(doc.get("title") or "") for doc in (doc_resp.data or [])}
         rows = []
         for row in resp.data or []:
+            document_id = row.get("document_id")
             rows.append(
                 {
                     "id": row.get("id"),
+                    "chunk_id": row.get("id"),
                     "content": row.get("content"),
                     "score": 0.4,
-                    "title": title_map.get(str(row.get("document_id")), ""),
+                    "title": title_map.get(str(document_id), ""),
+                    "document_id": document_id,
+                    "document_title": title_map.get(str(document_id), ""),
+                    "chunk_index": row.get("chunk_index") or 0,
                 }
             )
         return rows

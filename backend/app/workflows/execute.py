@@ -3,6 +3,9 @@
 Graph runs delegate to ``execution_engine.execute_workflow_graph``; linear step lists
 use the constrained handler registry in this module. Do not add alternate graph runtimes
 without updating UNIVERSAL_INTELLIGENCE_LAYER_SPEC.md Decision 1.
+
+DB-backed workflows without a snapshot graph are compiled via
+``workflows.definition_resolver.resolve_executable_definition`` before entry here.
 """
 from __future__ import annotations
 

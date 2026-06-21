@@ -412,6 +412,9 @@ class MesonService:
             created = client.table("workflow_defs").insert(row).execute()
             if created.data:
                 workflow_id = str(created.data[0]["id"])
+                from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
+
+                mirror_legacy_workflow_row_to_contract(client, dict(created.data[0]))
                 write_audit_event(
                     client,
                     org_id=org_id,

@@ -106,6 +106,10 @@ from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
 from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
 from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
+from app.workflows.schema_sync import (
+    mirror_legacy_workflow_row_to_contract,
+    sync_contract_workflow_to_legacy,
+)
 from app.workflows.cron import compute_next_run_at
 from app.services.workflow_schedule_service import dispatch_org_workflow_schedules
 from app.workflows.schema import (
@@ -3460,6 +3464,11 @@ async def create_workflow_from_goal(
     if not created.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow create failed")
     workflow_id = str(created.data[0]["id"])
+    mirror_legacy_workflow_row_to_contract(
+        client,
+        dict(created.data[0]),
+        environment_name=environment_name,
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -3591,6 +3600,11 @@ async def create_workflow_route(
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow create failed")
     workflow_id = str(r.data[0]["id"])
+    mirror_legacy_workflow_row_to_contract(
+        client,
+        dict(r.data[0]),
+        environment_name=environment_name,
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -3635,6 +3649,11 @@ async def update_workflow_route(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+    mirror_legacy_workflow_row_to_contract(
+        client,
+        dict(updated.data[0]),
+        environment_name=environment_name,
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -3645,6 +3664,38 @@ async def update_workflow_route(
         metadata={"environment": environment_name, "fields": list(payload.keys())},
     )
     return await get_workflow(workflow_id, _admin[0], org_id, environment_name, settings)
+
+
+@router.post("/{workflow_id}/schema-sync/from-contract")
+async def sync_workflow_schema_from_contract(
+    workflow_id: UUID,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """C.2: Mirror a contract `workflows` row into legacy `workflow_defs` for execution."""
+    _user, org_id = _admin
+    if not settings.workflow_legacy_writes:
+        return {"synced": False, "workflow_id": str(workflow_id), "reason": "legacy_writes_disabled"}
+    client = get_supabase_client(settings)
+    synced = sync_contract_workflow_to_legacy(
+        client,
+        workflow_id=str(workflow_id),
+        org_id=org_id,
+        environment_name=environment_name,
+    )
+    if not synced:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found in contract table")
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action="workflow.schema_sync.from_contract",
+        resource_type="workflow",
+        resource_id=str(workflow_id),
+        metadata={"environment": environment_name},
+    )
+    return {"synced": True, "workflow_id": str(workflow_id)}
 
 
 @router.post("/{workflow_id}/stage")

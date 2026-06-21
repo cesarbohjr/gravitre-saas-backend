@@ -10,7 +10,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.org_context_service import get_org_context_service
 from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
-from app.services.rag_service import RAGService, get_rag_service
+from app.services.rag_service import RAGService, RAGResponse, get_rag_service
 
 logger = get_logger(__name__)
 
@@ -140,6 +140,99 @@ class UnifiedRetrievalService:
             sources=sources,
             metrics=metrics,
         )
+
+    async def retrieve_knowledge_rows(
+        self,
+        *,
+        org_id: str,
+        query: str,
+        top_k: int = 10,
+        environment_name: str = "default",
+        agent_id: str | None = None,
+        department_id: str | None = None,
+        source_id: str | None = None,
+        document_id: str | None = None,
+        min_score: float | None = None,
+        scope: str = "organization",
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Knowledge-only hybrid retrieval with BE-10 row shape for HTTP/workflow callers."""
+        filters: dict[str, Any] = {"environment": environment_name}
+        if source_id:
+            filters["source_id"] = source_id
+        if document_id:
+            filters["document_id"] = document_id
+        if department_id:
+            filters["department_id"] = department_id
+        active_scope = scope
+        if agent_id and active_scope == "organization":
+            active_scope = "agent"
+        rows, metrics = await self.rag_service.retrieve_hybrid_rows(
+            org_id,
+            query,
+            scope=active_scope,
+            top_k=top_k,
+            filters=filters,
+            agent_id=agent_id,
+        )
+        mapped = [hybrid_row_to_be10_row(row) for row in rows]
+        if min_score is not None:
+            mapped = [row for row in mapped if float(row.get("score") or 0.0) >= min_score]
+        return mapped, metrics
+
+    async def query_knowledge(
+        self,
+        *,
+        org_id: str,
+        query: str,
+        scope: str = "organization",
+        top_k: int = 8,
+        filters: dict[str, Any] | None = None,
+        include_sources: bool = True,
+        agent_id: str | None = None,
+    ) -> RAGResponse:
+        """RAG-enhanced query (retrieval + answer synthesis) via canonical service path."""
+        return await self.rag_service.query(
+            org_id=org_id,
+            query=query,
+            scope=scope,
+            top_k=top_k,
+            filters=filters,
+            include_sources=include_sources,
+            agent_id=agent_id,
+        )
+
+
+def hybrid_row_to_be10_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Map hybrid retrieval rows to BE-10 / workflow chunk dict shape."""
+    chunk_id = str(row.get("chunk_id") or row.get("id") or "")
+    source_title = str(row.get("source_title") or row.get("title") or "")
+    return {
+        "chunk_id": chunk_id,
+        "content": str(row.get("content") or ""),
+        "source_id": str(row.get("source_id") or ""),
+        "source_title": source_title,
+        "document_id": str(row.get("document_id") or ""),
+        "document_title": row.get("document_title"),
+        "chunk_index": int(row.get("chunk_index") or 0),
+        "score": float(row.get("score") or 0.0),
+    }
+
+
+def be10_rows_to_workflow_chunks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Map BE-10 rows to workflow rag_retrieve output chunk entries."""
+    return [
+        {
+            "id": str(row["chunk_id"]),
+            "text": row["content"],
+            "source_id": str(row["source_id"]),
+            "source_title": row.get("source_title") or "",
+            "document_id": str(row["document_id"]),
+            "document_title": row.get("document_title"),
+            "chunk_index": row["chunk_index"],
+            "score": round(float(row["score"]), 6),
+        }
+        for row in rows
+    ]
 
 
 _unified_retrieval_singleton: UnifiedRetrievalService | None = None
