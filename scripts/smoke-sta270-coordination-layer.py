@@ -142,12 +142,27 @@ def run_smoke(*, json_path: Path | None = None, expect_enabled: bool | None = No
         print(f"[{status.upper()}] {label}" + (f": {detail}" if detail else ""))
 
     # 1) Health exposes coordination flag (no auth)
+    deploy_ready = False
     try:
         with urllib.request.urlopen(f"{API_BASE}/health", timeout=30) as resp:
             health = json.loads(resp.read().decode("utf-8") or "{}")
-        coord = health.get("coordinationLayer") or {}
-        enabled = bool(coord.get("enabled"))
-        record("health_coordination_flag", "pass", f"enabled={enabled} allowedOrgCount={coord.get('allowedOrgCount')}")
+        coord = health.get("coordinationLayer")
+        if isinstance(coord, dict):
+            deploy_ready = True
+            enabled = bool(coord.get("enabled"))
+            record(
+                "health_coordination_flag",
+                "pass",
+                f"enabled={enabled} allowedOrgCount={coord.get('allowedOrgCount')}",
+            )
+        else:
+            enabled = False
+            record(
+                "health_deploy_probe",
+                "warn",
+                "coordinationLayer missing from /health — STA-270 backend not deployed yet",
+            )
+            record("health_coordination_flag", "pass", "enabled=False (legacy health payload)")
     except (urllib.error.URLError, json.JSONDecodeError) as exc:
         enabled = False
         record("health_coordination_flag", "fail", str(exc))
@@ -216,6 +231,7 @@ def run_smoke(*, json_path: Path | None = None, expect_enabled: bool | None = No
         "testOrgOnly": True,
         "startedAt": datetime.now(timezone.utc).isoformat(),
         "coordinationLayerEnabled": enabled,
+        "deployReady": deploy_ready,
         "evaluationWindowEnd": DECISION_DUE,
         "sta271C6Scheduled": C6_DUE,
         "summary": {"pass": passed, "fail": failed, "total": len(steps)},

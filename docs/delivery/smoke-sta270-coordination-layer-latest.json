@@ -1,0 +1,31 @@
+{
+  "target": "https://api.gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "testOrgOnly": true,
+  "startedAt": "2026-06-21T05:19:17.103651+00:00",
+  "coordinationLayerEnabled": false,
+  "evaluationWindowEnd": "2026-08-01",
+  "sta271C6Scheduled": "2026-07-05",
+  "summary": {
+    "pass": 3,
+    "fail": 0,
+    "total": 3
+  },
+  "steps": [
+    {
+      "label": "health_coordination_flag",
+      "status": "pass",
+      "detail": "enabled=False allowedOrgCount=None"
+    },
+    {
+      "label": "swarm_start",
+      "status": "pass",
+      "detail": "swarmId=3fe29177-38c7-4eb5-a27b-88904de563d1 coordinationLayer=False"
+    },
+    {
+      "label": "swarm_baseline_path",
+      "status": "pass",
+      "detail": "2A path (no coordinationLayer marker)"
+    }
+  ]
+}

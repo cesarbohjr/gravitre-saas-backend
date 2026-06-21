@@ -24,3 +24,12 @@ def is_coordination_layer_enabled(settings: Settings, org_id: str) -> bool:
     raw = getattr(settings, "coordination_layer_allowed_org_ids", "")
     allowed = parse_allowed_org_ids(raw if isinstance(raw, str) else "")
     return org_id in allowed
+
+
+def coordination_layer_health(settings: Settings) -> dict[str, int | bool]:
+    """Public health payload fragment for /health probes."""
+    raw = getattr(settings, "coordination_layer_allowed_org_ids", "")
+    return {
+        "enabled": bool(getattr(settings, "coordination_layer_enabled", False)),
+        "allowedOrgCount": len(parse_allowed_org_ids(raw if isinstance(raw, str) else "")),
+    }

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter
 
 from app.config import get_settings
-from app.coordination.flags import parse_allowed_org_ids
+from app.coordination.flags import coordination_layer_health
 
 router = APIRouter(tags=["health"])
 
@@ -16,8 +16,5 @@ def health() -> dict:
     return {
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "coordinationLayer": {
-            "enabled": settings.coordination_layer_enabled,
-            "allowedOrgCount": len(parse_allowed_org_ids(settings.coordination_layer_allowed_org_ids)),
-        },
+        "coordinationLayer": coordination_layer_health(settings),
     }
