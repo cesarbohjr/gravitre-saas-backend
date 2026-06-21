@@ -21,14 +21,14 @@ try {
             Write-Error "Backfill SQL not found: $backfill"
         }
         Write-Host "Applying workflow schema backfill to linked Supabase project..."
-        supabase db query --linked -f $backfill
+        & (Join-Path $PSScriptRoot "supabase-db-query.ps1") -File $backfill
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Backfill SQL failed (exit $LASTEXITCODE)"
         }
     }
 
     Write-Host "Running verify_backfill.sql..."
-    supabase db query --linked -f $verify
+    & (Join-Path $PSScriptRoot "supabase-db-query.ps1") -File $verify -OutputFormat json
     if ($LASTEXITCODE -ne 0) {
         Write-Error "verify_backfill.sql failed (exit $LASTEXITCODE)"
     }
