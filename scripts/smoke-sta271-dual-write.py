@@ -157,9 +157,19 @@ def _ensure_active_version(client, org_id: str, user_id: str, workflow_id: str) 
         },
         on_conflict="org_id,environment,workflow_id",
     ).execute()
-    client.table("workflow_defs").update(
-        {"definition": ABC_WORKFLOW, "status": "active", "schema_version": "2025.1"}
-    ).eq("id", workflow_id).eq("org_id", org_id).execute()
+    # Post-C.6: execute reads contract workflows + active version; legacy defs optional.
+    legacy = (
+        client.table("workflow_defs")
+        .select("id")
+        .eq("id", workflow_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if legacy.data:
+        client.table("workflow_defs").update(
+            {"definition": ABC_WORKFLOW, "status": "active", "schema_version": "2025.1"}
+        ).eq("id", workflow_id).eq("org_id", org_id).execute()
 
 
 def _approve_run(token: str, org_id: str, run_id: str) -> None:
@@ -214,10 +224,12 @@ def run_smoke(*, json_path: Path | None = None) -> dict:
 
     # 2) C.2 reverse sync (Next.js → FastAPI schema-sync)
     sync = _request("POST", f"/api/workflows/{workflow_id}/schema-sync/from-contract", token, org_id)
-    if not sync.get("synced"):
-        record("schema_sync_from_contract", "fail", str(sync))
-    else:
+    if sync.get("synced"):
         record("schema_sync_from_contract", "pass", "workflow_defs mirrored")
+    elif sync.get("reason") == "legacy_writes_disabled":
+        record("schema_sync_from_contract", "pass", "C.6 legacy writes off (contract-only path)")
+    else:
+        record("schema_sync_from_contract", "fail", str(sync))
 
     # 3) Appears in FastAPI execute list
     listed = _request("GET", "/api/workflows", token, org_id)

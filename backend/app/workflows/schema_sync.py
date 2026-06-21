@@ -274,6 +274,10 @@ def sync_contract_workflow_to_legacy(
     environment_name: str = "production",
 ) -> bool:
     """C.2: Mirror workflows row into workflow_defs."""
+    from app.config import get_settings
+
+    if not get_settings().workflow_legacy_writes:
+        return False
     try:
         result = (
             client.table("workflows")
