@@ -48,6 +48,7 @@ def test_settings_normalize_public_urls_in_production():
         supabase_jwt_secret="jwt",
         openai_api_key="sk-test",
         connector_secrets_encryption_key="a" * 64,
+        internal_api_secret="cron-secret",
         api_public_url="https://gravitre-saas-backend-production.up.railway.app",
         public_app_url="https://foo.vercel.app",
     )
