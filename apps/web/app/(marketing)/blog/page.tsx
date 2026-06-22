@@ -5,18 +5,17 @@ import { motion } from "framer-motion"
 import { ArrowRight, Clock } from "lucide-react"
 
 const featuredPost = {
-  slug: "introducing-ai-operator-2",
-  title: "Introducing AI Operator 2.0: Multi-Agent Orchestration",
-  excerpt: "Today we're excited to announce AI Operator 2.0, featuring multi-agent orchestration, improved reasoning, and 10x faster task execution.",
+  slug: "ai-wont-take-your-job-your-resistance-might",
+  title: "AI Won't Take Your Job. Your Resistance to It Might.",
+  excerpt: "Fear of AI job loss jumped to 40% of workers worldwide, yet companies that adopt AI well reallocate people to higher-value work instead of cutting headcount. The real risk isn't AI — it's resisting it.",
   author: {
-    name: "Sarah Chen",
-    role: "CEO",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face",
+    name: "Cesar Bohorquez Jr",
+    role: "CEO & Founder",
   },
-  date: "April 2, 2026",
-  readTime: "8 min read",
-  category: "Product",
-  image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=600&fit=crop",
+  date: "June 22, 2026",
+  readTime: "7 min read",
+  category: "Perspective",
+  image: "/images/blog/ai-wont-take-your-job.png",
 }
 
 const posts = [
@@ -76,7 +75,7 @@ const posts = [
   },
 ]
 
-const categories = ["All", "Product", "Engineering", "Company", "Case Study", "Security"]
+const categories = ["All", "Perspective", "Product", "Engineering", "Company", "Case Study", "Security"]
 
 export default function BlogPage() {
   return (
@@ -149,11 +148,12 @@ export default function BlogPage() {
                   {featuredPost.excerpt}
                 </p>
                 <div className="mt-6 flex items-center gap-4">
-                  <img
-                    src={featuredPost.author.image}
-                    alt={featuredPost.author.name}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
+                  <span
+                    aria-hidden
+                    className="grid h-10 w-10 place-items-center rounded-full bg-emerald-600 text-sm font-semibold text-white"
+                  >
+                    CB
+                  </span>
                   <div>
                     <div className="text-sm font-medium text-zinc-900">{featuredPost.author.name}</div>
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
