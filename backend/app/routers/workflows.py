@@ -498,6 +498,34 @@ def _step_to_out(s: dict) -> StepOut:
     )
 
 
+def _workflow_names_for_ids(client, org_id: str, workflow_ids: list[str]) -> dict[str, str]:
+    """Resolve workflow display names from contract `workflows`, then legacy `workflow_defs`."""
+    if not workflow_ids:
+        return {}
+    names: dict[str, str] = {}
+    primary = (
+        client.table("workflows")
+        .select("id, name")
+        .eq("org_id", org_id)
+        .in_("id", workflow_ids)
+        .execute()
+    )
+    for row in primary.data or []:
+        names[str(row["id"])] = row.get("name") or ""
+    missing = [wid for wid in workflow_ids if not names.get(wid)]
+    if missing:
+        legacy = (
+            client.table("workflow_defs")
+            .select("id, name")
+            .eq("org_id", org_id)
+            .in_("id", missing)
+            .execute()
+        )
+        for row in legacy.data or []:
+            names[str(row["id"])] = row.get("name") or ""
+    return names
+
+
 def _run_step_out(s: dict) -> dict:
     return {
         "id": str(s["id"]),
@@ -2919,16 +2947,7 @@ async def list_runs(
     r = q.execute()
     runs = list(r.data or [])
     workflow_ids = list({str(run["workflow_id"]) for run in runs if run.get("workflow_id")})
-    workflow_names: dict[str, str] = {}
-    if workflow_ids:
-        wf = (
-            client.table("workflow_defs")
-            .select("id, name")
-            .eq("org_id", org_id)
-            .in_("id", workflow_ids)
-            .execute()
-        )
-        workflow_names = {str(w["id"]): w.get("name") or "" for w in (wf.data or [])}
+    workflow_names = _workflow_names_for_ids(client, org_id, workflow_ids)
     items = []
     for run in runs:
         workflow_id_value = str(run["workflow_id"]) if run.get("workflow_id") else None
@@ -3025,7 +3044,8 @@ async def list_runs_alias(
         .select(
             "id, workflow_id, run_type, status, approval_status, required_approvals, "
             "created_at, completed_at, duration_ms, error_message, "
-            "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id"
+            "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id",
+            count="exact",
         )
         .eq("org_id", org_id)
         .eq("environment", environment_name)
@@ -3043,21 +3063,12 @@ async def list_runs_alias(
         q = q.gte("created_at", start_at or date_from)
     if end_at or date_to:
         q = q.lte("created_at", end_at or date_to)
-    total_rows = q.execute().data or []
-    total = len(total_rows)
     offset = ((page or 1) - 1) * limit
-    rows = total_rows[offset : offset + limit]
+    response = q.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    rows = response.data or []
+    total = response.count if response.count is not None else len(rows)
     workflow_ids = list({str(run["workflow_id"]) for run in rows if run.get("workflow_id")})
-    workflow_names: dict[str, str] = {}
-    if workflow_ids:
-        wf = (
-            client.table("workflow_defs")
-            .select("id, name")
-            .eq("org_id", org_id)
-            .in_("id", workflow_ids)
-            .execute()
-        )
-        workflow_names = {str(w["id"]): w.get("name") or "" for w in (wf.data or [])}
+    workflow_names = _workflow_names_for_ids(client, org_id, workflow_ids)
     items = []
     for run in rows:
         workflow_id_value = str(run["workflow_id"]) if run.get("workflow_id") else None

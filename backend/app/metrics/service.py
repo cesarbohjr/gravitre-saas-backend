@@ -521,12 +521,17 @@ def connector_metrics(settings: Settings, org_id: str, range_str: str) -> dict[s
         webhook_sent = count_action("webhook.send.sent")
         webhook_failed = count_action("webhook.send.failed")
 
-    # Optional latency/response time (from audit metadata not exposed)
+    # Optional latency from connector OAuth health checks (config.health.latencyMs)
+    health_latency = connector_health_latency(client, org_id)
     return {
         "range": r,
         "slack": {"sent": slack_sent, "failed": slack_failed},
         "email": {"sent": email_sent, "failed": email_failed},
         "webhook": {"sent": webhook_sent, "failed": webhook_failed},
+        "health_latency_ms": health_latency.get("avg_latency_ms", 0.0),
+        "health_latency_p95_ms": health_latency.get("p95_latency_ms", 0.0),
+        "health_latency_samples": health_latency.get("samples", 0),
+        "health_latency_by_type": health_latency.get("by_type", {}),
     }
 
 
@@ -751,3 +756,237 @@ def weekly_throughput_metrics(settings: Settings, org_id: str) -> dict[str, Any]
         "target": target,
         "days": days_with_target,
     }
+
+
+def _percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    idx = min(len(ordered) - 1, max(0, int(round((pct / 100.0) * (len(ordered) - 1)))))
+    return float(ordered[idx])
+
+
+def _pct_change(current: float, previous: float) -> float:
+    if previous == 0:
+        return 0.0 if current == 0 else 100.0
+    return round(((current - previous) / previous) * 100.0, 1)
+
+
+def _run_window_stats(rows: list[dict[str, Any]]) -> dict[str, float]:
+    total = len(rows)
+    completed = sum(1 for row in rows if row.get("status") == "completed")
+    failed = sum(1 for row in rows if row.get("status") == "failed")
+    success_rate = round((completed / (completed + failed)) * 100.0, 2) if (completed + failed) > 0 else 0.0
+    durations = [float(row.get("duration_ms") or 0) for row in rows if row.get("duration_ms") is not None]
+    avg_latency = round(sum(durations) / len(durations), 2) if durations else 0.0
+    return {
+        "totalRuns": float(total),
+        "successRate": success_rate,
+        "avgLatency": avg_latency,
+    }
+
+
+def dashboard_run_stats(
+    client: Client,
+    org_id: str,
+    start: datetime,
+    end: datetime,
+    *,
+    records_processed: int = 0,
+) -> dict[str, Any]:
+    """Period stats + deltas + sparkline trends for dashboard cards."""
+    period_seconds = max(int((end - start).total_seconds()), 1)
+    prev_end = start
+    prev_start = start - timedelta(seconds=period_seconds)
+
+    current_rows = (
+        client.table("workflow_runs")
+        .select("status, duration_ms, created_at")
+        .eq("org_id", org_id)
+        .gte("created_at", start.isoformat())
+        .lt("created_at", end.isoformat())
+        .execute()
+        .data
+        or []
+    )
+    previous_rows = (
+        client.table("workflow_runs")
+        .select("status, duration_ms")
+        .eq("org_id", org_id)
+        .gte("created_at", prev_start.isoformat())
+        .lt("created_at", prev_end.isoformat())
+        .execute()
+        .data
+        or []
+    )
+
+    current = _run_window_stats(current_rows)
+    previous = _run_window_stats(previous_rows)
+    current["recordsProcessed"] = float(records_processed)
+
+    day_buckets: dict[str, int] = {}
+    success_buckets: dict[str, list[int]] = {}
+    latency_buckets: dict[str, list[float]] = {}
+    for row in current_rows:
+        created_at = _parse_timestamp(row.get("created_at"))
+        if created_at is None:
+            continue
+        day = created_at.date().isoformat()
+        day_buckets[day] = day_buckets.get(day, 0) + 1
+        success_buckets.setdefault(day, [0, 0])
+        if row.get("status") == "completed":
+            success_buckets[day][0] += 1
+        elif row.get("status") == "failed":
+            success_buckets[day][1] += 1
+        if row.get("duration_ms") is not None:
+            latency_buckets.setdefault(day, []).append(float(row.get("duration_ms") or 0))
+
+    ordered_days = sorted(day_buckets.keys())
+    run_trend = [day_buckets[day] for day in ordered_days]
+    success_trend = [
+        round((vals[0] / (vals[0] + vals[1])) * 100.0, 1) if (vals[0] + vals[1]) > 0 else 0.0
+        for day in ordered_days
+        for vals in [success_buckets.get(day, [0, 0])]
+    ]
+    latency_trend = [
+        round(sum(values) / len(values), 1) if values else 0.0
+        for day in ordered_days
+        for values in [latency_buckets.get(day, [])]
+    ]
+
+    return {
+        "changes": {
+            "totalRuns": _pct_change(current["totalRuns"], previous["totalRuns"]),
+            "successRate": _pct_change(current["successRate"], previous["successRate"]),
+            "recordsProcessed": 0.0,
+            "avgLatency": _pct_change(current["avgLatency"], previous["avgLatency"]),
+        },
+        "trends": {
+            "totalRuns": run_trend,
+            "successRate": success_trend,
+            "recordsProcessed": run_trend,
+            "avgLatency": latency_trend,
+        },
+    }
+
+
+def connector_health_latency(client: Client, org_id: str) -> dict[str, Any]:
+    """Aggregate OAuth health-check latency stored on connector config."""
+    rows = (
+        client.table("connectors")
+        .select("type, vendor, config")
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    by_type: dict[str, list[float]] = {}
+    all_values: list[float] = []
+    for row in rows:
+        config = row.get("config") or {}
+        health = config.get("health") if isinstance(config, dict) else None
+        if not isinstance(health, dict):
+            continue
+        raw = health.get("latencyMs")
+        if raw is None:
+            continue
+        try:
+            latency = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if latency < 0:
+            continue
+        connector_type = str(row.get("type") or row.get("vendor") or "unknown")
+        by_type.setdefault(connector_type, []).append(latency)
+        all_values.append(latency)
+
+    def _summary(values: list[float]) -> dict[str, float]:
+        if not values:
+            return {"avg_ms": 0.0, "p95_ms": 0.0, "samples": 0.0}
+        return {
+            "avg_ms": round(_avg(values), 1),
+            "p95_ms": round(_percentile(values, 95.0), 1),
+            "samples": float(len(values)),
+        }
+
+    return {
+        "avg_latency_ms": round(_avg(all_values), 1) if all_values else 0.0,
+        "p95_latency_ms": round(_percentile(all_values, 95.0), 1) if all_values else 0.0,
+        "samples": len(all_values),
+        "by_type": {key: _summary(values) for key, values in sorted(by_type.items())},
+    }
+
+
+def latency_distribution_series(
+    client: Client,
+    org_id: str,
+    start: datetime,
+    end: datetime,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Hourly/daily latency percentiles from rag_retrieval_logs with optional spike marker."""
+    rows = (
+        client.table("rag_retrieval_logs")
+        .select("created_at, latency_ms")
+        .eq("org_id", org_id)
+        .gte("created_at", start.isoformat())
+        .lt("created_at", end.isoformat())
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        run_rows = (
+            client.table("workflow_runs")
+            .select("created_at, duration_ms")
+            .eq("org_id", org_id)
+            .gte("created_at", start.isoformat())
+            .lt("created_at", end.isoformat())
+            .execute()
+            .data
+            or []
+        )
+        for row in run_rows:
+            if row.get("duration_ms") is None:
+                continue
+            rows.append({"created_at": row.get("created_at"), "latency_ms": row.get("duration_ms")})
+
+    use_hourly = (end - start) <= timedelta(days=2)
+    buckets: dict[str, list[float]] = {}
+    for row in rows:
+        created_at = _parse_timestamp(row.get("created_at"))
+        if created_at is None:
+            continue
+        if row.get("latency_ms") is None:
+            continue
+        try:
+            latency = float(row.get("latency_ms") or 0)
+        except (TypeError, ValueError):
+            continue
+        if use_hourly:
+            label = created_at.strftime("%H:%M")
+        else:
+            label = created_at.date().isoformat()
+        buckets.setdefault(label, []).append(latency)
+
+    series: list[dict[str, Any]] = []
+    spike_time: str | None = None
+    max_p95 = 0.0
+    p95_values: list[float] = []
+    for label in sorted(buckets.keys()):
+        values = buckets[label]
+        p50 = round(_percentile(values, 50.0), 1)
+        p95 = round(_percentile(values, 95.0), 1)
+        p99 = round(_percentile(values, 99.0), 1)
+        series.append({"time": label, "p50": p50, "p95": p95, "p99": p99})
+        p95_values.append(p95)
+        if p95 > max_p95:
+            max_p95 = p95
+            spike_time = label
+
+    if series and p95_values:
+        median_p95 = sorted(p95_values)[len(p95_values) // 2]
+        if median_p95 <= 0 or max_p95 < median_p95 * 1.75:
+            spike_time = None
+
+    return series, spike_time
+

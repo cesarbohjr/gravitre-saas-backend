@@ -113,8 +113,20 @@ class SmokeReport:
 def _load_env() -> dict[str, str]:
     merged: dict[str, str] = {}
     for path in (ENV_BACKEND, ENV_FILE):
-        if path.is_file():
+        if not path.is_file():
+            continue
+        try:
             merged.update({k: v for k, v in dotenv_values(path).items() if v})
+        except UnicodeDecodeError:
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for line in text.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                value = value.strip().strip('"')
+                if value:
+                    merged[key.strip()] = value
     return merged
 
 
