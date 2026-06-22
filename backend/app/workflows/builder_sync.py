@@ -204,6 +204,23 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
     return {"id": step_id, "name": name, "type": "noop", "config": dict(config)}
 
 
+def prepare_builder_edge(edge: dict[str, Any], workflow_id: str, environment_name: str) -> dict[str, Any]:
+    """Normalize canvas/contract edges so API responses always include id + workflow_id."""
+    from_id = edge.get("from_node_id") or edge.get("from")
+    to_id = edge.get("to_node_id") or edge.get("to")
+    if not from_id or not to_id:
+        raise ValueError("Builder edge missing from/to node ids")
+    edge_id = edge.get("id") or f"{from_id}->{to_id}"
+    return {
+        **edge,
+        "id": str(edge_id),
+        "workflow_id": str(edge.get("workflow_id") or workflow_id),
+        "environment": edge.get("environment") or environment_name,
+        "from_node_id": str(from_id),
+        "to_node_id": str(to_id),
+    }
+
+
 def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Hydrate a minimal canvas from stored step definitions when graph rows are absent."""
     steps = definition.get("steps") if isinstance(definition.get("steps"), list) else []

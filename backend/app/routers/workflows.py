@@ -105,8 +105,9 @@ from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
 from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
-from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
+from app.workflows.builder_sync import definition_to_builder_nodes, prepare_builder_edge, sync_builder_graph
 from app.workflows.schema_sync import (
+    _builder_nodes_from_contract,
     mirror_legacy_workflow_row_to_contract,
     sync_contract_workflow_to_legacy,
 )
@@ -341,9 +342,10 @@ def _node_out(node: dict) -> dict:
         position_x = position.get("x")
     if position_y is None and isinstance(position, dict):
         position_y = position.get("y")
+    node_id = node.get("id")
     return {
-        "id": str(node["id"]),
-        "workflow_id": str(node["workflow_id"]),
+        "id": str(node_id) if node_id is not None else "",
+        "workflow_id": str(node.get("workflow_id") or ""),
         "node_type": node.get("node_type") or "",
         "type": node.get("node_type") or "",
         "title": node.get("title") or "",
@@ -375,17 +377,22 @@ def _node_out(node: dict) -> dict:
 
 
 def _edge_out(edge: dict) -> dict:
+    prepared = prepare_builder_edge(
+        edge,
+        str(edge.get("workflow_id") or ""),
+        str(edge.get("environment") or "production"),
+    )
     return {
-        "id": str(edge["id"]),
-        "workflow_id": str(edge["workflow_id"]),
-        "from_node_id": str(edge["from_node_id"]),
-        "to_node_id": str(edge["to_node_id"]),
-        "fromNodeId": str(edge["from_node_id"]),
-        "toNodeId": str(edge["to_node_id"]),
-        "edge_type": edge.get("edge_type") or "",
-        "condition": edge.get("condition"),
-        "environment": edge.get("environment"),
-        "created_at": edge.get("created_at"),
+        "id": prepared["id"],
+        "workflow_id": prepared["workflow_id"],
+        "from_node_id": prepared["from_node_id"],
+        "to_node_id": prepared["to_node_id"],
+        "fromNodeId": prepared["from_node_id"],
+        "toNodeId": prepared["to_node_id"],
+        "edge_type": prepared.get("edge_type") or "",
+        "condition": prepared.get("condition"),
+        "environment": prepared.get("environment"),
+        "created_at": prepared.get("created_at"),
     }
 
 
@@ -542,17 +549,38 @@ async def get_workflow_builder(
     nodes = list_workflow_nodes(client, org_id, str(workflow_id), environment_name)
     edges = list_workflow_edges(client, org_id, str(workflow_id), environment_name)
     if not nodes:
-        definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
-        if definition.get("steps"):
-            synth_nodes, synth_edges = definition_to_builder_nodes(definition)
-            for node in synth_nodes:
-                node["workflow_id"] = str(workflow_id)
-                node["environment"] = environment_name
-            for edge in synth_edges:
-                edge["workflow_id"] = str(workflow_id)
-                edge["environment"] = environment_name
-            nodes = synth_nodes
-            edges = synth_edges
+        contract_row = (
+            client.table("workflows")
+            .select("nodes, edges")
+            .eq("org_id", org_id)
+            .eq("id", str(workflow_id))
+            .limit(1)
+            .execute()
+        )
+        contract_nodes = (
+            contract_row.data[0].get("nodes")
+            if contract_row.data and isinstance(contract_row.data[0].get("nodes"), list)
+            else []
+        )
+        contract_edges = (
+            contract_row.data[0].get("edges")
+            if contract_row.data and isinstance(contract_row.data[0].get("edges"), list)
+            else []
+        )
+        if contract_nodes:
+            nodes, edges = _builder_nodes_from_contract(contract_nodes, contract_edges)
+        else:
+            definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
+            if definition.get("steps"):
+                nodes, edges = definition_to_builder_nodes(definition)
+        for node in nodes:
+            node["workflow_id"] = str(workflow_id)
+            node["environment"] = environment_name
+        edges = [
+            prepare_builder_edge(edge, str(workflow_id), environment_name)
+            for edge in edges
+            if (edge.get("from_node_id") or edge.get("from")) and (edge.get("to_node_id") or edge.get("to"))
+        ]
     return {
         "workflow_id": str(workflow_id),
         "name": wf.get("name"),
@@ -3524,16 +3552,27 @@ async def get_workflow(
                 },
             }
         )
-    prompts = (
-        client.table("operator_prompts")
-        .select("id, label, prompt")
-        .eq("org_id", org_id)
-        .eq("is_active", True)
-        .order("order_index", desc=False)
-        .execute()
-        .data
-        or []
-    )
+    prompts: list[dict] = []
+    try:
+        prompts = (
+            client.table("operator_prompts")
+            .select("id, label, prompt")
+            .eq("org_id", org_id)
+            .eq("is_active", True)
+            .order("order_index", desc=False)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        prompts = []
+
+    success_rate_raw = wf.get("success_rate")
+    try:
+        success_rate = float(success_rate_raw) if success_rate_raw is not None else 0.0
+    except (TypeError, ValueError):
+        success_rate = 0.0
+
     return {
         "workflow": {
             "id": str(wf["id"]),
@@ -3547,7 +3586,7 @@ async def get_workflow(
             "lastRunAt": wf.get("last_run_at"),
             "nextRunAt": wf.get("next_run_at"),
             "runCount": wf.get("run_count") or 0,
-            "successRate": float(wf.get("success_rate") or 0),
+            "successRate": success_rate,
         },
         "steps": steps,
         "aiPrompts": [

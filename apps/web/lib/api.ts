@@ -496,7 +496,13 @@ export const mesonApi = {
 // ============ Workflows ============
 export const workflowsApi = {
   list: () => fetcher<WorkflowListResponse>(apiUrl("/api/workflows")),
-  get: (id: string) => fetcher<Workflow>(apiUrl(`/api/workflows/${id}`)),
+  get: async (id: string) => {
+    const payload = await fetcher<Workflow | { workflow: Workflow }>(apiUrl(`/api/workflows/${id}`))
+    if (payload && typeof payload === "object" && "workflow" in payload && payload.workflow) {
+      return payload.workflow
+    }
+    return payload as Workflow
+  },
   create: (data: CreateWorkflowRequest) => postJson<Workflow>(apiUrl("/api/workflows"), data),
   update: (id: string, data: UpdateWorkflowRequest) =>
     patchJson<Workflow>(apiUrl(`/api/workflows/${id}`), data),

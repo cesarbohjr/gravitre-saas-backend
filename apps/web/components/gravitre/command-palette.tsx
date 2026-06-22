@@ -138,7 +138,7 @@ export function CommandPalette({
             <span>Generate Workflow from Prompt</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/workflows"))}
+            onSelect={() => runCommand(() => router.push("/goals"))}
           >
             <BarChart3 className="mr-2 h-4 w-4 text-blue-400" />
             <span>Show Goal Progress</span>

@@ -73,6 +73,7 @@ const adminNavigation: NavGroup[] = [
       { name: "Agents", href: "/agents", icon: "team" },
       { name: "Agent Swarm", href: "/agents/swarm", icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
+      { name: "Goals", href: "/goals", icon: "target" },
     ],
   },
   {
