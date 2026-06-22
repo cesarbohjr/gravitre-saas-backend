@@ -7,7 +7,7 @@ import { ArrowRight, Clock } from "lucide-react"
 const featuredPost = {
   slug: "ai-wont-take-your-job-your-resistance-might",
   title: "AI Won't Take Your Job. Your Resistance to It Might.",
-  excerpt: "Fear of AI job loss jumped to 40% of workers worldwide, yet companies that adopt AI well reallocate people to higher-value work instead of cutting headcount. The real risk isn't AI — it's resisting it.",
+  excerpt: "Fear of AI job loss jumped to 40% of workers worldwide, yet companies that adopt AI well reallocate people to higher-value work instead of cutting headcount. The real risk isn't AI. It's resisting it.",
   author: {
     name: "Cesar Bohorquez Jr",
     role: "CEO & Founder",

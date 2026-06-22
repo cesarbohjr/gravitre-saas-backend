@@ -48,7 +48,7 @@ export async function generateMetadata({
   }
 }
 
-/** Brand monogram avatar — avoids fabricating a likeness while keeping the byline polished. */
+  /** Brand monogram avatar. Avoids fabricating a likeness while keeping the byline polished. */
 function AuthorAvatar({ name, className = "" }: { name: string; className?: string }) {
   const initials = name
     .split(" ")
@@ -198,7 +198,7 @@ export default async function BlogPostPage({
             />
           </figure>
 
-          {/* Key takeaways — extractable summary for answer engines (AEO) */}
+          {/* Key takeaways: extractable summary for answer engines (AEO) */}
           <aside
             aria-label="Key takeaways"
             className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6"
@@ -221,7 +221,7 @@ export default async function BlogPostPage({
             <Content />
           </div>
 
-          {/* FAQ — mirrors FAQPage schema for AEO rich results */}
+          {/* FAQ: mirrors FAQPage schema for AEO rich results */}
           <section aria-labelledby="faq-heading" className="mt-16 border-t border-zinc-200 pt-10">
             <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight text-zinc-900">
               Frequently asked questions
@@ -242,8 +242,8 @@ export default async function BlogPostPage({
               Give your team the time back to do the work only they can do.
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-zinc-600">
-              Gravitre&apos;s AI agents absorb the administrative drag — keeping a human in the loop — so your people can
-              focus on strategy, creativity, and relationships.
+              Gravitre&apos;s AI agents absorb the administrative drag, with a human always in the loop, so your people
+              can focus on strategy, creativity, and relationships.
             </p>
             <Link
               href="/get-started"
