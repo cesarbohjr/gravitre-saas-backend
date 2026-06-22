@@ -125,10 +125,11 @@ def write_audit_event(
     if _is_uuid(actor_id):
         events_row["actor_id"] = actor_id
 
-    inserted = False
+    events_ok = False
+    logs_ok = False
     try:
         client.table("audit_events").insert(events_row).execute()
-        inserted = True
+        events_ok = True
     except Exception as exc:  # noqa: BLE001
         logger.warning("audit_events insert failed action=%s: %s", action, exc)
 
@@ -157,10 +158,23 @@ def write_audit_event(
     for row in (contract_row, legacy_row):
         try:
             client.table("audit_logs").insert(row).execute()
-            inserted = True
+            logs_ok = True
             break
         except Exception as exc:  # noqa: BLE001
             logger.debug("audit_logs insert attempt failed action=%s: %s", action, exc)
 
-    if inserted:
+    if events_ok and not logs_ok:
+        logger.warning(
+            "audit_dual_write_gap org_id=%s action=%s events=ok logs=failed",
+            org_id,
+            action,
+        )
+    elif logs_ok and not events_ok:
+        logger.warning(
+            "audit_dual_write_gap org_id=%s action=%s events=failed logs=ok",
+            org_id,
+            action,
+        )
+
+    if events_ok or logs_ok:
         _schedule_siem_dispatch(client, org_id, action, resource_type, resource_id_str, meta)

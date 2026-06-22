@@ -21,7 +21,6 @@ import { type DemoAssignment } from "@/lib/demo-assignments"
 import {
   ASSIGNMENTS_REFRESH_KEY,
   fetchAssignmentList,
-  listFallbackAssignments,
 } from "@/lib/assignments-list"
 import { NewAssignmentModal } from "@/components/gravitre/assignments/new-assignment-modal"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
@@ -50,7 +49,7 @@ const agentIcons: Record<string, LucideIcon> = {
   "Support Coordinator": Headphones,
 }
 
-const initialAssignments: Assignment[] = listFallbackAssignments()
+const initialAssignments: Assignment[] = []
 
 const ASSIGNMENTS_REFRESH_MS = 15_000
 

@@ -145,6 +145,39 @@ def test_audit_denied_without_entitlement(mock_plan, mock_create):
 
 @patch("app.workflows.audit._schedule_siem_dispatch")
 @patch("app.workflows.audit._get_org_pii_mode", return_value="standard")
+def test_audit_dual_write_gap_logged_when_logs_fail(mock_pii, mock_siem, caplog):
+    from unittest.mock import MagicMock
+
+    from app.workflows.audit import write_audit_event
+
+    sb = MagicMock()
+    table = sb.table.return_value
+    insert = table.insert.return_value
+
+    def execute_side_effect():
+        call_table = sb.table.call_args[0][0]
+        if call_table == "audit_logs":
+            raise RuntimeError("audit_logs insert failed")
+        return MagicMock(data=[{}])
+
+    insert.execute.side_effect = execute_side_effect
+
+    with caplog.at_level("WARNING"):
+        write_audit_event(
+            sb,
+            org_id="org-1",
+            actor_id="00000000-0000-0000-0000-000000000001",
+            action="workflow.run.completed",
+            resource_type="workflow",
+            resource_id="00000000-0000-0000-0000-000000000002",
+            metadata={},
+        )
+
+    assert any("audit_dual_write_gap" in record.message for record in caplog.records)
+
+
+@patch("app.workflows.audit._schedule_siem_dispatch")
+@patch("app.workflows.audit._get_org_pii_mode", return_value="standard")
 def test_audit_events_written_on_workflow_run(mock_pii, mock_siem):
     from unittest.mock import MagicMock
 

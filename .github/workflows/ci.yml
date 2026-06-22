@@ -139,3 +139,33 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: service-role-test
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
+
+  security-scan:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: pip-audit (backend)
+        run: python scripts/pip-audit-backend.py
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: pnpm audit (web, high+)
+        working-directory: apps/web
+        continue-on-error: true
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm audit --audit-level=high

@@ -297,6 +297,8 @@ class Settings(BaseSettings):
                 missing.append("OPENAI_API_KEY")
             if not (self.connector_secrets_encryption_key or "").strip():
                 missing.append("CONNECTOR_SECRETS_ENCRYPTION_KEY")
+            if not (self.internal_api_secret or "").strip():
+                missing.append("INTERNAL_API_SECRET")
             if missing:
                 raise ValueError(f"Missing required settings for {env}: {', '.join(missing)}")
             self.public_app_url = normalize_public_url(

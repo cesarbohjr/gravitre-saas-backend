@@ -1,10 +1,14 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext, useCallback } from "react"
+import { useState, useEffect, createContext, useContext, useCallback, useMemo } from "react"
+import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { notificationsApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import type { Notification as ApiNotification, NotificationType } from "@/types/api"
 import { 
   Bell, 
   X, 
@@ -44,60 +48,31 @@ export interface Notification {
   link?: string
 }
 
-// Sample notifications for demo
-const sampleNotifications: Notification[] = [
-  {
-    id: "n1",
-    type: "task_complete",
-    title: "Task completed",
-    message: "Q3 Healthcare Campaign is ready for review",
-    timestamp: new Date(Date.now() - 1000 * 60 * 2), // 2 min ago
-    read: false,
-    deliverable: { id: "d1", title: "Email Sequence - Product Launch", type: "emails" },
-    actions: [
-      { platform: "Gravitre", description: "Stored in Deliverables", status: "success" },
-    ],
-    link: "/lite/deliverables",
-  },
-  {
-    id: "n2",
-    type: "output_delivered",
-    title: "Output delivered",
-    message: "Campaign sent to your email",
-    timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 min ago
-    read: false,
-    deliverable: { id: "d2", title: "Enterprise Segment", type: "segment" },
-    actions: [
-      { platform: "Email", description: "Sent to your inbox", status: "success" },
-      { platform: "Gravitre", description: "Stored in Deliverables", status: "success" },
-    ],
-    link: "/lite/deliverables",
-  },
-  {
-    id: "n3",
-    type: "external_action",
-    title: "Posted to Slack",
-    message: "Campaign summary shared in #marketing",
-    timestamp: new Date(Date.now() - 1000 * 60 * 45), // 45 min ago
-    read: true,
-    actions: [
-      { platform: "Slack", description: "Posted to #marketing", status: "success" },
-    ],
-    link: "/lite/deliverables",
-  },
-  {
-    id: "n4",
-    type: "external_action",
-    title: "Created in HubSpot",
-    message: "New campaign created in your CRM",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-    read: true,
-    actions: [
-      { platform: "HubSpot", description: "Campaign created", status: "success" },
-    ],
-    link: "/lite/deliverables",
-  },
-]
+function mapApiType(type: NotificationType): Notification["type"] {
+  switch (type) {
+    case "approval_needed":
+      return "approval_required"
+    case "run_failed":
+      return "error"
+    case "run_completed":
+    case "assignment_created":
+      return "task_complete"
+    default:
+      return "external_action"
+  }
+}
+
+function mapApiNotification(row: ApiNotification): Notification {
+  return {
+    id: row.id,
+    type: mapApiType(row.type),
+    title: row.title,
+    message: row.body,
+    timestamp: new Date(row.created_at),
+    read: row.is_read,
+    link: row.url || undefined,
+  }
+}
 
 // Context for global notification state
 interface NotificationContextType {
@@ -126,33 +101,114 @@ export function useNotificationsRequired() {
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>(sampleNotifications)
+  const { user } = useAuth()
+  const { data, mutate } = useSWR(
+    user ? ["notification-center", user.id] : null,
+    () => notificationsApi.list({ limit: 50, offset: 0 }),
+    { refreshInterval: 30_000 }
+  )
+
+  const notifications = useMemo(
+    () => (data?.notifications ?? []).map(mapApiNotification),
+    [data?.notifications]
+  )
 
   const addNotification = useCallback((notification: Omit<Notification, "id" | "timestamp" | "read">) => {
     const newNotification: Notification = {
       ...notification,
-      id: `n${Date.now()}`,
+      id: `local-${Date.now()}`,
       timestamp: new Date(),
       read: false,
     }
-    setNotifications(prev => [newNotification, ...prev])
-  }, [])
-
-  const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    void mutate(
+      (prev) => ({
+        notifications: [
+          {
+            id: newNotification.id,
+            type: "system" as NotificationType,
+            title: newNotification.title,
+            body: newNotification.message,
+            url: newNotification.link,
+            is_read: false,
+            is_archived: false,
+            created_at: newNotification.timestamp.toISOString(),
+          },
+          ...(prev?.notifications ?? []),
+        ],
+        unread_count: (prev?.unread_count ?? 0) + 1,
+      }),
+      { revalidate: false }
     )
-  }, [])
+  }, [mutate])
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-  }, [])
+  const markAsRead = useCallback(async (id: string) => {
+    if (!id.startsWith("local-")) {
+      try {
+        await notificationsApi.markRead(id)
+      } catch {
+        return
+      }
+    }
+    void mutate(
+      (prev) => {
+        if (!prev) return prev
+        const target = prev.notifications.find((row) => row.id === id)
+        return {
+          ...prev,
+          unread_count:
+            target && !target.is_read ? Math.max(prev.unread_count - 1, 0) : prev.unread_count,
+          notifications: prev.notifications.map((row) =>
+            row.id === id ? { ...row, is_read: true } : row
+          ),
+        }
+      },
+      { revalidate: false }
+    )
+  }, [mutate])
 
-  const clearNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-  }, [])
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await notificationsApi.markAllRead()
+    } catch {
+      return
+    }
+    void mutate(
+      (prev) =>
+        prev
+          ? {
+              ...prev,
+              unread_count: 0,
+              notifications: prev.notifications.map((row) => ({ ...row, is_read: true })),
+            }
+          : prev,
+      { revalidate: false }
+    )
+  }, [mutate])
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  const clearNotification = useCallback(async (id: string) => {
+    if (!id.startsWith("local-")) {
+      try {
+        await notificationsApi.archive(id)
+      } catch {
+        return
+      }
+    }
+    void mutate(
+      (prev) => {
+        if (!prev) return prev
+        const target = prev.notifications.find((row) => row.id === id)
+        return {
+          ...prev,
+          unread_count:
+            target && !target.is_read ? Math.max(prev.unread_count - 1, 0) : prev.unread_count,
+          notifications: prev.notifications.filter((row) => row.id !== id),
+        }
+      },
+      { revalidate: false }
+    )
+  }, [mutate])
+
+  const unreadCount = data?.unread_count ?? notifications.filter((n) => !n.read).length
 
   return (
     <NotificationContext.Provider value={{ 
@@ -255,7 +311,7 @@ function NotificationItem({
       )}
 
       <Link 
-        href={notification.link || "/lite/deliverables"} 
+        href={notification.link || "/notifications"} 
         onClick={onRead}
         className="block"
       >
@@ -327,10 +383,9 @@ function NotificationItem({
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
   const context = useNotifications()
-  
-  // Fallback to sample data if no provider is available
-  const notifications = context?.notifications ?? sampleNotifications
-  const unreadCount = context?.unreadCount ?? sampleNotifications.filter(n => !n.read).length
+
+  const notifications = context?.notifications ?? []
+  const unreadCount = context?.unreadCount ?? 0
   const markAsRead = context?.markAsRead ?? (() => {})
   const markAllAsRead = context?.markAllAsRead ?? (() => {})
   const clearNotification = context?.clearNotification ?? (() => {})

@@ -77,7 +77,8 @@
     "linear:marketplace-audit": "node scripts/create-marketplace-audit-linear-issues.mjs",
     "deploy:web": "vercel deploy --prod --yes",
     "deploy:web:preview": "vercel deploy --yes",
-    "vercel:link": "vercel link --yes --project gravitre-saas-backend"
+    "vercel:link": "vercel link --yes --project gravitre-saas-backend",
+    "security:audit-backend": "python scripts/pip-audit-backend.py"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.195",

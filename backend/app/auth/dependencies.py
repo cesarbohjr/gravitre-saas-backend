@@ -156,33 +156,6 @@ async def get_org_context(
                 )
             return org_id
 
-    if requested_org_id:
-        try:
-            org_exists = (
-                client.table("organizations")
-                .select("id")
-                .eq("id", requested_org_id)
-                .limit(1)
-                .execute()
-            )
-        except Exception as exc:  # noqa: BLE001
-            org_id_ctx.set(requested_org_id)
-            logger.warning(
-                "org_exists_lookup_failed_fallback user_id=%s org_id=%s error=%s",
-                user_id,
-                requested_org_id,
-                str(exc),
-            )
-            return requested_org_id
-        if org_exists.data:
-            org_id_ctx.set(requested_org_id)
-            logger.warning(
-                "org_membership_missing_fallback user_id=%s org_id=%s source=requested_org_id",
-                user_id,
-                requested_org_id,
-            )
-            return requested_org_id
-
     org_id = ensure_user_workspace(
         client,
         user_id,
