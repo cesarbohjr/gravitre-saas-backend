@@ -11,6 +11,7 @@ import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { ROI_PAGE_TITLE } from "@/lib/marketplace-outcome-labels"
 import {
   ArrowLeft,
   BarChart3,
@@ -328,7 +329,7 @@ export default function MarketplacePublisherAnalyticsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link href="/marketplace/analytics/roi">Hours saved ROI</Link>
+                <Link href="/marketplace/analytics/roi">{ROI_PAGE_TITLE}</Link>
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/marketplace/billing">Billing & payouts</Link>

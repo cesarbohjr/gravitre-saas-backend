@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings
+from app.public_urls import connector_oauth_callback_url
 from app.connectors.repository import get_decrypted_secret, set_secret
 
 logger = logging.getLogger(__name__)
@@ -54,13 +55,11 @@ def hubspot_oauth_configured(settings: Settings, environment_name: str | None = 
 
 
 def hubspot_redirect_uri(settings: Settings) -> str:
-    api_base = (settings.api_public_url or "").strip().rstrip("/")
-    if api_base:
-        return f"{api_base}/api/connectors/oauth/hubspot/callback"
-    base = (settings.public_app_url or "").strip().rstrip("/")
-    if base:
-        return f"{base}/api/connectors/oauth/hubspot/callback"
-    return "http://localhost:8000/api/connectors/oauth/hubspot/callback"
+    return connector_oauth_callback_url(
+        public_app_url=settings.public_app_url,
+        api_public_url=settings.api_public_url,
+        vendor="hubspot",
+    )
 
 
 def hubspot_authorize_url(client_id: str, redirect_uri: str, state: str) -> str:

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
+import { syncWorkflowSchemaFromContract } from "@/lib/backend-proxy"
 
 function mapWorkflowRow(input: Record<string, unknown>) {
   const model = snakeToCamel<Record<string, unknown>>(input)
@@ -81,6 +82,9 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    const workflowId = String((data as Record<string, unknown>).id)
+    await syncWorkflowSchemaFromContract(request, workflowId)
 
     return NextResponse.json(mapWorkflowRow(data as Record<string, unknown>), { status: 201 })
   } catch (error) {

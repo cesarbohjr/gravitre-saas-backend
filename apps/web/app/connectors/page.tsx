@@ -64,9 +64,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { connectorsApi } from "@/lib/api"
+import { publicApiUrl } from "@/lib/public-urls"
 import {
   CONNECTOR_CATEGORIES,
   OAUTH_CONNECTOR_TYPE_SET,
@@ -708,7 +709,7 @@ function AddConnectorModal({
     connector?.vendorKey || connectorVendorKey(type)
 
   // Webhook URL for webhook-based connectors
-  const webhookUrl = `https://api.gravitre.io/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
+  const webhookUrl = `${publicApiUrl()}/webhooks/${selectedType?.toLowerCase().replace(/\s+/g, "-")}/incoming`
 
   const filteredModalConnectors = catalogConnectors.filter((c) => {
     const matchesSearch = c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -2018,7 +2019,9 @@ function ConnectorsPageContent() {
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <XCircle className="h-10 w-10 text-destructive mb-4" />
               <h3 className="text-base font-medium text-foreground mb-1">Unable to load connectors</h3>
-              <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {formatUnknownError(error, "Check backend connectivity and try again.")}
+              </p>
               <Button variant="outline" onClick={() => mutate()}>Try again</Button>
             </div>
           ) : connectors.length === 0 ? (

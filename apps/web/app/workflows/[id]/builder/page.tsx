@@ -34,6 +34,7 @@ import {
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
 import { mesonApi, runsApi, type MesonAlert, type MesonInsight, type MesonSuggestion } from "@/lib/api"
+import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import {
   applyRunStepsToNodes,
   countActiveRunSteps,
@@ -3667,7 +3668,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     setIsInterrupting(true)
     try {
       await runsApi.pause(lastRunId)
-      toast.success("Pause requested", { description: "Run will stop before the next step." })
+      toast.success(interruptRequestedMessage("pause"), { description: interruptRequestedDescription() })
     } catch (err) {
       toast.error("Pause failed", {
         description: err instanceof Error ? err.message : "Could not pause run",
@@ -3682,7 +3683,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     setIsInterrupting(true)
     try {
       await runsApi.cancel(lastRunId)
-      toast.success("Cancel requested", { description: "Run will stop before the next step." })
+      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
     } catch (err) {
       toast.error("Cancel failed", {
         description: err instanceof Error ? err.message : "Could not cancel run",

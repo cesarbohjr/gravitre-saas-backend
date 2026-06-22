@@ -8,7 +8,9 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 **M5 complete.** STA-255 ✅ publisher revenue analytics; STA-256 ✅ paid asset pricing UI; STA-257 ✅ publisher payout sync on billing.
 
-**Next queue:** M5 doc polish or M1 STA-227 optional.
+**M1 doc polish complete.** STA-227 ✅ dual-marketplace convergence documented in `docs/integration/agent-role-marketplace.md` (§ Dual marketplace architecture).
+
+**Next queue:** Close superseded pre-audit Linear epics (STA-180–222) or pick net-new marketplace work outside the audit.
 
 ---
 
@@ -16,7 +18,7 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 | Ref | Linear | Title | Skip reason |
 |-----|--------|-------|-------------|
-| MKT-AUDIT-ARCH-1 | STA-227 | Document dual-marketplace convergence | Doc-only; covered in `V0_MARKETPLACE_UNIFIED_PROMPT.md` |
+| MKT-AUDIT-ARCH-1 | STA-227 | Document dual-marketplace convergence | ✅ Federation decision + scope matrix in `agent-role-marketplace.md` § Dual marketplace architecture |
 | MKT-AUDIT-4.6 | STA-228 | business_outcome, use_case columns | ✅ Migration + browse/detail/create UI + seed backfill |
 | MKT-AUDIT-4.5 | STA-229 | Expand catalog 27 → 50 | ✅ **Done** — prod `total=51`; close in Linear |
 | MKT-AUDIT-5.4 | STA-230 | Fix internal visibility in browse | ✅ Browse filters + smoke `visibility_*` steps + Internal badge |
@@ -72,8 +74,11 @@ Source: `docs/integration/marketplace-audit-linear-ids.json` (`skipped` array).
 
 ## Promote to active work
 
-When picking up marketplace backlog again, prefer in order:
+The **STA-223–257 marketplace audit** is complete in code and Linear. Remaining open items in the Gravitre Marketplace project are **superseded pre-audit epics** (STA-180–222) — close or cancel after spot-checking against shipped audit work.
 
-1. **M1 doc-only (optional):** STA-227 dual-marketplace convergence doc polish
+Optional net-new work (no open audit issue):
+
+1. Cancel/close legacy epics STA-180–222 in Linear
+2. Full connector merge (future — see STA-227 doc § Future convergence)
 
 Linear project: [Gravitre Marketplace](https://linear.app/staqbot/project/gravitre-marketplace)

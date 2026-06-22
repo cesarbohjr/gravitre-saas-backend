@@ -101,3 +101,25 @@ export async function proxyToFastApi(request: NextRequest, backendPath: string) 
     )
   }
 }
+
+/** STA-271 C.2: best-effort mirror of contract workflow row into legacy workflow_defs. */
+export async function syncWorkflowSchemaFromContract(request: NextRequest, workflowId: string) {
+  if (!process.env.FASTAPI_BASE_URL?.trim()) {
+    return
+  }
+  try {
+    const baseUrl = getFastApiBaseUrl()
+    const targetUrl = buildBackendUrl(
+      baseUrl,
+      `/api/workflows/${encodeURIComponent(workflowId)}/schema-sync/from-contract`,
+      request
+    )
+    await fetch(targetUrl, {
+      method: "POST",
+      headers: forwardHeaders(request),
+      cache: "no-store",
+    })
+  } catch {
+    // UI write already succeeded; execution sync can be retried from builder/API.
+  }
+}

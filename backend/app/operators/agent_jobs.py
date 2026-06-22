@@ -6,8 +6,8 @@ queued jobs, runs them through the governed ModelRouter, and records
 status/result. Cancel + retry are supported.
 
 The worker runs in-process (same pattern as the usage scheduler). DB writes use
-the service-role client. Claiming is guarded (update ... where status='queued')
-so it's safe under the single prod instance; for many instances add SKIP LOCKED.
+the service-role client. Claiming uses `claim_agent_job()` / `claim_agent_job_by_id()` RPCs (SKIP LOCKED)
+for safe multi-instance workers; falls back to optimistic updates when RPCs are absent.
 """
 from __future__ import annotations
 
@@ -88,8 +88,20 @@ def list_jobs(client: Any, org_id: str, *, limit: int = 20, status: str | None =
     return q.order("created_at", desc=True).limit(limit).execute().data or []
 
 
-def claim_job_by_id(client: Any, job_id: str) -> dict[str, Any] | None:
-    """Claim a specific queued job (queued -> running). Returns it or None."""
+def _rpc_claim_rows(client: Any, fn_name: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    try:
+        resp = client.rpc(fn_name, params or {}).execute()
+    except Exception:
+        return []
+    data = resp.data
+    if isinstance(data, list):
+        return [row for row in data if isinstance(row, dict)]
+    if isinstance(data, dict):
+        return [data]
+    return []
+
+
+def _legacy_claim_job_by_id(client: Any, job_id: str) -> dict[str, Any] | None:
     rows = (
         client.table("agent_jobs").select("*").eq("id", job_id).eq("status", "queued").limit(1).execute().data
         or []
@@ -114,8 +126,7 @@ def claim_job_by_id(client: Any, job_id: str) -> dict[str, Any] | None:
     return upd.data[0] if upd.data else None
 
 
-def claim_next_job(client: Any) -> dict[str, Any] | None:
-    """Claim the oldest queued job (queued -> running). Returns it or None."""
+def _legacy_claim_next_job(client: Any) -> dict[str, Any] | None:
     rows = (
         client.table("agent_jobs").select("*").eq("status", "queued").order("created_at").limit(1).execute().data
         or []
@@ -125,14 +136,37 @@ def claim_next_job(client: Any) -> dict[str, Any] | None:
     job = rows[0]
     upd = (
         client.table("agent_jobs")
-        .update({"status": "running", "started_at": _now(), "attempts": int(job.get("attempts") or 0) + 1, "updated_at": _now()})
+        .update(
+            {
+                "status": "running",
+                "started_at": _now(),
+                "attempts": int(job.get("attempts") or 0) + 1,
+                "updated_at": _now(),
+            }
+        )
         .eq("id", job["id"])
         .eq("status", "queued")
         .execute()
     )
     if not upd.data:
-        return None  # lost the race to another worker
+        return None
     return upd.data[0]
+
+
+def claim_job_by_id(client: Any, job_id: str) -> dict[str, Any] | None:
+    """Claim a specific queued job (queued -> running). Returns it or None."""
+    rows = _rpc_claim_rows(client, "claim_agent_job_by_id", {"p_job_id": job_id})
+    if rows:
+        return rows[0]
+    return _legacy_claim_job_by_id(client, job_id)
+
+
+def claim_next_job(client: Any) -> dict[str, Any] | None:
+    """Claim the oldest queued job (queued -> running). Returns it or None."""
+    rows = _rpc_claim_rows(client, "claim_agent_job")
+    if rows:
+        return rows[0]
+    return _legacy_claim_next_job(client)
 
 
 def complete_job(client: Any, job_id: str, result: dict[str, Any]) -> None:
@@ -413,6 +447,14 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             "react_trace": [],
             "persona": None,
             "tool_calls": [],
+            "execution_mode": "degraded",
+            "executionMode": "degraded",
+            "tools_available": 0,
+            "toolsAvailable": 0,
+            "tool_call_count": 0,
+            "toolCallCount": 0,
+            "execution_verified": False,
+            "executionVerified": False,
         }
         if ai_degraded:
             result["aiDegradedReason"] = ai_degraded_reason or "ai_unavailable"

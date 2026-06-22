@@ -558,6 +558,35 @@ async def search_route(
             metadata={"source_id": doc.get("source_id")},
         )
 
+    try:
+        from app.services.unified_retrieval_service import (
+            RetrievalScopes,
+            get_unified_retrieval_service,
+        )
+
+        knowledge_bundle = await get_unified_retrieval_service().retrieve(
+            org_id=org_id,
+            query=query,
+            client=client,
+            agent={"id": ""},
+            parameters={"rag_top_k": 8},
+            scopes=RetrievalScopes(knowledge=True, org_context=False, agent_memory=False),
+        )
+        for chunk in knowledge_bundle.rag_sources:
+            chunk_id = str(chunk.get("id") or chunk.get("source") or "")
+            add_result(
+                item_id=chunk_id or query[:32],
+                entity_type="knowledge",
+                title=str(chunk.get("source") or "Knowledge"),
+                description=(chunk.get("content") or "")[:280] or None,
+                highlight="Unified retrieval",
+                url="/chat",
+                metadata={"retrieval": "unified", "chunk_score": chunk.get("score")},
+                score_boost=min(float(chunk.get("score") or 0.0), 1.0) * 0.35,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("search unified retrieval skipped org_id=%s error=%s", org_id, exc)
+
     results.sort(key=lambda item: float(item.get("score") or 0), reverse=True)
     limited_results = results[:50]
     suggestions = [item["title"] for item in limited_results[:5] if item.get("title")]

@@ -101,6 +101,48 @@ export class ApiError extends Error {
   }
 }
 
+export function formatUnknownError(error: unknown, fallback = "Something went wrong"): string {
+  if (error instanceof Error && error.message.trim()) return error.message
+  if (typeof error === "string" && error.trim()) return error
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>
+    if (typeof record.message === "string" && record.message.trim()) return record.message
+    if (typeof record.detail === "string" && record.detail.trim()) return record.detail
+    if (typeof record.error === "string" && record.error.trim()) return record.error
+  }
+  return fallback
+}
+
+function formatErrorPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null
+  const data = payload as Record<string, unknown>
+
+  const detail = data.detail
+  if (typeof detail === "string" && detail.trim()) return detail
+  if (detail && typeof detail === "object") {
+    const detailObj = detail as Record<string, unknown>
+    if (typeof detailObj.message === "string" && detailObj.message.trim()) {
+      return detailObj.message
+    }
+  }
+  if (Array.isArray(detail)) {
+    const first = detail[0]
+    if (first && typeof first === "object") {
+      const msg = (first as Record<string, unknown>).msg
+      if (typeof msg === "string" && msg.trim()) return msg
+    }
+  }
+
+  const error = data.error
+  if (typeof error === "string" && error.trim()) return error
+  if (error && typeof error === "object") {
+    const errorObj = error as Record<string, unknown>
+    if (typeof errorObj.message === "string" && errorObj.message.trim()) return errorObj.message
+    if (typeof errorObj.code === "string" && errorObj.code.trim()) return errorObj.code
+  }
+  return null
+}
+
 export async function fetcher<T>(url: string): Promise<T> {
   const response = await apiFetch(url)
 
@@ -108,11 +150,7 @@ export async function fetcher<T>(url: string): Promise<T> {
     let detail = `Request failed with status ${response.status}`
     try {
       const payload = await response.json()
-      if (payload?.detail) {
-        detail = String(payload.detail)
-      } else if (payload?.error) {
-        detail = String(payload.error)
-      }
+      detail = formatErrorPayload(payload) ?? detail
     } catch {
       // Keep default detail when body is not JSON.
     }

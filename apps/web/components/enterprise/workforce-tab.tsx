@@ -16,6 +16,13 @@ import { cn } from "@/lib/utils"
 import { enterpriseApi } from "@/lib/api"
 import type { EnterpriseWorkforceAnalytics } from "@/types/api"
 import { KpiSkeleton } from "./enterprise-skeletons"
+import { OutcomeMethodologyCallout } from "@/components/outcome/outcome-methodology-callout"
+import {
+  OPERATIONAL_METHODOLOGY_SHORT,
+  OPERATIONAL_TASKS_COMPLETED_LABEL,
+  OPERATIONAL_TASKS_FAILED_LABEL,
+  OPERATIONAL_TASKS_RUNNING_LABEL,
+} from "@/lib/outcome-labels"
 
 type Tone = "success" | "danger" | "info" | "warning" | "default"
 
@@ -28,7 +35,7 @@ const toneClasses: Record<Tone, { icon: string; value: string }> = {
 }
 
 function Sparkline({ tone }: { tone: Tone }) {
-  // Decorative placeholder trend — backend does not return series yet.
+  // Illustrative only — backend does not return time-series yet (STA-286).
   const points = [8, 12, 9, 16, 13, 20, 18, 24]
   const max = Math.max(...points)
   const stroke =
@@ -124,10 +131,11 @@ export function WorkforceTab() {
 
   return (
     <div className="space-y-4">
+      <OutcomeMethodologyCallout variant="operational" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <KpiCard label="Tasks completed" value={m.tasksCompleted} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Tasks failed" value={m.tasksFailed} icon={XCircle} tone="danger" />
-        <KpiCard label="Tasks running" value={m.tasksRunning} icon={Loader2} tone="info" />
+        <KpiCard label={OPERATIONAL_TASKS_COMPLETED_LABEL} value={m.tasksCompleted} icon={CheckCircle2} tone="success" />
+        <KpiCard label={OPERATIONAL_TASKS_FAILED_LABEL} value={m.tasksFailed} icon={XCircle} tone="danger" />
+        <KpiCard label={OPERATIONAL_TASKS_RUNNING_LABEL} value={m.tasksRunning} icon={Loader2} tone="info" />
         <KpiCard label="Agent handoffs" value={m.handoffs} icon={ArrowLeftRight} tone="default" />
         <KpiCard
           label="Tool success rate"
@@ -138,6 +146,7 @@ export function WorkforceTab() {
         />
         <KpiCard label="Approval waits" value={m.approvalWaitEvents} icon={Clock} tone="warning" />
       </div>
+      <p className="text-[11px] text-muted-foreground">{OPERATIONAL_METHODOLOGY_SHORT} Trend lines are illustrative until time-series API ships.</p>
 
       <Card>
         <CardHeader>

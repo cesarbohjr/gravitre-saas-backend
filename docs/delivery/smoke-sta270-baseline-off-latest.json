@@ -1,0 +1,42 @@
+{
+  "target": "https://api.gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "testOrgOnly": true,
+  "startedAt": "2026-06-21T05:25:31.268516+00:00",
+  "coordinationLayerEnabled": false,
+  "deployReady": false,
+  "evaluationWindowEnd": "2026-08-01",
+  "sta271C6Scheduled": "2026-07-05",
+  "summary": {
+    "pass": 4,
+    "fail": 0,
+    "total": 5
+  },
+  "steps": [
+    {
+      "label": "health_deploy_probe",
+      "status": "warn",
+      "detail": "coordinationLayer missing from /health \u2014 STA-270 backend not deployed yet"
+    },
+    {
+      "label": "health_coordination_flag",
+      "status": "pass",
+      "detail": "enabled=False (legacy health payload)"
+    },
+    {
+      "label": "expect_flag_state",
+      "status": "pass",
+      "detail": "enabled=False"
+    },
+    {
+      "label": "swarm_start",
+      "status": "pass",
+      "detail": "swarmId=802dc0a7-e895-4928-9066-7dac3e846c2d coordinationLayer=False"
+    },
+    {
+      "label": "swarm_baseline_path",
+      "status": "pass",
+      "detail": "2A path (no coordinationLayer marker)"
+    }
+  ]
+}

@@ -17,7 +17,7 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "Marketo OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. Adobe Admin Console -> Marketo -> Launch -> API Integration" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/marketo/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/marketo/callback" -ForegroundColor White
     Write-Host "3. Customers enter Munchkin ID when connecting." -ForegroundColor Yellow
     Write-Host "4. Run:" -ForegroundColor Yellow
     Write-Host '   $env:MARKETO_CLIENT_ID="<id>"; $env:MARKETO_CLIENT_SECRET="<secret>"; npm run marketo:fill-env' -ForegroundColor White

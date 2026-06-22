@@ -30,8 +30,8 @@ def test_run_list_returns_real_data(mock_client):
         }
     ]
     wf_chain = chain_mock(data=[{"id": "wf-1", "name": "sync-customers"}])
-    runs_chain = chain_mock(data=runs)
-    sb = table_client({"workflow_runs": runs_chain, "workflow_defs": wf_chain})
+    runs_chain = chain_mock(data=runs, count=1)
+    sb = table_client({"workflow_runs": runs_chain, "workflows": wf_chain, "workflow_defs": wf_chain})
     mock_client.return_value = sb
     authenticate()
     response = client.get("/api/runs")

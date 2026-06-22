@@ -12,7 +12,7 @@
 #>
 param(
     [switch] $GenerateLocalEncryptionKey,
-    [string] $ApiPublicUrl = "https://gravitre-saas-backend-production.up.railway.app",
+    [string] $ApiPublicUrl = "https://api.gravitre.app",
     [string] $PublicAppUrl = "https://gravitre.app"
 )
 

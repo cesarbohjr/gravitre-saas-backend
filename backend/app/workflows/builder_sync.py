@@ -1,6 +1,7 @@
 """STA-19: Persist visual builder graph and compile to workflow_defs steps."""
 from __future__ import annotations
 
+import logging
 import uuid
 from collections import defaultdict, deque
 from datetime import datetime, timezone
@@ -15,6 +16,14 @@ from app.workflows.repository import (
     set_active_workflow_version,
 )
 from app.workflows.schema import validate_definition
+from app.workflows.schema_sync import (
+    _builder_nodes_from_contract,
+    contract_edges_from_builder,
+    contract_nodes_from_builder,
+    sync_legacy_workflow_to_contract,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def _is_uuid(value: str) -> bool:
@@ -197,6 +206,93 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
             "metadata": metadata or {"simulated": True},
         }
     return {"id": step_id, "name": name, "type": "noop", "config": dict(config)}
+
+
+def prepare_builder_edge(edge: dict[str, Any], workflow_id: str, environment_name: str) -> dict[str, Any]:
+    """Normalize canvas/contract edges so API responses always include id + workflow_id."""
+    from_id = edge.get("from_node_id") or edge.get("from")
+    to_id = edge.get("to_node_id") or edge.get("to")
+    if not from_id or not to_id:
+        raise ValueError("Builder edge missing from/to node ids")
+    edge_id = edge.get("id") or f"{from_id}->{to_id}"
+    return {
+        **edge,
+        "id": str(edge_id),
+        "workflow_id": str(edge.get("workflow_id") or workflow_id),
+        "environment": edge.get("environment") or environment_name,
+        "from_node_id": str(from_id),
+        "to_node_id": str(to_id),
+    }
+
+
+def _contract_builder_graph(client: Any, org_id: str, workflow_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    contract_row = (
+        client.table("workflows")
+        .select("nodes, edges")
+        .eq("org_id", org_id)
+        .eq("id", str(workflow_id))
+        .limit(1)
+        .execute()
+    )
+    if not contract_row.data:
+        return [], []
+    row = contract_row.data[0]
+    contract_nodes = row.get("nodes") if isinstance(row.get("nodes"), list) else []
+    contract_edges = row.get("edges") if isinstance(row.get("edges"), list) else []
+    if not contract_nodes:
+        return [], contract_edges
+    return _builder_nodes_from_contract(contract_nodes, contract_edges)
+
+
+def resolve_builder_graph(
+    client: Any,
+    *,
+    org_id: str,
+    workflow_id: str,
+    environment_name: str,
+    wf: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Load builder canvas from graph tables, falling back to contract JSON."""
+    from app.workflows.repository import list_workflow_edges, list_workflow_nodes
+
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    try:
+        nodes = list_workflow_nodes(client, org_id, str(workflow_id), environment_name)
+        edges = list_workflow_edges(client, org_id, str(workflow_id), environment_name)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("builder graph tables unavailable for %s: %s", workflow_id, exc)
+        nodes = []
+        edges = []
+
+    if not nodes:
+        contract_nodes, contract_edges = _contract_builder_graph(client, org_id, workflow_id)
+        if contract_nodes:
+            nodes, edges = contract_nodes, contract_edges
+        else:
+            definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
+            if definition.get("steps"):
+                nodes, edges = definition_to_builder_nodes(definition)
+    elif not edges:
+        _, contract_edges = _contract_builder_graph(client, org_id, workflow_id)
+        if contract_edges:
+            edges = contract_edges
+
+    for node in nodes:
+        node["workflow_id"] = str(workflow_id)
+        node["environment"] = environment_name
+
+    prepared_edges: list[dict[str, Any]] = []
+    for edge in edges:
+        from_id = edge.get("from_node_id") or edge.get("from")
+        to_id = edge.get("to_node_id") or edge.get("to")
+        if not from_id or not to_id:
+            continue
+        try:
+            prepared_edges.append(prepare_builder_edge(edge, str(workflow_id), environment_name))
+        except ValueError:
+            continue
+    return nodes, prepared_edges
 
 
 def definition_to_builder_nodes(definition: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -383,5 +479,29 @@ def sync_builder_graph(
         environment_name=environment_name,
         version_id=str(version_row["id"]),
         updated_by=created_by,
+    )
+    wf_meta = (
+        client.table("workflow_defs")
+        .select("name, description, status, config, version, created_by")
+        .eq("id", workflow_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    meta = dict(wf_meta.data[0]) if wf_meta.data else {}
+    sync_legacy_workflow_to_contract(
+        client,
+        workflow_id=workflow_id,
+        org_id=org_id,
+        name=str(meta.get("name") or "Workflow"),
+        description=meta.get("description"),
+        status=meta.get("status"),
+        definition=definition,
+        config=meta.get("config") if isinstance(meta.get("config"), dict) else {},
+        environment_name=environment_name,
+        created_by=str(meta["created_by"]) if meta.get("created_by") else created_by,
+        version=str(meta.get("version")) if meta.get("version") else None,
+        nodes=contract_nodes_from_builder(stored_nodes),
+        edges=contract_edges_from_builder(stored_edges),
     )
     return stored_nodes, stored_edges, definition

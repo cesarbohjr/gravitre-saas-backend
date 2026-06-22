@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { approveAssignment, fetchAssignmentJob, getDemoAssignment, rejectAssignment } from "@/lib/demo-assignments"
@@ -845,6 +846,11 @@ export default function AssignmentDetailPage({
                 <p className="text-xs text-muted-foreground mt-1">
                   {agentName} · {createdAt} · {job.status.replace(/_/g, " ")}
                 </p>
+                {handoff ? (
+                  <div className="mt-2">
+                    <ExecutionModeBadge source={handoff} showMeta />
+                  </div>
+                ) : null}
               </div>
               {agentId && (
                 <Link href={`/agents/${agentId}/chat`}>

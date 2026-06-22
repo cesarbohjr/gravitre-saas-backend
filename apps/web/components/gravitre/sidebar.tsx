@@ -73,6 +73,7 @@ const adminNavigation: NavGroup[] = [
       { name: "Agents", href: "/agents", icon: "team" },
       { name: "Agent Swarm", href: "/agents/swarm", icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
+      { name: "Goals", href: "/goals", icon: "target" },
     ],
   },
   {
@@ -80,7 +81,9 @@ const adminNavigation: NavGroup[] = [
     items: [
       { name: "Marketplace", href: "/marketplace", icon: "package" },
       { name: "Automations", href: "/workflows", icon: "waypoints" },
+      { name: "Failure Alerts", href: "/workflows/failure-predictions", icon: "shieldAlert" },
       { name: "Training", href: "/training", icon: "brain" },
+      { name: "Model Registry", href: "/models", icon: "cpu" },
       { name: "Apps", href: "/connectors", icon: "blocks" },
       { name: "Data", href: "/sources", icon: "database" },
     ],

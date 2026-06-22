@@ -31,6 +31,8 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { OutcomeMethodologyCallout } from "@/components/outcome/outcome-methodology-callout"
+import { ESTIMATED_IMPACT_LABEL } from "@/lib/outcome-labels"
 import { Progress } from "@/components/ui/progress"
 import {
   Tooltip,
@@ -299,7 +301,7 @@ function RecommendationCard({
           <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-3">
             <span className="flex items-center gap-1">
               <TrendingUp className={cn("h-3 w-3", categoryColors[recommendation.category])} />
-              {recommendation.estimatedImpact}
+              {ESTIMATED_IMPACT_LABEL}: {recommendation.estimatedImpact}
             </span>
             <span className="flex items-center gap-1">
               <Activity className="h-3 w-3" />
@@ -689,6 +691,7 @@ export function OptimizationInsightsPanel({
               <div className="p-4">
                 {activeTab === "insights" && (
                   <div className="space-y-6">
+                    <OutcomeMethodologyCallout variant="optimization" />
                     {/* Health Score Section */}
                     <div className="flex items-start gap-6">
                       <HealthScoreRing score={healthScore} />

@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { Loader2 } from "lucide-react"
+import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 
 // Types
 interface Agent {
@@ -404,8 +405,8 @@ export default function AgentProfilePage({
                   className="grid grid-cols-3 gap-4 mb-6"
                 >
                   {[
-                    { label: "Tasks Completed", value: agent.stats.tasksCompleted.toLocaleString(), icon: "check", color: "emerald" },
-                    { label: "Success Rate", value: `${agent.stats.successRate}%`, icon: "target", color: "blue" },
+                    { label: "Tasks completed (operational)", value: agent.stats.tasksCompleted.toLocaleString(), icon: "check", color: "emerald" },
+                    { label: "Success rate (operational)", value: `${agent.stats.successRate}%`, icon: "target", color: "blue" },
                     { label: "Avg Response", value: agent.stats.avgResponseTime, icon: "clock", color: "violet" },
                     { label: "Hours Active", value: agent.stats.hoursActive.toLocaleString(), icon: "activity", color: "amber" },
                     { label: "Decisions Today", value: agent.stats.decisionsToday.toString(), icon: "sparkles", color: "rose" },
@@ -447,6 +448,7 @@ export default function AgentProfilePage({
                     </motion.div>
                   ))}
                 </motion.div>
+                <p className="mb-6 text-xs text-muted-foreground">{OPERATIONAL_METHODOLOGY_SHORT}</p>
 
                 {/* Training Progress */}
                 <motion.div

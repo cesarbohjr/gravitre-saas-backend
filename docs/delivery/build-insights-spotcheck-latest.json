@@ -1,8 +1,8 @@
 {
-  "target": "https://gravitre-saas-backend-production.up.railway.app",
+  "target": "https://api.gravitre.app",
   "appUrl": "https://gravitre.app",
   "orgId": "00000000-0000-0000-0000-000000000001",
-  "startedAt": "2026-06-19T08:48:23.120498+00:00",
+  "startedAt": "2026-06-22T17:34:16.968388+00:00",
   "summary": {
     "pass": 6,
     "fail": 0
@@ -13,7 +13,7 @@
       "status": "pass",
       "http": 200,
       "detail": {
-        "total": 748,
+        "total": 963,
         "logs_count": 5,
         "hasMore": true
       }
@@ -24,7 +24,7 @@
       "http": 200,
       "detail": {
         "overallSuccessRate": 100.0,
-        "totalRunsThisWeek": 73
+        "totalRunsThisWeek": 19
       }
     },
     {
@@ -32,7 +32,7 @@
       "status": "pass",
       "http": 200,
       "detail": {
-        "totalRuns": 97,
+        "totalRuns": 103,
         "successRate": 100.0,
         "recordsProcessed": 0,
         "avgLatency": 0
@@ -44,7 +44,7 @@
       "http": 200,
       "detail": {
         "insights_count": 1,
-        "generatedAt": "2026-06-19T08:48:21.516230+00:00"
+        "generatedAt": "2026-06-22T17:34:15.750922+00:00"
       }
     },
     {
@@ -52,7 +52,7 @@
       "status": "pass",
       "http": 200,
       "detail": {
-        "target": 3,
+        "target": 0,
         "days_len": 7
       }
     },
@@ -62,7 +62,7 @@
       "http": 200,
       "detail": {
         "runs_count": 10,
-        "total": 97
+        "total": 103
       }
     }
   ],

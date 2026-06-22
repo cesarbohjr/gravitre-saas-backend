@@ -1,7 +1,7 @@
 """STA-19: builder graph → executable definition."""
 from __future__ import annotations
 
-from app.workflows.builder_sync import definition_to_builder_nodes, graph_to_definition
+from app.workflows.builder_sync import definition_to_builder_nodes, graph_to_definition, prepare_builder_edge
 
 
 def test_graph_to_definition_agent_handoff_step():
@@ -107,3 +107,22 @@ def test_definition_round_trips_invoke_tool_connector_node():
     definition = graph_to_definition(nodes, edges)
     assert definition["steps"][0]["type"] == "invoke_tool"
     assert definition["steps"][0]["config"]["action"] == "jira.issues.create"
+
+
+def test_prepare_builder_edge_assigns_id_for_definition_fallback_edges():
+    _, edges = definition_to_builder_nodes(
+        {
+            "schema_version": "v1",
+            "steps": [
+                {"id": "a", "name": "Step A", "type": "agent"},
+                {"id": "b", "name": "Step B", "type": "agent"},
+            ],
+        }
+    )
+    assert len(edges) == 1
+    assert "id" not in edges[0]
+    prepared = prepare_builder_edge(edges[0], "wf-123", "production")
+    assert prepared["id"] == "a->b"
+    assert prepared["workflow_id"] == "wf-123"
+    assert prepared["from_node_id"] == "a"
+    assert prepared["to_node_id"] == "b"

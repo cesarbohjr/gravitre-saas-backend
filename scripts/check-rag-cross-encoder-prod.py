@@ -32,7 +32,7 @@ ENV_FILE = REPO / "backend" / ".env.operator.local"
 ENV_BACKEND = REPO / "backend" / ".env"
 API_BASE = os.environ.get(
     "BACKEND_URL",
-    "https://gravitre-saas-backend-production.up.railway.app",
+    "https://api.gravitre.app",
 ).rstrip("/")
 ENV_NAME = "production"
 RAILWAY_SERVICE = os.environ.get("RAILWAY_SERVICE", "gravitre-saas-backend")

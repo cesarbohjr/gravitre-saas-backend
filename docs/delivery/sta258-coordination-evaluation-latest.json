@@ -1,0 +1,175 @@
+{
+  "linearIssue": "STA-258",
+  "generatedAt": "2026-06-21T21:39:37.952846+00:00",
+  "target": "https://api.gravitre.app",
+  "testOrg": "00000000-0000-0000-0000-000000000001",
+  "comparison": {
+    "baselineSmoke": {
+      "coordinationLayerEnabled": false,
+      "summary": {
+        "pass": 4,
+        "fail": 0,
+        "total": 5
+      },
+      "path": "2A sequential enqueue, no coordinationLayer marker"
+    },
+    "flagOnSmoke": {
+      "coordinationLayerEnabled": true,
+      "summary": {
+        "pass": 5,
+        "fail": 0,
+        "total": 5
+      },
+      "path": "ParallelFanout + coordinationContext in job payload"
+    },
+    "fullLifecycleCurrent": {
+      "mode": "flag_on",
+      "coordinationLayerEnabled": true,
+      "timingMs": {
+        "swarmStart": 1710,
+        "subtasksComplete": 8313,
+        "aggregate": 0,
+        "total": 8691
+      },
+      "swarm": {
+        "swarmId": "25f7efc3-0799-4fa0-8eea-6e6cf8c08959",
+        "status": "failed",
+        "coordinationLayer": false,
+        "subtaskCount": 2,
+        "subtaskStatuses": [
+          "completed",
+          "completed"
+        ],
+        "finalRecommendation": null,
+        "finalConfidence": null,
+        "councilSessionId": null,
+        "executionVerified": false
+      },
+      "pathMarkers": {
+        "coordinationLayerResponse": true,
+        "coordinationContextInJob": true
+      },
+      "subtasksTimedOut": false,
+      "aggregateError": null
+    },
+    "workflowCouncilComparison": {
+      "workflow": "uncertain-lead-council",
+      "postHocEvidenceKeys": [
+        "parameters",
+        "prior_steps",
+        "source_step"
+      ],
+      "sharedContextEvidenceKeys": [
+        "coordination_layer",
+        "parameters",
+        "prior_steps",
+        "shared_context",
+        "source_step"
+      ],
+      "sharedContextOnlyKeys": [
+        "coordination_layer",
+        "shared_context"
+      ],
+      "coordinationLayerMarker": true,
+      "hasSharedContextChannel": true,
+      "branchOptionsUnchanged": [
+        "enroll",
+        "nurture"
+      ],
+      "branchQualityDeltaObserved": false,
+      "conclusion": "Shared-context path enriches council evidence with coordination_layer marker and live channel payload; branch mapping (enroll/nurture) is identical \u2014 no measured branch-selection improvement on uncertain-lead workflow in this eval window."
+    },
+    "parallelFanoutN3": {
+      "n2Subtasks": {
+        "subtaskCount": 2,
+        "swarmStartMs": 621,
+        "coordinationLayerResponse": true,
+        "coordinationContextInJob": true,
+        "swarmId": "e1b38172-0d9f-4e42-9560-46c6049274b9"
+      },
+      "n3Subtasks": {
+        "subtaskCount": 3,
+        "swarmStartMs": 971,
+        "coordinationLayerResponse": true,
+        "coordinationContextInJob": true,
+        "swarmId": "91c8ef91-9ed7-4425-aaee-5bf9f96226ba"
+      },
+      "n3MinusN2StartMs": 350,
+      "smokeFlagOnN2StartMs": null,
+      "materialEnqueueWinAtN3": false,
+      "conclusion": "N=3 swarm start 971ms vs N=2 621ms (delta 350ms). ParallelFanout enqueue scaling is not material under current queue load."
+    },
+    "latencyNotes": [
+      "Smoke tests measure start-only latency; full lifecycle includes subtask execution + council aggregate.",
+      "N=3 fanout comparison measures swarm POST /start only under current production queue load."
+    ],
+    "failureModes": {
+      "baselineSmoke": [
+        {
+          "label": "health_deploy_probe",
+          "status": "warn",
+          "detail": "coordinationLayer missing from /health \u2014 STA-270 backend not deployed yet"
+        }
+      ],
+      "flagOnSmoke": [],
+      "fullLifecycle": "failed"
+    },
+    "maintenanceCost": {
+      "coordinationModuleFiles": 5,
+      "coordinationModuleLines": 257,
+      "coordinationTestFiles": 1,
+      "dualPathIntegrationSites": 3,
+      "dualPathFiles": [
+        "backend/app/services/swarm_coordinator_service.py",
+        "backend/app/services/council_workflow_service.py",
+        "backend/app/services/handoff_service.py"
+      ],
+      "sta270CommitsOnMain": 4,
+      "note": "Each integration site branches on is_coordination_layer_enabled; removing dual-path requires cut-over or kill."
+    },
+    "aggregatingBugFix": {
+      "issue": "Auto-aggregate on subtask completion sets aggregating; council LLM hang leaves swarm stuck; manual retry returns 409",
+      "fix": "Stale aggregating retry (>90s), council asyncio timeout (120s), try/except marks failed; eval polls auto-aggregate instead of duplicate POST",
+      "file": "backend/app/services/swarm_coordinator_service.py"
+    }
+  },
+  "gateDecision": {
+    "decisionDue": "2026-08-01",
+    "decisionRecorded": true,
+    "forcedOutcome": "kill",
+    "killExecutedAt": "2026-06-21T21:40:00+00:00",
+    "killActions": [
+      "COORDINATION_LAYER_ENABLED=false on Railway",
+      "Removed backend/app/coordination/ and dual-path branches",
+      "Removed STA-270/STA-258 coordination scripts and npm targets"
+    ],
+    "blockingQuestion": null,
+    "rationale": " Council aggregate failed in production lifecycle. Shared-context workflow council shows no branch-selection improvement vs post-hoc; N=3 enqueue delta 350ms is not material. Dual-path cost (3 sites, 257 module lines) exceeds measured benefit. Per spec: kill \u2014 disable flag, delete CoordinationLayer code; do not leave dormant.",
+    "forcedOutcomeOptions": [
+      "cut_over",
+      "kill",
+      "extend_once"
+    ],
+    "evidence": {
+      "councilCompleted": false,
+      "councilFailed": true,
+      "councilStuckAggregating": false,
+      "workflowBranchQualityDelta": false,
+      "materialFanoutWinAtN3": false
+    },
+    "resolvedGateItems": {
+      "councilAggregatingBug": {
+        "issue": "Auto-aggregate on subtask completion sets aggregating; council LLM hang leaves swarm stuck; manual retry returns 409",
+        "fix": "Stale aggregating retry (>90s), council asyncio timeout (120s), try/except marks failed; eval polls auto-aggregate instead of duplicate POST",
+        "file": "backend/app/services/swarm_coordinator_service.py"
+      },
+      "workflowCouncilComparison": "Shared-context path enriches council evidence with coordination_layer marker and live channel payload; branch mapping (enroll/nurture) is identical \u2014 no measured branch-selection improvement on uncertain-lead workflow in this eval window.",
+      "parallelFanoutN3": "N=3 swarm start 971ms vs N=2 621ms (delta 350ms). ParallelFanout enqueue scaling is not material under current queue load."
+    },
+    "flagOnCouncilOutcome": {
+      "finalRecommendation": null,
+      "finalConfidence": null,
+      "executionVerified": false
+    }
+  }
+}

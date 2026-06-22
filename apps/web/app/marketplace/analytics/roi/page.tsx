@@ -20,6 +20,13 @@ import {
   TrendingUp,
 } from "lucide-react"
 import type { MarketplaceRoiAssetRow, MarketplaceRoiSummary } from "@/types/api"
+import {
+  ADOPTED_ESTIMATE_HOURS_LABEL,
+  CATALOG_ESTIMATE_HOURS_LABEL,
+  ESTIMATED_HOURS_SAVED_LABEL,
+  ROI_METHODOLOGY,
+  ROI_PAGE_TITLE,
+} from "@/lib/marketplace-outcome-labels"
 
 function formatHours(value: number) {
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}h`
@@ -61,19 +68,20 @@ function RealizationHero({ roi }: { roi: MarketplaceRoiSummary }) {
     <div className="rounded-xl border border-border bg-card p-5 md:p-6">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Realization rate</h2>
+          <h2 className="text-sm font-semibold text-foreground">Adoption rate (estimates)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Share of estimated hours from active installs that have at least one adoption event.
+            Share of catalog estimates from active installs that recorded at least one adoption event (still an estimate,
+            not measured time-on-task).
           </p>
         </div>
         <Badge variant={rate >= 75 ? "default" : rate >= 25 ? "secondary" : "outline"}>
-          {rate.toFixed(1)}% realized
+          {rate.toFixed(1)}% adopted
         </Badge>
       </div>
       <Progress value={rate} className="mb-2 h-3" />
       <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-        <span>{formatHours(roi.totalRealizedHoursSaved)} realized</span>
-        <span>{formatHours(roi.totalEstimatedHoursSaved)} estimated</span>
+        <span>{formatHours(roi.totalRealizedHoursSaved)} {ADOPTED_ESTIMATE_HOURS_LABEL.toLowerCase()}</span>
+        <span>{formatHours(roi.totalEstimatedHoursSaved)} {CATALOG_ESTIMATE_HOURS_LABEL.toLowerCase()}</span>
       </div>
     </div>
   )
@@ -120,7 +128,7 @@ function RoiAssetTable({ rows }: { rows: MarketplaceRoiAssetRow[] }) {
               <th className="pb-2 text-left font-medium">Use case</th>
               <th className="pb-2 text-left font-medium">Installed</th>
               <th className="pb-2 text-left font-medium">Events</th>
-              <th className="pb-2 text-left font-medium">Hours saved</th>
+              <th className="pb-2 text-left font-medium">{ESTIMATED_HOURS_SAVED_LABEL}</th>
             </tr>
           </thead>
           <tbody>
@@ -176,7 +184,7 @@ export default function MarketplaceRoiDashboardPage() {
 
   if (!isAdmin) {
     return (
-      <AppShell title="Hours saved ROI">
+      <AppShell title={ROI_PAGE_TITLE}>
         <div className="mx-auto max-w-lg rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
           Admin access is required to view marketplace ROI.
         </div>
@@ -185,7 +193,7 @@ export default function MarketplaceRoiDashboardPage() {
   }
 
   return (
-    <AppShell title="Hours saved ROI">
+    <AppShell title={ROI_PAGE_TITLE}>
       <div className="relative overflow-hidden rounded-2xl border bg-card/40 p-6 md:p-8">
         <GridPattern className="opacity-40" />
         <div className="relative space-y-6">
@@ -193,11 +201,9 @@ export default function MarketplaceRoiDashboardPage() {
             <div>
               <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
                 <TrendingUp className="h-5 w-5 text-primary" aria-hidden />
-                Strategic hours saved
+                {ROI_PAGE_TITLE}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Track estimated vs realized time savings from active marketplace installs and adoption usage.
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{ROI_METHODOLOGY}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
@@ -245,12 +251,12 @@ export default function MarketplaceRoiDashboardPage() {
                   icon={BarChart3}
                 />
                 <StatCard
-                  label="Estimated hours"
+                  label={CATALOG_ESTIMATE_HOURS_LABEL}
                   value={formatHours(roi.totalEstimatedHoursSaved)}
                   icon={Clock}
                 />
                 <StatCard
-                  label="Realized hours"
+                  label={ADOPTED_ESTIMATE_HOURS_LABEL}
                   value={formatHours(roi.totalRealizedHoursSaved)}
                   icon={TrendingUp}
                 />
@@ -258,8 +264,8 @@ export default function MarketplaceRoiDashboardPage() {
               <RoiAssetTable rows={roi.byAsset} />
               {roi.byAsset.some((row) => row.estimatedHoursSaved <= 0) ? (
                 <p className={cn("text-xs text-muted-foreground")}>
-                  Assets without estimated hours saved still appear when installed but contribute zero to totals until
-                  catalog metadata is updated.
+                  Assets without {ESTIMATED_HOURS_SAVED_LABEL.toLowerCase()} metadata still appear when installed but
+                  contribute zero to totals until catalog metadata is updated.
                 </p>
               ) : null}
             </>

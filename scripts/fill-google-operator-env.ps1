@@ -65,7 +65,7 @@ foreach ($key in @(
 }
 
 if (-not ($lines -join "`n" -match "API_PUBLIC_URL=")) {
-    $lines += "API_PUBLIC_URL=https://gravitre-saas-backend-production.up.railway.app"
+    $lines += "API_PUBLIC_URL=https://api.gravitre.app"
 }
 if (-not ($lines -join "`n" -match "PUBLIC_APP_URL=")) {
     $lines += "PUBLIC_APP_URL=https://gravitre.app"

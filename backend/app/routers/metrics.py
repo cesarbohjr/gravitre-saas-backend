@@ -14,8 +14,12 @@ from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
 from app.metrics.service import (
+    connector_health_latency,
     connector_metrics,
+    dashboard_run_stats,
+    latency_distribution_series,
     overview_metrics,
+    parse_range,
     rag_metrics,
     timeseries_metrics,
     weekly_throughput_metrics,
@@ -36,12 +40,15 @@ def _validate_range(range_str: str | None) -> str:
 
 def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, rng: str) -> dict[str, Any]:
     """Flatten service metrics plus connector/run aggregates for the dashboard cards."""
+    _, start_at, end_at = parse_range(rng)
     data = overview_metrics(settings, org_id, rng)
     wf_rows = client.table("workflow_defs").select("id, status").eq("org_id", org_id).execute().data or []
     runs_rows = (
         client.table("workflow_runs")
-        .select("id, status, duration_ms")
+        .select("id, status, duration_ms, created_at")
         .eq("org_id", org_id)
+        .gte("created_at", start_at.isoformat())
+        .lt("created_at", end_at.isoformat())
         .execute()
         .data
         or []
@@ -64,6 +71,14 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
     avg_latency = round(float(rag.get("avg_latency_ms") or 0), 2) if rag_total > 0 else avg_duration
 
     active_connectors = len([c for c in connector_rows if (c.get("status") or "") == "active"])
+    health_latency = connector_health_latency(client, org_id)
+    dashboard = dashboard_run_stats(
+        client,
+        org_id,
+        start_at,
+        end_at,
+        records_processed=records_processed,
+    )
     data.update(
         {
             "totalWorkflows": len(wf_rows),
@@ -75,6 +90,10 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
             "avgLatency": avg_latency,
             "activeConnectors": active_connectors,
             "totalConnectors": len(connector_rows),
+            "changes": dashboard.get("changes", {}),
+            "trends": dashboard.get("trends", {}),
+            "connectorHealthLatencyMs": health_latency.get("avg_latency_ms", 0.0),
+            "connectorHealthLatencyP95Ms": health_latency.get("p95_latency_ms", 0.0),
         }
     )
     return data
@@ -373,13 +392,13 @@ async def runs(
     period_map = {"24h": "7d", "7d": "7d", "30d": "30d"}
     rng = _validate_range(period_map.get(period or "", range or "30d"))
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    from app.metrics.service import parse_range
-    _, start_at, _ = parse_range(rng)
+    _, start_at, end_at = parse_range(rng)
     rows = (
         client.table("workflow_runs")
         .select("created_at, status")
         .eq("org_id", org_id)
         .gte("created_at", start_at.isoformat())
+        .lt("created_at", end_at.isoformat())
         .execute()
         .data
         or []
@@ -412,6 +431,10 @@ async def runs(
         }
         for entry in data["series"]
     ]
+    latency_distribution, spike_time = latency_distribution_series(client, org_id, start_at, end_at)
+    data["latencyDistribution"] = latency_distribution
+    if spike_time:
+        data["latencySpikeTime"] = spike_time
     latency_ms = int((time.perf_counter() - start) * 1000)
     logger.info(
         "metrics_runs request_id=%s org_id=%s range=%s latency_ms=%s",

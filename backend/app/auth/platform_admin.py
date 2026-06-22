@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import Any
 
-MASTER_ADMIN_EMAIL = "cesar.bohorquez.jr@gmail.com"
-
 ORG_ADMIN_ROLES = frozenset({"admin", "owner"})
 
 
@@ -42,4 +40,4 @@ def is_platform_admin_email(client: Any, email: str | None) -> bool:
         )
         return bool(response.data)
     except Exception:
-        return normalized == MASTER_ADMIN_EMAIL.lower()
+        return False

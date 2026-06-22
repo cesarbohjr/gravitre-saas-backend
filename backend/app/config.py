@@ -1,11 +1,12 @@
 """BE-00: Config and environment wiring. Loads from .env; no secrets in code."""
 from functools import lru_cache
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import AliasChoices, Field, ValidationError, field_validator
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.connectors.secret_key import validate_connector_secrets_encryption_key
+from app.public_urls import PRODUCTION_APP_URL, is_legacy_platform_host, normalize_public_url
 
 
 class Settings(BaseSettings):
@@ -106,7 +107,10 @@ class Settings(BaseSettings):
     stripe_price_id_control_annual: str = ""
     stripe_price_id_command_monthly: str = ""
     stripe_price_id_command_annual: str = ""
-    public_app_url: str = Field(default="", alias="NEXT_PUBLIC_APP_URL")
+    public_app_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("NEXT_PUBLIC_APP_URL", "PUBLIC_APP_URL"),
+    )
     # Public API base for OAuth callbacks (defaults to same host as app in dev)
     api_public_url: str = ""
 
@@ -220,6 +224,9 @@ class Settings(BaseSettings):
     # Deployment region for RLS enforcement (us|eu). Set per regional Supabase/API deployment.
     deployment_data_region: str = "us"
 
+    # STA-271 Phase C: when false, stop writing legacy workflow_defs/workflow_runs (contract tables only).
+    workflow_legacy_writes: bool = True
+
     # Phase 6: kill switches (default off)
     disable_execute: bool = False
     disable_connectors: bool = False
@@ -290,8 +297,17 @@ class Settings(BaseSettings):
                 missing.append("OPENAI_API_KEY")
             if not (self.connector_secrets_encryption_key or "").strip():
                 missing.append("CONNECTOR_SECRETS_ENCRYPTION_KEY")
+            if not (self.internal_api_secret or "").strip():
+                missing.append("INTERNAL_API_SECRET")
             if missing:
                 raise ValueError(f"Missing required settings for {env}: {', '.join(missing)}")
+            self.public_app_url = normalize_public_url(
+                self.public_app_url,
+                fallback=PRODUCTION_APP_URL,
+            )
+            # Leave api_public_url empty when unset/legacy so OAuth uses gravitre.app/api/* proxy.
+            if is_legacy_platform_host(self.api_public_url):
+                self.api_public_url = ""
         return self
 
 

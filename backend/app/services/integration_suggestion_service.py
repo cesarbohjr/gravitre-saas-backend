@@ -10,6 +10,7 @@ from app.config import Settings
 from app.services.department_pack_catalog import get_pack_spec
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 from app.workflows.audit import write_audit_event
+from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
 
 logger = logging.getLogger(__name__)
 
@@ -538,6 +539,7 @@ def _create_workflow_from_suggestion_stub(
     created = client.table("workflow_defs").insert(row).execute()
     if not created.data:
         raise IntegrationSuggestionError("Workflow create failed", code="WORKFLOW_CREATE_FAILED")
+    mirror_legacy_workflow_row_to_contract(client, dict(created.data[0]))
     return str(created.data[0]["id"])
 
 
@@ -614,6 +616,7 @@ async def _create_workflow_from_suggestion(
         created = client.table("workflow_defs").insert(row).execute()
         if not created.data:
             raise IntegrationSuggestionError("Workflow create failed", code="WORKFLOW_CREATE_FAILED")
+        mirror_legacy_workflow_row_to_contract(client, dict(created.data[0]))
         return str(created.data[0]["id"])
     except Exception as exc:  # noqa: BLE001
         logger.warning(

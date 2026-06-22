@@ -3,7 +3,7 @@
   "type": "webhooks",
   "config": {
     "settings": {
-      "targetUrl": "https://gravitre-saas-backend-production.up.railway.app/api/webhooks/hubspot/inbound",
+      "targetUrl": "https://api.gravitre.app/api/webhooks/hubspot/inbound",
       "maxConcurrentRequests": 10
     },
     "subscriptions": {

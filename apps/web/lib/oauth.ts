@@ -64,7 +64,7 @@ export async function beginOAuthSignIn(
         return {
           ok: false,
           error:
-            "OAuth redirect mismatch detected. Verify NEXT_PUBLIC_APP_URL in Vercel and Site URL/Redirect URLs in Supabase Auth settings.",
+            "OAuth redirect mismatch detected. Verify NEXT_PUBLIC_APP_URL and Supabase Auth Site URL / redirect URLs.",
         }
       }
     }

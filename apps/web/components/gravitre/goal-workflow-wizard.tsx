@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { CONNECTOR_CATALOG } from "@/lib/connectors"
+import { apiFetch } from "@/lib/fetcher"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -95,6 +97,7 @@ interface GoalWorkflowWizardProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onBuildWorkflow?: (plan: GeneratedPlan) => void
+  onGoalSaved?: () => void
 }
 
 const goalCategories: GoalCategory[] = [
@@ -172,11 +175,77 @@ const planningStages = [
   { id: "deliverables", label: "Preparing deliverables", icon: FileText },
 ]
 
-export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow }: GoalWorkflowWizardProps) {
+function connectorFromId(id: string): Connector {
+  const catalogEntry = CONNECTOR_CATALOG.find(
+    (entry) => entry.vendorKey === id || entry.type === id
+  )
+  const label = catalogEntry?.vendorKey ?? id
+  return {
+    id: label,
+    name: label.replace(/_/g, " "),
+    icon: label.slice(0, 1).toUpperCase(),
+    category: "crm",
+    connected: Boolean(catalogEntry),
+    required: true,
+  }
+}
+
+function mapApiPlanToGeneratedPlan(
+  payload: Record<string, unknown>,
+  goalSummary: string,
+  metric: string
+): GeneratedPlan {
+  const proposedSteps = (payload.proposedSteps ??
+    (payload.goalPlan as { proposedSteps?: unknown[] } | undefined)?.proposedSteps ??
+    []) as Array<Record<string, unknown>>
+  const requiredConnectorIds = (payload.requiredConnectors ?? []) as string[]
+  const approvalGatesRaw = (payload.approvalGates ?? []) as Array<Record<string, unknown>>
+  const estimatedImpact = (payload.estimatedImpact ?? {}) as Record<string, unknown>
+
+  const steps: ProposedStep[] = proposedSteps.map((step, index) => ({
+    id: String(step.id ?? `step-${index + 1}`),
+    name: String(step.title ?? step.name ?? `Step ${index + 1}`),
+    description: String(step.title ?? step.name ?? `Step ${index + 1}`),
+    type: "task",
+    riskLevel: "medium",
+  }))
+
+  const approvalGates = approvalGatesRaw.map((gate, index) => ({
+    stepId: String(gate.stepId ?? steps[index]?.id ?? `step-${index + 1}`),
+    reason: String(gate.phase ?? gate.reason ?? "Approval required"),
+  }))
+
+  return {
+    goalSummary,
+    steps: steps.length
+      ? steps
+      : [
+          {
+            id: "step-1",
+            name: goalSummary,
+            description: goalSummary,
+            type: "task",
+            riskLevel: "medium",
+          },
+        ],
+    requiredConnectors: requiredConnectorIds.map(connectorFromId),
+    agents: [],
+    approvalGates,
+    estimatedRuntime: "15-30 minutes",
+    riskLevel: "medium",
+    successMetric:
+      metric ||
+      String(estimatedImpact.expectedLift ?? "Define a measurable success metric"),
+  }
+}
+
+export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoalSaved }: GoalWorkflowWizardProps) {
   const [step, setStep] = useState(1)
   const [isPlanning, setIsPlanning] = useState(false)
   const [planningStage, setPlanningStage] = useState(0)
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null)
+  const [goalId, setGoalId] = useState<string | null>(null)
+  const [planError, setPlanError] = useState<string | null>(null)
   
   // Step 1: Goal definition
   const [goalText, setGoalText] = useState("")
@@ -197,6 +266,8 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow }: Goal
         setIsPlanning(false)
         setPlanningStage(0)
         setGeneratedPlan(null)
+        setGoalId(null)
+        setPlanError(null)
         setGoalText("")
         setSelectedCategory(null)
         setPriority("medium")
@@ -208,114 +279,109 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow }: Goal
     }
   }, [open])
 
+  const buildGoalPayload = (status: string) => ({
+    objective: goalText.trim(),
+    category: selectedCategory,
+    priority,
+    frequency,
+    department: selectedDepartment,
+    connectedSystems: selectedConnectors,
+    successMetrics: successMetric ? { primary: successMetric } : {},
+    status,
+  })
+
+  const persistGoal = async (status = "draft"): Promise<string> => {
+    if (goalId) {
+      const patchResponse = await apiFetch(`/api/goals/${goalId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildGoalPayload(status)),
+      })
+      if (!patchResponse.ok) {
+        const body = (await patchResponse.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? `Failed to update goal (${patchResponse.status})`)
+      }
+      return goalId
+    }
+
+    const createResponse = await apiFetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildGoalPayload(status)),
+    })
+    if (!createResponse.ok) {
+      const body = (await createResponse.json().catch(() => ({}))) as { error?: string }
+      throw new Error(body.error ?? `Failed to create goal (${createResponse.status})`)
+    }
+    const payload = (await createResponse.json()) as { goal?: { id?: string } }
+    const createdId = payload.goal?.id
+    if (!createdId) {
+      throw new Error("Goal was created without an id")
+    }
+    setGoalId(createdId)
+    return createdId
+  }
+
   const handleGeneratePlan = async () => {
     setStep(3)
     setIsPlanning(true)
-    
-    // Simulate AI planning stages
-    for (let i = 0; i < planningStages.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400))
-      setPlanningStage(i + 1)
+    setPlanError(null)
+
+    const animation = (async () => {
+      for (let i = 0; i < planningStages.length; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 450))
+        setPlanningStage(i + 1)
+      }
+    })()
+
+    try {
+      const savedGoalId = await persistGoal("active")
+      const planResponse = await apiFetch(`/api/goals/${savedGoalId}/generate-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          objective: goalText.trim(),
+          context: [
+            selectedDepartment ? `Department: ${selectedDepartment}` : null,
+            selectedConnectors.length ? `Connectors: ${selectedConnectors.join(", ")}` : null,
+            successMetric ? `Success metric: ${successMetric}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          constraints: successMetric ? [successMetric] : [],
+        }),
+      })
+
+      if (!planResponse.ok) {
+        const body = (await planResponse.json().catch(() => ({}))) as { error?: string; detail?: string }
+        throw new Error(body.error ?? body.detail ?? `Plan generation failed (${planResponse.status})`)
+      }
+
+      const planPayload = (await planResponse.json()) as Record<string, unknown>
+      await animation
+      setGeneratedPlan(mapApiPlanToGeneratedPlan(planPayload, goalText.trim(), successMetric))
+      onGoalSaved?.()
+      setIsPlanning(false)
+      setStep(4)
+    } catch (error) {
+      await animation
+      const message = error instanceof Error ? error.message : "Failed to generate plan"
+      setPlanError(message)
+      setIsPlanning(false)
+      setStep(2)
+      toast.error(message)
     }
-    
-    // Generate mock plan based on goal
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const mockPlan: GeneratedPlan = {
-      goalSummary: goalText || "Re-engage inactive leads and create a ready-to-send email campaign",
-      steps: [
-        {
-          id: "step-1",
-          name: "Pull Inactive Contacts",
-          description: "Retrieve contacts with no engagement in the last 90 days",
-          type: "source",
-          connector: "HubSpot",
-          output: "Contact list with engagement data",
-          riskLevel: "low",
-        },
-        {
-          id: "step-2",
-          name: "Segment by Engagement",
-          description: "Categorize contacts based on historical engagement patterns",
-          type: "agent",
-          agent: "Research Analyst",
-          dataRequired: ["Contact list", "Engagement history"],
-          output: "Segmented contact groups",
-          riskLevel: "low",
-        },
-        {
-          id: "step-3",
-          name: "Generate Email Variants",
-          description: "Create personalized email content for each segment",
-          type: "agent",
-          agent: "Content Writer",
-          dataRequired: ["Segmented groups", "Brand guidelines"],
-          output: "Email drafts per segment",
-          riskLevel: "medium",
-        },
-        {
-          id: "step-4",
-          name: "Compliance Review",
-          description: "Check content against legal and brand guidelines",
-          type: "council",
-          agent: "Compliance Council",
-          dataRequired: ["Email drafts"],
-          output: "Approved/flagged content",
-          riskLevel: "medium",
-          requiresApproval: true,
-        },
-        {
-          id: "step-5",
-          name: "Human Approval",
-          description: "Final review before campaign execution",
-          type: "approval",
-          dataRequired: ["Reviewed content"],
-          output: "Approved campaign",
-          riskLevel: "high",
-          requiresApproval: true,
-        },
-        {
-          id: "step-6",
-          name: "Schedule Campaign",
-          description: "Set up campaign in email system with optimal send times",
-          type: "connector",
-          connector: "HubSpot",
-          dataRequired: ["Approved content", "Contact segments"],
-          output: "Scheduled campaign",
-          riskLevel: "high",
-        },
-        {
-          id: "step-7",
-          name: "Report Results",
-          description: "Generate performance summary and recommendations",
-          type: "agent",
-          agent: "Research Analyst",
-          dataRequired: ["Campaign metrics"],
-          output: "Performance report",
-          riskLevel: "low",
-        },
-      ],
-      requiredConnectors: [
-        { id: "hubspot", name: "HubSpot", icon: "H", category: "crm", connected: true, required: true },
-        { id: "slack", name: "Slack", icon: "#", category: "comms", connected: true, required: false },
-      ],
-      agents: [
-        { id: "analyst", name: "Research Analyst", role: "Data analysis and insights" },
-        { id: "writer", name: "Content Writer", role: "Email content generation" },
-        { id: "compliance", name: "Compliance Reviewer", role: "Legal and brand compliance" },
-      ],
-      approvalGates: [
-        { stepId: "step-4", reason: "Content compliance check" },
-        { stepId: "step-5", reason: "External email send" },
-      ],
-      estimatedRuntime: "15-30 minutes",
-      riskLevel: "medium",
-      successMetric: successMetric || "Email open rate > 20%, click rate > 5%",
+  }
+
+  const handleSaveDraft = async () => {
+    try {
+      await persistGoal("draft")
+      onGoalSaved?.()
+      toast.success("Goal saved as draft")
+      onOpenChange(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save goal")
     }
-    
-    setGeneratedPlan(mockPlan)
-    setIsPlanning(false)
-    setStep(4)
   }
 
   const handleBuildWorkflow = () => {
@@ -946,6 +1012,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow }: Goal
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={handleSaveDraft}
                   className="gap-2"
                 >
                   <Save className="h-4 w-4" />

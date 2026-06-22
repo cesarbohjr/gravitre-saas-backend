@@ -1,0 +1,2 @@
+# Optional data connectors excluded from default pip-audit (Windows build deps for pyarrow).
+snowflake-connector-python>=4.4.0,<5.0

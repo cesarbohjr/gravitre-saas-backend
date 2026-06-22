@@ -5,6 +5,7 @@ When all subtasks finish, results are aggregated through the council pattern.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -12,9 +13,8 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.config import Settings
-from app.services.council_service import DecisionMethod, get_council_service
+from app.services.council_service import DecisionMethod, coerce_council_agent_role, get_council_service
 from app.services.handoff_service import get_agent
-from app.services.model_router import TaskType, get_model_router
 from app.workflows.audit import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,26 @@ SWARM_CANCELLED = "cancelled"
 
 SUBTASK_TERMINAL = {"completed", "failed", "cancelled"}
 MAX_SUBTASKS = 10
+AGGREGATING_STALE_SECONDS = 90
+COUNCIL_AGGREGATE_TIMEOUT_SECONDS = 120
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _aggregating_stale(swarm: dict[str, Any], *, seconds: int = AGGREGATING_STALE_SECONDS) -> bool:
+    if str(swarm.get("status") or "") != SWARM_AGGREGATING:
+        return False
+    updated = _parse_ts(swarm.get("updated_at"))
+    if updated is None:
+        return True
+    return (datetime.now(timezone.utc) - updated).total_seconds() > seconds
 
 
 class SwarmCoordinatorError(Exception):
@@ -77,6 +97,7 @@ def _serialize_subtask(row: dict[str, Any]) -> dict[str, Any]:
         "agentJobId": str(row["agent_job_id"]) if row.get("agent_job_id") else None,
         "result": row.get("result"),
         "errorMessage": row.get("error_message"),
+        "executionVerified": bool(row.get("execution_verified")),
         "createdAt": row.get("created_at"),
         "completedAt": row.get("completed_at"),
     }
@@ -95,6 +116,7 @@ def _serialize_swarm(row: dict[str, Any], subtasks: list[dict[str, Any]] | None 
         "finalConfidence": row.get("final_confidence"),
         "aggregateResult": row.get("aggregate_result") or {},
         "errorMessage": row.get("error_message"),
+        "executionVerified": bool(row.get("execution_verified")),
         "createdAt": row.get("created_at"),
         "updatedAt": row.get("updated_at"),
         "completedAt": row.get("completed_at"),
@@ -143,10 +165,13 @@ def _council_agents_from_subtasks(client: Any, org_id: str, subtasks: list[dict[
         if not agent:
             continue
         config = agent.get("config") if isinstance(agent.get("config"), dict) else {}
+        council_role = coerce_council_agent_role(
+            str(agent.get("role") or config.get("council_role") or "analyst")
+        )
         agents.append(
             {
                 "name": agent.get("name") or "Sub-agent",
-                "role": agent.get("role") or config.get("council_role") or "analyst",
+                "role": council_role.value,
                 "weight": float(config.get("council_weight") or 1.0),
             }
         )
@@ -164,6 +189,58 @@ def _options_from_subtask_results(subtasks: list[dict[str, Any]]) -> list[str]:
     return options or ["defer"]
 
 
+def _swarm_execution_verified(scoped_tools: Any, tool_calls: list[dict[str, Any]]) -> bool:
+    if not isinstance(scoped_tools, list) or not scoped_tools:
+        return False
+    if not tool_calls:
+        return False
+    return any((call.get("result") or {}).get("success") for call in tool_calls)
+
+
+def _swarm_run_execution_verified(subtasks: list[dict[str, Any]]) -> bool:
+    scoped_rows = [row for row in subtasks if row.get("scoped_tools")]
+    if not scoped_rows:
+        return False
+    return all(bool(row.get("execution_verified")) for row in scoped_rows)
+
+
+def _swarm_recommended_action(recommended_actions: list[str]) -> str:
+    if recommended_actions:
+        return recommended_actions[0][:240]
+    return "proceed"
+
+
+def _fallback_swarm_result(
+    *,
+    agent_id: str,
+    agent_name: str,
+    task: str,
+    scoped_tools: list[Any],
+) -> dict[str, Any]:
+    fb = SwarmSubtaskResult(
+        agent_id=agent_id,
+        agent_name=agent_name,
+        summary=task[:200],
+        finding="Completed with default assessment.",
+        recommended_action="proceed",
+        confidence=0.55,
+        scoped_tools=list(scoped_tools) if isinstance(scoped_tools, list) else [],
+    )
+    return {
+        "agentId": fb.agent_id,
+        "agentName": fb.agent_name,
+        "summary": fb.summary,
+        "finding": fb.finding,
+        "recommendedAction": fb.recommended_action,
+        "confidence": fb.confidence,
+        "scopedTools": fb.scoped_tools,
+        "executionVerified": False,
+        "executionMode": "degraded",
+        "toolsAvailable": 0,
+        "toolCallCount": 0,
+    }
+
+
 async def start_swarm(
     client: Any,
     *,
@@ -174,6 +251,7 @@ async def start_swarm(
     actor_id: str,
     decision_method: str = DecisionMethod.MAJORITY_VOTE.value,
     environment: str = "production",
+    settings: Settings | None = None,
 ) -> dict[str, Any]:
     if not objective.strip():
         raise SwarmCoordinatorError("Objective is required", code="VALIDATION_ERROR")
@@ -210,6 +288,7 @@ async def start_swarm(
     swarm_id = str(swarm["id"])
 
     serialized_subtasks: list[dict[str, Any]] = []
+
     for idx, spec in enumerate(subtasks):
         subtask_row = {
             "swarm_run_id": swarm_id,
@@ -225,20 +304,22 @@ async def start_swarm(
             raise RuntimeError("agent_swarm_subtasks insert returned no row")
         subtask = dict(sub_insert.data[0])
 
+        job_payload: dict[str, Any] = {
+            "swarmRunId": swarm_id,
+            "subtaskId": str(subtask["id"]),
+            "agentId": spec.agent_id,
+            "task": spec.task.strip(),
+            "scopedTools": spec.scoped_tools,
+            "objective": objective.strip(),
+            "parentAgentId": parent_agent_id,
+        }
+
         job = agent_jobs_mod.create_job(
             client,
             org_id,
             kind="swarm_subtask",
             environment=environment,
-            payload={
-                "swarmRunId": swarm_id,
-                "subtaskId": str(subtask["id"]),
-                "agentId": spec.agent_id,
-                "task": spec.task.strip(),
-                "scopedTools": spec.scoped_tools,
-                "objective": objective.strip(),
-                "parentAgentId": parent_agent_id,
-            },
+            payload=job_payload,
             created_by=actor_id,
         )
         job_id = str(job["id"])
@@ -267,7 +348,8 @@ async def start_swarm(
         resource_id=swarm_id,
         metadata={"subtaskCount": len(subtasks), "parentAgentId": parent_agent_id},
     )
-    return _serialize_swarm(swarm, serialized_subtasks)
+    result = _serialize_swarm(swarm, serialized_subtasks)
+    return result
 
 
 def list_swarm_runs(client: Any, org_id: str, *, limit: int = 20) -> list[dict[str, Any]]:
@@ -293,7 +375,9 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
     if swarm["status"] in {SWARM_COMPLETED, SWARM_CANCELLED}:
         return get_swarm_run(client, org_id, swarm_run_id)
     if swarm["status"] == SWARM_AGGREGATING:
-        raise SwarmCoordinatorError("Swarm is already aggregating", code="CONFLICT")
+        if not _aggregating_stale(swarm):
+            raise SwarmCoordinatorError("Swarm is already aggregating", code="CONFLICT")
+        logger.warning("retrying stale aggregating swarm org_id=%s swarm_run_id=%s", org_id, swarm_run_id)
 
     subtasks = _load_subtasks(client, swarm_run_id)
     if not subtasks:
@@ -325,6 +409,9 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
 
     options = _options_from_subtask_results(subtasks)
     agents = _council_agents_from_subtasks(client, org_id, subtasks)
+
+    council = get_council_service()
+    decision = _decision_method(str(swarm.get("decision_method")))
     evidence = {
         "subtasks": [
             {
@@ -336,18 +423,54 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
             for row in subtasks
         ]
     }
-    council = get_council_service()
-    session = await council.start_council(
-        org_id=org_id,
-        workflow_id=f"swarm:{swarm_run_id}",
-        run_id=swarm_run_id,
-        objective=str(swarm["objective"]),
-        options=options,
-        agents=agents,
-        evidence=evidence,
-        decision_method=_decision_method(str(swarm.get("decision_method"))),
-        max_rounds=2,
-    )
+    council_kwargs = {
+        "org_id": org_id,
+        "workflow_id": f"swarm:{swarm_run_id}",
+        "run_id": swarm_run_id,
+        "objective": str(swarm["objective"]),
+        "options": options,
+        "agents": agents,
+        "decision_method": decision,
+        "max_rounds": 2,
+    }
+
+    try:
+        council_call = council.start_council(evidence=evidence, **council_kwargs)
+        session = await asyncio.wait_for(council_call, timeout=COUNCIL_AGGREGATE_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError as exc:
+        logger.warning("swarm council aggregate timed out swarm_run_id=%s", swarm_run_id)
+        client.table("agent_swarm_runs").update(
+            {
+                "status": SWARM_FAILED,
+                "error_message": f"Council aggregation timed out after {COUNCIL_AGGREGATE_TIMEOUT_SECONDS}s",
+                "updated_at": _now(),
+                "completed_at": _now(),
+            }
+        ).eq("id", swarm_run_id).execute()
+        raise SwarmCoordinatorError(
+            f"Swarm council aggregation timed out after {COUNCIL_AGGREGATE_TIMEOUT_SECONDS}s",
+            code="SWARM_ERROR",
+        ) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("swarm council aggregate failed swarm_run_id=%s error=%s", swarm_run_id, str(exc))
+        failed = (
+            client.table("agent_swarm_runs")
+            .update(
+                {
+                    "status": SWARM_FAILED,
+                    "error_message": str(exc)[:500],
+                    "updated_at": _now(),
+                    "completed_at": _now(),
+                }
+            )
+            .eq("id", swarm_run_id)
+            .execute()
+        )
+        row = dict((failed.data or [swarm])[0])
+        raise SwarmCoordinatorError(
+            f"Swarm council aggregation failed: {exc}",
+            code="SWARM_ERROR",
+        ) from exc
     aggregate_result = {
         "councilSessionId": session.id,
         "finalRecommendation": session.final_recommendation,
@@ -356,6 +479,7 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
         "debateRounds": session.debate_rounds,
         "subtaskResults": [row.get("result") for row in subtasks],
     }
+    run_execution_verified = _swarm_run_execution_verified(subtasks)
     updated = (
         client.table("agent_swarm_runs")
         .update(
@@ -365,6 +489,7 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
                 "final_recommendation": session.final_recommendation,
                 "final_confidence": session.final_confidence,
                 "aggregate_result": aggregate_result,
+                "execution_verified": run_execution_verified,
                 "updated_at": _now(),
                 "completed_at": _now(),
             }
@@ -453,8 +578,10 @@ def _sync_subtask_from_job(client: Any, job: dict[str, Any], *, failed: bool = F
         update["status"] = "failed"
         update["error_message"] = job.get("error")
     else:
+        result_payload = job.get("result") or {}
         update["status"] = "completed"
-        update["result"] = job.get("result") or {}
+        update["result"] = result_payload
+        update["execution_verified"] = bool(result_payload.get("executionVerified"))
     client.table("agent_swarm_subtasks").update(update).eq("id", subtask_id).execute()
     subtask.update(update)
     return subtask
@@ -494,75 +621,83 @@ async def handle_swarm_subtask_job_completed(client: Any, job: dict[str, Any]) -
 
 
 async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict[str, Any]:
-    """Execute a scoped sub-agent task and return structured findings for council aggregation."""
+    """Execute a scoped sub-agent via ExecutionCore (ReAct + scoped tools) for council aggregation."""
     payload = job.get("payload") or {}
     org_id = str(job["org_id"])
     agent_id = str(payload.get("agentId") or "")
     task = str(payload.get("task") or "").strip()
     objective = str(payload.get("objective") or "").strip()
     scoped_tools = payload.get("scopedTools") or []
+    scoped_list = list(scoped_tools) if isinstance(scoped_tools, list) else []
 
+    from app.operators.agent_intelligence import AgentIntelligence, resolve_agent_record
     from app.workflows.repository import get_supabase_client
 
     client = get_supabase_client(settings)
-    agent = get_agent(client, org_id, agent_id) if agent_id else None
+    agent = resolve_agent_record(client, org_id, agent_id) if agent_id else None
+    if not agent:
+        agent = get_agent(client, org_id, agent_id) if agent_id else None
     agent_name = str((agent or {}).get("name") or "Sub-agent")
 
-    prompt = (
-        f"Swarm objective: {objective}\n"
-        f"Your sub-task: {task}\n"
-        f"Allowed tools (read-only scope): {scoped_tools}\n"
-        "Return ONLY strict JSON matching this schema:\n"
-        '{"summary": "<short summary>", '
-        '"finding": "<key finding>", '
-        '"recommended_action": "<concise action label for council vote>", '
-        '"confidence": <number 0.0-1.0>}'
-    )
-    fallback = SwarmSubtaskResult(
-        agent_id=agent_id,
-        agent_name=agent_name,
-        summary=task[:200],
-        finding="Completed with default assessment.",
-        recommended_action="proceed",
-        confidence=0.55,
-        scoped_tools=list(scoped_tools) if isinstance(scoped_tools, list) else [],
-    )
-    router = get_model_router()
-    try:
-        response = await router.complete(
-            task_type=TaskType.WORKFLOW_PLANNING,
-            prompt=prompt,
-            system_prompt=(
-                f"You are {agent_name}, a scoped sub-agent in a multi-agent swarm. "
-                "Stay within your assigned task and allowed tools."
-            ),
-            response_format=SwarmSubtaskResult,
-            org_id=org_id,
-            operator_id=agent_id or None,
+    if not agent or not task:
+        return _fallback_swarm_result(
+            agent_id=agent_id,
+            agent_name=agent_name,
+            task=task or "Subtask",
+            scoped_tools=scoped_list,
         )
-        if response.parsed:
-            parsed = SwarmSubtaskResult.model_validate(response.parsed)
-            parsed.agent_id = agent_id
-            parsed.agent_name = agent_name
-            parsed.scoped_tools = list(scoped_tools) if isinstance(scoped_tools, list) else []
-            return {
-                "agentId": agent_id,
-                "agentName": agent_name,
-                "summary": parsed.summary,
-                "finding": parsed.finding,
-                "recommendedAction": parsed.recommended_action,
-                "confidence": parsed.confidence,
-                "scopedTools": parsed.scoped_tools,
-            }
+
+    intelligence = AgentIntelligence(settings=settings)
+
+    task_parameters: dict[str, Any] = {
+        "surface": "swarm",
+        "subtask_spec": {
+            "task": task,
+            "objective": objective,
+            "scopedTools": scoped_list,
+            "subtaskId": payload.get("subtaskId"),
+            "swarmRunId": payload.get("swarmRunId"),
+        },
+        "include_task_history": False,
+    }
+
+    try:
+        agent_result = await intelligence.execute_task(
+            settings=settings,
+            org_id=org_id,
+            agent=agent,
+            task=task,
+            parameters=task_parameters,
+            actor_id=str(job.get("created_by") or agent_id or "system"),
+            task_id=str(job.get("id") or ""),
+            client=client,
+        )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("swarm subtask fallback job_id=%s error=%s", job.get("id"), str(exc))
-    fb = fallback.model_dump()
+        logger.warning("swarm subtask execution failed job_id=%s error=%s", job.get("id"), str(exc))
+        return _fallback_swarm_result(
+            agent_id=agent_id,
+            agent_name=agent_name,
+            task=task,
+            scoped_tools=scoped_list,
+        )
+
+    execution_verified = agent_result.execution_verified
+    finding = (agent_result.answer or agent_result.summary or "").strip()
+    if not finding:
+        finding = "Completed subtask analysis."
+    confidence = max(0.0, min(1.0, agent_result.confidence / 100.0))
+
     return {
-        "agentId": fb["agent_id"],
-        "agentName": fb["agent_name"],
-        "summary": fb["summary"],
-        "finding": fb["finding"],
-        "recommendedAction": fb["recommended_action"],
-        "confidence": fb["confidence"],
-        "scopedTools": fb["scoped_tools"],
+        "agentId": agent_id,
+        "agentName": agent_name,
+        "summary": (agent_result.summary or agent_result.answer or task)[:2000],
+        "finding": finding[:2000],
+        "recommendedAction": _swarm_recommended_action(agent_result.recommended_actions),
+        "confidence": confidence,
+        "scopedTools": scoped_list,
+        "executionVerified": execution_verified,
+        "executionMode": agent_result.execution_mode,
+        "toolsAvailable": agent_result.tools_available,
+        "toolCallCount": agent_result.tool_call_count,
+        "reactStatus": agent_result.react_status,
     }

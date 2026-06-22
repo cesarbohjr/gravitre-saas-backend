@@ -1,9 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import {
+  ESTIMATED_HOURS_SAVED_MONTHLY,
+} from "@/lib/outcome-labels"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 
 export function AssetOutcomeEditor({
@@ -50,6 +53,9 @@ export function AssetOutcomeEditor({
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Outcome metadata
       </p>
+      <p className="text-[11px] text-muted-foreground">
+        Publisher-provided estimates — not measured time-on-task.
+      </p>
       <div className="space-y-2">
         <label className="text-xs font-medium" htmlFor="asset-outcome-field">
           Business outcome
@@ -74,7 +80,7 @@ export function AssetOutcomeEditor({
           />
         </div>
         <div className="space-y-2">
-          <label className="text-xs font-medium">Est. hours saved / month</label>
+          <label className="text-xs font-medium">{ESTIMATED_HOURS_SAVED_MONTHLY}</label>
           <Input
             type="number"
             min={0}

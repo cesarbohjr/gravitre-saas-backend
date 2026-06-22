@@ -17,7 +17,7 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "Workday OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. Workday developer tenant -> Register API client (OAuth 2.0)" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/workday/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/workday/callback" -ForegroundColor White
     Write-Host "3. Customers enter tenant URL + tenant name when connecting." -ForegroundColor Yellow
     Write-Host "4. Run:" -ForegroundColor Yellow
     Write-Host '   $env:WORKDAY_CLIENT_ID="<id>"; $env:WORKDAY_CLIENT_SECRET="<secret>"; npm run workday:fill-env' -ForegroundColor White

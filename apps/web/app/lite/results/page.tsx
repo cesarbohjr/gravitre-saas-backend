@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { OutcomeMethodologyCallout } from "@/components/outcome/outcome-methodology-callout"
+import { MetricProvenanceBadge } from "@/components/outcome/metric-provenance-badge"
+import {
+  OPERATIONAL_SUCCESS_RATE_LABEL,
+  OPERATIONAL_TASKS_COMPLETED_LABEL,
+} from "@/lib/outcome-labels"
 
 export default function LiteResultsPage() {
   const { user, loading } = useAuth()
@@ -49,19 +55,23 @@ export default function LiteResultsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
+        <OutcomeMethodologyCallout variant="operational" className="mb-6" />
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {[
-            { label: "Tasks Completed", value: summary?.tasks_completed ?? 0 },
-            { label: "Success Rate", value: `${summary?.success_rate ?? 0}%` },
-            { label: "Avg Completion (hrs)", value: summary?.avg_completion_time_hours ?? 0 },
-            { label: "Workflows Used", value: summary?.by_workflow.length ?? 0 },
+            { label: OPERATIONAL_TASKS_COMPLETED_LABEL, value: summary?.tasks_completed ?? 0, kind: "operational" as const },
+            { label: OPERATIONAL_SUCCESS_RATE_LABEL, value: `${summary?.success_rate ?? 0}%`, kind: "operational" as const },
+            { label: "Avg completion (hrs, operational)", value: summary?.avg_completion_time_hours ?? 0, kind: "operational" as const },
+            { label: "Workflows used", value: summary?.by_workflow.length ?? 0, kind: "operational" as const },
           ].map((stat) => (
             <Card 
               key={stat.label}
               className="p-5 border-border/50"
             >
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{stat.label}</p>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                <MetricProvenanceBadge kind={stat.kind} />
+              </div>
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-3xl font-bold text-foreground">{stat.value}</p>

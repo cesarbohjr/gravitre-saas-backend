@@ -396,7 +396,7 @@ export function AppShowcase() {
                 <div className="h-3 w-3 rounded-full bg-green-500/80" />
               </div>
               <div className="flex-1 text-center">
-                <span className="text-xs text-zinc-500 font-mono">app.gravitre.com/{currentFeature.id}</span>
+                <span className="text-xs text-zinc-500 font-mono">gravitre.app/{currentFeature.id}</span>
               </div>
             </div>
             
@@ -464,7 +464,7 @@ export function ProductScreenshot({
             <div className="h-3 w-3 rounded-full bg-green-500/80" />
           </div>
           <div className="flex-1 text-center">
-            <span className="text-xs text-zinc-500 font-mono">app.gravitre.com</span>
+            <span className="text-xs text-zinc-500 font-mono">gravitre.app</span>
           </div>
         </div>
         

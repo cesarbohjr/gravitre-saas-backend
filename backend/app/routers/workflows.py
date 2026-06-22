@@ -105,7 +105,16 @@ from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
 from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
-from app.workflows.builder_sync import definition_to_builder_nodes, sync_builder_graph
+from app.workflows.builder_sync import (
+    definition_to_builder_nodes,
+    prepare_builder_edge,
+    resolve_builder_graph,
+    sync_builder_graph,
+)
+from app.workflows.schema_sync import (
+    mirror_legacy_workflow_row_to_contract,
+    sync_contract_workflow_to_legacy,
+)
 from app.workflows.cron import compute_next_run_at
 from app.services.workflow_schedule_service import dispatch_org_workflow_schedules
 from app.workflows.schema import (
@@ -337,9 +346,10 @@ def _node_out(node: dict) -> dict:
         position_x = position.get("x")
     if position_y is None and isinstance(position, dict):
         position_y = position.get("y")
+    node_id = node.get("id")
     return {
-        "id": str(node["id"]),
-        "workflow_id": str(node["workflow_id"]),
+        "id": str(node_id) if node_id is not None else "",
+        "workflow_id": str(node.get("workflow_id") or ""),
         "node_type": node.get("node_type") or "",
         "type": node.get("node_type") or "",
         "title": node.get("title") or "",
@@ -371,17 +381,22 @@ def _node_out(node: dict) -> dict:
 
 
 def _edge_out(edge: dict) -> dict:
+    prepared = prepare_builder_edge(
+        edge,
+        str(edge.get("workflow_id") or ""),
+        str(edge.get("environment") or "production"),
+    )
     return {
-        "id": str(edge["id"]),
-        "workflow_id": str(edge["workflow_id"]),
-        "from_node_id": str(edge["from_node_id"]),
-        "to_node_id": str(edge["to_node_id"]),
-        "fromNodeId": str(edge["from_node_id"]),
-        "toNodeId": str(edge["to_node_id"]),
-        "edge_type": edge.get("edge_type") or "",
-        "condition": edge.get("condition"),
-        "environment": edge.get("environment"),
-        "created_at": edge.get("created_at"),
+        "id": prepared["id"],
+        "workflow_id": prepared["workflow_id"],
+        "from_node_id": prepared["from_node_id"],
+        "to_node_id": prepared["to_node_id"],
+        "fromNodeId": prepared["from_node_id"],
+        "toNodeId": prepared["to_node_id"],
+        "edge_type": prepared.get("edge_type") or "",
+        "condition": prepared.get("condition"),
+        "environment": prepared.get("environment"),
+        "created_at": prepared.get("created_at"),
     }
 
 
@@ -483,6 +498,34 @@ def _step_to_out(s: dict) -> StepOut:
     )
 
 
+def _workflow_names_for_ids(client, org_id: str, workflow_ids: list[str]) -> dict[str, str]:
+    """Resolve workflow display names from contract `workflows`, then legacy `workflow_defs`."""
+    if not workflow_ids:
+        return {}
+    names: dict[str, str] = {}
+    primary = (
+        client.table("workflows")
+        .select("id, name")
+        .eq("org_id", org_id)
+        .in_("id", workflow_ids)
+        .execute()
+    )
+    for row in primary.data or []:
+        names[str(row["id"])] = row.get("name") or ""
+    missing = [wid for wid in workflow_ids if not names.get(wid)]
+    if missing:
+        legacy = (
+            client.table("workflow_defs")
+            .select("id, name")
+            .eq("org_id", org_id)
+            .in_("id", missing)
+            .execute()
+        )
+        for row in legacy.data or []:
+            names[str(row["id"])] = row.get("name") or ""
+    return names
+
+
 def _run_step_out(s: dict) -> dict:
     return {
         "id": str(s["id"]),
@@ -535,20 +578,13 @@ async def get_workflow_builder(
     wf = get_workflow_def(client, org_id, str(workflow_id))
     if not wf:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
-    nodes = list_workflow_nodes(client, org_id, str(workflow_id), environment_name)
-    edges = list_workflow_edges(client, org_id, str(workflow_id), environment_name)
-    if not nodes:
-        definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
-        if definition.get("steps"):
-            synth_nodes, synth_edges = definition_to_builder_nodes(definition)
-            for node in synth_nodes:
-                node["workflow_id"] = str(workflow_id)
-                node["environment"] = environment_name
-            for edge in synth_edges:
-                edge["workflow_id"] = str(workflow_id)
-                edge["environment"] = environment_name
-            nodes = synth_nodes
-            edges = synth_edges
+    nodes, edges = resolve_builder_graph(
+        client,
+        org_id=org_id,
+        workflow_id=str(workflow_id),
+        environment_name=environment_name,
+        wf=wf,
+    )
     return {
         "workflow_id": str(workflow_id),
         "name": wf.get("name"),
@@ -2911,16 +2947,7 @@ async def list_runs(
     r = q.execute()
     runs = list(r.data or [])
     workflow_ids = list({str(run["workflow_id"]) for run in runs if run.get("workflow_id")})
-    workflow_names: dict[str, str] = {}
-    if workflow_ids:
-        wf = (
-            client.table("workflow_defs")
-            .select("id, name")
-            .eq("org_id", org_id)
-            .in_("id", workflow_ids)
-            .execute()
-        )
-        workflow_names = {str(w["id"]): w.get("name") or "" for w in (wf.data or [])}
+    workflow_names = _workflow_names_for_ids(client, org_id, workflow_ids)
     items = []
     for run in runs:
         workflow_id_value = str(run["workflow_id"]) if run.get("workflow_id") else None
@@ -3017,7 +3044,8 @@ async def list_runs_alias(
         .select(
             "id, workflow_id, run_type, status, approval_status, required_approvals, "
             "created_at, completed_at, duration_ms, error_message, "
-            "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id"
+            "environment, triggered_by, trigger_type, schedule_id, rollback_of_run_id",
+            count="exact",
         )
         .eq("org_id", org_id)
         .eq("environment", environment_name)
@@ -3035,21 +3063,12 @@ async def list_runs_alias(
         q = q.gte("created_at", start_at or date_from)
     if end_at or date_to:
         q = q.lte("created_at", end_at or date_to)
-    total_rows = q.execute().data or []
-    total = len(total_rows)
     offset = ((page or 1) - 1) * limit
-    rows = total_rows[offset : offset + limit]
+    response = q.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+    rows = response.data or []
+    total = response.count if response.count is not None else len(rows)
     workflow_ids = list({str(run["workflow_id"]) for run in rows if run.get("workflow_id")})
-    workflow_names: dict[str, str] = {}
-    if workflow_ids:
-        wf = (
-            client.table("workflow_defs")
-            .select("id, name")
-            .eq("org_id", org_id)
-            .in_("id", workflow_ids)
-            .execute()
-        )
-        workflow_names = {str(w["id"]): w.get("name") or "" for w in (wf.data or [])}
+    workflow_names = _workflow_names_for_ids(client, org_id, workflow_ids)
     items = []
     for run in rows:
         workflow_id_value = str(run["workflow_id"]) if run.get("workflow_id") else None
@@ -3460,6 +3479,11 @@ async def create_workflow_from_goal(
     if not created.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow create failed")
     workflow_id = str(created.data[0]["id"])
+    mirror_legacy_workflow_row_to_contract(
+        client,
+        dict(created.data[0]),
+        environment_name=environment_name,
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -3515,16 +3539,27 @@ async def get_workflow(
                 },
             }
         )
-    prompts = (
-        client.table("operator_prompts")
-        .select("id, label, prompt")
-        .eq("org_id", org_id)
-        .eq("is_active", True)
-        .order("order_index", desc=False)
-        .execute()
-        .data
-        or []
-    )
+    prompts: list[dict] = []
+    try:
+        prompts = (
+            client.table("operator_prompts")
+            .select("id, label, prompt")
+            .eq("org_id", org_id)
+            .eq("is_active", True)
+            .order("order_index", desc=False)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        prompts = []
+
+    success_rate_raw = wf.get("success_rate")
+    try:
+        success_rate = float(success_rate_raw) if success_rate_raw is not None else 0.0
+    except (TypeError, ValueError):
+        success_rate = 0.0
+
     return {
         "workflow": {
             "id": str(wf["id"]),
@@ -3538,7 +3573,7 @@ async def get_workflow(
             "lastRunAt": wf.get("last_run_at"),
             "nextRunAt": wf.get("next_run_at"),
             "runCount": wf.get("run_count") or 0,
-            "successRate": float(wf.get("success_rate") or 0),
+            "successRate": success_rate,
         },
         "steps": steps,
         "aiPrompts": [
@@ -3591,6 +3626,11 @@ async def create_workflow_route(
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow create failed")
     workflow_id = str(r.data[0]["id"])
+    mirror_legacy_workflow_row_to_contract(
+        client,
+        dict(r.data[0]),
+        environment_name=environment_name,
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -3635,6 +3675,11 @@ async def update_workflow_route(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+    mirror_legacy_workflow_row_to_contract(
+        client,
+        dict(updated.data[0]),
+        environment_name=environment_name,
+    )
     write_audit_event(
         client,
         org_id=org_id,
@@ -3645,6 +3690,38 @@ async def update_workflow_route(
         metadata={"environment": environment_name, "fields": list(payload.keys())},
     )
     return await get_workflow(workflow_id, _admin[0], org_id, environment_name, settings)
+
+
+@router.post("/{workflow_id}/schema-sync/from-contract")
+async def sync_workflow_schema_from_contract(
+    workflow_id: UUID,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """C.2: Mirror a contract `workflows` row into legacy `workflow_defs` for execution."""
+    _user, org_id = _admin
+    if not settings.workflow_legacy_writes:
+        return {"synced": False, "workflow_id": str(workflow_id), "reason": "legacy_writes_disabled"}
+    client = get_supabase_client(settings)
+    synced = sync_contract_workflow_to_legacy(
+        client,
+        workflow_id=str(workflow_id),
+        org_id=org_id,
+        environment_name=environment_name,
+    )
+    if not synced:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found in contract table")
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action="workflow.schema_sync.from_contract",
+        resource_type="workflow",
+        resource_id=str(workflow_id),
+        metadata={"environment": environment_name},
+    )
+    return {"synced": True, "workflow_id": str(workflow_id)}
 
 
 @router.post("/{workflow_id}/stage")

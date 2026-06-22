@@ -45,6 +45,7 @@ from app.routers import (
     onboarding,
     optimization,
     goals,
+    health,
     org,
     lite,
     ml_models,
@@ -67,6 +68,7 @@ from app.routers import (
     verticals_real_estate,
     platform,
     platform_cs_internal,
+    ops_internal,
 )
 from app.routers import (
     hubspot_triggers,
@@ -118,7 +120,8 @@ def _log_billing_startup_config() -> None:
     if not (settings.internal_api_secret or "").strip():
         logger.warning(
             "INTERNAL_API_SECRET is missing — internal cron endpoints "
-            "(billing/sync-usage, knowledge/sync-due, workflows/schedules/dispatch-due) are unprotected"
+            "(billing/sync-usage, knowledge/sync-due, workflows/schedules/dispatch-due, "
+            "ops/rollup-daily, ops/connector-health) are unprotected"
         )
 
     logger.info(
@@ -188,29 +191,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from app.observability.apm import init_sentry, setup_prometheus
+
+try:
+    from app.config import get_settings as _get_settings_for_apm
+
+    _apm_settings = _get_settings_for_apm()
+    init_sentry(_apm_settings.app_env)
+except Exception as exc:  # noqa: BLE001
+    logger.warning("APM initialization skipped: %s", exc)
+
+setup_prometheus(app)
+
 
 @app.get("/")
 def root() -> dict:
     return {"status": "running"}
-
-
-@app.get("/health")
-def health() -> dict:
-    """Unauthenticated liveness probe for Railway / deployment monitors."""
-    ai_disabled = False
-    try:
-        from app.config import get_settings
-
-        ai_disabled = bool(get_settings().disable_ai)
-    except Exception:
-        # Health must succeed even when Settings cannot load (misconfigured env).
-        pass
-    return {
-        "status": "ok",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": app.version,
-        "ai_disabled": ai_disabled,
-    }
 
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -320,6 +316,7 @@ async def request_tracing(request: Request, call_next):
     return response
 
 
+app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(sso.router)
 app.include_router(org.router)
@@ -327,6 +324,7 @@ app.include_router(org.organizations_router)
 app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
+app.include_router(ops_internal.router)
 app.include_router(knowledge_sync.internal_router)
 app.include_router(knowledge_sync.admin_router)
 app.include_router(knowledge_sync.webhook_router)

@@ -1,0 +1,45 @@
+name: Connector Health
+
+# Durable connector OAuth health checks (every 5 minutes).
+# In-process scheduler still runs when CONNECTOR_HEALTH_INTERVAL_SECONDS > 0.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: connector-health
+  cancel-in-progress: false
+
+jobs:
+  connector-health:
+    name: Run connector health monitor
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger connector health
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        run: |
+          if [ -z "$INTERNAL_API_SECRET" ]; then
+            echo "INTERNAL_API_SECRET secret is not set." >&2
+            exit 1
+          fi
+          GRAVITRE_BACKEND="https://gravitre-saas-backend-production.up.railway.app"
+          echo "Triggering connector health at $(date -u)"
+          RESPONSE=$(curl -sf \
+            --max-time 90 \
+            --retry 2 \
+            --retry-delay 5 \
+            -X POST \
+            "${GRAVITRE_BACKEND}/api/internal/ops/connector-health" \
+            -H "X-Internal-Secret: ${INTERNAL_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP_STATUS:%{http_code}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS")
+          echo "Response: $BODY"
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            exit 1
+          fi

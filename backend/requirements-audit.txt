@@ -1,0 +1,2 @@
+# Dependency audit target — core runtime without snowflake (pip-audit resolution).
+-r requirements-core.txt

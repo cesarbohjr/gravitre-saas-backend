@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi, runsApi } from "@/lib/api"
+import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import type { Run as ApiRun, RunStatus } from "@/types/api"
 import { toast } from "sonner"
 import { 
@@ -385,7 +386,7 @@ export default function RunsPage() {
     setIsMutatingRun(true)
     try {
       await runsApi.cancel(runId)
-      toast.success("Run cancelled")
+      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
       await mutate()
     } catch (err) {
       console.error("[v0] Failed to cancel run:", err)

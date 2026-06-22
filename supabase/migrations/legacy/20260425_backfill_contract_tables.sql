@@ -240,11 +240,15 @@ BEGIN
     END AS mapped_status,
     coalesce(wr.trigger_type, 'manual') AS trigger_type,
     coalesce(to_jsonb(wr)->>'trigger_source', to_jsonb(wr)->>'run_type', 'manual') AS trigger_source,
-    coalesce(wr.started_at, wr.created_at, now()) AS started_at,
+    coalesce((to_jsonb(wr)->>'started_at')::timestamptz, wr.created_at, now()) AS started_at,
     wr.completed_at,
     coalesce(
       to_jsonb(wr)->>'duration',
-      CASE WHEN wr.duration_ms IS NOT NULL THEN wr.duration_ms::text ELSE NULL END
+      CASE
+        WHEN (to_jsonb(wr)->>'duration_ms') IS NOT NULL
+          THEN (to_jsonb(wr)->>'duration_ms')
+        ELSE NULL
+      END
     ) AS duration,
     coalesce(to_jsonb(wr)->'output', NULL::jsonb) AS output,
     coalesce(to_jsonb(wr)->>'error', wr.error_message) AS error,
@@ -305,7 +309,7 @@ BEGIN
     ws.run_id,
     ws.step_index,
     coalesce((to_jsonb(ws)->>'node_id')::uuid, NULL) AS node_id,
-    coalesce(ws.name, ws.step_name) AS name,
+    coalesce(to_jsonb(ws)->>'name', ws.step_name) AS name,
     coalesce(to_jsonb(ws)->>'type', ws.step_type) AS type,
     CASE lower(coalesce(ws.status, ''))
       WHEN 'pending' THEN 'pending'
@@ -394,7 +398,7 @@ BEGIN
     coalesce(c.updated_at, now()) AS updated_at
   FROM public.connectors c
   WHERE c.org_id IS NOT NULL
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (org_id, system_key) DO NOTHING;
 END;
 $$;
 

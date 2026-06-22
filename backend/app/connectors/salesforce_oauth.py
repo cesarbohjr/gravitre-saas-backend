@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 import httpx
 
 from app.config import Settings
+from app.public_urls import connector_oauth_callback_url
 from app.connectors.hubspot_oauth import (
     OAUTH_TOKEN_KEY,
     _connector_environment,
@@ -67,13 +68,11 @@ def _authorize_base(settings: Settings, environment_name: str | None) -> tuple[s
 
 
 def salesforce_redirect_uri(settings: Settings) -> str:
-    api_base = (settings.api_public_url or "").strip().rstrip("/")
-    if api_base:
-        return f"{api_base}/api/connectors/oauth/salesforce/callback"
-    base = (settings.public_app_url or "").strip().rstrip("/")
-    if base:
-        return f"{base}/api/connectors/oauth/salesforce/callback"
-    return "http://localhost:8000/api/connectors/oauth/salesforce/callback"
+    return connector_oauth_callback_url(
+        public_app_url=settings.public_app_url,
+        api_public_url=settings.api_public_url,
+        vendor="salesforce",
+    )
 
 
 def salesforce_authorize_url(

@@ -19,8 +19,8 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "Atlassian OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. https://developer.atlassian.com/console/myapps/ -> Create OAuth 2.0 (3LO) app" -ForegroundColor Yellow
     Write-Host "2. Callback URLs:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/jira/callback" -ForegroundColor White
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/confluence/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/jira/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/confluence/callback" -ForegroundColor White
     Write-Host "3. Run:" -ForegroundColor Yellow
     Write-Host '   $env:JIRA_CLIENT_ID="<id>"; $env:JIRA_CLIENT_SECRET="<secret>"; npm run jira:fill-env' -ForegroundColor White
     exit 1

@@ -36,12 +36,26 @@ def normalize_chunk_row(row: dict[str, Any]) -> dict[str, Any]:
         or row.get("source_title")
         or ""
     )
-    return {
-        "id": str(row.get("id") or row.get("chunk_id") or ""),
+    chunk_id = str(row.get("id") or row.get("chunk_id") or "")
+    normalized: dict[str, Any] = {
+        "id": chunk_id,
         "content": str(row.get("content") or ""),
         "score": float(row.get("score") or 0.0),
         "title": str(title),
     }
+    for key in (
+        "chunk_id",
+        "source_id",
+        "document_id",
+        "chunk_index",
+        "source_title",
+        "document_title",
+    ):
+        if row.get(key) is not None:
+            normalized[key] = row[key]
+    if chunk_id and normalized.get("chunk_id") is None:
+        normalized["chunk_id"] = chunk_id
+    return normalized
 
 
 def tokenize_for_bm25(text: str) -> list[str]:

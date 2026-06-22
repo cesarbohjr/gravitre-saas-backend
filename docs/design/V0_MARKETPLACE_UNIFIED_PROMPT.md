@@ -117,7 +117,8 @@ Types: `apps/web/types/api.ts` — `MarketplaceAssetSummary`, `MarketplaceConnec
 
 - Seed catalog: `python backend/scripts/seed_marketplace.py`
 - Backend router: `backend/app/routers/marketplace.py`
-- Legacy packs doc: `docs/integration/agent-role-marketplace.md` (superseded for browse by unified assets API)
+- Dual-marketplace decision (STA-227): [`agent-role-marketplace.md`](../integration/agent-role-marketplace.md#dual-marketplace-architecture-mkt-audit-arch-1--sta-227)
+- Legacy packs doc: `docs/integration/agent-role-marketplace.md` (canonical integration reference)
 - Tier 6 roadmap: `docs/integration/TIER6_PLANNING.md` (Lane B/C v2/v3)
 
 ---

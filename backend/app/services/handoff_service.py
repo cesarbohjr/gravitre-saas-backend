@@ -232,6 +232,7 @@ async def execute_agent_step_with_handoff(
     briefing_from_steps = bool(
         metadata.get("briefing_from_steps") or config.get("briefing_from_steps")
     )
+
     source_briefing = None
     if briefing_from_steps and step_outputs:
         source_briefing = build_handoff_briefing(

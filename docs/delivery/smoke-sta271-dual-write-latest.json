@@ -1,0 +1,59 @@
+{
+  "target": "https://api.gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "workflowId": "4e5cf70a-f255-408c-a0c6-501cd39a2426",
+  "workflowName": "STA-271 dual-write smoke 20260621-225435",
+  "runId": "09572a4b-b6b3-42c0-85dd-33a33ebb92fc",
+  "finishedAt": "2026-06-21T22:54:43.478829+00:00",
+  "summary": {
+    "pass": 9,
+    "fail": 0
+  },
+  "steps": [
+    {
+      "label": "ui_create_workflows_row",
+      "status": "pass",
+      "detail": "workflow_id=4e5cf70a-f255-408c-a0c6-501cd39a2426"
+    },
+    {
+      "label": "schema_sync_from_contract",
+      "status": "pass",
+      "detail": "C.6 legacy writes off (contract-only path)"
+    },
+    {
+      "label": "fastapi_list_workflows",
+      "status": "pass",
+      "detail": "STA-271 dual-write smoke 20260621-225435"
+    },
+    {
+      "label": "bootstrap_active_version",
+      "status": "pass",
+      "detail": "noop ABC definition"
+    },
+    {
+      "label": "workflow_execute",
+      "status": "pass",
+      "detail": "run_id=09572a4b-b6b3-42c0-85dd-33a33ebb92fc status=pending_approval"
+    },
+    {
+      "label": "approve_run",
+      "status": "pass",
+      "detail": "09572a4b-b6b3-42c0-85dd-33a33ebb92fc"
+    },
+    {
+      "label": "execute_poll",
+      "status": "pass",
+      "detail": "status=completed"
+    },
+    {
+      "label": "health_widget_runs_run_steps",
+      "status": "pass",
+      "detail": "runs 0->1, run_steps_for_workflow=2"
+    },
+    {
+      "label": "legacy_workflow_run_exists",
+      "status": "pass",
+      "detail": "09572a4b-b6b3-42c0-85dd-33a33ebb92fc"
+    }
+  ]
+}

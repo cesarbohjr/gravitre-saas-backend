@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from app.config import Settings
+from app.public_urls import connector_oauth_callback_url
 
 GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -31,11 +32,8 @@ def google_oauth_configured(settings: Settings, environment_name: str | None = N
 
 def google_oauth_redirect_uri(settings: Settings, provider: str) -> str:
     """Provider slug: google_analytics | google_calendar."""
-    path = f"/api/connectors/oauth/{provider}/callback"
-    api_base = (settings.api_public_url or "").strip().rstrip("/")
-    if api_base:
-        return f"{api_base}{path}"
-    base = (settings.public_app_url or "").strip().rstrip("/")
-    if base:
-        return f"{base}{path}"
-    return f"http://localhost:8000{path}"
+    return connector_oauth_callback_url(
+        public_app_url=settings.public_app_url,
+        api_public_url=settings.api_public_url,
+        vendor=provider,
+    )

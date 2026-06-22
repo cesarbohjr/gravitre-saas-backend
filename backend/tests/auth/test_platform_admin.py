@@ -50,3 +50,11 @@ def test_is_platform_admin_email_uses_data_only():
         )
     )
     assert is_platform_admin_email(client, "admin@example.com") is True
+
+
+def test_is_platform_admin_email_returns_false_when_table_unavailable():
+    from unittest.mock import MagicMock
+
+    client = MagicMock()
+    client.table.side_effect = RuntimeError("db down")
+    assert is_platform_admin_email(client, "cesar.bohorquez.jr@gmail.com") is False

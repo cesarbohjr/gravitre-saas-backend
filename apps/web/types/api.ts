@@ -1644,6 +1644,33 @@ export interface WorkflowDigitalTwinResponse {
   ragReads?: number
 }
 
+export interface KnowledgeSyncJob {
+  id: string
+  connector_id: string
+  source_type: string
+  status: string
+  trigger_type: string
+  scheduled_at?: string | null
+  started_at?: string | null
+  completed_at?: string | null
+  pages_synced?: number | null
+  ingest_jobs_queued?: number | null
+  chunks_added?: number | null
+  error_message?: string | null
+  created_at?: string
+}
+
+export interface KnowledgeSyncJobsResponse {
+  jobs: KnowledgeSyncJob[]
+}
+
+export interface KnowledgeSyncTriggerResponse {
+  connector_id: string
+  job_id?: string
+  status?: string
+  message?: string
+}
+
 // Autonomous run budgets (enterprise budgets tab)
 export interface AutonomousRunBudgetLimits {
   maxActionsPerDay: number | null
@@ -2137,6 +2164,56 @@ export interface AgentInterrupt {
   createdAt?: string | null
 }
 
+// ML model registry (/api/ml)
+export type MlModelType = "classifier" | "fine_tuned_llm" | "anomaly_detector" | "forecaster"
+export type MlModelStatus =
+  | "draft"
+  | "training"
+  | "validating"
+  | "ready"
+  | "deployed"
+  | "failed"
+  | "archived"
+
+export interface MlModelSummary {
+  id: string
+  name: string
+  description?: string | null
+  modelType: MlModelType
+  status: MlModelStatus
+  currentVersion: number
+  deployedVersion?: number | null
+  datasetId?: string | null
+  baseModel?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface MlModelVersion {
+  version: number
+  metrics?: Record<string, unknown>
+  artifactSizeBytes?: number | null
+  createdAt?: string
+}
+
+export interface MlModelDetail extends MlModelSummary {
+  taskType?: string | null
+  versions: MlModelVersion[]
+}
+
+export interface MlModelListResponse {
+  models: MlModelSummary[]
+}
+
+export interface CreateMlModelRequest {
+  name: string
+  model_type: MlModelType
+  description?: string
+  dataset_id?: string
+  base_model?: string
+  task_type?: string
+}
+
 export interface RunCompensationSummary {
   runId: string
   compensated: number
@@ -2183,6 +2260,7 @@ export interface AgentSwarmSubtask {
   agentJobId: string | null
   result: Record<string, unknown> | null
   errorMessage: string | null
+  executionVerified?: boolean
   createdAt: string | null
   completedAt: string | null
 }
@@ -2199,6 +2277,7 @@ export interface AgentSwarmRun {
   finalConfidence: number | null
   aggregateResult: Record<string, unknown>
   errorMessage: string | null
+  executionVerified?: boolean
   createdAt: string | null
   updatedAt: string | null
   completedAt: string | null

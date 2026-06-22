@@ -23,7 +23,7 @@ from dotenv import dotenv_values
 REPO = Path(__file__).resolve().parent.parent
 API_BASE = os.environ.get(
     "BACKEND_URL",
-    "https://gravitre-saas-backend-production.up.railway.app",
+    "https://api.gravitre.app",
 ).rstrip("/")
 SMOKE_PAID_SLUG = "smoke-paid-operator-pack"
 MIN_CATALOG_ASSETS = 50

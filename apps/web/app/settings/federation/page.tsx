@@ -21,6 +21,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { federationApi } from "@/lib/api"
+import { formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import type {
@@ -272,7 +273,7 @@ function FederationContent() {
               Federation data failed to load
             </p>
             <p className="mt-1 text-sm text-muted-foreground text-pretty">
-              {loadError instanceof Error ? loadError.message : "Check backend connectivity and migrations."}
+              {formatUnknownError(loadError, "Check backend connectivity and migrations.")}
             </p>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => refreshAll()}>

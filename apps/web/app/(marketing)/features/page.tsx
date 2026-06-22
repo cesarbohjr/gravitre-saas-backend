@@ -967,8 +967,8 @@ export default function FeaturesPage() {
             {[
               { 
                 icon: Zap, 
-                title: "10x faster execution", 
-                desc: "AI agents work 24/7, completing tasks in seconds that would take hours manually",
+                title: "Accelerated execution", 
+                desc: "AI agents work around the clock, completing routine tasks faster than manual work when integrations are connected",
                 color: "emerald"
               },
               { 
@@ -980,7 +980,7 @@ export default function FeaturesPage() {
               { 
                 icon: BarChart3, 
                 title: "Measurable ROI", 
-                desc: "Track time saved, tasks completed, and productivity gains with built-in analytics",
+                desc: "Track estimated time saved, activity counts, and productivity signals with built-in analytics",
                 color: "purple"
               },
             ].map((item, i) => (
@@ -1043,7 +1043,7 @@ export default function FeaturesPage() {
                   trigger workflows, and get instant responses - all through natural conversation.
                 </p>
                 <ul className="space-y-3">
-                  {['Conversational AI interface', 'Context-aware responses', 'Multi-agent orchestration', 'Real-time task execution'].map((item) => (
+                  {['Conversational AI interface', 'Context-aware responses', 'Multi-agent workflows (when configured)', 'Async task analysis with progress tracking'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-emerald-600" />
@@ -1287,13 +1287,13 @@ export default function FeaturesPage() {
                   <Zap className="h-3.5 w-3.5 text-amber-600" />
                   <span className="text-xs font-medium text-amber-700">Integrations</span>
                 </div>
-                <h3 className="text-3xl font-bold text-zinc-900 mb-4">Connect to 100+ apps instantly</h3>
+                <h3 className="text-3xl font-bold text-zinc-900 mb-4">100+ integrations when configured</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
                   One-click integrations with Salesforce, HubSpot, Slack, Google Workspace, and more. 
-                  Your AI agents can read, write, and take actions across all your tools.
+                  When integrations are connected, agents can read, write, and take actions across your linked tools. Each run reflects what was executed—not every action is guaranteed without a connected integration.
                 </p>
                 <ul className="space-y-3">
-                  {['Pre-built connectors', 'OAuth authentication', 'Real-time sync', 'Custom API support'].map((item) => (
+                  {['Pre-built connectors', 'OAuth authentication', 'Sync when connected', 'Custom API support'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center">
                         <Check className="h-3 w-3 text-amber-600" />
@@ -1447,7 +1447,7 @@ export default function FeaturesPage() {
                     'One prompt creates agents, training & workflows',
                     'ML-powered intent understanding',
                     'Executes real actions across your systems',
-                    'Deploys production-ready automation instantly'
+                    'Ships configured workflows for review before production'
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-zinc-600">
                       <div className="h-5 w-5 rounded-full bg-violet-100 flex items-center justify-center">
@@ -1571,8 +1571,8 @@ export default function FeaturesPage() {
               { icon: MessageSquare, title: "Natural Language", description: "Control everything with simple commands" },
               { icon: Eye, title: "Full Visibility", description: "See reasoning steps and data flows" },
               { icon: Bell, title: "Smart Alerts", description: "Proactive notifications when needed" },
-              { icon: Clock, title: "Instant Insights", description: "Get answers in seconds, not hours" },
-              { icon: Database, title: "100+ Integrations", description: "Connect all your tools instantly" },
+              { icon: Clock, title: "Timely insights", description: "See analysis results when each run completes" },
+              { icon: Database, title: "100+ Integrations", description: "Link tools when integrations are connected" },
               { icon: GitBranch, title: "Version Control", description: "Track and rollback changes" },
               { icon: Lock, title: "SSO & SAML", description: "Enterprise authentication" },
               { icon: BarChart3, title: "Analytics", description: "Deep insights into performance" },

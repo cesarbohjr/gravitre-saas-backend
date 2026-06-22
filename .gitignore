@@ -48,6 +48,10 @@ build/
 backend/pytest*.txt
 backend/*.txt
 !backend/requirements-dev.txt
+!backend/requirements.txt
+!backend/requirements-core.txt
+!backend/requirements-extras-data.txt
+!backend/requirements-audit.txt
 apps/web/*.txt
 build.txt
 tests_list.txt

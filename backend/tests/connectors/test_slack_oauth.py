@@ -21,7 +21,10 @@ def test_slack_oauth_configured():
 
 
 def test_slack_redirect_and_authorize_url():
-    settings = SimpleNamespace(api_public_url="https://api.example.com")
+    settings = SimpleNamespace(
+        api_public_url="https://api.example.com",
+        public_app_url="https://app.example.com",
+    )
     redirect = slack_redirect_uri(settings)
     assert redirect.endswith("/api/connectors/oauth/slack/callback")
     url = slack_authorize_url("cid", redirect, "state123")

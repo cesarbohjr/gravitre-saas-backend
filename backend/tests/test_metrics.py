@@ -26,6 +26,8 @@ def _metrics_client(*, workflow_defs=None, runs=None, connectors=None) -> MagicM
             table.select.return_value = runs or chain_mock(data=[])
         elif name == "connectors":
             table.select.return_value = connectors or chain_mock(data=[])
+        elif name == "rag_retrieval_logs":
+            table.select.return_value = chain_mock(data=[])
         return table
 
     client.table.side_effect = _table
@@ -62,6 +64,8 @@ def test_summary_calculates_from_real_data(mock_create):
     assert body["avgLatency"] == 150.0
     assert body["activeConnectors"] == 1
     assert body["totalConnectors"] == 2
+    assert "changes" in body
+    assert "trends" in body
 
 
 @patch("app.routers.metrics.create_client")

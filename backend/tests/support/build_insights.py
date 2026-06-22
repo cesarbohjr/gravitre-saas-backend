@@ -58,6 +58,7 @@ def chain_mock(*, data: list | None = None, count: int | None = None) -> MagicMo
     chain.eq.return_value = chain
     chain.gte.return_value = chain
     chain.lte.return_value = chain
+    chain.lt.return_value = chain
     chain.in_.return_value = chain
     chain.is_.return_value = chain
     chain.order.return_value = chain

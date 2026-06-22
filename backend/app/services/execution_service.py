@@ -13,6 +13,7 @@ from app.services.decision_service import DecisionPath, DecisionType, get_decisi
 from app.services.tool_service import STEP_TYPE_TO_ACTION, invoke_tool, params_for_step
 from app.services.tool_types import ToolContext
 from app.workflows.constants import RUN_STATUS_COMPLETED, RUN_STATUS_FAILED
+from app.workflows.definition_resolver import resolve_executable_definition
 from app.workflows.execute import execute_workflow_steps
 from app.workflows.repository import get_supabase_client
 
@@ -92,31 +93,28 @@ class ExecutionService:
                 user_id = user_id or row.get("triggered_by")
                 environment_name = row.get("environment_name") or environment_name
 
-        steps = (definition or {}).get("steps")
-        if isinstance(steps, list) and steps:
-            actor_id = user_id or self._resolve_actor_id(client, org_id)
-            final_status, step_rows, errors, _rate_limited = await asyncio.to_thread(
-                execute_workflow_steps,
-                settings,
-                org_id,
-                str(actor_id),
-                run_id,
-                definition,
-                params,
-                client,
-                environment_name,
-                False,
-            )
-            return self._run_result_from_steps(run_id, final_status, step_rows, params, errors)
-
-        return await self._execute_workflow_graph(
-            org_id=org_id,
-            workflow_id=workflow_id,
-            run_id=run_id,
-            parameters=params,
-            settings=settings,
-            client=client,
+        definition = resolve_executable_definition(
+            client,
+            org_id,
+            workflow_id,
+            definition,
+            environment_name,
         )
+
+        actor_id = user_id or self._resolve_actor_id(client, org_id)
+        final_status, step_rows, errors, _rate_limited = await asyncio.to_thread(
+            execute_workflow_steps,
+            settings,
+            org_id,
+            str(actor_id),
+            run_id,
+            definition,
+            params,
+            client,
+            environment_name,
+            False,
+        )
+        return self._run_result_from_steps(run_id, final_status, step_rows, params, errors)
 
     def _resolve_actor_id(self, client: Any, org_id: str) -> str:
         membership = (
@@ -181,6 +179,7 @@ class ExecutionService:
         settings: Any,
         client: Any,
     ) -> RunResult:
+        """Deprecated legacy sequential node runner — use ``execute_workflow_steps`` instead."""
         nodes_resp = (
             client.table("workflow_nodes")
             .select("id,node_type,name,config,order_index")

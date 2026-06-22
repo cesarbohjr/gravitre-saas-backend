@@ -1,0 +1,60 @@
+name: Metrics Rollup
+
+# Daily metrics rollups (+ optional audit retention purge via workflow_dispatch).
+# Complements METRICS_ROLLUP_ENABLED read path; keeps workflow_runs_daily fresh.
+on:
+  schedule:
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days back to roll up"
+        required: false
+        default: "1"
+      purge_days:
+        description: "Purge audit_events older than N days (optional)"
+        required: false
+
+concurrency:
+  group: metrics-rollup
+  cancel-in-progress: false
+
+jobs:
+  rollup-daily:
+    name: Run daily metrics rollups
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger rollup
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          ROLLUP_DAYS: ${{ github.event.inputs.days || '1' }}
+          PURGE_DAYS: ${{ github.event.inputs.purge_days || '' }}
+        run: |
+          if [ -z "$INTERNAL_API_SECRET" ]; then
+            echo "INTERNAL_API_SECRET secret is not set." >&2
+            exit 1
+          fi
+          GRAVITRE_BACKEND="https://gravitre-saas-backend-production.up.railway.app"
+          BODY="{\"days\": ${ROLLUP_DAYS}}"
+          if [ -n "$PURGE_DAYS" ]; then
+            BODY="{\"days\": ${ROLLUP_DAYS}, \"purge_days\": ${PURGE_DAYS}}"
+          fi
+          echo "Triggering rollup at $(date -u)"
+          RESPONSE=$(curl -sf \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 10 \
+            -X POST \
+            "${GRAVITRE_BACKEND}/api/internal/ops/rollup-daily" \
+            -H "X-Internal-Secret: ${INTERNAL_API_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$BODY" \
+            -w "\nHTTP_STATUS:%{http_code}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          BODY_OUT=$(echo "$RESPONSE" | grep -v "HTTP_STATUS")
+          echo "Response: $BODY_OUT"
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            exit 1
+          fi

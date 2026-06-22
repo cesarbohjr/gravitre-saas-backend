@@ -1,12 +1,9 @@
 import type { AgentJob } from "@/hooks/use-async-job"
 import { apiFetch } from "@/lib/fetcher"
 import {
-  DEMO_ASSIGNMENTS,
   type DemoAssignment,
   inferAgentIconForRole,
-  listRuntimeDemoAssignments,
 } from "@/lib/demo-assignments"
-
 const ASSIGNMENTS_REFRESH_KEY = "assignments-list"
 
 export { ASSIGNMENTS_REFRESH_KEY }
@@ -72,34 +69,14 @@ function mapJobToAssignment(job: AgentJob): DemoAssignment {
   }
 }
 
-function mergeAssignmentLists(primary: DemoAssignment[], secondary: DemoAssignment[]): DemoAssignment[] {
-  const seen = new Set(primary.map((item) => item.id))
-  const merged = [...primary]
-  for (const item of secondary) {
-    if (seen.has(item.id)) continue
-    seen.add(item.id)
-    merged.push(item)
-  }
-  return merged
-}
-
-export function listFallbackAssignments(): DemoAssignment[] {
-  return mergeAssignmentLists(listRuntimeDemoAssignments(), DEMO_ASSIGNMENTS)
-}
-
 export async function fetchAssignmentList(): Promise<DemoAssignment[]> {
-  const fallback = listFallbackAssignments()
-
   try {
     const response = await apiFetch("/api/assignments?limit=50")
-    if (!response.ok) return fallback
+    if (!response.ok) return []
 
     const payload = (await response.json()) as { jobs?: AgentJob[] }
-    const apiItems = (payload.jobs ?? []).map(mapJobToAssignment)
-    if (apiItems.length === 0) return fallback
-
-    return mergeAssignmentLists(apiItems, fallback)
+    return (payload.jobs ?? []).map(mapJobToAssignment)
   } catch {
-    return fallback
+    return []
   }
 }

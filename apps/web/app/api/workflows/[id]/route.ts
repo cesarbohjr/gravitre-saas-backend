@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
+import { syncWorkflowSchemaFromContract } from "@/lib/backend-proxy"
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -52,6 +53,8 @@ async function updateWorkflow(
     const status = error.code === "PGRST116" ? 404 : 500
     return NextResponse.json({ error: error.message }, { status })
   }
+
+  await syncWorkflowSchemaFromContract(request, id)
 
   return NextResponse.json(snakeToCamel<Record<string, unknown>>(data))
 }

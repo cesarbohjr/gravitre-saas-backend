@@ -59,7 +59,7 @@ payload = {
     "mode": "reasoning",
 }
 
-api_base = "https://gravitre-saas-backend-production.up.railway.app"
+api_base = "https://api.gravitre.app"
 for label, target in [
     ("railway_direct", f"{api_base}/api/assistant/chat?environment=production"),
     ("gravitre_proxy", "https://gravitre.app/api/chat?org_id=" + org_id),

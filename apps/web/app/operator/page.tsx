@@ -7,6 +7,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Timeline, TimelineItem } from "@/components/gravitre/timeline-item"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { cn } from "@/lib/utils"
+import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { MesonInsightsPanel } from "@/components/gravitre/ai-insights-panel"
 import { AIProcessingStatus } from "@/components/gravitre/ai-processing-status"
 import { AICommandInput } from "@/components/gravitre/ai-command-input"
@@ -45,6 +46,7 @@ import { toast } from "sonner"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useAsyncJob, type AgentJob, type AgentJobResult } from "@/hooks/use-async-job"
+import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import {
   buildFindingsFromJobResult,
@@ -648,6 +650,7 @@ export default function OperatorPage() {
   const handlePauseJob = async () => {
     try {
       await pauseJob()
+      toast.success(interruptRequestedMessage("pause"), { description: interruptRequestedDescription() })
     } catch {
       // Error toast is shown by the hook
     }
@@ -656,6 +659,7 @@ export default function OperatorPage() {
   const handleCancelJob = async () => {
     try {
       await cancelJob()
+      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
       setCurrentFlowStep("task")
       setPendingTaskText("")
     } catch {
@@ -1314,6 +1318,11 @@ export default function OperatorPage() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ type: "spring", stiffness: 100 }}
                   >
+                    {asyncJob?.result ? (
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        <ExecutionModeBadge source={asyncJob.result} showMeta />
+                      </div>
+                    ) : null}
                     <MesonInsightsPanel
                       confidence={analysisConfidence}
                       confidenceDataPoints={confidenceDataPoints}

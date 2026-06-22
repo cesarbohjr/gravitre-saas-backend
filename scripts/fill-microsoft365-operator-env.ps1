@@ -17,7 +17,7 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "Microsoft 365 OAuth credentials required." -ForegroundColor Yellow
     Write-Host "1. https://entra.microsoft.com -> App registrations -> New registration (multitenant Web)" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
-    Write-Host "   https://gravitre-saas-backend-production.up.railway.app/api/connectors/oauth/microsoft365/callback" -ForegroundColor White
+    Write-Host "   https://api.gravitre.app/api/connectors/oauth/microsoft365/callback" -ForegroundColor White
     Write-Host "3. Graph delegated: offline_access User.Read Mail.Read Calendars.Read Files.Read.All" -ForegroundColor Yellow
     Write-Host "4. Use Client secret VALUE (not Secret ID) from Certificates & secrets" -ForegroundColor Yellow
     Write-Host "5. Run:" -ForegroundColor Yellow

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import app.routers.assistant as assistant_module
+from app.services import assistant_tools as tools_module
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.main import app
@@ -371,26 +372,40 @@ def test_resolve_base_system_prompt_uses_agent_persona(monkeypatch):
 async def test_tool_knowledge_base_uses_agent_scope(monkeypatch):
     captured: dict[str, object] = {}
 
-    class FakeRAG:
-        async def query(self, org_id, query, **kwargs):
-            captured.update(kwargs)
-            captured["org_id"] = org_id
-            captured["query"] = query
-            chunk = type("C", (), {"source": "playbook", "content": "ICP notes", "score": 0.9})()
-            resp = type("R", (), {"chunks": [chunk], "metrics": {"embedding_method": "openai"}})()
-            return resp
+    class FakeBundle:
+        rag_sources = [
+            {"id": "c1", "source": "playbook", "content": "ICP notes", "score": 0.9},
+        ]
+        metrics = {"embedding_method": "openai"}
 
-    monkeypatch.setattr("app.services.rag_service.RAGService", FakeRAG)
+    async def fake_retrieve(**kwargs):
+        captured.update(kwargs)
+        return FakeBundle()
 
-    output = await assistant_module._tool_knowledge_base(
+    fake_service = MagicMock()
+    fake_service.retrieve = fake_retrieve
+    monkeypatch.setattr(
+        "app.services.unified_retrieval_service.get_unified_retrieval_service",
+        lambda: fake_service,
+    )
+    monkeypatch.setattr(
+        tools_module,
+        "get_supabase_client",
+        lambda _s: MagicMock(),
+    )
+
+    output = await tools_module.tool_knowledge_base(
         "org-1",
         "pipeline risks",
         _settings(),
         agent_id="agent-revops",
     )
 
-    assert captured.get("scope") == "agent"
-    assert captured.get("agent_id") == "agent-revops"
+    assert captured.get("org_id") == "org-1"
+    assert captured.get("query") == "pipeline risks"
+    assert captured.get("agent") == {"id": "agent-revops"}
+    assert captured.get("scopes").knowledge is True
+    assert captured.get("scopes").org_context is False
     assert output["scope"] == "agent"
     assert output["agentId"] == "agent-revops"
     assert output["sources"][0]["title"] == "playbook"

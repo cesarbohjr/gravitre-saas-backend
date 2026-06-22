@@ -85,7 +85,7 @@ Set-EnvLine "HUBSPOT_CLIENT_SECRET" $ClientSecret
 if ($AppId) { Set-EnvLine "HUBSPOT_APP_ID" $AppId }
 
 if (-not ($lines | Where-Object { $_ -match "^API_PUBLIC_URL=" })) {
-    $lines += "API_PUBLIC_URL=https://gravitre-saas-backend-production.up.railway.app"
+    $lines += "API_PUBLIC_URL=https://api.gravitre.app"
 }
 if (-not ($lines | Where-Object { $_ -match "^PUBLIC_APP_URL=" })) {
     $lines += "PUBLIC_APP_URL=https://gravitre.app"

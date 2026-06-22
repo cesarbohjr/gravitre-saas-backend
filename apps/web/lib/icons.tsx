@@ -125,6 +125,7 @@ import {
   Workflow,
   Hexagon,
   Shield,
+  ShieldAlert,
   // Additional icons for more variety
   Wand2,
   MousePointer2,
@@ -348,6 +349,7 @@ export const iconMap = {
   // Security
   security: Shield,
   shield: Shield,
+  shieldAlert: ShieldAlert,
   shieldCheck: ShieldCheck,
   lock: Lock,
   unlock: Unlock,

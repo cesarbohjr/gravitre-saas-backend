@@ -48,7 +48,7 @@ token = jwt.encode(
 )
 
 for label, target in [
-    ("railway", "https://gravitre-saas-backend-production.up.railway.app/api/conversations"),
+    ("railway", "https://api.gravitre.app/api/conversations"),
     ("proxy", "https://gravitre.app/api/conversations"),
 ]:
     body = json.dumps({"title": "hello"}).encode("utf-8")

@@ -1,6 +1,6 @@
 #Requires -Version 5.1
 param(
-    [string] $ApiBase = "https://gravitre-saas-backend-production.up.railway.app"
+    [string] $ApiBase = "https://api.gravitre.app"
 )
 
 $ErrorActionPreference = "Stop"

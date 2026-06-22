@@ -50,9 +50,24 @@ def intelligence() -> AgentIntelligence:
             ]
         )
     )
-    intel = AgentIntelligence(settings=settings, react_engine=react, rag_service=rag)
+    unified = MagicMock()
+    unified.retrieve = AsyncMock(
+        return_value=SimpleNamespace(
+            rag_sources=[{"id": "c1", "content": "Pricing FAQ", "score": 0.9, "source": "KB"}],
+            rag_section="<knowledge_base>[]</knowledge_base>",
+            org_context={"connectedIntegrations": ["hubspot"]},
+            memory_section="",
+            memory_context={},
+            sources=[],
+            metrics={},
+        )
+    )
+    intel = AgentIntelligence(settings=settings, react_engine=react, rag_service=rag, unified_retrieval=unified)
     intel.tool_registry = MagicMock()
     intel.tool_registry.list_connected_integrations.return_value = ["hubspot"]
+    intel.tool_registry.get_tools_for_agent.return_value = [
+        {"type": "function", "function": {"name": "hubspot_update_deal"}},
+    ]
     return intel
 
 
@@ -74,15 +89,13 @@ async def test_execute_task_passes_connected_integrations(agent_row: dict, intel
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[]
     )
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
-        with patch("app.operators.agent_intelligence.write_audit_event"):
-            with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": ["hubspot"]}):
-                await intelligence.execute_task(
-                    org_id="org-1",
-                    agent=agent_row,
-                    task="Find lead",
-                    client=client,
-                )
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        await intelligence.execute_task(
+            org_id="org-1",
+            agent=agent_row,
+            task="Find lead",
+            client=client,
+        )
     call_kwargs = intelligence.react_engine.run.await_args.kwargs
     assert call_kwargs["connected_integrations"] == ["hubspot"]
 
@@ -93,41 +106,53 @@ async def test_execute_task_queries_rag_with_agent_id(agent_row: dict, intellige
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[]
     )
-    intelligence.rag_service.query = AsyncMock(
+    intelligence.unified_retrieval.retrieve = AsyncMock(
         return_value=SimpleNamespace(
-            chunks=[SimpleNamespace(id="c1", content="Pricing FAQ", score=0.9, source="KB")]
+            rag_sources=[{"id": "c1", "content": "Pricing FAQ", "score": 0.9, "source": "KB"}],
+            rag_section="<knowledge_base>[]</knowledge_base>",
+            org_context={"connectedIntegrations": []},
+            memory_section="",
+            memory_context={},
+            sources=[],
+            metrics={},
         )
     )
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
-        with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": []}):
-            with patch("app.operators.agent_intelligence.write_audit_event"):
-                with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
-                    await intelligence.execute_task(
-                        org_id="org-1",
-                        agent=agent_row,
-                        task="What is our pricing?",
-                        client=client,
-                    )
-    intelligence.rag_service.query.assert_awaited_once()
-    _, kwargs = intelligence.rag_service.query.call_args
-    assert kwargs["agent_id"] == "agent-1"
-    assert kwargs["scope"] == "agent"
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
+            await intelligence.execute_task(
+                org_id="org-1",
+                agent=agent_row,
+                task="What is our pricing?",
+                client=client,
+            )
+    intelligence.unified_retrieval.retrieve.assert_awaited_once()
+    _, kwargs = intelligence.unified_retrieval.retrieve.await_args
+    assert kwargs["org_id"] == "org-1"
+    assert kwargs["query"] == "What is our pricing?"
 
 
 @pytest.mark.asyncio
 async def test_execute_task_empty_kb_handled_gracefully(agent_row: dict, intelligence: AgentIntelligence):
     client = MagicMock()
-    intelligence.rag_service.query = AsyncMock(return_value=SimpleNamespace(chunks=[]))
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
-        with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": []}):
-            with patch("app.operators.agent_intelligence.write_audit_event"):
-                with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
-                    result = await intelligence.execute_task(
-                        org_id="org-1",
-                        agent=agent_row,
-                        task="Unknown policy question",
-                        client=client,
-                    )
+    intelligence.unified_retrieval.retrieve = AsyncMock(
+        return_value=SimpleNamespace(
+            rag_sources=[],
+            rag_section="",
+            org_context={"connectedIntegrations": []},
+            memory_section="",
+            memory_context={},
+            sources=[],
+            metrics={},
+        )
+    )
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
+            result = await intelligence.execute_task(
+                org_id="org-1",
+                agent=agent_row,
+                task="Unknown policy question",
+                client=client,
+            )
     assert result.rag_sources == []
     task_prompt = intelligence.react_engine.run.await_args.kwargs["task"]
     assert "<knowledge_base>" not in task_prompt
@@ -138,21 +163,25 @@ async def test_execute_task_empty_kb_handled_gracefully(agent_row: dict, intelli
 @pytest.mark.asyncio
 async def test_execute_task_rag_sources_cited_in_output(agent_row: dict, intelligence: AgentIntelligence):
     client = MagicMock()
-    intelligence.rag_service.query = AsyncMock(
+    intelligence.unified_retrieval.retrieve = AsyncMock(
         return_value=SimpleNamespace(
-            chunks=[SimpleNamespace(id="chunk-1", content="Refund policy text", score=0.88, source="Policy Doc")]
+            rag_sources=[{"id": "chunk-1", "content": "Refund policy text", "score": 0.88, "source": "Policy Doc"}],
+            rag_section="<knowledge_base>[]</knowledge_base>",
+            org_context={"connectedIntegrations": []},
+            memory_section="",
+            memory_context={},
+            sources=[],
+            metrics={},
         )
     )
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
-        with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": []}):
-            with patch("app.operators.agent_intelligence.write_audit_event"):
-                with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
-                    result = await intelligence.execute_task(
-                        org_id="org-1",
-                        agent=agent_row,
-                        task="Summarize refund policy",
-                        client=client,
-                    )
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
+            result = await intelligence.execute_task(
+                org_id="org-1",
+                agent=agent_row,
+                task="Summarize refund policy",
+                client=client,
+            )
     assert len(result.rag_sources) == 1
     assert result.rag_sources[0]["source"] == "Policy Doc"
     handoff = result.to_handoff_dict()
@@ -167,8 +196,8 @@ async def test_execute_task_runs_react_with_context(agent_row: dict, intelligenc
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[{"id": "org-1", "name": "Acme"}]
     )
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={"memories": []}):
-        with patch("app.operators.agent_intelligence.write_audit_event"):
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
             result = await intelligence.execute_task(
                 org_id="org-1",
                 agent=agent_row,
@@ -187,6 +216,9 @@ async def test_execute_task_runs_react_with_context(agent_row: dict, intelligenc
     call_kwargs = intelligence.react_engine.run.await_args.kwargs
     assert "handoff_briefing" in call_kwargs["task"]
     assert call_kwargs["model"] == "gpt-5.5"
+    assert result.execution_mode == "tools_executed"
+    assert result.tool_call_count == 1
+    assert result.execution_verified is True
 
 
 @pytest.mark.asyncio
@@ -202,8 +234,8 @@ async def test_execute_task_needs_human_input(agent_row: dict, intelligence: Age
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[]
     )
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
-        with patch("app.operators.agent_intelligence.write_audit_event"):
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        with patch("app.operators.agent_intelligence.load_agent_task_history", return_value=[]):
             result = await intelligence.execute_task(
                 org_id="org-1",
                 agent=agent_row,
@@ -325,16 +357,14 @@ async def test_execute_task_includes_task_history(agent_row: dict, intelligence:
     )
     client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = history_rows
 
-    with patch("app.operators.agent_intelligence.build_task_retrieval_context", return_value={}):
-        with patch("app.operators.agent_intelligence.write_audit_event"):
-            with patch("app.operators.agent_intelligence.load_org_context", return_value={"connectedIntegrations": ["hubspot"]}):
-                await intelligence.execute_task(
-                    org_id="org-1",
-                    agent=agent_row,
-                    task="Follow up",
-                    client=client,
-                    task_id="job-current",
-                )
+    with patch("app.operators.agent_intelligence.write_audit_event"):
+        await intelligence.execute_task(
+            org_id="org-1",
+            agent=agent_row,
+            task="Follow up",
+            client=client,
+            task_id="job-current",
+        )
     task_prompt = intelligence.react_engine.run.await_args.kwargs["task"]
     assert "<task_history>" in task_prompt
     assert "Earlier work" in task_prompt

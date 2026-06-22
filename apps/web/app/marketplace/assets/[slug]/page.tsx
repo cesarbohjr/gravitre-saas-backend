@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import {
   AlertCircle,
   ArrowLeft,
@@ -371,7 +372,7 @@ function MarketplaceAssetDetailContent() {
                     ) : null}
                     {asset.estimatedHoursSaved != null ? (
                       <div>
-                        <dt className="text-xs text-muted-foreground">Est. hours saved / month</dt>
+                        <dt className="text-xs text-muted-foreground">{ESTIMATED_HOURS_SAVED_MONTHLY}</dt>
                         <dd>{asset.estimatedHoursSaved}h</dd>
                       </div>
                     ) : null}

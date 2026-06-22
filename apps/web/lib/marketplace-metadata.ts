@@ -1,3 +1,5 @@
+import { publicAppUrl } from "@/lib/public-urls"
+
 export function marketplaceSlugToTitle(slug: string): string {
   return slug
     .split("-")
@@ -7,7 +9,7 @@ export function marketplaceSlugToTitle(slug: string): string {
 }
 
 export function marketplaceAssetShareUrl(slug: string): string {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://gravitre.app").replace(/\/+$/, "")
+  const appUrl = publicAppUrl()
   return `${appUrl}/marketplace/assets/${encodeURIComponent(slug)}`
 }
 

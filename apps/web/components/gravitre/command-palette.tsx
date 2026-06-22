@@ -46,6 +46,8 @@ import {
   History,
   TrendingUp,
   Activity,
+  Brain,
+  ShieldAlert,
 } from "lucide-react"
 
 interface CommandPaletteProps {
@@ -138,7 +140,7 @@ export function CommandPalette({
             <span>Generate Workflow from Prompt</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/workflows"))}
+            onSelect={() => runCommand(() => router.push("/goals"))}
           >
             <BarChart3 className="mr-2 h-4 w-4 text-blue-400" />
             <span>Show Goal Progress</span>
@@ -148,6 +150,19 @@ export function CommandPalette({
           >
             <RotateCcw className="mr-2 h-4 w-4 text-amber-400" />
             <span>Regenerate Plan</span>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Models">
+          <CommandItem onSelect={() => runCommand(() => router.push("/models"))}>
+            <Brain className="mr-2 h-4 w-4 text-blue-400" />
+            <span>Model Registry</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push("/training"))}>
+            <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
+            <span>Training Hub</span>
           </CommandItem>
         </CommandGroup>
 
@@ -218,6 +233,12 @@ export function CommandPalette({
           >
             <Workflow className="mr-2 h-4 w-4" />
             <span>View All Workflows</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push("/workflows/failure-predictions"))}
+          >
+            <ShieldAlert className="mr-2 h-4 w-4 text-red-400" />
+            <span>Workflow Failure Alerts</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <Shield className="mr-2 h-4 w-4 text-red-400" />

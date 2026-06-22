@@ -104,6 +104,12 @@ type MetricsOverview = {
     recordsProcessed: number
     avgLatency: number
   }
+  trends: {
+    totalRuns: number[]
+    successRate: number[]
+    recordsProcessed: number[]
+    avgLatency: number[]
+  }
 }
 
 function parseNumber(value: unknown, defaultValue = 0): number {
@@ -140,6 +146,12 @@ function normalizeOverview(payload: unknown): MetricsOverview {
       recordsProcessed: 0,
       avgLatency: 0,
     },
+    trends: {
+      totalRuns: [],
+      successRate: [],
+      recordsProcessed: [],
+      avgLatency: [],
+    },
   }
   if (!payload || typeof payload !== "object") return empty
   const model = payload as Record<string, unknown>
@@ -169,6 +181,20 @@ function normalizeOverview(payload: unknown): MetricsOverview {
         0
       ),
     },
+    trends: {
+      totalRuns: Array.isArray((model.trends as Record<string, unknown> | undefined)?.totalRuns)
+        ? ((model.trends as Record<string, unknown>).totalRuns as unknown[]).map((v) => parseNumber(v, 0))
+        : [],
+      successRate: Array.isArray((model.trends as Record<string, unknown> | undefined)?.successRate)
+        ? ((model.trends as Record<string, unknown>).successRate as unknown[]).map((v) => parseNumber(v, 0))
+        : [],
+      recordsProcessed: Array.isArray((model.trends as Record<string, unknown> | undefined)?.recordsProcessed)
+        ? ((model.trends as Record<string, unknown>).recordsProcessed as unknown[]).map((v) => parseNumber(v, 0))
+        : [],
+      avgLatency: Array.isArray((model.trends as Record<string, unknown> | undefined)?.avgLatency)
+        ? ((model.trends as Record<string, unknown>).avgLatency as unknown[]).map((v) => parseNumber(v, 0))
+        : [],
+    },
   }
 }
 
@@ -176,6 +202,7 @@ function normalizeSeries(payload: unknown) {
   const empty = {
     runVolume: [] as Record<string, unknown>[],
     latencyDistribution: [] as Record<string, unknown>[],
+    latencySpikeTime: null as string | null,
   }
   if (!payload || typeof payload !== "object") return empty
   const model = payload as Record<string, unknown>
@@ -199,6 +226,10 @@ function normalizeSeries(payload: unknown) {
           time: String(entry.time ?? entry.hour ?? "Now"),
         }))
       : empty.latencyDistribution,
+    latencySpikeTime:
+      typeof model.latencySpikeTime === "string" && model.latencySpikeTime.trim()
+        ? model.latencySpikeTime
+        : null,
   }
 }
 
@@ -470,6 +501,7 @@ export default function MetricsPage() {
   const insights = normalizeInsights(insightsData)
   const runData = series.runVolume
   const latencyData = series.latencyDistribution
+  const latencySpikeTime = series.latencySpikeTime
   const { days: throughputData, target: throughputTarget } = normalizeWeeklyThroughput(throughputDataRaw)
 
   return (
@@ -545,6 +577,7 @@ export default function MetricsPage() {
                 title="Total Runs"
                 value={overview.totalRuns.toLocaleString()}
                 change={overview.changes?.totalRuns}
+                trend={overview.trends?.totalRuns}
                 icon={Activity}
                 accentColor="blue"
               />
@@ -552,6 +585,7 @@ export default function MetricsPage() {
                 title="Success Rate"
                 value={`${overview.successRate.toFixed(1)}%`}
                 change={overview.changes?.successRate}
+                trend={overview.trends?.successRate}
                 icon={CheckCircle2}
                 accentColor="emerald"
               />
@@ -559,6 +593,7 @@ export default function MetricsPage() {
                 title="Records Processed"
                 value={formatRecordsCount(overview.recordsProcessed)}
                 change={overview.changes?.recordsProcessed}
+                trend={overview.trends?.recordsProcessed}
                 icon={Zap}
                 accentColor="blue"
               />
@@ -566,6 +601,7 @@ export default function MetricsPage() {
                 title="Avg Latency"
                 value={`${Math.round(overview.avgLatency)}ms`}
                 change={overview.changes?.avgLatency}
+                trend={overview.trends?.avgLatency}
                 icon={Clock}
                 accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
               />
@@ -654,10 +690,16 @@ export default function MetricsPage() {
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                   <h3 className="text-sm font-medium text-foreground">Latency Distribution</h3>
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
-                    <AlertTriangle className="h-3 w-3 text-amber-400" />
-                    <span className="text-[10px] font-medium text-amber-400">Spike detected at 14:32</span>
-                  </div>
+                  {latencySpikeTime ? (
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
+                      <AlertTriangle className="h-3 w-3 text-amber-400" />
+                      <span className="text-[10px] font-medium text-amber-400">
+                        Spike detected at {latencySpikeTime}
+                      </span>
+                    </div>
+                  ) : latencyData.length === 0 ? (
+                    <span className="text-[10px] text-muted-foreground">No latency samples in range</span>
+                  ) : null}
                 </div>
                 <div className="p-4">
                   <ResponsiveContainer width="100%" height={200}>
@@ -672,8 +714,9 @@ export default function MetricsPage() {
                       <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip content={<GlowTooltip />} />
-                      {/* Anomaly reference area */}
-                      <ReferenceLine x="14:32" stroke="oklch(0.75 0.15 75)" strokeDasharray="3 3" />
+                      {latencySpikeTime ? (
+                        <ReferenceLine x={latencySpikeTime} stroke="oklch(0.75 0.15 75)" strokeDasharray="3 3" />
+                      ) : null}
                       <Line type="monotone" dataKey="p50" name="P50" stroke="oklch(0.65 0.2 250)" strokeWidth={2} dot={false} />
                       <Line type="monotone" dataKey="p95" name="P95" stroke="oklch(0.75 0.15 75)" strokeWidth={2} dot={false} />
                       <Line type="monotone" dataKey="p99" name="P99" stroke="oklch(0.55 0.22 25)" strokeWidth={2} dot={false} />

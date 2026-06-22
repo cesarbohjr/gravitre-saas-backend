@@ -41,11 +41,15 @@ import type {
   IntegrationHealthSnapshot,
   IntegrationSuggestion,
   IntegrationSuggestionApplyResponse,
-  WorkflowFailureAlert,
 } from "@/types/api"
 import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { TabSkeleton } from "./enterprise-skeletons"
 import { ApplySuggestionResultSheet } from "./apply-suggestion-result-sheet"
+import {
+  FailureAlertRow,
+  FAILURE_SEVERITY_META,
+  groupFailureAlertsBySeverity,
+} from "@/components/workflows/failure-prediction-alerts"
 
 const LOOKBACK_DAYS = 30
 
@@ -61,18 +65,6 @@ const DIMENSION_ICONS: Record<string, typeof Plug> = {
   workflowSuccessRate: Activity,
   agentUtilization: Sparkles,
   approvalLatency: CheckCircle2,
-}
-
-const SEVERITY_ORDER: WorkflowFailureAlert["severity"][] = ["critical", "high", "medium", "low"]
-
-const SEVERITY_META: Record<
-  WorkflowFailureAlert["severity"],
-  { label: string; dot: string; text: string; ring: string }
-> = {
-  critical: { label: "Critical", dot: "bg-destructive", text: "text-destructive", ring: "border-destructive/30 bg-destructive/5" },
-  high: { label: "High", dot: "bg-amber-500", text: "text-amber-500", ring: "border-amber-500/30 bg-amber-500/5" },
-  medium: { label: "Medium", dot: "bg-primary", text: "text-primary", ring: "border-primary/30 bg-primary/5" },
-  low: { label: "Low", dot: "bg-muted-foreground", text: "text-muted-foreground", ring: "border-border bg-card/50" },
 }
 
 function gradeBadgeClass(grade: IntegrationHealthGrade): string {
@@ -417,56 +409,6 @@ function SuggestionCard({
   )
 }
 
-function FailureAlertRow({
-  alert,
-  onDismiss,
-  dismissing,
-}: {
-  alert: WorkflowFailureAlert
-  onDismiss: (id: string) => void
-  dismissing: string | null
-}) {
-  const meta = SEVERITY_META[alert.severity]
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -16 }}
-      transition={{ duration: 0.25 }}
-      className={cn("flex gap-3 rounded-lg border p-3", meta.ring)}
-    >
-      <span className="relative mt-1 flex h-2.5 w-2.5 shrink-0">
-        <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", meta.dot)} />
-        <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", meta.dot)} />
-      </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-foreground">{alert.title}</p>
-          <Badge variant="outline" className={cn("capitalize", meta.text)}>
-            {meta.label}
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground text-pretty">{alert.message}</p>
-        <div className="flex items-center gap-3 pt-0.5">
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-muted-foreground" asChild>
-            <Link href={`/workflows/${alert.workflowId}/builder`}>Open workflow</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-muted-foreground"
-            disabled={dismissing === alert.id}
-            onClick={() => onDismiss(alert.id)}
-          >
-            Dismiss
-          </Button>
-        </div>
-      </div>
-    </motion.div>
-  )
-}
-
 export function CsDashboardTab() {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
@@ -621,10 +563,7 @@ export function CsDashboardTab() {
     failuresError ? "Failure predictions" : null,
   ].filter(Boolean) as string[]
 
-  const groupedFailures = SEVERITY_ORDER.map((sev) => ({
-    severity: sev,
-    items: failures.filter((f) => f.severity === sev),
-  })).filter((g) => g.items.length > 0)
+  const groupedFailures = groupFailureAlertsBySeverity(failures)
 
   return (
     <div className="space-y-6">
@@ -799,10 +738,15 @@ export function CsDashboardTab() {
             </div>
             <CardDescription>Pre-failure alerts from auth expiry, rate limits, and missing scopes.</CardDescription>
           </div>
-          <Button size="sm" disabled={!!busy} onClick={() => void scanFailures()}>
-            <ShieldAlert className={cn("mr-1.5 h-4 w-4", busy === "failure-scan" && "animate-pulse")} aria-hidden />
-            Scan workflows
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/workflows/failure-predictions">View all</Link>
+            </Button>
+            <Button size="sm" disabled={!!busy} onClick={() => void scanFailures()}>
+              <ShieldAlert className={cn("mr-1.5 h-4 w-4", busy === "failure-scan" && "animate-pulse")} aria-hidden />
+              Scan workflows
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {failures.length === 0 ? (
@@ -819,9 +763,9 @@ export function CsDashboardTab() {
             groupedFailures.map((group) => (
               <div key={group.severity} className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className={cn("h-1.5 w-1.5 rounded-full", SEVERITY_META[group.severity].dot)} aria-hidden />
+                  <span className={cn("h-1.5 w-1.5 rounded-full", FAILURE_SEVERITY_META[group.severity].dot)} aria-hidden />
                   <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    {SEVERITY_META[group.severity].label}
+                    {FAILURE_SEVERITY_META[group.severity].label}
                   </span>
                   <span className="text-xs tabular-nums text-muted-foreground/70">{group.items.length}</span>
                 </div>
