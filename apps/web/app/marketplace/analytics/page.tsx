@@ -12,6 +12,7 @@ import { ArrowLeft, BarChart3, Clock, Copy, Download, Package, Star, TrendingUp 
 import {
   ADOPTED_ESTIMATE_HOURS_LABEL,
   CATALOG_ESTIMATE_HOURS_LABEL,
+  ADOPTION_RATE_ESTIMATE_LABEL,
   ROI_METHODOLOGY,
   ROI_PAGE_TITLE,
 } from "@/lib/marketplace-outcome-labels"
@@ -185,7 +186,7 @@ export default function MarketplaceAnalyticsPage() {
                         icon={TrendingUp}
                       />
                       <StatCard
-                        label="Realization rate (%)"
+                        label={ADOPTION_RATE_ESTIMATE_LABEL}
                         value={roi.realizationRate}
                         icon={BarChart3}
                       />

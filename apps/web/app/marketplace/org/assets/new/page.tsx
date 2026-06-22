@@ -11,6 +11,7 @@ import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { ArrowLeft, Loader2, PlusCircle } from "lucide-react"
 import { toast } from "sonner"
+import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 
 function slugify(value: string): string {
   return value
@@ -219,7 +220,7 @@ export default function CreateOrgAssetPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="estimatedHours">
-                Est. hours saved / month
+                {ESTIMATED_HOURS_SAVED_MONTHLY}
               </label>
               <Input
                 id="estimatedHours"

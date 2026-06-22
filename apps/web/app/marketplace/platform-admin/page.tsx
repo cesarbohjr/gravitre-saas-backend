@@ -22,6 +22,7 @@ import {
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher } from "@/lib/fetcher"
+import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import { ArrowLeft, CheckCircle2, ChevronDown, Globe, Loader2, ShieldCheck, Sparkles, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import type { MarketplaceAssetSummary } from "@/types/api"
@@ -87,7 +88,7 @@ function QueueRow({
               ) : null}
               {asset.estimatedHoursSaved != null ? (
                 <p>
-                  <span className="font-medium text-foreground">Est. hours saved:</span>{" "}
+                  <span className="font-medium text-foreground">{ESTIMATED_HOURS_SAVED_MONTHLY}:</span>{" "}
                   {asset.estimatedHoursSaved}
                 </p>
               ) : null}

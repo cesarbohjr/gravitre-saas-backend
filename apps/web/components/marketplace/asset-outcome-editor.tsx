@@ -3,7 +3,7 @@
 import { useState } from "react"
 import {
   ESTIMATED_HOURS_SAVED_MONTHLY,
-} from "@/lib/marketplace-outcome-labels"
+} from "@/lib/outcome-labels"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -52,6 +52,9 @@ export function AssetOutcomeEditor({
     <div className="space-y-3 rounded-lg border border-dashed border-border/80 bg-muted/20 p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Outcome metadata
+      </p>
+      <p className="text-[11px] text-muted-foreground">
+        Publisher-provided estimates — not measured time-on-task.
       </p>
       <div className="space-y-2">
         <label className="text-xs font-medium" htmlFor="asset-outcome-field">

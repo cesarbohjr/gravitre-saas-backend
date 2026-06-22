@@ -25,7 +25,7 @@ const TABS: { id: TabId; label: string; icon: typeof Globe; description: string 
   { id: "knowledge", label: "Knowledge Sync", icon: BookOpen, description: "Admin-only connector ingest jobs" },
   { id: "region", label: "Data Residency", icon: Globe, description: "Control where your data is stored" },
   { id: "branding", label: "White Label", icon: Palette, description: "Custom logo, color, and domain" },
-  { id: "workforce", label: "Workforce", icon: Users, description: "Agent task analytics" },
+  { id: "workforce", label: "Workforce", icon: Users, description: "Operational agent task counts (not hours saved)" },
   { id: "cost", label: "Cost Attribution", icon: DollarSign, description: "Spend by agent and department" },
   { id: "siem", label: "SIEM Export", icon: ShieldAlert, description: "Stream audit logs to your SIEM" },
 ]
