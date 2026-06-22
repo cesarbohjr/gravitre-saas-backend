@@ -105,9 +105,13 @@ from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
 from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
-from app.workflows.builder_sync import definition_to_builder_nodes, prepare_builder_edge, sync_builder_graph
+from app.workflows.builder_sync import (
+    definition_to_builder_nodes,
+    prepare_builder_edge,
+    resolve_builder_graph,
+    sync_builder_graph,
+)
 from app.workflows.schema_sync import (
-    _builder_nodes_from_contract,
     mirror_legacy_workflow_row_to_contract,
     sync_contract_workflow_to_legacy,
 )
@@ -546,41 +550,13 @@ async def get_workflow_builder(
     wf = get_workflow_def(client, org_id, str(workflow_id))
     if not wf:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
-    nodes = list_workflow_nodes(client, org_id, str(workflow_id), environment_name)
-    edges = list_workflow_edges(client, org_id, str(workflow_id), environment_name)
-    if not nodes:
-        contract_row = (
-            client.table("workflows")
-            .select("nodes, edges")
-            .eq("org_id", org_id)
-            .eq("id", str(workflow_id))
-            .limit(1)
-            .execute()
-        )
-        contract_nodes = (
-            contract_row.data[0].get("nodes")
-            if contract_row.data and isinstance(contract_row.data[0].get("nodes"), list)
-            else []
-        )
-        contract_edges = (
-            contract_row.data[0].get("edges")
-            if contract_row.data and isinstance(contract_row.data[0].get("edges"), list)
-            else []
-        )
-        if contract_nodes:
-            nodes, edges = _builder_nodes_from_contract(contract_nodes, contract_edges)
-        else:
-            definition = wf.get("definition") if isinstance(wf.get("definition"), dict) else {}
-            if definition.get("steps"):
-                nodes, edges = definition_to_builder_nodes(definition)
-        for node in nodes:
-            node["workflow_id"] = str(workflow_id)
-            node["environment"] = environment_name
-        edges = [
-            prepare_builder_edge(edge, str(workflow_id), environment_name)
-            for edge in edges
-            if (edge.get("from_node_id") or edge.get("from")) and (edge.get("to_node_id") or edge.get("to"))
-        ]
+    nodes, edges = resolve_builder_graph(
+        client,
+        org_id=org_id,
+        workflow_id=str(workflow_id),
+        environment_name=environment_name,
+        wf=wf,
+    )
     return {
         "workflow_id": str(workflow_id),
         "name": wf.get("name"),

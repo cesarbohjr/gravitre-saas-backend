@@ -163,6 +163,13 @@ def _builder_nodes_from_contract(nodes: list[Any], edges: list[Any]) -> tuple[li
         if not node_id:
             continue
         position = raw.get("position") if isinstance(raw.get("position"), dict) else {}
+        config = raw.get("config") if isinstance(raw.get("config"), dict) else {}
+        metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+        agent_id = raw.get("agent_id") or raw.get("agentId")
+        if agent_id and "agent_id" not in metadata:
+            metadata = {**metadata, "agent_id": agent_id}
+        if agent_id and "agent_id" not in config:
+            config = {**config, "agent_id": agent_id}
         builder_nodes.append(
             {
                 "id": str(node_id),
@@ -170,7 +177,8 @@ def _builder_nodes_from_contract(nodes: list[Any], edges: list[Any]) -> tuple[li
                 "title": raw.get("title") or raw.get("name") or str(node_id),
                 "name": raw.get("name") or raw.get("title") or str(node_id),
                 "description": raw.get("description"),
-                "config": raw.get("config") if isinstance(raw.get("config"), dict) else {},
+                "config": config,
+                "metadata": metadata or None,
                 "position": position,
                 "position_x": position.get("x") if isinstance(position, dict) else raw.get("position_x") or 0,
                 "position_y": position.get("y") if isinstance(position, dict) else raw.get("position_y") or 0,

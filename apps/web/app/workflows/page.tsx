@@ -601,7 +601,7 @@ export default function WorkflowsPage() {
                     >
                       <WorkflowCard
                         {...workflow}
-                        onClick={() => router.push(`/workflows/${workflow.id}`)}
+                        onClick={() => router.push(`/workflows/${workflow.id}/builder`)}
                         onEdit={() => handleEditWorkflow(workflow.id)}
                         onViewRuns={() => handleViewRuns(workflow.id)}
                         onDuplicate={() => handleDuplicateWorkflow(workflow)}
@@ -657,7 +657,7 @@ export default function WorkflowsPage() {
                 <DataTable
                   columns={columns}
                   data={filteredWorkflows}
-                  onRowClick={(workflow) => router.push(`/workflows/${workflow.id}`)}
+                  onRowClick={(workflow) => router.push(`/workflows/${workflow.id}/builder`)}
                 />
               </motion.div>
             )}
