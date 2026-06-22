@@ -4,6 +4,7 @@
  */
 
 import { apiFetch, fetcher } from "@/lib/fetcher"
+import { requestAgentInterrupt } from "@/lib/agent-interrupts"
 import type {
   User,
   UserProfile,
@@ -143,6 +144,9 @@ import type {
   WorkflowFailureAlertsResponse,
   WorkflowFailurePredictionScanResponse,
   OrgFailurePredictionScanResponse,
+  KnowledgeSyncJob,
+  KnowledgeSyncJobsResponse,
+  KnowledgeSyncTriggerResponse,
   WorkflowDigitalTwinResponse,
   ResumeGraphRunRequest,
   RunCompensationSummary,
@@ -155,6 +159,11 @@ import type {
   AgentSwarmRun,
   AgentSwarmListResponse,
   AgentSwarmStartRequest,
+  MlModelDetail,
+  MlModelListResponse,
+  MlModelSummary,
+  CreateMlModelRequest,
+  MlModelType,
 } from "@/types/api"
 
 // Base URL for backend API (can be overridden via env)
@@ -614,8 +623,14 @@ export const runsApi = {
   },
   get: (id: string) => fetcher<Run>(apiUrl(`/api/runs/${id}`)),
   getWithSteps: (id: string) => fetcher<RunDetailResponse>(apiUrl(`/api/runs/${id}`)),
-  cancel: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/cancel`), {}),
-  pause: (id: string) => postJson<{ success?: boolean; interrupt?: string }>(apiUrl(`/api/runs/${id}/pause`), {}),
+  cancel: async (id: string) => {
+    await requestAgentInterrupt("workflow_run", id, "cancel")
+    return { success: true, interrupt: "cancel" as const }
+  },
+  pause: async (id: string) => {
+    await requestAgentInterrupt("workflow_run", id, "pause")
+    return { success: true, interrupt: "pause" as const }
+  },
   retry: (id: string) => postJson<Run>(apiUrl(`/api/runs/${id}/retry`), {}),
   retryStep: (runId: string, stepId: string) =>
     postJson<{ success?: boolean; status?: string }>(apiUrl(`/api/runs/${runId}/steps/${stepId}/retry`), {}),
@@ -625,17 +640,13 @@ export const runsApi = {
     postJson<{ run_id?: string; status?: string }>(apiUrl(`/api/runs/${id}/rollback`), {}),
   compensate: (id: string) => postJson<RunCompensationSummary>(apiUrl(`/api/runs/${id}/compensate`), {}),
   interrupt: (id: string, signal: AgentInterruptRequest["signal"]) =>
-    postJson<{ interrupt: AgentInterrupt }>(apiUrl("/api/agent-interrupts"), {
-      targetType: "workflow_run",
-      targetId: id,
-      signal,
-    }),
+    requestAgentInterrupt("workflow_run", id, signal).then((interrupt) => ({ interrupt })),
 }
 
 // ============ Agent interrupts (STA-108) ============
 export const agentInterruptsApi = {
   request: (data: AgentInterruptRequest) =>
-    postJson<{ interrupt: AgentInterrupt }>(apiUrl("/api/agent-interrupts"), data),
+    requestAgentInterrupt(data.targetType, data.targetId, data.signal).then((interrupt) => ({ interrupt })),
 }
 
 // ============ Marketplace ============
@@ -1216,6 +1227,65 @@ export const trainingApi = {
     }),
 }
 
+function normalizeMlModel(raw: Record<string, unknown>): MlModelSummary {
+  return {
+    id: String(raw.id ?? ""),
+    name: String(raw.name ?? "Model"),
+    description: (raw.description as string | null | undefined) ?? null,
+    modelType: String(raw.model_type ?? raw.modelType ?? "classifier") as MlModelType,
+    status: String(raw.status ?? "draft") as MlModelSummary["status"],
+    currentVersion: Number(raw.current_version ?? raw.currentVersion ?? 0),
+    deployedVersion: (raw.deployed_version ?? raw.deployedVersion) as number | null | undefined,
+    datasetId: (raw.dataset_id ?? raw.datasetId) as string | null | undefined,
+    baseModel: (raw.base_model ?? raw.baseModel) as string | null | undefined,
+    createdAt: (raw.created_at ?? raw.createdAt) as string | undefined,
+    updatedAt: (raw.updated_at ?? raw.updatedAt) as string | undefined,
+  }
+}
+
+// ============ ML model registry ============
+export const mlModelsApi = {
+  list: (params?: { modelType?: MlModelType; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.modelType) query.set("model_type", params.modelType)
+    if (params?.status) query.set("status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<MlModelListResponse>(apiUrl(`/api/ml/models${suffix}`)).then((res) => ({
+      models: (res.models ?? []).map((m) =>
+        normalizeMlModel(m as unknown as Record<string, unknown>)
+      ),
+    }))
+  },
+  get: async (id: string): Promise<MlModelDetail> => {
+    const raw = await fetcher<Record<string, unknown>>(apiUrl(`/api/ml/models/${id}`))
+    const versions = Array.isArray(raw.versions)
+      ? raw.versions.map((v) => {
+          const row = v as Record<string, unknown>
+          return {
+            version: Number(row.version ?? 0),
+            metrics: (row.metrics as Record<string, unknown> | undefined) ?? undefined,
+            artifactSizeBytes: (row.artifact_size_bytes ?? row.artifactSizeBytes) as number | null | undefined,
+            createdAt: (row.created_at ?? row.createdAt) as string | undefined,
+          }
+        })
+      : []
+    return {
+      ...normalizeMlModel(raw),
+      taskType: (raw.task_type ?? raw.taskType) as string | null | undefined,
+      versions,
+    }
+  },
+  create: (data: CreateMlModelRequest) =>
+    postJson<{ id: string; name: string; model_type: string; status: string }>(
+      apiUrl("/api/ml/models"),
+      data
+    ),
+  deploy: (id: string, version?: number) =>
+    postJson<{ ok: boolean; deployed_version?: number | null }>(apiUrl(`/api/ml/models/${id}/deploy`), {
+      version: version ?? null,
+    }),
+}
+
 // ============ Audit ============
 export const auditApi = {
   list: (filters?: {
@@ -1636,6 +1706,22 @@ export const enterpriseApi = {
     ),
 }
 
+// ============ Knowledge sync (STA-45, admin-only) ============
+export const knowledgeSyncApi = {
+  listSyncJobs: (params?: { connectorId?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.connectorId) query.set("connectorId", params.connectorId)
+    if (params?.limit) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<KnowledgeSyncJobsResponse>(apiUrl(`/api/admin/knowledge/sync-jobs${suffix}`))
+  },
+  triggerConnectorSync: (connectorId: string, data?: { fullSync?: boolean }) =>
+    postJson<KnowledgeSyncTriggerResponse>(
+      apiUrl(`/api/admin/knowledge/connectors/${connectorId}/sync`),
+      { fullSync: data?.fullSync ?? false },
+    ),
+}
+
 export const platformApi = {
   getCsWorkspaceTenants: (params?: { limit?: number; grade?: string; hideSnoozed?: boolean }) => {
     const query = new URLSearchParams()
@@ -1806,6 +1892,7 @@ export const api = {
   sources: sourcesApi,
   search: searchApi,
   training: trainingApi,
+  mlModels: mlModelsApi,
   audit: auditApi,
   billing: billingApi,
   metrics: metricsApi,
@@ -1817,6 +1904,7 @@ export const api = {
   lite: liteApi,
   sso: ssoApi,
   enterprise: enterpriseApi,
+  knowledgeSync: knowledgeSyncApi,
   federation: federationApi,
   agentSwarm: agentSwarmApi,
   platform: platformApi,

@@ -46,6 +46,7 @@ import { toast } from "sonner"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useAsyncJob, type AgentJob, type AgentJobResult } from "@/hooks/use-async-job"
+import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import {
   buildFindingsFromJobResult,
@@ -649,6 +650,7 @@ export default function OperatorPage() {
   const handlePauseJob = async () => {
     try {
       await pauseJob()
+      toast.success(interruptRequestedMessage("pause"), { description: interruptRequestedDescription() })
     } catch {
       // Error toast is shown by the hook
     }
@@ -657,6 +659,7 @@ export default function OperatorPage() {
   const handleCancelJob = async () => {
     try {
       await cancelJob()
+      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
       setCurrentFlowStep("task")
       setPendingTaskText("")
     } catch {

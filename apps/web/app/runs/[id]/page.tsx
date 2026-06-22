@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
 import { approvalsApi, runsApi, workflowsApi } from "@/lib/api"
+import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { useAuth } from "@/lib/auth-context"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
 import type { RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
@@ -218,7 +219,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     setIsPausing(true)
     try {
       await runsApi.pause(id)
-      toast.success("Pause requested", { description: "Run will stop before the next step." })
+      toast.success(interruptRequestedMessage("pause"), { description: interruptRequestedDescription() })
       await mutate()
     } catch (err) {
       toast.error("Pause failed", {
@@ -237,7 +238,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     setIsCancelling(true)
     try {
       await runsApi.cancel(id)
-      toast.success("Cancel requested", { description: "Run will stop before the next step." })
+      toast.success(interruptRequestedMessage("cancel"), { description: interruptRequestedDescription() })
       await mutate()
     } catch (err) {
       toast.error("Cancel failed", {

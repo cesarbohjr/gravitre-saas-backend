@@ -9,6 +9,12 @@ import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { ArrowLeft, BarChart3, Clock, Copy, Download, Package, Star, TrendingUp } from "lucide-react"
+import {
+  ADOPTED_ESTIMATE_HOURS_LABEL,
+  CATALOG_ESTIMATE_HOURS_LABEL,
+  ROI_METHODOLOGY,
+  ROI_PAGE_TITLE,
+} from "@/lib/marketplace-outcome-labels"
 
 function StatCard({
   label,
@@ -155,11 +161,9 @@ export default function MarketplaceAnalyticsPage() {
                   <div>
                     <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
                       <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
-                      Strategic hours saved (ROI)
+                      {ROI_PAGE_TITLE}
                     </h2>
-                    <p className="text-xs text-muted-foreground">
-                      Realized hours count when an installed asset has at least one usage event.
-                    </p>
+                    <p className="text-xs text-muted-foreground">{ROI_METHODOLOGY}</p>
                   </div>
                   <Button variant="outline" size="sm" asChild>
                     <Link href="/marketplace/analytics/roi">Open ROI dashboard</Link>
@@ -171,12 +175,12 @@ export default function MarketplaceAnalyticsPage() {
                   <>
                     <div className="mb-4 grid gap-4 sm:grid-cols-3">
                       <StatCard
-                        label="Estimated hours"
+                        label={CATALOG_ESTIMATE_HOURS_LABEL}
                         value={roi.totalEstimatedHoursSaved}
                         icon={Clock}
                       />
                       <StatCard
-                        label="Realized hours"
+                        label={ADOPTED_ESTIMATE_HOURS_LABEL}
                         value={roi.totalRealizedHoursSaved}
                         icon={TrendingUp}
                       />

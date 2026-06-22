@@ -1,9 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import {
+  ESTIMATED_HOURS_SAVED_MONTHLY,
+} from "@/lib/marketplace-outcome-labels"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 
 export function AssetOutcomeEditor({
@@ -74,7 +77,7 @@ export function AssetOutcomeEditor({
           />
         </div>
         <div className="space-y-2">
-          <label className="text-xs font-medium">Est. hours saved / month</label>
+          <label className="text-xs font-medium">{ESTIMATED_HOURS_SAVED_MONTHLY}</label>
           <Input
             type="number"
             min={0}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { ROI_PAGE_TITLE } from "@/lib/marketplace-outcome-labels"
 import { cn } from "@/lib/utils"
 import {
   Package,
@@ -216,14 +217,14 @@ function MarketplaceHome() {
         },
         {
           title: "Analytics",
-          description: "Catalog adoption, install activity, and hours-saved ROI.",
+          description: "Catalog adoption, install activity, and estimated hours saved (ROI).",
           href: "/marketplace/analytics",
           icon: BarChart3,
           show: isAdmin,
         },
         {
-          title: "Hours saved ROI",
-          description: "Estimated vs realized time savings from installed assets.",
+          title: ROI_PAGE_TITLE,
+          description: "Catalog estimates vs adoption-adopted estimates from installed assets.",
           href: "/marketplace/analytics/roi",
           icon: Clock,
           show: isAdmin,

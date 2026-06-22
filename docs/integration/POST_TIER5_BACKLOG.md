@@ -29,12 +29,26 @@ See **`docs/integration/TIER6_PLANNING.md`** for CS workspace, apply, approvals,
 |------|--------|-------|
 | Agent swarm | ✅ `/agents/swarm` | — |
 | Federation | ✅ `/settings/federation` | Handoffs + grants/tasks tabs + **propose grant / delegate task dialogs** |
-| Digital twin + failure scan | ✅ | Builder drawer + **`/workflows/[id]` pre-run panel** (Simulate + scan) |
+| Digital twin + failure scan | ✅ | Builder drawer + pre-run panel + **`/workflows/failure-predictions`** |
 | Integration apply | ✅ | Apply result sheet (T6-2 v2) |
 | Role packs → catalog | ✅ | Unified catalog + facet filters |
 | Clio OAuth (C.6) | ⚠️ Browser required | Smoke checklist |
 
 Design: `docs/design/V0_MARKETPLACE_UNIFIED_PROMPT.md`.
+
+---
+
+## Lane D — STA-273 customer-invisible polish (deferred Tier 5 surfaces)
+
+API-complete Tier 5 capabilities with **baseline UI only** — full product polish deferred:
+
+| Surface | Route | Status | Deferred work |
+|---------|-------|--------|---------------|
+| Federation | `/settings/federation` | ✅ Baseline hub | Partner onboarding UX, trust visuals v2 |
+| Agent swarm | `/agents/swarm` | ✅ Baseline runs | Convergence analytics, multi-swarm orchestration |
+| Digital twin | Builder intelligence drawer | ✅ Simulate tab | Standalone simulate page, fixture catalog browser |
+| Knowledge sync | Enterprise → Knowledge Sync tab | ✅ Admin-only | Customer self-serve (intentionally not shipped) |
+| Failure predictions | `/workflows/failure-predictions` | ✅ Standalone inbox | Alert routing / Slack (Tier 6) |
 
 ---
 

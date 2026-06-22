@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { apiFetch } from "@/lib/fetcher"
+import { requestAgentInterrupt } from "@/lib/agent-interrupts"
 
 export type JobStatus = "queued" | "running" | "paused" | "completed" | "failed" | "cancelled"
 
@@ -236,17 +237,11 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
     if (!job) return
 
     try {
-      const response = await apiFetch(`/api/agent-jobs/${job.jobId}/pause`, {
-        method: "POST",
-      })
-
+      await requestAgentInterrupt("agent_job", job.jobId, "pause")
+      const response = await apiFetch(`/api/agent-jobs/${job.jobId}`)
       if (!response.ok) {
-        if (response.status === 409) {
-          throw new Error("Job cannot be paused in its current state")
-        }
-        throw new Error("Failed to pause job")
+        throw new Error("Failed to refresh job after pause interrupt")
       }
-
       const data: AgentJob = await response.json()
       stopPolling()
       setJob(data)
@@ -262,17 +257,11 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
     if (!job) return
 
     try {
-      const response = await apiFetch(`/api/agent-jobs/${job.jobId}/cancel`, {
-        method: "POST",
-      })
-
+      await requestAgentInterrupt("agent_job", job.jobId, "cancel")
+      const response = await apiFetch(`/api/agent-jobs/${job.jobId}`)
       if (!response.ok) {
-        if (response.status === 409) {
-          throw new Error("Job cannot be cancelled in its current state")
-        }
-        throw new Error("Failed to cancel job")
+        throw new Error("Failed to refresh job after cancel interrupt")
       }
-
       const data: AgentJob = await response.json()
       stopPolling()
       setJob(data)

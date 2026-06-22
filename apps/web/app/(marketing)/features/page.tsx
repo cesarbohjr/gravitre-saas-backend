@@ -980,7 +980,7 @@ export default function FeaturesPage() {
               { 
                 icon: BarChart3, 
                 title: "Measurable ROI", 
-                desc: "Track time saved, tasks completed, and productivity gains with built-in analytics",
+                desc: "Track estimated time saved, activity counts, and productivity signals with built-in analytics",
                 color: "purple"
               },
             ].map((item, i) => (
