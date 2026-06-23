@@ -250,3 +250,114 @@ def close_ticket(
         comment=comment or "Compensated by Gravitre (workflow rollback)",
         oauth_access_token=oauth_access_token,
     )
+
+
+def list_tickets(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    *,
+    status: str | None = None,
+    limit: int = 25,
+    oauth_access_token: str | None = None,
+) -> list[dict[str, Any]]:
+    per_page = min(max(int(limit), 1), 100)
+    params: dict[str, Any] = {"per_page": per_page}
+    if status:
+        params["status"] = status
+    data = _request(
+        subdomain,
+        email,
+        api_token,
+        "GET",
+        "/tickets.json",
+        oauth_access_token=oauth_access_token,
+        params=params,
+    )
+    tickets = data.get("tickets") or []
+    return [dict(t) for t in tickets if isinstance(t, dict)]
+
+
+def get_user(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    user_id: int | str,
+    *,
+    oauth_access_token: str | None = None,
+) -> dict[str, Any]:
+    data = _request(
+        subdomain,
+        email,
+        api_token,
+        "GET",
+        f"/users/{user_id}.json",
+        oauth_access_token=oauth_access_token,
+    )
+    return data.get("user") or data
+
+
+def merge_tickets(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    target_ticket_id: int | str,
+    *,
+    source_ticket_ids: list[int | str],
+    oauth_access_token: str | None = None,
+) -> dict[str, Any]:
+    if not source_ticket_ids:
+        raise ZendeskAPIError("source_ticket_ids is required")
+    return _request(
+        subdomain,
+        email,
+        api_token,
+        "POST",
+        f"/tickets/{target_ticket_id}/merge.json",
+        oauth_access_token=oauth_access_token,
+        json_body={"ids": [int(t) for t in source_ticket_ids]},
+    )
+
+
+def apply_macro(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    ticket_id: int | str,
+    macro_id: int | str,
+    *,
+    oauth_access_token: str | None = None,
+) -> dict[str, Any]:
+    return _request(
+        subdomain,
+        email,
+        api_token,
+        "PUT",
+        f"/tickets/{ticket_id}/macros/{macro_id}/apply.json",
+        oauth_access_token=oauth_access_token,
+    )
+
+
+def create_side_conversation(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    ticket_id: int | str,
+    *,
+    subject: str,
+    body: str,
+    to_emails: list[str] | None = None,
+    oauth_access_token: str | None = None,
+) -> dict[str, Any]:
+    message: dict[str, Any] = {"subject": subject, "body": body}
+    if to_emails:
+        message["to"] = [{"email": e} for e in to_emails]
+    return _request(
+        subdomain,
+        email,
+        api_token,
+        "POST",
+        f"/tickets/{ticket_id}/side_conversations.json",
+        oauth_access_token=oauth_access_token,
+        json_body={"message": message},
+    )

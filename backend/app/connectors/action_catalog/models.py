@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from app.connectors.action_catalog.tool_aliases import catalog_tool_is_implemented
+
 ActionTier = Literal["v1", "v2", "v3"]
 ActionKind = Literal["read", "write", "advanced"]
 
@@ -116,7 +118,10 @@ class VendorCatalogSpec:
 
         def _serialize(actions: tuple[ActionSpec, ...]) -> list[dict[str, Any]]:
             return [
-                action.to_dict(vendor=self.vendor, implemented=_tool_key(action) in implemented_tools)
+                action.to_dict(
+                    vendor=self.vendor,
+                    implemented=catalog_tool_is_implemented(_tool_key(action), implemented_tools),
+                )
                 for action in actions
             ]
 

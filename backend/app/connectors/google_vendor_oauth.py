@@ -60,12 +60,12 @@ _VENDOR_ALIASES: dict[str, str] = {
 }
 
 _VENDOR_SCOPES: dict[str, str] = {
-    "google_analytics": "https://www.googleapis.com/auth/analytics.readonly",
+    "google_analytics": "https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/analytics.edit",
     "google_calendar": "https://www.googleapis.com/auth/calendar",
     "gmail": "https://www.googleapis.com/auth/gmail.modify",
-    "google_drive": "https://www.googleapis.com/auth/drive.readonly",
-    "google_docs": "https://www.googleapis.com/auth/documents.readonly",
-    "google_sheets": "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "google_drive": "https://www.googleapis.com/auth/drive",
+    "google_docs": "https://www.googleapis.com/auth/documents",
+    "google_sheets": "https://www.googleapis.com/auth/spreadsheets",
 }
 
 VENDOR_DOCS: dict[str, str] = {

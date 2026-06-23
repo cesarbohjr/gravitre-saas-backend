@@ -71,3 +71,42 @@ def resolve_zendesk_auth(
     email = get_decrypted_secret(client, cid, "email", settings)
     api_token = get_decrypted_secret(client, cid, "api_token", settings)
     return subdomain, (email or "").strip() or None, (api_token or "").strip() or None, None
+
+
+def resolve_slack_bot_token(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Settings,
+) -> str | None:
+    token = get_decrypted_secret(client, connector_id, "token", settings)
+    if token:
+        return token.strip()
+    tokens = load_oauth_tokens(client, connector_id, settings)
+    if tokens and tokens.get("access_token"):
+        return str(tokens["access_token"]).strip()
+    return None
+
+
+def resolve_microsoft365_access_token(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    settings: Settings,
+    *,
+    environment_name: str | None = None,
+) -> str | None:
+    token, _err = ensure_generic_session(
+        client,
+        org_id,
+        connector_id,
+        settings,
+        vendor="microsoft365",
+        environment_name=environment_name,
+    )
+    if token:
+        return token
+    tokens = load_oauth_tokens(client, connector_id, settings)
+    if tokens and tokens.get("access_token"):
+        return str(tokens["access_token"]).strip()
+    return None

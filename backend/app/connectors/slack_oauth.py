@@ -21,7 +21,10 @@ from app.connectors.repository import get_decrypted_secret, set_secret
 
 logger = logging.getLogger(__name__)
 
-SLACK_SCOPES = "chat:write,channels:read,channels:join"
+SLACK_SCOPES = (
+    "chat:write,channels:read,channels:history,channels:join,users:read,"
+    "channels:manage,files:write,reactions:write,workflow.steps:execute"
+)
 SLACK_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
 SLACK_TOKEN_URL = "https://slack.com/api/oauth.v2.access"
 SLACK_AUTH_TEST_URL = "https://slack.com/api/auth.test"

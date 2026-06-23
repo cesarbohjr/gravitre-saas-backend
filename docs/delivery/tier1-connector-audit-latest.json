@@ -1,0 +1,198 @@
+{
+  "generatedAt": "2026-06-23T19:44:04.881912+00:00",
+  "issue": "STA-276",
+  "apiBase": "https://api.gravitre.app",
+  "summary": {
+    "vendorsAudited": 12,
+    "fullDemoReady": 12,
+    "oauthGaps": [],
+    "toolGapVendors": []
+  },
+  "supabase": {
+    "note": "Not a customer OAuth connector \u2014 platform auth/storage via Supabase; org data via PostgreSQL source connector.",
+    "platformAuth": "Supabase Auth (login callback on supabase.co)",
+    "dataSurface": "postgresql source connector + RAG knowledge sync"
+  },
+  "vendors": [
+    {
+      "vendor": "hubspot",
+      "displayName": "HubSpot",
+      "catalogActions": 10,
+      "implementedActions": 10,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/hubspot/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "salesforce",
+      "displayName": "Salesforce",
+      "catalogActions": 11,
+      "implementedActions": 11,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/salesforce/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "slack",
+      "displayName": "Slack",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/slack/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "jira",
+      "displayName": "Jira",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/jira/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "zendesk",
+      "displayName": "Zendesk",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/zendesk/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "microsoft365",
+      "displayName": "Microsoft 365",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/microsoft365/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "google_analytics",
+      "displayName": "Google Analytics",
+      "catalogActions": 8,
+      "implementedActions": 8,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/google_analytics/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "google_calendar",
+      "displayName": "Google Calendar",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/google_calendar/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "gmail",
+      "displayName": "Gmail",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/gmail/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "google_drive",
+      "displayName": "Google Drive",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/google_drive/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "google_docs",
+      "displayName": "Google Docs",
+      "catalogActions": 7,
+      "implementedActions": 7,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/google_docs/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "google_sheets",
+      "displayName": "Google Sheets",
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/google_sheets/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    }
+  ]
+}

@@ -93,6 +93,94 @@ def create_event(
     )
 
 
+def list_calendars(access_token: str, *, max_results: int = 25) -> dict[str, Any]:
+    return _request(
+        access_token,
+        "GET",
+        "/users/me/calendarList",
+        params={"maxResults": min(max(int(max_results), 1), 250)},
+    )
+
+
+def list_events(
+    access_token: str,
+    *,
+    calendar_id: str = "primary",
+    time_min: str | None = None,
+    time_max: str | None = None,
+    max_results: int = 25,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        "maxResults": min(max(int(max_results), 1), 250),
+        "singleEvents": "true",
+        "orderBy": "startTime",
+    }
+    if time_min:
+        params["timeMin"] = time_min
+    if time_max:
+        params["timeMax"] = time_max
+    return _request(
+        access_token,
+        "GET",
+        f"/calendars/{calendar_id}/events",
+        params=params,
+    )
+
+
+def update_event(
+    access_token: str,
+    *,
+    calendar_id: str = "primary",
+    event_id: str,
+    patch: dict[str, Any],
+) -> dict[str, Any]:
+    return _request(
+        access_token,
+        "PATCH",
+        f"/calendars/{calendar_id}/events/{event_id}",
+        json_body=patch,
+    )
+
+
+def delete_event(
+    access_token: str,
+    *,
+    calendar_id: str = "primary",
+    event_id: str,
+) -> dict[str, Any]:
+    return _request(access_token, "DELETE", f"/calendars/{calendar_id}/events/{event_id}")
+
+
+def quick_add_event(
+    access_token: str,
+    *,
+    calendar_id: str = "primary",
+    text: str,
+) -> dict[str, Any]:
+    return _request(
+        access_token,
+        "POST",
+        f"/calendars/{calendar_id}/events/quickAdd",
+        params={"text": text},
+    )
+
+
+def list_acl(
+    access_token: str,
+    *,
+    calendar_id: str = "primary",
+) -> dict[str, Any]:
+    return _request(access_token, "GET", f"/calendars/{calendar_id}/acl")
+
+
+def batch_events(
+    access_token: str,
+    *,
+    requests: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return _request(access_token, "POST", "/batch", json_body={"requests": requests})
+
+
 def default_window_iso(hours: int = 24) -> tuple[str, str]:
     now = datetime.now(timezone.utc)
     end = now.replace(microsecond=0)

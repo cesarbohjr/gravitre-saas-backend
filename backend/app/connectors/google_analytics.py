@@ -97,3 +97,117 @@ def run_ga4_report(
             status_code=response.status_code,
         )
     return response.json()
+
+
+def list_property_metadata(access_token: str, property_id: str) -> dict[str, Any]:
+    """Fetch GA4 custom dimension/metric metadata for a property."""
+    with httpx.Client(timeout=30.0) as client:
+        response = client.get(
+            f"{GA_ADMIN_API}/properties/{property_id}/metadata",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if response.status_code >= 400:
+        raise GoogleAnalyticsAPIError(
+            f"Analytics Admin metadata {response.status_code}",
+            status_code=response.status_code,
+        )
+    return response.json()
+
+
+def create_audience(
+    access_token: str,
+    property_id: str,
+    *,
+    display_name: str,
+    membership_duration_days: int = 30,
+) -> dict[str, Any]:
+    body = {"displayName": display_name, "membershipDurationDays": membership_duration_days}
+    with httpx.Client(timeout=30.0) as client:
+        response = client.post(
+            f"{GA_ADMIN_API}/properties/{property_id}/audiences",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+    if response.status_code >= 400:
+        raise GoogleAnalyticsAPIError(f"Analytics Admin audiences {response.status_code}", status_code=response.status_code)
+    return response.json()
+
+
+def create_conversion(
+    access_token: str,
+    property_id: str,
+    *,
+    event_name: str,
+    counting_method: str = "ONCE_PER_EVENT",
+) -> dict[str, Any]:
+    body = {"eventName": event_name, "countingMethod": counting_method}
+    with httpx.Client(timeout=30.0) as client:
+        response = client.post(
+            f"{GA_ADMIN_API}/properties/{property_id}/conversionEvents",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+    if response.status_code >= 400:
+        raise GoogleAnalyticsAPIError(
+            f"Analytics Admin conversions {response.status_code}",
+            status_code=response.status_code,
+        )
+    return response.json()
+
+
+def batch_run_reports(
+    access_token: str,
+    property_id: str,
+    *,
+    requests: list[dict[str, Any]],
+) -> dict[str, Any]:
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(
+            f"{GA_DATA_API}/properties/{property_id}:batchRunReports",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"requests": requests},
+        )
+    if response.status_code >= 400:
+        raise GoogleAnalyticsAPIError(f"Analytics batch reports {response.status_code}", status_code=response.status_code)
+    return response.json()
+
+
+def run_realtime_report(
+    access_token: str,
+    property_id: str,
+    *,
+    dimensions: list[str] | None = None,
+    metrics: list[str] | None = None,
+) -> dict[str, Any]:
+    body = {
+        "dimensions": [{"name": d} for d in (dimensions or ["country"])],
+        "metrics": [{"name": m} for m in (metrics or ["activeUsers"])],
+    }
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(
+            f"{GA_DATA_API}/properties/{property_id}:runRealtimeReport",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+    if response.status_code >= 400:
+        raise GoogleAnalyticsAPIError(f"Analytics realtime {response.status_code}", status_code=response.status_code)
+    return response.json()
+
+
+def run_funnel_report(
+    access_token: str,
+    property_id: str,
+    *,
+    start_date: str = "7daysAgo",
+    end_date: str = "today",
+    funnel_steps: list[str] | None = None,
+) -> dict[str, Any]:
+    _ = funnel_steps
+    return run_ga4_report(
+        access_token,
+        property_id,
+        start_date=start_date,
+        end_date=end_date,
+        dimensions=["eventName"],
+        metrics=["eventCount"],
+    )
