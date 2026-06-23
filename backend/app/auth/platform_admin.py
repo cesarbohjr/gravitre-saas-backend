@@ -4,10 +4,20 @@ from __future__ import annotations
 from typing import Any
 
 ORG_ADMIN_ROLES = frozenset({"admin", "owner"})
+ORG_MEMBER_ROLES = frozenset({"admin", "owner", "member", "viewer"})
+ORG_KNOWLEDGE_SYNC_ROLES = frozenset({"admin", "owner", "member"})
 
 
 def is_org_admin_role(role: str | None) -> bool:
     return (role or "").strip().lower() in ORG_ADMIN_ROLES
+
+
+def is_org_member_role(role: str | None) -> bool:
+    return (role or "").strip().lower() in ORG_MEMBER_ROLES
+
+
+def can_trigger_knowledge_sync(role: str | None) -> bool:
+    return (role or "").strip().lower() in ORG_KNOWLEDGE_SYNC_ROLES
 
 
 def is_platform_admin(client: Any, user_id: str) -> bool:

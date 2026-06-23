@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.auth.dependencies import get_current_user, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.services.rag_service import Document, RAGResponse, RAGService, get_rag_service
 from app.services.unified_retrieval_service import get_unified_retrieval_service
 
@@ -55,14 +55,17 @@ async def query_rag(
     body: RAGQueryRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
 ) -> RAGResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    filters = dict(body.filters or {})
+    filters.setdefault("environment", environment_name)
     return await get_unified_retrieval_service().query_knowledge(
         org_id=org_id,
         query=body.query,
         scope=body.scope,
         top_k=body.top_k,
-        filters=body.filters,
+        filters=filters,
         include_sources=body.include_sources,
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.auth.platform_admin import is_org_admin_role, is_platform_admin, is_platform_admin_email
+from app.auth.platform_admin import can_trigger_knowledge_sync, is_org_admin_role, is_platform_admin, is_platform_admin_email
 
 
 class _ApiResponse:
@@ -20,6 +20,11 @@ def test_is_org_admin_role_accepts_owner_and_admin():
     assert is_org_admin_role("member") is False
     assert is_org_admin_role("viewer") is False
     assert is_org_admin_role(None) is False
+
+
+def test_can_trigger_knowledge_sync():
+    assert can_trigger_knowledge_sync("member") is True
+    assert can_trigger_knowledge_sync("viewer") is False
 
 
 def test_is_platform_admin_uses_data_only():

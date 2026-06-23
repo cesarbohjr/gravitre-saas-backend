@@ -1706,20 +1706,58 @@ export const enterpriseApi = {
     ),
 }
 
-// ============ Knowledge sync (STA-45, admin-only) ============
+// ============ Knowledge sync (STA-45, org-admin) ============
 export const knowledgeSyncApi = {
   listSyncJobs: (params?: { connectorId?: string; limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.connectorId) query.set("connectorId", params.connectorId)
     if (params?.limit) query.set("limit", String(params.limit))
     const suffix = query.toString() ? `?${query.toString()}` : ""
-    return fetcher<KnowledgeSyncJobsResponse>(apiUrl(`/api/admin/knowledge/sync-jobs${suffix}`))
+    return fetcher<KnowledgeSyncJobsResponse>(apiUrl(`/api/knowledge/sync-jobs${suffix}`))
   },
   triggerConnectorSync: (connectorId: string, data?: { fullSync?: boolean }) =>
     postJson<KnowledgeSyncTriggerResponse>(
-      apiUrl(`/api/admin/knowledge/connectors/${connectorId}/sync`),
+      apiUrl(`/api/knowledge/connectors/${connectorId}/sync`),
       { fullSync: data?.fullSync ?? false },
     ),
+}
+
+// ============ RAG admin ingest (STA-279) ============
+export const ragAdminApi = {
+  ingestFile: async (params: {
+    sourceId: string
+    file: File
+    externalId?: string
+    title?: string
+    metadata?: Record<string, unknown>
+  }) => {
+    const form = new FormData()
+    form.append("source_id", params.sourceId)
+    form.append("file", params.file)
+    if (params.externalId) form.append("external_id", params.externalId)
+    if (params.title) form.append("title", params.title)
+    if (params.metadata) form.append("metadata_json", JSON.stringify(params.metadata))
+    return fetcher<{
+      ingest_id: string
+      status: string
+      filename: string
+      extracted_chars: number
+    }>(apiUrl("/api/rag/ingest/file"), {
+      method: "POST",
+      body: form,
+    })
+  },
+  embeddingStatus: () =>
+    fetcher<{
+      primary_provider: string
+      openai_configured: boolean
+      voyage_enabled: boolean
+      voyage_configured: boolean
+      corpus_dimension: number
+      voyage_dimension: number
+      voyage_dimension_compatible: boolean
+      reindex_required_for_voyage: boolean
+    }>(apiUrl("/api/rag/embedding-status")),
 }
 
 export const platformApi = {
@@ -1905,6 +1943,7 @@ export const api = {
   sso: ssoApi,
   enterprise: enterpriseApi,
   knowledgeSync: knowledgeSyncApi,
+  ragAdmin: ragAdminApi,
   federation: federationApi,
   agentSwarm: agentSwarmApi,
   platform: platformApi,

@@ -22,7 +22,7 @@ type TabId = "cs" | "knowledge" | "region" | "branding" | "workforce" | "cost" |
 
 const TABS: { id: TabId; label: string; icon: typeof Globe; description: string }[] = [
   { id: "cs", label: "Command Center", icon: HeartPulse, description: "Integration health and recommendations" },
-  { id: "knowledge", label: "Knowledge Sync", icon: BookOpen, description: "Admin-only connector ingest jobs" },
+  { id: "knowledge", label: "Knowledge Sync", icon: BookOpen, description: "Connector knowledge ingest jobs and manual sync" },
   { id: "region", label: "Data Residency", icon: Globe, description: "Control where your data is stored" },
   { id: "branding", label: "White Label", icon: Palette, description: "Custom logo, color, and domain" },
   { id: "workforce", label: "Workforce", icon: Users, description: "Operational agent task counts (not hours saved)" },

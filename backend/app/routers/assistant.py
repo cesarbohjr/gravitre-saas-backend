@@ -472,6 +472,7 @@ def _build_assistant_system_prompt(
     user_id: str | None = None,
     agent_id: str | None = None,
     depth: str = "standard",
+    query: str | None = None,
 ) -> str:
     client = get_supabase_client(settings)
     service = get_org_context_service()
@@ -482,7 +483,37 @@ def _build_assistant_system_prompt(
         depth=depth,
     )
     base = _resolve_base_system_prompt(settings, org_id, agent_id, org_context=snapshot)
-    return f"{base}\n\n{org_block}"
+    memory_block = ""
+    if agent_id and (query or "").strip():
+        try:
+            from app.operators.agent_intelligence import resolve_agent_record
+            from app.services.agent_memory_service import (
+                build_task_retrieval_context,
+                format_retrieval_prompt_section,
+            )
+
+            agent = resolve_agent_record(client, org_id, agent_id)
+            if agent:
+                memory_context = build_task_retrieval_context(
+                    settings,
+                    client,
+                    org_id=org_id,
+                    agent=agent,
+                    task=query.strip(),
+                    parameters={},
+                )
+                memory_block = format_retrieval_prompt_section(memory_context)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "assistant agent memory preload skipped org_id=%s agent_id=%s error=%s",
+                org_id,
+                agent_id,
+                str(exc),
+            )
+    sections = [base, org_block]
+    if memory_block.strip():
+        sections.append(memory_block.strip())
+    return "\n\n".join(section for section in sections if section.strip())
 
 
 def _build_stream(
@@ -729,6 +760,7 @@ async def assistant_chat(
         org_id,
         user_id=str(current_user.get("user_id") or "") or None,
         agent_id=body.agent_id,
+        query=last_user,
     )
 
     user_id = str(current_user.get("user_id") or "")

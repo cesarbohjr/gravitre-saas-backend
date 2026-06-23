@@ -376,6 +376,7 @@ async def test_tool_knowledge_base_uses_agent_scope(monkeypatch):
         rag_sources = [
             {"id": "c1", "source": "playbook", "content": "ICP notes", "score": 0.9},
         ]
+        memory_context = {"memories": [{"content": "prefers concise summaries", "score": 0.8}]}
         metrics = {"embedding_method": "openai"}
 
     async def fake_retrieve(**kwargs):
@@ -406,6 +407,8 @@ async def test_tool_knowledge_base_uses_agent_scope(monkeypatch):
     assert captured.get("agent") == {"id": "agent-revops"}
     assert captured.get("scopes").knowledge is True
     assert captured.get("scopes").org_context is False
+    assert captured.get("scopes").agent_memory is True
     assert output["scope"] == "agent"
     assert output["agentId"] == "agent-revops"
     assert output["sources"][0]["title"] == "playbook"
+    assert output["memoryHitCount"] == 1

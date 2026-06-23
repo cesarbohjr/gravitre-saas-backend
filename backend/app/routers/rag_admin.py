@@ -1,15 +1,23 @@
 """DC-00: Admin-controlled RAG sources and ingestion. Org-scoped."""
 from __future__ import annotations
 
+import json
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.rag.storage import upload_raw_rag_file
+from app.rag.file_extract import (
+    UnsupportedFileTypeError,
+    extract_text_from_bytes,
+    ingest_metadata_from_upload,
+)
+from app.rag.embedding import OPENAI_CORPUS_DIMENSION, VOYAGE_EMBEDDING_DIMENSION, _voyage_enabled
 from app.rag.ingest import (
     create_ingest_job,
     create_source,
@@ -264,6 +272,117 @@ async def ingest_route(
     }
 
 
+@router.post("/ingest/file")
+async def ingest_file_route(
+    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    source_id: Annotated[UUID, Form(...)],
+    file: Annotated[UploadFile, File(...)],
+    external_id: Annotated[str | None, Form()] = None,
+    title: Annotated[str | None, Form()] = None,
+    metadata_json: Annotated[str | None, Form()] = None,
+) -> dict:
+    """Queue RAG ingest from an uploaded file (txt/md/csv/json/pdf). STA-279."""
+    user, org_id = admin_ctx
+    if settings.disable_ingestion:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion is disabled")
+
+    filename = (file.filename or "upload.txt").strip() or "upload.txt"
+    raw = await file.read()
+    try:
+        text = extract_text_from_bytes(raw, filename, content_type=file.content_type)
+    except UnsupportedFileTypeError as exc:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    extra_metadata: dict | None = None
+    if metadata_json:
+        try:
+            parsed = json.loads(metadata_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="metadata_json must be valid JSON") from exc
+        if not isinstance(parsed, dict):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="metadata_json must be a JSON object")
+        extra_metadata = parsed
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    source = get_source(client, org_id, str(source_id), environment_name=environment_name)
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+
+    doc_title = (title or "").strip() or filename
+    metadata = ingest_metadata_from_upload(filename, content_type=file.content_type, extra=extra_metadata)
+    request_payload = {
+        "source_id": str(source_id),
+        "external_id": external_id,
+        "title": doc_title,
+        "metadata": metadata,
+        "chunks": None,
+        "text": text,
+        "chunking": None,
+    }
+    job = create_ingest_job(
+        client,
+        org_id,
+        str(source_id),
+        external_id,
+        user["user_id"],
+        request_payload=request_payload,
+        environment_name=environment_name,
+    )
+    job_id = str(job["id"])
+
+    storage_meta = upload_raw_rag_file(
+        client,
+        settings,
+        org_id=org_id,
+        environment_name=environment_name,
+        source_id=str(source_id),
+        job_id=job_id,
+        filename=filename,
+        data=raw,
+        content_type=file.content_type,
+    )
+    if storage_meta:
+        merged_metadata = dict(metadata)
+        merged_metadata.update(storage_meta)
+        request_payload["metadata"] = merged_metadata
+        client.table("rag_ingest_jobs").update(
+            {"request_payload": request_payload}
+        ).eq("id", job_id).execute()
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="rag.ingest.file_queued",
+        resource_type=RESOURCE_TYPE_RAG_INGEST,
+        resource_id=job_id,
+        metadata={
+            "source_id": str(source_id),
+            "filename": filename,
+            "has_external_id": bool(external_id),
+            "raw_stored": bool(storage_meta),
+        },
+    )
+
+    return {
+        "ingest_id": job_id,
+        "document_id": None,
+        "source_id": str(source_id),
+        "external_id": external_id,
+        "chunk_count": 0,
+        "embedding_model": settings.embedding_model,
+        "embedding_dimension": settings.openai_embedding_dimension,
+        "status": "queued",
+        "filename": filename,
+        "extracted_chars": len(text),
+        **(storage_meta or {}),
+    }
+
+
 @router.get("/ingest/{ingest_id}")
 async def get_ingest_route(
     ingest_id: UUID,
@@ -291,4 +410,65 @@ async def get_ingest_route(
         "created_at": job.get("created_at"),
         "started_at": job.get("started_at"),
         "completed_at": job.get("completed_at"),
+    }
+
+
+@router.get("/embedding-status")
+async def embedding_status_route(
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Embedding provider readiness for OpenAI/Voyage failover (STA-279)."""
+    corpus_dim = int(getattr(settings, "openai_embedding_dimension", OPENAI_CORPUS_DIMENSION) or OPENAI_CORPUS_DIMENSION)
+    voyage_on = _voyage_enabled(settings)
+    voyage_key = bool((getattr(settings, "voyage_api_key", "") or "").strip())
+    compatible = corpus_dim == VOYAGE_EMBEDDING_DIMENSION
+
+    voyage_pending: int | None = None
+    voyage_total: int | None = None
+    try:
+        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        total_resp = client.table("rag_embeddings").select("chunk_id", count="exact").limit(1).execute()
+        pending_resp = (
+            client.table("rag_embeddings")
+            .select("chunk_id", count="exact")
+            .is_("embedding_voyage", "null")
+            .limit(1)
+            .execute()
+        )
+        voyage_total = int(getattr(total_resp, "count", None) or 0)
+        voyage_pending = int(getattr(pending_resp, "count", None) or 0)
+    except Exception:
+        voyage_pending = None
+        voyage_total = None
+
+    voyage_complete = (
+        voyage_total is not None
+        and voyage_pending is not None
+        and voyage_total > 0
+        and voyage_pending == 0
+    )
+
+    return {
+        "primary_provider": "openai",
+        "openai_configured": bool((settings.openai_api_key or "").strip()),
+        "openai_model": settings.embedding_model,
+        "voyage_enabled": voyage_on,
+        "voyage_configured": voyage_key,
+        "corpus_dimension": corpus_dim,
+        "voyage_dimension": VOYAGE_EMBEDDING_DIMENSION,
+        "voyage_dimension_compatible": compatible,
+        "reindex_required_for_voyage": voyage_on and not compatible,
+        "failover_chain": ["openai", "voyage"] if voyage_on else ["openai"],
+        "voyage_reindex": {
+            "total_embeddings": voyage_total,
+            "pending_embeddings": voyage_pending,
+            "complete": voyage_complete,
+            "script": "backend/scripts/reindex_with_voyage.py",
+            "runbook": "docs/voyage-reindex-runbook.md",
+        },
+        "raw_file_storage": {
+            "enabled": bool(getattr(settings, "rag_store_raw_files", True)),
+            "bucket": getattr(settings, "rag_uploads_bucket", "rag-uploads"),
+        },
     }

@@ -58,6 +58,12 @@ def main() -> None:
     parser.add_argument("--delay-ms", type=int, default=100)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--org-id", type=str, default=None)
+    parser.add_argument(
+        "--max-batches",
+        type=int,
+        default=0,
+        help="Stop after N batches (0 = all pending rows). Use 1 for a cheap dry-run probe.",
+    )
     args = parser.parse_args()
 
     settings = get_settings()
@@ -65,12 +71,16 @@ def main() -> None:
     adapter = _voyage_adapter(settings)
 
     processed = errors = 0
+    batches = 0
     started = time.time()
 
     while True:
+        if args.max_batches and batches >= args.max_batches:
+            break
         batch = _fetch_batch(client, org_id=args.org_id, batch_size=args.batch_size)
         if not batch:
             break
+        batches += 1
         for row in batch:
             chunk_id = str(row["chunk_id"])
             content = ""
@@ -96,13 +106,14 @@ def main() -> None:
 
     elapsed = round(time.time() - started, 1)
     logger.info(
-        "reindex complete processed=%s errors=%s elapsed_s=%s dry_run=%s",
+        "reindex complete processed=%s errors=%s batches=%s elapsed_s=%s dry_run=%s",
         processed,
         errors,
+        batches,
         elapsed,
         args.dry_run,
     )
-    print(f"processed={processed} errors={errors} elapsed_s={elapsed} dry_run={args.dry_run}")
+    print(f"processed={processed} errors={errors} batches={batches} elapsed_s={elapsed} dry_run={args.dry_run}")
 
 
 if __name__ == "__main__":

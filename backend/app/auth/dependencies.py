@@ -7,7 +7,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
 from app.auth.jwt_verify import decode_supabase_jwt
-from app.auth.platform_admin import is_org_admin_role, is_platform_admin
+from app.auth.platform_admin import (
+    can_trigger_knowledge_sync,
+    is_org_admin_role,
+    is_org_member_role,
+    is_platform_admin,
+)
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, org_id_ctx, user_id_ctx
 
@@ -206,6 +211,44 @@ async def require_admin(
             detail="Admin role required",
         )
     return current_user, org_id
+
+
+async def require_org_member(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> tuple[dict, str, str]:
+    """Require org membership. Returns (user, org_id, role). Raises 403 if not a member."""
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    from supabase import create_client
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    if is_platform_admin(client, current_user["user_id"]):
+        return current_user, org_id, "admin"
+    r = (
+        client.table("organization_members")
+        .select("role")
+        .eq("org_id", org_id)
+        .eq("user_id", current_user["user_id"])
+        .limit(1)
+        .execute()
+    )
+    if not r.data:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this organization",
+        )
+    role = (r.data[0].get("role") or "member").strip().lower()
+    if not is_org_member_role(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this organization",
+        )
+    return current_user, org_id, role
 
 
 async def require_platform_admin(

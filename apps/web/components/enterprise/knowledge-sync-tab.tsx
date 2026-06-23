@@ -5,7 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
-import { BookOpen, Lock, RefreshCw, Play } from "lucide-react"
+import { BookOpen, RefreshCw, Play } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -67,7 +67,15 @@ function JobRow({
   )
 }
 
-export function KnowledgeSyncTab({ isAdmin }: { isAdmin: boolean }) {
+export function KnowledgeSyncTab({
+  isAdmin,
+  canTriggerSync,
+}: {
+  isAdmin: boolean
+  canTriggerSync?: boolean
+}) {
+  const allowSync = canTriggerSync ?? isAdmin
+  const allowFullSync = isAdmin
   const [fullSync, setFullSync] = useState(false)
   const [triggeringId, setTriggeringId] = useState<string | null>(null)
 
@@ -106,10 +114,12 @@ export function KnowledgeSyncTab({ isAdmin }: { isAdmin: boolean }) {
   }, [connectors])
 
   const triggerSync = async (connectorId: string) => {
-    if (!isAdmin) return
+    if (!allowSync) return
     setTriggeringId(connectorId)
     try {
-      await knowledgeSyncApi.triggerConnectorSync(connectorId, { fullSync })
+      await knowledgeSyncApi.triggerConnectorSync(connectorId, {
+        fullSync: allowFullSync && fullSync,
+      })
       await mutateJobs()
       toast.success("Knowledge sync queued")
     } catch (err) {
@@ -127,19 +137,21 @@ export function KnowledgeSyncTab({ isAdmin }: { isAdmin: boolean }) {
     <div className="space-y-4">
       <Alert>
         <BookOpen className="h-4 w-4" aria-hidden />
-        <AlertTitle>Admin-only knowledge sync</AlertTitle>
+        <AlertTitle>Knowledge sync</AlertTitle>
         <AlertDescription className="text-pretty">
-          Scheduled sync runs via internal cron (<code className="text-xs">/api/internal/knowledge/sync-due</code>
-          ). This tab is for operators and workspace admins — not exposed to end users. Connectors must be active
-          with sync targets configured (Notion/Confluence) or vendor knowledge sync enabled.
+          Scheduled sync runs via internal cron. Workspace members can queue incremental syncs from
+          active knowledge connectors; full re-ingest requires an admin. Connectors must be active with
+          sync targets configured (Notion/Confluence) or vendor knowledge sync enabled.
         </AlertDescription>
       </Alert>
 
-      {!isAdmin ? (
+      {!allowSync ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <Lock className="h-8 w-8 text-muted-foreground" aria-hidden />
-            <p className="text-sm text-muted-foreground">Workspace admin access is required to trigger manual syncs.</p>
+            <BookOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
+            <p className="text-sm text-muted-foreground">
+              Viewer role can review sync history but cannot trigger manual syncs.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -150,10 +162,16 @@ export function KnowledgeSyncTab({ isAdmin }: { isAdmin: boolean }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
-              <Switch id="full-sync" checked={fullSync} onCheckedChange={setFullSync} />
-              <Label htmlFor="full-sync" className="text-sm text-muted-foreground">
-                Full sync (re-ingest all targets)
-              </Label>
+              {allowFullSync ? (
+                <>
+                  <Switch id="full-sync" checked={fullSync} onCheckedChange={setFullSync} />
+                  <Label htmlFor="full-sync" className="text-sm text-muted-foreground">
+                    Full sync (re-ingest all targets)
+                  </Label>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Incremental sync only (admin required for full sync).</p>
+              )}
             </div>
             {knowledgeConnectors.length === 0 ? (
               <p className="text-sm text-muted-foreground">
