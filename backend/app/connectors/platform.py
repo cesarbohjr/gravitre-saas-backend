@@ -34,6 +34,35 @@ def oauth_docs_url(vendor: str) -> str:
     return OAUTH_DOCS_URLS.get(vendor, "")
 
 
+def _is_duplicate_connector_name_error(exc: BaseException) -> bool:
+    if getattr(exc, "code", None) == "23505":
+        return True
+    msg = str(exc)
+    return "23505" in msg or "connectors_org_name_key" in msg
+
+
+def _fetch_connector_by_vendor(
+    client,
+    org_id: str,
+    vendor: str,
+    *,
+    include_deleted: bool = False,
+) -> dict | None:
+    for column in ("vendor", "type"):
+        query = (
+            client.table("connectors")
+            .select("id, vendor, type, name, status, environment, deleted_at")
+            .eq("org_id", org_id)
+            .eq(column, vendor)
+        )
+        if not include_deleted:
+            query = query.is_("deleted_at", "null")
+        result = query.order("updated_at", desc=True).limit(1).execute()
+        if result.data:
+            return result.data[0]
+    return None
+
+
 def _fetch_connector_by_org_name(
     client,
     org_id: str,
@@ -56,6 +85,38 @@ def _fetch_connector_by_org_name(
     return None
 
 
+def _validate_oauth_connector_reuse(row: dict, vendor: str, normalized_name: str) -> None:
+    existing_vendor = normalize_vendor(row.get("vendor") or row.get("type") or "")
+    if existing_vendor and existing_vendor != vendor:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error_detail(
+                f"A connector named {normalized_name!r} already exists for another integration",
+                "CONNECTOR_NAME_CONFLICT",
+            ),
+        )
+
+
+def _reuse_oauth_connector(
+    client,
+    *,
+    org_id: str,
+    connector_id: str,
+    vendor: str,
+    environment_name: str,
+    prior_status: str,
+) -> tuple[str, bool, bool]:
+    reconnect = prior_status not in {"", "pending_auth", "disconnected"}
+    mark_connector_pending_oauth(
+        client,
+        org_id=org_id,
+        connector_id=connector_id,
+        vendor=vendor,
+        environment_name=environment_name,
+    )
+    return connector_id, reconnect, False
+
+
 def find_existing_oauth_connector(
     client,
     org_id: str,
@@ -64,31 +125,19 @@ def find_existing_oauth_connector(
 ) -> dict | None:
     """Find connector row to reuse for OAuth (org_id + name is unique)."""
     normalized_name = name.strip()
-    by_name = _fetch_connector_by_org_name(client, org_id, normalized_name)
-    if by_name:
-        existing_vendor = normalize_vendor(by_name.get("vendor") or by_name.get("type") or "")
-        if existing_vendor and existing_vendor != vendor:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=error_detail(
-                    f"A connector named {normalized_name!r} already exists for another integration",
-                    "CONNECTOR_NAME_CONFLICT",
-                ),
-            )
-        return by_name
+    for include_deleted in (False, True):
+        by_name = _fetch_connector_by_org_name(
+            client, org_id, normalized_name, include_deleted=include_deleted
+        )
+        if by_name:
+            _validate_oauth_connector_reuse(by_name, vendor, normalized_name)
+            return by_name
 
-    by_vendor = (
-        client.table("connectors")
-        .select("id, vendor, type, name, status, environment")
-        .eq("org_id", org_id)
-        .eq("vendor", vendor)
-        .is_("deleted_at", "null")
-        .order("updated_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    if by_vendor.data:
-        return by_vendor.data[0]
+        by_vendor = _fetch_connector_by_vendor(
+            client, org_id, vendor, include_deleted=include_deleted
+        )
+        if by_vendor:
+            return by_vendor
     return None
 
 
@@ -127,17 +176,14 @@ def prepare_oauth_connector(
     docs_url = oauth_docs_url(vendor)
     existing = find_existing_oauth_connector(client, org_id, vendor, name)
     if existing:
-        connector_id = str(existing["id"])
-        prior_status = str(existing.get("status") or "")
-        reconnect = prior_status not in {"", "pending_auth", "disconnected"}
-        mark_connector_pending_oauth(
+        return _reuse_oauth_connector(
             client,
             org_id=org_id,
-            connector_id=connector_id,
+            connector_id=str(existing["id"]),
             vendor=vendor,
             environment_name=environment_name,
+            prior_status=str(existing.get("status") or ""),
         )
-        return connector_id, reconnect, False
 
     row = {
         "org_id": org_id,
@@ -159,30 +205,24 @@ def prepare_oauth_connector(
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
-        msg = str(exc)
-        if "23505" not in msg and "connectors_org_name_key" not in msg:
+        if not _is_duplicate_connector_name_error(exc):
             raise
-        recovered = _fetch_connector_by_org_name(client, org_id, name.strip(), include_deleted=True)
+        recovered = find_existing_oauth_connector(client, org_id, vendor, name)
+        if not recovered:
+            recovered = _fetch_connector_by_org_name(client, org_id, name.strip(), include_deleted=True)
         if not recovered:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=error_detail("Connector name already exists", "CONNECTOR_NAME_CONFLICT"),
             ) from exc
-        connector_id = str(recovered["id"])
-        prior_status = str(recovered.get("status") or "")
-        reconnect = prior_status not in {"", "pending_auth", "disconnected"}
-        mark_connector_pending_oauth(
+        return _reuse_oauth_connector(
             client,
             org_id=org_id,
-            connector_id=connector_id,
+            connector_id=str(recovered["id"]),
             vendor=vendor,
             environment_name=environment_name,
+            prior_status=str(recovered.get("status") or ""),
         )
-        if recovered.get("deleted_at"):
-            client.table("connectors").update({"deleted_at": None}).eq("id", connector_id).eq(
-                "org_id", org_id
-            ).execute()
-        return connector_id, reconnect, False
 
 
 def store_connector_api_key(

@@ -755,7 +755,9 @@ function AddConnectorModal({
     if (!selectedType || !canStartOAuth()) return
     const provider = resolveVendor(getSelectedConnector(), selectedType)
     const existing = existingConnectors.find(
-      (c) => connectorVendorKey(c.type) === provider
+      (c) =>
+        connectorVendorKey(c.type) === provider ||
+        c.name.trim().toLowerCase() === name.trim().toLowerCase()
     )
     const extra = oauthExtraFields()
     setOauthStatus("redirecting")
