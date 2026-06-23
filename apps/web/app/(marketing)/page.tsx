@@ -586,9 +586,9 @@ export default function HomePage() {
       <section className="relative py-32 bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-            <AnimatedStat value="10M" suffix="+" label="Tasks automated monthly" />
-            <AnimatedStat value="99.9" suffix="%" label="Uptime SLA" />
-            <AnimatedStat value="500" suffix="+" label="Enterprise customers" />
+            <AnimatedStat value="24/7" label="Always-on agents" />
+            <AnimatedStat value="100" suffix="%" label="Human-in-the-loop approval" />
+            <AnimatedStat value="50" suffix="+" label="App integrations" />
             <AnimatedStat value="50" suffix="ms" label="Average response time" />
           </div>
         </div>
