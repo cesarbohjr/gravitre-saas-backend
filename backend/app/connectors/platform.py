@@ -34,6 +34,28 @@ def oauth_docs_url(vendor: str) -> str:
     return OAUTH_DOCS_URLS.get(vendor, "")
 
 
+def _fetch_connector_by_org_name(
+    client,
+    org_id: str,
+    name: str,
+    *,
+    include_deleted: bool = False,
+) -> dict | None:
+    normalized_name = name.strip()
+    query = (
+        client.table("connectors")
+        .select("id, vendor, type, name, status, environment, deleted_at")
+        .eq("org_id", org_id)
+        .eq("name", normalized_name)
+    )
+    if not include_deleted:
+        query = query.is_("deleted_at", "null")
+    result = query.limit(1).execute()
+    if result.data:
+        return result.data[0]
+    return None
+
+
 def find_existing_oauth_connector(
     client,
     org_id: str,
@@ -42,18 +64,9 @@ def find_existing_oauth_connector(
 ) -> dict | None:
     """Find connector row to reuse for OAuth (org_id + name is unique)."""
     normalized_name = name.strip()
-    by_name = (
-        client.table("connectors")
-        .select("id, vendor, type, name, status, environment")
-        .eq("org_id", org_id)
-        .eq("name", normalized_name)
-        .is_("deleted_at", "null")
-        .limit(1)
-        .execute()
-    )
-    if by_name.data:
-        row = by_name.data[0]
-        existing_vendor = normalize_vendor(row.get("vendor") or row.get("type") or "")
+    by_name = _fetch_connector_by_org_name(client, org_id, normalized_name)
+    if by_name:
+        existing_vendor = normalize_vendor(by_name.get("vendor") or by_name.get("type") or "")
         if existing_vendor and existing_vendor != vendor:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -62,7 +75,7 @@ def find_existing_oauth_connector(
                     "CONNECTOR_NAME_CONFLICT",
                 ),
             )
-        return row
+        return by_name
 
     by_vendor = (
         client.table("connectors")
@@ -97,6 +110,7 @@ def mark_connector_pending_oauth(
             "sync_frequency": "1h",
             "config": {"auth_type": "oauth"},
             "docs_url": oauth_docs_url(vendor),
+            "deleted_at": None,
         }
     ).eq("id", connector_id).eq("org_id", org_id).execute()
 
@@ -137,10 +151,38 @@ def prepare_oauth_connector(
         "config": {"auth_type": "oauth"},
         "docs_url": docs_url,
     }
-    created = client.table("connectors").insert(row).execute()
-    if not created.data:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
-    return str(created.data[0]["id"]), False, True
+    try:
+        created = client.table("connectors").insert(row).execute()
+        if not created.data:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Connector create failed")
+        return str(created.data[0]["id"]), False, True
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc)
+        if "23505" not in msg and "connectors_org_name_key" not in msg:
+            raise
+        recovered = _fetch_connector_by_org_name(client, org_id, name.strip(), include_deleted=True)
+        if not recovered:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=error_detail("Connector name already exists", "CONNECTOR_NAME_CONFLICT"),
+            ) from exc
+        connector_id = str(recovered["id"])
+        prior_status = str(recovered.get("status") or "")
+        reconnect = prior_status not in {"", "pending_auth", "disconnected"}
+        mark_connector_pending_oauth(
+            client,
+            org_id=org_id,
+            connector_id=connector_id,
+            vendor=vendor,
+            environment_name=environment_name,
+        )
+        if recovered.get("deleted_at"):
+            client.table("connectors").update({"deleted_at": None}).eq("id", connector_id).eq(
+                "org_id", org_id
+            ).execute()
+        return connector_id, reconnect, False
 
 
 def store_connector_api_key(
