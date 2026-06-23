@@ -128,6 +128,7 @@ from app.connectors.oauth_pkce import (
 from app.connectors.oauth_provider_registry import (
     GENERIC_OAUTH_VENDORS,
     OAUTH_PROVIDER_REGISTRY,
+    PARTNER_GATED_OAUTH_VENDORS,
     normalize_generic_vendor,
 )
 from app.connectors.oauth_state import (
@@ -313,6 +314,16 @@ async def start_oauth(
     vendor = _resolve_oauth_vendor(provider)
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
+
+    if vendor in PARTNER_GATED_OAUTH_VENDORS:
+        label = vendor.replace("_", " ").title()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_detail(
+                f"{label} requires partner approval before OAuth connect",
+                "OAUTH_PARTNER_GATED",
+            ),
+        )
 
     if vendor == "hubspot" and not hubspot_oauth_configured(settings, environment_name):
         raise HTTPException(

@@ -3,7 +3,7 @@
   "type": "webhooks",
   "config": {
     "settings": {
-      "targetUrl": "https://api.gravitre.app/api/webhooks/hubspot/inbound",
+      "targetUrl": "https://gravitre.app/api/webhooks/hubspot/inbound",
       "maxConcurrentRequests": 10
     },
     "subscriptions": {

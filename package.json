@@ -14,6 +14,7 @@
     "generate:connector-key": "node backend/scripts/generate-connector-encryption-key.mjs",
     "hubspot:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-hubspot-oauth.ps1",
     "oauth:check-all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-all-oauth-status.ps1",
+    "oauth:apply-redirects": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-oauth-redirect-urls.ps1",
     "operator:init": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/init-operator-platform.ps1",
     "jira:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-jira-operator-env.ps1",
     "xero:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-xero-operator-env.ps1",

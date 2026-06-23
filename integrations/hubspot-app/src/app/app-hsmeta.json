@@ -8,7 +8,7 @@
     "auth": {
       "type": "oauth",
       "redirectUrls": [
-        "https://api.gravitre.app/api/connectors/oauth/hubspot/callback",
+        "https://gravitre.app/api/connectors/oauth/hubspot/callback",
         "http://localhost:8000/api/connectors/oauth/hubspot/callback"
       ],
       "requiredScopes": [

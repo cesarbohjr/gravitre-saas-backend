@@ -61,13 +61,13 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Confluence",
   "PagerDuty",
   "Notion",
+  "Slack",
   "Google Analytics",
   "Google Calendar",
   "Gmail",
   "Google Drive",
   "Google Docs",
   "Google Sheets",
-  "Zapier",
   "Mailchimp",
   "Constant Contact",
   "Xero",
@@ -100,16 +100,15 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "confluence",
   "pagerduty",
   "notion",
+  "slack",
   "google_analytics",
   "google_calendar",
   "gmail",
   "google_drive",
   "google_docs",
   "google_sheets",
-  "zapier",
   "mailchimp",
   "constant_contact",
-  "hootsuite",
   "xero",
   "airtable",
   "asana",
@@ -117,9 +116,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "freshdesk",
   "intercom",
   "monday",
-  "gusto",
   "odoo",
-  "canva",
   "microsoft365",
   "zendesk",
   "github",
@@ -153,6 +150,15 @@ export const DATABASE_VENDOR_KEYS = new Set(["postgresql", "mongodb"])
 
 /** Cloud IAM / access-key style credentials per connector. */
 export const IAM_VENDOR_KEYS = new Set(["aws_s3"])
+
+/** Partner program / sales approval required before self-serve connect. */
+export const PARTNER_GATED_CONNECTOR_KEYS = new Set([
+  "adp",
+  "gusto",
+  "hootsuite",
+  "zapier",
+  "canva",
+])
 
 /** Partner-gated or requires non-standard integration (not generic OAuth callback). */
 export const PARTNER_OR_CUSTOM_VENDOR_KEYS = new Set([
@@ -230,7 +236,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Xero", vendorKey: "xero", description: "Cloud accounting", authType: "oauth", credentialModel: "oauth2_custom", category: "Payments / Finance", oauthReady: true, shipped: true },
   { type: "Plaid", vendorKey: "plaid", description: "Financial data via Plaid Link (not OAuth callback)", authType: "apiKey", credentialModel: "plaid_link", category: "Payments / Finance", setupComplexity: "high" },
   // Communication
-  { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
+  { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true, oauthReady: true },
   { type: "Microsoft Teams", vendorKey: "microsoft_teams", description: "Collaboration hub", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
   { type: "Microsoft 365", vendorKey: "microsoft365", description: "Outlook, Excel, and Microsoft Graph", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication", oauthReady: true },
   { type: "Gmail", vendorKey: "gmail", description: "Email integration", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
@@ -275,7 +281,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Google Sheets", vendorKey: "google_sheets", description: "Spreadsheets", authType: "oauth", credentialModel: "oauth2", category: "Storage / Dev / Infra", shipped: true },
   // Learning / Creative
   { type: "Absorb LMS", vendorKey: "absorb_lms", description: "Learning management system", authType: "apiKey", credentialModel: "api_key", category: "Learning / Creative" },
-  { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", oauthReady: true, requiresPartnerApproval: true, setupComplexity: "high" },
+  { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", requiresPartnerApproval: true, setupComplexity: "high" },
 ]
 
 export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = CATALOG_ENTRIES
@@ -400,14 +406,29 @@ export function isOAuthVendorKey(vendorKey: string): boolean {
   return OAUTH_VENDOR_KEYS.has(vendorKey)
 }
 
-export function isShippedConnector(
-  entry: Pick<CatalogConnectorEntry, "vendorKey" | "shipped" | "oauthReady">
+export function isPartnerGatedConnector(
+  entry: Pick<CatalogConnectorEntry, "vendorKey" | "requiresPartnerApproval">
 ): boolean {
+  if (entry.requiresPartnerApproval === true) return true
+  return PARTNER_GATED_CONNECTOR_KEYS.has(entry.vendorKey)
+}
+
+export function isShippedConnector(
+  entry: Pick<
+    CatalogConnectorEntry,
+    "vendorKey" | "shipped" | "oauthReady" | "requiresPartnerApproval"
+  >
+): boolean {
+  if (isPartnerGatedConnector(entry)) return false
   return entry.shipped === true || entry.oauthReady === true
 }
 
 export function isOAuthConnectable(
-  entry: Pick<CatalogConnectorEntry, "authType" | "shipped" | "oauthReady">
+  entry: Pick<
+    CatalogConnectorEntry,
+    "authType" | "shipped" | "oauthReady" | "vendorKey" | "requiresPartnerApproval"
+  >
 ): boolean {
+  if (isPartnerGatedConnector(entry)) return false
   return entry.authType === "oauth" && (entry.shipped === true || entry.oauthReady === true)
 }

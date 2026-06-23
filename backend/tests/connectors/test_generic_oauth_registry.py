@@ -50,6 +50,14 @@ def test_registry_size():
     assert len(GENERIC_OAUTH_VENDORS) == len(OAUTH_PROVIDER_REGISTRY)
 
 
+def test_partner_gated_vendors():
+    from app.connectors.oauth_provider_registry import PARTNER_GATED_OAUTH_VENDORS
+
+    assert PARTNER_GATED_OAUTH_VENDORS == frozenset({"zapier", "hootsuite", "gusto", "canva"})
+    for vendor in PARTNER_GATED_OAUTH_VENDORS:
+        assert OAUTH_PROVIDER_REGISTRY[vendor].partner_gated is True
+
+
 def test_generic_redirect_uri_uses_public_app_url():
     settings = Settings(
         supabase_url="https://x.supabase.co",

@@ -74,6 +74,7 @@ import {
   OAUTH_VENDOR_KEYS,
   connectorVendorKey,
   formatVendorLabel,
+  isPartnerGatedConnector,
   isShippedConnector,
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
@@ -648,6 +649,7 @@ type CatalogConnector = (typeof availableConnectors)[number] & {
   oauthReady?: boolean
   requiresSubdomain?: boolean
   requiresInstanceUrl?: boolean
+  requiresPartnerApproval?: boolean
   partner?: boolean
   certified?: boolean
 }
@@ -859,7 +861,19 @@ function AddConnectorModal({
   }
 
   const handleSelectConnector = (connector: CatalogConnector) => {
-    if (!connector.partner && !isShippedConnector(connector)) {
+    if (connector.partner) {
+      toast.message(`${connector.type} is a partner integration`, {
+        description: "Install from the marketplace or contact sales for certified connectors.",
+      })
+      return
+    }
+    if (isPartnerGatedConnector(connector)) {
+      toast.message(`${connector.type} requires partner access`, {
+        description: "Contact sales@gravitre.com to enable this integration for your organization.",
+      })
+      return
+    }
+    if (!isShippedConnector(connector)) {
       toast.message(`${connector.type} is coming soon`, {
         description: "This integration is listed for planning; connect shipped apps marked Available.",
       })
@@ -999,6 +1013,11 @@ function AddConnectorModal({
                                   Certified
                                 </span>
                               )}
+                              {!connector.partner && isPartnerGatedConnector(connector) && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-amber-500/10 text-amber-400">
+                                  Partner
+                                </span>
+                              )}
                               {!connector.partner && isShippedConnector(connector) && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-500">
                                   Available
@@ -1006,7 +1025,9 @@ function AddConnectorModal({
                               )}
                               <span className={cn(
                                 "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
-                                !connector.partner && !isShippedConnector(connector)
+                                isPartnerGatedConnector(connector)
+                                  ? "bg-amber-500/10 text-amber-400"
+                                  : !connector.partner && !isShippedConnector(connector)
                                   ? "bg-zinc-500/10 text-zinc-400"
                                   : connector.authType === "oauth"
                                     ? "bg-blue-500/10 text-blue-400"
@@ -1014,7 +1035,9 @@ function AddConnectorModal({
                                       ? "bg-violet-500/10 text-violet-400"
                                       : "bg-amber-500/10 text-amber-400"
                               )}>
-                                {!connector.partner && !isShippedConnector(connector)
+                                {isPartnerGatedConnector(connector)
+                                  ? "Request access"
+                                  : !connector.partner && !isShippedConnector(connector)
                                   ? "Coming soon"
                                   : connector.authType === "oauth"
                                     ? "OAuth"
