@@ -51,13 +51,18 @@ async def tool_knowledge_base(
 
         client = get_supabase_client(settings)
         scope = "agent" if agent_id else "organization"
+        use_agent_memory = bool(agent_id)
         bundle = await get_unified_retrieval_service().retrieve(
             org_id=org_id,
             query=query,
             client=client,
             agent={"id": agent_id or ""},
             parameters={"rag_top_k": 5},
-            scopes=RetrievalScopes(knowledge=True, org_context=False, agent_memory=False),
+            scopes=RetrievalScopes(
+                knowledge=True,
+                org_context=False,
+                agent_memory=use_agent_memory,
+            ),
         )
         results = [
             {
@@ -74,14 +79,30 @@ async def tool_knowledge_base(
             }
             for item in bundle.rag_sources
         ]
-        return {
+        memory_hits: list[dict[str, Any]] = []
+        for key in ("memories", "patterns", "facts"):
+            for row in bundle.memory_context.get(key) or []:
+                if isinstance(row, dict):
+                    memory_hits.append(
+                        {
+                            "category": key.rstrip("s") if key.endswith("s") else key,
+                            "content": str(row.get("content") or row.get("text") or "")[:280],
+                            "score": round(float(row.get("score") or 0.0), 2),
+                        }
+                    )
+        payload: dict[str, Any] = {
             "results": results,
             "sources": sources,
             "totalResults": len(results),
             "method": str(bundle.metrics.get("embedding_method") or "unified_retrieval"),
             "scope": scope,
-            **({"agentId": agent_id} if agent_id else {}),
         }
+        if memory_hits:
+            payload["memoryHits"] = memory_hits
+            payload["memoryHitCount"] = len(memory_hits)
+        if agent_id:
+            payload["agentId"] = agent_id
+        return payload
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant knowledge_base tool failed org_id=%s error=%s", org_id, str(exc))
         return {"results": [], "totalResults": 0, "error": "knowledge base unavailable"}

@@ -1,0 +1,155 @@
+{
+  "target": "https://api.gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "startedAt": "2026-06-23T04:41:27.016640+00:00",
+  "finishedAt": "2026-06-23T04:42:37.261451+00:00",
+  "status": "pass",
+  "notes": [
+    "embedding-status error: HTTP 404: {\"detail\":\"Not Found\"}",
+    "sample corpus hits: 5/5",
+    "embedding methods seen: openai",
+    "log scan: failures=0 keyword_fallback_lines=0"
+  ],
+  "runbookSteps": {
+    "step4_spot_check": [
+      {
+        "name": "hybrid_search",
+        "query": "How does hybrid search combine vector similarity and BM25 keyword ranking?",
+        "queryEndpoint": {
+          "error": "HTTP 500: Internal Server Error"
+        },
+        "enhancedEndpoint": {
+          "chunkCount": 1,
+          "embeddingMethod": "openai",
+          "rerankMethod": "cross_encoder",
+          "fallback": null,
+          "topScore": 5.373849391937256,
+          "topSnippet": "Gravitre Operator helps teams automate workflows with AI agents connected to business systems.\n\nPipeline hygiene: review stale opportunities weekly, flag deals with no activity in fourteen days,\nand summarize next-best actions for revenue o",
+          "sampleCorpusHit": true
+        }
+      },
+      {
+        "name": "pipeline_hygiene",
+        "query": "Review stale opportunities weekly with no activity in fourteen days",
+        "queryEndpoint": {
+          "error": "HTTP 500: Internal Server Error"
+        },
+        "enhancedEndpoint": {
+          "chunkCount": 1,
+          "embeddingMethod": "openai",
+          "rerankMethod": "cross_encoder",
+          "fallback": null,
+          "topScore": 8.06861686706543,
+          "topSnippet": "Gravitre Operator helps teams automate workflows with AI agents connected to business systems.\n\nPipeline hygiene: review stale opportunities weekly, flag deals with no activity in fourteen days,\nand summarize next-best actions for revenue o",
+          "sampleCorpusHit": true
+        }
+      },
+      {
+        "name": "connector_sync",
+        "query": "Connector knowledge sync ingests Notion Confluence HubSpot Zendesk",
+        "queryEndpoint": {
+          "error": "HTTP 500: Internal Server Error"
+        },
+        "enhancedEndpoint": {
+          "chunkCount": 1,
+          "embeddingMethod": "openai",
+          "rerankMethod": "cross_encoder",
+          "fallback": null,
+          "topScore": 6.085124969482422,
+          "topSnippet": "Gravitre Operator helps teams automate workflows with AI agents connected to business systems.\n\nPipeline hygiene: review stale opportunities weekly, flag deals with no activity in fourteen days,\nand summarize next-best actions for revenue o",
+          "sampleCorpusHit": true
+        }
+      },
+      {
+        "name": "incident_response",
+        "query": "When PagerDuty alerts fire summarize severity and customer impact",
+        "queryEndpoint": {
+          "error": "HTTP 500: Internal Server Error"
+        },
+        "enhancedEndpoint": {
+          "chunkCount": 1,
+          "embeddingMethod": "openai",
+          "rerankMethod": "cross_encoder",
+          "fallback": null,
+          "topScore": 6.460693836212158,
+          "topSnippet": "Gravitre Operator helps teams automate workflows with AI agents connected to business systems.\n\nPipeline hygiene: review stale opportunities weekly, flag deals with no activity in fourteen days,\nand summarize next-best actions for revenue o",
+          "sampleCorpusHit": true
+        }
+      },
+      {
+        "name": "finance_pilot",
+        "query": "QuickBooks and NetSuite read-only connectors during pilots",
+        "queryEndpoint": {
+          "error": "HTTP 500: Internal Server Error"
+        },
+        "enhancedEndpoint": {
+          "chunkCount": 1,
+          "embeddingMethod": "openai",
+          "rerankMethod": "cross_encoder",
+          "fallback": null,
+          "topScore": 6.228312015533447,
+          "topSnippet": "Gravitre Operator helps teams automate workflows with AI agents connected to business systems.\n\nPipeline hygiene: review stale opportunities weekly, flag deals with no activity in fourteen days,\nand summarize next-best actions for revenue o",
+          "sampleCorpusHit": true
+        }
+      }
+    ],
+    "step6_metrics_baseline": {
+      "range": "7d",
+      "retrieval": {
+        "total": 10,
+        "avg_latency_ms": 6523.9,
+        "p95_latency_ms": 11077.3,
+        "avg_result_count": 1.0,
+        "zero_result_rate": 0.0,
+        "insufficient_data": false
+      },
+      "ingestion": {
+        "jobs_total": 0,
+        "by_status": {
+          "queued": 0,
+          "running": 0,
+          "completed": 0,
+          "failed": 0
+        },
+        "avg_chunks_per_job": 0.0,
+        "p95_chunks_per_job": 0.0
+      }
+    }
+  },
+  "embeddingStatus": {
+    "error": "HTTP 404: {\"detail\":\"Not Found\"}"
+  },
+  "logs": {
+    "available": true,
+    "service": "gravitre-saas-backend",
+    "linesScanned": 2000,
+    "counts": {
+      "embedding_voyage_failed": 0,
+      "embedding_openai_failed": 0,
+      "dimension_mismatch": 0,
+      "keyword_fallback": 0,
+      "rag_embedding_method": 10
+    },
+    "recentEmbeddingMethods": [
+      "2026-06-23 04:41:45,882 [INFO] app.services.rag_service request_id=3d8907af-67d5-42f6-bb48-ce471a72716a user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:41:47,885 [INFO] app.services.rag_service request_id=06c58f0b-f82f-40a2-8a71-0371a7058063 user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:41:57,350 [INFO] app.services.rag_service request_id=77c70c5e-f389-4c7d-bcee-f733f2a40487 user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:42:03,882 [INFO] app.services.rag_service request_id=300ea541-7837-4add-823c-4452d87ef5fc user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:42:10,191 [INFO] app.services.rag_service request_id=1c06e870-7499-4aca-8270-6858be500498 user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:42:15,455 [INFO] app.services.rag_service request_id=872b1896-34c7-4ba1-a30a-4696213bcd64 user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:42:21,675 [INFO] app.services.rag_service request_id=4c199c18-5213-4f52-9936-3dae47d6ddaa user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00",
+      "2026-06-23 04:42:27,782 [INFO] app.services.rag_service request_id=e0c85516-447e-498e-813f-841b45438948 user_id=09c29672-beff-4a65-b525-261fa3de5923 org_id=00000000-0000-0000-0000-000000000001 rag embedding org_id=00000000-0000-0000-0000-00"
+    ],
+    "recentFailures": [],
+    "recentFallbacks": []
+  },
+  "monitoring": {
+    "window": "7d",
+    "rerunCommand": "npm run rag:voyage:quality-check",
+    "watchFor24h": [
+      "embedding_method in /api/rag-enhanced/query metrics (openai or voyage, not keyword_fallback)",
+      "zero_result_rate in /api/metrics/rag?range=7d (re-run daily for 24h window)",
+      "Railway logs: embedding voyage failed, dimension mismatch, keyword_fallback"
+    ]
+  }
+}

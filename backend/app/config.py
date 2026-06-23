@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     rag_cross_encoder_enabled: bool = True
     rag_disable_cross_encoder: bool = False
     rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rag_uploads_bucket: str = "rag-uploads"
+    rag_store_raw_files: bool = True
     blob_read_write_token: str = ""
     ml_default_classifier: str = "random_forest"
     ml_anomaly_contamination: float = 0.1

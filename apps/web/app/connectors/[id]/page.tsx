@@ -8,6 +8,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
+import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import type { Connector, Workflow, WorkflowListResponse } from "@/types/api"
@@ -258,6 +259,11 @@ export default function ConnectorDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <KnowledgeSyncButton
+                connectorId={connectorId}
+                connectorType={liveConnector?.type || liveConnector?.vendor || connector.type}
+                connectorStatus={liveConnector?.status || displayConnector.status}
+              />
               <Button 
                 variant="outline" 
                 size="sm" 
