@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 SLACK_SCOPES = (
     "chat:write,channels:read,channels:history,channels:join,users:read,"
-    "channels:manage,files:write,reactions:write,workflow.steps:execute"
+    "channels:manage,files:write,reactions:write"
 )
 SLACK_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
 SLACK_TOKEN_URL = "https://slack.com/api/oauth.v2.access"

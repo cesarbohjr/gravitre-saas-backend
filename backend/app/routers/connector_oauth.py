@@ -878,11 +878,16 @@ async def oauth_callback(
                 code_verifier=str(payload.get("pkce_verifier") or "") or None,
                 user_id=str(payload.get("user_id") or "") or None,
             )
-    except (httpx.HTTPError, ValueError):
+    except (httpx.HTTPError, ValueError) as exc:
         return RedirectResponse(
             _frontend_redirect(
+                settings,
                 redirect_path,
-                {"oauth": "error", "provider": vendor, "message": "token_exchange_failed"},
+                {
+                    "oauth": "error",
+                    "provider": vendor,
+                    "message": str(exc)[:200] or "token_exchange_failed",
+                },
             ),
             status_code=302,
         )
@@ -906,6 +911,6 @@ async def oauth_callback(
         success_params["selectProperty"] = "1"
 
     return RedirectResponse(
-        _frontend_redirect(redirect_path, success_params),
+        _frontend_redirect(settings, redirect_path, success_params),
         status_code=302,
     )
