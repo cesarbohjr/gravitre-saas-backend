@@ -1737,15 +1737,24 @@ export const ragAdminApi = {
     if (params.externalId) form.append("external_id", params.externalId)
     if (params.title) form.append("title", params.title)
     if (params.metadata) form.append("metadata_json", JSON.stringify(params.metadata))
-    return fetcher<{
+    const response = await apiFetch(apiUrl("/api/rag/ingest/file"), {
+      method: "POST",
+      body: form,
+    })
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      throw new Error(
+        typeof payload === "object" && payload && "detail" in payload
+          ? String((payload as { detail?: string }).detail)
+          : "File ingest failed",
+      )
+    }
+    return response.json() as Promise<{
       ingest_id: string
       status: string
       filename: string
       extracted_chars: number
-    }>(apiUrl("/api/rag/ingest/file"), {
-      method: "POST",
-      body: form,
-    })
+    }>
   },
   embeddingStatus: () =>
     fetcher<{
