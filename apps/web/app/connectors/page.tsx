@@ -66,6 +66,7 @@ import {
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { ensureSelectedOrg } from "@/lib/org-context"
 import { connectorsApi } from "@/lib/api"
 import { publicApiUrl } from "@/lib/public-urls"
 import {
@@ -76,6 +77,7 @@ import {
   formatVendorLabel,
   isPartnerGatedConnector,
   isShippedConnector,
+  lookupConnectorCategory,
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
@@ -169,7 +171,7 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     dataFlowRate: String(model.dataFlowRate ?? model.data_flow_rate ?? "0 MB/s"),
     requestsToday: Number(model.requestsToday ?? model.requests_today ?? 0),
     latency: Number(model.latency ?? 0),
-    category: String(model.category ?? ""),
+    category: String(model.category ?? lookupConnectorCategory(vendor) ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
     authStatus: authStatus || undefined,
     usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
@@ -1648,10 +1650,15 @@ function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
 
-  // Fetch connectors from API with SWR
+  useEffect(() => {
+    if (user) void ensureSelectedOrg(true).then(setOrgId)
+  }, [user])
+
+  // Fetch connectors from API with SWR (org-scoped key avoids stale cross-device cache)
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
-    user ? "/api/connectors" : null,
+    user && orgId ? `/api/connectors?org=${orgId}` : null,
     apiFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
@@ -1665,7 +1672,7 @@ function ConnectorsPageContent() {
       certificationBadge?: string | null
     }>
   }>(
-    user ? "/api/marketplace/registry" : null,
+    user && orgId ? `/api/marketplace/registry?org=${orgId}` : null,
     apiFetcher,
     { revalidateOnFocus: false }
   )
@@ -1826,6 +1833,27 @@ function ConnectorsPageContent() {
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
 
   const connectedCount = connectors.filter((c) => c.status === "connected").length
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all",
+  )
+  const hubConnectedCount = hasActiveFilters
+    ? filteredConnectors.filter((c) => c.status === "connected").length
+    : connectedCount
+  const hubTotalCount = hasActiveFilters ? filteredConnectors.length : connectors.length
+
+  function clearFilters() {
+    setSearchQuery("")
+    setStatusFilter("all")
+    setCategoryFilter("all")
+  }
+
+  const statusFilterOptions = [
+    { value: "all", label: "All", color: "text-foreground" },
+    { value: "connected", label: "Connected", color: "text-emerald-400", dot: "bg-emerald-500" },
+    { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
+    { value: "error", label: "Error", color: "text-red-400", dot: "bg-red-500" },
+    { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
+  ] as const
   const totalRequests = connectors.reduce((sum, c) => sum + (c.requestsToday || 0), 0)
   const avgLatency = Math.round(
     connectors.filter((c) => c.latency).reduce((sum, c) => sum + (c.latency || 0), 0) /
@@ -1857,15 +1885,57 @@ function ConnectorsPageContent() {
                   className="w-full md:w-64 pl-9 bg-secondary"
                 />
               </div>
+              {/* Mobile / tablet filters (desktop pills are lg+) */}
+              <div className="flex lg:hidden items-center gap-2 w-full overflow-x-auto pb-1">
+                {statusFilterOptions.map((status) => (
+                  <button
+                    key={status.value}
+                    onClick={() => setStatusFilter(status.value)}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border",
+                      statusFilter === status.value
+                        ? "bg-card shadow-sm text-foreground border-border"
+                        : "text-muted-foreground border-transparent hover:text-foreground",
+                    )}
+                  >
+                    {"dot" in status && status.dot ? (
+                      <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                    ) : null}
+                    {status.label}
+                  </button>
+                ))}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 text-xs">
+                      <Filter className="h-3.5 w-3.5" />
+                      {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
+                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                      All Categories
+                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {Object.entries(connectorCategories).map(([cat, data]) => (
+                      <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
+                        <span className="flex-1">{cat}</span>
+                        <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
+                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {hasActiveFilters ? (
+                  <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs" onClick={clearFilters}>
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
               {/* Status Filter Pills */}
               <div className="hidden lg:flex items-center gap-1 border rounded-lg p-1 bg-secondary/30">
-                {[
-                  { value: "all", label: "All", color: "text-foreground" },
-                  { value: "connected", label: "Connected", color: "text-emerald-400", dot: "bg-emerald-500" },
-                  { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
-                  { value: "error", label: "Error", color: "text-red-400", dot: "bg-red-500" },
-                  { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
-                ].map((status) => (
+                {statusFilterOptions.map((status) => (
                   <button
                     key={status.value}
                     onClick={() => setStatusFilter(status.value)}
@@ -1876,7 +1946,9 @@ function ConnectorsPageContent() {
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    {status.dot && <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />}
+                    {"dot" in status && status.dot ? (
+                      <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                    ) : null}
                     {status.label}
                   </button>
                 ))}
@@ -2017,12 +2089,7 @@ function ConnectorsPageContent() {
         </div>
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
-        <ConnectorRecommendations
-          onConnect={(connectorType) => {
-            if (connectorType) setSearchQuery(connectorType)
-            setAddModal(true)
-          }}
-        />
+        <ConnectorRecommendations onConnect={() => setAddModal(true)} />
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">
@@ -2063,6 +2130,17 @@ function ConnectorsPageContent() {
                 Add your first connector
               </Button>
             </div>
+          ) : filteredConnectors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+              <Filter className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm font-medium text-foreground">No connectors match your filters</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                {connectors.length} connector{connectors.length === 1 ? "" : "s"} are hidden by search or filter settings.
+              </p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            </div>
           ) : (
           <>
           {/* Mobile: Card list view */}
@@ -2074,8 +2152,11 @@ function ConnectorsPageContent() {
                 <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-card to-secondary border-2 border-blue-500/30 shadow-xl">
                   <div className="text-center">
                     <Cable className="h-5 w-5 text-blue-400 mx-auto mb-0.5" />
-                    <div className="text-lg font-bold text-foreground">{connectedCount}</div>
-                    <div className="text-[8px] text-muted-foreground uppercase tracking-wider">of {connectors.length}</div>
+                    <div className="text-lg font-bold text-foreground">{hubConnectedCount}</div>
+                    <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
+                      of {hubTotalCount}
+                      {hasActiveFilters ? " shown" : ""}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2119,7 +2200,7 @@ function ConnectorsPageContent() {
                 </div>
 
                 {/* Central Hub */}
-                <CentralHub connectedCount={connectedCount} totalCount={connectors.length} />
+                <CentralHub connectedCount={hubConnectedCount} totalCount={hubTotalCount} />
 
                 {/* Right column */}
                 <div className="flex flex-col gap-4 ml-8">

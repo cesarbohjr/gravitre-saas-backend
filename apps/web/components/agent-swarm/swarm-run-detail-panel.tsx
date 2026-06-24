@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import {
   Bot,
+  CheckCircle2,
+  Lightbulb,
+  ListChecks,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -15,6 +18,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { agentSwarmApi } from "@/lib/api"
+import {
+  extractCouncilRounds,
+  extractDissentingOpinions,
+  extractSwarmNextSteps,
+  formatSwarmReadableText,
+  subtaskReadableSummary,
+} from "@/lib/swarm-result-format"
 import type { AgentSwarmRun, AgentSwarmSubtask } from "@/types/api"
 import { SwarmRunStatusBadge, SwarmSubtaskStatusBadge } from "@/components/agent-swarm/swarm-status-badge"
 import {
@@ -47,11 +57,8 @@ function canCancel(run: AgentSwarmRun | undefined) {
   return run ? ACTIVE_RUN.has(run.status) : false
 }
 
-function subtaskSummary(subtask: AgentSwarmSubtask) {
-  const result = subtask.result
-  if (!result || typeof result !== "object") return null
-  const summary = result.summary ?? result.finding ?? result.recommendedAction ?? result.recommended_action
-  return typeof summary === "string" && summary.trim() ? summary.trim() : null
+function decisionMethodLabel(method: string) {
+  return method.replace(/_/g, " ")
 }
 
 export function SwarmRunDetailPanel({
@@ -72,6 +79,14 @@ export function SwarmRunDetailPanel({
       refreshInterval: (data) => (data && ACTIVE_RUN.has(data.status) ? 4000 : 0),
     },
   )
+
+  const executiveSummary = useMemo(
+    () => formatSwarmReadableText(run?.finalRecommendation, 900),
+    [run?.finalRecommendation],
+  )
+  const nextSteps = useMemo(() => (run ? extractSwarmNextSteps(run) : []), [run])
+  const councilRounds = useMemo(() => (run ? extractCouncilRounds(run) : []), [run])
+  const dissent = useMemo(() => (run ? extractDissentingOpinions(run) : []), [run])
 
   async function refresh() {
     setBusy("refresh")
@@ -168,28 +183,11 @@ export function SwarmRunDetailPanel({
               </div>
               <div>
                 <dt className="text-muted-foreground">Decision</dt>
-                <dd className="capitalize">{run.decisionMethod.replace(/_/g, " ")}</dd>
+                <dd className="capitalize">{decisionMethodLabel(run.decisionMethod)}</dd>
               </div>
-              {isSwarmExecutionUnverified(run.executionVerified) &&
-              (run.finalRecommendation || (run.subtasks ?? []).some((s) => subtaskSummary(s))) ? (
-                <div className="col-span-2">
-                  <SwarmVerificationLabel />
-                </div>
-              ) : null}
-              {run.finalRecommendation ? (
-                <div className="col-span-2">
-                  <dt className="text-muted-foreground">Recommendation</dt>
-                  <dd className="mt-1 space-y-2">
-                    {isSwarmExecutionUnverified(run.executionVerified) ? (
-                      <SwarmVerificationLabel />
-                    ) : null}
-                    <div className="rounded-md bg-muted/50 p-2 text-foreground">{run.finalRecommendation}</div>
-                  </dd>
-                </div>
-              ) : null}
               {run.finalConfidence != null ? (
                 <div>
-                  <dt className="text-muted-foreground">Confidence</dt>
+                  <dt className="text-muted-foreground">Council confidence</dt>
                   <dd>{Math.round(run.finalConfidence * 100)}%</dd>
                 </div>
               ) : null}
@@ -199,44 +197,92 @@ export function SwarmRunDetailPanel({
                   <dd className="text-destructive">{run.errorMessage}</dd>
                 </div>
               ) : null}
-              {run.status === "aggregating" ? (
-                <div className="col-span-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-                  Council aggregation did not finish. Subtask outputs below are advisory until verified tool execution is confirmed.
-                </div>
-              ) : null}
             </dl>
 
+            {run.status === "aggregating" ? (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+                Council is merging agent outputs into a final recommendation…
+              </div>
+            ) : null}
+
+            {executiveSummary ? (
+              <section className="rounded-xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-card to-card p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Council recommendation
+                </div>
+                {isSwarmExecutionUnverified(run.executionVerified) ? <SwarmVerificationLabel /> : null}
+                <p className="text-sm leading-relaxed text-foreground">{executiveSummary}</p>
+                {run.finalConfidence != null ? (
+                  <p className="text-xs text-muted-foreground">
+                    Based on {decisionMethodLabel(run.decisionMethod)} across {(run.subtasks ?? []).length} agent
+                    {(run.subtasks ?? []).length === 1 ? "" : "s"}.
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+
+            {nextSteps.length > 0 ? (
+              <section className="rounded-lg border border-border/70 bg-muted/20 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <ListChecks className="h-4 w-4 text-violet-500" />
+                  Suggested next steps
+                </div>
+                <ol className="list-decimal list-inside space-y-1.5 text-sm text-foreground/90">
+                  {nextSteps.map((step) => (
+                    <li key={step} className="leading-relaxed">
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ) : null}
+
+            {councilRounds.length > 0 ? (
+              <section className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                  How the council decided
+                </div>
+                <ul className="space-y-2">
+                  {councilRounds.map((round) => (
+                    <li key={round.round} className="rounded-lg border border-border/70 p-3 text-sm space-y-2">
+                      <p className="font-medium text-muted-foreground">Round {round.round}</p>
+                      {round.reasoning ? <p className="text-foreground/90">{round.reasoning}</p> : null}
+                      {round.keyPoints.length > 0 ? (
+                        <ul className="list-disc list-inside text-foreground/90 space-y-0.5">
+                          {round.keyPoints.map((point) => (
+                            <li key={point}>{point}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {round.concerns.length > 0 ? (
+                        <div className="text-xs text-amber-800 dark:text-amber-200">
+                          Open concerns: {round.concerns.join(" · ")}
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {dissent.length > 0 ? (
+              <section className="rounded-lg border border-dashed border-border/80 p-3 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Alternate views</p>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {dissent.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Subtasks</h4>
+              <h4 className="text-sm font-medium">Agent contributions</h4>
               <ul className="space-y-2">
                 {(run.subtasks ?? []).map((subtask) => (
-                  <li
-                    key={subtask.id}
-                    className="rounded-lg border border-border/70 p-3 text-sm space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-                        Agent {subtask.agentId.slice(0, 8)}
-                      </span>
-                      <SwarmSubtaskStatusBadge status={subtask.status} />
-                    </div>
-                    <p className="text-muted-foreground">{subtask.taskPrompt}</p>
-                    {subtaskSummary(subtask) ? (
-                      <div className="text-foreground/90 border-t border-border/50 pt-2 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <ExecutionModeBadge source={subtask.result} compact />
-                          {isSwarmExecutionUnverified(subtask.executionVerified) ? (
-                            <SwarmVerificationLabel compact />
-                          ) : null}
-                        </div>
-                        <p>{subtaskSummary(subtask)}</p>
-                      </div>
-                    ) : null}
-                    {subtask.errorMessage ? (
-                      <p className="text-destructive text-xs">{subtask.errorMessage}</p>
-                    ) : null}
-                  </li>
+                  <SubtaskCard key={subtask.id} subtask={subtask} />
                 ))}
               </ul>
             </div>
@@ -244,5 +290,36 @@ export function SwarmRunDetailPanel({
         ) : null}
       </CardContent>
     </Card>
+  )
+}
+
+function SubtaskCard({ subtask }: { subtask: AgentSwarmSubtask }) {
+  const summary = subtaskReadableSummary(subtask)
+
+  return (
+    <li className="rounded-lg border border-border/70 p-3 text-sm space-y-1.5 list-none">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="flex items-center gap-1.5 font-medium">
+          <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+          Agent {subtask.agentId.slice(0, 8)}
+        </span>
+        <SwarmSubtaskStatusBadge status={subtask.status} />
+      </div>
+      <p className="text-muted-foreground">{subtask.taskPrompt}</p>
+      {summary ? (
+        <div className="text-foreground/90 border-t border-border/50 pt-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ExecutionModeBadge source={subtask.result} compact />
+            {isSwarmExecutionUnverified(subtask.executionVerified) ? (
+              <SwarmVerificationLabel compact />
+            ) : null}
+          </div>
+          <p className="leading-relaxed">{summary}</p>
+        </div>
+      ) : null}
+      {subtask.errorMessage ? (
+        <p className="text-destructive text-xs">{subtask.errorMessage}</p>
+      ) : null}
+    </li>
   )
 }

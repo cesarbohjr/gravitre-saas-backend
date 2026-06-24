@@ -144,10 +144,14 @@ def test_options_from_subtask_results():
     assert "Needs review" in options[1]
 
 
+@patch("app.services.swarm_coordinator_service.send_swarm_completion_email")
+@patch("app.services.swarm_coordinator_service.create_user_notification")
 @patch("app.services.swarm_coordinator_service.get_council_service")
 @patch("app.services.swarm_coordinator_service.write_audit_event")
 @pytest.mark.asyncio
-async def test_aggregate_swarm_run_uses_council(mock_audit, mock_get_council):
+async def test_aggregate_swarm_run_uses_council(
+    mock_audit, mock_get_council, mock_notify, mock_swarm_email
+):
     swarm = {
         "id": "swarm-1",
         "org_id": "org-1",
@@ -201,6 +205,8 @@ async def test_aggregate_swarm_run_uses_council(mock_audit, mock_get_council):
     assert result["finalRecommendation"] == "approve"
     council.start_council.assert_awaited_once()
     mock_audit.assert_called_once()
+    mock_notify.assert_called_once()
+    mock_swarm_email.assert_called_once()
 
 
 @patch("app.services.swarm_coordinator_service.get_council_service")

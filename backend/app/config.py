@@ -202,6 +202,14 @@ class Settings(BaseSettings):
     internal_api_secret: str = ""
     # Tier 6 v2: platform CS escalation (Slack incoming webhook or generic JSON POST)
     platform_cs_escalation_webhook_url: str = ""
+    # Transactional notification email (swarm completion, etc.). Falls back to org email connector.
+    notification_email_enabled: bool = True
+    notification_smtp_host: str = ""
+    notification_smtp_port: int = 587
+    notification_smtp_username: str = ""
+    notification_smtp_password: str = ""
+    notification_smtp_from: str = ""
+    notification_smtp_use_tls: bool = True
     # Tier 6 v2: approval SLA targets (minutes) for mobile countdown UI
     approval_sla_minutes_high: int = 60
     approval_sla_minutes_medium: int = 240

@@ -373,6 +373,16 @@ export const MARKETING_INTEGRATION_APPS = [
   "Canva",
 ] as const
 
+const CATEGORY_BY_VENDOR = new Map(
+  CONNECTOR_CATALOG.map((entry) => [entry.vendorKey, entry.category] as const),
+)
+
+/** Resolve catalog category for a connected instance (API rows omit category). */
+export function lookupConnectorCategory(vendor: string): string {
+  const key = connectorVendorKey(vendor)
+  return CATEGORY_BY_VENDOR.get(key) ?? ""
+}
+
 export function connectorVendorKey(type: string): string {
   const key = type.toLowerCase().replace(/\s+/g, "").replace(/\./g, "")
   if (key === "googlecalendar") return "google_calendar"
