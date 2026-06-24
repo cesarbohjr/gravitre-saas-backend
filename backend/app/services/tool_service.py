@@ -38,12 +38,15 @@ from app.connectors.hubspot import (
     create_contact,
     create_deal,
     create_note,
+    create_ticket,
     delete_contact,
     delete_deal,
     delete_note,
     enroll_contact_in_sequence,
     get_contact,
     get_deal,
+    list_deal_pipelines,
+    search_companies,
     search_contacts,
     update_contact,
     update_deal,
@@ -521,6 +524,59 @@ def _exec_hubspot_sequences_enroll(ctx: ToolContext, params: dict[str, Any]) -> 
         action="hubspot.sequences.enroll",
         connector_id=cid,
         data={"enrollment": data},
+    )
+
+
+def _exec_hubspot_companies_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    filter_groups = params.get("filter_groups") or params.get("filterGroups")
+    if not isinstance(filter_groups, list) or not filter_groups:
+        raise ToolValidationError("hubspot.companies.search requires filter_groups array")
+    try:
+        data = search_companies(
+            token,
+            filter_groups=filter_groups,
+            properties=params.get("properties"),
+            limit=int(params.get("limit", 10)),
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.companies.search",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_hubspot_pipelines_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = list_deal_pipelines(token)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.pipelines.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    properties = params.get("properties")
+    if not isinstance(properties, dict) or not properties:
+        raise ToolValidationError("hubspot.tickets.create requires properties object")
+    try:
+        data = create_ticket(token, properties)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.tickets.create",
+        connector_id=cid,
+        data={"ticket": data},
     )
 
 
@@ -2713,6 +2769,9 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.delete": _exec_hubspot_deals_delete,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
+    "hubspot.companies.search": _exec_hubspot_companies_search,
+    "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
+    "hubspot.tickets.create": _exec_hubspot_tickets_create,
     "salesforce.leads.get": _exec_salesforce_leads_get,
     "salesforce.leads.update": _exec_salesforce_leads_update,
     "salesforce.accounts.get": _exec_salesforce_accounts_get,
@@ -2806,6 +2865,10 @@ from app.services.clio_tools import CLIO_TOOL_EXECUTORS
 from app.services.real_estate_tools import REAL_ESTATE_TOOL_EXECUTORS
 from app.services.greenhouse_tools import GREENHOUSE_TOOL_EXECUTORS
 from app.services.constant_contact_tools import CONSTANT_CONTACT_TOOL_EXECUTORS
+from app.services.clickup_tools import CLICKUP_TOOL_EXECUTORS
+from app.services.intercom_tools import INTERCOM_TOOL_EXECUTORS
+from app.services.asana_tools import ASANA_TOOL_EXECUTORS
+from app.services.monday_tools import MONDAY_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -2819,6 +2882,10 @@ _TOOL_REGISTRY.update(CLIO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(REAL_ESTATE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GREENHOUSE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CONSTANT_CONTACT_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CLICKUP_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(INTERCOM_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(ASANA_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MONDAY_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.connectors.catalog_http.registry import build_catalog_http_executors

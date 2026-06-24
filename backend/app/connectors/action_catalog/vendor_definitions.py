@@ -52,6 +52,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "sequences.enroll", "Enroll in sequence", tier="v3", kind="advanced", scope_suffix="sequences:enroll"),
             action("hubspot", "lists.add_contact", "Add contact to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
         ),
+        v4=(
+            action("hubspot", "companies.search", "Search companies", tier="v4", kind="advanced", scope_suffix="companies:read", idempotent=True),
+            action("hubspot", "pipelines.list", "List deal pipelines", tier="v4", kind="advanced", scope_suffix="pipelines:read", idempotent=True),
+            action("hubspot", "tickets.create", "Create support ticket", tier="v4", kind="advanced", scope_suffix="tickets:write", destructive=True, requires_approval=True),
+        ),
     ),
     build_vendor(
         "marketo",
@@ -187,6 +192,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("constant_contact", "lists.add_contacts", "Add contacts to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
             action("constant_contact", "tags.apply", "Apply contact tags", tier="v3", kind="advanced", scope_suffix="tags:write"),
             action("constant_contact", "campaigns.schedule", "Schedule campaign send", tier="v3", kind="advanced", scope_suffix="campaigns:write"),
+        ),
+        v4=(
+            action("constant_contact", "contact_lists.list", "List contact lists", tier="v4", kind="advanced", scope_suffix="lists:read", idempotent=True),
+            action("constant_contact", "segments.list", "List segments", tier="v4", kind="advanced", scope_suffix="segments:read", idempotent=True),
+            action("constant_contact", "contacts.delete", "Delete contact", tier="v4", kind="advanced", scope_suffix="contacts:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(
@@ -796,7 +806,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Asana",
         "Operations / Workflow",
         "https://developers.asana.com/docs",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("asana", "tasks.get", "Get task", tier="v1", kind="read", scope_suffix="tasks:read", idempotent=True),
@@ -813,13 +823,18 @@ VENDOR_DEFINITIONS: tuple = (
             action("asana", "sections.move", "Move to section", tier="v3", kind="advanced", scope_suffix="sections:write"),
             action("asana", "batch.tasks", "Batch task updates", tier="v3", kind="advanced", scope_suffix="tasks:write"),
         ),
+        v4=(
+            action("asana", "tasks.delete", "Delete task", tier="v4", kind="advanced", scope_suffix="tasks:write", destructive=True, requires_approval=True),
+            action("asana", "workspaces.list", "List workspaces", tier="v4", kind="advanced", scope_suffix="workspaces:read", idempotent=True),
+            action("asana", "tasks.search", "Search tasks", tier="v4", kind="advanced", scope_suffix="tasks:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "monday",
         "Monday.com",
         "Operations / Workflow",
         "https://developer.monday.com/api-reference/docs",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("monday", "boards.list", "List boards", tier="v1", kind="read", scope_suffix="boards:read", idempotent=True),
@@ -835,13 +850,18 @@ VENDOR_DEFINITIONS: tuple = (
             action("monday", "updates.create", "Post update", tier="v3", kind="advanced", scope_suffix="updates:write"),
             action("monday", "batch.items", "Batch create items", tier="v3", kind="advanced", scope_suffix="items:write"),
         ),
+        v4=(
+            action("monday", "items.delete", "Delete item", tier="v4", kind="advanced", scope_suffix="items:write", destructive=True, requires_approval=True),
+            action("monday", "boards.get", "Get board", tier="v4", kind="advanced", scope_suffix="boards:read", idempotent=True),
+            action("monday", "workspaces.list", "List account workspace", tier="v4", kind="advanced", scope_suffix="workspaces:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "clickup",
         "ClickUp",
         "Operations / Workflow",
         "https://clickup.com/api",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("clickup", "tasks.get", "Get task", tier="v1", kind="read", scope_suffix="tasks:read", idempotent=True),
@@ -857,6 +877,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("clickup", "time_entries.create", "Log time entry", tier="v3", kind="advanced", scope_suffix="time:write"),
             action("clickup", "goals.update", "Update goal", tier="v3", kind="advanced", scope_suffix="goals:write"),
             action("clickup", "webhooks.create", "Create webhook", tier="v3", kind="advanced", scope_suffix="webhooks:write"),
+        ),
+        v4=(
+            action("clickup", "tasks.delete", "Delete task", tier="v4", kind="advanced", scope_suffix="tasks:write", destructive=True, requires_approval=True),
+            action("clickup", "tasks.bulk_update", "Bulk update tasks", tier="v4", kind="advanced", scope_suffix="tasks:write", requires_approval=True),
+            action("clickup", "members.list", "List team members", tier="v4", kind="advanced", scope_suffix="members:read", idempotent=True),
         ),
     ),
     build_vendor(
@@ -976,7 +1001,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Intercom",
         "Customer Support",
         "https://developers.intercom.com/docs/references/rest-api/api.intercom.io/",
-        shipped=False,
+        shipped=True,
         department="support",
         v1=(
             action("intercom", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
@@ -992,6 +1017,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("intercom", "tags.apply", "Apply tags", tier="v3", kind="advanced", scope_suffix="tags:write"),
             action("intercom", "series.trigger", "Trigger series", tier="v3", kind="advanced", scope_suffix="series:write"),
             action("intercom", "notes.create", "Create user note", tier="v3", kind="advanced", scope_suffix="notes:write"),
+        ),
+        v4=(
+            action("intercom", "contacts.search", "Search contacts", tier="v4", kind="advanced", scope_suffix="contacts:read", idempotent=True),
+            action("intercom", "companies.list", "List companies", tier="v4", kind="advanced", scope_suffix="companies:read", idempotent=True),
+            action("intercom", "contacts.delete", "Delete contact", tier="v4", kind="advanced", scope_suffix="contacts:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(

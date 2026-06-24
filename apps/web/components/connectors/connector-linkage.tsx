@@ -54,6 +54,7 @@ function tierActions(catalog: VendorActionCatalog): ConnectorActionDefinition[] 
     ...catalog.tiers.v1.actions,
     ...catalog.tiers.v2.actions,
     ...catalog.tiers.v3.actions,
+    ...(catalog.tiers.v4?.actions ?? []),
   ]
 }
 
@@ -61,6 +62,7 @@ const TIER_LABEL: Record<string, string> = {
   v1: "Read",
   v2: "Write",
   v3: "Advanced",
+  v4: "Orchestration",
 }
 
 export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }: ConnectorLinkageProps) {

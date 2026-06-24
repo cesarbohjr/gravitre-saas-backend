@@ -20,6 +20,8 @@ HUBSPOT_TOKEN_URL = "https://api.hubapi.com/oauth/v1/token"
 HUBSPOT_REQUIRED_SCOPES = (
     "crm.objects.contacts.read crm.objects.contacts.write "
     "crm.objects.deals.read crm.objects.deals.write "
+    "crm.objects.companies.read crm.objects.tickets.write "
+    "crm.objects.notes.write "
     "crm.lists.read crm.lists.write oauth"
 )
 HUBSPOT_OPTIONAL_SCOPES = "automation"

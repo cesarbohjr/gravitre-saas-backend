@@ -9,10 +9,13 @@ from app.connectors.constant_contact_api import (
     apply_contact_tags,
     create_contact,
     create_email_campaign,
+    delete_contact,
     ensure_constant_contact_session,
     get_contact,
+    list_contact_lists,
     list_contacts,
     list_email_campaigns,
+    list_segments,
     schedule_email_campaign,
     update_contact,
 )
@@ -248,6 +251,59 @@ def _exec_constant_contact_campaigns_schedule(ctx: ToolContext, params: dict[str
     )
 
 
+def _exec_constant_contact_contact_lists_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _session(ctx, params)
+    try:
+        data = list_contact_lists(
+            token,
+            limit=int(params["limit"]) if params.get("limit") is not None else None,
+            cursor=params.get("cursor"),
+        )
+    except ConstantContactAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="constant_contact.contact_lists.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_constant_contact_segments_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _session(ctx, params)
+    try:
+        data = list_segments(
+            token,
+            limit=int(params["limit"]) if params.get("limit") is not None else None,
+            cursor=params.get("cursor"),
+        )
+    except ConstantContactAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="constant_contact.segments.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_constant_contact_contacts_delete(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _session(ctx, params)
+    contact_id = params.get("contact_id") or params.get("contactId")
+    if not contact_id:
+        raise ToolValidationError("constant_contact.contacts.delete requires contact_id")
+    try:
+        data = delete_contact(token, str(contact_id))
+    except ConstantContactAPIError as exc:
+        raise _handle_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="constant_contact.contacts.delete",
+        connector_id=cid,
+        data=data,
+    )
+
+
 CONSTANT_CONTACT_TOOL_EXECUTORS: dict[str, Any] = {
     "constant_contact.contacts.list": _exec_constant_contact_contacts_list,
     "constant_contact.contacts.get": _exec_constant_contact_contacts_get,
@@ -258,4 +314,7 @@ CONSTANT_CONTACT_TOOL_EXECUTORS: dict[str, Any] = {
     "constant_contact.lists.add_contacts": _exec_constant_contact_lists_add_contacts,
     "constant_contact.tags.apply": _exec_constant_contact_tags_apply,
     "constant_contact.campaigns.schedule": _exec_constant_contact_campaigns_schedule,
+    "constant_contact.contact_lists.list": _exec_constant_contact_contact_lists_list,
+    "constant_contact.segments.list": _exec_constant_contact_segments_list,
+    "constant_contact.contacts.delete": _exec_constant_contact_contacts_delete,
 }

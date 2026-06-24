@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""STA-276: Tier 1 connector capability audit (OAuth prod + tool coverage)."""
+"""STA-283: Tier 3 connector capability audit (Asana, Monday.com, ClickUp)."""
 from __future__ import annotations
 
 import json
@@ -15,20 +15,8 @@ sys.path.insert(0, str(REPO_ROOT / "backend"))
 from app.connectors.action_catalog.registry import get_vendor_catalog_dict  # noqa: E402
 
 API_BASE = "https://api.gravitre.app"
-TIER1_VENDORS = [
-    "hubspot",
-    "salesforce",
-    "slack",
-    "jira",
-    "zendesk",
-    "microsoft365",
-    "google_analytics",
-    "google_calendar",
-    "gmail",
-    "google_drive",
-    "google_docs",
-    "google_sheets",
-]
+TIER3_VENDORS = ["asana", "monday", "clickup"]
+TIERS = ("v1", "v2", "v3", "v4")
 
 
 def fetch_oauth_status(vendor: str) -> dict:
@@ -49,7 +37,7 @@ def fetch_oauth_status(vendor: str) -> dict:
 def audit_vendor(vendor: str) -> dict:
     catalog = get_vendor_catalog_dict(vendor)
     actions = []
-    for tier in ("v1", "v2", "v3", "v4"):
+    for tier in TIERS:
         tier_block = catalog["tiers"].get(tier)
         if tier_block:
             actions.extend(tier_block["actions"])
@@ -58,24 +46,25 @@ def audit_vendor(vendor: str) -> dict:
     return {
         "vendor": vendor,
         "displayName": catalog["displayName"],
+        "shipped": catalog["shipped"],
         "catalogActions": len(actions),
         "implementedActions": len(actions) - len(missing),
         "missingTools": missing,
         "oauth": oauth,
-        "demoReady": oauth["ready"] and len(missing) == 0,
+        "demoReady": oauth["ready"] and len(missing) == 0 and catalog["shipped"],
         "partialDemo": oauth["ready"] and len(missing) < len(actions),
     }
 
 
 def main() -> int:
-    results = [audit_vendor(v) for v in TIER1_VENDORS]
+    results = [audit_vendor(v) for v in TIER3_VENDORS]
     full_demo = [r for r in results if r["demoReady"]]
     oauth_gaps = [r["vendor"] for r in results if not r["oauth"]["ready"]]
     tool_gaps = [r for r in results if r["missingTools"]]
 
     report = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "issue": "STA-276",
+        "issue": "STA-283",
         "apiBase": API_BASE,
         "summary": {
             "vendorsAudited": len(results),
@@ -83,41 +72,25 @@ def main() -> int:
             "oauthGaps": oauth_gaps,
             "toolGapVendors": [r["vendor"] for r in tool_gaps if r["missingTools"]],
         },
-        "supabase": {
-            "note": "Not a customer OAuth connector — platform auth/storage via Supabase; org data via PostgreSQL source connector.",
-            "platformAuth": "Supabase Auth (login callback on supabase.co)",
-            "dataSurface": "postgresql source connector + RAG knowledge sync",
-            "tier1AuditScope": "Excluded from OAuth vendor count; documented for scope clarity only.",
-        },
-        "scopeVerification": {
-            "doc": "docs/delivery/tier1-scope-verification.md",
-            "hubspotOAuthScopes": "crm.objects.contacts.read/write, crm.objects.deals.read/write, crm.objects.companies.read, crm.objects.tickets.write, crm.objects.notes.write, crm.lists.read/write, oauth (+ optional automation)",
-            "salesforceOAuthScopes": "api refresh_token",
-            "verifiedAt": datetime.now(timezone.utc).date().isoformat(),
-        },
-        "oauthSmoke": {
-            "doc": "docs/delivery/tier1-oauth-smoke-latest.json",
-            "command": "npm run tier1:smoke",
-            "note": "Validates prod status endpoints and app callback route reachability (not full browser Connect click-through).",
-        },
         "vendors": results,
     }
 
-    out_path = REPO_ROOT / "docs" / "delivery" / "tier1-connector-audit-latest.json"
+    out_path = REPO_ROOT / "docs" / "delivery" / "tier3-connector-audit-latest.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
-    print(f"Tier 1 audit: {len(full_demo)}/{len(results)} full demo-ready")
+    print(f"Tier 3 audit: {len(full_demo)}/{len(results)} full demo-ready")
     print(f"OAuth gaps: {', '.join(oauth_gaps) or 'none'}")
     for row in results:
         status = "OK" if row["demoReady"] else ("PARTIAL" if row["partialDemo"] else "GAP")
         print(
             f"  {row['displayName']:20} {status:7} "
             f"tools {row['implementedActions']}/{row['catalogActions']} "
-            f"oauth={'ready' if row['oauth']['ready'] else 'gap'}"
+            f"oauth={'ready' if row['oauth']['ready'] else 'gap'} "
+            f"shipped={row['shipped']}"
         )
     print(f"\nReport: {out_path}")
-    return 0 if not oauth_gaps else 1
+    return 0 if not oauth_gaps and not tool_gaps else 1
 
 
 if __name__ == "__main__":

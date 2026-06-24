@@ -1,0 +1,120 @@
+﻿{
+    "vendors":  [
+                    {
+                        "vendor":  "hubspot",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/hubspot/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "salesforce",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/salesforce/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "slack",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/slack/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "jira",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/jira/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "zendesk",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/zendesk/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "microsoft365",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/microsoft365/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "google_analytics",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/google_analytics/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "google_calendar",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/google_calendar/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "gmail",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/gmail/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "google_drive",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/google_drive/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "google_docs",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/google_docs/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "google_sheets",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/google_sheets/callback",
+                        "notes":  ""
+                    }
+                ],
+    "appBase":  "https://gravitre.app",
+    "apiBase":  "https://api.gravitre.app",
+    "generatedAt":  "2026-06-24T20:18:56.1116460Z",
+    "summary":  {
+                    "total":  12,
+                    "passed":  12
+                },
+    "issue":  "STA-276"
+}

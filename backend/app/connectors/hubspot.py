@@ -409,3 +409,41 @@ def enroll_contact_in_sequence(
         access_token,
         json_body=body,
     )
+
+
+def search_companies(
+    access_token: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    if not filter_groups:
+        raise HubSpotAPIError("filter_groups is required for company search")
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["name", "domain", "city", "industry"]
+    return _request(
+        "POST",
+        "/crm/v3/objects/companies/search",
+        access_token,
+        json_body={
+            "filterGroups": filter_groups,
+            "properties": props,
+            "limit": lim,
+        },
+    )
+
+
+def list_deal_pipelines(access_token: str) -> dict[str, Any]:
+    return _request("GET", "/crm/v3/pipelines/deals", access_token)
+
+
+def create_ticket(access_token: str, properties: dict[str, Any]) -> dict[str, Any]:
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    return _request(
+        "POST",
+        "/crm/v3/objects/tickets",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )

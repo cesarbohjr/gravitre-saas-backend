@@ -184,3 +184,38 @@ def schedule_email_campaign(
         json_body={"scheduled_date": scheduled_date},
     )
     return data if isinstance(data, dict) else {"schedule": data}
+
+
+def list_contact_lists(
+    access_token: str,
+    *,
+    limit: int | None = None,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if cursor:
+        params["cursor"] = cursor
+    data = _request("GET", "/contact_lists", access_token, params=params or None)
+    return data if isinstance(data, dict) else {"lists": data}
+
+
+def list_segments(
+    access_token: str,
+    *,
+    limit: int | None = None,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if limit is not None:
+        params["limit"] = limit
+    if cursor:
+        params["cursor"] = cursor
+    data = _request("GET", "/segments", access_token, params=params or None)
+    return data if isinstance(data, dict) else {"segments": data}
+
+
+def delete_contact(access_token: str, contact_id: str) -> dict[str, Any]:
+    _request("DELETE", f"/contacts/{contact_id}", access_token)
+    return {"contact_id": str(contact_id), "deleted": True}

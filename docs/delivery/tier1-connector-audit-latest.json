@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T20:54:12.899247+00:00",
+  "generatedAt": "2026-06-24T20:19:17.066484+00:00",
   "issue": "STA-276",
   "apiBase": "https://api.gravitre.app",
   "summary": {
@@ -11,14 +11,26 @@
   "supabase": {
     "note": "Not a customer OAuth connector \u2014 platform auth/storage via Supabase; org data via PostgreSQL source connector.",
     "platformAuth": "Supabase Auth (login callback on supabase.co)",
-    "dataSurface": "postgresql source connector + RAG knowledge sync"
+    "dataSurface": "postgresql source connector + RAG knowledge sync",
+    "tier1AuditScope": "Excluded from OAuth vendor count; documented for scope clarity only."
+  },
+  "scopeVerification": {
+    "doc": "docs/delivery/tier1-scope-verification.md",
+    "hubspotOAuthScopes": "crm.objects.contacts.read/write, crm.objects.deals.read/write, crm.objects.companies.read, crm.objects.tickets.write, crm.objects.notes.write, crm.lists.read/write, oauth (+ optional automation)",
+    "salesforceOAuthScopes": "api refresh_token",
+    "verifiedAt": "2026-06-24"
+  },
+  "oauthSmoke": {
+    "doc": "docs/delivery/tier1-oauth-smoke-latest.json",
+    "command": "npm run tier1:smoke",
+    "note": "Validates prod status endpoints and app callback route reachability (not full browser Connect click-through)."
   },
   "vendors": [
     {
       "vendor": "hubspot",
       "displayName": "HubSpot",
-      "catalogActions": 10,
-      "implementedActions": 10,
+      "catalogActions": 13,
+      "implementedActions": 13,
       "missingTools": [],
       "oauth": {
         "configured": true,
