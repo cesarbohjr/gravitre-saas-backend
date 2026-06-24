@@ -30,6 +30,8 @@ export interface CatalogConnectorEntry {
   shipped?: boolean
   /** OAuth start/callback routes implemented and verified for this vendor */
   oauthReady?: boolean
+  /** OAuth is primary connect path; PAT/API token available as fallback (GitHub, Zendesk) */
+  dualPatAuth?: boolean
   requiresSubdomain?: boolean
   requiresInstanceUrl?: boolean
   requiresPartnerApproval?: boolean
@@ -119,6 +121,9 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "zendesk",
   "github",
 ])
+
+/** OAuth + optional PAT/API-token fallback at connect time. */
+export const DUAL_AUTH_VENDOR_KEYS = new Set(["github", "zendesk"])
 
 /** Per-connector API key / token / secret (not platform OAuth). */
 export const APIKEY_VENDOR_KEYS = new Set([
@@ -246,7 +251,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Email", vendorKey: "email", description: "SMTP / send email from workflows", authType: "webhook", credentialModel: "api_key", category: "Communication", shipped: true },
   // DevOps / Incidents
   { type: "PagerDuty", vendorKey: "pagerduty", description: "Incident management and on-call", authType: "oauth", credentialModel: "oauth2", category: "DevOps / Incidents", shipped: true },
-  { type: "GitHub", vendorKey: "github", description: "Code repository and pull requests", authType: "apiKey", credentialModel: "api_key", category: "DevOps / Incidents", shipped: true, oauthReady: true },
+  { type: "GitHub", vendorKey: "github", description: "Code repository and pull requests", authType: "oauth", credentialModel: "oauth2", category: "DevOps / Incidents", shipped: true, oauthReady: true, dualPatAuth: true },
   // Operations / Workflow
   { type: "Notion", vendorKey: "notion", description: "All-in-one workspace", authType: "oauth", credentialModel: "oauth2", category: "Operations / Workflow", shipped: true },
   { type: "Confluence", vendorKey: "confluence", description: "Team documentation wiki", authType: "oauth", credentialModel: "oauth2", category: "Operations / Workflow", shipped: true },
@@ -260,7 +265,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Motion", vendorKey: "motion", description: "AI calendar and task planning", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow" },
   { type: "Odoo", vendorKey: "odoo", description: "ERP and business apps", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow", requiresInstanceUrl: true, shipped: true },
   // Customer Support
-  { type: "Zendesk", vendorKey: "zendesk", description: "Customer service", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", shipped: true, oauthReady: true, requiresSubdomain: true },
+  { type: "Zendesk", vendorKey: "zendesk", description: "Customer service", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", shipped: true, oauthReady: true, requiresSubdomain: true, dualPatAuth: true },
   { type: "Intercom", vendorKey: "intercom", description: "Customer messaging", authType: "oauth", credentialModel: "oauth2", category: "Customer Support", oauthReady: true },
   { type: "Freshdesk", vendorKey: "freshdesk", description: "Help desk software", authType: "oauth", credentialModel: "oauth2_custom", category: "Customer Support", oauthReady: true, requiresSubdomain: true },
   { type: "Gorgias", vendorKey: "gorgias", description: "E-commerce helpdesk", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", requiresSubdomain: true },
@@ -432,12 +437,21 @@ export function isShippedConnector(
   return entry.shipped === true || entry.oauthReady === true
 }
 
+export function supportsDualPatAuth(
+  entry: Pick<CatalogConnectorEntry, "vendorKey" | "dualPatAuth">
+): boolean {
+  return entry.dualPatAuth === true || DUAL_AUTH_VENDOR_KEYS.has(entry.vendorKey)
+}
+
 export function isOAuthConnectable(
   entry: Pick<
     CatalogConnectorEntry,
-    "authType" | "shipped" | "oauthReady" | "vendorKey" | "requiresPartnerApproval"
+    "authType" | "shipped" | "oauthReady" | "vendorKey" | "requiresPartnerApproval" | "dualPatAuth"
   >
 ): boolean {
   if (isPartnerGatedConnector(entry)) return false
-  return entry.authType === "oauth" && (entry.shipped === true || entry.oauthReady === true)
+  if (entry.authType === "oauth" && (entry.shipped === true || entry.oauthReady === true)) {
+    return true
+  }
+  return supportsDualPatAuth(entry) && entry.oauthReady === true && entry.shipped === true
 }

@@ -1071,6 +1071,8 @@ export const connectorsApi = {
       tenantUrl?: string
       tenant?: string
       munchkinId?: string
+      owner?: string
+      repo?: string
     }
   ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
@@ -1081,7 +1083,7 @@ export const connectorsApi = {
     provider: string,
     connectorId: string,
     name: string,
-    extra?: { subdomain?: string; instanceUrl?: string }
+    extra?: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string }
   ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),

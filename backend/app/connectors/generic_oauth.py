@@ -245,6 +245,8 @@ def persist_generic_oauth_connector_config(
     vendor: str,
     subdomain: str | None = None,
     instance_url: str | None = None,
+    owner: str | None = None,
+    repo: str | None = None,
 ) -> None:
     existing = (
         client.table("connectors")
@@ -263,6 +265,10 @@ def persist_generic_oauth_connector_config(
             config["zendesk_subdomain"] = subdomain.strip()
     if instance_url:
         config["instance_url"] = instance_url.strip().rstrip("/")
+    if owner:
+        config["owner"] = owner.strip()
+    if repo:
+        config["repo"] = repo.strip()
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 
 

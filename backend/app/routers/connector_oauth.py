@@ -202,6 +202,8 @@ class OAuthStartRequest(BaseModel):
     munchkin_id: str | None = Field(default=None, alias="munchkinId")
     subdomain: str | None = None
     instance_url: str | None = Field(default=None, alias="instanceUrl")
+    owner: str | None = None
+    repo: str | None = None
 
     model_config = {"populate_by_name": True}  # noqa: RUF012 — pydantic model config
 
@@ -473,7 +475,9 @@ async def start_oauth(
                 metadata={"environment": environment_name, "auth": "oauth"},
             )
 
-    if vendor in GENERIC_OAUTH_VENDORS and (body.subdomain or body.instance_url):
+    if vendor in GENERIC_OAUTH_VENDORS and (
+        body.subdomain or body.instance_url or body.owner or body.repo
+    ):
         persist_generic_oauth_connector_config(
             client,
             org_id,
@@ -481,6 +485,8 @@ async def start_oauth(
             vendor=vendor,
             subdomain=body.subdomain,
             instance_url=body.instance_url,
+            owner=body.owner,
+            repo=body.repo,
         )
 
     now = time.time()

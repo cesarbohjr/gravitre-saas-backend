@@ -78,6 +78,7 @@ import {
   isPartnerGatedConnector,
   isShippedConnector,
   lookupConnectorCategory,
+  supportsDualPatAuth,
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
@@ -102,6 +103,10 @@ interface Connector {
     apiKey?: string
     webhookUrl?: string
     syncInterval?: string
+    subdomain?: string
+    instance_url?: string
+    owner?: string
+    repo?: string
   }
 }
 
@@ -736,14 +741,39 @@ function AddConnectorModal({
 
   const selectedConnectorMeta = () => getSelectedConnector()
 
+  const selectedSupportsDualPat = () => {
+    const connector = selectedConnectorMeta()
+    return connector ? supportsDualPatAuth(connector) && connector.oauthReady === true : false
+  }
+
+  const switchToPatAuth = () => {
+    setSelectedAuthType("apiKey")
+    setStep("configure")
+    setOauthStatus("idle")
+  }
+
+  const switchToOAuthAuth = () => {
+    const connector = selectedConnectorMeta()
+    setSelectedAuthType("oauth")
+    setStep("oauth")
+    setOauthStatus("idle")
+    if (connector?.requiresSubdomain && zendeskSubdomain.trim()) {
+      setOauthSubdomain(zendeskSubdomain.trim())
+    }
+  }
+
   const oauthExtraFields = () => {
     const connector = selectedConnectorMeta()
-    const extra: { subdomain?: string; instanceUrl?: string } = {}
+    const extra: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string } = {}
     if (connector?.requiresSubdomain && oauthSubdomain.trim()) {
       extra.subdomain = oauthSubdomain.trim()
     }
     if (connector?.requiresInstanceUrl && oauthInstanceUrl.trim()) {
       extra.instanceUrl = oauthInstanceUrl.trim()
+    }
+    if (selectedType === "GitHub") {
+      if (githubOwner.trim()) extra.owner = githubOwner.trim()
+      if (githubRepo.trim()) extra.repo = githubRepo.trim()
     }
     return extra
   }
@@ -1149,11 +1179,47 @@ function AddConnectorModal({
                           />
                         </div>
                       )}
+                      {selectedType === "GitHub" && (
+                        <>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Owner (org or user)</label>
+                            <Input
+                              value={githubOwner}
+                              onChange={(e) => setGithubOwner(e.target.value)}
+                              placeholder="my-org"
+                              className="mt-1 bg-secondary"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Repository</label>
+                            <Input
+                              value={githubRepo}
+                              onChange={(e) => setGithubRepo(e.target.value)}
+                              placeholder="my-repo"
+                              className="mt-1 bg-secondary"
+                            />
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              Optional now — required for repo-scoped agent actions
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <Button onClick={handleOAuthConnect} className="gap-2" disabled={!canStartOAuth()}>
                       <ExternalLink className="h-4 w-4" />
                       Connect with {selectedType}
                     </Button>
+                    {selectedSupportsDualPat() && (
+                      <button
+                        type="button"
+                        onClick={switchToPatAuth}
+                        className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                      >
+                        {selectedType === "GitHub"
+                          ? "Use personal access token instead"
+                          : "Use API token instead"}
+                      </button>
+                    )}
                   </div>
                 )}
                 {oauthStatus === "redirecting" && (
@@ -1551,6 +1617,18 @@ function AddConnectorModal({
                   </div>
                 </div>
               </div>
+
+              {selectedSupportsDualPat() && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={switchToOAuthAuth}
+                    className="text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+                  >
+                    Connect with OAuth instead
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1571,7 +1649,11 @@ function AddConnectorModal({
               ) : (
                 <>
                   <Key className="h-4 w-4" />
-                  Connect with API Key
+                  {selectedType === "GitHub"
+                    ? "Connect with personal access token"
+                    : selectedType === "Zendesk"
+                      ? "Connect with API token"
+                      : "Connect with API Key"}
                 </>
               )}
             </Button>
@@ -1848,11 +1930,18 @@ function ConnectorsPageContent() {
 
   const handleReconnectOAuth = async (connector: Connector) => {
     const provider = connectorVendorKey(connector.type)
+    const cfg = connector.config ?? {}
+    const extra: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string } = {}
+    if (cfg.subdomain) extra.subdomain = String(cfg.subdomain)
+    if (cfg.instance_url) extra.instanceUrl = String(cfg.instance_url)
+    if (cfg.owner) extra.owner = String(cfg.owner)
+    if (cfg.repo) extra.repo = String(cfg.repo)
     try {
       const { authorizationUrl } = await connectorsApi.reconnectOAuth(
         provider,
         connector.id,
-        connector.name
+        connector.name,
+        extra
       )
       window.location.assign(authorizationUrl)
     } catch (err) {
