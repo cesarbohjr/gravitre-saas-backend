@@ -33,6 +33,10 @@ class OAuthProviderSpec:
     notes: str = ""
     # Shorter app-domain callback (ClickUp/PagerDuty UIs reject long /api/connectors/oauth/... paths).
     app_redirect_path: str = ""
+    # ClickUp UI often saves only the registrable domain (e.g. gravitre.app) — OAuth must use app root.
+    app_redirect_domain_only: bool = False
+    # Some vendors (ClickUp) omit redirect_uri on the token POST.
+    token_includes_redirect_uri: bool = True
 
 
 def _specs() -> dict[str, OAuthProviderSpec]:
@@ -94,7 +98,9 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             authorize_url="https://app.clickup.com/api",
             token_url="https://api.clickup.com/api/v2/oauth/token",
             app_redirect_path="/api/auth/callback/clickup",
-            notes="Use short redirect URL in ClickUp app settings",
+            app_redirect_domain_only=True,
+            token_includes_redirect_uri=False,
+            notes="ClickUp app settings often store only the app domain as redirect URL",
         ),
         OAuthProviderSpec(
             vendor="freshdesk",

@@ -74,7 +74,7 @@ def test_generic_redirect_uri_uses_public_app_url():
     )
 
 
-def test_clickup_redirect_uri_uses_short_app_callback():
+def test_clickup_redirect_uri_uses_app_domain_only():
     settings = Settings(
         supabase_url="https://x.supabase.co",
         supabase_anon_key="a",
@@ -84,4 +84,4 @@ def test_clickup_redirect_uri_uses_short_app_callback():
         public_app_url="https://gravitre.app",
         NEXT_PUBLIC_APP_URL="https://gravitre.app",
     )
-    assert generic_redirect_uri(settings, "clickup") == "https://gravitre.app/api/auth/callback/clickup"
+    assert generic_redirect_uri(settings, "clickup") == "https://gravitre.app"

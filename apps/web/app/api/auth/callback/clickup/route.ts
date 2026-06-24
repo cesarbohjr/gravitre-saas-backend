@@ -1,17 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 
-import { backendBaseUrl } from "@/lib/public-urls"
+import { forwardClickupOAuthCallback } from "@/lib/clickup-oauth-callback"
 
 /**
- * ClickUp OAuth redirect — shorter path for ClickUp app settings (their UI rejects long URLs).
- * Forwards code/state to the FastAPI connector callback, which completes OAuth and
- * redirects the browser to /connectors.
+ * ClickUp OAuth redirect — shorter path when ClickUp accepts a path-based callback.
+ * Domain-only callbacks land on / and are handled in proxy.ts.
  */
 export async function GET(request: NextRequest) {
-  const incoming = new URL(request.url)
-  const target = new URL(`${backendBaseUrl()}/api/connectors/oauth/clickup/callback`)
-  incoming.searchParams.forEach((value, key) => {
-    target.searchParams.set(key, value)
-  })
-  return NextResponse.redirect(target.toString(), 302)
+  return forwardClickupOAuthCallback(request)
 }

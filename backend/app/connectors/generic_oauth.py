@@ -52,9 +52,12 @@ def generic_oauth_configured(settings: Settings, vendor: str, environment_name: 
 
 def generic_redirect_uri(settings: Settings, vendor: str) -> str:
     spec = OAUTH_PROVIDER_REGISTRY.get(vendor)
+    app_base = (settings.public_app_url or settings.NEXT_PUBLIC_APP_URL or "").strip().rstrip("/")
+    if spec and spec.app_redirect_domain_only:
+        if app_base and not is_legacy_platform_host(app_base):
+            return app_base
     short_path = (spec.app_redirect_path if spec else "") or ""
     if short_path:
-        app_base = (settings.public_app_url or settings.NEXT_PUBLIC_APP_URL or "").strip().rstrip("/")
         if app_base and not is_legacy_platform_host(app_base):
             path = short_path if short_path.startswith("/") else f"/{short_path}"
             return f"{app_base}{path}"
@@ -162,8 +165,9 @@ def exchange_generic_code(
     body: dict[str, str] = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": redirect_uri,
     }
+    if spec.token_includes_redirect_uri:
+        body["redirect_uri"] = redirect_uri
     if spec.requires_pkce:
         if not code_verifier:
             raise ValueError(f"{spec.vendor} requires PKCE code_verifier")

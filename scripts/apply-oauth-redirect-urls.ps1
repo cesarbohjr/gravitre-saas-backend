@@ -63,6 +63,7 @@ function Get-RedirectUris {
         if ($vendor -eq "pagerduty") {
             $uris += "$AppBase/api/auth/callback/pagerduty"
         } elseif ($vendor -eq "clickup") {
+            $uris += $AppBase
             $uris += "$AppBase/api/auth/callback/clickup"
         } else {
             $uris += "$AppBase/api/connectors/oauth/$vendor/callback"
