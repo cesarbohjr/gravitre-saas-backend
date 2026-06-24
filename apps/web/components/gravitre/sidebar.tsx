@@ -372,7 +372,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Icon name="shield" size="xs" className="text-white" />
               </div>
               <div className="flex flex-col md:hidden xl:flex">
-                <span className="text-[11px] font-medium text-foreground">Enterprise</span>
+                <span className="text-[11px] font-medium text-foreground">Gravitre</span>
                 <span className="text-[9px] text-muted-foreground/60">v1.2.0</span>
               </div>
             </div>
