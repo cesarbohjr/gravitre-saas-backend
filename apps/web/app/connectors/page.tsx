@@ -141,6 +141,19 @@ function resolveConnectorStatus(
   return "disconnected"
 }
 
+function connectorNeedsOAuthReconnect(connector: Connector): boolean {
+  if (connector.authType !== "oauth") return false
+  if (connector.status === "disconnected") return true
+  return connector.status === "error" && connector.authStatus === "auth_expired"
+}
+
+function connectorStatusLabel(connector: Connector): string {
+  if (connector.status === "syncing") return statusConfig.syncing.label
+  if (connector.authStatus === "auth_expired") return "Reconnect required"
+  if (connector.authStatus === "misconfigured") return "Setup required"
+  return statusConfig[connector.status].label
+}
+
 function normalizeConnector(input: Record<string, unknown> | ApiConnector): Connector {
   const model = input as Record<string, unknown>
   const rawStatus = String(model.status ?? "disconnected")
@@ -373,12 +386,10 @@ function ConnectorNode({
                   <Wifi className="h-3.5 w-3.5 mr-2" />
                   Test Connection
                 </DropdownMenuItem>
-                {connector.authType === "oauth" &&
-                  connector.status === "disconnected" &&
-                  onReconnect && (
+                {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                     <DropdownMenuItem onClick={() => void onReconnect(connector)}>
                       <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                      Complete OAuth
+                      {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
                     </DropdownMenuItem>
                   )}
                 <DropdownMenuSeparator />
@@ -429,19 +440,17 @@ function ConnectorNode({
             <div className="flex items-center gap-1.5">
               <StatusIcon className={cn("h-3 w-3", config.color, isSyncing && "animate-spin")} />
               <span className={cn("text-[10px] font-medium", config.color)}>
-                {isSyncing ? "Syncing..." : config.label}
+                {isSyncing ? "Syncing..." : connectorStatusLabel(connector)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {connector.authType === "oauth" &&
-                connector.status === "disconnected" &&
-                onReconnect && (
+              {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                   <button
                     type="button"
                     className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
                     onClick={() => void onReconnect(connector)}
                   >
-                    Complete OAuth
+                    {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
                   </button>
                 )}
               <Link 
@@ -517,8 +526,9 @@ function ConfigureModal({
           {isOAuth ? (
             <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-3">
               <p className="text-sm text-muted-foreground">
-                {connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider
-                to connect.
+                {connector.authStatus === "auth_expired"
+                  ? `${connector.type} authorization expired or was revoked in the provider. Re-authorize to restore the connection.`
+                  : `${connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider to connect.`}
               </p>
               {onReconnectOAuth && (
                 <Button
@@ -527,7 +537,7 @@ function ConfigureModal({
                   onClick={() => void onReconnectOAuth(connector)}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Complete OAuth
+                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : "Complete OAuth"}
                 </Button>
               )}
             </div>

@@ -206,6 +206,11 @@ def slack_connection_auth_status(
             data = response.json()
             if data.get("ok"):
                 return "connected"
+            logger.info(
+                "slack_auth_test_failed connector_id=%s error=%s",
+                connector_id,
+                data.get("error", "unknown"),
+            )
     except httpx.HTTPError:
         pass
     return "auth_expired"
