@@ -31,12 +31,15 @@ def _request(
     path: str,
     *,
     params: dict[str, Any] | None = None,
+    json_body: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     url = f"{api_base_url.rstrip('/')}{path}"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Accept": "application/json",
     }
+    if json_body is not None:
+        headers["Content-Type"] = "application/json"
     query = dict(params or {})
     if "minorversion" not in query:
         query["minorversion"] = DEFAULT_MINOR_VERSION
@@ -45,7 +48,13 @@ def _request(
     for attempt in range(MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=TIMEOUT_SEC) as client:
-                response = client.request(method, url, headers=headers, params=query)
+                response = client.request(
+                    method,
+                    url,
+                    headers=headers,
+                    params=query,
+                    json=json_body,
+                )
             if response.status_code in {429, 500, 502, 503} and attempt < MAX_RETRIES:
                 time.sleep(RETRY_BACKOFF_SEC * (attempt + 1))
                 continue
@@ -257,3 +266,43 @@ def get_company_info(
         access_token,
         f"/companyinfo/{quote(realm_id, safe='')}",
     )
+
+
+def create_invoice(
+    api_base_url: str,
+    access_token: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if not payload:
+        raise QuickBooksAPIError("create_invoice requires payload", status_code=400)
+    return _request("POST", api_base_url, access_token, "/invoice", json_body=payload)
+
+
+def create_customer(
+    api_base_url: str,
+    access_token: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if not payload:
+        raise QuickBooksAPIError("create_customer requires payload", status_code=400)
+    return _request("POST", api_base_url, access_token, "/customer", json_body=payload)
+
+
+def create_payment(
+    api_base_url: str,
+    access_token: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if not payload:
+        raise QuickBooksAPIError("create_payment requires payload", status_code=400)
+    return _request("POST", api_base_url, access_token, "/payment", json_body=payload)
+
+
+def create_journal_entry(
+    api_base_url: str,
+    access_token: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if not payload:
+        raise QuickBooksAPIError("create_journal_entry requires payload", status_code=400)
+    return _request("POST", api_base_url, access_token, "/journalentry", json_body=payload)

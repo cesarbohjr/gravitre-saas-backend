@@ -98,6 +98,17 @@ def test_tier3_catalog_actions_implemented(catalog: dict) -> None:
                 assert action["implemented"] is True
 
 
+def test_tier2_catalog_actions_implemented(catalog: dict) -> None:
+    registered = set(list_registered_actions())
+    for vendor in ("quickbooks", "netsuite"):
+        entry = next(v for v in catalog["vendors"] if v["vendor"] == vendor)
+        assert entry["shipped"] is True
+        for tier in ("v1", "v2", "v3"):
+            for action in entry["tiers"][tier]["actions"]:
+                assert action["tool"] in registered, f"{vendor} missing {action['tool']}"
+                assert action["implemented"] is True
+
+
 def test_implemented_flag_matches_registry(catalog: dict) -> None:
     registered = set(list_registered_actions())
     hubspot = next(v for v in catalog["vendors"] if v["vendor"] == "hubspot")

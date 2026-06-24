@@ -224,3 +224,35 @@ def create_journal_entry_draft(
         "/journalEntry",
         json_body=body,
     )
+
+
+def create_sales_order(
+    api_base_url: str,
+    access_token: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if not payload:
+        raise NetSuiteAPIError("create_sales_order requires payload", status_code=400)
+    return _request(
+        "POST",
+        api_base_url,
+        access_token,
+        "/salesOrder",
+        json_body=payload,
+    )
+
+
+def create_item_fulfillment(
+    api_base_url: str,
+    access_token: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if not payload:
+        raise NetSuiteAPIError("create_item_fulfillment requires payload", status_code=400)
+    return _request(
+        "POST",
+        api_base_url,
+        access_token,
+        "/itemFulfillment",
+        json_body=payload,
+    )

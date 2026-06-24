@@ -69,6 +69,10 @@ from app.connectors.salesforce import (
 )
 from app.connectors.quickbooks import (
     QuickBooksAPIError,
+    create_customer,
+    create_invoice,
+    create_journal_entry,
+    create_payment,
     get_bill,
     get_company_info,
     get_customer,
@@ -1114,6 +1118,84 @@ def _exec_quickbooks_companyinfo_get(ctx: ToolContext, params: dict[str, Any]) -
         action="quickbooks.companyinfo.get",
         connector_id=cid,
         data={"companyInfo": data.get("CompanyInfo") or data},
+    )
+
+
+def _payload_from_params(params: dict[str, Any], reserved: frozenset[str]) -> dict[str, Any]:
+    payload = params.get("payload")
+    if isinstance(payload, dict):
+        return payload
+    return {k: v for k, v in params.items() if k not in reserved and v is not None}
+
+
+_QB_WRITE_RESERVED = frozenset({"connector_id", "payload"})
+
+
+def _exec_quickbooks_invoices_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.invoices.create requires invoice payload")
+    try:
+        data = create_invoice(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.invoices.create",
+        connector_id=cid,
+        data={"invoice": data.get("Invoice") or data},
+    )
+
+
+def _exec_quickbooks_customers_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.customers.create requires customer payload")
+    try:
+        data = create_customer(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.create",
+        connector_id=cid,
+        data={"customer": data.get("Customer") or data},
+    )
+
+
+def _exec_quickbooks_payments_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.payments.create requires payment payload")
+    try:
+        data = create_payment(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.payments.create",
+        connector_id=cid,
+        data={"payment": data.get("Payment") or data},
+    )
+
+
+def _exec_quickbooks_journalentries_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.journalentries.create requires journal entry payload")
+    try:
+        data = create_journal_entry(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.journalentries.create",
+        connector_id=cid,
+        data={"journalEntry": data.get("JournalEntry") or data},
     )
 
 
@@ -2796,6 +2878,10 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "quickbooks.bills.list": _exec_quickbooks_bills_list,
     "quickbooks.bills.get": _exec_quickbooks_bills_get,
     "quickbooks.companyinfo.get": _exec_quickbooks_companyinfo_get,
+    "quickbooks.invoices.create": _exec_quickbooks_invoices_create,
+    "quickbooks.customers.create": _exec_quickbooks_customers_create,
+    "quickbooks.payments.create": _exec_quickbooks_payments_create,
+    "quickbooks.journalentries.create": _exec_quickbooks_journalentries_create,
     "stripe.invoices.list": _exec_stripe_invoices_list,
     "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
     "pagerduty.incidents.acknowledge": _exec_pagerduty_incidents_acknowledge,
