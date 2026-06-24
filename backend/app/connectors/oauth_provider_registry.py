@@ -31,6 +31,8 @@ class OAuthProviderSpec:
     accept_header: str = "application/json"
     token_response_json: bool = True
     notes: str = ""
+    # Shorter app-domain callback (ClickUp/PagerDuty UIs reject long /api/connectors/oauth/... paths).
+    app_redirect_path: str = ""
 
 
 def _specs() -> dict[str, OAuthProviderSpec]:
@@ -91,6 +93,8 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             vendor="clickup",
             authorize_url="https://app.clickup.com/api",
             token_url="https://api.clickup.com/api/v2/oauth/token",
+            app_redirect_path="/api/auth/callback/clickup",
+            notes="Use short redirect URL in ClickUp app settings",
         ),
         OAuthProviderSpec(
             vendor="freshdesk",

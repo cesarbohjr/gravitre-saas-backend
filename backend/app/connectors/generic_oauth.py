@@ -25,7 +25,7 @@ from app.connectors.oauth_provider_registry import (
     resolve_url_template,
     TokenRequestStyle,
 )
-from app.public_urls import connector_oauth_callback_url
+from app.public_urls import connector_oauth_callback_url, is_legacy_platform_host
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,13 @@ def generic_oauth_configured(settings: Settings, vendor: str, environment_name: 
 
 
 def generic_redirect_uri(settings: Settings, vendor: str) -> str:
+    spec = OAUTH_PROVIDER_REGISTRY.get(vendor)
+    short_path = (spec.app_redirect_path if spec else "") or ""
+    if short_path:
+        app_base = (settings.public_app_url or settings.NEXT_PUBLIC_APP_URL or "").strip().rstrip("/")
+        if app_base and not is_legacy_platform_host(app_base):
+            path = short_path if short_path.startswith("/") else f"/{short_path}"
+            return f"{app_base}{path}"
     return connector_oauth_callback_url(
         public_app_url=settings.public_app_url,
         api_public_url=settings.api_public_url,
