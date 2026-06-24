@@ -666,6 +666,11 @@ VENDORS: list[tuple] = [
             ("pulls.merge", "Merge pull request", "pulls:write"),
             ("releases.create", "Create release", "releases:write"),
         ],
+        [
+            ("issues.list", "List issues", "issues:read"),
+            ("pulls.get", "Get pull request", "pulls:read"),
+            ("pulls.close", "Close pull request", "pulls:write"),
+        ],
     ),
     (
         "notion",

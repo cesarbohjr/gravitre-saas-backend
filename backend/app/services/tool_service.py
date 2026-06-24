@@ -125,9 +125,17 @@ from app.connectors.jira_oauth import ensure_jira_session
 from app.connectors.salesforce_oauth import ensure_salesforce_session
 from app.connectors.github_api import (
     GitHubAPIError,
+    close_pull_request,
     create_issue,
     create_issue_comment,
+    create_release,
+    dispatch_workflow,
+    get_issue,
+    get_pull_request,
+    get_repository,
+    list_issues,
     list_pull_requests,
+    merge_pull_request,
     request_pull_request_reviewer,
 )
 from app.connectors.google_calendar import (
@@ -2161,6 +2169,16 @@ def _github_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
     return cid, token
 
 
+def _github_owner_repo(ctx: ToolContext, cid: str, params: dict[str, Any]) -> tuple[str, str]:
+    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
+    cfg = conn.get("config") or {}
+    owner = params.get("owner") or cfg.get("owner")
+    repo = params.get("repo") or cfg.get("repo")
+    if not owner or not repo:
+        raise ToolValidationError("GitHub action requires owner and repo")
+    return str(owner), str(repo)
+
+
 def _google_vendor_token(ctx: ToolContext, vendor: str, params: dict[str, Any]) -> tuple[str, str]:
     from app.connectors.google_vendor_oauth import ensure_google_vendor_session
 
@@ -2431,30 +2449,45 @@ def _exec_microsoft365_calendar_events_list(ctx: ToolContext, params: dict[str, 
 
 def _exec_github_pulls_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
-    if not owner or not repo:
-        raise ToolValidationError("github.pulls.list requires owner and repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     try:
-        pulls = list_pull_requests(token, str(owner), str(repo), state=str(params.get("state") or "open"))
+        pulls = list_pull_requests(token, owner, repo, state=str(params.get("state") or "open"))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
     return NormalizedResult(success=True, action="github.pulls.list", connector_id=cid, data={"pull_requests": pulls})
 
 
+def _exec_github_issues_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    issue_number = params.get("issue_number") or params.get("issueNumber")
+    if not issue_number:
+        raise ToolValidationError("github.issues.get requires issue_number")
+    try:
+        issue = get_issue(token, owner, repo, int(issue_number))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.issues.get", connector_id=cid, data={"issue": issue})
+
+
+def _exec_github_repos_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    try:
+        repository = get_repository(token, owner, repo)
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.repos.get", connector_id=cid, data={"repository": repository})
+
+
 def _exec_github_issues_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     title = params.get("title")
-    if not owner or not repo or not title:
-        raise ToolValidationError("github.issues.create requires owner, repo, and title")
+    if not title:
+        raise ToolValidationError("github.issues.create requires title")
     try:
-        issue = create_issue(token, str(owner), str(repo), title=str(title), body=params.get("body"), labels=params.get("labels"))
+        issue = create_issue(token, owner, repo, title=str(title), body=params.get("body"), labels=params.get("labels"))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
     return NormalizedResult(success=True, action="github.issues.create", connector_id=cid, data={"issue": issue})
@@ -2462,16 +2495,13 @@ def _exec_github_issues_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
 
 def _exec_github_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     issue_number = params.get("issue_number") or params.get("issueNumber")
     body = params.get("body") or params.get("comment")
-    if not owner or not repo or not issue_number or not body:
-        raise ToolValidationError("github.issues.comment requires owner, repo, issue_number, body")
+    if not issue_number or not body:
+        raise ToolValidationError("github.issues.comment requires issue_number and body")
     try:
-        comment = create_issue_comment(token, str(owner), str(repo), int(issue_number), str(body))
+        comment = create_issue_comment(token, owner, repo, int(issue_number), str(body))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
     return NormalizedResult(success=True, action="github.issues.comment", connector_id=cid, data={"comment": comment})
@@ -2479,17 +2509,14 @@ def _exec_github_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> Nor
 
 def _exec_github_pulls_request_reviewer(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     pull_number = params.get("pull_number") or params.get("pullNumber")
     reviewers = params.get("reviewers")
-    if not owner or not repo or not pull_number or not isinstance(reviewers, list):
-        raise ToolValidationError("github.pulls.request_reviewer requires owner, repo, pull_number, reviewers[]")
+    if not pull_number or not isinstance(reviewers, list):
+        raise ToolValidationError("github.pulls.request_reviewer requires pull_number and reviewers[]")
     try:
         result = request_pull_request_reviewer(
-            token, str(owner), str(repo), int(pull_number), [str(r) for r in reviewers]
+            token, owner, repo, int(pull_number), [str(r) for r in reviewers]
         )
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
@@ -2499,6 +2526,115 @@ def _exec_github_pulls_request_reviewer(ctx: ToolContext, params: dict[str, Any]
         connector_id=cid,
         data={"requested_reviewers": result},
     )
+
+
+def _exec_github_actions_dispatch(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    workflow_id = params.get("workflow_id") or params.get("workflowId")
+    ref = params.get("ref")
+    if not workflow_id or not ref:
+        raise ToolValidationError("github.actions.dispatch requires workflow_id and ref")
+    inputs = params.get("inputs")
+    if inputs is not None and not isinstance(inputs, dict):
+        raise ToolValidationError("github.actions.dispatch inputs must be an object")
+    try:
+        dispatch_workflow(
+            token,
+            owner,
+            repo,
+            str(workflow_id),
+            ref=str(ref),
+            inputs={str(k): str(v) for k, v in inputs.items()} if inputs else None,
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(
+        success=True,
+        action="github.actions.dispatch",
+        connector_id=cid,
+        data={"dispatched": True, "workflow_id": str(workflow_id), "ref": str(ref)},
+    )
+
+
+def _exec_github_pulls_merge(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    if not pull_number:
+        raise ToolValidationError("github.pulls.merge requires pull_number")
+    try:
+        result = merge_pull_request(
+            token,
+            owner,
+            repo,
+            int(pull_number),
+            commit_title=params.get("commit_title") or params.get("commitTitle"),
+            commit_message=params.get("commit_message") or params.get("commitMessage"),
+            merge_method=params.get("merge_method") or params.get("mergeMethod"),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.merge", connector_id=cid, data=result)
+
+
+def _exec_github_releases_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    tag_name = params.get("tag_name") or params.get("tagName")
+    if not tag_name:
+        raise ToolValidationError("github.releases.create requires tag_name")
+    try:
+        release = create_release(
+            token,
+            owner,
+            repo,
+            tag_name=str(tag_name),
+            name=params.get("name"),
+            body=params.get("body"),
+            draft=bool(params.get("draft", False)),
+            prerelease=bool(params.get("prerelease", False)),
+            target_commitish=params.get("target_commitish") or params.get("targetCommitish"),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.releases.create", connector_id=cid, data={"release": release})
+
+
+def _exec_github_issues_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    try:
+        issues = list_issues(token, owner, repo, state=str(params.get("state") or "open"))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.issues.list", connector_id=cid, data={"issues": issues})
+
+
+def _exec_github_pulls_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    if not pull_number:
+        raise ToolValidationError("github.pulls.get requires pull_number")
+    try:
+        pull = get_pull_request(token, owner, repo, int(pull_number))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.get", connector_id=cid, data={"pull_request": pull})
+
+
+def _exec_github_pulls_close(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    if not pull_number:
+        raise ToolValidationError("github.pulls.close requires pull_number")
+    try:
+        pull = close_pull_request(token, owner, repo, int(pull_number))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.close", connector_id=cid, data={"pull_request": pull})
 
 
 def _exec_calendar_freebusy(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -2915,9 +3051,17 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "microsoft365.mail.messages.list": _exec_microsoft365_mail_messages_list,
     "microsoft365.calendar.events.list": _exec_microsoft365_calendar_events_list,
     "github.pulls.list": _exec_github_pulls_list,
+    "github.issues.get": _exec_github_issues_get,
+    "github.repos.get": _exec_github_repos_get,
     "github.issues.create": _exec_github_issues_create,
     "github.issues.comment": _exec_github_issues_comment,
     "github.pulls.request_reviewer": _exec_github_pulls_request_reviewer,
+    "github.actions.dispatch": _exec_github_actions_dispatch,
+    "github.pulls.merge": _exec_github_pulls_merge,
+    "github.releases.create": _exec_github_releases_create,
+    "github.issues.list": _exec_github_issues_list,
+    "github.pulls.get": _exec_github_pulls_get,
+    "github.pulls.close": _exec_github_pulls_close,
     "calendar.freebusy": _exec_calendar_freebusy,
     "calendar.events.create": _exec_calendar_events_create,
     "calendar.events.list": _exec_calendar_events_list,

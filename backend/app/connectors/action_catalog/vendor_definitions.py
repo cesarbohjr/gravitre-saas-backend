@@ -709,6 +709,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("github", "pulls.merge", "Merge pull request", tier="v3", kind="advanced", scope_suffix="pulls:write"),
             action("github", "releases.create", "Create release", tier="v3", kind="advanced", scope_suffix="releases:write"),
         ),
+        v4=(
+            action("github", "issues.list", "List issues", tier="v4", kind="advanced", scope_suffix="issues:read", idempotent=True),
+            action("github", "pulls.get", "Get pull request", tier="v4", kind="advanced", scope_suffix="pulls:read", idempotent=True),
+            action("github", "pulls.close", "Close pull request", tier="v4", kind="advanced", scope_suffix="pulls:write", destructive=True, requires_approval=True),
+        ),
     ),
     build_vendor(
         "notion",

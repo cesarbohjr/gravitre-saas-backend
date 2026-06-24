@@ -65,6 +65,59 @@ def list_pull_requests(
     return list(data) if isinstance(data, list) else []
 
 
+def get_pull_request(
+    token: str,
+    owner: str,
+    repo: str,
+    pull_number: int,
+) -> dict[str, Any]:
+    return _request(token, "GET", f"/repos/{owner}/{repo}/pulls/{pull_number}")
+
+
+def close_pull_request(
+    token: str,
+    owner: str,
+    repo: str,
+    pull_number: int,
+) -> dict[str, Any]:
+    return _request(
+        token,
+        "PATCH",
+        f"/repos/{owner}/{repo}/pulls/{pull_number}",
+        json_body={"state": "closed"},
+    )
+
+
+def get_issue(
+    token: str,
+    owner: str,
+    repo: str,
+    issue_number: int,
+) -> dict[str, Any]:
+    return _request(token, "GET", f"/repos/{owner}/{repo}/issues/{issue_number}")
+
+
+def list_issues(
+    token: str,
+    owner: str,
+    repo: str,
+    *,
+    state: str = "open",
+    per_page: int = 30,
+) -> list[dict[str, Any]]:
+    data = _request(
+        token,
+        "GET",
+        f"/repos/{owner}/{repo}/issues",
+        params={"state": state, "per_page": min(per_page, 100)},
+    )
+    return list(data) if isinstance(data, list) else []
+
+
+def get_repository(token: str, owner: str, repo: str) -> dict[str, Any]:
+    return _request(token, "GET", f"/repos/{owner}/{repo}")
+
+
 def create_issue(
     token: str,
     owner: str,
@@ -110,3 +163,70 @@ def request_pull_request_reviewer(
         f"/repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
         json_body={"reviewers": reviewers},
     )
+
+
+def dispatch_workflow(
+    token: str,
+    owner: str,
+    repo: str,
+    workflow_id: str | int,
+    *,
+    ref: str,
+    inputs: dict[str, str] | None = None,
+) -> None:
+    payload: dict[str, Any] = {"ref": ref}
+    if inputs:
+        payload["inputs"] = inputs
+    _request(
+        token,
+        "POST",
+        f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
+        json_body=payload,
+    )
+
+
+def merge_pull_request(
+    token: str,
+    owner: str,
+    repo: str,
+    pull_number: int,
+    *,
+    commit_title: str | None = None,
+    commit_message: str | None = None,
+    merge_method: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if commit_title:
+        payload["commit_title"] = commit_title
+    if commit_message:
+        payload["commit_message"] = commit_message
+    if merge_method:
+        payload["merge_method"] = merge_method
+    return _request(
+        token,
+        "PUT",
+        f"/repos/{owner}/{repo}/pulls/{pull_number}/merge",
+        json_body=payload or None,
+    )
+
+
+def create_release(
+    token: str,
+    owner: str,
+    repo: str,
+    *,
+    tag_name: str,
+    name: str | None = None,
+    body: str | None = None,
+    draft: bool = False,
+    prerelease: bool = False,
+    target_commitish: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"tag_name": tag_name, "draft": draft, "prerelease": prerelease}
+    if name:
+        payload["name"] = name
+    if body:
+        payload["body"] = body
+    if target_commitish:
+        payload["target_commitish"] = target_commitish
+    return _request(token, "POST", f"/repos/{owner}/{repo}/releases", json_body=payload)
