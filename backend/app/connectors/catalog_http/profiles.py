@@ -35,7 +35,7 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "constant_contact": VendorHttpProfile(
         "constant_contact", "constant_contact", "https://api.cc.email/v3", "generic_oauth"
     ),
-    "odoo": VendorHttpProfile("odoo", "odoo", "{instance_url}/json/2", "generic_oauth"),
+    "odoo": VendorHttpProfile("odoo", "odoo", "{instance_url}/jsonrpc", "api_token"),
     "gorgias": VendorHttpProfile("gorgias", "gorgias", "https://{domain}.gorgias.com/api", "generic_oauth"),
     "microsoft_teams": VendorHttpProfile(
         "microsoft_teams", "microsoft_teams", "https://graph.microsoft.com/v1.0", "microsoft365"

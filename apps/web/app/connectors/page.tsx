@@ -695,6 +695,9 @@ function AddConnectorModal({
   const [githubRepo, setGithubRepo] = useState("")
   const [oauthSubdomain, setOauthSubdomain] = useState("")
   const [oauthInstanceUrl, setOauthInstanceUrl] = useState("")
+  const [odooUrl, setOdooUrl] = useState("")
+  const [odooUsername, setOdooUsername] = useState("")
+  const [odooDatabase, setOdooDatabase] = useState("")
 
   const catalogConnectors = useMemo<CatalogConnector[]>(() => {
     const partnerEntries: CatalogConnector[] = publishedConnectors.map((entry) => ({
@@ -789,6 +792,9 @@ function AddConnectorModal({
     if (selectedType === "GitHub") {
       return Boolean(githubOwner && githubRepo && apiKey)
     }
+    if (selectedType === "Odoo") {
+      return Boolean(odooUrl && odooUsername && apiKey)
+    }
     return Boolean(apiKey)
   }
 
@@ -819,6 +825,14 @@ function AddConnectorModal({
       } else if (selectedType === "GitHub") {
         payload.config = { owner: githubOwner.trim(), repo: githubRepo.trim() }
         payload.secrets = { token: apiKey.trim() }
+      } else if (selectedType === "Odoo") {
+        payload.config = {
+          odoo_url: odooUrl.trim(),
+          ...(odooDatabase.trim() ? { database: odooDatabase.trim() } : {}),
+        }
+        payload.secrets = { username: odooUsername.trim() }
+        payload.api_key = apiKey.trim()
+        ;(payload as { apiKey?: string }).apiKey = apiKey.trim()
       } else if (apiKey) {
         payload.api_key = apiKey
         ;(payload as { apiKey?: string }).apiKey = apiKey
@@ -861,6 +875,9 @@ function AddConnectorModal({
     setGithubRepo("")
     setOauthSubdomain("")
     setOauthInstanceUrl("")
+    setOdooUrl("")
+    setOdooUsername("")
+    setOdooDatabase("")
     onClose()
   }
 
@@ -1425,10 +1442,50 @@ function AddConnectorModal({
                   </>
                 )}
 
+                {selectedType === "Odoo" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Odoo URL</label>
+                      <Input
+                        value={odooUrl}
+                        onChange={(e) => setOdooUrl(e.target.value)}
+                        placeholder="https://company.odoo.com"
+                        className="bg-secondary"
+                      />
+                      <p className="text-xs text-muted-foreground">Your Odoo SaaS or self-hosted base URL</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Username</label>
+                      <Input
+                        value={odooUsername}
+                        onChange={(e) => setOdooUsername(e.target.value)}
+                        placeholder="admin@company.com"
+                        className="bg-secondary"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Database (optional)</label>
+                      <Input
+                        value={odooDatabase}
+                        onChange={(e) => setOdooDatabase(e.target.value)}
+                        placeholder="company"
+                        className="bg-secondary"
+                      />
+                      <p className="text-xs text-muted-foreground">Auto-detected from *.odoo.com URLs when omitted</p>
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Key className="h-4 w-4 text-amber-400" />
-                      {selectedType === "Zendesk" ? "API token" : selectedType === "GitHub" ? "Personal access token" : "API Key"}
+                      {selectedType === "Zendesk"
+                        ? "API token"
+                        : selectedType === "GitHub"
+                          ? "Personal access token"
+                          : selectedType === "Odoo"
+                            ? "API key"
+                            : "API Key"}
                     </label>
                     <div className="relative">
                       <Input

@@ -263,8 +263,6 @@ def persist_generic_oauth_connector_config(
             config["zendesk_subdomain"] = subdomain.strip()
     if instance_url:
         config["instance_url"] = instance_url.strip().rstrip("/")
-        if vendor == "odoo":
-            config["odoo_url"] = instance_url.strip().rstrip("/")
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 
 

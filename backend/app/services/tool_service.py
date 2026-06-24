@@ -2955,6 +2955,7 @@ from app.services.clickup_tools import CLICKUP_TOOL_EXECUTORS
 from app.services.intercom_tools import INTERCOM_TOOL_EXECUTORS
 from app.services.asana_tools import ASANA_TOOL_EXECUTORS
 from app.services.monday_tools import MONDAY_TOOL_EXECUTORS
+from app.services.odoo_tools import ODOO_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -2972,6 +2973,7 @@ _TOOL_REGISTRY.update(CLICKUP_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(INTERCOM_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(ASANA_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MONDAY_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(ODOO_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.connectors.catalog_http.registry import build_catalog_http_executors

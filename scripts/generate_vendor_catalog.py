@@ -897,7 +897,7 @@ VENDORS: list[tuple] = [
         "Odoo",
         "Operations / Workflow",
         "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html",
-        False,
+        True,
         "operations",
         [
             ("partners.get", "Get partner", "partners:read"),
@@ -913,6 +913,11 @@ VENDORS: list[tuple] = [
             ("manufacturing.orders.create", "Create MO", "manufacturing:write"),
             ("crm.leads.convert", "Convert lead", "crm:write"),
             ("batch.partners", "Batch upsert partners", "partners:write"),
+        ],
+        [
+            ("partners.update", "Update partner", "partners:write"),
+            ("sales.orders.confirm", "Confirm sales order", "sales:write"),
+            ("invoices.post", "Post invoice", "invoices:write"),
         ],
     ),
     (

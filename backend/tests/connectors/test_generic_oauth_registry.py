@@ -27,6 +27,7 @@ INVALID_GENERIC_OAUTH = frozenset(
         "apollo",
         "absorb_lms",
         "snowflake",
+        "odoo",
     }
 )
 

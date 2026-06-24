@@ -263,8 +263,7 @@ For vendors in `GENERIC_OAUTH_VENDORS` (`oauth_provider_registry.py`):
 4. Set Railway env: `{VENDOR_UPPER}_CLIENT_ID`, `{VENDOR_UPPER}_CLIENT_SECRET`
 5. If **PKCE** (Salesforce, Airtable, Canva, Xero): enable PKCE in vendor portal — Gravitre sends `code_challenge` automatically.
 6. If **subdomain** (Freshdesk, Zendesk OAuth): customer enters subdomain at connect time.
-7. If **instance URL** (Odoo): customer enters `https://company.odoo.com`.
-8. Deploy → test Connect from UI.
+7. Deploy → test Connect from UI.
 
 ### Per-vendor portal links
 
@@ -282,7 +281,7 @@ For vendors in `GENERIC_OAUTH_VENDORS` (`oauth_provider_registry.py`):
 | Intercom | [developers.intercom.com](https://developers.intercom.com) |
 | Monday.com | [developer.monday.com](https://developer.monday.com) |
 | Microsoft 365 | [entra.microsoft.com](https://entra.microsoft.com) |
-| Odoo | [odoo.com/documentation](https://www.odoo.com/documentation) — instance URL |
+| Odoo | [odoo.com/documentation](https://www.odoo.com/documentation) — **API key** (no platform OAuth app); customer URL + username + key |
 | GitHub | [github.com/settings/developers](https://github.com/settings/developers) — OAuth App |
 | Zendesk | Admin → Apps and integrations → APIs → OAuth clients |
 | Canva | [canva.dev](https://www.canva.dev) — PKCE + **partner** |
@@ -412,8 +411,6 @@ MONDAY_CLIENT_ID=
 MONDAY_CLIENT_SECRET=
 GUSTO_CLIENT_ID=
 GUSTO_CLIENT_SECRET=
-ODOO_CLIENT_ID=
-ODOO_CLIENT_SECRET=
 CANVA_CLIENT_ID=
 CANVA_CLIENT_SECRET=
 MICROSOFT365_CLIENT_ID=

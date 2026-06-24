@@ -43,7 +43,7 @@
 | Intercom | Generic OAuth | `INTERCOM_CLIENT_ID`, `INTERCOM_CLIENT_SECRET` | None | `.../intercom/callback` | No | No | **Partial** — OAuth route; tools catalog only |
 | Monday.com | Generic OAuth | `MONDAY_CLIENT_ID`, `MONDAY_CLIENT_SECRET` | None | `.../monday/callback` | No | No | **Partial** — OAuth route; tools catalog only |
 | Microsoft 365 | Generic OAuth | `MICROSOFT365_CLIENT_ID`, `MICROSOFT365_CLIENT_SECRET` | Tenant (admin consent) | `.../microsoft365/callback` | No | No | **Partial** — OAuth route; tools catalog only |
-| Odoo | Generic OAuth | `ODOO_CLIENT_ID`, `ODOO_CLIENT_SECRET` | **Instance URL** | `.../odoo/callback` | No | No | **Partial** — self-hosted variance |
+| Odoo | API key | None | **Odoo URL** + username + API key (Odoo Security page) | N/A | No | No | **Yes** — 12 tools via JSON-RPC API key |
 | GitHub | Dual: OAuth or PAT | Optional `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | PAT **or** OAuth token | `.../github/callback` | No | No | **Yes** — 4 tools; PAT default |
 | Zendesk | Dual: OAuth or API token | Optional `ZENDESK_CLIENT_ID`, `ZENDESK_CLIENT_SECRET` | **Subdomain** + email + API token **or** OAuth | `.../zendesk/callback` | No | No | **Yes** — 4 tools |
 | Canva | Generic OAuth | `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET` | None | `.../canva/callback` | **Yes** | **Yes** | **Blocked** — Connect partner program |
@@ -104,7 +104,7 @@
 | Intercom | `/api/connectors/oauth/intercom/callback` | Dedicated | No | Intercom dev |
 | Monday.com | `/api/connectors/oauth/monday/callback` | Dedicated | No | Monday dev |
 | Microsoft 365 | `/api/connectors/oauth/microsoft365/callback` | Entra app | No | Microsoft dev tenant |
-| Odoo | `/api/connectors/oauth/odoo/callback` | Per-instance | No | Odoo.sh / local |
+| Odoo | N/A (API key per connector) | Customer Odoo URL | No | Odoo SaaS or self-hosted |
 | GitHub | `/api/connectors/oauth/github/callback` | Dedicated OAuth App | No | Same |
 | Zendesk | `/api/connectors/oauth/zendesk/callback` | Per-subdomain OAuth client | No | Zendesk sandbox |
 | Canva | `/api/connectors/oauth/canva/callback` | Dedicated | **Yes** | Canva dev |

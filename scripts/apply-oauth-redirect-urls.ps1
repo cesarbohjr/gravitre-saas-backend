@@ -54,7 +54,7 @@ function Get-RedirectUris {
         "hubspot", "salesforce", "quickbooks", "netsuite", "workday", "marketo",
         "jira", "confluence", "notion", "slack", "pagerduty",
         "mailchimp", "constant_contact", "xero", "airtable", "asana", "clickup",
-        "freshdesk", "intercom", "monday", "odoo", "github", "zendesk", "clio",
+        "freshdesk", "intercom", "monday", "github", "zendesk", "clio",
         "microsoft365",
         "google_analytics", "google_calendar", "gmail", "google_drive", "google_docs", "google_sheets"
     )
@@ -192,7 +192,6 @@ $manual = @{
     "Freshdesk Developer" = ($redirectUris | Where-Object { $_ -match "freshdesk" })
     "Intercom Developer" = ($redirectUris | Where-Object { $_ -match "intercom" })
     "Monday.com Developer" = ($redirectUris | Where-Object { $_ -match "monday" })
-    "Odoo OAuth provider" = ($redirectUris | Where-Object { $_ -match "odoo" })
     "GitHub OAuth App" = ($redirectUris | Where-Object { $_ -match "github" })
     "Zendesk OAuth client" = ($redirectUris | Where-Object { $_ -match "zendesk" })
     "Clio Developer" = ($redirectUris | Where-Object { $_ -match "clio" })

@@ -136,13 +136,6 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             notes="Gusto partner / developer approval required",
         ),
         OAuthProviderSpec(
-            vendor="odoo",
-            authorize_url="{instance_url}/web/auth/oauth2/authorize",
-            token_url="{instance_url}/web/auth/oauth2/token",
-            requires_instance_url=True,
-            notes="Self-hosted; API key is common alternative",
-        ),
-        OAuthProviderSpec(
             vendor="canva",
             authorize_url="https://www.canva.com/api/oauth/authorize",
             token_url="https://api.canva.com/rest/v1/oauth/token",

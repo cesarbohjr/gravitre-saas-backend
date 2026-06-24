@@ -955,7 +955,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Odoo",
         "Operations / Workflow",
         "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("odoo", "partners.get", "Get partner", tier="v1", kind="read", scope_suffix="partners:read", idempotent=True),
@@ -971,6 +971,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("odoo", "manufacturing.orders.create", "Create MO", tier="v3", kind="advanced", scope_suffix="manufacturing:write"),
             action("odoo", "crm.leads.convert", "Convert lead", tier="v3", kind="advanced", scope_suffix="crm:write"),
             action("odoo", "batch.partners", "Batch upsert partners", tier="v3", kind="advanced", scope_suffix="partners:write"),
+        ),
+        v4=(
+            action("odoo", "partners.update", "Update partner", tier="v4", kind="advanced", scope_suffix="partners:write", destructive=True),
+            action("odoo", "sales.orders.confirm", "Confirm sales order", tier="v4", kind="advanced", scope_suffix="sales:write", requires_approval=True),
+            action("odoo", "invoices.post", "Post invoice", tier="v4", kind="advanced", scope_suffix="invoices:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(

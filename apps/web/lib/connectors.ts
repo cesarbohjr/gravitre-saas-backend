@@ -78,7 +78,6 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Intercom",
   "Monday.com",
   "Microsoft 365",
-  "Odoo",
   "GitHub",
   "Zendesk",
 ] as const
@@ -116,7 +115,6 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "freshdesk",
   "intercom",
   "monday",
-  "odoo",
   "microsoft365",
   "zendesk",
   "github",
@@ -139,6 +137,7 @@ export const APIKEY_VENDOR_KEYS = new Set([
   "zendesk",
   "bamboohr",
   "greenhouse",
+  "odoo",
   "absorb_lms",
   "gorgias",
   "snowflake",
@@ -259,7 +258,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Zapier", vendorKey: "zapier", description: "Automation between apps", authType: "oauth", credentialModel: "partner_oauth", category: "Operations / Workflow", requiresPartnerApproval: true, setupComplexity: "high" },
   { type: "n8n", vendorKey: "n8n", description: "Workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow" },
   { type: "Motion", vendorKey: "motion", description: "AI calendar and task planning", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow" },
-  { type: "Odoo", vendorKey: "odoo", description: "ERP and business apps", authType: "oauth", credentialModel: "oauth2_custom", category: "Operations / Workflow", oauthReady: true, requiresInstanceUrl: true },
+  { type: "Odoo", vendorKey: "odoo", description: "ERP and business apps", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow", requiresInstanceUrl: true, shipped: true },
   // Customer Support
   { type: "Zendesk", vendorKey: "zendesk", description: "Customer service", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", shipped: true, oauthReady: true, requiresSubdomain: true },
   { type: "Intercom", vendorKey: "intercom", description: "Customer messaging", authType: "oauth", credentialModel: "oauth2", category: "Customer Support", oauthReady: true },

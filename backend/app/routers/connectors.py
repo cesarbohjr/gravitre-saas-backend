@@ -777,6 +777,23 @@ async def create_connector_route(
             or (row["config"] or {}).get("baseUrl")
             or "https://hapi.fhir.org/baseR4",
         }
+    if vendor == "odoo":
+        cfg = dict(body.config or {})
+        odoo_url = (
+            cfg.get("odoo_url")
+            or cfg.get("odooUrl")
+            or cfg.get("instance_url")
+            or cfg.get("instanceUrl")
+            or ""
+        )
+        row["description"] = body.description or "Odoo (API key)"
+        row["config"] = {
+            **cfg,
+            "auth_type": "api_key",
+            "odoo_url": str(odoo_url).strip().rstrip("/"),
+            "database": str(cfg.get("database") or cfg.get("db") or "").strip(),
+        }
+        row["docs_url"] = "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html"
     connector_id: str
     try:
         r = client.table("connectors").insert(row).execute()

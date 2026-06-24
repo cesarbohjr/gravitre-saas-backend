@@ -8,7 +8,8 @@ Last updated: production-readiness pass for Gravitre connector/OAuth architectur
 |-------|----------|--------------|---------------|
 | Standard OAuth2 | Mailchimp, Asana, Intercom, Monday | `{VENDOR}_CLIENT_ID/SECRET` | OAuth tokens (encrypted) |
 | OAuth2 + PKCE | Airtable, Canva, Xero | `{VENDOR}_CLIENT_ID/SECRET` | OAuth tokens |
-| OAuth2 custom | Workday, NetSuite, Marketo, Microsoft 365, Odoo | Dedicated or `{VENDOR}_*` | Tenant/subdomain/instance fields |
+| OAuth2 custom | Workday, NetSuite, Marketo, Microsoft 365 | Dedicated or `{VENDOR}_*` | Tenant/subdomain/instance fields |
+| API key (customer credentials) | Odoo, BambooHR, Greenhouse, SendGrid | None | URL/username + API key per connector |
 | Dual OAuth + API key | GitHub, Zendesk | Optional `GITHUB_*`, `ZENDESK_*` | PAT/API token **or** OAuth tokens |
 | API key / token | SendGrid, Twilio, Mixpanel, Apollo, Segment | None | Encrypted secrets |
 | Connection string | PostgreSQL, MongoDB | None | Connection string |
@@ -19,7 +20,7 @@ Last updated: production-readiness pass for Gravitre connector/OAuth architectur
 
 ## OAuth providers (generic registry)
 
-`zapier`, `mailchimp`, `constant_contact`, `hootsuite`, `xero`, `airtable`, `asana`, `clickup`, `freshdesk`, `intercom`, `github`, `monday`, `gusto`, `odoo`, `canva`, `microsoft365`, `zendesk`
+`zapier`, `mailchimp`, `constant_contact`, `hootsuite`, `xero`, `airtable`, `asana`, `clickup`, `freshdesk`, `intercom`, `github`, `monday`, `gusto`, `canva`, `microsoft365`, `zendesk`
 
 Tier 1–3 dedicated modules: HubSpot, Salesforce, QuickBooks, NetSuite, Jira, Confluence, PagerDuty, Notion, Workday, Marketo, Google vendors.
 
@@ -31,7 +32,7 @@ Implementation: RFC 7636 S256 in `oauth_pkce.py`; verifier stored in signed OAut
 
 ## API-key providers
 
-`segment`, `stripe`, `linkedin`, `mixpanel`, `semrush`, `stackadapt`, `apollo`, `sendgrid`, `twilio`, `n8n`, `motion`, `bamboohr`, `absorb_lms`, `gorgias`, `snowflake` (password/key-pair), `adp`
+`segment`, `stripe`, `linkedin`, `mixpanel`, `semrush`, `stackadapt`, `apollo`, `sendgrid`, `twilio`, `n8n`, `motion`, `bamboohr`, `odoo`, `absorb_lms`, `gorgias`, `snowflake` (password/key-pair), `adp`
 
 ## Database connectors
 
@@ -59,7 +60,7 @@ Implementation: RFC 7636 S256 in `oauth_pkce.py`; verifier stored in signed OAut
 
 ### Verified generic OAuth apps
 
-`ZAPIER_*`, `MAILCHIMP_*`, `CONSTANT_CONTACT_*`, `HOOTSUITE_*`, `XERO_*`, `AIRTABLE_*`, `ASANA_*`, `CLICKUP_*`, `FRESHDESK_*`, `INTERCOM_*`, `GITHUB_*`, `MONDAY_*`, `GUSTO_*`, `ODOO_*`, `CANVA_*`, `MICROSOFT365_*`, `ZENDESK_*`
+`ZAPIER_*`, `MAILCHIMP_*`, `CONSTANT_CONTACT_*`, `HOOTSUITE_*`, `XERO_*`, `AIRTABLE_*`, `ASANA_*`, `CLICKUP_*`, `FRESHDESK_*`, `INTERCOM_*`, `GITHUB_*`, `MONDAY_*`, `GUSTO_*`, `CANVA_*`, `MICROSOFT365_*`, `ZENDESK_*`
 
 ### Tier 1–3 (see `backend/.env.example`)
 
@@ -77,7 +78,7 @@ HubSpot, Salesforce, QuickBooks, NetSuite, Jira, Confluence, PagerDuty, Notion, 
 | Zendesk | subdomain + (email + API token) **or** OAuth |
 | GitHub | owner, repo + PAT **or** OAuth |
 | Snowflake | account, warehouse, database, schema, role, auth_method (`password` / `key_pair`; OAuth gated) |
-| Odoo | instanceUrl + OAuth or API key |
+| Odoo | Odoo URL + username + API key (database optional; auto-detected on *.odoo.com) |
 | PostgreSQL / MongoDB | connection string |
 | AWS S3 | access key, secret, region, bucket |
 
@@ -95,7 +96,7 @@ HubSpot, Salesforce, QuickBooks, NetSuite, Jira, Confluence, PagerDuty, Notion, 
 2. **Partner apps** — Hootsuite/Gusto/Zapier/Canva need partner approval before customer use
 3. **Plaid Link** — frontend Link UI + public_token exchange endpoint not fully implemented
 4. **Microsoft 365** — tenant admin consent may block multi-tenant apps
-5. **Odoo** — self-hosted variance (OAuth vs API key)
+5. **Odoo self-hosted** — customers must supply database name when not on `*.odoo.com`
 
 ## Related documentation (master audit suite)
 

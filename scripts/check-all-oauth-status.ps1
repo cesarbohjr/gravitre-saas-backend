@@ -14,7 +14,7 @@ $google = @(
 )
 $generic = @(
     "mailchimp", "constant_contact", "xero", "airtable", "asana", "clickup",
-    "freshdesk", "intercom", "monday", "microsoft365", "odoo", "github", "zendesk",
+    "freshdesk", "intercom", "monday", "microsoft365", "github", "zendesk",
     "zapier", "hootsuite", "gusto", "canva"
 )
 
