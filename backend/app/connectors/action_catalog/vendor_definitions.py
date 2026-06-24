@@ -171,7 +171,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Constant Contact",
         "CRM / Marketing",
         "https://developer.constantcontact.com/api_guide/server_flow.html",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("constant_contact", "contacts.list", "List contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),

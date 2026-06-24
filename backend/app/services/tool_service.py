@@ -2805,6 +2805,7 @@ from app.services.fhir_tools import FHIR_TOOL_EXECUTORS
 from app.services.clio_tools import CLIO_TOOL_EXECUTORS
 from app.services.real_estate_tools import REAL_ESTATE_TOOL_EXECUTORS
 from app.services.greenhouse_tools import GREENHOUSE_TOOL_EXECUTORS
+from app.services.constant_contact_tools import CONSTANT_CONTACT_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -2817,6 +2818,7 @@ _TOOL_REGISTRY.update(FHIR_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CLIO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(REAL_ESTATE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GREENHOUSE_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CONSTANT_CONTACT_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.connectors.catalog_http.registry import build_catalog_http_executors

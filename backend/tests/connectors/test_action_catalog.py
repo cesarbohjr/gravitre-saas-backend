@@ -47,6 +47,15 @@ def test_hubspot_v1_read_tools_implemented(catalog: dict) -> None:
     assert "hubspot.contacts.search" in tools
 
 
+def test_constant_contact_catalog_actions_implemented(catalog: dict) -> None:
+    cc = next(v for v in catalog["vendors"] if v["vendor"] == "constant_contact")
+    registered = set(list_registered_actions())
+    for tier in ("v1", "v2", "v3"):
+        for action in cc["tiers"][tier]["actions"]:
+            assert action["tool"] in registered
+            assert action["implemented"] is True
+
+
 def test_implemented_flag_matches_registry(catalog: dict) -> None:
     registered = set(list_registered_actions())
     hubspot = next(v for v in catalog["vendors"] if v["vendor"] == "hubspot")
