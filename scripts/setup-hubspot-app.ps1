@@ -63,7 +63,6 @@ function Update-JsonUrls {
         "crm.objects.contacts.write",
         "crm.objects.deals.read",
         "crm.objects.deals.write",
-        "crm.objects.notes.write",
         "crm.lists.read",
         "crm.lists.write",
         "oauth"

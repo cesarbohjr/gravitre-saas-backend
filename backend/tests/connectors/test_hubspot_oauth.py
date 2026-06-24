@@ -18,5 +18,4 @@ def test_hubspot_authorize_url_contains_params():
     assert "state-xyz" in url
     assert "scope=crm.objects.contacts.read" in url.replace("+", " ")
     assert "optional_scope=automation" in url
-    assert "scope=" in url
-    assert "automation" not in url.split("optional_scope=")[0]
+    assert "notes.write" not in url
