@@ -210,6 +210,11 @@ class Settings(BaseSettings):
     notification_smtp_password: str = ""
     notification_smtp_from: str = ""
     notification_smtp_use_tls: bool = True
+    # Platform email branding defaults (org white-label overrides per send).
+    notification_email_brand_name: str = "Gravitre"
+    notification_email_logo_url: str = ""
+    notification_email_primary_color: str = "#0091FF"
+    notification_email_accent_color: str = "#7C3AED"
     # Tier 6 v2: approval SLA targets (minutes) for mobile countdown UI
     approval_sla_minutes_high: int = 60
     approval_sla_minutes_medium: int = 240
