@@ -133,6 +133,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "odoo",
         "absorb_lms",
         "canva",
+        "figma",
         "apollo",
         "fhir",
         "clio",

@@ -690,6 +690,7 @@ const IMAGE_LOGOS: Record<string, string> = {
   odoo: "/connector-logos/odoo.svg",
   greenhouse: "/connector-logos/greenhouse.svg",
   canva: "/connector-logos/canva.svg",
+  figma: "/connector-logos/figma.svg",
 }
 
 // Vendor slugs that reuse an existing inline brand logo.

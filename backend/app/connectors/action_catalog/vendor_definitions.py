@@ -1391,4 +1391,31 @@ VENDOR_DEFINITIONS: tuple = (
             action("canva", "designs.delete", "Delete design", tier="v4", kind="advanced", scope_suffix="designs:write", destructive=True, requires_approval=True),
         ),
     ),
+    build_vendor(
+        "figma",
+        "Figma",
+        "Learning / Creative",
+        "https://developers.figma.com/docs/rest-api/",
+        shipped=True,
+        department="marketing",
+        v1=(
+            action("figma", "files.get", "Get file", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("figma", "files.meta", "Get file metadata", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("figma", "projects.list", "List team projects", tier="v1", kind="read", scope_suffix="projects:read", idempotent=True),
+        ),
+        v2=(
+            action("figma", "comments.create", "Post comment", tier="v2", kind="write", scope_suffix="comments:write", destructive=True),
+            action("figma", "dev_resources.create", "Create dev resource", tier="v2", kind="write", scope_suffix="dev_resources:write", destructive=True),
+        ),
+        v3=(
+            action("figma", "projects.files.list", "List project files", tier="v3", kind="advanced", scope_suffix="projects:read"),
+            action("figma", "comments.list", "List file comments", tier="v3", kind="advanced", scope_suffix="comments:read"),
+            action("figma", "batch.images.export", "Batch export nodes", tier="v3", kind="advanced", scope_suffix="files:read"),
+        ),
+        v4=(
+            action("figma", "comments.delete", "Delete comment", tier="v4", kind="advanced", scope_suffix="comments:write", destructive=True, requires_approval=True),
+            action("figma", "files.versions.list", "List file versions", tier="v4", kind="advanced", scope_suffix="files:read", idempotent=True),
+            action("figma", "users.me", "Get current user", tier="v4", kind="advanced", scope_suffix="users:read", idempotent=True),
+        ),
+    ),
 )

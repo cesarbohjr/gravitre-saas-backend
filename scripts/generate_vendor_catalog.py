@@ -1309,6 +1309,33 @@ VENDORS: list[tuple] = [
             ("designs.delete", "Delete design", "designs:write"),
         ],
     ),
+    (
+        "figma",
+        "Figma",
+        "Learning / Creative",
+        "https://developers.figma.com/docs/rest-api/",
+        True,
+        "marketing",
+        [
+            ("files.get", "Get file", "files:read"),
+            ("files.meta", "Get file metadata", "files:read"),
+            ("projects.list", "List team projects", "projects:read"),
+        ],
+        [
+            ("comments.create", "Post comment", "comments:write"),
+            ("dev_resources.create", "Create dev resource", "dev_resources:write"),
+        ],
+        [
+            ("projects.files.list", "List project files", "projects:read"),
+            ("comments.list", "List file comments", "comments:read"),
+            ("batch.images.export", "Batch export nodes", "files:read"),
+        ],
+        [
+            ("comments.delete", "Delete comment", "comments:write"),
+            ("files.versions.list", "List file versions", "files:read"),
+            ("users.me", "Get current user", "users:read"),
+        ],
+    ),
 ]
 
 

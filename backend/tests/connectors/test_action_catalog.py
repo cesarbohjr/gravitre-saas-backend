@@ -139,6 +139,16 @@ def test_canva_catalog_actions_implemented(catalog: dict) -> None:
             assert action["implemented"] is True
 
 
+def test_figma_catalog_actions_implemented(catalog: dict) -> None:
+    registered = set(list_registered_actions())
+    entry = next(v for v in catalog["vendors"] if v["vendor"] == "figma")
+    assert entry["shipped"] is True
+    for tier in ("v1", "v2", "v3", "v4"):
+        for action in entry["tiers"][tier]["actions"]:
+            assert action["tool"] in registered, f"figma missing {action['tool']}"
+            assert action["implemented"] is True
+
+
 def test_implemented_flag_matches_registry(catalog: dict) -> None:
     registered = set(list_registered_actions())
     hubspot = next(v for v in catalog["vendors"] if v["vendor"] == "hubspot")

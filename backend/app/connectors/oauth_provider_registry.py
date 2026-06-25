@@ -150,6 +150,17 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             notes="PKCE + Basic Auth token endpoint; Canva Connect partner program",
         ),
         OAuthProviderSpec(
+            vendor="figma",
+            authorize_url="https://www.figma.com/oauth",
+            token_url="https://api.figma.com/v1/oauth/token",
+            scopes=(
+                "current_user:read file_content:read file_metadata:read "
+                "file_comments:read file_comments:write file_dev_resources:write "
+                "file_versions:read projects:read"
+            ),
+            notes="Figma OAuth app; granular REST API scopes",
+        ),
+        OAuthProviderSpec(
             vendor="microsoft365",
             authorize_url="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
             token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",

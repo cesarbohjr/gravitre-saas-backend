@@ -15,7 +15,7 @@ $google = @(
 $generic = @(
     "mailchimp", "constant_contact", "xero", "airtable", "asana", "clickup",
     "freshdesk", "intercom", "monday", "microsoft365", "github", "zendesk",
-    "zapier", "hootsuite", "gusto", "canva"
+    "zapier", "hootsuite", "gusto", "canva", "figma"
 )
 
 function Test-Provider([string]$Provider) {

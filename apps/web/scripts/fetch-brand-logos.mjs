@@ -40,7 +40,7 @@ const SLUG_OVERRIDES = {
 
 // Full vendor universe (connector registry + marketing apps + data-source types).
 const VENDOR_KEYS = [
-  "adp", "airtable", "apollo", "asana", "aws_s3", "bamboohr", "canva",
+  "adp", "airtable", "apollo", "asana", "aws_s3", "bamboohr", "canva", "figma",
   "clickup", "confluence", "constant_contact", "freshdesk", "github", "gmail",
   "google", "google_analytics", "google_calendar", "google_docs",
   "google_drive", "google_sheets", "gorgias", "greenhouse", "gusto",

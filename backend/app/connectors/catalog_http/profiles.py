@@ -45,6 +45,7 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "apollo": VendorHttpProfile("apollo", "apollo", "https://api.apollo.io/v1", "api_token"),
     "aws_s3": VendorHttpProfile("aws_s3", "aws_s3", "https://s3.{region}.amazonaws.com", "api_token"),
     "canva": VendorHttpProfile("canva", "canva", "https://api.canva.com/rest/v1", "generic_oauth"),
+    "figma": VendorHttpProfile("figma", "figma", "https://api.figma.com/v1", "generic_oauth"),
     "gusto": VendorHttpProfile("gusto", "gusto", "https://api.gusto.com/v1", "generic_oauth"),
     "adp": VendorHttpProfile("adp", "adp", "https://api.adp.com", "generic_oauth"),
     "absorb_lms": VendorHttpProfile("absorb_lms", "absorb_lms", "https://{domain}.myabsorb.com/api/rest/v2", "api_token"),

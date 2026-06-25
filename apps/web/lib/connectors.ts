@@ -83,6 +83,7 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "GitHub",
   "Zendesk",
   "Canva",
+  "Figma",
 ] as const
 
 /** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
@@ -122,6 +123,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "zendesk",
   "github",
   "canva",
+  "figma",
 ])
 
 /** OAuth + optional PAT/API-token fallback at connect time. */
@@ -214,6 +216,7 @@ const VENDOR_LABELS: Record<string, string> = {
   apollo: "Apollo",
   odoo: "Odoo",
   canva: "Canva",
+  figma: "Figma",
   motion: "Motion",
 }
 
@@ -286,6 +289,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   // Learning / Creative
   { type: "Absorb LMS", vendorKey: "absorb_lms", description: "Learning management system", authType: "apiKey", credentialModel: "api_key", category: "Learning / Creative" },
   { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "high" },
+  { type: "Figma", vendorKey: "figma", description: "Product design and prototyping", authType: "oauth", credentialModel: "oauth2", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "medium" },
 ]
 
 export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = CATALOG_ENTRIES
@@ -370,6 +374,7 @@ export const MARKETING_INTEGRATION_APPS = [
   "Airtable",
   "Xero",
   "Canva",
+  "Figma",
 ] as const
 
 const CATEGORY_BY_VENDOR = new Map(

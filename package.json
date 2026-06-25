@@ -83,6 +83,7 @@
     "google:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-google-operator-env.ps1",
     "google:railway": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
     "google:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-google-oauth.ps1",
+    "figma:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-figma-oauth.ps1",
     "auth:sync-urls": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-supabase-auth-urls.ps1",
     "auth:apply-custom-domain": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-custom-domain-auth-env.ps1",
     "auth:supabase-google": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/configure-supabase-google.ps1",

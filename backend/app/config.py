@@ -278,6 +278,8 @@ class Settings(BaseSettings):
     slack_signing_secret: str = ""
     canva_client_id: str = ""
     canva_client_secret: str = ""
+    figma_client_id: str = ""
+    figma_client_secret: str = ""
 
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
