@@ -2214,6 +2214,20 @@ export interface CreateMlModelRequest {
   task_type?: string
 }
 
+export interface MlPredictRequest {
+  inputs: Record<string, unknown>[]
+  version?: number
+  return_probabilities?: boolean
+}
+
+export interface MlPredictResponse {
+  modelId: string
+  version: number
+  predictions: unknown[]
+  probabilities?: Record<string, number>[] | null
+  latencyMs?: number
+}
+
 export interface RunCompensationSummary {
   runId: string
   compensated: number
