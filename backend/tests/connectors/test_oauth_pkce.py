@@ -35,8 +35,7 @@ def test_xero_token_exchange_includes_verifier(monkeypatch):
     captured: dict = {}
 
     class FakeResponse:
-        def raise_for_status(self) -> None:
-            return None
+        is_success = True
 
         def json(self) -> dict:
             return {"access_token": "tok", "expires_in": 3600}

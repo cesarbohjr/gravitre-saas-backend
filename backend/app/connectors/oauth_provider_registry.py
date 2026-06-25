@@ -139,9 +139,15 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             vendor="canva",
             authorize_url="https://www.canva.com/api/oauth/authorize",
             token_url="https://api.canva.com/rest/v1/oauth/token",
+            scopes=(
+                "design:meta:read design:content:read design:content:write "
+                "folder:read asset:read asset:write "
+                "brandtemplate:meta:read brandtemplate:content:read"
+            ),
+            token_style=TokenRequestStyle.BASIC_AUTH,
             requires_pkce=True,
-            partner_gated=True,
-            notes="PKCE required; Canva Connect partner program",
+            authorize_extra={"code_challenge_method": "s256"},
+            notes="PKCE + Basic Auth token endpoint; Canva Connect partner program",
         ),
         OAuthProviderSpec(
             vendor="microsoft365",

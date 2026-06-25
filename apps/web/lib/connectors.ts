@@ -82,6 +82,7 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Microsoft 365",
   "GitHub",
   "Zendesk",
+  "Canva",
 ] as const
 
 /** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
@@ -161,7 +162,6 @@ export const PARTNER_GATED_CONNECTOR_KEYS = new Set([
   "gusto",
   "hootsuite",
   "zapier",
-  "canva",
 ])
 
 /** Partner-gated or requires non-standard integration (not generic OAuth callback). */
@@ -174,7 +174,6 @@ export const PARTNER_OR_CUSTOM_VENDOR_KEYS = new Set([
   "hootsuite",
   "gusto",
   "zapier",
-  "canva",
 ])
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -285,7 +284,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Google Sheets", vendorKey: "google_sheets", description: "Spreadsheets", authType: "oauth", credentialModel: "oauth2", category: "Storage / Dev / Infra", shipped: true },
   // Learning / Creative
   { type: "Absorb LMS", vendorKey: "absorb_lms", description: "Learning management system", authType: "apiKey", credentialModel: "api_key", category: "Learning / Creative" },
-  { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", requiresPartnerApproval: true, setupComplexity: "high" },
+  { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "high" },
 ]
 
 export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = CATALOG_ENTRIES

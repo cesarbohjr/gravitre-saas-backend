@@ -1,6 +1,7 @@
 """Connector OAuth start/callback routes (STA-13)."""
 from __future__ import annotations
 
+import logging
 import time
 from typing import Annotated
 from urllib.parse import urlencode
@@ -142,6 +143,7 @@ from app.core.errors import error_detail
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
+logger = logging.getLogger(__name__)
 
 SUPPORTED_OAUTH_PROVIDERS = frozenset(
     {
@@ -697,6 +699,14 @@ async def start_oauth(
             instance_url=ctx_instance,
             code_challenge=pkce_challenge,
         )
+        if spec.requires_pkce:
+            logger.info(
+                "generic_oauth_authorize vendor=%s connector_id=%s redirect_uri=%s pkce=1 challenge_len=%s",
+                vendor,
+                connector_id,
+                redirect_uri,
+                len(pkce_challenge or ""),
+            )
 
     write_audit_event(
         client,
@@ -885,6 +895,13 @@ async def oauth_callback(
                 user_id=str(payload.get("user_id") or "") or None,
             )
     except (httpx.HTTPError, ValueError) as exc:
+        logger.warning(
+            "oauth_callback_failed vendor=%s connector_id=%s org_id=%s error=%s",
+            vendor,
+            connector_id,
+            org_id,
+            str(exc)[:200],
+        )
         return RedirectResponse(
             _frontend_redirect(
                 settings,

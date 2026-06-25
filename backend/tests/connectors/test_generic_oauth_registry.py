@@ -54,7 +54,7 @@ def test_registry_size():
 def test_partner_gated_vendors():
     from app.connectors.oauth_provider_registry import PARTNER_GATED_OAUTH_VENDORS
 
-    assert PARTNER_GATED_OAUTH_VENDORS == frozenset({"zapier", "hootsuite", "gusto", "canva"})
+    assert PARTNER_GATED_OAUTH_VENDORS == frozenset({"zapier", "hootsuite", "gusto"})
     for vendor in PARTNER_GATED_OAUTH_VENDORS:
         assert OAUTH_PROVIDER_REGISTRY[vendor].partner_gated is True
 

@@ -109,6 +109,24 @@ def _parse_token_response(
     return _token_payload_from_response(parsed, vendor=vendor, org_id=org_id, user_id=user_id)
 
 
+def _oauth_error_detail(response: httpx.Response, *, vendor: str, as_json: bool) -> str:
+    """Extract a safe error message from a failed token response (no secrets)."""
+    try:
+        if as_json:
+            data = response.json()
+            if isinstance(data, dict):
+                for key in ("error_description", "error", "message", "detail"):
+                    value = data.get(key)
+                    if value:
+                        return str(value)[:300]
+        text = (response.text or "").strip()
+        if text and len(text) <= 300:
+            return text
+    except Exception:  # noqa: BLE001
+        pass
+    return f"HTTP {response.status_code}"
+
+
 def _exchange_token(
     spec: OAuthProviderSpec,
     *,
@@ -141,7 +159,16 @@ def _exchange_token(
                 data=payload,
                 headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
             )
-        response.raise_for_status()
+        if not response.is_success:
+            detail = _oauth_error_detail(response, vendor=spec.vendor, as_json=spec.token_response_json)
+            logger.warning(
+                "generic_oauth_token_failed vendor=%s status=%s error=%s grant_type=%s",
+                spec.vendor,
+                response.status_code,
+                detail,
+                body.get("grant_type", ""),
+            )
+            raise ValueError(f"{spec.vendor} token exchange failed: {detail}")
         return _parse_token_response(
             response,
             as_json=spec.token_response_json,
@@ -149,6 +176,14 @@ def _exchange_token(
             org_id=org_id,
             user_id=user_id,
         )
+
+
+def validate_generic_redirect_uri(settings: Settings, vendor: str, redirect_uri: str) -> None:
+    """Ensure token exchange uses the same redirect URI as authorize (OAuth security)."""
+    expected = generic_redirect_uri(settings, vendor).rstrip("/")
+    actual = (redirect_uri or "").strip().rstrip("/")
+    if actual != expected:
+        raise ValueError(f"{vendor} redirect_uri mismatch")
 
 
 def exchange_generic_code(
@@ -161,7 +196,11 @@ def exchange_generic_code(
     code_verifier: str | None = None,
     org_id: str | None = None,
     user_id: str | None = None,
+    settings: Settings | None = None,
+    vendor: str | None = None,
 ) -> dict[str, Any]:
+    if settings is not None and vendor:
+        validate_generic_redirect_uri(settings, vendor, redirect_uri)
     body: dict[str, str] = {
         "grant_type": "authorization_code",
         "code": code,
@@ -340,16 +379,42 @@ def complete_generic_oauth_connection(
         raise ValueError(f"{vendor} PKCE code_verifier missing from OAuth state")
 
     redirect_uri = generic_redirect_uri(settings, vendor)
-    tokens = exchange_generic_code(
-        spec,
-        code,
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=redirect_uri,
-        code_verifier=code_verifier,
-        org_id=org_id,
-        user_id=user_id,
-    )
+    try:
+        if spec.requires_pkce:
+            logger.info(
+                "generic_oauth_token_exchange vendor=%s connector_id=%s redirect_uri=%s pkce=1 verifier_len=%s",
+                vendor,
+                connector_id,
+                redirect_uri,
+                len(code_verifier or ""),
+            )
+        tokens = exchange_generic_code(
+            spec,
+            code,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
+            org_id=org_id,
+            user_id=user_id,
+            settings=settings,
+            vendor=vendor,
+        )
+    except (httpx.HTTPError, ValueError) as exc:
+        mark_connector_oauth_failure(
+            client,
+            org_id,
+            connector_id,
+            str(exc)[:500],
+            environment_name=env,
+        )
+        logger.warning(
+            "generic_oauth_connect_failed vendor=%s connector_id=%s error=%s",
+            vendor,
+            connector_id,
+            str(exc)[:200],
+        )
+        raise
     if not tokens.get("access_token"):
         raise ValueError(f"{vendor} token exchange did not return access_token")
 
