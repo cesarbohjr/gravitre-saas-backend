@@ -121,6 +121,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "microsoft365",
   "zendesk",
   "github",
+  "canva",
 ])
 
 /** OAuth + optional PAT/API-token fallback at connect time. */
@@ -338,11 +339,6 @@ export const CONNECTOR_CATEGORIES = Object.fromEntries(
   }
 >
 
-export const AVAILABLE_CONNECTORS = CONNECTOR_CATALOG.map((entry) => ({
-  ...entry,
-  category: entry.category,
-}))
-
 export const MARKETING_INTEGRATION_APPS = [
   "Salesforce",
   "HubSpot",
@@ -454,3 +450,13 @@ export function isOAuthConnectable(
   }
   return supportsDualPatAuth(entry) && entry.oauthReady === true && entry.shipped === true
 }
+
+/** Self-serve connectors (shipped or OAuth-ready, not partner-gated). */
+export function listAvailableConnectors(): CatalogConnectorEntry[] {
+  return CONNECTOR_CATALOG.filter((entry) => isShippedConnector(entry))
+}
+
+export const AVAILABLE_CONNECTORS = listAvailableConnectors().map((entry) => ({
+  ...entry,
+  category: entry.category,
+}))

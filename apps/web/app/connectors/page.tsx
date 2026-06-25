@@ -73,10 +73,12 @@ import {
   CONNECTOR_CATEGORIES,
   OAUTH_CONNECTOR_TYPE_SET,
   OAUTH_VENDOR_KEYS,
+  PKCE_OAUTH_VENDOR_KEYS,
   connectorVendorKey,
   formatVendorLabel,
   isPartnerGatedConnector,
   isShippedConnector,
+  listAvailableConnectors,
   lookupConnectorCategory,
   supportsDualPatAuth,
 } from "@/lib/connectors"
@@ -678,6 +680,7 @@ function AddConnectorModal({
   onCreated,
   existingConnectors,
   publishedConnectors = [],
+  initialConnectorType = null,
 }: {
   open: boolean
   onClose: () => void
@@ -690,6 +693,7 @@ function AddConnectorModal({
     authType: "oauth" | "apiKey"
     certificationBadge?: string | null
   }>
+  initialConnectorType?: string | null
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -954,6 +958,19 @@ function AddConnectorModal({
     }
   }
 
+  useEffect(() => {
+    if (!open || !initialConnectorType) return
+    const preset = initialConnectorType.trim()
+    if (!preset) return
+    const connector = catalogConnectors.find(
+      (entry) =>
+        entry.type === preset ||
+        entry.vendorKey === preset ||
+        connectorVendorKey(entry.type) === connectorVendorKey(preset),
+    )
+    if (connector) handleSelectConnector(connector)
+  }, [open, initialConnectorType, catalogConnectors])
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[85vh] overflow-hidden flex flex-col">
@@ -1018,6 +1035,7 @@ function AddConnectorModal({
                     pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
                     cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-400" },
                     orange: { active: "bg-orange-500 text-white", inactive: "hover:bg-orange-500/10 hover:text-orange-400" },
+                    indigo: { active: "bg-indigo-500 text-white", inactive: "hover:bg-indigo-500/10 hover:text-indigo-400" },
                   }
                   const colors = colorMap[data.color] || colorMap.blue
                   return (
@@ -1161,6 +1179,12 @@ function AddConnectorModal({
                       <p className="text-xs text-muted-foreground mt-1">
                         You&apos;ll be redirected to {selectedType} to authorize Gravitre
                       </p>
+                      {selectedConnectorMeta()?.vendorKey &&
+                        PKCE_OAUTH_VENDOR_KEYS.has(selectedConnectorMeta()!.vendorKey!) && (
+                          <p className="text-[11px] text-muted-foreground mt-2">
+                            Uses secure PKCE authorization (required by {selectedType}).
+                          </p>
+                        )}
                     </div>
                     <div className="space-y-3 text-left max-w-sm mx-auto">
                       <div>
@@ -1845,7 +1869,9 @@ function ConnectorsPageContent() {
         })
       } else {
         toast.success("Connector connected", {
-          description: provider ? `${provider} OAuth completed` : "OAuth authentication successful",
+          description: provider
+            ? `${formatVendorLabel(provider)} OAuth completed`
+            : "OAuth authentication successful",
         })
       }
     } else if (oauth === "error") {
@@ -1867,6 +1893,7 @@ function ConnectorsPageContent() {
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
+  const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -1989,6 +2016,17 @@ function ConnectorsPageContent() {
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
 
   const connectedCount = connectors.filter((c) => c.status === "connected").length
+  const connectedVendorKeys = useMemo(
+    () => new Set(connectors.map((c) => connectorVendorKey(c.type))),
+    [connectors],
+  )
+  const availableToConnect = useMemo(
+    () =>
+      listAvailableConnectors().filter(
+        (entry) => !connectedVendorKeys.has(entry.vendorKey),
+      ),
+    [connectedVendorKeys],
+  )
   const hasActiveFilters = Boolean(
     searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all",
   )
@@ -2001,6 +2039,16 @@ function ConnectorsPageContent() {
     setSearchQuery("")
     setStatusFilter("all")
     setCategoryFilter("all")
+  }
+
+  function openAddModal(preset?: string | null) {
+    setAddModalPreset(preset ?? null)
+    setAddModal(true)
+  }
+
+  function closeAddModal() {
+    setAddModal(false)
+    setAddModalPreset(null)
   }
 
   const statusFilterOptions = [
@@ -2137,6 +2185,7 @@ function ConnectorsPageContent() {
                       pink: "text-pink-400",
                       cyan: "text-cyan-400",
                       orange: "text-orange-400",
+                      indigo: "text-indigo-400",
                     }
                     return (
                       <DropdownMenuItem 
@@ -2206,7 +2255,7 @@ function ConnectorsPageContent() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={() => setAddModal(true)} className="gap-2 shrink-0">
+              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Connector</span>
               </Button>
@@ -2245,7 +2294,48 @@ function ConnectorsPageContent() {
         </div>
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
-        <ConnectorRecommendations onConnect={() => setAddModal(true)} />
+        <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
+
+        {availableToConnect.length > 0 && (
+          <section
+            aria-label="Available connectors"
+            className="border-b border-border bg-secondary/20 px-4 md:px-6 py-4"
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Available connectors</h2>
+                <p className="text-xs text-muted-foreground">
+                  Self-serve integrations ready to connect from this workspace.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => openAddModal()}>
+                Browse all
+              </Button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {availableToConnect.map((entry) => (
+                <button
+                  key={entry.vendorKey}
+                  type="button"
+                  onClick={() => openAddModal(entry.type)}
+                  className="group flex min-w-[180px] shrink-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/5"
+                >
+                  <ConnectorIcon vendor={entry.type} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-foreground">{entry.type}</span>
+                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium uppercase text-emerald-500">
+                        Available
+                      </span>
+                    </div>
+                    <p className="truncate text-[11px] text-muted-foreground">{entry.description}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">
@@ -2281,10 +2371,26 @@ function ConnectorsPageContent() {
               <p className="text-sm text-muted-foreground mb-4 max-w-sm">
                 Connect your CRM, analytics, and productivity tools to power workflows and agents.
               </p>
-              <Button onClick={() => setAddModal(true)} className="gap-2">
+              <Button onClick={() => openAddModal()} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add your first connector
               </Button>
+              {availableToConnect.length > 0 && (
+                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+                  {availableToConnect.slice(0, 6).map((entry) => (
+                    <Button
+                      key={entry.vendorKey}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => openAddModal(entry.type)}
+                    >
+                      <ConnectorIcon vendor={entry.type} size="xs" showStatusIndicator={false} />
+                      {entry.type}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : filteredConnectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-4">
@@ -2418,7 +2524,8 @@ function ConnectorsPageContent() {
         )}
         <AddConnectorModal
           open={addModal}
-          onClose={() => setAddModal(false)}
+          onClose={closeAddModal}
+          initialConnectorType={addModalPreset}
           existingConnectors={connectors}
           publishedConnectors={publishedConnectors}
           onCreated={async () => {
