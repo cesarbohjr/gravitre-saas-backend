@@ -1287,7 +1287,7 @@ VENDORS: list[tuple] = [
         "Canva",
         "Learning / Creative",
         "https://www.canva.dev/docs/connect/",
-        False,
+        True,
         "marketing",
         [
             ("designs.list", "List designs", "designs:read"),
@@ -1303,12 +1303,18 @@ VENDORS: list[tuple] = [
             ("brand.templates.list", "List brand templates", "brand:read"),
             ("batch.exports", "Batch export assets", "exports:write"),
         ],
+        [
+            ("exports.get", "Get export job", "exports:read"),
+            ("brand.templates.get", "Get brand template", "brand:read"),
+            ("designs.delete", "Delete design", "designs:write"),
+        ],
     ),
 ]
 
 
 def emit_vendor(defn: tuple) -> str:
-    vendor, display, category, docs, shipped, dept, v1, v2, v3 = defn
+    vendor, display, category, docs, shipped, dept, v1, v2, v3 = defn[:9]
+    v4 = defn[9] if len(defn) > 9 else ()
     lines = [
         "    build_vendor(",
         f'        "{vendor}",',
@@ -1337,6 +1343,23 @@ def emit_vendor(defn: tuple) -> str:
             f'            action("{vendor}", "{suffix}", "{name}", tier="v3", kind="{kind}", scope_suffix="{scope}"),'
         )
     lines.append("        ),")
+    if v4:
+        lines.append("        v4=(")
+        for suffix, name, scope in v4:
+            destructive = suffix.endswith(".delete")
+            requires_approval = destructive
+            idempotent = suffix.endswith(".get")
+            extra = ""
+            if idempotent:
+                extra += ", idempotent=True"
+            if destructive:
+                extra += ", destructive=True"
+            if requires_approval:
+                extra += ", requires_approval=True"
+            lines.append(
+                f'            action("{vendor}", "{suffix}", "{name}", tier="v4", kind="advanced", scope_suffix="{scope}"{extra}),'
+            )
+        lines.append("        ),")
     lines.append("    ),")
     return "\n".join(lines)
 

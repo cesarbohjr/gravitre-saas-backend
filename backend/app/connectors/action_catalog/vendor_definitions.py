@@ -1369,7 +1369,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Canva",
         "Learning / Creative",
         "https://www.canva.dev/docs/connect/",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("canva", "designs.list", "List designs", tier="v1", kind="read", scope_suffix="designs:read", idempotent=True),
@@ -1384,6 +1384,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("canva", "autofill.create", "Autofill brand template", tier="v3", kind="advanced", scope_suffix="autofill:write"),
             action("canva", "brand.templates.list", "List brand templates", tier="v3", kind="advanced", scope_suffix="brand:read"),
             action("canva", "batch.exports", "Batch export assets", tier="v3", kind="advanced", scope_suffix="exports:write"),
+        ),
+        v4=(
+            action("canva", "exports.get", "Get export job", tier="v4", kind="advanced", scope_suffix="exports:read", idempotent=True),
+            action("canva", "brand.templates.get", "Get brand template", tier="v4", kind="advanced", scope_suffix="brand:read", idempotent=True),
+            action("canva", "designs.delete", "Delete design", tier="v4", kind="advanced", scope_suffix="designs:write", destructive=True, requires_approval=True),
         ),
     ),
 )
