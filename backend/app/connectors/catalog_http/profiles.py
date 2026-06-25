@@ -42,7 +42,7 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     ),
     "mixpanel": VendorHttpProfile("mixpanel", "mixpanel", "https://mixpanel.com/api/2.0", "api_token"),
     "hootsuite": VendorHttpProfile("hootsuite", "hootsuite", "https://platform.hootsuite.com/v1", "generic_oauth"),
-    "apollo": VendorHttpProfile("apollo", "apollo", "https://api.apollo.io/v1", "api_token"),
+    "apollo": VendorHttpProfile("apollo", "apollo", "https://api.apollo.io/api/v1", "api_token"),
     "aws_s3": VendorHttpProfile("aws_s3", "aws_s3", "https://s3.{region}.amazonaws.com", "api_token"),
     "canva": VendorHttpProfile("canva", "canva", "https://api.canva.com/rest/v1", "generic_oauth"),
     "figma": VendorHttpProfile("figma", "figma", "https://api.figma.com/v1", "generic_oauth"),

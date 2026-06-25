@@ -289,7 +289,7 @@ VENDORS: list[tuple] = [
         "Apollo",
         "Sales / Prospecting",
         "https://apolloio.github.io/apollo-api-docs/",
-        False,
+        True,
         "sales",
         [
             ("people.search", "Search people", "people:read"),
@@ -304,6 +304,11 @@ VENDORS: list[tuple] = [
             ("enrichment.bulk", "Bulk enrich records", "enrichment:write"),
             ("tasks.create", "Create outreach task", "tasks:write"),
             ("signals.subscribe", "Subscribe intent signals", "signals:read"),
+        ],
+        [
+            ("contacts.update", "Update contact", "contacts:write"),
+            ("contacts.delete", "Delete contact", "contacts:write"),
+            ("sequences.remove", "Remove contact from sequence", "sequences:write"),
         ],
     ),
     (
@@ -1373,7 +1378,7 @@ def emit_vendor(defn: tuple) -> str:
     if v4:
         lines.append("        v4=(")
         for suffix, name, scope in v4:
-            destructive = suffix.endswith(".delete")
+            destructive = suffix.endswith(".delete") or suffix.endswith(".remove") or suffix.endswith(".update")
             requires_approval = destructive
             idempotent = suffix.endswith(".get")
             extra = ""

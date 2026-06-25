@@ -205,3 +205,169 @@ def batch_send_mail(
             }
         )
     return _request(access_token, "POST", "/$batch", json_body={"requests": requests_payload})
+
+
+def list_joined_teams(access_token: str) -> dict[str, Any]:
+    return _request(access_token, "GET", "/me/joinedTeams")
+
+
+def list_team_channels(access_token: str, *, team_id: str) -> dict[str, Any]:
+    if not team_id:
+        raise Microsoft365APIError("team_id is required")
+    return _request(access_token, "GET", f"/teams/{team_id}/channels")
+
+
+def list_channel_messages(
+    access_token: str,
+    *,
+    team_id: str,
+    channel_id: str,
+    top: int = 25,
+) -> dict[str, Any]:
+    if not team_id or not channel_id:
+        raise Microsoft365APIError("team_id and channel_id are required")
+    params: dict[str, Any] = {"$top": min(max(int(top), 1), 50)}
+    return _request(
+        access_token,
+        "GET",
+        f"/teams/{team_id}/channels/{channel_id}/messages",
+        params=params,
+    )
+
+
+def create_online_meeting(
+    access_token: str,
+    *,
+    subject: str,
+    start_datetime: str,
+    end_datetime: str,
+) -> dict[str, Any]:
+    if not subject or not start_datetime or not end_datetime:
+        raise Microsoft365APIError("subject, start_datetime, and end_datetime are required")
+    body = {
+        "subject": subject,
+        "startDateTime": start_datetime,
+        "endDateTime": end_datetime,
+    }
+    return _request(access_token, "POST", "/me/onlineMeetings", json_body=body)
+
+
+def add_channel_tab(
+    access_token: str,
+    *,
+    team_id: str,
+    channel_id: str,
+    display_name: str,
+    content_url: str,
+) -> dict[str, Any]:
+    if not team_id or not channel_id or not display_name or not content_url:
+        raise Microsoft365APIError("team_id, channel_id, display_name, and content_url are required")
+    body = {
+        "displayName": display_name,
+        "teamsApp": {"id": "com.microsoft.teamspace.tab.web"},
+        "configuration": {"entityId": None, "contentUrl": content_url, "websiteUrl": content_url},
+    }
+    return _request(
+        access_token,
+        "POST",
+        f"/teams/{team_id}/channels/{channel_id}/tabs",
+        json_body=body,
+    )
+
+
+def add_team_member(
+    access_token: str,
+    *,
+    team_id: str,
+    user_id: str,
+    roles: list[str] | None = None,
+) -> dict[str, Any]:
+    if not team_id or not user_id:
+        raise Microsoft365APIError("team_id and user_id are required")
+    body = {
+        "@odata.type": "#microsoft.graph.aadUserConversationMember",
+        "roles": roles or ["member"],
+        "user@odata.bind": f"https://graph.microsoft.com/v1.0/users('{user_id}')",
+    }
+    return _request(access_token, "POST", f"/teams/{team_id}/members", json_body=body)
+
+
+def set_user_presence(
+    access_token: str,
+    *,
+    availability: str,
+    activity: str,
+    expiration_duration: str = "PT1H",
+) -> dict[str, Any]:
+    body = {
+        "availability": availability,
+        "activity": activity,
+        "expirationDuration": expiration_duration,
+    }
+    return _request(access_token, "POST", "/me/presence/setUserPreferredPresence", json_body=body)
+
+
+def search_sharepoint_sites(access_token: str, *, query: str, top: int = 25) -> dict[str, Any]:
+    if not query:
+        raise Microsoft365APIError("query is required")
+    return _request(
+        access_token,
+        "GET",
+        "/sites",
+        params={"search": query, "$top": min(max(int(top), 1), 50)},
+    )
+
+
+def list_site_drives(access_token: str, *, site_id: str) -> dict[str, Any]:
+    if not site_id:
+        raise Microsoft365APIError("site_id is required")
+    return _request(access_token, "GET", f"/sites/{site_id}/drives")
+
+
+def list_drive_items(
+    access_token: str,
+    *,
+    drive_id: str,
+    item_id: str | None = None,
+    top: int = 25,
+) -> dict[str, Any]:
+    if not drive_id:
+        raise Microsoft365APIError("drive_id is required")
+    if item_id:
+        path = f"/drives/{drive_id}/items/{item_id}/children"
+    else:
+        path = f"/drives/{drive_id}/root/children"
+    return _request(access_token, "GET", path, params={"$top": min(max(int(top), 1), 50)})
+
+
+def upload_drive_item_content(
+    access_token: str,
+    *,
+    drive_id: str,
+    filename: str,
+    content: str | bytes,
+    parent_item_id: str | None = None,
+) -> dict[str, Any]:
+    if not drive_id or not filename:
+        raise Microsoft365APIError("drive_id and filename are required")
+    if parent_item_id:
+        path = f"/drives/{drive_id}/items/{parent_item_id}:/{filename}:/content"
+    else:
+        path = f"/drives/{drive_id}/root:/{filename}:/content"
+    url = f"{GRAPH_API}{path}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    data = content.encode("utf-8") if isinstance(content, str) else content
+    with httpx.Client(timeout=TIMEOUT_SEC) as client:
+        response = client.put(url, headers=headers, content=data)
+    if response.status_code >= 400:
+        raise Microsoft365APIError(
+            f"Microsoft Graph {response.status_code}: sharepoint upload",
+            status_code=response.status_code,
+        )
+    return response.json() if response.text else {}
+
+
+def delete_drive_item(access_token: str, *, drive_id: str, item_id: str) -> dict[str, Any]:
+    if not drive_id or not item_id:
+        raise Microsoft365APIError("drive_id and item_id are required")
+    return _request(access_token, "DELETE", f"/drives/{drive_id}/items/{item_id}")

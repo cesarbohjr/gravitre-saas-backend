@@ -235,7 +235,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "StackAdapt", vendorKey: "stackadapt", description: "Programmatic advertising", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   // Sales / Prospecting
   { type: "LinkedIn", vendorKey: "linkedin", description: "Prospect enrichment for Sales Agent", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
-  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting" },
+  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
   // Payments / Finance
   { type: "Stripe", vendorKey: "stripe", description: "Payment processing", authType: "apiKey", credentialModel: "api_key", category: "Payments / Finance", shipped: true },
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },
@@ -245,7 +245,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   // Communication
   { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true, oauthReady: true },
   { type: "Microsoft Teams", vendorKey: "microsoft_teams", description: "Collaboration hub", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
-  { type: "Microsoft 365", vendorKey: "microsoft365", description: "Outlook, Excel, and Microsoft Graph", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication", oauthReady: true },
+  { type: "Microsoft 365", vendorKey: "microsoft365", description: "Outlook, Teams, SharePoint, and Microsoft Graph", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication", oauthReady: true, shipped: true },
   { type: "Gmail", vendorKey: "gmail", description: "Email integration", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
   { type: "Google Calendar", vendorKey: "google_calendar", description: "Calendar availability and events", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
   { type: "Outlook", vendorKey: "outlook", description: "Microsoft email", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },

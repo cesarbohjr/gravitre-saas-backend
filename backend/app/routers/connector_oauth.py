@@ -138,7 +138,12 @@ from app.connectors.oauth_state import (
     sign_oauth_state,
     verify_oauth_state,
 )
-from app.connectors.platform import mark_connector_pending_oauth, prepare_oauth_connector
+from app.connectors.platform import (
+    is_connector_type_schema_error,
+    mark_connector_pending_oauth,
+    prepare_oauth_connector,
+    raise_connector_type_schema_error,
+)
 from app.core.errors import error_detail
 from app.workflows.audit import write_audit_event
 
@@ -461,6 +466,8 @@ async def start_oauth(
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001
+            if is_connector_type_schema_error(exc):
+                raise_connector_type_schema_error(exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),

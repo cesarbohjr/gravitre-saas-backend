@@ -41,6 +41,32 @@ def _is_duplicate_connector_name_error(exc: BaseException) -> bool:
     return "23505" in msg or "connectors_org_name_key" in msg
 
 
+def is_connector_type_schema_error(exc: BaseException) -> bool:
+    if getattr(exc, "code", None) == "23514":
+        return True
+    msg = str(exc)
+    return "23514" in msg or "connectors_type_check" in msg
+
+
+def raise_connector_type_schema_error(exc: BaseException) -> None:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=error_detail(
+            "Connector type is not enabled in the database. Apply the latest Supabase migration "
+            "(supabase db push) or run supabase/migrations/20260625120000_expand_connector_types_full_catalog.sql.",
+            "CONNECTOR_TYPE_SCHEMA_OUTDATED",
+        ),
+    ) from exc
+
+
+def _is_connector_type_check_error(exc: BaseException) -> bool:
+    return is_connector_type_schema_error(exc)
+
+
+def _raise_connector_type_schema_error(exc: BaseException) -> None:
+    raise_connector_type_schema_error(exc)
+
+
 def _fetch_connector_by_vendor(
     client,
     org_id: str,
@@ -205,6 +231,8 @@ def prepare_oauth_connector(
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
+        if _is_connector_type_check_error(exc):
+            _raise_connector_type_schema_error(exc)
         if not _is_duplicate_connector_name_error(exc):
             raise
         recovered = find_existing_oauth_connector(client, org_id, vendor, name)

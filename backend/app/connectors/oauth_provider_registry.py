@@ -164,8 +164,13 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             vendor="microsoft365",
             authorize_url="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
             token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-            scopes="offline_access User.Read Mail.Read Mail.Send Calendars.ReadWrite Files.ReadWrite.All ChannelMessage.Send",
-            notes="Microsoft Entra app; tenant-specific consent may apply",
+            scopes=(
+                "offline_access User.Read Mail.Read Mail.Send Calendars.ReadWrite "
+                "Files.ReadWrite.All ChannelMessage.Send Team.ReadBasic.All "
+                "Channel.ReadBasic.All ChannelMessage.Read.All OnlineMeetings.ReadWrite "
+                "Sites.Read.All Sites.ReadWrite.All"
+            ),
+            notes="Microsoft Entra app; Sites.* and Teams scopes may require admin consent",
         ),
         OAuthProviderSpec(
             vendor="zendesk",

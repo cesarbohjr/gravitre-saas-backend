@@ -3102,6 +3102,8 @@ from app.services.monday_tools import MONDAY_TOOL_EXECUTORS
 from app.services.odoo_tools import ODOO_TOOL_EXECUTORS
 from app.services.canva_tools import CANVA_TOOL_EXECUTORS
 from app.services.figma_tools import FIGMA_TOOL_EXECUTORS
+from app.services.microsoft365_teams_tools import MICROSOFT365_TEAMS_SHAREPOINT_TOOLS
+from app.services.apollo_tools import APOLLO_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -3122,6 +3124,8 @@ _TOOL_REGISTRY.update(MONDAY_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(ODOO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CANVA_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(FIGMA_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MICROSOFT365_TEAMS_SHAREPOINT_TOOLS)
+_TOOL_REGISTRY.update(APOLLO_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.connectors.catalog_http.registry import build_catalog_http_executors

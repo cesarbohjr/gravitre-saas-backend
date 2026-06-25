@@ -59,6 +59,8 @@
     "freshdesk:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-freshdesk-oauth.ps1",
     "microsoft365:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-microsoft365-operator-env.ps1",
     "microsoft365:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-microsoft365-oauth.ps1",
+    "apollo:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-apollo-api.ps1",
+    "db:connector-types": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-connector-types-migration.ps1",
     "netsuite:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-netsuite-operator-env.ps1",
     "netsuite:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-netsuite-oauth.ps1",
     "workday:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-workday-operator-env.ps1",

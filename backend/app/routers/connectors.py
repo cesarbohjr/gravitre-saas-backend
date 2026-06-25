@@ -22,7 +22,12 @@ from app.core.errors import error_detail
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
-from app.connectors.platform import masked_api_key_for_response, store_connector_api_key
+from app.connectors.platform import (
+    is_connector_type_schema_error,
+    masked_api_key_for_response,
+    raise_connector_type_schema_error,
+    store_connector_api_key,
+)
 from app.services.partner_marketplace_service import is_published_partner_vendor
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
 from app.connectors.salesforce_oauth import ensure_salesforce_access_token, normalize_vendor as normalize_salesforce_vendor
@@ -197,6 +202,7 @@ def _docs_url(vendor: str) -> str | None:
         "google_drive": "https://developers.google.com/drive/api",
         "google_docs": "https://developers.google.com/docs/api",
         "google_sheets": "https://developers.google.com/sheets/api",
+        "apollo": "https://docs.apollo.io/reference/authentication",
     }
     return mapping.get(vendor)
 
@@ -806,6 +812,8 @@ async def create_connector_route(
     except Exception as exc:  # noqa: BLE001
         msg = str(exc)
         if "23505" not in msg and "connectors_org_name_key" not in msg:
+            if is_connector_type_schema_error(exc):
+                raise_connector_type_schema_error(exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),

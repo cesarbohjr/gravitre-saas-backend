@@ -96,3 +96,19 @@ def test_store_api_key_requires_encryption():
     with pytest.raises(HTTPException) as exc:
         store_connector_api_key(client, "org", "conn", "key", settings)
     assert exc.value.status_code == 503
+
+
+def test_prepare_oauth_type_check_error():
+    client = MagicMock()
+    client.table.return_value.insert.return_value.execute.side_effect = Exception(
+        'new row violates check constraint "connectors_type_check" (23514)'
+    )
+    with patch("app.connectors.platform.find_existing_oauth_connector", return_value=None):
+        with pytest.raises(HTTPException) as exc:
+            prepare_oauth_connector(
+                client, org_id="org-1", vendor="figma", name="figma", environment_name="production"
+            )
+    assert exc.value.status_code == 503
+    detail = exc.value.detail
+    if isinstance(detail, dict):
+        assert detail.get("code") == "CONNECTOR_TYPE_SCHEMA_OUTDATED"

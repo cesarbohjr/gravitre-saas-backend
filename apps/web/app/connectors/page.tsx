@@ -67,7 +67,7 @@ import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { ensureSelectedOrg } from "@/lib/org-context"
-import { connectorsApi } from "@/lib/api"
+import { connectorsApi, ApiRequestError } from "@/lib/api"
 import { publicApiUrl } from "@/lib/public-urls"
 import {
   CONNECTOR_CATEGORIES,
@@ -218,6 +218,17 @@ function normalizeConnectorsResponse(payload: unknown): Connector[] {
 }
 
 function oauthErrorMessage(err: unknown, providerLabel: string): string {
+  if (err instanceof ApiRequestError) {
+    const payload = err.payload
+    if (payload && typeof payload === "object") {
+      const detail = (payload as { detail?: unknown }).detail
+      if (typeof detail === "string" && detail.trim()) return detail
+      if (detail && typeof detail === "object") {
+        const message = (detail as { message?: unknown }).message
+        if (typeof message === "string" && message.trim()) return message
+      }
+    }
+  }
   if (err instanceof Error && err.message.trim()) return err.message
   return `${providerLabel} OAuth is not configured on the API host`
 }
@@ -1576,6 +1587,24 @@ function AddConnectorModal({
                   </>
                 )}
 
+                {selectedType === "Apollo" && (
+                  <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Paste your Apollo API key from Settings → Integrations → API. Search, contacts, and sequences
+                      work with a standard key; delete and sequence-removal actions (v4) require a master API key.
+                    </p>
+                    <a
+                      href="https://docs.apollo.io/reference/authentication"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      Apollo API documentation
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Key className="h-4 w-4 text-amber-400" />
@@ -1585,14 +1614,20 @@ function AddConnectorModal({
                           ? "Personal access token"
                           : selectedType === "Odoo"
                             ? "API key"
-                            : "API Key"}
+                            : selectedType === "Apollo"
+                              ? "Apollo API key"
+                              : "API Key"}
                     </label>
                     <div className="relative">
                       <Input
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your API key or token"
+                        placeholder={
+                          selectedType === "Apollo"
+                            ? "Paste your Apollo API key"
+                            : "Enter your API key or token"
+                        }
                         className="bg-secondary pr-10"
                       />
                       <button
