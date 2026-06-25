@@ -217,7 +217,7 @@ function normalizeConnectorsResponse(payload: unknown): Connector[] {
     .filter((item) => item.id.length > 0)
 }
 
-function oauthErrorMessage(err: unknown, providerLabel: string): string {
+function apiDetailMessage(err: unknown): string | null {
   if (err instanceof ApiRequestError) {
     const payload = err.payload
     if (payload && typeof payload === "object") {
@@ -230,7 +230,15 @@ function oauthErrorMessage(err: unknown, providerLabel: string): string {
     }
   }
   if (err instanceof Error && err.message.trim()) return err.message
-  return `${providerLabel} OAuth is not configured on the API host`
+  return null
+}
+
+function oauthErrorMessage(err: unknown, providerLabel: string): string {
+  return apiDetailMessage(err) ?? `${providerLabel} OAuth is not configured on the API host`
+}
+
+function connectorErrorMessage(err: unknown): string {
+  return apiDetailMessage(err) ?? "Something went wrong while saving the connector."
 }
 
 const statusConfig = {
@@ -898,7 +906,9 @@ function AddConnectorModal({
       handleClose()
     } catch (err) {
       console.error("[connectors] Failed to create connector:", err)
-      toast.error("Failed to create connector")
+      toast.error("Failed to create connector", {
+        description: connectorErrorMessage(err),
+      })
     } finally {
       setIsCreating(false)
     }
@@ -957,7 +967,8 @@ function AddConnectorModal({
     }
     setSelectedType(connector.type)
     setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
-    setName((connector.vendorKey || connector.type).toLowerCase().replace(/\s+/g, "-"))
+    const vendorSlug = (connector.vendorKey || connector.type).toLowerCase().replace(/\s+/g, "-")
+    setName(`${vendorSlug}-${environment}`)
 
     // Route to appropriate auth flow
     if (connector.authType === "oauth") {

@@ -801,6 +801,8 @@ async def create_connector_route(
             "database": str(cfg.get("database") or cfg.get("db") or "").strip(),
         }
         row["docs_url"] = "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html"
+    if vendor == "apollo":
+        row["auth_type"] = "apiKey"
     connector_id: str
     try:
         r = client.table("connectors").insert(row).execute()
@@ -828,19 +830,43 @@ async def create_connector_route(
             .execute()
         )
         if not existing.data:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=error_detail("Connector name already exists", "CONNECTOR_NAME_CONFLICT"),
-            ) from exc
-        connector_id = str(existing.data[0]["id"])
-        update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
-        client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
+            soft_deleted = (
+                client.table("connectors")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("name", body.name.strip())
+                .not_.is_("deleted_at", "null")
+                .limit(1)
+                .execute()
+            )
+            if soft_deleted.data:
+                connector_id = str(soft_deleted.data[0]["id"])
+                update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
+                update_payload["deleted_at"] = None
+                client.table("connectors").update(update_payload).eq("id", connector_id).eq(
+                    "org_id", org_id
+                ).execute()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=error_detail(
+                        "Connector name already exists. Choose a different name.",
+                        "CONNECTOR_NAME_CONFLICT",
+                    ),
+                ) from exc
+        else:
+            connector_id = str(existing.data[0]["id"])
+            update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
+            client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
     if body.api_key:
-        encrypted = store_connector_api_key(client, org_id, connector_id, body.api_key, settings)
+        api_key_plain = body.api_key.strip()
+        encrypted = store_connector_api_key(client, org_id, connector_id, api_key_plain, settings)
         if encrypted:
             client.table("connectors").update({"api_key_encrypted": encrypted}).eq("id", connector_id).eq(
                 "org_id", org_id
             ).execute()
+        if vendor == "apollo" and settings.connector_secrets_encryption_key:
+            set_secret(client, org_id, connector_id, "api_token", api_key_plain, settings)
     if body.secrets:
         if not settings.connector_secrets_encryption_key:
             raise HTTPException(
