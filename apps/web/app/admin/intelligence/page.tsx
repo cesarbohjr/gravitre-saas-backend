@@ -34,6 +34,11 @@ function formatTime(value: unknown): string {
   return parsed.toLocaleString()
 }
 
+function readNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
   const [selectedGlossaryId, setSelectedGlossaryId] = useState<string>("")
@@ -136,7 +141,9 @@ export default function AdminIntelligencePage() {
               gaps.map((gap) => (
                 <div key={String(gap.id ?? gap.description)} className="rounded-lg border p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="destructive">{gap.failed_query_count ?? gap.failedQueryCount ?? 0} failed</Badge>
+                    <Badge variant="destructive">
+                      {readNumber(gap.failed_query_count ?? gap.failedQueryCount)} failed
+                    </Badge>
                     <Badge variant="outline">{String(gap.status ?? "open")}</Badge>
                   </div>
                   <p className="mt-2 font-medium">{String(gap.description ?? "")}</p>
@@ -175,9 +182,9 @@ export default function AdminIntelligencePage() {
                   <div key={String(cluster.id ?? cluster.cluster_label)} className="rounded-lg border p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{String(cluster.cluster_label ?? "Theme")}</span>
-                      <Badge variant="secondary">{cluster.member_query_count ?? 0} queries</Badge>
-                      {(cluster.failed_search_count ?? 0) > 0 ? (
-                        <Badge variant="outline">{cluster.failed_search_count} failed</Badge>
+                      <Badge variant="secondary">{readNumber(cluster.member_query_count)} queries</Badge>
+                      {readNumber(cluster.failed_search_count) > 0 ? (
+                        <Badge variant="outline">{readNumber(cluster.failed_search_count)} failed</Badge>
                       ) : null}
                     </div>
                     {Array.isArray(cluster.representative_queries) && cluster.representative_queries.length > 0 ? (
@@ -288,7 +295,7 @@ export default function AdminIntelligencePage() {
                           <span>
                             {String(rel.entityType ?? "")}: {String(rel.entityLabel ?? rel.entityId ?? "")}
                           </span>
-                          <Badge variant="secondary">evidence {String(rel.evidenceCount ?? 0)}</Badge>
+                          <Badge variant="secondary">evidence {readNumber(rel.evidenceCount)}</Badge>
                         </li>
                       ))}
                     </ul>
@@ -310,19 +317,23 @@ export default function AdminIntelligencePage() {
                         <tr key={String(rel.id)} className="border-b">
                           <td className="py-2 pr-4">
                             {String(rel.source_entity_type ?? "")} /{" "}
-                            {rel.source_entity_type === "glossary_term"
-                              ? glossaryById[String(rel.source_entity_id ?? "")] ?? rel.source_entity_id
-                              : rel.source_entity_id}
+                            {String(
+                              rel.source_entity_type === "glossary_term"
+                                ? glossaryById[String(rel.source_entity_id ?? "")] ?? rel.source_entity_id ?? ""
+                                : rel.source_entity_id ?? ""
+                            )}
                           </td>
                           <td className="py-2 pr-4">{String(rel.relationship_type ?? "")}</td>
                           <td className="py-2 pr-4">
                             {String(rel.target_entity_type ?? "")} /{" "}
-                            {rel.target_entity_type === "glossary_term"
-                              ? glossaryById[String(rel.target_entity_id ?? "")] ?? rel.target_entity_id
-                              : rel.target_entity_id}
+                            {String(
+                              rel.target_entity_type === "glossary_term"
+                                ? glossaryById[String(rel.target_entity_id ?? "")] ?? rel.target_entity_id ?? ""
+                                : rel.target_entity_id ?? ""
+                            )}
                           </td>
-                          <td className="py-2 pr-4">{String(rel.evidence_count ?? 0)}</td>
-                          <td className="py-2">{String(rel.confidence ?? 0)}</td>
+                          <td className="py-2 pr-4">{readNumber(rel.evidence_count)}</td>
+                          <td className="py-2">{readNumber(rel.confidence)}</td>
                         </tr>
                       ))}
                     </tbody>
