@@ -431,11 +431,11 @@ export default function ModelsPage() {
               , then deploy from the model detail page.
             </DialogDescription>
             {activeTemplateLayer ? (
-              <div className="rounded-lg border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-left text-xs text-violet-200">
-                <p className="font-medium text-violet-100">
+              <div className="rounded-lg border border-violet-300/80 bg-violet-50 px-3 py-2.5 text-left text-xs dark:border-violet-500/30 dark:bg-violet-950/50">
+                <p className="font-semibold text-violet-950 dark:text-violet-100">
                   Template: {activeTemplateLayer.title}
                 </p>
-                <p className="mt-1 text-violet-200/80">
+                <p className="mt-1 leading-relaxed text-violet-800 dark:text-violet-200">
                   Pre-filled for this stack layer — adjust name, base model, or task profile before creating.
                 </p>
               </div>
