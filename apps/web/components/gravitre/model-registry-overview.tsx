@@ -144,7 +144,7 @@ export function ModelRegistryOverview({
                   "rounded-xl border bg-background/50 p-3 text-left ring-1 backdrop-blur-sm transition-all",
                   layer.accent,
                   interactive && "cursor-pointer hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50",
-                  isSelected && "ring-2 ring-violet-500/60 shadow-md",
+                  isSelected && "ring-2 ring-violet-500/60 shadow-md bg-violet-500/5",
                   !interactive && "cursor-default"
                 )}
               >

@@ -45,6 +45,7 @@ import {
   defaultBaseModelForType,
   modelTypeMeta,
   resolveBaseModelOptions,
+  stackLayerById,
   templateForLayer,
   type MlStackLayerId,
 } from "@/lib/ml-registry-catalog"
@@ -186,17 +187,28 @@ export default function ModelsPage() {
   }, [models, statusFilter, typeFilter])
 
   useEffect(() => {
-    if (!createOpen) return
+    if (!createOpen || selectedTemplateLayer) return
     const next = defaultBaseModelForType(modelType, connectedVendorKeys)
     setBaseModel(next)
-    if (!selectedTemplateLayer) {
-      setTaskType(TASK_TYPE_SUGGESTIONS[modelType][0] ?? "")
-    }
+    setTaskType(TASK_TYPE_SUGGESTIONS[modelType][0] ?? "")
   }, [modelType, connectedVendorKeys, createOpen, selectedTemplateLayer])
+
+  function resetRegisterForm() {
+    setName("")
+    setDescription("")
+    setModelType("fine_tuned_llm")
+    setTaskType(TASK_TYPE_SUGGESTIONS.fine_tuned_llm[0] ?? "")
+    setBaseModel(defaultBaseModelForType("fine_tuned_llm", connectedVendorKeys))
+  }
 
   function openRegisterDialog() {
     setSelectedTemplateLayer(null)
+    resetRegisterForm()
     setCreateOpen(true)
+  }
+
+  function clearTemplateSelection() {
+    setSelectedTemplateLayer(null)
   }
 
   function applyLayerTemplate(layerId: MlStackLayerId) {
@@ -252,6 +264,7 @@ export default function ModelsPage() {
 
   const selectedTypeMeta = modelTypeMeta(modelType)
   const selectedBaseOption = baseModelOptions.find((o) => o.id === baseModel)
+  const activeTemplateLayer = selectedTemplateLayer ? stackLayerById(selectedTemplateLayer) : undefined
   const groupedBaseModels = useMemo(() => {
     const groups = new Map<string, typeof baseModelOptions>()
     for (const option of baseModelOptions) {
@@ -398,29 +411,38 @@ export default function ModelsPage() {
         open={createOpen}
         onOpenChange={(open) => {
           setCreateOpen(open)
-          if (!open) setSelectedTemplateLayer(null)
+          if (!open) {
+            setSelectedTemplateLayer(null)
+            resetRegisterForm()
+          }
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="flex max-h-[min(92vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+          <DialogHeader className="shrink-0 space-y-3 border-b border-border/60 px-6 pb-4 pt-6">
+            <DialogTitle className="flex items-center gap-2 pr-8">
               <Sparkles className="h-4 w-4 text-violet-400" />
               Register model
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-left">
               Creates a draft registry entry. Train on{" "}
               <Link href="/training" className="text-primary underline-offset-4 hover:underline">
                 Training
               </Link>
               , then deploy from the model detail page.
-              {selectedTemplateLayer ? (
-                <span className="mt-1 block text-violet-400/90">
-                  Pre-filled from the {templateForLayer(selectedTemplateLayer).modelType.replace(/_/g, " ")} template — adjust any field below.
-                </span>
-              ) : null}
             </DialogDescription>
+            {activeTemplateLayer ? (
+              <div className="rounded-lg border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-left text-xs text-violet-200">
+                <p className="font-medium text-violet-100">
+                  Template: {activeTemplateLayer.title}
+                </p>
+                <p className="mt-1 text-violet-200/80">
+                  Pre-filled for this stack layer — adjust name, base model, or task profile before creating.
+                </p>
+              </div>
+            ) : null}
           </DialogHeader>
-          <div className="space-y-4 py-2">
+
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="model-name">Name</Label>
               <Input
@@ -432,13 +454,23 @@ export default function ModelsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="model-type">Model type</Label>
-              <Select value={modelType} onValueChange={(v) => setModelType(v as MlModelType)}>
-                <SelectTrigger id="model-type">
-                  <SelectValue />
+              <Select
+                value={modelType}
+                onValueChange={(v) => {
+                  clearTemplateSelection()
+                  setModelType(v as MlModelType)
+                }}
+              >
+                <SelectTrigger id="model-type" className="h-auto min-h-10 py-2">
+                  <SelectValue>
+                    {selectedTypeMeta
+                      ? `${selectedTypeMeta.label} — ${selectedTypeMeta.tagline}`
+                      : "Select model type"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {MODEL_TYPE_CATALOG.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
+                    <SelectItem key={t.value} value={t.value} textValue={t.label}>
                       <span className="font-medium">{t.label}</span>
                       <span className="ml-2 text-muted-foreground">— {t.tagline}</span>
                     </SelectItem>
@@ -453,15 +485,30 @@ export default function ModelsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="base-model">Base model</Label>
-              <Select value={baseModel} onValueChange={setBaseModel}>
-                <SelectTrigger id="base-model">
+              <Select
+                value={baseModel}
+                onValueChange={(v) => {
+                  clearTemplateSelection()
+                  setBaseModel(v)
+                }}
+              >
+                <SelectTrigger id="base-model" className="h-auto min-h-10 py-2">
                   <SelectValue placeholder="Select base model">
-                    {selectedBaseOption
-                      ? `${selectedBaseOption.label} · ${selectedBaseOption.provider}`
-                      : "Select base model"}
+                    {selectedBaseOption ? (
+                      <span className="flex flex-col items-start gap-0.5 text-left">
+                        <span>
+                          {selectedBaseOption.label} · {selectedBaseOption.provider}
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {selectedBaseOption.id}
+                        </span>
+                      </span>
+                    ) : (
+                      "Select base model"
+                    )}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-72">
+                <SelectContent className="max-h-80">
                   {groupedBaseModels.map(([provider, options]) => (
                     <SelectGroup key={provider}>
                       <SelectLabel>{provider}</SelectLabel>
@@ -469,11 +516,13 @@ export default function ModelsPage() {
                         <SelectItem
                           key={option.id}
                           value={option.id}
+                          textValue={`${option.label} ${option.provider} ${option.id}`}
                           disabled={option.availability === "requires_connection"}
+                          className="items-start py-2"
                         >
-                          <div className="flex flex-col gap-0.5 py-0.5">
-                            <span className="flex flex-wrap items-center gap-2">
-                              {option.label}
+                          <div className="flex flex-col gap-1">
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-medium">{option.label}</span>
                               {option.versionTag ? (
                                 <span className="font-mono text-[10px] text-muted-foreground">
                                   {option.versionTag}
@@ -485,26 +534,18 @@ export default function ModelsPage() {
                                 </Badge>
                               ) : null}
                               {option.fineTunable ? (
-                                <Badge variant="outline" className="h-4 px-1 text-[9px] border-emerald-500/30 text-emerald-400">
+                                <Badge
+                                  variant="outline"
+                                  className="h-4 border-emerald-500/30 px-1 text-[9px] text-emerald-400"
+                                >
                                   Fine-tunable
                                 </Badge>
                               ) : null}
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "h-4 px-1 text-[9px] capitalize",
-                                  availabilityBadge[option.availability]
-                                )}
-                              >
-                                {option.availability === "platform"
-                                  ? "Platform"
-                                  : option.availability === "connected"
-                                    ? "Connected"
-                                    : "Needs connector"}
-                              </Badge>
                             </span>
-                            <span className="font-mono text-[10px] text-muted-foreground/80">{option.id}</span>
-                            <span className="text-[11px] text-muted-foreground">{option.description}</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">{option.id}</span>
+                            <span className="text-[11px] leading-snug text-muted-foreground">
+                              {option.description}
+                            </span>
                           </div>
                         </SelectItem>
                       ))}
@@ -513,7 +554,7 @@ export default function ModelsPage() {
                 </SelectContent>
               </Select>
               {baseModelOptions.some((o) => o.availability === "requires_connection") ? (
-                <p className="text-xs text-amber-400/90">
+                <p className="text-xs text-amber-600 dark:text-amber-400/90">
                   Some bases need a data connector.{" "}
                   <Link href="/connectors" className="underline underline-offset-2">
                     Connect data sources
@@ -523,14 +564,22 @@ export default function ModelsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="task-type">Task profile (optional)</Label>
-              <Select value={taskType} onValueChange={setTaskType}>
+              <Select
+                value={taskType}
+                onValueChange={(v) => {
+                  clearTemplateSelection()
+                  setTaskType(v)
+                }}
+              >
                 <SelectTrigger id="task-type">
-                  <SelectValue placeholder="Select task profile" />
+                  <SelectValue placeholder="Select task profile">
+                    {taskType ? formatType(taskType) : "Select task profile"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {TASK_TYPE_SUGGESTIONS[modelType].map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t.replace(/_/g, " ")}
+                    <SelectItem key={t} value={t} textValue={formatType(t)}>
+                      {formatType(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -546,7 +595,8 @@ export default function ModelsPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="shrink-0 border-t border-border/60 bg-background px-6 py-4">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
