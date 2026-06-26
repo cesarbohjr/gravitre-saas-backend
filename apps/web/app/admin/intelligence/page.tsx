@@ -81,17 +81,17 @@ export default function AdminIntelligencePage() {
   )
 
   return (
-    <AppShell
-      title="Intelligence"
-      subtitle="Query observability, clusters, glossary, and knowledge gaps (advisory only)"
-      actions={
-        <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      }
-    >
+    <AppShell title="Intelligence">
       <div className="space-y-6 p-4 md:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Query observability, clusters, glossary, and knowledge gaps (advisory only)
+          </p>
+          <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
