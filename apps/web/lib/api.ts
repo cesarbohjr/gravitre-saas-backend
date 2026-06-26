@@ -1416,6 +1416,31 @@ export const metricsApi = {
     ),
 }
 
+// ============ Intelligence admin (v2 observability + v3 knowledge) ============
+export type IntelligenceSnapshot = {
+  queryVolume: {
+    totalLogged: number
+    distinctNormalized: number
+    failedSearchCount: number
+  }
+  recentFailedSearches: Array<Record<string, unknown>>
+  clusters: Array<Record<string, unknown>>
+  glossary: Array<Record<string, unknown>>
+  knowledgeGaps: Array<Record<string, unknown>>
+  entityRelationships: Array<Record<string, unknown>>
+}
+
+export const intelligenceApi = {
+  snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
+  relationships: (params?: { entityType?: string; entityId?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.entityType) query.set("entityType", params.entityType)
+    if (params?.entityId) query.set("entityId", params.entityId)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
+  },
+}
+
 // ============ Settings ============
 export const settingsApi = {
   get: () => fetcher<Record<string, unknown>>(apiUrl("/api/settings")),
@@ -1968,6 +1993,7 @@ export const api = {
   audit: auditApi,
   billing: billingApi,
   metrics: metricsApi,
+  intelligence: intelligenceApi,
   settings: settingsApi,
   environments: environmentsApi,
   organizations: organizationsApi,

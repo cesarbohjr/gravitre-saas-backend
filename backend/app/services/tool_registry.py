@@ -492,7 +492,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             name="web_search",
             description=(
                 "Search the web for current information not in the knowledge base. "
-                "Returns not-configured until Tavily is wired (AI-016)."
+                "Use when internal data is insufficient or the question needs real-time external facts."
             ),
             parameters={
                 "type": "object",
@@ -502,6 +502,69 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             invoke_action="web.search",
             integration="web",
             always_available=True,
+        ),
+        AgentToolSpec(
+            name="assistant_agent_status",
+            description="List agents and their current status for this organization.",
+            parameters={"type": "object", "properties": {"agentId": {"type": "string"}}},
+            invoke_action="assistant.agent_status",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_connector_status",
+            description="List connectors and health for this organization.",
+            parameters={"type": "object", "properties": {}},
+            invoke_action="assistant.connector_status",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_workflow_runs",
+            description="List recent workflow runs, optionally filtered by status.",
+            parameters={
+                "type": "object",
+                "properties": {"limit": {"type": "integer"}, "status": {"type": "string"}},
+            },
+            invoke_action="assistant.workflow_runs",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_analytics",
+            description="Load organization analytics snapshot and recent workflow throughput.",
+            parameters={"type": "object", "properties": {}},
+            invoke_action="assistant.analytics",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_generate_document",
+            description="Generate a markdown document on a topic.",
+            parameters={"type": "object", "properties": {"topic": {"type": "string"}}, "required": ["topic"]},
+            invoke_action="assistant.generate_document",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_run_agent_task",
+            description="Run a task using a configured agent.",
+            parameters={
+                "type": "object",
+                "properties": {"task": {"type": "string"}, "agentId": {"type": "string"}},
+                "required": ["task"],
+            },
+            invoke_action="assistant.run_agent_task",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_create_workflow",
+            description="Create a draft workflow from a natural-language goal.",
+            parameters={"type": "object", "properties": {"name": {"type": "string"}, "goal": {"type": "string"}}},
+            invoke_action="assistant.create_workflow",
+            integration="platform",
+            always_available=False,
         ),
     ]
     return {spec.name: spec for spec in specs}
@@ -590,6 +653,8 @@ class ToolRegistry:
     def _action_implemented(self, spec: AgentToolSpec, invoke_action: str) -> bool:
         if spec.always_available:
             return True
+        if spec.name.startswith("assistant_"):
+            return True
         return invoke_action in self._registered
 
     def get_tools_for_agent(
@@ -638,13 +703,52 @@ class ToolRegistry:
             return {"success": False, "error": f"Unknown tool: {tool_name}", "tool": tool_name}
 
         if spec.always_available and tool_name == "web_search":
-            query = str((args or {}).get("query") or "")
+            from app.services.web_research import TavilyNotConfiguredError, search_web
+
+            query = str((args or {}).get("query") or "").strip()
+            if not query:
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": "Missing required 'query' argument",
+                }
+            try:
+                payload = await search_web(query, settings=ctx.settings, max_results=5)
+            except TavilyNotConfiguredError:
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": (
+                        "Web search is not configured for this environment. Set TAVILY_API_KEY."
+                    ),
+                    "query": query,
+                }
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("web_search_failed tool=%s query=%s", tool_name, query[:120])
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": f"Web search temporarily unavailable: {exc}",
+                    "query": query,
+                }
+            if payload.get("error"):
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": str(payload["error"]),
+                    "query": query,
+                }
             return {
-                "success": False,
+                "success": True,
                 "tool": tool_name,
-                "error": "web_search is not configured; add Tavily in AI-016",
                 "query": query,
+                "results": payload.get("results") or [],
+                "sources": payload.get("sources") or [],
+                "totalResults": payload.get("totalResults", 0),
             }
+
+        if tool_name.startswith("assistant_"):
+            return await self._execute_assistant_platform_tool(ctx, tool_name, args or {})
 
         raw_args = dict(args or {})
         try:
@@ -701,6 +805,65 @@ class ToolRegistry:
             "error": result.error_message or "Tool invocation failed",
             "error_code": result.error_code,
         }
+
+    async def _execute_assistant_platform_tool(
+        self,
+        ctx: ToolContext,
+        tool_name: str,
+        args: dict[str, Any],
+    ) -> dict[str, Any]:
+        from app.services import assistant_tools as assistant_tools_module
+
+        org_id = ctx.org_id
+        settings = ctx.settings
+        agent_id = str(args.get("agentId") or args.get("agent_id") or ctx.agent_id or "") or None
+        user_id = ctx.actor_id if ctx.actor_id not in {None, "", "system"} else None
+        try:
+            if tool_name == "assistant_agent_status":
+                payload = assistant_tools_module.tool_agent_status(
+                    org_id, settings, agent_id=agent_id
+                )
+            elif tool_name == "assistant_connector_status":
+                payload = assistant_tools_module.tool_connector_status(org_id, settings)
+            elif tool_name == "assistant_workflow_runs":
+                payload = assistant_tools_module.tool_workflow_runs(
+                    org_id,
+                    settings,
+                    limit=int(args.get("limit") or 10),
+                    status_filter=str(args.get("status")).strip() if args.get("status") else None,
+                )
+            elif tool_name == "assistant_analytics":
+                payload = assistant_tools_module.tool_analytics(
+                    org_id, settings, user_id=user_id
+                )
+            elif tool_name == "assistant_generate_document":
+                topic = str(args.get("topic") or args.get("query") or "").strip()
+                payload = await assistant_tools_module.tool_generate_document(org_id, topic, settings)
+            elif tool_name == "assistant_run_agent_task":
+                task = str(args.get("task") or args.get("query") or "").strip()
+                payload = await assistant_tools_module.tool_run_agent_task(
+                    org_id,
+                    task,
+                    settings,
+                    agent_id=agent_id,
+                    user_id=user_id,
+                )
+            elif tool_name == "assistant_create_workflow":
+                goal = str(args.get("goal") or args.get("query") or args.get("name") or "").strip()
+                payload = assistant_tools_module.tool_create_workflow(
+                    org_id,
+                    goal,
+                    settings,
+                    user_id=user_id,
+                )
+            else:
+                return {"success": False, "tool": tool_name, "error": f"Unknown assistant tool: {tool_name}"}
+            if payload.get("error"):
+                return {"success": False, "tool": tool_name, "result": payload, "error": payload.get("error")}
+            return {"success": True, "tool": tool_name, "result": payload}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("assistant_platform_tool_failed tool=%s error=%s", tool_name, exc)
+            return {"success": False, "tool": tool_name, "error": str(exc)}
 
 
 _tool_registry_singleton: ToolRegistry | None = None

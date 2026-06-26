@@ -9,8 +9,6 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import httpx
-
 from app.config import Settings
 from app.core.logging import get_logger
 from app.services.model_router import TaskType, get_model_router
@@ -263,35 +261,12 @@ def tool_analytics(
 
 
 async def tool_search_web(query: str, settings: Settings) -> dict[str, Any]:
-    api_key = (getattr(settings, "tavily_api_key", None) or "").strip()
-    if not api_key:
-        return {"results": [], "totalResults": 0, "error": "web search not configured"}
+    from app.services.web_research import TavilyNotConfiguredError, search_web
+
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            resp = await client.post(
-                "https://api.tavily.com/search",
-                json={
-                    "api_key": api_key,
-                    "query": query,
-                    "max_results": 5,
-                    "include_answer": False,
-                },
-            )
-        if resp.status_code >= 400:
-            return {"results": [], "totalResults": 0, "error": "web search request failed"}
-        payload = resp.json()
-        results = [
-            {
-                "title": str(item.get("title") or "Result"),
-                "url": str(item.get("url") or ""),
-                "snippet": str(item.get("content") or "")[:320],
-            }
-            for item in (payload.get("results") or [])
-        ]
-        return {"results": results, "totalResults": len(results)}
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("assistant search_web tool failed error=%s", str(exc))
-        return {"results": [], "totalResults": 0, "error": "web search unavailable"}
+        return await search_web(query, settings=settings, max_results=5)
+    except TavilyNotConfiguredError:
+        return {"results": [], "totalResults": 0, "error": "web search not configured"}
 
 
 async def tool_generate_document(org_id: str, query: str, settings: Settings) -> dict[str, Any]:

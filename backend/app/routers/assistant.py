@@ -1,19 +1,12 @@
 """Conversational AI assistant — governed streaming endpoint.
 
-This is the single backend entry point for the customer-facing assistant. Every
-completion flows through ModelRouter.prepare_stream() + stream(), so the full
-governance stack applies: killswitch, per-org rate limit, budget gate, input
-moderation, prompt hardening, untrusted-input fencing, multi-provider failover,
-and token/cost logging to model_calls.
+Every completion flows through AgentIntelligence.execute_task_streaming() and
+ReActEngine.run_streaming(), with ModelRouter.prepare_stream() guardrails
+(killswitch, rate limit, budget gate, moderation) before streaming starts.
 
-Tools (knowledge base / agent status / connector status) are executed
-server-side, org-scoped, and every tool result is passed through
-fence_untrusted() before it is injected into the model context — a poisoned RAG
-document or connector record can never be treated as instructions.
-
-The response is streamed as the AI SDK UI message stream protocol
-(text/event-stream, `x-vercel-ai-ui-message-stream: v1`) so the existing
-`useChat` frontend renders text + tool chips + sources without changes.
+Tool results are org-scoped and fenced inside the ReAct loop before model
+injection. The response uses the AI SDK UI message stream protocol
+(text/event-stream, `x-vercel-ai-ui-message-stream: v1`).
 """
 from __future__ import annotations
 
@@ -46,9 +39,7 @@ from app.services.ai_guardrails import (
     fence_untrusted,
 )
 from app.services.conversation_context_service import (
-    format_summary_block,
     load_conversation_summary,
-    maybe_summarize_history,
     persist_conversation_summary,
 )
 from app.services.assistant_mode import resolve_assistant_model
@@ -62,6 +53,19 @@ from app.services.assistant_tools import (
 )
 from app.services.user_intelligence import classify_query, get_user_intelligence_service
 from app.services.model_router import ModelResponse, TaskType, get_model_router
+from app.operators.agent_intelligence import get_agent_intelligence
+from app.operators.assistant_mode_config import resolve_assistant_tool_names
+from app.operators.assistant_sse import (
+    assistant_event_to_sse_line,
+    sse_done,
+    sse_error,
+    sse_finish,
+    sse_finish_step,
+    sse_start,
+    sse_start_step,
+    sse_suggestions,
+)
+from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.org_context_service import get_org_context_service
 from app.services.providers.base import (
     AllProvidersFailedError,
@@ -226,6 +230,10 @@ async def _run_tools(
     agent_id: str | None = None,
     user_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Legacy pre-run tool path — retained for response-cache replays only.
+
+    /api/assistant/chat streaming uses AgentIntelligence.execute_task_streaming().
+    """
     return await run_assistant_tools(
         requested,
         org_id,
@@ -447,7 +455,6 @@ def _resolve_base_system_prompt(
         return ASSISTANT_SYSTEM_PROMPT
     try:
         from app.operators.agent_intelligence import resolve_agent_record
-        from app.operators.agent_prompts import build_agent_system_prompt
     except ImportError as exc:
         logger.warning("agent prompt modules unavailable agent_id=%s error=%s", agent_id, exc)
         return ASSISTANT_SYSTEM_PROMPT
@@ -457,11 +464,13 @@ def _resolve_base_system_prompt(
         return ASSISTANT_SYSTEM_PROMPT
     snapshot = org_context or {}
     connected = snapshot.get("connectedIntegrations") or []
-    return build_agent_system_prompt(
+    return get_agent_intelligence()._build_system_prompt(
+        "agent_chat",
         agent,
-        org_context=snapshot,
+        [],
+        snapshot,
         connected_integrations=list(connected),
-        rag_available=True,
+        assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
     )
 
 
@@ -482,18 +491,19 @@ def _build_assistant_system_prompt(
         user_id=user_id,
         depth=depth,
     )
-    base = _resolve_base_system_prompt(settings, org_id, agent_id, org_context=snapshot)
+    agent = None
     memory_block = ""
-    if agent_id and (query or "").strip():
-        try:
-            from app.operators.agent_intelligence import resolve_agent_record
-            from app.services.agent_memory_service import (
-                build_task_retrieval_context,
-                format_retrieval_prompt_section,
-            )
+    if agent_id:
+        from app.operators.agent_intelligence import resolve_agent_record
 
-            agent = resolve_agent_record(client, org_id, agent_id)
-            if agent:
+        agent = resolve_agent_record(client, org_id, agent_id)
+        if agent and (query or "").strip():
+            try:
+                from app.services.agent_memory_service import (
+                    build_task_retrieval_context,
+                    format_retrieval_prompt_section,
+                )
+
                 memory_context = build_task_retrieval_context(
                     settings,
                     client,
@@ -503,21 +513,49 @@ def _build_assistant_system_prompt(
                     parameters={},
                 )
                 memory_block = format_retrieval_prompt_section(memory_context)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug(
-                "assistant agent memory preload skipped org_id=%s agent_id=%s error=%s",
-                org_id,
-                agent_id,
-                str(exc),
-            )
-    sections = [base, org_block]
-    if memory_block.strip():
-        sections.append(memory_block.strip())
-    return "\n\n".join(section for section in sections if section.strip())
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "assistant agent memory preload skipped org_id=%s agent_id=%s error=%s",
+                    org_id,
+                    agent_id,
+                    str(exc),
+                )
+    surface = "agent_chat" if agent_id else "assistant"
+    return get_agent_intelligence()._build_system_prompt(
+        surface,
+        agent,
+        [],
+        snapshot,
+        connected_integrations=list(snapshot.get("connectedIntegrations") or []),
+        org_context_block=org_block,
+        memory_section=memory_block or None,
+        assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
+    )
+
+
+def _estimate_model_response(
+    *,
+    content: str,
+    user_text: str,
+    model: str,
+    latency_ms: int,
+) -> ModelResponse:
+    input_tokens = max(1, len(user_text) // 4)
+    output_tokens = max(1, len(content) // 4)
+    return ModelResponse(
+        provider="openai",
+        model=model,
+        content=content,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        latency_ms=latency_ms,
+        cost_usd=0.0,
+        model_call_id=None,
+    )
 
 
 def _build_stream(
-    requested_tools: list[str],
+    requested_tools: list[str] | None,
     prepared_holder: dict[str, Any],
     *,
     settings: Settings,
@@ -525,151 +563,108 @@ def _build_stream(
     user_id: str,
     conversation_id: str | None,
     user_text: str,
-    query: str,
     agent_id: str | None,
-    system_prompt: str,
     history_messages: list[dict[str, Any]],
     existing_summary: str | None,
+    mode: str | None,
 ):
-    """Yield AI SDK UI stream with incremental tools then provider token deltas."""
+    """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
     async def generator():
         start_ms = time.monotonic()
-        yield _sse({"type": "start"})
-        yield _sse({"type": "start-step"})
+        yield assistant_event_to_sse_line(sse_start())
+        yield assistant_event_to_sse_line(sse_start_step())
 
-        tool_results: list[dict[str, Any]] = []
-        for tool_name in requested_tools:
-            if tool_name not in TOOL_DISPLAY_NAMES:
-                continue
-            display_name = TOOL_DISPLAY_NAMES[tool_name]
-            call_id = f"call-{uuid.uuid4().hex[:12]}"
-            tool_start = time.monotonic()
-            yield _sse(
-                {
-                    "type": "tool-input-available",
-                    "toolCallId": call_id,
-                    "toolName": display_name,
-                    "input": {"query": query},
-                }
-            )
-            batch = await _run_tools(
-                [tool_name],
-                org_id,
-                query,
-                settings,
+        intelligence = get_agent_intelligence()
+        complete: AssistantStreamComplete | None = None
+        try:
+            async for event in intelligence.execute_task_streaming(
+                settings=settings,
+                org_id=org_id,
+                user_id=user_id,
+                query=user_text,
+                mode=mode,
+                requested_tools=requested_tools,
                 agent_id=agent_id,
-                user_id=user_id or None,
-            )
-            tool = batch[0] if batch else {"name": tool_name, "displayName": display_name, "input": {}, "output": {}}
-            tool["durationMs"] = int((time.monotonic() - tool_start) * 1000)
-            tool_results.append(tool)
-            yield _sse(
-                {
-                    "type": "tool-output-available",
-                    "toolCallId": call_id,
-                    "output": tool.get("output"),
-                }
-            )
+                conversation_history=history_messages,
+                history_summary=existing_summary,
+                model_override=prepared_holder.get("model_override"),
+                assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
+            ):
+                if isinstance(event, AssistantStreamComplete):
+                    complete = event
+                    continue
+                yield assistant_event_to_sse_line(event)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("assistant unified stream failed org_id=%s error=%s", org_id, str(exc))
+            yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
+            yield sse_done()
+            return
 
-        tool_messages: list[dict[str, Any]] = []
-        for tool in tool_results:
-            fenced = fence_untrusted(json.dumps({tool["displayName"]: tool["output"]}, separators=(",", ":")))
-            tool_messages.append({"role": "user", "content": fenced})
+        if complete is None or not (complete.full_content or "").strip():
+            yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
+            yield sse_done()
+            return
 
-        prepared_context = await maybe_summarize_history(
-            history=history_messages,
-            system_prompt=system_prompt,
-            prompt=user_text,
-            tool_messages=tool_messages,
-            existing_summary=existing_summary,
+        if complete.react_result is not None and getattr(complete.react_result, "error", None):
+            err = str(complete.react_result.error or "")
+            if err and not complete.full_content.strip():
+                yield assistant_event_to_sse_line(sse_error(err))
+                yield sse_done()
+                return
+
+        suggestions = await _generate_followup_suggestions(
+            user_question=user_text,
+            assistant_response=complete.full_content,
             org_id=org_id,
             settings=settings,
         )
-        prompt_with_summary = system_prompt
-        if prepared_context.summary:
-            prompt_with_summary = f"{system_prompt}{format_summary_block(prepared_context.summary)}"
-        if prepared_context.summary_updated and conversation_id and user_id and prepared_context.summary:
+        if suggestions:
+            yield assistant_event_to_sse_line(sse_suggestions(suggestions))
+            cache_key = _response_cache_key(org_id, user_text)
+            _RESPONSE_CACHE[cache_key] = (time.time(), complete.full_content, suggestions)
+
+        yield assistant_event_to_sse_line(sse_finish_step())
+        yield assistant_event_to_sse_line(sse_finish())
+        yield sse_done()
+
+        elapsed_ms = int((time.monotonic() - start_ms) * 1000)
+        billing_result = _estimate_model_response(
+            content=complete.full_content,
+            user_text=user_text,
+            model=complete.model,
+            latency_ms=elapsed_ms,
+        )
+        asyncio.create_task(_record_assistant_billing(settings, org_id, billing_result))
+        asyncio.create_task(
+            get_user_intelligence_service().record_query(
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                query=user_text,
+                category=classify_query(user_text),
+                model_used=complete.model,
+                response_time_ms=elapsed_ms,
+                surface="assistant",
+            )
+        )
+        if complete.summary_updated and conversation_id and user_id and complete.summary:
             persist_conversation_summary(
                 get_supabase_client(settings),
                 conversation_id=conversation_id,
                 org_id=org_id,
                 user_id=user_id,
-                summary=prepared_context.summary,
+                summary=complete.summary,
             )
-
-        context = list(prepared_context.messages) + tool_messages
-        router_ = get_model_router()
-        model_override = prepared_holder.get("model_override")
-        task_type = prepared_holder.get("task_type", TaskType.RAG_ANSWERING)
-        try:
-            prepared = await router_.prepare_stream(
-                task_type=task_type,
-                prompt=user_text,
-                system_prompt=prompt_with_summary,
-                context=context,
-                org_id=org_id,
-                model_override=model_override,
-            )
-        except Exception as exc:
-            logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
-            yield _sse({"type": "error", "errorText": "Assistant request failed"})
-            yield "data: [DONE]\n\n"
-            return
-
-        text_id = f"text-{uuid.uuid4().hex[:12]}"
-        yield _sse({"type": "text-start", "id": text_id})
-
-        result: ModelResponse | None = None
-        async for event in router_.stream(prepared):
-            if event.delta:
-                yield _sse({"type": "text-delta", "id": text_id, "delta": event.delta})
-            if event.response is not None:
-                result = event.response
-
-        yield _sse({"type": "text-end", "id": text_id})
-
-        suggestions: list[str] = []
-        if result and result.content:
-            suggestions = await _generate_followup_suggestions(
-                user_question=user_text,
-                assistant_response=result.content,
-                org_id=org_id,
-                settings=settings,
-            )
-            cache_key = _response_cache_key(org_id, user_text)
-            _RESPONSE_CACHE[cache_key] = (time.time(), result.content, suggestions)
-
-        if suggestions:
-            yield _sse({"type": "data-suggestions", "data": {"suggestions": suggestions}})
-
-        yield _sse({"type": "finish-step"})
-        yield _sse({"type": "finish"})
-        yield "data: [DONE]\n\n"
-
-        elapsed_ms = int((time.monotonic() - start_ms) * 1000)
-        if result is not None:
-            asyncio.create_task(_record_assistant_billing(settings, org_id, result))
-            asyncio.create_task(
-                get_user_intelligence_service().record_query(
-                    settings,
-                    org_id=org_id,
-                    user_id=user_id,
-                    query=user_text,
-                    category=classify_query(user_text),
-                    model_used=result.model,
-                    response_time_ms=elapsed_ms,
-                )
-            )
-            _persist_conversation_turn(
-                settings,
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                user_text=user_text,
-                assistant_text=result.content,
-                tool_results=tool_results,
-            )
+        _persist_conversation_turn(
+            settings,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            user_text=user_text,
+            assistant_text=complete.full_content,
+            tool_results=complete.tool_results,
+        )
 
     return generator()
 
@@ -734,7 +729,8 @@ async def assistant_chat(
     if not last_user.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
 
-    requested_tools = body.tools if body.tools is not None else _DEFAULT_TOOLS
+    explicit_tools = body.tools
+    resolved_tools = resolve_assistant_tool_names(body.mode, explicit_tools)
     model_override, task_type = resolve_assistant_model(body.mode, body.model_override)
 
     cache_key = _response_cache_key(org_id, last_user)
@@ -742,7 +738,7 @@ async def assistant_chat(
     if cached and time.time() - cached[0] < _RESPONSE_CACHE_TTL:
         cached_content, cached_suggestions = cached[1], cached[2]
         cached_tools = await _run_tools(
-            requested_tools,
+            resolved_tools,
             org_id,
             last_user,
             settings,
@@ -813,18 +809,17 @@ async def assistant_chat(
 
     return StreamingResponse(
         _build_stream(
-            requested_tools,
+            explicit_tools,
             prepared_holder,
             settings=settings,
             org_id=org_id,
             user_id=user_id,
             conversation_id=conversation_id,
             user_text=last_user,
-            query=last_user,
             agent_id=(body.agent_id or "").strip() or None,
-            system_prompt=system_prompt,
             history_messages=history_messages,
             existing_summary=existing_summary,
+            mode=body.mode,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

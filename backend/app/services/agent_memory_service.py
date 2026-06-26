@@ -235,7 +235,9 @@ def increment_memory_usage(client: Any, memory_ids: list[str]) -> None:
         if not r.data:
             continue
         count = int(r.data[0].get("usage_count") or 0) + 1
-        client.table("agent_memories").update({"usage_count": count}).eq("id", memory_id).execute()
+        client.table("agent_memories").update(
+            {"usage_count": count, "last_retrieved_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", memory_id).execute()
 
 
 def _memory_retrieval_enabled(agent: dict[str, Any], parameters: dict[str, Any] | None) -> bool:

@@ -11,7 +11,7 @@ from app.ml.anomaly import AnomalyDetector
 from app.ml.base import ModelType, PredictionResult
 from app.ml.classifiers import SklearnClassifier
 from app.ml.fine_tuning import FineTunedLLM
-from app.ml.forecasting import WorkflowForecaster
+from app.ml.forecasting import WorkflowForecaster, WorkflowSuccessPredictor
 from app.ml.registry import get_model_registry
 
 logger = get_logger(__name__)
@@ -26,13 +26,21 @@ class InferenceService:
     def _cache_key(self, model_id: str, version: int) -> str:
         return f"{model_id}:v{version}"
 
-    async def _load_runtime_model(self, model_id: str, version: int, model_type: ModelType):
+    async def _load_runtime_model(
+        self,
+        model_id: str,
+        version: int,
+        model_type: ModelType,
+        base_model: str | None = None,
+    ):
         key = self._cache_key(model_id, version)
         if key in self._cache:
             return self._cache[key]
         registry = get_model_registry()
         artifact = await registry.load_model_artifact(model_id=model_id, version=version)
-        if model_type == ModelType.CLASSIFIER:
+        if base_model == "success_predictor":
+            runtime = WorkflowSuccessPredictor()
+        elif model_type == ModelType.CLASSIFIER:
             runtime = SklearnClassifier()
         elif model_type == ModelType.ANOMALY_DETECTOR:
             runtime = AnomalyDetector()
@@ -65,8 +73,15 @@ class InferenceService:
         if not selected_version:
             raise ValueError("No model version available for inference")
 
-        runtime = await self._load_runtime_model(model_id, selected_version, model.model_type)
-        predictions, probabilities = await runtime.predict(inputs, return_probabilities=return_probabilities)
+        runtime = await self._load_runtime_model(
+            model_id, selected_version, model.model_type, base_model=getattr(model, "base_model", None)
+        )
+        if getattr(model, "base_model", None) == "success_predictor" and hasattr(runtime, "predict_success"):
+            results = await runtime.predict_success(inputs)
+            predictions = [row["prediction"] for row in results]
+            probabilities = [{k: float(v) for k, v in row.items() if k.endswith("_probability")} for row in results]
+        else:
+            predictions, probabilities = await runtime.predict(inputs, return_probabilities=return_probabilities)
         latency_ms = (time.perf_counter() - start) * 1000
         result = PredictionResult(
             model_id=model_id,

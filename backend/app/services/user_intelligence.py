@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.core.logging import get_logger
+from app.services.query_normalization import normalize_query
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -43,15 +44,31 @@ class UserIntelligenceService:
         response_quality: float | None = None,
         model_used: str | None = None,
         response_time_ms: int | None = None,
+        surface: str | None = None,
+        agent_id: str | None = None,
+        department: str | None = None,
+        is_failed_search: bool = False,
+        feedback_helpful: bool | None = None,
+        rag_quality_score: float | None = None,
+        message_id: str | None = None,
     ) -> None:
         try:
             client = get_supabase_client(settings)
+            normalized = normalize_query(query)
             client.table("user_query_patterns").insert(
                 {
                     "org_id": org_id,
                     "user_id": user_id,
                     "query_category": category or classify_query(query),
                     "query_text": query[:2000],
+                    "normalized_query_text": normalized or None,
+                    "surface": surface,
+                    "agent_id": agent_id,
+                    "department": department,
+                    "is_failed_search": bool(is_failed_search),
+                    "feedback_helpful": feedback_helpful,
+                    "rag_quality_score": rag_quality_score,
+                    "message_id": message_id,
                     "response_quality": response_quality,
                     "model_used": model_used,
                     "response_time_ms": response_time_ms,

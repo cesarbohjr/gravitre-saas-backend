@@ -230,6 +230,12 @@ class Settings(BaseSettings):
     # In-process usage-sync scheduler interval (seconds). 0 disables it (e.g. if
     # you use the GitHub Action / a Railway cron service instead).
     usage_sync_interval_seconds: int = 3600
+    # Company intelligence learning loop (Half B). 0 disables; default 8 hours.
+    company_intelligence_interval_seconds: int = 28800
+    # Memory promotion evaluation (v4). 0 disables; default 8 hours.
+    memory_promotion_eval_interval_seconds: int = 28800
+    # Memory expiration/decay checks (v4). 0 disables; default daily.
+    memory_expiration_check_interval_seconds: int = 86400
     # In-process async agent-job worker (durable operator/agent execution).
     agent_job_worker_enabled: bool = True
     agent_job_poll_seconds: int = 5

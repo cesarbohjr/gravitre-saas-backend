@@ -256,3 +256,46 @@ class WorkflowSuccessPredictor(WorkflowForecaster):
             }
             for p in probabilities
         ]
+
+    async def predict(
+        self,
+        X: np.ndarray | list[dict],
+        return_probabilities: bool = False,
+        **kwargs: Any,
+    ) -> tuple[list[Any], list[dict[str, float]] | None]:
+        _ = kwargs
+        results = await self.predict_success(X)
+        predictions = [row["prediction"] for row in results]
+        probabilities = None
+        if return_probabilities:
+            probabilities = [
+                {
+                    "success": float(row["success_probability"]),
+                    "failure": float(row["failure_probability"]),
+                }
+                for row in results
+            ]
+        return predictions, probabilities
+
+    def save(self) -> bytes:
+        return pickle.dumps(
+            {
+                "feature_names": self.feature_names,
+                "scaler": self.scaler,
+                "_classifier": self._classifier,
+                "target": self.target,
+                "algorithm": self.algorithm,
+                "forecast_horizon": self.forecast_horizon,
+                "kwargs": self.kwargs,
+            }
+        )
+
+    def load(self, data: bytes) -> None:
+        loaded = pickle.loads(data)
+        self.feature_names = loaded["feature_names"]
+        self.scaler = loaded["scaler"]
+        self._classifier = loaded["_classifier"]
+        self.target = loaded.get("target", self.target)
+        self.algorithm = loaded.get("algorithm", self.algorithm)
+        self.forecast_horizon = loaded.get("forecast_horizon", self.forecast_horizon)
+        self.kwargs = loaded.get("kwargs", self.kwargs)

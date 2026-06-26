@@ -95,3 +95,93 @@ async def connector_health_cron(
         summary.get("errors"),
     )
     return summary
+
+
+class CompanyIntelligenceRunRequest(BaseModel):
+    org_id: str | None = None
+
+
+@router.post("/company-intelligence-run")
+async def company_intelligence_run_cron(
+    body: CompanyIntelligenceRunRequest | None = None,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Manual/GitHub-Actions trigger for the company intelligence learning loop."""
+    from app.services.company_intelligence_collectors import get_active_org_ids
+    from app.services.company_intelligence_orchestrator import CompanyIntelligenceOrchestrator
+
+    req = body or CompanyIntelligenceRunRequest()
+    orchestrator = CompanyIntelligenceOrchestrator(settings=settings)
+    if req.org_id:
+        summary = await orchestrator.run_for_org(req.org_id)
+        return {"processed": 1, "results": [summary]}
+
+    org_ids = await asyncio.to_thread(get_active_org_ids, settings, since_days=7, limit=20)
+    results: list[dict[str, Any]] = []
+    for org_id in org_ids:
+        try:
+            results.append(await orchestrator.run_for_org(org_id))
+        except Exception as exc:  # noqa: BLE001
+            results.append({"org_id": org_id, "error": str(exc)})
+    return {"processed": len(results), "results": results}
+
+
+class MemoryPromotionRunRequest(BaseModel):
+    org_id: str | None = None
+
+
+@router.post("/memory-promotion-run")
+async def memory_promotion_run_cron(
+    body: MemoryPromotionRunRequest | None = None,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Manual trigger for memory promotion evaluation (v4)."""
+    from app.services.company_intelligence_collectors import get_active_org_ids
+    from app.services.memory_promotion_service import get_memory_promotion_service
+
+    req = body or MemoryPromotionRunRequest()
+    service = get_memory_promotion_service(settings)
+    if req.org_id:
+        summary = await service.run_evaluation(req.org_id)
+        return {"processed": 1, "results": [summary]}
+
+    org_ids = await asyncio.to_thread(get_active_org_ids, settings, since_days=7, limit=20)
+    results: list[dict[str, Any]] = []
+    for org_id in org_ids:
+        try:
+            results.append(await service.run_evaluation(org_id))
+        except Exception as exc:  # noqa: BLE001
+            results.append({"org_id": org_id, "error": str(exc)})
+    return {"processed": len(results), "results": results}
+
+
+class MemoryExpirationRunRequest(BaseModel):
+    org_id: str | None = None
+
+
+@router.post("/memory-expiration-run")
+async def memory_expiration_run_cron(
+    body: MemoryExpirationRunRequest | None = None,
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Manual trigger for memory expiration/decay checks (v4)."""
+    from app.services.company_intelligence_collectors import get_active_org_ids
+    from app.services.memory_promotion_service import get_memory_promotion_service
+
+    req = body or MemoryExpirationRunRequest()
+    service = get_memory_promotion_service(settings)
+    if req.org_id:
+        summary = await service.run_expiration_check(req.org_id)
+        return {"processed": 1, "results": [summary]}
+
+    org_ids = await asyncio.to_thread(get_active_org_ids, settings, since_days=7, limit=50)
+    results: list[dict[str, Any]] = []
+    for org_id in org_ids:
+        try:
+            results.append(await service.run_expiration_check(org_id))
+        except Exception as exc:  # noqa: BLE001
+            results.append({"org_id": org_id, "error": str(exc)})
+    return {"processed": len(results), "results": results}

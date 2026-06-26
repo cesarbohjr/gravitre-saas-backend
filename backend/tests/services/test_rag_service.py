@@ -63,12 +63,20 @@ async def test_query_pipeline(service: RAGService):
                             "cross_encoder",
                         ),
                     ):
-                        with patch.object(
-                            service.model_router,
-                            "complete",
-                            AsyncMock(return_value=SimpleNamespace(content="Because molecules scatter shorter wavelengths first.")),
+                        with patch(
+                            "app.services.rag_service.fetch_source_reliability_scores",
+                            AsyncMock(return_value={}),
                         ):
-                            response = await service.query(org_id="org-1", query="Why is the sky blue?", top_k=2)
+                            with patch(
+                                "app.services.rag_service.get_weight_for_org",
+                                AsyncMock(return_value=0.15),
+                            ):
+                                with patch.object(
+                                    service.model_router,
+                                    "complete",
+                                    AsyncMock(return_value=SimpleNamespace(content="Because molecules scatter shorter wavelengths first.")),
+                                ):
+                                    response = await service.query(org_id="org-1", query="Why is the sky blue?", top_k=2)
     assert response.answer
     assert len(response.chunks) == 2
     assert response.metrics["top_k"] == 2
