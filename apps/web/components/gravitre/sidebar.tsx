@@ -99,6 +99,7 @@ const adminNavigation: NavGroup[] = [
     group: "INSIGHTS",
     items: [
       { name: "Dashboard", href: "/metrics", icon: "layoutDashboard" },
+      { name: "Intelligence", href: "/admin/intelligence", icon: "atom" },
       { name: "History", href: "/audit", icon: "history" },
     ],
   },
