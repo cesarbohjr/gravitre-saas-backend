@@ -90,6 +90,11 @@ def _token_payload_from_response(
         "org_id": org_id,
         "user_id": user_id,
         "updated_at": now,
+        **(
+            {"api_domain": str(data["api_domain"]).rstrip("/")}
+            if data.get("api_domain")
+            else {}
+        ),
     }
 
 

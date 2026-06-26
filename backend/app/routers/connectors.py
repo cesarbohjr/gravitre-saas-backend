@@ -76,6 +76,7 @@ TOOL_CONNECTOR_VENDORS = frozenset(
         "google_calendar",
         "fhir",
         "clio",
+        "pipedrive",
     }
 )
 
@@ -142,6 +143,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "apollo",
         "fhir",
         "clio",
+        "pipedrive",
     }
 )
 
@@ -187,6 +189,7 @@ def _docs_url(vendor: str) -> str | None:
     mapping = {
         "salesforce": "https://developer.salesforce.com/docs",
         "hubspot": "https://developers.hubspot.com/docs",
+        "pipedrive": "https://developers.pipedrive.com/docs/api/v1",
         "slack": "https://api.slack.com/docs",
         "postgresql": "https://www.postgresql.org/docs/",
         "stripe": "https://stripe.com/docs/api",
@@ -578,6 +581,17 @@ async def test_connector_route(
         if token:
             return {"success": True, "message": "Salesforce connection is valid"}
         return {"success": False, "message": err or "Salesforce connection failed"}
+    if vendor == "pipedrive":
+        from app.connectors.pipedrive_api import test_pipedrive_connection
+
+        ok, msg = test_pipedrive_connection(
+            client,
+            org_id,
+            str(connector_id),
+            settings,
+            environment_name=connector_env,
+        )
+        return {"success": ok, "message": msg}
     if vendor in TOOL_CONNECTOR_VENDORS:
         conn = get_connector(client, org_id, str(connector_id), environment_name=environment_name)
         if not conn:

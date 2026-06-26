@@ -57,6 +57,16 @@ def test_constant_contact_catalog_actions_implemented(catalog: dict) -> None:
             assert action["implemented"] is True
 
 
+def test_pipedrive_catalog_actions_implemented(catalog: dict) -> None:
+    pipedrive = next(v for v in catalog["vendors"] if v["vendor"] == "pipedrive")
+    registered = set(list_registered_actions())
+    for tier in ("v1", "v2", "v3"):
+        assert tier in pipedrive["tiers"], f"missing tier {tier}"
+        for action in pipedrive["tiers"][tier]["actions"]:
+            assert action["tool"] in registered
+            assert action["implemented"] is True
+
+
 def test_clickup_catalog_actions_implemented(catalog: dict) -> None:
     clickup = next(v for v in catalog["vendors"] if v["vendor"] == "clickup")
     registered = set(list_registered_actions())

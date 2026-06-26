@@ -149,6 +149,8 @@ class Settings(BaseSettings):
     # Generic OAuth — Clio Manage (STA-114)
     clio_client_id: str = ""
     clio_client_secret: str = ""
+    pipedrive_client_id: str = ""
+    pipedrive_client_secret: str = ""
     # Generic OAuth — Mailchimp
     mailchimp_client_id: str = ""
     mailchimp_client_secret: str = ""

@@ -25,6 +25,7 @@ OAUTH_DOCS_URLS: dict[str, str] = {
     "notion": "https://developers.notion.com/docs/authorization",
     "marketo": "https://developers.marketo.com/rest-api/",
     "slack": "https://api.slack.com/authentication/oauth-v2",
+    "pipedrive": "https://developers.pipedrive.com/docs/api/v1/OAuth-2.0",
 }
 
 

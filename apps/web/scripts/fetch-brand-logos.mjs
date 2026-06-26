@@ -59,7 +59,7 @@ const VENDOR_KEYS = [
   "hootsuite", "hubspot", "intercom", "jira", "linkedin", "mailchimp",
   "marketo", "microsoft365", "microsoft_teams", "mixpanel", "monday",
   "mongodb", "motion", "n8n", "netsuite", "notion", "odoo", "outlook",
-  "pagerduty", "plaid", "postgresql", "quickbooks", "salesforce", "segment",
+  "pagerduty", "plaid", "pipedrive", "postgresql", "quickbooks", "salesforce", "segment",
   "semrush", "sendgrid", "slack", "snowflake", "stackadapt", "stripe",
   "twilio", "workday", "xero", "zapier", "zendesk",
   "openai", "anthropic", "xai", "meta", "linear", "aws",

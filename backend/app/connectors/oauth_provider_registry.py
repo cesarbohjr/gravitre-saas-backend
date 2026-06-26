@@ -81,6 +81,12 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             notes="Clio Manage API v4 read scopes for intake and conflict workflows",
         ),
         OAuthProviderSpec(
+            vendor="pipedrive",
+            authorize_url="https://oauth.pipedrive.com/oauth/authorize",
+            token_url="https://oauth.pipedrive.com/oauth/token",
+            notes="Scopes are configured in the Pipedrive Developer Hub app settings",
+        ),
+        OAuthProviderSpec(
             vendor="airtable",
             authorize_url="https://airtable.com/oauth2/v1/authorize",
             token_url="https://airtable.com/oauth2/v1/token",

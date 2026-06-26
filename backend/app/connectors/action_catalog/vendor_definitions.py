@@ -59,6 +59,31 @@ VENDOR_DEFINITIONS: tuple = (
         ),
     ),
     build_vendor(
+        "pipedrive",
+        "Pipedrive",
+        "CRM / Marketing",
+        "https://developers.pipedrive.com/docs/api/v1",
+        shipped=True,
+        department="sales",
+        v1=(
+            action("pipedrive", "persons.search", "Search persons", tier="v1", kind="read", scope_suffix="persons:read", idempotent=True),
+            action("pipedrive", "persons.get", "Get person", tier="v1", kind="read", scope_suffix="persons:read", idempotent=True),
+            action("pipedrive", "deals.list", "List deals", tier="v1", kind="read", scope_suffix="deals:read", idempotent=True),
+            action("pipedrive", "deals.get", "Get deal", tier="v1", kind="read", scope_suffix="deals:read", idempotent=True),
+            action("pipedrive", "organizations.list", "List organizations", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
+            action("pipedrive", "pipelines.list", "List pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
+        ),
+        v2=(
+            action("pipedrive", "persons.create", "Create person", tier="v2", kind="write", scope_suffix="persons:write", destructive=True),
+            action("pipedrive", "persons.update", "Update person", tier="v2", kind="write", scope_suffix="persons:write", destructive=True),
+            action("pipedrive", "deals.create", "Create deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
+            action("pipedrive", "deals.update", "Update deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
+        ),
+        v3=(
+            action("pipedrive", "deals.update_stage", "Move deal to pipeline stage", tier="v3", kind="advanced", scope_suffix="deals:write"),
+        ),
+    ),
+    build_vendor(
         "marketo",
         "Marketo",
         "CRM / Marketing",

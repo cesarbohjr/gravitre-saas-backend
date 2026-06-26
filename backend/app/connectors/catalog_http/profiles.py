@@ -58,6 +58,7 @@ VENDOR_HTTP_PROFILES: dict[str, VendorHttpProfile] = {
     "github": VendorHttpProfile("github", "github", "https://api.github.com", "github"),
     "linkedin": VendorHttpProfile("linkedin", "linkedin", "https://api.linkedin.com/v2", "generic_oauth"),
     "clio": VendorHttpProfile("clio", "clio", "https://app.clio.com/api/v4", "generic_oauth"),
+    "pipedrive": VendorHttpProfile("pipedrive", "pipedrive", "https://api.pipedrive.com/api/v1", "generic_oauth"),
     "xero": VendorHttpProfile("xero", "xero", "https://api.xero.com/api.xro/2.0", "generic_oauth"),
     "quickbooks": VendorHttpProfile("quickbooks", "quickbooks", "https://quickbooks.api.intuit.com/v3", "generic_oauth"),
     "netsuite": VendorHttpProfile("netsuite", "netsuite", "{instance_url}/services/rest", "generic_oauth"),

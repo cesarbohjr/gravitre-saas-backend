@@ -125,6 +125,11 @@ _BUILTIN_ACTION_SCOPES: dict[str, list[str]] = {
     "clio.matters.search": ["clio:matters:read", "clio:*"],
     "clio.conflict.checklist": ["clio:conflicts:write", "clio:*"],
     "clio.intake.tasks": ["clio:tasks:write", "clio:*"],
+    "pipedrive.persons.search": ["pipedrive:persons:read", "pipedrive:*"],
+    "pipedrive.persons.get": ["pipedrive:persons:read", "pipedrive:*"],
+    "pipedrive.deals.list": ["pipedrive:deals:read", "pipedrive:*"],
+    "pipedrive.deals.get": ["pipedrive:deals:read", "pipedrive:*"],
+    "pipedrive.deals.update_stage": ["pipedrive:deals:write", "pipedrive:*"],
     "real_estate.mls.note": ["real_estate:mls:write", "real_estate:*"],
     "real_estate.handoff.brief": ["real_estate:handoff:write", "real_estate:*"],
 }
