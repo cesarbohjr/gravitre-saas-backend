@@ -57,6 +57,12 @@ export default function AdminIntelligencePage() {
     })
   )
 
+  const glossary = data?.glossary ?? []
+  const glossaryById = useMemo(
+    () => Object.fromEntries(glossary.map((term) => [String(term.id ?? ""), String(term.term ?? "")])),
+    [glossary]
+  )
+
   if (!user) {
     return (
       <AppShell title="Intelligence">
@@ -76,14 +82,9 @@ export default function AdminIntelligencePage() {
 
   const volume = data?.queryVolume
   const clusters = data?.clusters ?? []
-  const glossary = data?.glossary ?? []
   const gaps = data?.knowledgeGaps ?? []
   const failedRecent = data?.recentFailedSearches ?? []
   const relationships = data?.entityRelationships ?? []
-  const glossaryById = useMemo(
-    () => Object.fromEntries(glossary.map((term) => [String(term.id ?? ""), String(term.term ?? "")])),
-    [glossary]
-  )
 
   return (
     <AppShell title="Intelligence">
