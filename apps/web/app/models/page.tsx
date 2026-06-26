@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/select"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
 import { connectorVendorKey } from "@/lib/connectors"
+import { mlProviderVendorKey } from "@/lib/brand-vendor"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { useAuth } from "@/lib/auth-context"
 import type { MlModelSummary, MlModelType } from "@/types/api"
 import {
@@ -495,12 +497,20 @@ export default function ModelsPage() {
                 <SelectTrigger id="base-model" className="h-auto min-h-10 py-2">
                   <SelectValue placeholder="Select base model">
                     {selectedBaseOption ? (
-                      <span className="flex flex-col items-start gap-0.5 text-left">
-                        <span>
-                          {selectedBaseOption.label} · {selectedBaseOption.provider}
-                        </span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {selectedBaseOption.id}
+                      <span className="flex items-center gap-2 text-left">
+                        <ConnectorIcon
+                          vendor={mlProviderVendorKey(selectedBaseOption.provider)}
+                          size="xs"
+                          showStatusIndicator={false}
+                          className="shrink-0"
+                        />
+                        <span className="flex flex-col items-start gap-0.5">
+                          <span>
+                            {selectedBaseOption.label} · {selectedBaseOption.provider}
+                          </span>
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {selectedBaseOption.id}
+                          </span>
                         </span>
                       </span>
                     ) : (
@@ -511,7 +521,14 @@ export default function ModelsPage() {
                 <SelectContent className="max-h-80">
                   {groupedBaseModels.map(([provider, options]) => (
                     <SelectGroup key={provider}>
-                      <SelectLabel>{provider}</SelectLabel>
+                      <SelectLabel className="flex items-center gap-2">
+                        <ConnectorIcon
+                          vendor={mlProviderVendorKey(provider)}
+                          size="xs"
+                          showStatusIndicator={false}
+                        />
+                        {provider}
+                      </SelectLabel>
                       {options.map((option) => (
                         <SelectItem
                           key={option.id}
@@ -520,7 +537,14 @@ export default function ModelsPage() {
                           disabled={option.availability === "requires_connection"}
                           className="items-start py-2"
                         >
-                          <div className="flex flex-col gap-1">
+                          <div className="flex items-start gap-2">
+                            <ConnectorIcon
+                              vendor={mlProviderVendorKey(option.provider)}
+                              size="xs"
+                              showStatusIndicator={false}
+                              className="mt-0.5 shrink-0"
+                            />
+                            <div className="flex flex-col gap-1">
                             <span className="flex flex-wrap items-center gap-1.5">
                               <span className="font-medium">{option.label}</span>
                               {option.versionTag ? (
@@ -546,6 +570,7 @@ export default function ModelsPage() {
                             <span className="text-[11px] leading-snug text-muted-foreground">
                               {option.description}
                             </span>
+                            </div>
                           </div>
                         </SelectItem>
                       ))}

@@ -51,7 +51,7 @@ export { ActionProposal } from "./action-proposal"
 // Utility Components
 export { IconButton } from "./icon-button"
 export { VendorLogo } from "./vendor-logo"
-export { ConnectorIcon, ConnectorIconGrid, ConnectorFallbackIcon } from "./connector-icon"
+export { ConnectorIcon, ConnectorIconGrid, ConnectorFallbackIcon, hasConnectorBrandLogo } from "./connector-icon"
 export { LottieAnimation } from "./lottie-animation"
 
 // Avatar Components

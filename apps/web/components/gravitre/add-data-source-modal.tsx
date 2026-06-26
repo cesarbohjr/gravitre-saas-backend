@@ -26,6 +26,8 @@ import {
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { sourcesApi } from "@/lib/api"
+import { sourceTypeVendorKey } from "@/lib/brand-vendor"
+import { ConnectorIcon, hasConnectorBrandLogo } from "@/components/gravitre/connector-icon"
 import type {
   CreateSourceRequest,
   DataSourceConnectionField,
@@ -285,7 +287,9 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
             ) : (
               <div className="grid max-h-[420px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3">
                 {types.map((type) => {
-                  const Icon = ICON_MAP[type.icon] ?? Database
+                  const FallbackIcon = ICON_MAP[type.icon] ?? Database
+                  const vendorKey = sourceTypeVendorKey(type.id)
+                  const useBrandLogo = hasConnectorBrandLogo(vendorKey)
                   return (
                     <button
                       key={type.id}
@@ -293,12 +297,17 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                       onClick={() => handleSelectType(type)}
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-all hover:border-primary/30 hover:bg-card/80"
                     >
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg"
-                        style={{ backgroundColor: `${type.color}22` }}
-                      >
-                        <Icon className="h-5 w-5" style={{ color: type.color }} />
-                      </div>
+                      <ConnectorIcon
+                        vendor={useBrandLogo ? vendorKey : undefined}
+                        name={type.name}
+                        size="sm"
+                        showStatusIndicator={false}
+                        icon={
+                          useBrandLogo ? undefined : (
+                            <FallbackIcon className="h-[55%] w-[55%] text-zinc-500" />
+                          )
+                        }
+                      />
                       <div className="min-w-0">
                         <span className="block truncate text-sm font-medium text-foreground">{type.name}</span>
                         <span className="block truncate text-[10px] text-muted-foreground">{type.categoryLabel}</span>

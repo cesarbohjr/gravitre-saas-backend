@@ -638,6 +638,31 @@ const logos: Record<string, React.ReactNode> = {
       <path d="M4.955 10.604a4.44 4.44 0 010-6.28l1.28-1.28a4.44 4.44 0 016.28 0l1.28 1.28a4.44 4.44 0 010 6.28l-1.28 1.28a4.44 4.44 0 01-6.28 0l-1.28-1.28zm14.09 2.792a4.44 4.44 0 010 6.28l-1.28 1.28a4.44 4.44 0 01-6.28 0l-1.28-1.28a4.44 4.44 0 010-6.28l1.28-1.28a4.44 4.44 0 016.28 0l1.28 1.28z"/>
     </svg>
   ),
+  openai: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#412991]">
+      <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+    </svg>
+  ),
+  anthropic: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#191919]">
+      <path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"/>
+    </svg>
+  ),
+  xai: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#0A0A0A]">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  ),
+  constant_contact: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#1856ED]">
+      <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3.5a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zM8.25 11a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0zm-1.5 6.75a4.5 4.5 0 019 0v.75H6.75v-.75z"/>
+    </svg>
+  ),
+  linear: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-[#5E6AD2]">
+      <path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z"/>
+    </svg>
+  ),
 }
 
 // ============================================================================
@@ -666,10 +691,10 @@ interface ConnectorIconProps {
   /** Click handler */
   onClick?: () => void
   /**
-   * Force a fixed light treatment (light tile + official-color logo),
-   * ignoring the active theme. Used in always-light marketing surfaces so
-   * icons stay consistent instead of flipping to dark/monochrome tiles in
-   * the device's dark mode.
+   * Fixed light brand tile (white surface + official-color logo), matching the
+   * marketing homepage grid. Defaults to on for consistent branding app-wide.
+   * Pass `tileVariant="muted"` via `forceLight={false}` only when a neutral
+   * theme-adaptive tile is intentionally needed.
    */
   forceLight?: boolean
 }
@@ -697,6 +722,20 @@ const IMAGE_LOGOS: Record<string, string> = {
 const LOGO_ALIASES: Record<string, string> = {
   microsoft365: "microsoft",
   microsoft_365: "microsoft",
+  supabase_db: "supabase",
+  cloud_sql: "google",
+  firestore: "google",
+  gcs: "google",
+  pubsub: "google",
+  azure_sql: "microsoft",
+  azure_blob: "microsoft",
+  synapse: "microsoft",
+  mssql: "microsoft",
+  rds: "aws",
+  kinesis: "aws",
+  dynamodb: "aws",
+  neon: "postgresql",
+  planetscale: "mysql",
 }
 
 // Helper to normalize vendor names to brand keys
@@ -743,6 +782,12 @@ function getSimpleIconSlug(vendor?: string): string | null {
   const key = resolveVendorLogoKey(vendor)
   if (!key) return null
   return (brandLogoManifest as Record<string, string>)[key] ?? null
+}
+
+/** True when ConnectorIcon can render a real brand mark (not initials). */
+export function hasConnectorBrandLogo(vendor?: string): boolean {
+  if (!vendor) return false
+  return Boolean(getSimpleIconSlug(vendor) || getVendorLogo(vendor))
 }
 
 /**
@@ -822,7 +867,7 @@ export function ConnectorIcon({
   showStatusIndicator = true,
   className,
   onClick,
-  forceLight = false,
+  forceLight = true,
 }: ConnectorIconProps) {
   const statusToken = connectorStatusTokens[status]
   const sizeToken = connectorIconSizes[size]

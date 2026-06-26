@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { sourceTypeVendorKey } from "@/lib/brand-vendor"
 import {
   MorphingBackground,
   GlowOrb,
@@ -275,7 +276,7 @@ function SourceTile({
               transition={{ duration: 1.5, repeat: Infinity }}
             >
               <ConnectorIcon
-                vendor={source.type}
+                vendor={sourceTypeVendorKey(source.type)}
                 name={source.name}
                 size="md"
                 showStatusIndicator={false}

@@ -36,6 +36,18 @@ const SLUG_OVERRIDES = {
   google_sheets: "googlesheets",
   microsoft_teams: "microsoftteams",
   constant_contact: "constantcontact",
+  openai: "openai",
+  anthropic: "anthropic",
+  xai: "xai",
+  aws: "amazonaws",
+  linear: "linear",
+  pinecone: "pinecone",
+  clickhouse: "clickhouse",
+  cockroachdb: "cockroachdb",
+  duckdb: "duckdb",
+  weaviate: "weaviate",
+  qdrant: "qdrant",
+  meta: "meta",
 }
 
 // Full vendor universe (connector registry + marketing apps + data-source types).
@@ -50,9 +62,11 @@ const VENDOR_KEYS = [
   "pagerduty", "plaid", "postgresql", "quickbooks", "salesforce", "segment",
   "semrush", "sendgrid", "slack", "snowflake", "stackadapt", "stripe",
   "twilio", "workday", "xero", "zapier", "zendesk",
+  "openai", "anthropic", "xai", "meta", "linear", "aws",
   // data-source types
   "mysql", "oracle", "bigquery", "redshift", "databricks", "elasticsearch",
-  "redis", "mariadb", "supabase",
+  "redis", "mariadb", "supabase", "pinecone", "clickhouse", "cockroachdb",
+  "duckdb", "weaviate", "qdrant",
 ]
 
 // Build a slug -> icon lookup from the package (export names are mangled).
