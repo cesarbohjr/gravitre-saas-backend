@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { KIND_STYLES, type ScheduleOccurrence } from "@/lib/schedules"
 import { addDays, formatTime, isSameDay, startOfCalendarGrid } from "./shared"
@@ -20,6 +21,7 @@ export function CalendarView({
   onSelect: (occurrence: ScheduleOccurrence) => void
   onOpen: (occurrence: ScheduleOccurrence) => void
 }) {
+  const reduceMotion = useReducedMotion()
   const gridStart = useMemo(() => startOfCalendarGrid(month), [month])
   const days = useMemo(
     () => Array.from({ length: 42 }, (_, i) => addDays(gridStart, i)),
@@ -73,22 +75,31 @@ export function CalendarView({
                 )}
               </div>
               <div className="space-y-1">
-                {dayOccurrences.slice(0, 3).map((occurrence) => {
+                {dayOccurrences.slice(0, 3).map((occurrence, chipIdx) => {
                   const style = KIND_STYLES[occurrence.item.kind]
                   const selected = occurrence.item.id === selectedId
                   return (
-                    <button
+                    <motion.button
                       key={occurrence.key}
                       type="button"
                       onClick={() => onSelect(occurrence)}
                       onDoubleClick={() => onOpen(occurrence)}
                       title={`${occurrence.item.title} · double-click for details`}
+                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.2,
+                        delay: Math.min(idx * 0.004 + chipIdx * 0.03, 0.25),
+                        ease: "easeOut",
+                      }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
                       className={cn(
-                        "flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs transition-colors",
+                        "flex w-full items-center gap-1.5 rounded-md border-l-2 px-1.5 py-1 text-left text-xs",
                         style.softBg,
-                        "hover:brightness-95",
                         selected && "ring-2 ring-ring ring-offset-1 ring-offset-card",
                       )}
+                      style={{ borderLeftColor: style.color }}
                     >
                       <span
                         className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -100,7 +111,7 @@ export function CalendarView({
                       <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
                         {formatTime(occurrence.date)}
                       </span>
-                    </button>
+                    </motion.button>
                   )
                 })}
                 {dayOccurrences.length > 3 && (

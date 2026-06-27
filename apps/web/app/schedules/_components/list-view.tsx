@@ -1,9 +1,10 @@
 "use client"
 
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { CalendarClock, History } from "lucide-react"
-import type { ScheduledItem } from "@/lib/schedules"
+import { KIND_STYLES, type ScheduledItem } from "@/lib/schedules"
 import { KindBadge, formatDateTime, statusLabel, statusVariant } from "./shared"
 
 export function ListView({
@@ -17,6 +18,7 @@ export function ListView({
   onSelect: (item: ScheduledItem) => void
   onOpen: (item: ScheduledItem) => void
 }) {
+  const reduceMotion = useReducedMotion()
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       {/* Header */}
@@ -28,31 +30,29 @@ export function ListView({
         <span>Status</span>
       </div>
       <ul className="divide-y divide-border">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const selected = item.id === selectedId
           return (
-            <li key={item.id}>
+            <motion.li
+              key={item.id}
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: Math.min(index * 0.025, 0.3), ease: "easeOut" }}
+            >
               <button
                 type="button"
                 onClick={() => onSelect(item)}
                 onDoubleClick={() => onOpen(item)}
                 title="Double-click for details"
                 className={cn(
-                  "grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:items-center md:gap-4",
+                  "group grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:items-center md:gap-4",
                   selected && "bg-muted",
                 )}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span
-                    className="h-8 w-1 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        item.kind === "workflow"
-                          ? "var(--chart-1)"
-                          : item.kind === "task"
-                            ? "var(--chart-2)"
-                            : "var(--chart-3)",
-                    }}
+                    className="h-8 w-1 shrink-0 rounded-full transition-all group-hover:h-9"
+                    style={{ backgroundColor: KIND_STYLES[item.kind].color }}
                   />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
@@ -85,7 +85,7 @@ export function ListView({
                   {item.isSample && <StatusBadge variant="muted">Sample</StatusBadge>}
                 </div>
               </button>
-            </li>
+            </motion.li>
           )
         })}
       </ul>

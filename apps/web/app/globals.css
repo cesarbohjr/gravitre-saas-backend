@@ -39,6 +39,10 @@
   --chart-3: oklch(0.65 0.18 75);
   --chart-4: oklch(0.55 0.18 320);
   --chart-5: oklch(0.50 0.22 25);
+  /* Schedule kind colors - theme-stable purple / blue / green */
+  --schedule-workflow: oklch(0.55 0.21 300);
+  --schedule-task: oklch(0.55 0.2 250);
+  --schedule-job: oklch(0.55 0.16 158);
   --radius: 0.5rem;
   /* Sidebar: subtle cool surface with emerald-green accents */
   --sidebar: oklch(0.97 0.008 160);
@@ -84,6 +88,10 @@
   --chart-3: oklch(0.75 0.15 75);
   --chart-4: oklch(0.55 0.15 200);
   --chart-5: oklch(0.55 0.22 25);
+  /* Schedule kind colors - brighter purple / blue / green for dark surfaces */
+  --schedule-workflow: oklch(0.7 0.19 300);
+  --schedule-task: oklch(0.68 0.19 250);
+  --schedule-job: oklch(0.72 0.16 158);
   /* Sidebar: Even deeper */
   --sidebar: oklch(0.06 0.01 250);
   --sidebar-foreground: oklch(0.95 0 0);
@@ -125,6 +133,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-schedule-workflow: var(--schedule-workflow);
+  --color-schedule-task: var(--schedule-task);
+  --color-schedule-job: var(--schedule-job);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

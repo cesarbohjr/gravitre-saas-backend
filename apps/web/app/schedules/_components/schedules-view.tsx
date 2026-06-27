@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -75,6 +76,7 @@ export function SchedulesView({
   const [activeKinds, setActiveKinds] = useState<Set<ScheduleKind>>(new Set(ALL_KINDS))
   const [selected, setSelected] = useState<ScheduledItem | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   const filteredItems = useMemo(
     () => items.filter((item) => activeKinds.has(item.kind)),
@@ -255,39 +257,49 @@ export function SchedulesView({
       {loading && items.length === 0 ? (
         <ViewSkeleton view={view} />
       ) : (
-        <>
-          {view === "calendar" && (
-            <CalendarView
-              month={month}
-              occurrences={occurrences}
-              selectedId={selected?.id}
-              onSelect={handleSelect}
-              onOpen={handleOpen}
-            />
-          )}
-          {view === "gantt" && (
-            <>
-              <GanttView
-                rangeStart={monthStart}
-                rangeEnd={monthEnd}
-                occurrences={occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd)}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={view}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {view === "calendar" && (
+              <CalendarView
+                month={month}
+                occurrences={occurrences}
                 selectedId={selected?.id}
                 onSelect={handleSelect}
                 onOpen={handleOpen}
               />
-              {occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd).length ===
-                0 && <EmptyRange label="No scheduled items this month." />}
-            </>
-          )}
-          {view === "list" && (
-            <ListView
-              items={filteredItems}
-              selectedId={selected?.id}
-              onSelect={handleSelect}
-              onOpen={handleOpen}
-            />
-          )}
-        </>
+            )}
+            {view === "gantt" && (
+              <>
+                <GanttView
+                  rangeStart={monthStart}
+                  rangeEnd={monthEnd}
+                  occurrences={occurrences.filter(
+                    (o) => o.date >= monthStart && o.date <= monthEnd,
+                  )}
+                  selectedId={selected?.id}
+                  onSelect={handleSelect}
+                  onOpen={handleOpen}
+                />
+                {occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd).length ===
+                  0 && <EmptyRange label="No scheduled items this month." />}
+              </>
+            )}
+            {view === "list" && (
+              <ListView
+                items={filteredItems}
+                selectedId={selected?.id}
+                onSelect={handleSelect}
+                onOpen={handleOpen}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       <p className="px-1 text-xs text-muted-foreground">

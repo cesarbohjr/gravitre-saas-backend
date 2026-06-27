@@ -70,9 +70,9 @@ export interface ScheduleOccurrence {
 }
 
 // ---------------------------------------------------------------------------
-// Color system — mapped to Gravitre brand tokens (see globals.css).
-// workflow -> emerald primary (chart-1), task -> electric blue (chart-2),
-// job -> amber (chart-3). We expose token-based classes so light/dark both work.
+// Color system — theme-stable Gravitre schedule tokens (see globals.css).
+// workflow -> purple, task -> blue, job -> green. These keep a consistent hue
+// across light/dark (unlike the chart-* tokens, which shift hue per theme).
 // ---------------------------------------------------------------------------
 
 export interface KindStyle {
@@ -92,27 +92,27 @@ export interface KindStyle {
 export const KIND_STYLES: Record<ScheduleKind, KindStyle> = {
   workflow: {
     label: "Workflow",
-    color: "var(--chart-1)",
-    solidBg: "bg-[var(--chart-1)]",
-    softBg: "bg-[color-mix(in_oklab,var(--chart-1)_14%,transparent)]",
-    text: "text-[var(--chart-1)]",
-    border: "border-[color-mix(in_oklab,var(--chart-1)_45%,transparent)]",
+    color: "var(--schedule-workflow)",
+    solidBg: "bg-[var(--schedule-workflow)]",
+    softBg: "bg-[color-mix(in_oklab,var(--schedule-workflow)_15%,transparent)]",
+    text: "text-[var(--schedule-workflow)]",
+    border: "border-[color-mix(in_oklab,var(--schedule-workflow)_45%,transparent)]",
   },
   task: {
     label: "Task",
-    color: "var(--chart-2)",
-    solidBg: "bg-[var(--chart-2)]",
-    softBg: "bg-[color-mix(in_oklab,var(--chart-2)_14%,transparent)]",
-    text: "text-[var(--chart-2)]",
-    border: "border-[color-mix(in_oklab,var(--chart-2)_45%,transparent)]",
+    color: "var(--schedule-task)",
+    solidBg: "bg-[var(--schedule-task)]",
+    softBg: "bg-[color-mix(in_oklab,var(--schedule-task)_15%,transparent)]",
+    text: "text-[var(--schedule-task)]",
+    border: "border-[color-mix(in_oklab,var(--schedule-task)_45%,transparent)]",
   },
   job: {
     label: "Training job",
-    color: "var(--chart-3)",
-    solidBg: "bg-[var(--chart-3)]",
-    softBg: "bg-[color-mix(in_oklab,var(--chart-3)_16%,transparent)]",
-    text: "text-[var(--chart-3)]",
-    border: "border-[color-mix(in_oklab,var(--chart-3)_45%,transparent)]",
+    color: "var(--schedule-job)",
+    solidBg: "bg-[var(--schedule-job)]",
+    softBg: "bg-[color-mix(in_oklab,var(--schedule-job)_16%,transparent)]",
+    text: "text-[var(--schedule-job)]",
+    border: "border-[color-mix(in_oklab,var(--schedule-job)_45%,transparent)]",
   },
 }
 
