@@ -22,6 +22,26 @@ export function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
+/** Coerce an unknown value to a finite number, with a fallback. */
+export function readNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+/** Coerce an unknown value to a trimmed string, with a fallback. */
+export function readString(value: unknown, fallback = ""): string {
+  if (value == null) return fallback
+  return String(value)
+}
+
+/** Format an ISO timestamp for display, or an em dash when absent/invalid. */
+export function formatTime(value: unknown): string {
+  if (!value || typeof value !== "string") return "—"
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return "—"
+  return parsed.toLocaleString()
+}
+
 /** A labeled, weighted score bar (e.g. RAG quality 0.8, weight 40%). */
 export function ScoreBar({
   label,

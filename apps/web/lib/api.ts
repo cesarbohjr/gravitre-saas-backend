@@ -1472,7 +1472,10 @@ export type IntelligenceEvaluationsResponse = {
     isDeployed: boolean
     activeReliabilityWeight: number
     fallbackReliabilityWeight: number
+    minLearnedWeight: number
+    maxLearnedWeight: number
     usingLearnedWeight: boolean
+    lastTrainedAt: string | null
     modelName: string
   }
   evaluations: ResponseEvaluationRecord[]

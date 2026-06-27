@@ -243,17 +243,24 @@ async def _load_retrieval_ranker_status(
         get_weight_for_org,
     )
     from app.ml.registry import get_model_registry
-    from app.ml.source_reliability import RELIABILITY_WEIGHT
+    from app.ml.source_reliability import (
+        MAX_LEARNED_WEIGHT,
+        MIN_LEARNED_WEIGHT,
+        RELIABILITY_WEIGHT,
+    )
 
     training_count = await count_training_examples(org_id, client)
     active_weight = await get_weight_for_org(org_id, settings, client)
     is_trained = training_count >= RetrievalRanker.MIN_TRAINING_EXAMPLES
     is_deployed = False
+    last_trained_at: str | None = None
     try:
         registry = get_model_registry()
         models = await registry.list_models(org_id=org_id, model_type=ModelType.CLASSIFIER)
         ranker_model = next((m for m in models if m.name == RETRIEVAL_RANKER_MODEL_NAME), None)
         is_deployed = bool(ranker_model and ranker_model.deployed_version)
+        if ranker_model and ranker_model.updated_at:
+            last_trained_at = ranker_model.updated_at.isoformat()
     except Exception as exc:  # noqa: BLE001
         logger.debug("retrieval_ranker_status_skipped org_id=%s error=%s", org_id, exc)
     return {
@@ -263,7 +270,10 @@ async def _load_retrieval_ranker_status(
         "isDeployed": is_deployed,
         "activeReliabilityWeight": active_weight,
         "fallbackReliabilityWeight": RELIABILITY_WEIGHT,
+        "minLearnedWeight": MIN_LEARNED_WEIGHT,
+        "maxLearnedWeight": MAX_LEARNED_WEIGHT,
         "usingLearnedWeight": is_deployed and is_trained,
+        "lastTrainedAt": last_trained_at,
         "modelName": RETRIEVAL_RANKER_MODEL_NAME,
     }
 

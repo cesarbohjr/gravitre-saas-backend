@@ -2,133 +2,164 @@
 
 import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { fetcher } from "@/lib/fetcher"
-import type { RelationshipsData } from "@/lib/admin-intelligence"
-import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Cube, Graph, ArrowRight } from "@phosphor-icons/react"
-import { SectionCard, NotYetPopulated, TabStateGate, scoreColor, formatScore } from "./shared"
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
+import { Graph, ArrowRight } from "@phosphor-icons/react"
+import { readNumber } from "./shared"
 
-export function RelationshipsTab({ active }: { active: boolean }) {
-  const { data, error, isLoading, isValidating, mutate } = useSWR<RelationshipsData>(
-    active ? "/api/admin/intelligence/relationships" : null,
-    fetcher,
-    { revalidateOnFocus: false },
+type Row = Record<string, unknown>
+
+function confidenceTone(value: number): string {
+  if (value >= 0.75) return "border-emerald-300 text-emerald-700"
+  if (value >= 0.5) return "border-amber-300 text-amber-700"
+  return "border-rose-300 text-rose-700"
+}
+
+export function RelationshipsTab({
+  data,
+  isLoading,
+  enabled,
+}: {
+  data: IntelligenceSnapshot | undefined
+  isLoading: boolean
+  enabled: boolean
+}) {
+  const [selectedGlossaryId, setSelectedGlossaryId] = useState<string>("")
+  const glossary = (data?.glossary ?? []) as Row[]
+  const relationships = (data?.entityRelationships ?? []) as Row[]
+
+  const glossaryById = useMemo(
+    () => Object.fromEntries(glossary.map((term) => [String(term.id ?? ""), String(term.term ?? "")])),
+    [glossary],
   )
-  const [query, setQuery] = useState("")
 
-  const filtered = useMemo(() => {
-    const rels = data?.relationships ?? []
-    const q = query.trim().toLowerCase()
-    if (!q) return rels
-    return rels.filter(
-      (r) =>
-        r.sourceName.toLowerCase().includes(q) ||
-        r.targetName.toLowerCase().includes(q) ||
-        r.type.toLowerCase().includes(q),
-    )
-  }, [data, query])
+  const { data: detail } = useSWR(
+    enabled && selectedGlossaryId ? ["admin/intelligence/relationships", selectedGlossaryId] : null,
+    () => intelligenceApi.relationships({ entityType: "glossary_term", entityId: selectedGlossaryId }),
+  )
+  const detailRels = (detail?.relationships as Row[] | undefined) ?? []
 
-  const hasData = Boolean(data && (data.entities.length > 0 || data.relationships.length > 0))
+  function labelFor(entityType: unknown, entityId: unknown): string {
+    if (entityType === "glossary_term") {
+      return glossaryById[String(entityId ?? "")] ?? String(entityId ?? "")
+    }
+    return String(entityId ?? "")
+  }
 
   return (
-    <TabStateGate isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 font-medium">
-              <Cube className="h-3.5 w-3.5" weight="duotone" aria-hidden />
-              {data?.entities.length ?? 0} entities
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 font-medium">
-              <Graph className="h-3.5 w-3.5" weight="duotone" aria-hidden />
-              {data?.relationships.length ?? 0} relationships
-            </span>
-          </div>
-          <DataFreshness
-            updatedAt={data?.generatedAt ?? undefined}
-            isRefreshing={isValidating}
-            onRefresh={() => mutate()}
-          />
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Graph className="h-5 w-5 text-primary" weight="duotone" aria-hidden />
+          <CardTitle>Entity relationships</CardTitle>
         </div>
+        <CardDescription>
+          One-hop related entities from company intelligence. Each edge carries an extraction confidence (list view,
+          not a graph visualization).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : relationships.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No relationships yet. The graph is rebuilt when company intelligence runs over your indexed sources.
+          </p>
+        ) : (
+          <>
+            {glossary.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-muted-foreground">Inspect glossary term:</span>
+                <Select value={selectedGlossaryId} onValueChange={setSelectedGlossaryId}>
+                  <SelectTrigger className="w-[280px]">
+                    <SelectValue placeholder="Select a glossary term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {glossary.map((term) => (
+                      <SelectItem key={String(term.id)} value={String(term.id)}>
+                        {String(term.term ?? term.id)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
-        <SectionCard
-          title="Entity relationships"
-          description="Connections the engine extracted between people, systems, and concepts across your knowledge — with how confident it is in each link."
-          icon={<Graph className="h-5 w-5" weight="duotone" aria-hidden />}
-          action={
-            hasData ? (
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter relationships"
-                className="h-9 w-48"
-                aria-label="Filter relationships"
-              />
-            ) : null
-          }
-        >
-          {hasData ? (
-            filtered.length > 0 ? (
-              <ul className="space-y-2">
-                {filtered.map((r) => {
-                  const { text } = scoreColor(r.confidence)
-                  return (
+            {selectedGlossaryId && detailRels.length > 0 ? (
+              <div className="rounded-lg border border-border bg-secondary/30 p-4">
+                <p className="font-medium">
+                  One-hop neighbors for &quot;{glossaryById[selectedGlossaryId] ?? selectedGlossaryId}&quot;
+                </p>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {detailRels.map((rel) => (
                     <li
-                      key={r.id}
-                      className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-border bg-background/60 px-3 py-2.5"
+                      key={`${rel.entityType}-${rel.entityId}-${rel.relationshipType}`}
+                      className="flex flex-wrap items-center gap-2"
                     >
-                      <span className="font-medium text-foreground">{r.sourceName}</span>
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <ArrowRight className="h-3.5 w-3.5" weight="bold" aria-hidden />
-                        {r.type}
-                        <ArrowRight className="h-3.5 w-3.5" weight="bold" aria-hidden />
+                      <Badge variant="outline">{String(rel.relationshipType ?? "")}</Badge>
+                      <span>
+                        {String(rel.entityType ?? "")}: {String(rel.entityLabel ?? rel.entityId ?? "")}
                       </span>
-                      <span className="font-medium text-foreground">{r.targetName}</span>
-                      <span className="ml-auto flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground tabular-nums">{r.mentions} mentions</span>
-                        <span
-                          className={cn("rounded-full bg-secondary px-1.5 py-0.5 font-semibold tabular-nums", text)}
-                          title="Extraction confidence"
-                        >
-                          {formatScore(r.confidence)}
-                        </span>
-                      </span>
+                      <Badge variant="secondary">evidence {readNumber(rel.evidenceCount)}</Badge>
                     </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <NotYetPopulated>No relationships match &ldquo;{query}&rdquo;.</NotYetPopulated>
-            )
-          ) : (
-            <NotYetPopulated>
-              No relationships extracted yet. As the engine indexes your sources, it maps how entities
-              connect and shows each link&apos;s extraction confidence here.
-            </NotYetPopulated>
-          )}
-        </SectionCard>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-        {hasData && data!.entities.length > 0 ? (
-          <SectionCard
-            title="Entities"
-            description="Distinct things the engine recognizes, ranked by how often they appear."
-            icon={<Cube className="h-5 w-5" weight="duotone" aria-hidden />}
-          >
-            <div className="flex flex-wrap gap-2">
-              {data!.entities.map((e) => (
-                <Badge key={e.id} variant="secondary" className="gap-1.5">
-                  <span className="text-muted-foreground">{e.type}:</span>
-                  {e.name}
-                  <span className="tabular-nums text-muted-foreground">{e.mentions}</span>
-                </Badge>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted-foreground">
+                    <th className="py-2 pr-4 font-medium">Source</th>
+                    <th className="py-2 pr-4 font-medium">Relationship</th>
+                    <th className="py-2 pr-4 font-medium">Target</th>
+                    <th className="py-2 pr-4 font-medium">Evidence</th>
+                    <th className="py-2 font-medium">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relationships.slice(0, 50).map((rel) => {
+                    const confidence = readNumber(rel.confidence)
+                    return (
+                      <tr key={String(rel.id)} className="border-b border-border">
+                        <td className="py-2 pr-4">
+                          <span className="text-muted-foreground">{String(rel.source_entity_type ?? "")}</span>{" "}
+                          {labelFor(rel.source_entity_type, rel.source_entity_id)}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <ArrowRight className="h-3.5 w-3.5" weight="bold" aria-hidden />
+                            {String(rel.relationship_type ?? "")}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4">
+                          <span className="text-muted-foreground">{String(rel.target_entity_type ?? "")}</span>{" "}
+                          {labelFor(rel.target_entity_type, rel.target_entity_id)}
+                        </td>
+                        <td className="py-2 pr-4 tabular-nums">{readNumber(rel.evidence_count)}</td>
+                        <td className="py-2">
+                          <Badge variant="outline" className={`tabular-nums ${confidenceTone(confidence)}`}>
+                            {confidence.toFixed(2)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          </SectionCard>
-        ) : null}
-      </div>
-    </TabStateGate>
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }

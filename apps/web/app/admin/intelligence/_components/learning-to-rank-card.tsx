@@ -1,9 +1,11 @@
 "use client"
 
-import type { LearningToRankStatus } from "@/lib/admin-intelligence"
+import type { IntelligenceEvaluationsResponse } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { ShieldCheck, Lightning, Clock } from "@phosphor-icons/react"
 import { SectionCard } from "./shared"
+
+type RetrievalRankerStatus = IntelligenceEvaluationsResponse["retrievalRanker"]
 
 function formatDate(value: string | null): string {
   if (!value) return "never"
@@ -50,11 +52,15 @@ function WeightOnBoundsTrack({
   )
 }
 
-export function LearningToRankCard({ status }: { status: LearningToRankStatus }) {
-  const { active, trainingExamples, trainingThreshold, defaultWeight, learnedWeight, weightBounds } = status
+export function LearningToRankCard({ status }: { status: RetrievalRankerStatus }) {
+  const active = status.usingLearnedWeight
+  const trainingExamples = status.trainingExamples
+  const trainingThreshold = status.minTrainingExamples
+  const defaultWeight = status.fallbackReliabilityWeight
+  const learnedWeight = active ? status.activeReliabilityWeight : null
+  const weightBounds = { min: status.minLearnedWeight, max: status.maxLearnedWeight }
+  const lastTrainedAt = status.lastTrainedAt
   const progressPct = Math.max(0, Math.min(1, trainingExamples / Math.max(trainingThreshold, 1))) * 100
-  // The number actually in effect right now.
-  const effectiveWeight = active && learnedWeight != null ? learnedWeight : defaultWeight
 
   return (
     <SectionCard
@@ -101,7 +107,7 @@ export function LearningToRankCard({ status }: { status: LearningToRankStatus })
                 <Clock className="h-3.5 w-3.5" weight="duotone" aria-hidden />
                 Last trained
               </dt>
-              <dd className="mt-0.5 font-semibold text-foreground">{formatDate(status.lastTrainedAt)}</dd>
+              <dd className="mt-0.5 font-semibold text-foreground">{formatDate(lastTrainedAt)}</dd>
             </div>
           </dl>
         </div>
