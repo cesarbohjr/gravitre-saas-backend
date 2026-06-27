@@ -360,6 +360,14 @@ def _exec_hubspot_deals_update_stage(ctx: ToolContext, params: dict[str, Any]) -
     deal_id = params.get("deal_id") or params.get("dealId")
     dealstage = params.get("dealstage") or params.get("stage")
     try:
+        from app.services.outcome_attribution_service import maybe_record_hubspot_deal_outcome_baseline
+
+        maybe_record_hubspot_deal_outcome_baseline(
+            ctx,
+            deal_id=str(deal_id),
+            action_type="hubspot.deals.update_stage",
+            token=token,
+        )
         data = update_deal_stage(token, str(deal_id), str(dealstage))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
@@ -491,6 +499,14 @@ def _exec_hubspot_deals_update(ctx: ToolContext, params: dict[str, Any]) -> Norm
     if not isinstance(properties, dict) or not properties:
         raise ToolValidationError("hubspot.deals.update requires properties object")
     try:
+        from app.services.outcome_attribution_service import maybe_record_hubspot_deal_outcome_baseline
+
+        maybe_record_hubspot_deal_outcome_baseline(
+            ctx,
+            deal_id=str(deal_id),
+            action_type="hubspot.deals.update",
+            token=token,
+        )
         data = update_deal(token, str(deal_id), properties)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc

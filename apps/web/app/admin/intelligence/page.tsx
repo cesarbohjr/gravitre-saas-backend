@@ -14,8 +14,9 @@ import { OverviewTab } from "./_components/overview-tab"
 import { MemoryPromotionTab } from "./_components/memory-promotion-tab"
 import { RelationshipsTab } from "./_components/relationships-tab"
 import { EvaluationTab } from "./_components/evaluation-tab"
+import { OutcomesTab } from "./_components/outcomes-tab"
 
-type TabKey = "overview" | "memory" | "relationships" | "evaluation"
+type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes"
 
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
@@ -49,7 +50,7 @@ export default function AdminIntelligencePage() {
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground text-pretty">
-            Query observability, memory promotion, entity relationships, and response evaluation for your organization.
+            Query observability, memory promotion, entity relationships, response evaluation, and outcome-linked learning.
           </p>
           <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
             <ArrowsClockwise className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`} weight="bold" aria-hidden />
@@ -63,6 +64,7 @@ export default function AdminIntelligencePage() {
             <TabsTrigger value="memory">Memory promotion</TabsTrigger>
             <TabsTrigger value="relationships">Relationships</TabsTrigger>
             <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
+            <TabsTrigger value="outcomes">Outcomes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
@@ -79,6 +81,10 @@ export default function AdminIntelligencePage() {
 
           <TabsContent value="evaluation" className="mt-6">
             <EvaluationTab enabled={tab === "evaluation"} />
+          </TabsContent>
+
+          <TabsContent value="outcomes" className="mt-6">
+            <OutcomesTab enabled={tab === "outcomes"} />
           </TabsContent>
         </Tabs>
       </div>

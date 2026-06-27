@@ -16,9 +16,14 @@ _INITIAL_DELAY_S = 420
 async def _run_promotion_eval(settings: Settings) -> None:
     org_ids = await asyncio.to_thread(get_active_org_ids, settings, since_days=7, limit=20)
     service = get_memory_promotion_service(settings)
+    from app.services.outcome_attribution_service import get_outcome_attribution_service
+
+    outcome_service = get_outcome_attribution_service(settings)
     for org_id in org_ids:
         try:
             summary = await service.run_evaluation(org_id)
+            measured = await outcome_service.measure_outcomes_due(org_id)
+            summary["outcome_measurements_completed"] = measured
             logger.info("memory_promotion_eval org_id=%s summary=%s", org_id, summary)
         except Exception as exc:  # noqa: BLE001
             logger.warning("memory_promotion_eval_failed org_id=%s error=%s", org_id, exc)

@@ -13,6 +13,7 @@ from app.services.entity_relationship_service import (
     list_relationships_for_entity,
     load_entity_relationships_snapshot,
 )
+from app.services.outcome_attribution_service import get_outcome_attribution_service
 
 router = APIRouter(prefix="/api/admin/intelligence", tags=["intelligence-admin"])
 
@@ -60,3 +61,14 @@ async def get_response_evaluations(
         offset=offset,
         since_days=since_days,
     )
+
+
+@router.get("/outcomes")
+async def get_outcome_summaries(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """v8 org-scoped outcome-linked learning summaries (correlational, not RL)."""
+    service = get_outcome_attribution_service(settings)
+    return await service.load_admin_outcomes_snapshot(org_id, settings=settings)
