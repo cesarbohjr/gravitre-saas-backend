@@ -213,15 +213,23 @@ const projectedTotal = Math.round(workflowUsed + recentRate * Math.max(0, WEEKS_
 const projectedPct = Math.round((projectedTotal / WORKFLOW_LIMIT) * 100)
 const willExceed = projectedTotal > WORKFLOW_LIMIT
 
+// "Safe burn" baseline: the linear cumulative pace that lands exactly on the
+// plan limit at period end. Plotting actual against it shows at a glance whether
+// you're spending ahead of (above the line) or behind (below) a sustainable pace.
+const safeBurnAt = (elapsedWeeks: number) =>
+  Math.round(WORKFLOW_LIMIT * (Math.min(elapsedWeeks, WEEKS_IN_PERIOD) / WEEKS_IN_PERIOD))
+
 // Chart series: solid actual cumulative line for elapsed weeks, then a dashed
 // projected continuation to period end. The shared last point bridges them.
-type ForecastPoint = { label: string; actual: number | null; projected: number | null }
+// `safe` carries the linear allowance pace across the full period.
+type ForecastPoint = { label: string; actual: number | null; projected: number | null; safe: number }
 const forecastSeries: ForecastPoint[] = workflowCumulative.map((v, i) => ({
   label: `W${i + 1}`,
   actual: v,
   projected: i === workflowCumulative.length - 1 ? v : null,
+  safe: safeBurnAt(i + 1),
 }))
-forecastSeries.push({ label: PERIOD_END_LABEL, actual: null, projected: projectedTotal })
+forecastSeries.push({ label: PERIOD_END_LABEL, actual: null, projected: projectedTotal, safe: WORKFLOW_LIMIT })
 
 const forecastStatus = willExceed
   ? { label: "Will exceed limit", accent: "text-destructive", soft: "bg-destructive/10", dot: "bg-destructive" }
@@ -652,15 +660,21 @@ export default function BillingPage() {
                         />
                         <ReferenceLine y={WORKFLOW_LIMIT} stroke="var(--warning)" strokeDasharray="4 4"
                           label={{ value: `Plan limit ${(WORKFLOW_LIMIT / 1000)}k`, position: 'insideTopRight', fontSize: 10, fill: 'var(--warning)' }} />
-                        <Area type="monotone" dataKey="actual" stroke="var(--success)" strokeWidth={2.5} fill="url(#forecastActual)" connectNulls={false} dot={{ r: 2 }} />
+                        <Line type="monotone" dataKey="safe" name="Safe pace" stroke="var(--info)" strokeWidth={1.5} strokeDasharray="2 3" dot={false} opacity={0.7} />
+                        <Area type="monotone" dataKey="actual" name="Actual" stroke="var(--success)" strokeWidth={2.5} fill="url(#forecastActual)" connectNulls={false} dot={{ r: 2 }} />
                         <Line type="monotone" dataKey="projected" stroke="var(--muted-foreground)" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded-full bg-success" />Actual</span>
+                    <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded-full bg-info opacity-70" />Safe pace</span>
+                    <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded-full bg-muted-foreground" />Projected</span>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
                     {willExceed
-                      ? `At your recent pace, you'll pass the ${WORKFLOW_LIMIT.toLocaleString()} limit before ${PERIOD_END_LABEL}.`
-                      : `At your recent pace, you'll use about ${projectedTotal.toLocaleString()} runs by ${PERIOD_END_LABEL} — ${WORKFLOW_LIMIT - projectedTotal > 0 ? `${(WORKFLOW_LIMIT - projectedTotal).toLocaleString()} to spare.` : "right at the limit."}`}
+                      ? `You're burning above the safe pace — at your recent rate you'll pass the ${WORKFLOW_LIMIT.toLocaleString()} limit before ${PERIOD_END_LABEL}.`
+                      : `You're tracking ${workflowUsed <= safeBurnAt(weeksElapsed) ? "under" : "near"} the safe pace — about ${projectedTotal.toLocaleString()} runs by ${PERIOD_END_LABEL}${WORKFLOW_LIMIT - projectedTotal > 0 ? `, ${(WORKFLOW_LIMIT - projectedTotal).toLocaleString()} to spare.` : ", right at the limit."}`}
                   </p>
                 </div>
 
