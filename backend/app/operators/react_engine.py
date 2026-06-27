@@ -20,6 +20,7 @@ from app.services.ai_guardrails import (
     redact_pii,
 )
 from app.services.model_router import get_model_router
+from app.services.providers.openai_adapter import _supports_custom_temperature
 from app.services.tool_registry import ToolRegistry, get_tool_registry
 from app.services.tool_types import ToolContext
 from app.workflows.audit import write_audit_event
@@ -481,13 +482,15 @@ class ReActEngine:
         client = self.router._openai
         if client is None:
             raise RuntimeError("OPENAI_API_KEY is not configured")
-        return await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
-            temperature=0.2,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": "auto",
+        }
+        if _supports_custom_temperature(model):
+            kwargs["temperature"] = 0.2
+        return await client.chat.completions.create(**kwargs)
 
     async def _run_reasoning_only(
         self,
@@ -504,11 +507,10 @@ class ReActEngine:
             client = self.router._openai
             if client is None:
                 raise RuntimeError("OPENAI_API_KEY is not configured")
-            response = await client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.2,
-            )
+            kwargs: dict[str, Any] = {"model": model, "messages": messages}
+            if _supports_custom_temperature(model):
+                kwargs["temperature"] = 0.2
+            response = await client.chat.completions.create(**kwargs)
         except Exception as exc:  # noqa: BLE001
             logger.warning("react_reasoning_only_failed error=%s", exc)
             return ReActResult(
