@@ -9,7 +9,6 @@ import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
 import { ModelRegistryOverview } from "@/components/gravitre/model-registry-overview"
-import { MlKnowledgePanel } from "@/components/gravitre/ml-knowledge-panel"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
@@ -308,8 +307,6 @@ export default function ModelsPage() {
           selectedLayer={selectedTemplateLayer}
           onSelectTemplate={applyLayerTemplate}
         />
-
-        <MlKnowledgePanel />
 
         {models.length > 0 ? (
           <StatsGrid columns={4}>

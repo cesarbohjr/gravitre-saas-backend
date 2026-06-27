@@ -18,6 +18,7 @@ import {
   ML_STACK_LAYERS,
   type MlStackLayerId,
 } from "@/lib/ml-registry-catalog"
+import { MlKnowledgePanel } from "@/components/gravitre/ml-knowledge-panel"
 
 const layerIcons: Record<MlStackLayerId, typeof Brain> = {
   generative: Sparkles,
@@ -124,6 +125,8 @@ export function ModelRegistryOverview({
             </span>
           </div>
         </div>
+
+        <MlKnowledgePanel />
 
         {/* Template grid — full width, organized */}
         <div className="space-y-3">

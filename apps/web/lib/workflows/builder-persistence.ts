@@ -147,6 +147,34 @@ export interface ExecuteResponse {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+/** Align with backend definition_resolver legacy node type mapping. */
+const LEGACY_NODE_TYPE_MAP: Record<string, CanvasNodeType> = {
+  trigger: "source",
+  action: "tool",
+  end: "task",
+  human_approval: "approval",
+  loop: "task",
+  parallel: "task",
+  delay: "task",
+}
+
+const CANVAS_NODE_TYPES = new Set<CanvasNodeType>([
+  "agent",
+  "task",
+  "connector",
+  "tool",
+  "source",
+  "approval",
+  "decision",
+  "council",
+])
+
+export function normalizeCanvasNodeType(rawType: unknown): CanvasNodeType {
+  const normalized = String(rawType ?? "task").trim().toLowerCase()
+  const mapped = LEGACY_NODE_TYPE_MAP[normalized] ?? normalized
+  return CANVAS_NODE_TYPES.has(mapped as CanvasNodeType) ? (mapped as CanvasNodeType) : "task"
+}
+
 export function isPersistableWorkflowId(id: string): boolean {
   return UUID_RE.test(id)
 }
@@ -170,7 +198,7 @@ export function apiGraphToCanvasNodes(
       ({ x: Number(node.position_x ?? 0), y: Number(node.position_y ?? 0) })
     return {
       id,
-      type: String(node.node_type ?? node.type ?? "task") as CanvasNodeType,
+      type: normalizeCanvasNodeType(node.node_type ?? node.type),
       name: String(node.name ?? node.title ?? "Node"),
       description: (node.description as string) || (node.instruction as string),
       config,

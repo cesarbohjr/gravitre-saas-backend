@@ -157,5 +157,13 @@ export async function fetcher<T>(url: string): Promise<T> {
     throw new ApiError(detail, response.status)
   }
 
-  return response.json() as Promise<T>
+  const text = await response.text()
+  if (!text.trim()) {
+    return {} as T
+  }
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new ApiError("Invalid JSON response from server", response.status)
+  }
 }
