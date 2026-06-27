@@ -20,12 +20,49 @@ CONFIDENCE_NOTE = (
 MIN_SAMPLE_SIZE = 15
 DEFAULT_ATTRIBUTION_WINDOW_DAYS = 14
 
+ATTRIBUTION_WINDOWS_BY_ACTION_TYPE = {
+    "hubspot.deals.update_stage": 14,
+    "hubspot.deals.update": 14,
+    # CRM stage/amount changes are observable within ~2 weeks of pipeline motion.
+    "stripe.subscriptions.update": 30,
+    # Subscription outcomes need at least one billing cycle; sooner moves are noise.
+}
+
 ENTITY_DEAL = "deal"
+ENTITY_SUBSCRIPTION = "subscription"
 METRIC_DEAL_AMOUNT = "deal_amount"
+METRIC_SUBSCRIPTION_STATUS = "subscription_status"
+METRIC_SUBSCRIPTION_MRR = "subscription_mrr_cents"
 
 HUBSPOT_DEAL_ACTIONS = frozenset(
     {"hubspot.deals.update", "hubspot.deals.update_stage"}
 )
+STRIPE_SUBSCRIPTION_ACTIONS = frozenset({"stripe.subscriptions.update"})
+
+SUBSCRIPTION_STATUS_CODES: dict[str, float] = {
+    "active": 1.0,
+    "trialing": 0.9,
+    "past_due": 0.5,
+    "unpaid": 0.3,
+    "canceled": 0.0,
+    "incomplete": 0.2,
+    "incomplete_expired": 0.0,
+    "paused": 0.4,
+}
+
+
+def get_attribution_window(action_type: str) -> int:
+    return ATTRIBUTION_WINDOWS_BY_ACTION_TYPE.get(
+        action_type,
+        DEFAULT_ATTRIBUTION_WINDOW_DAYS,
+    )
+
+
+def encode_subscription_status(status: str) -> float | None:
+    normalized = str(status or "").strip().lower()
+    if not normalized:
+        return None
+    return SUBSCRIPTION_STATUS_CODES.get(normalized, 0.1)
 
 
 def _parse_deal_amount(deal_payload: dict[str, Any]) -> float | None:
@@ -88,10 +125,15 @@ class OutcomeAttributionService:
         action_type: str,
         metric_name: str,
         metric_value_before: float | None,
-        attribution_window_days: int = DEFAULT_ATTRIBUTION_WINDOW_DAYS,
+        attribution_window_days: int | None = None,
     ) -> dict[str, Any] | None:
         if metric_value_before is None:
             return None
+        window_days = (
+            int(attribution_window_days)
+            if attribution_window_days is not None
+            else get_attribution_window(action_type)
+        )
         client = self._client()
         payload = {
             "org_id": org_id,
@@ -104,7 +146,7 @@ class OutcomeAttributionService:
             "metric_name": metric_name,
             "metric_value_before": float(metric_value_before),
             "metric_value_after": None,
-            "attribution_window_days": int(attribution_window_days),
+            "attribution_window_days": window_days,
             "measured_at": None,
             "confidence_note": CONFIDENCE_NOTE,
         }
@@ -176,6 +218,41 @@ class OutcomeAttributionService:
                 )
                 return None
             return _parse_deal_amount(deal)
+        if target_entity_type == ENTITY_SUBSCRIPTION:
+            from app.connectors.repository import get_connector_by_type
+            from app.connectors.stripe_api import get_subscription, resolve_stripe_credentials
+
+            client = self._client()
+            conn = get_connector_by_type(client, org_id, "stripe", environment_name="default")
+            if not conn:
+                return None
+            try:
+                api_key, stripe_account = resolve_stripe_credentials(
+                    client,
+                    org_id,
+                    str(conn["id"]),
+                    self.settings,
+                )
+                payload = get_subscription(
+                    api_key,
+                    target_entity_id,
+                    stripe_account=stripe_account,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "outcome_metric_fetch_failed org=%s subscription=%s error=%s",
+                    org_id,
+                    target_entity_id,
+                    exc,
+                )
+                return None
+            from app.connectors.stripe_api import subscription_state
+
+            state = subscription_state(payload)
+            if metric_name == METRIC_SUBSCRIPTION_STATUS:
+                return encode_subscription_status(str(state.get("status") or ""))
+            if metric_name == METRIC_SUBSCRIPTION_MRR:
+                return float(state.get("mrr_cents") or 0.0)
         return None
 
     async def get_agent_outcome_summary(self, org_id: str, agent_id: str) -> dict[str, Any]:
@@ -260,7 +337,17 @@ class OutcomeAttributionService:
                 "(HubSpot deal amount today). Correlational only — not causal inference or RL."
             ),
             "observableMetrics": [
-                {"connector": "hubspot", "entityType": ENTITY_DEAL, "metric": METRIC_DEAL_AMOUNT}
+                {"connector": "hubspot", "entityType": ENTITY_DEAL, "metric": METRIC_DEAL_AMOUNT},
+                {
+                    "connector": "stripe",
+                    "entityType": ENTITY_SUBSCRIPTION,
+                    "metric": METRIC_SUBSCRIPTION_STATUS,
+                },
+                {
+                    "connector": "stripe",
+                    "entityType": ENTITY_SUBSCRIPTION,
+                    "metric": METRIC_SUBSCRIPTION_MRR,
+                },
             ],
             "confidenceNote": CONFIDENCE_NOTE,
             "minSampleSize": MIN_SAMPLE_SIZE,
@@ -297,7 +384,7 @@ def maybe_record_hubspot_deal_outcome_baseline(
             "metric_name": METRIC_DEAL_AMOUNT,
             "metric_value_before": float(amount),
             "metric_value_after": None,
-            "attribution_window_days": DEFAULT_ATTRIBUTION_WINDOW_DAYS,
+            "attribution_window_days": get_attribution_window(action_type),
             "measured_at": None,
             "confidence_note": CONFIDENCE_NOTE,
         }
@@ -307,6 +394,48 @@ def maybe_record_hubspot_deal_outcome_baseline(
             "outcome_baseline_record_failed org=%s deal=%s action=%s error=%s",
             ctx.org_id,
             deal_id,
+            action_type,
+            exc,
+        )
+
+
+def maybe_record_stripe_subscription_outcome_baseline(
+    ctx: ToolContext,
+    *,
+    subscription_id: str,
+    action_type: str,
+    before_state: dict[str, Any],
+) -> None:
+    """Sync hook from invoke_tool after Stripe subscription mutations."""
+    if action_type not in STRIPE_SUBSCRIPTION_ACTIONS:
+        return
+    status_value = encode_subscription_status(str(before_state.get("status") or ""))
+    if status_value is None:
+        return
+    try:
+        service = OutcomeAttributionService(settings=ctx.settings)
+        client = service._client()
+        payload = {
+            "org_id": ctx.org_id,
+            "agent_id": ctx.agent_id,
+            "workflow_run_id": ctx.run_id,
+            "action_type": action_type,
+            "target_entity_type": ENTITY_SUBSCRIPTION,
+            "target_entity_id": str(subscription_id),
+            "action_taken_at": datetime.now(timezone.utc).isoformat(),
+            "metric_name": METRIC_SUBSCRIPTION_STATUS,
+            "metric_value_before": float(status_value),
+            "metric_value_after": None,
+            "attribution_window_days": get_attribution_window(action_type),
+            "measured_at": None,
+            "confidence_note": CONFIDENCE_NOTE,
+        }
+        client.table("agent_action_outcomes").insert(payload).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "outcome_baseline_record_failed org=%s subscription=%s action=%s error=%s",
+            ctx.org_id,
+            subscription_id,
             action_type,
             exc,
         )

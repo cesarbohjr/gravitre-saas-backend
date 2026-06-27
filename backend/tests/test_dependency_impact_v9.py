@@ -75,8 +75,10 @@ async def test_one_hop_limit_enforced():
     with patch.object(service, "_find_direct_dependents", new=AsyncMock(side_effect=[direct, indirect])):
         with patch.object(service, "_find_one_hop_further", new=AsyncMock(return_value=indirect)):
             with patch.object(service, "_find_dynamic_connector_usage", new=AsyncMock(return_value=[])):
-                report = await service.estimate_removal_impact("org-1", "connector", "conn-1")
-    assert report["directImpact"]["declared"] == direct
+                with patch.object(service, "_get_active_schedule", new=AsyncMock(return_value=None)):
+                    report = await service.estimate_removal_impact("org-1", "connector", "conn-1")
+    assert report["directImpact"]["declared"][0]["entityId"] == "wf-1"
+    assert report["directImpact"]["declared"][0]["willFailAtNextRun"] is False
     assert report["indirectImpactOneHop"] == indirect
 
 
@@ -144,11 +146,17 @@ async def test_disconnecting_connector_surfaces_dependent_workflows():
     ):
         with patch.object(service, "_find_one_hop_further", new=AsyncMock(return_value=[])):
             with patch.object(service, "_find_dynamic_connector_usage", new=AsyncMock(return_value=[])):
-                report = await service.estimate_removal_impact("org-1", "connector", "conn-1")
+                with patch.object(
+                    DependencyImpactService,
+                    "_get_active_schedule",
+                    new=AsyncMock(return_value={"next_run_at": "2026-06-08T10:00:00+00:00"}),
+                ):
+                    report = await service.estimate_removal_impact("org-1", "connector", "conn-1")
     assert any(
         item["source"].get("workflow_id") == "wf-1"
         for item in report["directImpact"]["declared"]
     )
+    assert report["directImpact"]["declared"][0]["nextScheduledRun"] == "2026-06-08T10:00:00+00:00"
 
 
 def test_no_financial_or_staffing_estimation_attempted():

@@ -11,6 +11,7 @@ def test_stripe_actions_registered():
     actions = list_registered_actions()
     assert "stripe.invoices.list" in actions
     assert "stripe.subscriptions.get" in actions
+    assert "stripe.subscriptions.update" in actions
 
 
 def test_stripe_subscriptions_get_requires_id():

@@ -1,6 +1,8 @@
 """v10 Optimization Suggestions — evidence-backed, human-gated; never auto-applies changes."""
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -8,6 +10,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.ml.source_reliability import MIN_OUTCOMES_FOR_SCORING, compute_source_reliability
 from app.services.outcome_attribution_service import MIN_SAMPLE_SIZE, get_outcome_attribution_service
+from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -16,6 +19,9 @@ MIN_SLOW_STEP_RUNS = 8
 SLOW_STEP_MULTIPLIER = 2.5
 LOW_RELIABILITY_THRESHOLD = 0.4
 POOR_OUTCOME_WIN_RATE = 0.35
+PREVIEW_TOKEN_TTL_SECONDS = 300
+DEFAULT_CACHE_TTL_SECONDS = 300
+ONE_CLICK_APPLY_SUGGESTION_TYPE = "slow_step"
 
 ALLOWED_STATUSES = frozenset({"pending_review", "applied", "dismissed"})
 
@@ -27,6 +33,8 @@ PRODUCTION_TABLE_NAMES = (
     "training_instructions",
     "connectors",
 )
+
+APPLY_ALLOWED_PRODUCTION_TABLES = frozenset({"workflow_nodes"})
 
 
 class OptimizationSuggestionService:
@@ -359,6 +367,172 @@ class OptimizationSuggestionService:
         updated = (
             client.table("optimization_suggestions")
             .update(update)
+            .eq("id", suggestion_id)
+            .eq("org_id", org_id)
+            .execute()
+        )
+        if not updated.data:
+            raise ValueError("Optimization suggestion not found")
+        return _serialize_suggestion(updated.data[0])
+
+    async def _load_suggestion(self, org_id: str, suggestion_id: str) -> dict[str, Any]:
+        client = self._client()
+        rows = (
+            client.table("optimization_suggestions")
+            .select("*")
+            .eq("id", suggestion_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            raise ValueError("Optimization suggestion not found")
+        return rows[0]
+
+    async def _find_nodes_for_step_name(
+        self,
+        org_id: str,
+        step_name: str,
+    ) -> list[dict[str, Any]]:
+        client = self._client()
+        rows = (
+            client.table("workflow_nodes")
+            .select("id, workflow_id, title, name, config, tool_config")
+            .eq("org_id", org_id)
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+        matches: list[dict[str, Any]] = []
+        target = str(step_name or "").strip().lower()
+        for row in rows:
+            title = str(row.get("title") or "").strip().lower()
+            name = str(row.get("name") or "").strip().lower()
+            if target and (title == target or name == target):
+                matches.append(row)
+        return matches
+
+    async def generate_apply_preview(self, org_id: str, suggestion_id: str) -> dict[str, Any]:
+        suggestion = await self._load_suggestion(org_id, suggestion_id)
+        if suggestion.get("status") != "pending_review":
+            raise ValueError("Only pending_review suggestions can be previewed for apply")
+        if suggestion.get("suggestion_type") != ONE_CLICK_APPLY_SUGGESTION_TYPE:
+            raise ValueError(
+                "One-click apply is only available for slow_step suggestions in this release."
+            )
+        step_name = str(suggestion.get("target_entity_id") or "").strip()
+        nodes = await self._find_nodes_for_step_name(org_id, step_name)
+        if not nodes:
+            raise ValueError(f"No workflow node found matching step name '{step_name}'")
+        node = nodes[0]
+        config = dict(node.get("config") or {})
+        before_config = dict(config)
+        after_config = dict(config)
+        after_config["cache_ttl_seconds"] = DEFAULT_CACHE_TTL_SECONDS
+        preview_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(preview_token.encode("utf-8")).hexdigest()
+        expires_at = (self._now() + timedelta(seconds=PREVIEW_TOKEN_TTL_SECONDS)).isoformat()
+        evidence = dict(suggestion.get("evidence") or {})
+        evidence["apply_preview"] = {
+            "token_hash": token_hash,
+            "expires_at": expires_at,
+            "node_id": str(node.get("id") or ""),
+            "workflow_id": str(node.get("workflow_id") or ""),
+            "before_config": before_config,
+            "after_config": after_config,
+        }
+        client = self._client()
+        client.table("optimization_suggestions").update({"evidence": evidence}).eq(
+            "id", suggestion_id
+        ).eq("org_id", org_id).execute()
+        return {
+            "suggestionId": suggestion_id,
+            "suggestionType": ONE_CLICK_APPLY_SUGGESTION_TYPE,
+            "previewToken": preview_token,
+            "expiresAt": expires_at,
+            "before": {"nodeId": node.get("id"), "config": before_config},
+            "after": {"nodeId": node.get("id"), "config": after_config},
+            "diffSummary": (
+                f"Add cache_ttl_seconds={DEFAULT_CACHE_TTL_SECONDS} to node "
+                f"'{node.get('title') or step_name}' config"
+            ),
+        }
+
+    async def apply_suggestion(
+        self,
+        org_id: str,
+        suggestion_id: str,
+        *,
+        preview_token: str,
+        reviewed_by: str | None,
+    ) -> dict[str, Any]:
+        suggestion = await self._load_suggestion(org_id, suggestion_id)
+        if suggestion.get("suggestion_type") != ONE_CLICK_APPLY_SUGGESTION_TYPE:
+            raise ValueError(
+                "One-click apply is only available for slow_step suggestions in this release."
+            )
+        if suggestion.get("status") != "pending_review":
+            raise ValueError("Suggestion is not pending review")
+        evidence = dict(suggestion.get("evidence") or {})
+        preview = evidence.get("apply_preview") if isinstance(evidence.get("apply_preview"), dict) else {}
+        if not preview:
+            raise ValueError("Apply preview must be generated before applying")
+        expires_at_raw = preview.get("expires_at")
+        if not expires_at_raw:
+            raise ValueError("Apply preview is missing expiry")
+        expires_at = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
+        if self._now() > expires_at:
+            raise ValueError("Apply preview token has expired")
+        token_hash = hashlib.sha256(str(preview_token or "").encode("utf-8")).hexdigest()
+        if token_hash != str(preview.get("token_hash") or ""):
+            raise ValueError("Invalid apply preview token")
+        node_id = str(preview.get("node_id") or "")
+        before_config = dict(preview.get("before_config") or {})
+        after_config = dict(preview.get("after_config") or {})
+        if set(after_config.keys()) - set(before_config.keys()) - {"cache_ttl_seconds"}:
+            raise ValueError("Previewed change touches more than cache_ttl_seconds")
+        if after_config.get("cache_ttl_seconds") != DEFAULT_CACHE_TTL_SECONDS:
+            raise ValueError("Previewed cache_ttl_seconds mismatch")
+        client = self._client()
+        updated_node = (
+            client.table("workflow_nodes")
+            .update({"config": after_config})
+            .eq("id", node_id)
+            .eq("org_id", org_id)
+            .execute()
+        )
+        if not updated_node.data:
+            raise ValueError("Workflow node not found for apply")
+        diff_summary = (
+            f"Set cache_ttl_seconds={DEFAULT_CACHE_TTL_SECONDS} on workflow node {node_id}"
+        )
+        write_audit_event(
+            client,
+            org_id=org_id,
+            action="optimization_suggestion.apply",
+            actor_id=reviewed_by or "",
+            resource_type="workflow_node",
+            resource_id=node_id,
+            metadata={
+                "suggestion_id": suggestion_id,
+                "suggestion_type": ONE_CLICK_APPLY_SUGGESTION_TYPE,
+                "before_config": before_config,
+                "after_config": after_config,
+            },
+        )
+        updated = (
+            client.table("optimization_suggestions")
+            .update(
+                {
+                    "status": "applied",
+                    "reviewed_by": reviewed_by,
+                    "reviewed_at": self._now().isoformat(),
+                    "applied_change_summary": diff_summary,
+                }
+            )
             .eq("id", suggestion_id)
             .eq("org_id", org_id)
             .execute()

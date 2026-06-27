@@ -20,14 +20,20 @@ SCOPE_NOTE_BASE = (
     "for workarounds or manual processes not represented in Gravitre."
 )
 
-SCOPE_NOTE = SCOPE_NOTE_BASE
+SCHEDULE_SCOPE_NOTE = (
+    "Next-run estimates reflect currently scheduled triggers only and do not "
+    "account for manual runs, schedule changes, or workflows without an active schedule."
+)
+
+SCOPE_NOTE = f"{SCOPE_NOTE_BASE} {SCHEDULE_SCOPE_NOTE}"
 
 
 def build_scope_note(lookback_days: int = DEFAULT_LOOKBACK_DAYS) -> str:
     return (
         f"{SCOPE_NOTE_BASE} The 'observedInExecutionHistory' section reflects actual "
         f"tool calls in the last {lookback_days} days and may miss usage outside that "
-        "window or usage that has not occurred recently enough to appear in logs."
+        f"window or usage that has not occurred recently enough to appear in logs. "
+        f"{SCHEDULE_SCOPE_NOTE}"
     )
 
 ENTITY_CONNECTOR = "connector"
@@ -67,6 +73,9 @@ class DependencyImpactService:
                 lookback_days=lookback_days,
             )
         indirect = await self._find_one_hop_further(org_id, declared)
+        declared = await self._attach_next_run_times(org_id, declared)
+        observed = await self._attach_next_run_times(org_id, observed)
+        indirect = await self._attach_next_run_times(org_id, indirect)
         return {
             "entity": {"type": normalized_type, "id": entity_id},
             "directImpact": {
@@ -542,6 +551,52 @@ class DependencyImpactService:
             or []
         )
         return rows[0] if rows else None
+
+    async def _get_active_schedule(self, org_id: str, workflow_id: str) -> dict[str, Any] | None:
+        client = self._client()
+        rows = (
+            client.table("workflow_schedules")
+            .select("id, workflow_id, cron_expression, enabled, next_run_at")
+            .eq("org_id", org_id)
+            .eq("workflow_id", workflow_id)
+            .eq("enabled", True)
+            .order("next_run_at")
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        return rows[0] if rows else None
+
+    @staticmethod
+    def _workflow_id_from_item(item: dict[str, Any]) -> str | None:
+        entity_type = str(item.get("entityType") or "").lower()
+        entity_id = str(item.get("entityId") or "").strip()
+        if entity_type == ENTITY_WORKFLOW and entity_id:
+            return entity_id
+        source = item.get("source") if isinstance(item.get("source"), dict) else {}
+        workflow_id = str(source.get("workflow_id") or "").strip()
+        return workflow_id or None
+
+    async def _attach_next_run_times(
+        self,
+        org_id: str,
+        dependent_items: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        for item in dependent_items:
+            copy = dict(item)
+            workflow_id = self._workflow_id_from_item(copy)
+            if workflow_id:
+                schedule = await self._get_active_schedule(org_id, workflow_id)
+                copy["nextScheduledRun"] = schedule.get("next_run_at") if schedule else None
+                copy["willFailAtNextRun"] = schedule is not None
+            enriched.append(copy)
+        return sorted(
+            enriched,
+            key=lambda row: row.get("nextScheduledRun")
+            or datetime.max.replace(tzinfo=timezone.utc).isoformat(),
+        )
 
     @staticmethod
     def _impact_item(

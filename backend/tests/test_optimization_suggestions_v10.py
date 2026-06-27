@@ -14,12 +14,18 @@ from app.services.optimization_suggestion_service import (
 
 @pytest.mark.asyncio
 async def test_detection_never_writes_to_production_tables():
+    import inspect
+
     import app.services.optimization_suggestion_service as module
 
-    source = Path(module.__file__).read_text(encoding="utf-8")
+    detect_source = "".join(
+        inspect.getsource(getattr(OptimizationSuggestionService, name))
+        for name in dir(OptimizationSuggestionService)
+        if name.startswith("_detect_")
+    )
     for table in PRODUCTION_TABLE_NAMES:
-        assert f'table("{table}").insert' not in source
-        assert f'table("{table}").update' not in source
+        assert f'table("{table}").insert' not in detect_source
+        assert f'table("{table}").update' not in detect_source
 
     service = OptimizationSuggestionService(settings=MagicMock())
     client = MagicMock()
