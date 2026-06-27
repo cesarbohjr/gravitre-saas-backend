@@ -50,6 +50,8 @@ export interface ScheduledItem {
   workflowId?: string
   /** 0-100 progress for jobs. */
   progress?: number
+  /** Server-projected cron fire timestamps (ISO) within the requested window. */
+  occurrences?: string[]
   /** Free-form details surfaced in the detail panel. */
   meta?: Record<string, string | number | undefined>
   /** Indicates the item came from sample fallback data, not the live backend. */
@@ -287,8 +289,14 @@ export function buildOccurrences(
   const occurrences: ScheduleOccurrence[] = []
 
   for (const item of items) {
-    if (item.kind === "workflow" && item.cron) {
-      const dates = expandCron(item.cron, from, to)
+    if (item.kind === "workflow" && (item.cron || item.occurrences?.length)) {
+      // Prefer server-projected occurrences when present; otherwise expand the
+      // cron client-side across the requested window.
+      const serverDates = (item.occurrences ?? [])
+        .map((iso) => new Date(iso))
+        .filter((d) => !Number.isNaN(d.getTime()) && d >= from && d <= to)
+      const dates =
+        serverDates.length > 0 ? serverDates : item.cron ? expandCron(item.cron, from, to) : []
       for (const date of dates) {
         occurrences.push({
           key: `${item.id}-${date.getTime()}`,

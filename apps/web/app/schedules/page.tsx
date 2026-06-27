@@ -1,13 +1,49 @@
 "use client"
 
+import { useCallback, useMemo, useState } from "react"
+import useSWR from "swr"
+
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { RefreshCw, Info, CalendarClock } from "lucide-react"
 import { useSchedules } from "@/lib/use-schedules"
+import { workflowsApi } from "@/lib/api"
+import type { ScheduleKind } from "@/lib/schedules"
 import { SchedulesView } from "./_components/schedules-view"
+import { monthWindow } from "./_components/shared"
+
+const ALL_KINDS_COUNT = 3
 
 export default function SchedulesPage() {
-  const { items, isLoading, isSample, refresh } = useSchedules()
+  const [range, setRange] = useState(() => monthWindow(new Date()))
+  const [kinds, setKinds] = useState<ScheduleKind[] | undefined>(undefined)
+  const [workflowId, setWorkflowId] = useState<string | undefined>(undefined)
+
+  const { items, isLoading, isSample, error, refresh } = useSchedules({
+    from: range.from,
+    to: range.to,
+    kinds,
+    workflowId,
+  })
+
+  // Populate the workflow filter from the org's workflow list.
+  const { data: workflowData } = useSWR(["schedules-workflows"], () => workflowsApi.list(), {
+    revalidateOnFocus: false,
+  })
+  const workflowOptions = useMemo(
+    () => (workflowData?.workflows ?? []).map((w) => ({ id: w.id, name: w.name })),
+    [workflowData],
+  )
+
+  const handleRangeChange = useCallback((from: Date, to: Date) => {
+    setRange({ from: from.toISOString(), to: to.toISOString() })
+  }, [])
+
+  const handleKindsChange = useCallback((next: ScheduleKind[]) => {
+    // Treat "all selected" as no filter to keep the request lean.
+    setKinds(next.length >= ALL_KINDS_COUNT ? undefined : next)
+  }, [])
 
   return (
     <AppShell title="Schedules">
@@ -49,7 +85,23 @@ export default function SchedulesPage() {
           </div>
         )}
 
-        <SchedulesView items={items} />
+        {error && items.length === 0 ? (
+          <WorkSectionErrorCard
+            title="Couldn't load schedules"
+            message="We couldn't reach the schedules service. Please try again."
+            onRetry={refresh}
+          />
+        ) : (
+          <SchedulesView
+            items={items}
+            loading={isLoading}
+            onRangeChange={handleRangeChange}
+            onActiveKindsChange={handleKindsChange}
+            workflowOptions={workflowOptions}
+            workflowId={workflowId}
+            onWorkflowChange={setWorkflowId}
+          />
+        )}
       </div>
     </AppShell>
   )

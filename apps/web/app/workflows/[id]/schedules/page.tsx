@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, use } from "react"
+import { useCallback, useMemo, useState, use } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
@@ -12,11 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { ArrowLeft, Plus, AlertCircle, RefreshCw, CheckCircle, Info } from "lucide-react"
 import { workflowsApi } from "@/lib/api"
-import { describeCron } from "@/lib/schedules"
+import { describeCron, type ScheduleKind } from "@/lib/schedules"
 import { useSchedules } from "@/lib/use-schedules"
 import { SchedulesView } from "@/app/schedules/_components/schedules-view"
+import { monthWindow } from "@/app/schedules/_components/shared"
 
 const cronExamples = [
   { label: "Every hour", value: "0 * * * *" },
@@ -30,7 +32,23 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
   const { id } = use(params)
   const isAdmin = true
 
-  const { items, isLoading, isSample, refresh } = useSchedules(id)
+  const [range, setRange] = useState(() => monthWindow(new Date()))
+  const [kinds, setKinds] = useState<ScheduleKind[] | undefined>(undefined)
+
+  const { items, isLoading, isSample, error, refresh } = useSchedules({
+    workflowId: id,
+    from: range.from,
+    to: range.to,
+    kinds,
+  })
+
+  const handleRangeChange = useCallback((from: Date, to: Date) => {
+    setRange({ from: from.toISOString(), to: to.toISOString() })
+  }, [])
+
+  const handleKindsChange = useCallback((next: ScheduleKind[]) => {
+    setKinds(next.length >= 3 ? undefined : next)
+  }, [])
 
   const [newCron, setNewCron] = useState("")
   const [newEnabled, setNewEnabled] = useState<"enabled" | "disabled">("enabled")
@@ -191,7 +209,20 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
           </div>
         )}
 
-        <SchedulesView items={items} />
+        {error && items.length === 0 ? (
+          <WorkSectionErrorCard
+            title="Couldn't load schedules"
+            message="We couldn't reach the schedules service. Please try again."
+            onRetry={refresh}
+          />
+        ) : (
+          <SchedulesView
+            items={items}
+            loading={isLoading}
+            onRangeChange={handleRangeChange}
+            onActiveKindsChange={handleKindsChange}
+          />
+        )}
       </div>
     </AppShell>
   )

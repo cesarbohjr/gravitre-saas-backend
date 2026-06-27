@@ -118,3 +118,15 @@ export function addDays(d: Date, days: number): Date {
   next.setDate(next.getDate() + days)
   return next
 }
+
+/**
+ * The visible 6-week (42-day) window for a given month, as ISO strings.
+ * Matches SchedulesView's internal occurrence-expansion range so the unified
+ * /api/schedules request projects cron fires across exactly what's on screen.
+ */
+export function monthWindow(month: Date): { from: string; to: string } {
+  const from = startOfCalendarGrid(startOfMonth(month))
+  const to = addDays(from, 41)
+  to.setHours(23, 59, 59, 999)
+  return { from: from.toISOString(), to: to.toISOString() }
+}

@@ -1,8 +1,16 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   CalendarDays,
   ChevronLeft,
@@ -39,7 +47,29 @@ const VIEWS: { id: ViewMode; label: string; icon: typeof CalendarDays }[] = [
 
 const ALL_KINDS: ScheduleKind[] = ["workflow", "task", "job"]
 
-export function SchedulesView({ items }: { items: ScheduledItem[] }) {
+export interface SchedulesViewProps {
+  items: ScheduledItem[]
+  /** Show loading skeletons (first load, before any items arrive). */
+  loading?: boolean
+  /** Notified with the visible window so the parent can drive the data fetch. */
+  onRangeChange?: (from: Date, to: Date) => void
+  /** Notified when the active kind filter changes. */
+  onActiveKindsChange?: (kinds: ScheduleKind[]) => void
+  /** Optional workflow filter (global view only). */
+  workflowOptions?: { id: string; name: string }[]
+  workflowId?: string
+  onWorkflowChange?: (workflowId: string | undefined) => void
+}
+
+export function SchedulesView({
+  items,
+  loading = false,
+  onRangeChange,
+  onActiveKindsChange,
+  workflowOptions,
+  workflowId,
+  onWorkflowChange,
+}: SchedulesViewProps) {
   const [view, setView] = useState<ViewMode>("calendar")
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [activeKinds, setActiveKinds] = useState<Set<ScheduleKind>>(new Set(ALL_KINDS))
@@ -65,6 +95,17 @@ export function SchedulesView({ items }: { items: ScheduledItem[] }) {
     () => buildOccurrences(filteredItems, rangeStart, rangeEnd),
     [filteredItems, rangeStart, rangeEnd],
   )
+
+  // Lift the visible window and active kinds up so the parent page can pass
+  // them to the unified /api/schedules endpoint (server-side filtering +
+  // cron projection). Callbacks should be memoized by the parent.
+  useEffect(() => {
+    onRangeChange?.(rangeStart, rangeEnd)
+  }, [rangeStart, rangeEnd, onRangeChange])
+
+  useEffect(() => {
+    onActiveKindsChange?.(ALL_KINDS.filter((k) => activeKinds.has(k)))
+  }, [activeKinds, onActiveKindsChange])
 
   const monthStart = startOfMonth(month)
   const monthEnd = endOfMonth(month)
@@ -187,43 +228,66 @@ export function SchedulesView({ items }: { items: ScheduledItem[] }) {
             )
           })}
         </div>
-        <ScheduleLegend className="hidden sm:flex" />
+        <div className="flex flex-wrap items-center gap-3">
+          {workflowOptions && workflowOptions.length > 0 && (
+            <Select
+              value={workflowId ?? "all"}
+              onValueChange={(v) => onWorkflowChange?.(v === "all" ? undefined : v)}
+            >
+              <SelectTrigger className="h-8 w-[200px] text-xs" aria-label="Filter by workflow">
+                <SelectValue placeholder="All workflows" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All workflows</SelectItem>
+                {workflowOptions.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    {w.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <ScheduleLegend className="hidden sm:flex" />
+        </div>
       </div>
 
       {/* Active view */}
-      {view === "calendar" && (
-        <CalendarView
-          month={month}
-          occurrences={occurrences}
-          selectedId={selected?.id}
-          onSelect={handleSelect}
-          onOpen={handleOpen}
-        />
-      )}
-      {view === "gantt" && (
+      {loading && items.length === 0 ? (
+        <ViewSkeleton view={view} />
+      ) : (
         <>
-          <GanttView
-            rangeStart={monthStart}
-            rangeEnd={monthEnd}
-            occurrences={occurrences.filter(
-              (o) => o.date >= monthStart && o.date <= monthEnd,
-            )}
-            selectedId={selected?.id}
-            onSelect={handleSelect}
-            onOpen={handleOpen}
-          />
-          {occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd).length === 0 && (
-            <EmptyRange label="No scheduled items this month." />
+          {view === "calendar" && (
+            <CalendarView
+              month={month}
+              occurrences={occurrences}
+              selectedId={selected?.id}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+            />
+          )}
+          {view === "gantt" && (
+            <>
+              <GanttView
+                rangeStart={monthStart}
+                rangeEnd={monthEnd}
+                occurrences={occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd)}
+                selectedId={selected?.id}
+                onSelect={handleSelect}
+                onOpen={handleOpen}
+              />
+              {occurrences.filter((o) => o.date >= monthStart && o.date <= monthEnd).length ===
+                0 && <EmptyRange label="No scheduled items this month." />}
+            </>
+          )}
+          {view === "list" && (
+            <ListView
+              items={filteredItems}
+              selectedId={selected?.id}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+            />
           )}
         </>
-      )}
-      {view === "list" && (
-        <ListView
-          items={filteredItems}
-          selectedId={selected?.id}
-          onSelect={handleSelect}
-          onOpen={handleOpen}
-        />
       )}
 
       <p className="px-1 text-xs text-muted-foreground">
@@ -239,6 +303,42 @@ function EmptyRange({ label }: { label: string }) {
   return (
     <div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-sm text-muted-foreground">
       {label}
+    </div>
+  )
+}
+
+function ViewSkeleton({ view }: { view: ViewMode }) {
+  if (view === "list") {
+    return (
+      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-2.5 w-2.5 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (view === "gantt") {
+    return (
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-6 flex-1" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div className="grid grid-cols-7 gap-px rounded-xl border border-border bg-border p-px">
+      {Array.from({ length: 42 }).map((_, i) => (
+        <Skeleton key={i} className="h-24 rounded-none bg-card" />
+      ))}
     </div>
   )
 }
