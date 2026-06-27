@@ -125,6 +125,12 @@ importers:
       cmdk:
         specifier: 1.1.1
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      cron-parser:
+        specifier: ^5.6.1
+        version: 5.6.1
+      cronstrue:
+        specifier: ^3.21.0
+        version: 3.21.0
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
@@ -2241,6 +2247,14 @@ packages:
       typescript:
         optional: true
 
+  cron-parser@5.6.1:
+    resolution: {integrity: sha512-QBm4o1PwZiuY7KFbVvW7FLC8bozy7YWzv+Fz6KRS7sQghzcbDZCGxr/Bc5b6TQreAoSwuWVP491dIcK0THCX6A==}
+    engines: {node: '>=18'}
+
+  cronstrue@3.21.0:
+    resolution: {integrity: sha512-6DgX87NpjknhNmYC0/JjexQIAwCvtaUNoayqxLsciU5NkwGcEhuXLgXkIOX/bsuXL4f/aaLfgimJ6/2X8c5ezg==}
+    hasBin: true
+
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -3385,6 +3399,10 @@ packages:
     resolution: {integrity: sha512-JJ8GVTQqFwuliifD48U6+h7DXEHdkhJ/E87kksGByII3qHxtPciVb8T8woQONHBQgHVOl7rSMrrip3SeVNy7Fg==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  luxon@3.7.2:
+    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
+    engines: {node: '>=12'}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -6576,6 +6594,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.7.3
 
+  cron-parser@5.6.1:
+    dependencies:
+      luxon: 3.7.2
+
+  cronstrue@3.21.0: {}
+
   cross-spawn@7.0.6:
     dependencies:
       path-key: 3.1.1
@@ -7808,6 +7832,8 @@ snapshots:
   lucide-react@0.564.0(react@19.2.4):
     dependencies:
       react: 19.2.4
+
+  luxon@3.7.2: {}
 
   magic-string@0.30.21:
     dependencies:

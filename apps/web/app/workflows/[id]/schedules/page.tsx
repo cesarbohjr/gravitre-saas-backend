@@ -1,11 +1,8 @@
 "use client"
 
-import { useState, use } from "react"
-import useSWR from "swr"
+import { useMemo, useState, use } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { StatusBadge } from "@/components/gravitre/status-badge"
-import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -15,40 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Plus, AlertCircle, RefreshCw, CheckCircle, Clock, Trash2 } from "lucide-react"
-
-interface Schedule {
-  id: string
-  cron: string
-  nextRun: string
-  lastRun?: string
-  status: "enabled" | "disabled"
-}
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
-
-const fallbackSchedules: Schedule[] = [
-  {
-    id: "sch-001",
-    cron: "0 */6 * * *",
-    nextRun: "2024-01-15 18:00 UTC",
-    lastRun: "2024-01-15 12:00 UTC",
-    status: "enabled",
-  },
-  {
-    id: "sch-002",
-    cron: "0 9 * * 1-5",
-    nextRun: "2024-01-16 09:00 UTC",
-    lastRun: "2024-01-15 09:00 UTC",
-    status: "enabled",
-  },
-  {
-    id: "sch-003",
-    cron: "0 0 1 * *",
-    nextRun: "2024-02-01 00:00 UTC",
-    status: "disabled",
-  },
-]
+import { ArrowLeft, Plus, AlertCircle, RefreshCw, CheckCircle, Info } from "lucide-react"
+import { workflowsApi } from "@/lib/api"
+import { describeCron } from "@/lib/schedules"
+import { useSchedules } from "@/lib/use-schedules"
+import { SchedulesView } from "@/app/schedules/_components/schedules-view"
 
 const cronExamples = [
   { label: "Every hour", value: "0 * * * *" },
@@ -62,53 +30,32 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
   const { id } = use(params)
   const isAdmin = true
 
-  // Fetch schedules from API
-  const { data, error, isLoading, mutate } = useSWR<{ schedules: Schedule[] }>(
-    `/api/workflows/${id}/schedules`,
-    fetcher,
-    {
-      fallbackData: { schedules: fallbackSchedules },
-      revalidateOnFocus: false,
-    }
-  )
+  const { items, isLoading, isSample, refresh } = useSchedules(id)
 
-  const scheduleList = data?.schedules ?? fallbackSchedules
-
-  // Create schedule form
   const [newCron, setNewCron] = useState("")
   const [newEnabled, setNewEnabled] = useState<"enabled" | "disabled">("enabled")
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
 
+  const cronPreview = useMemo(() => (newCron.trim() ? describeCron(newCron.trim()) : ""), [newCron])
+
   const handleCreateSchedule = async () => {
     if (!newCron.trim()) {
       setCreateError("Cron expression is required")
       return
     }
-
     setIsCreating(true)
     setCreateError(null)
     setCreateSuccess(null)
-
     try {
-      const response = await fetch(`/api/workflows/${id}/schedules`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cronExpression: newCron,
-          isEnabled: newEnabled === "enabled",
-        }),
+      await workflowsApi.createSchedule(id, {
+        cron_expression: newCron.trim(),
+        enabled: newEnabled === "enabled",
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to create schedule")
-      }
-
       setNewCron("")
       setCreateSuccess("Schedule created successfully")
-      mutate()
+      refresh()
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create schedule")
     } finally {
@@ -116,39 +63,11 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
     }
   }
 
-  const handleToggleStatus = async (scheduleId: string, currentStatus: "enabled" | "disabled") => {
-    try {
-      await fetch(`/api/workflows/${id}/schedules/${scheduleId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          isEnabled: currentStatus === "disabled",
-        }),
-      })
-      mutate()
-    } catch {
-      // Handle error silently, rely on SWR retry
-    }
-  }
-
-  const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm("Are you sure you want to delete this schedule?")) return
-
-    try {
-      await fetch(`/api/workflows/${id}/schedules/${scheduleId}`, {
-        method: "DELETE",
-      })
-      mutate()
-    } catch {
-      // Handle error silently
-    }
-  }
-
   return (
     <AppShell title="Schedules">
-      <div className="p-6">
+      <div className="mx-auto max-w-7xl p-4 sm:p-6">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-5">
           <Link
             href={`/workflows/${id}`}
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -157,39 +76,36 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
             Back to Workflow
           </Link>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">Schedules</h1>
               <span className="text-muted-foreground">·</span>
-              <span className="text-sm text-muted-foreground font-mono">{id}</span>
-              <EnvironmentBadge environment="production" />
+              <span className="font-mono text-sm text-muted-foreground">{id}</span>
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => mutate()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={refresh}
+              disabled={isLoading}
+            >
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
         </div>
 
-        {/* API Error Banner */}
-        {error && (
-          <div className="mb-6 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            Failed to load schedules. Showing cached data.
-          </div>
-        )}
-
-        {/* Create Schedule Card */}
+        {/* Create Schedule */}
         {isAdmin && (
-          <div className="mb-6 rounded-lg border border-border bg-card">
+          <div className="mb-5 rounded-xl border border-border bg-card">
             <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold text-foreground">Create Schedule</h2>
+              <h2 className="text-sm font-semibold text-foreground">Create schedule</h2>
             </div>
-            <div className="p-4 space-y-4">
-              <div className="flex items-end gap-4">
+            <div className="space-y-4 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                 <div className="flex-1">
                   <label className="mb-1.5 block text-sm text-muted-foreground">
-                    Cron Expression
+                    Cron expression
                   </label>
                   <Input
                     value={newCron}
@@ -198,10 +114,8 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
                     className="h-9 font-mono"
                   />
                 </div>
-                <div className="w-32">
-                  <label className="mb-1.5 block text-sm text-muted-foreground">
-                    Status
-                  </label>
+                <div className="w-full sm:w-32">
+                  <label className="mb-1.5 block text-sm text-muted-foreground">Status</label>
                   <Select
                     value={newEnabled}
                     onValueChange={(v) => setNewEnabled(v as "enabled" | "disabled")}
@@ -226,22 +140,29 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
                 </Button>
               </div>
 
-              {/* Helper text */}
-              <div className="flex flex-wrap gap-2">
+              {/* Live human-readable preview */}
+              {cronPreview && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Info className="h-4 w-4 text-info" />
+                  This runs: <span className="font-medium text-foreground">{cronPreview}</span>
+                </p>
+              )}
+
+              {/* Example chips */}
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-muted-foreground">Examples:</span>
                 {cronExamples.map((example) => (
                   <button
                     key={example.value}
                     type="button"
                     onClick={() => setNewCron(example.value)}
-                    className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+                    className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
                   >
                     {example.label} <span className="font-mono">({example.value})</span>
                   </button>
                 ))}
               </div>
 
-              {/* Messages */}
               {createError && (
                 <div className="flex items-center gap-2 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -258,113 +179,19 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
           </div>
         )}
 
-        {/* Schedules Table */}
-        <div className="rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
-            <span className="text-xs text-muted-foreground">{scheduleList.length} schedule{scheduleList.length !== 1 ? "s" : ""}</span>
+        {/* Sample banner */}
+        {isSample && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+            <span>
+              No live schedules or runs for this workflow yet — showing{" "}
+              <span className="font-medium text-foreground">sample data</span>. Create a schedule
+              above to populate this view.
+            </span>
           </div>
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Cron
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Next Run
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Last Run
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                // Loading skeleton
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i}>
-                    <td className="px-4 py-4">
-                      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="h-5 w-16 animate-pulse rounded bg-muted" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="h-7 w-24 animate-pulse rounded bg-muted ml-auto" />
-                    </td>
-                  </tr>
-                ))
-              ) : scheduleList.length === 0 ? (
-                // Empty state
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center">
-                    <Clock className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
-                    <p className="text-sm text-muted-foreground">No schedules created yet.</p>
-                  </td>
-                </tr>
-              ) : (
-                // Data rows
-                scheduleList.map((schedule) => (
-                  <tr key={schedule.id}>
-                    <td className="px-4 py-4">
-                      <span className="font-mono text-sm text-foreground">{schedule.cron}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-muted-foreground">{schedule.nextRun}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-muted-foreground">{schedule.lastRun ?? "-"}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge
-                        variant={schedule.status === "enabled" ? "success" : "muted"}
-                        dot
-                      >
-                        {schedule.status}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      {isAdmin && (
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => handleToggleStatus(schedule.id, schedule.status)}
-                          >
-                            {schedule.status === "enabled" ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteSchedule(schedule.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          </div>
-        </div>
+        )}
+
+        <SchedulesView items={items} />
       </div>
     </AppShell>
   )

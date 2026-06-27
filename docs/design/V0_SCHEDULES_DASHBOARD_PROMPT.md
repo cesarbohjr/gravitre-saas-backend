@@ -1,27 +1,79 @@
-# v0 prompt — Schedules dashboard (`/schedules`)
+# v0 prompt — Schedules dashboard polish (`/schedules`)
 
-Paste into v0 on branch `v0/cesarbohorquezjr-4251-c5e410cc` (synced from `main`). **UI only** — do not reimplement data fetching; wire to existing hooks/API.
+Paste into v0 on branch `v0/cesarbohorquezjr-4251-c5e410cc` (synced from `main`). **UI polish only** — data layer is live; extend existing components under `apps/web/app/schedules/`.
 
 ---
 
-## Context
+## What's already shipped (do not rebuild)
 
-Gravitre needs a **Schedules dashboard** at `/schedules` that replaces the current stub page. Backend aggregation is **live**:
+- **Backend:** `GET /api/schedules` — org-scoped aggregation (workflow cron + runs + training jobs)
+- **Hook:** `useSchedules()` in `apps/web/lib/use-schedules.ts` — calls unified API, legacy fan-out fallback, sample data when empty
+- **Page shell:** `apps/web/app/schedules/page.tsx` with `SchedulesView`
+- **Views:** calendar, gantt, list tabs in `_components/` (`schedules-view.tsx`, `calendar-view.tsx`, `gantt-view.tsx`, `list-view.tsx`, `detail-sheet.tsx`)
+- **Sidebar:** Schedules → `/schedules` under ACTIVITY
 
-- `GET /api/schedules` — org-scoped, returns `{ items: ScheduledItem[] }`
-- Client: `useSchedules()` in `apps/web/lib/use-schedules.ts` (falls back to legacy fan-out only if endpoint missing)
-- Types: `ScheduledItem`, `SchedulesListParams` in `apps/web/types/api.ts`
-- Stub page: `apps/web/app/schedules/page.tsx` (simple list — replace entirely)
+---
 
-Query params the hook supports (pass through to `useSchedules({ ... })`):
+## Your task — wire live data + filters
 
-| Param | Type | Purpose |
-|-------|------|---------|
-| `workflowId` | string | Filter to one workflow |
-| `from`, `to` | ISO string | Cron projection window |
-| `kinds` | `("workflow"\|"task"\|"job")[]` | Filter item types |
+Enhance the existing Schedules dashboard so it uses **real API params** instead of only client-side filtering.
 
-Each `ScheduledItem`:
+### 1. Pass hook params from the page
+
+Lift filter state to `page.tsx` (or a small wrapper) and call:
+
+```typescript
+useSchedules({
+  workflowId,   // optional
+  from,         // ISO — calendar month start
+  to,           // ISO — calendar month end
+  kinds,        // ("workflow" | "task" | "job")[] | undefined = all
+})
+```
+
+When filters change, the hook refetches automatically (SWR key includes params).
+
+### 2. Kind + workflow filters
+
+- Kind chips in `SchedulesView` should set `kinds` on `useSchedules`, not only filter in-memory.
+- Optional workflow select → set `workflowId` (populate from distinct `workflowId` on items or `workflowsApi.list()`).
+
+### 3. Calendar month navigation
+
+- Month prev/next should set `from` / `to` to that month's bounds and pass through to `useSchedules`.
+- Prefer server `occurrences[]` on workflow items when present; fall back to `buildOccurrences()` / `expandCron()` only when missing.
+
+### 4. Sample data banner
+
+- Keep the existing `isSample` banner on the page when no live items exist.
+- Remove sample fallback once the org has at least one real schedule/run/job (already handled in hook).
+
+### 5. Deep links (verify / fix)
+
+| Kind | Target |
+|------|--------|
+| workflow | `/workflows/{workflowId}/schedules` |
+| task | `/runs/{id}` |
+| job | `/training` |
+
+### 6. UX polish
+
+- Loading skeletons while `isLoading`
+- Error state with retry (use `WorkSectionErrorCard` from `@/components/gravitre/*`)
+- Mobile: collapse filters into a sheet
+- Match Gravitre admin aesthetic (dark, chart-1/2/3 kind colors already in `KIND_STYLES`)
+
+---
+
+## Constraints
+
+- **Do not** reimplement N+1 fetching in the page — use `useSchedules()` only.
+- **Do not** add Next.js API routes — `/api/*` rewrites to Railway.
+- **Do not** change backend contracts unless types need narrowing in `apps/web/types/api.ts`.
+
+---
+
+## Types reference (`ScheduledItem`)
 
 ```typescript
 kind: "workflow" | "task" | "job"
@@ -35,71 +87,16 @@ lastRunAt?: string
 startedAt?: string
 completedAt?: string
 workflowId?: string
-progress?: number        // 0-100 for training jobs
+progress?: number
 occurrences?: string[]   // server-projected cron fires in window
 ```
-
-Sidebar link **Schedules → `/schedules`** already exists under ACTIVITY.
-
----
-
-## Design direction
-
-Match Gravitre admin console aesthetic (dark, duotone Phosphor icons, violet/emerald accents) — same family as `/runs`, `/goals`, `/admin/intelligence`.
-
-### Layout (single page, no new routes required)
-
-1. **Page header** — title “Schedules”, subtitle explaining unified cron + runs + training jobs; primary actions: Refresh, optional “New schedule” → `/workflows` (or workflow picker modal linking to `/workflows/[id]/schedules`).
-
-2. **Filter bar**
-   - Kind chips: All | Workflows | Task runs | Training jobs → sets `kinds` on `useSchedules`
-   - Optional workflow select (populate from `workflowsApi.list()` or distinct `workflowId` on items)
-   - Date range control for calendar month → sets `from` / `to` (defaults handled by API)
-
-3. **Main content — two complementary views (tabs or split)**
-
-   **A. Timeline / list (default)**  
-   - Group items by day using `nextRunAt` || `startedAt` || `lastRunAt`
-   - Row shows: kind badge, title, subtitle (cron or status), status pill, next/last time
-   - Deep links:
-     - workflow → `/workflows/{workflowId}/schedules`
-     - task → `/runs/{id}`
-     - job → `/training`
-
-   **B. Calendar month grid (optional second tab)**  
-   - Plot `occurrences[]` for workflow items + one-off task/job timestamps
-   - Click day → filter list to that day
-   - If client-side cron expansion needed for disabled rows, keep `cron` field and use existing cron helper pattern — prefer server `occurrences` when present
-
-4. **Empty states** — no items vs filtered-empty; link to Automations and Training hub.
-
-5. **Loading / error** — use existing `Skeleton`, `WorkSectionErrorCard`, `EmptyState` from `@/components/gravitre/*`.
-
----
-
-## Constraints
-
-- **Use `useSchedules()`** — do not call `workflowsApi.listSchedules` per workflow from the page.
-- **Do not add Next.js API routes** — `/api/*` rewrites to Railway already.
-- **Do not change** `apps/web/lib/api.ts` contract unless adding typed helpers; `schedulesApi.list()` already exists.
-- Remove the dashed “v0 stub” banner when shipping the real UI.
-- Keep page as `"use client"` with `AppShell`.
 
 ---
 
 ## Acceptance checklist
 
-- [ ] `/schedules` renders without console errors when logged in with org selected
-- [ ] Filters update `useSchedules` params and list refreshes
-- [ ] Workflow / task / job rows link to correct detail pages
-- [ ] Calendar or timeline shows projected cron occurrences when API returns `occurrences`
-- [ ] Mobile: filters collapse into sheet; list remains readable
-- [ ] Matches sidebar active state for `/schedules`
-
----
-
-## Out of scope (backend already done)
-
-- Creating/editing cron expressions (stay on `/workflows/[id]/schedules`)
-- New API endpoints
-- Client-side N+1 aggregation (legacy fallback only)
+- [ ] Changing kind chips refetches via `useSchedules({ kinds })`
+- [ ] Calendar month changes set `from`/`to` and list/calendar update
+- [ ] Live org data replaces sample banner when items exist
+- [ ] Detail sheet + row links navigate correctly
+- [ ] No console errors on `/schedules` when logged in with org selected
