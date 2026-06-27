@@ -1502,6 +1502,88 @@ export const intelligenceApi = {
   },
 }
 
+// ============ Memory Promotion (v4) ============
+export type PromotionThresholdComparison = {
+  frequency: number | null
+  departmentCount: number | null
+  autoPromoteMinOccurrences: number
+  autoPromoteMinDepartments: number
+  meetsAutoThreshold: boolean
+  canAutoPromote: boolean
+}
+
+export type PromotionCandidate = {
+  id: string
+  candidate_type?: string | null
+  content?: string | null
+  memory_category?: string | null
+  status?: string | null
+  source_table?: string | null
+  frequency?: number | null
+  department_count?: number | null
+  metadata?: Record<string, unknown> | null
+  updated_at?: string | null
+  thresholdComparison?: PromotionThresholdComparison
+  [key: string]: unknown
+}
+
+export type PromotionCandidatesResponse = {
+  items: PromotionCandidate[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type AutoPromotionRecord = {
+  memory_id?: string | null
+  candidate_id?: string | null
+  source_table?: string | null
+  action?: string | null
+  decided_at?: string | null
+  decided_by?: string | null
+  promotionPath?: string | null
+  decisionReasoning?: string | null
+  rollbackPath?: string | null
+  [key: string]: unknown
+}
+
+export type RecentAutoPromotionsResponse = {
+  items: AutoPromotionRecord[]
+  since: string
+  rollbackEndpoint: string
+}
+
+export const memoryPromotionApi = {
+  candidates: (params?: { status?: string; source?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set("status", params.status)
+    if (params?.source) query.set("source", params.source)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<PromotionCandidatesResponse>(apiUrl(`/api/admin/memory-promotion/candidates${suffix}`))
+  },
+  approve: (candidateId: string) =>
+    postJson<Record<string, unknown>>(
+      apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}/approve`),
+      {},
+    ),
+  reject: (candidateId: string, reason?: string) =>
+    postJson<{ status: string }>(
+      apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}/reject`),
+      { reason: reason ?? null },
+    ),
+  recentAutoPromotions: (params?: { since?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.since) query.set("since", params.since)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<RecentAutoPromotionsResponse>(
+      apiUrl(`/api/admin/memory-promotion/recent-auto-promotions${suffix}`),
+    )
+  },
+}
+
 // ============ Settings ============
 export const settingsApi = {
   get: () => fetcher<Record<string, unknown>>(apiUrl("/api/settings")),
@@ -2055,6 +2137,7 @@ export const api = {
   billing: billingApi,
   metrics: metricsApi,
   intelligence: intelligenceApi,
+  memoryPromotion: memoryPromotionApi,
   settings: settingsApi,
   environments: environmentsApi,
   organizations: organizationsApi,
