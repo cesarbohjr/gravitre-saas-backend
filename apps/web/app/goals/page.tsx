@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { EmptyState } from "@/components/gravitre/empty-state"
@@ -34,16 +35,24 @@ function formatDate(value?: string | null): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-function GoalRow({ goal }: { goal: GoalRecord }) {
+function GoalRow({ goal, index }: { goal: GoalRecord; index: number }) {
   const status = goal.status ?? "draft"
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, type: "spring", stiffness: 120, damping: 18 }}
+      whileHover={{ y: -2 }}
+    >
     <Link
       href={`/goals/${goal.id}`}
-      className="block rounded-xl border border-border/60 bg-card/40 p-4 transition-colors hover:border-violet-500/30 hover:bg-card/70"
+      className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-primary/40 hover:bg-card/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground line-clamp-2">{goal.objective}</p>
+          <p className="font-medium text-foreground line-clamp-2 transition-colors group-hover:text-primary">
+            {goal.objective}
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {goal.category ? <span className="capitalize">{goal.category}</span> : null}
             {goal.department ? (
@@ -66,6 +75,7 @@ function GoalRow({ goal }: { goal: GoalRecord }) {
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Created {formatDate(goal.createdAt)}</p>
     </Link>
+    </motion.div>
   )
 }
 
@@ -93,7 +103,7 @@ export default function GoalsPage() {
                 <RefreshCw className="h-4 w-4" />
                 Refresh
               </Button>
-              <Button size="sm" onClick={() => setWizardOpen(true)} className="gap-2 bg-violet-600 hover:bg-violet-700">
+              <Button size="sm" onClick={() => setWizardOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
                 New goal
               </Button>
@@ -125,8 +135,8 @@ export default function GoalsPage() {
           />
         ) : (
           <div className="space-y-3">
-            {goals.map((goal) => (
-              <GoalRow key={goal.id} goal={goal} />
+            {goals.map((goal, index) => (
+              <GoalRow key={goal.id} goal={goal} index={index} />
             ))}
           </div>
         )}
