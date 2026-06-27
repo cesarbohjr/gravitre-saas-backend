@@ -1,0 +1,30 @@
+﻿{
+    "vendors":  [
+                    {
+                        "vendor":  "quickbooks",
+                        "pass":  true,
+                        "statusOk":  true,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/quickbooks/callback",
+                        "notes":  ""
+                    },
+                    {
+                        "vendor":  "netsuite",
+                        "pass":  false,
+                        "statusOk":  false,
+                        "redirectOk":  true,
+                        "callbackOk":  true,
+                        "redirectUri":  "https://gravitre.app/api/connectors/oauth/netsuite/callback",
+                        "notes":  ""
+                    }
+                ],
+    "appBase":  "https://gravitre.app",
+    "apiBase":  "https://api.gravitre.app",
+    "generatedAt":  "2026-06-24T20:26:22.4884001Z",
+    "summary":  {
+                    "total":  2,
+                    "passed":  1
+                },
+    "issue":  "STA-277"
+}

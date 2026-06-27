@@ -39,6 +39,8 @@ from app.connectors.google_vendor_oauth import (
     google_vendor_connection_auth_status,
     normalize_google_vendor,
 )
+from app.connectors.odoo import odoo_connection_auth_status
+from app.connectors.apollo_api import apollo_connection_auth_status
 from app.connectors.oauth_provider_registry import (
     GENERIC_OAUTH_VENDORS,
     normalize_generic_vendor,
@@ -55,6 +57,14 @@ def resolve_connector_auth_status(
     environment_name: str | None = None,
 ) -> str | None:
     """Return auth status for OAuth connectors, or None if not applicable."""
+    if vendor == "odoo":
+        return odoo_connection_auth_status(
+            client, org_id, connector_id, settings, environment_name=environment_name
+        )
+    if vendor == "apollo":
+        return apollo_connection_auth_status(
+            client, org_id, connector_id, settings, environment_name=environment_name
+        )
     if normalize_hubspot_vendor(vendor) == "hubspot":
         return hubspot_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name

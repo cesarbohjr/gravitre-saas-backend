@@ -79,7 +79,7 @@ Zendesk, GitHub (PAT), Segment, Stripe, LinkedIn — customer enters credentials
 
 ### Slack gap
 
-Slack uses **bot token** per connector; OAuth route not implemented. See `CONNECTOR_PRODUCTION_READINESS_REPORT.md` issue C-01.
+Slack uses **OAuth v2** (`slack_oauth.py` + `SLACK_CLIENT_ID/SECRET`). See Connectors → Slack.
 
 ---
 

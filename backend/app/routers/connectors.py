@@ -22,7 +22,12 @@ from app.core.errors import error_detail
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
-from app.connectors.platform import masked_api_key_for_response, store_connector_api_key
+from app.connectors.platform import (
+    is_connector_type_schema_error,
+    masked_api_key_for_response,
+    raise_connector_type_schema_error,
+    store_connector_api_key,
+)
 from app.services.partner_marketplace_service import is_published_partner_vendor
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token, normalize_vendor
 from app.connectors.salesforce_oauth import ensure_salesforce_access_token, normalize_vendor as normalize_salesforce_vendor
@@ -71,6 +76,7 @@ TOOL_CONNECTOR_VENDORS = frozenset(
         "google_calendar",
         "fhir",
         "clio",
+        "pipedrive",
     }
 )
 
@@ -133,9 +139,11 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "odoo",
         "absorb_lms",
         "canva",
+        "figma",
         "apollo",
         "fhir",
         "clio",
+        "pipedrive",
     }
 )
 
@@ -181,6 +189,7 @@ def _docs_url(vendor: str) -> str | None:
     mapping = {
         "salesforce": "https://developer.salesforce.com/docs",
         "hubspot": "https://developers.hubspot.com/docs",
+        "pipedrive": "https://developers.pipedrive.com/docs/api/v1",
         "slack": "https://api.slack.com/docs",
         "postgresql": "https://www.postgresql.org/docs/",
         "stripe": "https://stripe.com/docs/api",
@@ -196,6 +205,7 @@ def _docs_url(vendor: str) -> str | None:
         "google_drive": "https://developers.google.com/drive/api",
         "google_docs": "https://developers.google.com/docs/api",
         "google_sheets": "https://developers.google.com/sheets/api",
+        "apollo": "https://docs.apollo.io/reference/authentication",
     }
     return mapping.get(vendor)
 
@@ -571,6 +581,17 @@ async def test_connector_route(
         if token:
             return {"success": True, "message": "Salesforce connection is valid"}
         return {"success": False, "message": err or "Salesforce connection failed"}
+    if vendor == "pipedrive":
+        from app.connectors.pipedrive_api import test_pipedrive_connection
+
+        ok, msg = test_pipedrive_connection(
+            client,
+            org_id,
+            str(connector_id),
+            settings,
+            environment_name=connector_env,
+        )
+        return {"success": ok, "message": msg}
     if vendor in TOOL_CONNECTOR_VENDORS:
         conn = get_connector(client, org_id, str(connector_id), environment_name=environment_name)
         if not conn:
@@ -777,6 +798,25 @@ async def create_connector_route(
             or (row["config"] or {}).get("baseUrl")
             or "https://hapi.fhir.org/baseR4",
         }
+    if vendor == "odoo":
+        cfg = dict(body.config or {})
+        odoo_url = (
+            cfg.get("odoo_url")
+            or cfg.get("odooUrl")
+            or cfg.get("instance_url")
+            or cfg.get("instanceUrl")
+            or ""
+        )
+        row["description"] = body.description or "Odoo (API key)"
+        row["config"] = {
+            **cfg,
+            "auth_type": "api_key",
+            "odoo_url": str(odoo_url).strip().rstrip("/"),
+            "database": str(cfg.get("database") or cfg.get("db") or "").strip(),
+        }
+        row["docs_url"] = "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html"
+    if vendor == "apollo":
+        row["auth_type"] = "apiKey"
     connector_id: str
     try:
         r = client.table("connectors").insert(row).execute()
@@ -788,6 +828,8 @@ async def create_connector_route(
     except Exception as exc:  # noqa: BLE001
         msg = str(exc)
         if "23505" not in msg and "connectors_org_name_key" not in msg:
+            if is_connector_type_schema_error(exc):
+                raise_connector_type_schema_error(exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),
@@ -802,19 +844,43 @@ async def create_connector_route(
             .execute()
         )
         if not existing.data:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=error_detail("Connector name already exists", "CONNECTOR_NAME_CONFLICT"),
-            ) from exc
-        connector_id = str(existing.data[0]["id"])
-        update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
-        client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
+            soft_deleted = (
+                client.table("connectors")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("name", body.name.strip())
+                .not_.is_("deleted_at", "null")
+                .limit(1)
+                .execute()
+            )
+            if soft_deleted.data:
+                connector_id = str(soft_deleted.data[0]["id"])
+                update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
+                update_payload["deleted_at"] = None
+                client.table("connectors").update(update_payload).eq("id", connector_id).eq(
+                    "org_id", org_id
+                ).execute()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=error_detail(
+                        "Connector name already exists. Choose a different name.",
+                        "CONNECTOR_NAME_CONFLICT",
+                    ),
+                ) from exc
+        else:
+            connector_id = str(existing.data[0]["id"])
+            update_payload = {k: v for k, v in row.items() if k not in {"org_id", "name"}}
+            client.table("connectors").update(update_payload).eq("id", connector_id).eq("org_id", org_id).execute()
     if body.api_key:
-        encrypted = store_connector_api_key(client, org_id, connector_id, body.api_key, settings)
+        api_key_plain = body.api_key.strip()
+        encrypted = store_connector_api_key(client, org_id, connector_id, api_key_plain, settings)
         if encrypted:
             client.table("connectors").update({"api_key_encrypted": encrypted}).eq("id", connector_id).eq(
                 "org_id", org_id
             ).execute()
+        if vendor == "apollo" and settings.connector_secrets_encryption_key:
+            set_secret(client, org_id, connector_id, "api_token", api_key_plain, settings)
     if body.secrets:
         if not settings.connector_secrets_encryption_key:
             raise HTTPException(

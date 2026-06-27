@@ -17,11 +17,16 @@ logger = logging.getLogger(__name__)
 OAUTH_TOKEN_KEY = "oauth_tokens"
 HUBSPOT_AUTHORIZE_URL = "https://app.hubspot.com/oauth/authorize"
 HUBSPOT_TOKEN_URL = "https://api.hubapi.com/oauth/v1/token"
-HUBSPOT_SCOPES = (
+HUBSPOT_REQUIRED_SCOPES = (
     "crm.objects.contacts.read crm.objects.contacts.write "
     "crm.objects.deals.read crm.objects.deals.write "
-    "crm.objects.notes.write crm.lists.read crm.lists.write oauth automation"
+    "crm.objects.companies.read crm.objects.tickets.write "
+    "crm.objects.notes.write "
+    "crm.lists.read crm.lists.write oauth"
 )
+HUBSPOT_OPTIONAL_SCOPES = "automation"
+# Backward-compatible alias for callers/tests that expect a single scope string.
+HUBSPOT_SCOPES = f"{HUBSPOT_REQUIRED_SCOPES} {HUBSPOT_OPTIONAL_SCOPES}".strip()
 TOKEN_REFRESH_BUFFER_SEC = 300
 
 _STAGING_ENVIRONMENTS = frozenset({"staging", "sandbox", "development", "dev", "test"})
@@ -69,7 +74,8 @@ def hubspot_authorize_url(client_id: str, redirect_uri: str, state: str) -> str:
         {
             "client_id": client_id,
             "redirect_uri": redirect_uri,
-            "scope": HUBSPOT_SCOPES,
+            "scope": HUBSPOT_REQUIRED_SCOPES,
+            "optional_scope": HUBSPOT_OPTIONAL_SCOPES,
             "state": state,
         }
     )

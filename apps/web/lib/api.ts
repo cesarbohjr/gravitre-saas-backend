@@ -164,13 +164,22 @@ import type {
   MlModelSummary,
   CreateMlModelRequest,
   MlModelType,
+  MlPredictRequest,
+  MlPredictResponse,
 } from "@/types/api"
 
-// Base URL for backend API (can be overridden via env)
+// Base URL for backend API (can be overridden via env).
+// Paths passed to apiUrl() always start with /api/… — when NEXT_PUBLIC_API_URL ends
+// with /api, strip the duplicate segment so production does not hit /api/api/….
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
 function apiUrl(path: string): string {
-  return `${API_BASE}${path}`
+  const base = API_BASE.trim().replace(/\/+$/, "")
+  if (!base) return path
+  if (path.startsWith("/api/") && base.endsWith("/api")) {
+    return `${base}${path.slice(4)}`
+  }
+  return `${base}${path}`
 }
 
 function extractErrorMessage(payload: unknown): string | null {
@@ -1071,6 +1080,8 @@ export const connectorsApi = {
       tenantUrl?: string
       tenant?: string
       munchkinId?: string
+      owner?: string
+      repo?: string
     }
   ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
@@ -1081,7 +1092,7 @@ export const connectorsApi = {
     provider: string,
     connectorId: string,
     name: string,
-    extra?: { subdomain?: string; instanceUrl?: string }
+    extra?: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string }
   ) =>
     postJson<{ authorizationUrl: string; connectorId: string; state: string }>(
       apiUrl(`/api/connectors/oauth/${provider}/start`),
@@ -1284,6 +1295,20 @@ export const mlModelsApi = {
     postJson<{ ok: boolean; deployed_version?: number | null }>(apiUrl(`/api/ml/models/${id}/deploy`), {
       version: version ?? null,
     }),
+  predict: async (id: string, data: MlPredictRequest): Promise<MlPredictResponse> => {
+    const raw = await postJson<Record<string, unknown>>(apiUrl(`/api/ml/models/${id}/predict`), {
+      inputs: data.inputs,
+      version: data.version ?? null,
+      return_probabilities: data.return_probabilities ?? false,
+    })
+    return {
+      modelId: String(raw.model_id ?? raw.modelId ?? id),
+      version: Number(raw.version ?? 0),
+      predictions: (raw.predictions as unknown[]) ?? [],
+      probabilities: (raw.probabilities as Record<string, number>[] | null | undefined) ?? null,
+      latencyMs: Number(raw.latency_ms ?? raw.latencyMs ?? 0),
+    }
+  },
 }
 
 // ============ Audit ============
@@ -1389,6 +1414,92 @@ export const metricsApi = {
     fetcher<{ runs: number; success_rate: number; avg_duration_ms: number }>(
       apiUrl(`/api/metrics/workflows/${workflowId}`)
     ),
+}
+
+// ============ Intelligence admin (v2 observability + v3 knowledge) ============
+export type IntelligenceSnapshot = {
+  queryVolume: {
+    totalLogged: number
+    distinctNormalized: number
+    failedSearchCount: number
+  }
+  recentFailedSearches: Array<Record<string, unknown>>
+  clusters: Array<Record<string, unknown>>
+  glossary: Array<Record<string, unknown>>
+  knowledgeGaps: Array<Record<string, unknown>>
+  entityRelationships: Array<Record<string, unknown>>
+}
+
+export type ResponseEvaluationRecord = {
+  id: string
+  messageId: string
+  surface: string
+  ragQualityScore: number | null
+  userFeedback: "helpful" | "not_helpful" | null
+  feedbackReason: string | null
+  chunkOutcomeSummary: {
+    chunksUsed: number
+    avgReliability: number | null
+    flaggedStaleSources: string[]
+    retrievalLatencyMs: number | null
+  } | null
+  retrievalLatencyMs: number | null
+  responseLatencyMs: number | null
+  compositeScore: number | null
+  evaluatedAt: string
+}
+
+export type IntelligenceEvaluationsResponse = {
+  summary: {
+    totalEvaluations: number
+    pageCount: number
+    helpfulCount: number
+    notHelpfulCount: number
+    avgCompositeScore: number | null
+    avgRagQualityScore: number | null
+    avgRetrievalLatencyMs: number | null
+    avgResponseLatencyMs: number | null
+  }
+  compositeScoreWeights: {
+    ragQualityScore: number
+    userFeedback: number
+    chunkReliabilityAvg: number
+  }
+  retrievalRanker: {
+    trainingExamples: number
+    minTrainingExamples: number
+    isTrained: boolean
+    isDeployed: boolean
+    activeReliabilityWeight: number
+    fallbackReliabilityWeight: number
+    usingLearnedWeight: boolean
+    modelName: string
+  }
+  evaluations: ResponseEvaluationRecord[]
+  pagination: {
+    limit: number
+    offset: number
+    hasMore: boolean
+  }
+}
+
+export const intelligenceApi = {
+  snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
+  evaluations: (params?: { limit?: number; offset?: number; sinceDays?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    if (params?.sinceDays != null) query.set("sinceDays", String(params.sinceDays))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<IntelligenceEvaluationsResponse>(apiUrl(`/api/admin/intelligence/evaluations${suffix}`))
+  },
+  relationships: (params?: { entityType?: string; entityId?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.entityType) query.set("entityType", params.entityType)
+    if (params?.entityId) query.set("entityId", params.entityId)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
+  },
 }
 
 // ============ Settings ============
@@ -1943,6 +2054,7 @@ export const api = {
   audit: auditApi,
   billing: billingApi,
   metrics: metricsApi,
+  intelligence: intelligenceApi,
   settings: settingsApi,
   environments: environmentsApi,
   organizations: organizationsApi,

@@ -1,0 +1,56 @@
+{
+  "target": "https://api.gravitre.app",
+  "appProxy": "https://gravitre.app",
+  "orgId": "00000000-0000-0000-0000-000000000001",
+  "userId": "09c29672-beff-4a65-b525-261fa3de5923",
+  "modelId": "f4d6b472-5a6f-4f69-997f-4f0d033c9c01",
+  "startedAt": "2026-06-25T09:52:11.540642+00:00",
+  "finishedAt": "2026-06-25T09:52:15.042508+00:00",
+  "summary": {
+    "pass": 8,
+    "warn": 0,
+    "fail": 0
+  },
+  "steps": [
+    {
+      "label": "api_health",
+      "status": "pass",
+      "detail": "https://api.gravitre.app/health -> 200"
+    },
+    {
+      "label": "app_proxy_health",
+      "status": "pass",
+      "detail": "https://gravitre.app/api/ml/models -> 401 (proxy reachable)"
+    },
+    {
+      "label": "ml_list",
+      "status": "pass",
+      "detail": "1 model(s) in registry"
+    },
+    {
+      "label": "ml_create",
+      "status": "pass",
+      "detail": "created f4d6b472-5a6f-4f69-997f-4f0d033c9c01"
+    },
+    {
+      "label": "ml_get",
+      "status": "pass",
+      "detail": "status=draft base_model=logistic-regression task_type=binary versions=0"
+    },
+    {
+      "label": "ml_deploy_draft",
+      "status": "pass",
+      "detail": "deploy blocked on draft (expected): Internal Server Error"
+    },
+    {
+      "label": "ml_predict_no_artifact",
+      "status": "pass",
+      "detail": "predict blocked without artifact: Internal Server Error"
+    },
+    {
+      "label": "app_proxy_ml_list",
+      "status": "pass",
+      "detail": "frontend proxy reaches /api/ml/models"
+    }
+  ]
+}

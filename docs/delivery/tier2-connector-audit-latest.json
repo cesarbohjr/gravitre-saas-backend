@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-06-24T20:26:22.341023+00:00",
+  "issue": "STA-277",
+  "apiBase": "https://api.gravitre.app",
+  "summary": {
+    "vendorsAudited": 2,
+    "readDemoReady": 1,
+    "fullDemoReady": 1,
+    "oauthGaps": [
+      "netsuite"
+    ],
+    "toolGapVendors": [],
+    "pilotWritePolicy": "Financial connectors default to read-only demos; writes require customer IT approval or Phase 3 simulation (STA-285)."
+  },
+  "scopeVerification": {
+    "doc": "docs/delivery/tier2-scope-verification.md"
+  },
+  "oauthSmoke": {
+    "doc": "docs/delivery/tier2-oauth-smoke-latest.json",
+    "command": "npm run tier2:smoke"
+  },
+  "vendors": [
+    {
+      "vendor": "quickbooks",
+      "displayName": "QuickBooks",
+      "shipped": true,
+      "catalogActions": 10,
+      "implementedActions": 10,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/quickbooks/callback",
+        "ready": true
+      },
+      "demoReadyRead": true,
+      "demoReadyFull": true,
+      "pilotDefault": "v1 live reads; v2/v3 writes approval-gated (simulation layer in STA-285)"
+    },
+    {
+      "vendor": "netsuite",
+      "displayName": "NetSuite",
+      "shipped": true,
+      "catalogActions": 9,
+      "implementedActions": 9,
+      "missingTools": [],
+      "oauth": {
+        "configured": false,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/netsuite/callback",
+        "ready": false
+      },
+      "demoReadyRead": false,
+      "demoReadyFull": false,
+      "pilotDefault": "v1 live reads; v2/v3 writes approval-gated (simulation layer in STA-285)"
+    }
+  ]
+}

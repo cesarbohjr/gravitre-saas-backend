@@ -52,6 +52,36 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "sequences.enroll", "Enroll in sequence", tier="v3", kind="advanced", scope_suffix="sequences:enroll"),
             action("hubspot", "lists.add_contact", "Add contact to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
         ),
+        v4=(
+            action("hubspot", "companies.search", "Search companies", tier="v4", kind="advanced", scope_suffix="companies:read", idempotent=True),
+            action("hubspot", "pipelines.list", "List deal pipelines", tier="v4", kind="advanced", scope_suffix="pipelines:read", idempotent=True),
+            action("hubspot", "tickets.create", "Create support ticket", tier="v4", kind="advanced", scope_suffix="tickets:write", destructive=True, requires_approval=True),
+        ),
+    ),
+    build_vendor(
+        "pipedrive",
+        "Pipedrive",
+        "CRM / Marketing",
+        "https://developers.pipedrive.com/docs/api/v1",
+        shipped=True,
+        department="sales",
+        v1=(
+            action("pipedrive", "persons.search", "Search persons", tier="v1", kind="read", scope_suffix="persons:read", idempotent=True),
+            action("pipedrive", "persons.get", "Get person", tier="v1", kind="read", scope_suffix="persons:read", idempotent=True),
+            action("pipedrive", "deals.list", "List deals", tier="v1", kind="read", scope_suffix="deals:read", idempotent=True),
+            action("pipedrive", "deals.get", "Get deal", tier="v1", kind="read", scope_suffix="deals:read", idempotent=True),
+            action("pipedrive", "organizations.list", "List organizations", tier="v1", kind="read", scope_suffix="organizations:read", idempotent=True),
+            action("pipedrive", "pipelines.list", "List pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
+        ),
+        v2=(
+            action("pipedrive", "persons.create", "Create person", tier="v2", kind="write", scope_suffix="persons:write", destructive=True),
+            action("pipedrive", "persons.update", "Update person", tier="v2", kind="write", scope_suffix="persons:write", destructive=True),
+            action("pipedrive", "deals.create", "Create deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
+            action("pipedrive", "deals.update", "Update deal", tier="v2", kind="write", scope_suffix="deals:write", destructive=True),
+        ),
+        v3=(
+            action("pipedrive", "deals.update_stage", "Move deal to pipeline stage", tier="v3", kind="advanced", scope_suffix="deals:write"),
+        ),
     ),
     build_vendor(
         "marketo",
@@ -171,7 +201,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Constant Contact",
         "CRM / Marketing",
         "https://developer.constantcontact.com/api_guide/server_flow.html",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("constant_contact", "contacts.list", "List contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
@@ -187,6 +217,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("constant_contact", "lists.add_contacts", "Add contacts to list", tier="v3", kind="advanced", scope_suffix="lists:write"),
             action("constant_contact", "tags.apply", "Apply contact tags", tier="v3", kind="advanced", scope_suffix="tags:write"),
             action("constant_contact", "campaigns.schedule", "Schedule campaign send", tier="v3", kind="advanced", scope_suffix="campaigns:write"),
+        ),
+        v4=(
+            action("constant_contact", "contact_lists.list", "List contact lists", tier="v4", kind="advanced", scope_suffix="lists:read", idempotent=True),
+            action("constant_contact", "segments.list", "List segments", tier="v4", kind="advanced", scope_suffix="segments:read", idempotent=True),
+            action("constant_contact", "contacts.delete", "Delete contact", tier="v4", kind="advanced", scope_suffix="contacts:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(
@@ -282,7 +317,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Apollo",
         "Sales / Prospecting",
         "https://apolloio.github.io/apollo-api-docs/",
-        shipped=False,
+        shipped=True,
         department="sales",
         v1=(
             action("apollo", "people.search", "Search people", tier="v1", kind="read", scope_suffix="people:read", idempotent=True),
@@ -297,6 +332,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("apollo", "enrichment.bulk", "Bulk enrich records", tier="v3", kind="advanced", scope_suffix="enrichment:write"),
             action("apollo", "tasks.create", "Create outreach task", tier="v3", kind="advanced", scope_suffix="tasks:write"),
             action("apollo", "signals.subscribe", "Subscribe intent signals", tier="v3", kind="advanced", scope_suffix="signals:read"),
+        ),
+        v4=(
+            action("apollo", "contacts.update", "Update contact", tier="v4", kind="advanced", scope_suffix="contacts:write", destructive=True, requires_approval=True),
+            action("apollo", "contacts.delete", "Delete contact", tier="v4", kind="advanced", scope_suffix="contacts:write", destructive=True, requires_approval=True),
+            action("apollo", "sequences.remove", "Remove contact from sequence", tier="v4", kind="advanced", scope_suffix="sequences:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(
@@ -504,22 +544,37 @@ VENDOR_DEFINITIONS: tuple = (
         "Microsoft 365",
         "Communication",
         "https://learn.microsoft.com/en-us/graph/api/overview",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("microsoft365", "users.get", "Get user profile", tier="v1", kind="read", scope_suffix="users:read", idempotent=True),
             action("microsoft365", "mail.messages.list", "List Outlook messages", tier="v1", kind="read", scope_suffix="mail:read", idempotent=True),
             action("microsoft365", "calendar.events.list", "List calendar events", tier="v1", kind="read", scope_suffix="calendar:read", idempotent=True),
+            action("microsoft365", "teams.list", "List joined Teams", tier="v1", kind="read", scope_suffix="teams:read", idempotent=True),
+            action("microsoft365", "teams.channels.list", "List team channels", tier="v1", kind="read", scope_suffix="channels:read", idempotent=True),
+            action("microsoft365", "teams.messages.list", "List channel messages", tier="v1", kind="read", scope_suffix="messages:read", idempotent=True),
         ),
         v2=(
             action("microsoft365", "mail.send", "Send email", tier="v2", kind="write", scope_suffix="mail:send", destructive=True),
             action("microsoft365", "calendar.events.create", "Create calendar event", tier="v2", kind="write", scope_suffix="calendar:write", destructive=True),
             action("microsoft365", "files.upload", "Upload OneDrive file", tier="v2", kind="write", scope_suffix="files:write", destructive=True),
+            action("microsoft365", "teams.messages.send", "Send Teams channel message", tier="v2", kind="write", scope_suffix="messages:write", destructive=True),
+            action("microsoft365", "teams.meetings.create", "Create online meeting", tier="v2", kind="write", scope_suffix="meetings:write", destructive=True),
         ),
         v3=(
             action("microsoft365", "excel.workbook.update", "Update Excel range", tier="v3", kind="advanced", scope_suffix="excel:write"),
             action("microsoft365", "teams.notify", "Post Teams notification", tier="v3", kind="advanced", scope_suffix="teams:write"),
             action("microsoft365", "batch.mail", "Batch send mail", tier="v3", kind="advanced", scope_suffix="mail:send"),
+            action("microsoft365", "teams.tabs.create", "Add Teams channel tab", tier="v3", kind="advanced", scope_suffix="tabs:write"),
+            action("microsoft365", "teams.members.add", "Add team member", tier="v3", kind="advanced", scope_suffix="members:write"),
+            action("microsoft365", "teams.presence.set", "Set presence status", tier="v3", kind="advanced", scope_suffix="presence:write"),
+        ),
+        v4=(
+            action("microsoft365", "sharepoint.sites.list", "Search SharePoint sites", tier="v4", kind="advanced", scope_suffix="sites:read", idempotent=True),
+            action("microsoft365", "sharepoint.drives.list", "List site document libraries", tier="v4", kind="advanced", scope_suffix="sites:read", idempotent=True),
+            action("microsoft365", "sharepoint.files.list", "List drive files", tier="v4", kind="advanced", scope_suffix="sites:read", idempotent=True),
+            action("microsoft365", "sharepoint.files.upload", "Upload SharePoint file", tier="v4", kind="advanced", scope_suffix="sites:write", destructive=True, requires_approval=True),
+            action("microsoft365", "sharepoint.files.delete", "Delete SharePoint file", tier="v4", kind="advanced", scope_suffix="sites:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(
@@ -699,6 +754,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("github", "pulls.merge", "Merge pull request", tier="v3", kind="advanced", scope_suffix="pulls:write"),
             action("github", "releases.create", "Create release", tier="v3", kind="advanced", scope_suffix="releases:write"),
         ),
+        v4=(
+            action("github", "issues.list", "List issues", tier="v4", kind="advanced", scope_suffix="issues:read", idempotent=True),
+            action("github", "pulls.get", "Get pull request", tier="v4", kind="advanced", scope_suffix="pulls:read", idempotent=True),
+            action("github", "pulls.close", "Close pull request", tier="v4", kind="advanced", scope_suffix="pulls:write", destructive=True, requires_approval=True),
+        ),
     ),
     build_vendor(
         "notion",
@@ -796,7 +856,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Asana",
         "Operations / Workflow",
         "https://developers.asana.com/docs",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("asana", "tasks.get", "Get task", tier="v1", kind="read", scope_suffix="tasks:read", idempotent=True),
@@ -813,13 +873,18 @@ VENDOR_DEFINITIONS: tuple = (
             action("asana", "sections.move", "Move to section", tier="v3", kind="advanced", scope_suffix="sections:write"),
             action("asana", "batch.tasks", "Batch task updates", tier="v3", kind="advanced", scope_suffix="tasks:write"),
         ),
+        v4=(
+            action("asana", "tasks.delete", "Delete task", tier="v4", kind="advanced", scope_suffix="tasks:write", destructive=True, requires_approval=True),
+            action("asana", "workspaces.list", "List workspaces", tier="v4", kind="advanced", scope_suffix="workspaces:read", idempotent=True),
+            action("asana", "tasks.search", "Search tasks", tier="v4", kind="advanced", scope_suffix="tasks:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "monday",
         "Monday.com",
         "Operations / Workflow",
         "https://developer.monday.com/api-reference/docs",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("monday", "boards.list", "List boards", tier="v1", kind="read", scope_suffix="boards:read", idempotent=True),
@@ -835,13 +900,18 @@ VENDOR_DEFINITIONS: tuple = (
             action("monday", "updates.create", "Post update", tier="v3", kind="advanced", scope_suffix="updates:write"),
             action("monday", "batch.items", "Batch create items", tier="v3", kind="advanced", scope_suffix="items:write"),
         ),
+        v4=(
+            action("monday", "items.delete", "Delete item", tier="v4", kind="advanced", scope_suffix="items:write", destructive=True, requires_approval=True),
+            action("monday", "boards.get", "Get board", tier="v4", kind="advanced", scope_suffix="boards:read", idempotent=True),
+            action("monday", "workspaces.list", "List account workspace", tier="v4", kind="advanced", scope_suffix="workspaces:read", idempotent=True),
+        ),
     ),
     build_vendor(
         "clickup",
         "ClickUp",
         "Operations / Workflow",
         "https://clickup.com/api",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("clickup", "tasks.get", "Get task", tier="v1", kind="read", scope_suffix="tasks:read", idempotent=True),
@@ -857,6 +927,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("clickup", "time_entries.create", "Log time entry", tier="v3", kind="advanced", scope_suffix="time:write"),
             action("clickup", "goals.update", "Update goal", tier="v3", kind="advanced", scope_suffix="goals:write"),
             action("clickup", "webhooks.create", "Create webhook", tier="v3", kind="advanced", scope_suffix="webhooks:write"),
+        ),
+        v4=(
+            action("clickup", "tasks.delete", "Delete task", tier="v4", kind="advanced", scope_suffix="tasks:write", destructive=True, requires_approval=True),
+            action("clickup", "tasks.bulk_update", "Bulk update tasks", tier="v4", kind="advanced", scope_suffix="tasks:write", requires_approval=True),
+            action("clickup", "members.list", "List team members", tier="v4", kind="advanced", scope_suffix="members:read", idempotent=True),
         ),
     ),
     build_vendor(
@@ -930,7 +1005,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Odoo",
         "Operations / Workflow",
         "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html",
-        shipped=False,
+        shipped=True,
         department="operations",
         v1=(
             action("odoo", "partners.get", "Get partner", tier="v1", kind="read", scope_suffix="partners:read", idempotent=True),
@@ -946,6 +1021,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("odoo", "manufacturing.orders.create", "Create MO", tier="v3", kind="advanced", scope_suffix="manufacturing:write"),
             action("odoo", "crm.leads.convert", "Convert lead", tier="v3", kind="advanced", scope_suffix="crm:write"),
             action("odoo", "batch.partners", "Batch upsert partners", tier="v3", kind="advanced", scope_suffix="partners:write"),
+        ),
+        v4=(
+            action("odoo", "partners.update", "Update partner", tier="v4", kind="advanced", scope_suffix="partners:write", destructive=True),
+            action("odoo", "sales.orders.confirm", "Confirm sales order", tier="v4", kind="advanced", scope_suffix="sales:write", requires_approval=True),
+            action("odoo", "invoices.post", "Post invoice", tier="v4", kind="advanced", scope_suffix="invoices:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(
@@ -976,7 +1056,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Intercom",
         "Customer Support",
         "https://developers.intercom.com/docs/references/rest-api/api.intercom.io/",
-        shipped=False,
+        shipped=True,
         department="support",
         v1=(
             action("intercom", "contacts.get", "Get contact", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
@@ -992,6 +1072,11 @@ VENDOR_DEFINITIONS: tuple = (
             action("intercom", "tags.apply", "Apply tags", tier="v3", kind="advanced", scope_suffix="tags:write"),
             action("intercom", "series.trigger", "Trigger series", tier="v3", kind="advanced", scope_suffix="series:write"),
             action("intercom", "notes.create", "Create user note", tier="v3", kind="advanced", scope_suffix="notes:write"),
+        ),
+        v4=(
+            action("intercom", "contacts.search", "Search contacts", tier="v4", kind="advanced", scope_suffix="contacts:read", idempotent=True),
+            action("intercom", "companies.list", "List companies", tier="v4", kind="advanced", scope_suffix="companies:read", idempotent=True),
+            action("intercom", "contacts.delete", "Delete contact", tier="v4", kind="advanced", scope_suffix="contacts:write", destructive=True, requires_approval=True),
         ),
     ),
     build_vendor(
@@ -1329,7 +1414,7 @@ VENDOR_DEFINITIONS: tuple = (
         "Canva",
         "Learning / Creative",
         "https://www.canva.dev/docs/connect/",
-        shipped=False,
+        shipped=True,
         department="marketing",
         v1=(
             action("canva", "designs.list", "List designs", tier="v1", kind="read", scope_suffix="designs:read", idempotent=True),
@@ -1344,6 +1429,38 @@ VENDOR_DEFINITIONS: tuple = (
             action("canva", "autofill.create", "Autofill brand template", tier="v3", kind="advanced", scope_suffix="autofill:write"),
             action("canva", "brand.templates.list", "List brand templates", tier="v3", kind="advanced", scope_suffix="brand:read"),
             action("canva", "batch.exports", "Batch export assets", tier="v3", kind="advanced", scope_suffix="exports:write"),
+        ),
+        v4=(
+            action("canva", "exports.get", "Get export job", tier="v4", kind="advanced", scope_suffix="exports:read", idempotent=True),
+            action("canva", "brand.templates.get", "Get brand template", tier="v4", kind="advanced", scope_suffix="brand:read", idempotent=True),
+            action("canva", "designs.delete", "Delete design", tier="v4", kind="advanced", scope_suffix="designs:write", destructive=True, requires_approval=True),
+        ),
+    ),
+    build_vendor(
+        "figma",
+        "Figma",
+        "Learning / Creative",
+        "https://developers.figma.com/docs/rest-api/",
+        shipped=True,
+        department="marketing",
+        v1=(
+            action("figma", "files.get", "Get file", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("figma", "files.meta", "Get file metadata", tier="v1", kind="read", scope_suffix="files:read", idempotent=True),
+            action("figma", "projects.list", "List team projects", tier="v1", kind="read", scope_suffix="projects:read", idempotent=True),
+        ),
+        v2=(
+            action("figma", "comments.create", "Post comment", tier="v2", kind="write", scope_suffix="comments:write", destructive=True),
+            action("figma", "dev_resources.create", "Create dev resource", tier="v2", kind="write", scope_suffix="dev_resources:write", destructive=True),
+        ),
+        v3=(
+            action("figma", "projects.files.list", "List project files", tier="v3", kind="advanced", scope_suffix="projects:read"),
+            action("figma", "comments.list", "List file comments", tier="v3", kind="advanced", scope_suffix="comments:read"),
+            action("figma", "batch.images.export", "Batch export nodes", tier="v3", kind="advanced", scope_suffix="files:read"),
+        ),
+        v4=(
+            action("figma", "comments.delete", "Delete comment", tier="v4", kind="advanced", scope_suffix="comments:write", destructive=True, requires_approval=True),
+            action("figma", "files.versions.list", "List file versions", tier="v4", kind="advanced", scope_suffix="files:read", idempotent=True),
+            action("figma", "users.me", "Get current user", tier="v4", kind="advanced", scope_suffix="users:read", idempotent=True),
         ),
     ),
 )

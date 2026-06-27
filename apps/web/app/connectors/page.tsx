@@ -66,15 +66,21 @@ import {
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { connectorsApi } from "@/lib/api"
+import { ensureSelectedOrg } from "@/lib/org-context"
+import { connectorsApi, ApiRequestError } from "@/lib/api"
 import { publicApiUrl } from "@/lib/public-urls"
 import {
   CONNECTOR_CATEGORIES,
   OAUTH_CONNECTOR_TYPE_SET,
   OAUTH_VENDOR_KEYS,
+  PKCE_OAUTH_VENDOR_KEYS,
   connectorVendorKey,
   formatVendorLabel,
+  isPartnerGatedConnector,
   isShippedConnector,
+  listAvailableConnectors,
+  lookupConnectorCategory,
+  supportsDualPatAuth,
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
@@ -99,6 +105,10 @@ interface Connector {
     apiKey?: string
     webhookUrl?: string
     syncInterval?: string
+    subdomain?: string
+    instance_url?: string
+    owner?: string
+    repo?: string
   }
 }
 
@@ -131,6 +141,19 @@ function resolveConnectorStatus(
   if (rawStatus === "error") return "error"
   if (rawStatus === "inactive") return "disconnected"
   return "disconnected"
+}
+
+function connectorNeedsOAuthReconnect(connector: Connector): boolean {
+  if (connector.authType !== "oauth") return false
+  if (connector.status === "disconnected") return true
+  return connector.status === "error" && connector.authStatus === "auth_expired"
+}
+
+function connectorStatusLabel(connector: Connector): string {
+  if (connector.status === "syncing") return statusConfig.syncing.label
+  if (connector.authStatus === "auth_expired") return "Reconnect required"
+  if (connector.authStatus === "misconfigured") return "Setup required"
+  return statusConfig[connector.status].label
 }
 
 function normalizeConnector(input: Record<string, unknown> | ApiConnector): Connector {
@@ -168,7 +191,7 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     dataFlowRate: String(model.dataFlowRate ?? model.data_flow_rate ?? "0 MB/s"),
     requestsToday: Number(model.requestsToday ?? model.requests_today ?? 0),
     latency: Number(model.latency ?? 0),
-    category: String(model.category ?? ""),
+    category: String(model.category ?? lookupConnectorCategory(vendor) ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
     authStatus: authStatus || undefined,
     usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
@@ -194,9 +217,28 @@ function normalizeConnectorsResponse(payload: unknown): Connector[] {
     .filter((item) => item.id.length > 0)
 }
 
-function oauthErrorMessage(err: unknown, providerLabel: string): string {
+function apiDetailMessage(err: unknown): string | null {
+  if (err instanceof ApiRequestError) {
+    const payload = err.payload
+    if (payload && typeof payload === "object") {
+      const detail = (payload as { detail?: unknown }).detail
+      if (typeof detail === "string" && detail.trim()) return detail
+      if (detail && typeof detail === "object") {
+        const message = (detail as { message?: unknown }).message
+        if (typeof message === "string" && message.trim()) return message
+      }
+    }
+  }
   if (err instanceof Error && err.message.trim()) return err.message
-  return `${providerLabel} OAuth is not configured on the API host`
+  return null
+}
+
+function oauthErrorMessage(err: unknown, providerLabel: string): string {
+  return apiDetailMessage(err) ?? `${providerLabel} OAuth is not configured on the API host`
+}
+
+function connectorErrorMessage(err: unknown): string {
+  return apiDetailMessage(err) ?? "Something went wrong while saving the connector."
 }
 
 const statusConfig = {
@@ -365,12 +407,10 @@ function ConnectorNode({
                   <Wifi className="h-3.5 w-3.5 mr-2" />
                   Test Connection
                 </DropdownMenuItem>
-                {connector.authType === "oauth" &&
-                  connector.status === "disconnected" &&
-                  onReconnect && (
+                {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                     <DropdownMenuItem onClick={() => void onReconnect(connector)}>
                       <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                      Complete OAuth
+                      {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
                     </DropdownMenuItem>
                   )}
                 <DropdownMenuSeparator />
@@ -421,19 +461,17 @@ function ConnectorNode({
             <div className="flex items-center gap-1.5">
               <StatusIcon className={cn("h-3 w-3", config.color, isSyncing && "animate-spin")} />
               <span className={cn("text-[10px] font-medium", config.color)}>
-                {isSyncing ? "Syncing..." : config.label}
+                {isSyncing ? "Syncing..." : connectorStatusLabel(connector)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {connector.authType === "oauth" &&
-                connector.status === "disconnected" &&
-                onReconnect && (
+              {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                   <button
                     type="button"
                     className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
                     onClick={() => void onReconnect(connector)}
                   >
-                    Complete OAuth
+                    {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
                   </button>
                 )}
               <Link 
@@ -509,8 +547,9 @@ function ConfigureModal({
           {isOAuth ? (
             <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-3">
               <p className="text-sm text-muted-foreground">
-                {connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider
-                to connect.
+                {connector.authStatus === "auth_expired"
+                  ? `${connector.type} authorization expired or was revoked in the provider. Re-authorize to restore the connection.`
+                  : `${connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider to connect.`}
               </p>
               {onReconnectOAuth && (
                 <Button
@@ -519,7 +558,7 @@ function ConfigureModal({
                   onClick={() => void onReconnectOAuth(connector)}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Complete OAuth
+                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : "Complete OAuth"}
                 </Button>
               )}
             </div>
@@ -648,6 +687,7 @@ type CatalogConnector = (typeof availableConnectors)[number] & {
   oauthReady?: boolean
   requiresSubdomain?: boolean
   requiresInstanceUrl?: boolean
+  requiresPartnerApproval?: boolean
   partner?: boolean
   certified?: boolean
 }
@@ -659,6 +699,7 @@ function AddConnectorModal({
   onCreated,
   existingConnectors,
   publishedConnectors = [],
+  initialConnectorType = null,
 }: {
   open: boolean
   onClose: () => void
@@ -671,6 +712,7 @@ function AddConnectorModal({
     authType: "oauth" | "apiKey"
     certificationBadge?: string | null
   }>
+  initialConnectorType?: string | null
 }) {
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -691,6 +733,9 @@ function AddConnectorModal({
   const [githubRepo, setGithubRepo] = useState("")
   const [oauthSubdomain, setOauthSubdomain] = useState("")
   const [oauthInstanceUrl, setOauthInstanceUrl] = useState("")
+  const [odooUrl, setOdooUrl] = useState("")
+  const [odooUsername, setOdooUsername] = useState("")
+  const [odooDatabase, setOdooDatabase] = useState("")
 
   const catalogConnectors = useMemo<CatalogConnector[]>(() => {
     const partnerEntries: CatalogConnector[] = publishedConnectors.map((entry) => ({
@@ -729,14 +774,39 @@ function AddConnectorModal({
 
   const selectedConnectorMeta = () => getSelectedConnector()
 
+  const selectedSupportsDualPat = () => {
+    const connector = selectedConnectorMeta()
+    return connector ? supportsDualPatAuth(connector) && connector.oauthReady === true : false
+  }
+
+  const switchToPatAuth = () => {
+    setSelectedAuthType("apiKey")
+    setStep("configure")
+    setOauthStatus("idle")
+  }
+
+  const switchToOAuthAuth = () => {
+    const connector = selectedConnectorMeta()
+    setSelectedAuthType("oauth")
+    setStep("oauth")
+    setOauthStatus("idle")
+    if (connector?.requiresSubdomain && zendeskSubdomain.trim()) {
+      setOauthSubdomain(zendeskSubdomain.trim())
+    }
+  }
+
   const oauthExtraFields = () => {
     const connector = selectedConnectorMeta()
-    const extra: { subdomain?: string; instanceUrl?: string } = {}
+    const extra: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string } = {}
     if (connector?.requiresSubdomain && oauthSubdomain.trim()) {
       extra.subdomain = oauthSubdomain.trim()
     }
     if (connector?.requiresInstanceUrl && oauthInstanceUrl.trim()) {
       extra.instanceUrl = oauthInstanceUrl.trim()
+    }
+    if (selectedType === "GitHub") {
+      if (githubOwner.trim()) extra.owner = githubOwner.trim()
+      if (githubRepo.trim()) extra.repo = githubRepo.trim()
     }
     return extra
   }
@@ -753,7 +823,9 @@ function AddConnectorModal({
     if (!selectedType || !canStartOAuth()) return
     const provider = resolveVendor(getSelectedConnector(), selectedType)
     const existing = existingConnectors.find(
-      (c) => connectorVendorKey(c.type) === provider
+      (c) =>
+        connectorVendorKey(c.type) === provider ||
+        c.name.trim().toLowerCase() === name.trim().toLowerCase()
     )
     const extra = oauthExtraFields()
     setOauthStatus("redirecting")
@@ -782,6 +854,9 @@ function AddConnectorModal({
     }
     if (selectedType === "GitHub") {
       return Boolean(githubOwner && githubRepo && apiKey)
+    }
+    if (selectedType === "Odoo") {
+      return Boolean(odooUrl && odooUsername && apiKey)
     }
     return Boolean(apiKey)
   }
@@ -813,6 +888,14 @@ function AddConnectorModal({
       } else if (selectedType === "GitHub") {
         payload.config = { owner: githubOwner.trim(), repo: githubRepo.trim() }
         payload.secrets = { token: apiKey.trim() }
+      } else if (selectedType === "Odoo") {
+        payload.config = {
+          odoo_url: odooUrl.trim(),
+          ...(odooDatabase.trim() ? { database: odooDatabase.trim() } : {}),
+        }
+        payload.secrets = { username: odooUsername.trim() }
+        payload.api_key = apiKey.trim()
+        ;(payload as { apiKey?: string }).apiKey = apiKey.trim()
       } else if (apiKey) {
         payload.api_key = apiKey
         ;(payload as { apiKey?: string }).apiKey = apiKey
@@ -823,7 +906,9 @@ function AddConnectorModal({
       handleClose()
     } catch (err) {
       console.error("[connectors] Failed to create connector:", err)
-      toast.error("Failed to create connector")
+      toast.error("Failed to create connector", {
+        description: connectorErrorMessage(err),
+      })
     } finally {
       setIsCreating(false)
     }
@@ -855,11 +940,26 @@ function AddConnectorModal({
     setGithubRepo("")
     setOauthSubdomain("")
     setOauthInstanceUrl("")
+    setOdooUrl("")
+    setOdooUsername("")
+    setOdooDatabase("")
     onClose()
   }
 
   const handleSelectConnector = (connector: CatalogConnector) => {
-    if (!connector.partner && !isShippedConnector(connector)) {
+    if (connector.partner) {
+      toast.message(`${connector.type} is a partner integration`, {
+        description: "Install from the marketplace or contact sales for certified connectors.",
+      })
+      return
+    }
+    if (isPartnerGatedConnector(connector)) {
+      toast.message(`${connector.type} requires partner access`, {
+        description: "Contact sales@gravitre.com to enable this integration for your organization.",
+      })
+      return
+    }
+    if (!isShippedConnector(connector)) {
       toast.message(`${connector.type} is coming soon`, {
         description: "This integration is listed for planning; connect shipped apps marked Available.",
       })
@@ -867,7 +967,8 @@ function AddConnectorModal({
     }
     setSelectedType(connector.type)
     setSelectedAuthType(connector.authType as "oauth" | "apiKey" | "webhook")
-    setName((connector.vendorKey || connector.type).toLowerCase().replace(/\s+/g, "-"))
+    const vendorSlug = (connector.vendorKey || connector.type).toLowerCase().replace(/\s+/g, "-")
+    setName(`${vendorSlug}-${environment}`)
 
     // Route to appropriate auth flow
     if (connector.authType === "oauth") {
@@ -878,6 +979,19 @@ function AddConnectorModal({
       setStep("configure")
     }
   }
+
+  useEffect(() => {
+    if (!open || !initialConnectorType) return
+    const preset = initialConnectorType.trim()
+    if (!preset) return
+    const connector = catalogConnectors.find(
+      (entry) =>
+        entry.type === preset ||
+        entry.vendorKey === preset ||
+        connectorVendorKey(entry.type) === connectorVendorKey(preset),
+    )
+    if (connector) handleSelectConnector(connector)
+  }, [open, initialConnectorType, catalogConnectors])
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -943,6 +1057,7 @@ function AddConnectorModal({
                     pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
                     cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-400" },
                     orange: { active: "bg-orange-500 text-white", inactive: "hover:bg-orange-500/10 hover:text-orange-400" },
+                    indigo: { active: "bg-indigo-500 text-white", inactive: "hover:bg-indigo-500/10 hover:text-indigo-400" },
                   }
                   const colors = colorMap[data.color] || colorMap.blue
                   return (
@@ -999,6 +1114,11 @@ function AddConnectorModal({
                                   Certified
                                 </span>
                               )}
+                              {!connector.partner && isPartnerGatedConnector(connector) && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-amber-500/10 text-amber-400">
+                                  Partner
+                                </span>
+                              )}
                               {!connector.partner && isShippedConnector(connector) && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-emerald-500/10 text-emerald-500">
                                   Available
@@ -1006,7 +1126,9 @@ function AddConnectorModal({
                               )}
                               <span className={cn(
                                 "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
-                                !connector.partner && !isShippedConnector(connector)
+                                isPartnerGatedConnector(connector)
+                                  ? "bg-amber-500/10 text-amber-400"
+                                  : !connector.partner && !isShippedConnector(connector)
                                   ? "bg-zinc-500/10 text-zinc-400"
                                   : connector.authType === "oauth"
                                     ? "bg-blue-500/10 text-blue-400"
@@ -1014,7 +1136,9 @@ function AddConnectorModal({
                                       ? "bg-violet-500/10 text-violet-400"
                                       : "bg-amber-500/10 text-amber-400"
                               )}>
-                                {!connector.partner && !isShippedConnector(connector)
+                                {isPartnerGatedConnector(connector)
+                                  ? "Request access"
+                                  : !connector.partner && !isShippedConnector(connector)
                                   ? "Coming soon"
                                   : connector.authType === "oauth"
                                     ? "OAuth"
@@ -1077,6 +1201,12 @@ function AddConnectorModal({
                       <p className="text-xs text-muted-foreground mt-1">
                         You&apos;ll be redirected to {selectedType} to authorize Gravitre
                       </p>
+                      {selectedConnectorMeta()?.vendorKey &&
+                        PKCE_OAUTH_VENDOR_KEYS.has(selectedConnectorMeta()!.vendorKey!) && (
+                          <p className="text-[11px] text-muted-foreground mt-2">
+                            Uses secure PKCE authorization (required by {selectedType}).
+                          </p>
+                        )}
                     </div>
                     <div className="space-y-3 text-left max-w-sm mx-auto">
                       <div>
@@ -1105,11 +1235,47 @@ function AddConnectorModal({
                           />
                         </div>
                       )}
+                      {selectedType === "GitHub" && (
+                        <>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Owner (org or user)</label>
+                            <Input
+                              value={githubOwner}
+                              onChange={(e) => setGithubOwner(e.target.value)}
+                              placeholder="my-org"
+                              className="mt-1 bg-secondary"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Repository</label>
+                            <Input
+                              value={githubRepo}
+                              onChange={(e) => setGithubRepo(e.target.value)}
+                              placeholder="my-repo"
+                              className="mt-1 bg-secondary"
+                            />
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              Optional now — required for repo-scoped agent actions
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <Button onClick={handleOAuthConnect} className="gap-2" disabled={!canStartOAuth()}>
                       <ExternalLink className="h-4 w-4" />
                       Connect with {selectedType}
                     </Button>
+                    {selectedSupportsDualPat() && (
+                      <button
+                        type="button"
+                        onClick={switchToPatAuth}
+                        className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                      >
+                        {selectedType === "GitHub"
+                          ? "Use personal access token instead"
+                          : "Use API token instead"}
+                      </button>
+                    )}
                   </div>
                 )}
                 {oauthStatus === "redirecting" && (
@@ -1398,17 +1564,81 @@ function AddConnectorModal({
                   </>
                 )}
 
+                {selectedType === "Odoo" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Odoo URL</label>
+                      <Input
+                        value={odooUrl}
+                        onChange={(e) => setOdooUrl(e.target.value)}
+                        placeholder="https://company.odoo.com"
+                        className="bg-secondary"
+                      />
+                      <p className="text-xs text-muted-foreground">Your Odoo SaaS or self-hosted base URL</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Username</label>
+                      <Input
+                        value={odooUsername}
+                        onChange={(e) => setOdooUsername(e.target.value)}
+                        placeholder="admin@company.com"
+                        className="bg-secondary"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Database (optional)</label>
+                      <Input
+                        value={odooDatabase}
+                        onChange={(e) => setOdooDatabase(e.target.value)}
+                        placeholder="company"
+                        className="bg-secondary"
+                      />
+                      <p className="text-xs text-muted-foreground">Auto-detected from *.odoo.com URLs when omitted</p>
+                    </div>
+                  </>
+                )}
+
+                {selectedType === "Apollo" && (
+                  <div className="rounded-lg border border-border bg-secondary/40 p-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Paste your Apollo API key from Settings → Integrations → API. Search, contacts, and sequences
+                      work with a standard key; delete and sequence-removal actions (v4) require a master API key.
+                    </p>
+                    <a
+                      href="https://docs.apollo.io/reference/authentication"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      Apollo API documentation
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Key className="h-4 w-4 text-amber-400" />
-                      {selectedType === "Zendesk" ? "API token" : selectedType === "GitHub" ? "Personal access token" : "API Key"}
+                      {selectedType === "Zendesk"
+                        ? "API token"
+                        : selectedType === "GitHub"
+                          ? "Personal access token"
+                          : selectedType === "Odoo"
+                            ? "API key"
+                            : selectedType === "Apollo"
+                              ? "Apollo API key"
+                              : "API Key"}
                     </label>
                     <div className="relative">
                       <Input
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your API key or token"
+                        placeholder={
+                          selectedType === "Apollo"
+                            ? "Paste your Apollo API key"
+                            : "Enter your API key or token"
+                        }
                         className="bg-secondary pr-10"
                       />
                       <button
@@ -1467,6 +1697,18 @@ function AddConnectorModal({
                   </div>
                 </div>
               </div>
+
+              {selectedSupportsDualPat() && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={switchToOAuthAuth}
+                    className="text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+                  >
+                    Connect with OAuth instead
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1487,7 +1729,11 @@ function AddConnectorModal({
               ) : (
                 <>
                   <Key className="h-4 w-4" />
-                  Connect with API Key
+                  {selectedType === "GitHub"
+                    ? "Connect with personal access token"
+                    : selectedType === "Zendesk"
+                      ? "Connect with API token"
+                      : "Connect with API Key"}
                 </>
               )}
             </Button>
@@ -1623,10 +1869,15 @@ function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
 
-  // Fetch connectors from API with SWR
+  useEffect(() => {
+    if (user) void ensureSelectedOrg(true).then(setOrgId)
+  }, [user])
+
+  // Fetch connectors from API with SWR (org-scoped key avoids stale cross-device cache)
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
-    user ? "/api/connectors" : null,
+    user && orgId ? `/api/connectors?org=${orgId}` : null,
     apiFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
@@ -1640,7 +1891,7 @@ function ConnectorsPageContent() {
       certificationBadge?: string | null
     }>
   }>(
-    user ? "/api/marketplace/registry" : null,
+    user && orgId ? `/api/marketplace/registry?org=${orgId}` : null,
     apiFetcher,
     { revalidateOnFocus: false }
   )
@@ -1664,7 +1915,9 @@ function ConnectorsPageContent() {
         })
       } else {
         toast.success("Connector connected", {
-          description: provider ? `${provider} OAuth completed` : "OAuth authentication successful",
+          description: provider
+            ? `${formatVendorLabel(provider)} OAuth completed`
+            : "OAuth authentication successful",
         })
       }
     } else if (oauth === "error") {
@@ -1686,6 +1939,7 @@ function ConnectorsPageContent() {
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
+  const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -1759,11 +2013,18 @@ function ConnectorsPageContent() {
 
   const handleReconnectOAuth = async (connector: Connector) => {
     const provider = connectorVendorKey(connector.type)
+    const cfg = connector.config ?? {}
+    const extra: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string } = {}
+    if (cfg.subdomain) extra.subdomain = String(cfg.subdomain)
+    if (cfg.instance_url) extra.instanceUrl = String(cfg.instance_url)
+    if (cfg.owner) extra.owner = String(cfg.owner)
+    if (cfg.repo) extra.repo = String(cfg.repo)
     try {
       const { authorizationUrl } = await connectorsApi.reconnectOAuth(
         provider,
         connector.id,
-        connector.name
+        connector.name,
+        extra
       )
       window.location.assign(authorizationUrl)
     } catch (err) {
@@ -1801,6 +2062,48 @@ function ConnectorsPageContent() {
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
 
   const connectedCount = connectors.filter((c) => c.status === "connected").length
+  const connectedVendorKeys = useMemo(
+    () => new Set(connectors.map((c) => connectorVendorKey(c.type))),
+    [connectors],
+  )
+  const availableToConnect = useMemo(
+    () =>
+      listAvailableConnectors().filter(
+        (entry) => !connectedVendorKeys.has(entry.vendorKey),
+      ),
+    [connectedVendorKeys],
+  )
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all",
+  )
+  const hubConnectedCount = hasActiveFilters
+    ? filteredConnectors.filter((c) => c.status === "connected").length
+    : connectedCount
+  const hubTotalCount = hasActiveFilters ? filteredConnectors.length : connectors.length
+
+  function clearFilters() {
+    setSearchQuery("")
+    setStatusFilter("all")
+    setCategoryFilter("all")
+  }
+
+  function openAddModal(preset?: string | null) {
+    setAddModalPreset(preset ?? null)
+    setAddModal(true)
+  }
+
+  function closeAddModal() {
+    setAddModal(false)
+    setAddModalPreset(null)
+  }
+
+  const statusFilterOptions = [
+    { value: "all", label: "All", color: "text-foreground" },
+    { value: "connected", label: "Connected", color: "text-emerald-400", dot: "bg-emerald-500" },
+    { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
+    { value: "error", label: "Error", color: "text-red-400", dot: "bg-red-500" },
+    { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
+  ] as const
   const totalRequests = connectors.reduce((sum, c) => sum + (c.requestsToday || 0), 0)
   const avgLatency = Math.round(
     connectors.filter((c) => c.latency).reduce((sum, c) => sum + (c.latency || 0), 0) /
@@ -1832,15 +2135,57 @@ function ConnectorsPageContent() {
                   className="w-full md:w-64 pl-9 bg-secondary"
                 />
               </div>
+              {/* Mobile / tablet filters (desktop pills are lg+) */}
+              <div className="flex lg:hidden items-center gap-2 w-full overflow-x-auto pb-1">
+                {statusFilterOptions.map((status) => (
+                  <button
+                    key={status.value}
+                    onClick={() => setStatusFilter(status.value)}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border",
+                      statusFilter === status.value
+                        ? "bg-card shadow-sm text-foreground border-border"
+                        : "text-muted-foreground border-transparent hover:text-foreground",
+                    )}
+                  >
+                    {"dot" in status && status.dot ? (
+                      <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                    ) : null}
+                    {status.label}
+                  </button>
+                ))}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 text-xs">
+                      <Filter className="h-3.5 w-3.5" />
+                      {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
+                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                      All Categories
+                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {Object.entries(connectorCategories).map(([cat, data]) => (
+                      <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
+                        <span className="flex-1">{cat}</span>
+                        <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
+                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {hasActiveFilters ? (
+                  <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs" onClick={clearFilters}>
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
               {/* Status Filter Pills */}
               <div className="hidden lg:flex items-center gap-1 border rounded-lg p-1 bg-secondary/30">
-                {[
-                  { value: "all", label: "All", color: "text-foreground" },
-                  { value: "connected", label: "Connected", color: "text-emerald-400", dot: "bg-emerald-500" },
-                  { value: "syncing", label: "Syncing", color: "text-blue-400", dot: "bg-blue-500" },
-                  { value: "error", label: "Error", color: "text-red-400", dot: "bg-red-500" },
-                  { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
-                ].map((status) => (
+                {statusFilterOptions.map((status) => (
                   <button
                     key={status.value}
                     onClick={() => setStatusFilter(status.value)}
@@ -1851,7 +2196,9 @@ function ConnectorsPageContent() {
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    {status.dot && <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />}
+                    {"dot" in status && status.dot ? (
+                      <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                    ) : null}
                     {status.label}
                   </button>
                 ))}
@@ -1884,6 +2231,7 @@ function ConnectorsPageContent() {
                       pink: "text-pink-400",
                       cyan: "text-cyan-400",
                       orange: "text-orange-400",
+                      indigo: "text-indigo-400",
                     }
                     return (
                       <DropdownMenuItem 
@@ -1953,7 +2301,7 @@ function ConnectorsPageContent() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={() => setAddModal(true)} className="gap-2 shrink-0">
+              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Connector</span>
               </Button>
@@ -1992,12 +2340,48 @@ function ConnectorsPageContent() {
         </div>
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
-        <ConnectorRecommendations
-          onConnect={(connectorType) => {
-            if (connectorType) setSearchQuery(connectorType)
-            setAddModal(true)
-          }}
-        />
+        <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
+
+        {availableToConnect.length > 0 && (
+          <section
+            aria-label="Available connectors"
+            className="border-b border-border bg-secondary/20 px-4 md:px-6 py-4"
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Available connectors</h2>
+                <p className="text-xs text-muted-foreground">
+                  Self-serve integrations ready to connect from this workspace.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => openAddModal()}>
+                Browse all
+              </Button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {availableToConnect.map((entry) => (
+                <button
+                  key={entry.vendorKey}
+                  type="button"
+                  onClick={() => openAddModal(entry.type)}
+                  className="group flex min-w-[180px] shrink-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/5"
+                >
+                  <ConnectorIcon vendor={entry.type} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-foreground">{entry.type}</span>
+                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium uppercase text-emerald-500">
+                        Available
+                      </span>
+                    </div>
+                    <p className="truncate text-[11px] text-muted-foreground">{entry.description}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">
@@ -2033,9 +2417,36 @@ function ConnectorsPageContent() {
               <p className="text-sm text-muted-foreground mb-4 max-w-sm">
                 Connect your CRM, analytics, and productivity tools to power workflows and agents.
               </p>
-              <Button onClick={() => setAddModal(true)} className="gap-2">
+              <Button onClick={() => openAddModal()} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add your first connector
+              </Button>
+              {availableToConnect.length > 0 && (
+                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+                  {availableToConnect.slice(0, 6).map((entry) => (
+                    <Button
+                      key={entry.vendorKey}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => openAddModal(entry.type)}
+                    >
+                      <ConnectorIcon vendor={entry.type} size="xs" showStatusIndicator={false} />
+                      {entry.type}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : filteredConnectors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+              <Filter className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm font-medium text-foreground">No connectors match your filters</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                {connectors.length} connector{connectors.length === 1 ? "" : "s"} are hidden by search or filter settings.
+              </p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                Clear filters
               </Button>
             </div>
           ) : (
@@ -2049,8 +2460,11 @@ function ConnectorsPageContent() {
                 <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-card to-secondary border-2 border-blue-500/30 shadow-xl">
                   <div className="text-center">
                     <Cable className="h-5 w-5 text-blue-400 mx-auto mb-0.5" />
-                    <div className="text-lg font-bold text-foreground">{connectedCount}</div>
-                    <div className="text-[8px] text-muted-foreground uppercase tracking-wider">of {connectors.length}</div>
+                    <div className="text-lg font-bold text-foreground">{hubConnectedCount}</div>
+                    <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
+                      of {hubTotalCount}
+                      {hasActiveFilters ? " shown" : ""}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2094,7 +2508,7 @@ function ConnectorsPageContent() {
                 </div>
 
                 {/* Central Hub */}
-                <CentralHub connectedCount={connectedCount} totalCount={connectors.length} />
+                <CentralHub connectedCount={hubConnectedCount} totalCount={hubTotalCount} />
 
                 {/* Right column */}
                 <div className="flex flex-col gap-4 ml-8">
@@ -2156,7 +2570,8 @@ function ConnectorsPageContent() {
         )}
         <AddConnectorModal
           open={addModal}
-          onClose={() => setAddModal(false)}
+          onClose={closeAddModal}
+          initialConnectorType={addModalPreset}
           existingConnectors={connectors}
           publishedConnectors={publishedConnectors}
           onCreated={async () => {

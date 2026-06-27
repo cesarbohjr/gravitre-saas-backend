@@ -15,6 +15,8 @@
 param(
     [string] $ProjectId = $env:GOOGLE_CLOUD_PROJECT,
     [string] $ApiPublicUrl = $(if ($env:API_PUBLIC_URL) { $env:API_PUBLIC_URL } else { "https://api.gravitre.app" }),
+    [string] $AppPublicUrl = $(if ($env:PUBLIC_APP_URL) { $env:PUBLIC_APP_URL } else { "https://gravitre.app" }),
+    [string[]] $RedirectUris,
     [string] $SupabaseProjectRef = "smyeexlrqdpymwjmgzqu",
     [switch] $SkipBrowser
 )
@@ -26,15 +28,25 @@ if (-not (Test-Path $gcloud)) {
 }
 
 $api = $ApiPublicUrl.TrimEnd("/")
-$redirectUris = @(
-    "https://${SupabaseProjectRef}.supabase.co/auth/v1/callback"
-    "${api}/api/connectors/oauth/google_analytics/callback"
-    "${api}/api/connectors/oauth/google_calendar/callback"
-    "${api}/api/connectors/oauth/gmail/callback"
-    "${api}/api/connectors/oauth/google_drive/callback"
-    "${api}/api/connectors/oauth/google_docs/callback"
-    "${api}/api/connectors/oauth/google_sheets/callback"
-)
+$app = $AppPublicUrl.TrimEnd("/")
+if (-not $RedirectUris -or $RedirectUris.Count -eq 0) {
+    $RedirectUris = @(
+        "https://${SupabaseProjectRef}.supabase.co/auth/v1/callback"
+        "$app/api/connectors/oauth/google_analytics/callback"
+        "$app/api/connectors/oauth/google_calendar/callback"
+        "$app/api/connectors/oauth/gmail/callback"
+        "$app/api/connectors/oauth/google_drive/callback"
+        "$app/api/connectors/oauth/google_docs/callback"
+        "$app/api/connectors/oauth/google_sheets/callback"
+        "$api/api/connectors/oauth/google_analytics/callback"
+        "$api/api/connectors/oauth/google_calendar/callback"
+        "$api/api/connectors/oauth/gmail/callback"
+        "$api/api/connectors/oauth/google_drive/callback"
+        "$api/api/connectors/oauth/google_docs/callback"
+        "$api/api/connectors/oauth/google_sheets/callback"
+        "http://localhost:8000/api/connectors/oauth/google_analytics/callback"
+    )
+}
 
 $services = @(
     "analyticsadmin.googleapis.com"
@@ -51,45 +63,36 @@ Write-Host "Gravitre OAuth - Google Cloud CLI setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 $authList = & $gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>&1
-if ($LASTEXITCODE -ne 0 -or -not $authList) {
-    Write-Host "gcloud is not logged in. Run:" -ForegroundColor Yellow
-    Write-Host "  gcloud auth login" -ForegroundColor White
-    Write-Host "Then re-run: npm run google:configure" -ForegroundColor Yellow
-    exit 1
+$gcloudReady = ($LASTEXITCODE -eq 0 -and $authList)
+if (-not $gcloudReady) {
+    Write-Host "gcloud not ready (run: gcloud auth login). Skipping API enable; still copying redirect URIs." -ForegroundColor Yellow
+} else {
+    Write-Host "Account: $($authList | Select-Object -First 1)" -ForegroundColor Green
+    if (-not $ProjectId) {
+        $ProjectId = (& $gcloud config get-value project 2>$null).Trim()
+    }
+    if ($ProjectId) {
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        & $gcloud config set project $ProjectId 2>&1 | Out-Null
+        Write-Host "Project: $ProjectId" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Enabling APIs..." -ForegroundColor Yellow
+        & $gcloud services enable @services --project=$ProjectId 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "API enable skipped or failed. Continuing with redirect URI list." -ForegroundColor Yellow
+        } else {
+            Write-Host "APIs enabled." -ForegroundColor Green
+        }
+        $ErrorActionPreference = $prevEap
+    }
 }
-Write-Host "Account: $($authList | Select-Object -First 1)" -ForegroundColor Green
 
-if (-not $ProjectId) {
-    $ProjectId = (& $gcloud config get-value project 2>$null).Trim()
-}
-if (-not $ProjectId) {
-    Write-Host ""
-    Write-Host "Available projects:" -ForegroundColor Yellow
-    & $gcloud projects list --format="table(projectId,name)"
-    $ProjectId = Read-Host "Enter GCP project ID for Gravitre OAuth"
-}
-if (-not $ProjectId) {
-    Write-Host "Project ID required." -ForegroundColor Red
-    exit 1
-}
-
-& $gcloud config set project $ProjectId | Out-Null
-Write-Host "Project: $ProjectId" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "Enabling APIs..." -ForegroundColor Yellow
-& $gcloud services enable @services --project=$ProjectId
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to enable one or more APIs." -ForegroundColor Red
-    exit 1
-}
-Write-Host "APIs enabled." -ForegroundColor Green
-
-$uriText = ($redirectUris -join "`r`n")
+$uriText = ($RedirectUris -join "`r`n")
 Set-Clipboard -Value $uriText
 Write-Host ""
-Write-Host "Copied $($redirectUris.Count) redirect URIs to clipboard:" -ForegroundColor Green
-$redirectUris | ForEach-Object { Write-Host "  $_" }
+Write-Host "Copied $($RedirectUris.Count) redirect URIs to clipboard:" -ForegroundColor Green
+$RedirectUris | ForEach-Object { Write-Host "  $_" }
 
 Write-Host ""
 Write-Host "In Google Cloud Console -> APIs & Services -> Credentials -> Gravitre OAuth:" -ForegroundColor Yellow

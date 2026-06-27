@@ -36,23 +36,37 @@ const SLUG_OVERRIDES = {
   google_sheets: "googlesheets",
   microsoft_teams: "microsoftteams",
   constant_contact: "constantcontact",
+  openai: "openai",
+  anthropic: "anthropic",
+  xai: "xai",
+  aws: "amazonaws",
+  linear: "linear",
+  pinecone: "pinecone",
+  clickhouse: "clickhouse",
+  cockroachdb: "cockroachdb",
+  duckdb: "duckdb",
+  weaviate: "weaviate",
+  qdrant: "qdrant",
+  meta: "meta",
 }
 
 // Full vendor universe (connector registry + marketing apps + data-source types).
 const VENDOR_KEYS = [
-  "adp", "airtable", "apollo", "asana", "aws_s3", "bamboohr", "canva",
+  "adp", "airtable", "apollo", "asana", "aws_s3", "bamboohr", "canva", "figma",
   "clickup", "confluence", "constant_contact", "freshdesk", "github", "gmail",
   "google", "google_analytics", "google_calendar", "google_docs",
   "google_drive", "google_sheets", "gorgias", "greenhouse", "gusto",
   "hootsuite", "hubspot", "intercom", "jira", "linkedin", "mailchimp",
   "marketo", "microsoft365", "microsoft_teams", "mixpanel", "monday",
   "mongodb", "motion", "n8n", "netsuite", "notion", "odoo", "outlook",
-  "pagerduty", "plaid", "postgresql", "quickbooks", "salesforce", "segment",
+  "pagerduty", "plaid", "pipedrive", "postgresql", "quickbooks", "salesforce", "segment",
   "semrush", "sendgrid", "slack", "snowflake", "stackadapt", "stripe",
   "twilio", "workday", "xero", "zapier", "zendesk",
+  "openai", "anthropic", "xai", "meta", "linear", "aws",
   // data-source types
   "mysql", "oracle", "bigquery", "redshift", "databricks", "elasticsearch",
-  "redis", "mariadb", "supabase",
+  "redis", "mariadb", "supabase", "pinecone", "clickhouse", "cockroachdb",
+  "duckdb", "weaviate", "qdrant",
 ]
 
 // Build a slug -> icon lookup from the package (export names are mangled).

@@ -12,7 +12,13 @@ from app.connectors.email import send_email_smtp
 from app.connectors.email import subject_hash as _subject_hash
 from app.connectors.rate_limit import RateLimitError, enforce_rate_limit
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
-from app.connectors.slack import message_hash, send_slack_message
+from app.connectors.slack import (
+    conversation_history,
+    list_conversations,
+    list_users,
+    message_hash,
+    send_slack_message,
+)
 from app.connectors.webhook import (
     ALLOWED_HEADER_NAMES as WEBHOOK_ALLOWED_HEADERS,
     build_headers,
@@ -32,12 +38,15 @@ from app.connectors.hubspot import (
     create_contact,
     create_deal,
     create_note,
+    create_ticket,
     delete_contact,
     delete_deal,
     delete_note,
     enroll_contact_in_sequence,
     get_contact,
     get_deal,
+    list_deal_pipelines,
+    search_companies,
     search_contacts,
     update_contact,
     update_deal,
@@ -60,6 +69,10 @@ from app.connectors.salesforce import (
 )
 from app.connectors.quickbooks import (
     QuickBooksAPIError,
+    create_customer,
+    create_invoice,
+    create_journal_entry,
+    create_payment,
     get_bill,
     get_company_info,
     get_customer,
@@ -112,15 +125,25 @@ from app.connectors.jira_oauth import ensure_jira_session
 from app.connectors.salesforce_oauth import ensure_salesforce_session
 from app.connectors.github_api import (
     GitHubAPIError,
+    close_pull_request,
     create_issue,
     create_issue_comment,
+    create_release,
+    dispatch_workflow,
+    get_issue,
+    get_pull_request,
+    get_repository,
+    list_issues,
     list_pull_requests,
+    merge_pull_request,
     request_pull_request_reviewer,
 )
 from app.connectors.google_calendar import (
     GoogleCalendarAPIError,
     create_event,
     default_window_iso,
+    list_calendars,
+    list_events,
     query_freebusy,
 )
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token
@@ -130,6 +153,8 @@ from app.connectors.zendesk import (
     close_ticket,
     create_ticket,
     get_ticket,
+    get_user as zendesk_get_user,
+    list_tickets,
     update_ticket,
 )
 from app.services.agent_tool_permissions import assert_agent_tool_permission
@@ -511,6 +536,59 @@ def _exec_hubspot_sequences_enroll(ctx: ToolContext, params: dict[str, Any]) -> 
         action="hubspot.sequences.enroll",
         connector_id=cid,
         data={"enrollment": data},
+    )
+
+
+def _exec_hubspot_companies_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    filter_groups = params.get("filter_groups") or params.get("filterGroups")
+    if not isinstance(filter_groups, list) or not filter_groups:
+        raise ToolValidationError("hubspot.companies.search requires filter_groups array")
+    try:
+        data = search_companies(
+            token,
+            filter_groups=filter_groups,
+            properties=params.get("properties"),
+            limit=int(params.get("limit", 10)),
+        )
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.companies.search",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_hubspot_pipelines_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    try:
+        data = list_deal_pipelines(token)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.pipelines.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    properties = params.get("properties")
+    if not isinstance(properties, dict) or not properties:
+        raise ToolValidationError("hubspot.tickets.create requires properties object")
+    try:
+        data = create_ticket(token, properties)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.tickets.create",
+        connector_id=cid,
+        data={"ticket": data},
     )
 
 
@@ -1048,6 +1126,84 @@ def _exec_quickbooks_companyinfo_get(ctx: ToolContext, params: dict[str, Any]) -
         action="quickbooks.companyinfo.get",
         connector_id=cid,
         data={"companyInfo": data.get("CompanyInfo") or data},
+    )
+
+
+def _payload_from_params(params: dict[str, Any], reserved: frozenset[str]) -> dict[str, Any]:
+    payload = params.get("payload")
+    if isinstance(payload, dict):
+        return payload
+    return {k: v for k, v in params.items() if k not in reserved and v is not None}
+
+
+_QB_WRITE_RESERVED = frozenset({"connector_id", "payload"})
+
+
+def _exec_quickbooks_invoices_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.invoices.create requires invoice payload")
+    try:
+        data = create_invoice(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.invoices.create",
+        connector_id=cid,
+        data={"invoice": data.get("Invoice") or data},
+    )
+
+
+def _exec_quickbooks_customers_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.customers.create requires customer payload")
+    try:
+        data = create_customer(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.customers.create",
+        connector_id=cid,
+        data={"customer": data.get("Customer") or data},
+    )
+
+
+def _exec_quickbooks_payments_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.payments.create requires payment payload")
+    try:
+        data = create_payment(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.payments.create",
+        connector_id=cid,
+        data={"payment": data.get("Payment") or data},
+    )
+
+
+def _exec_quickbooks_journalentries_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _quickbooks_connector_and_session(ctx, params)
+    payload = _payload_from_params(params, _QB_WRITE_RESERVED)
+    if not payload:
+        raise ToolValidationError("quickbooks.journalentries.create requires journal entry payload")
+    try:
+        data = create_journal_entry(api_base, token, payload)
+    except QuickBooksAPIError as exc:
+        raise _handle_quickbooks_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="quickbooks.journalentries.create",
+        connector_id=cid,
+        data={"journalEntry": data.get("JournalEntry") or data},
     )
 
 
@@ -1659,22 +1815,20 @@ def _exec_jira_users_search(ctx: ToolContext, params: dict[str, Any]) -> Normali
     )
 
 
-def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
-    if ctx.settings.disable_connectors:
-        raise ToolValidationError("Connectors are disabled")
-    connector_id = params.get("connector_id") or ctx.connector_id
-    conn = None
-    if connector_id:
-        conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
-    else:
-        conn = get_connector_by_type(ctx.client, ctx.org_id, "slack", environment_name=ctx.environment_name)
-    if not conn:
-        raise ToolValidationError("No active Slack connector found for org")
+def _slack_connector_and_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    from app.connectors.connector_tool_auth import resolve_slack_bot_token
+
+    conn = _connector_by_type(ctx, "slack", params)
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "slack", cid)
-    token = get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
+    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings)
     if not token:
-        raise ToolAuthExpiredError("Slack connector missing token secret")
+        raise ToolAuthExpiredError("Slack connector missing bot token")
+    return cid, token
+
+
+def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
     channel = (params.get("channel") or "").strip()
     text = (params.get("message") or params.get("text") or "").strip()
     if not channel:
@@ -1688,6 +1842,68 @@ def _exec_slack_post_message(ctx: ToolContext, params: dict[str, Any]) -> Normal
         connector_id=cid,
         latency_ms=int(result.get("_latency_ms", 0) or 0),
         data={"executed": True, "channel": channel, "ts": result.get("ts"), "ok": True},
+    )
+
+
+def _exec_slack_conversations_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    try:
+        data = list_conversations(
+            token,
+            types=str(params.get("types") or "public_channel,private_channel"),
+            limit=int(params.get("limit") or 100),
+            cursor=params.get("cursor"),
+        )
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    return NormalizedResult(
+        success=True,
+        action="slack.conversations.list",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0),
+        data={"channels": data.get("channels") or [], "response_metadata": data.get("response_metadata")},
+    )
+
+
+def _exec_slack_conversations_history(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    channel = params.get("channel")
+    if not channel:
+        raise ToolValidationError("slack.conversations.history requires channel")
+    try:
+        data = conversation_history(
+            token,
+            str(channel),
+            limit=int(params.get("limit") or 50),
+            cursor=params.get("cursor"),
+        )
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    return NormalizedResult(
+        success=True,
+        action="slack.conversations.history",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0),
+        data={"messages": data.get("messages") or [], "response_metadata": data.get("response_metadata")},
+    )
+
+
+def _exec_slack_users_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _slack_connector_and_token(ctx, params)
+    try:
+        data = list_users(
+            token,
+            limit=int(params.get("limit") or 100),
+            cursor=params.get("cursor"),
+        )
+    except ValueError as exc:
+        raise ToolValidationError(str(exc)) from exc
+    return NormalizedResult(
+        success=True,
+        action="slack.users.list",
+        connector_id=cid,
+        latency_ms=int(data.get("_latency_ms", 0) or 0),
+        data={"members": data.get("members") or [], "response_metadata": data.get("response_metadata")},
     )
 
 
@@ -1755,6 +1971,58 @@ def _exec_email_send(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResu
         latency_ms=latency_ms,
         data=out,
     )
+
+
+def _email_connector(ctx: ToolContext, params: dict[str, Any]) -> str:
+    connector_id = params.get("connector_id") or ctx.connector_id
+    if not connector_id:
+        raise ToolValidationError("email action requires connector_id")
+    conn = get_connector(ctx.client, ctx.org_id, str(connector_id), environment_name=ctx.environment_name)
+    if not conn or conn.get("type") != "email":
+        raise ToolValidationError("Active email connector required")
+    return str(conn["id"])
+
+
+def _exec_email_messages_queue(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid = _email_connector(ctx, params)
+    return NormalizedResult(success=True, action="email.messages.queue", connector_id=cid, data={"queue": [], "note": "SMTP connectors do not expose a remote queue API"})
+
+
+def _exec_email_delivery_status(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid = _email_connector(ctx, params)
+    message_id = params.get("message_id")
+    return NormalizedResult(
+        success=True,
+        action="email.delivery.status",
+        connector_id=cid,
+        data={"message_id": message_id, "status": "unknown", "note": "Delivery status requires provider webhooks"},
+    )
+
+
+def _exec_email_send_template(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    template = params.get("template") or params.get("template_id")
+    variables = params.get("variables") or {}
+    body = str(params.get("body") or "")
+    if template and isinstance(variables, dict):
+        for key, value in variables.items():
+            body = body.replace(f"{{{{{key}}}}}", str(value))
+    merged = {**params, "body": body or str(template or "")}
+    result = _exec_email_send(ctx, merged)
+    return NormalizedResult(success=True, action="email.send.template", connector_id=result.connector_id, data=result.data)
+
+
+def _exec_email_batch_send(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    messages = params.get("messages")
+    if not isinstance(messages, list) or not messages:
+        raise ToolValidationError("email.batch.send requires messages[]")
+    cid = _email_connector(ctx, params)
+    sent = []
+    for item in messages:
+        if not isinstance(item, dict):
+            continue
+        merged = {**params, **item}
+        sent.append(_exec_email_send(ctx, merged).data)
+    return NormalizedResult(success=True, action="email.batch.send", connector_id=cid, data={"sent": sent, "count": len(sent)})
 
 
 def _exec_webhook_post(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -1901,6 +2169,16 @@ def _github_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
     return cid, token
 
 
+def _github_owner_repo(ctx: ToolContext, cid: str, params: dict[str, Any]) -> tuple[str, str]:
+    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
+    cfg = conn.get("config") or {}
+    owner = params.get("owner") or cfg.get("owner")
+    repo = params.get("repo") or cfg.get("repo")
+    if not owner or not repo:
+        raise ToolValidationError("GitHub action requires owner and repo")
+    return str(owner), str(repo)
+
+
 def _google_vendor_token(ctx: ToolContext, vendor: str, params: dict[str, Any]) -> tuple[str, str]:
     from app.connectors.google_vendor_oauth import ensure_google_vendor_session
 
@@ -2045,32 +2323,171 @@ def _exec_zendesk_tickets_add_tags(ctx: ToolContext, params: dict[str, Any]) -> 
     return NormalizedResult(success=True, action="zendesk.tickets.add_tags", connector_id=cid, data={"tags": result})
 
 
+def _exec_zendesk_tickets_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
+    try:
+        tickets = list_tickets(
+            subdomain,
+            email,
+            token,
+            status=params.get("status"),
+            limit=int(params.get("limit") or 25),
+            oauth_access_token=oauth_token,
+        )
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(
+        success=True,
+        action="zendesk.tickets.list",
+        connector_id=cid,
+        data={"tickets": tickets},
+    )
+
+
+def _exec_zendesk_users_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, subdomain, email, token, oauth_token = _zendesk_credentials(ctx, params)
+    user_id = params.get("user_id") or params.get("userId")
+    if not user_id:
+        raise ToolValidationError("zendesk.users.get requires user_id")
+    try:
+        user = zendesk_get_user(
+            subdomain,
+            email,
+            token,
+            user_id,
+            oauth_access_token=oauth_token,
+        )
+    except ZendeskAPIError as exc:
+        raise _vendor_api_error(exc, "zendesk") from exc
+    return NormalizedResult(
+        success=True,
+        action="zendesk.users.get",
+        connector_id=cid,
+        data={"user": user},
+    )
+
+
+def _microsoft365_token(ctx: ToolContext, params: dict[str, Any]) -> tuple[str, str]:
+    from app.connectors.connector_tool_auth import resolve_microsoft365_access_token
+
+    conn = _connector_by_type(ctx, "microsoft365", params)
+    cid = str(conn["id"])
+    _enforce_tool_rate_limit(ctx, "microsoft365", cid)
+    token = resolve_microsoft365_access_token(
+        ctx.client,
+        ctx.org_id,
+        cid,
+        ctx.settings,
+        environment_name=ctx.environment_name,
+    )
+    if not token:
+        raise ToolAuthExpiredError("Microsoft 365 OAuth not connected")
+    return cid, token
+
+
+def _exec_microsoft365_users_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.microsoft365 import Microsoft365APIError, get_user
+
+    cid, token = _microsoft365_token(ctx, params)
+    user_id = str(params.get("user_id") or params.get("userId") or "me")
+    try:
+        user = get_user(token, user_id=user_id)
+    except Microsoft365APIError as exc:
+        raise _vendor_api_error(exc, "microsoft365") from exc
+    return NormalizedResult(
+        success=True,
+        action="microsoft365.users.get",
+        connector_id=cid,
+        data={"user": user},
+    )
+
+
+def _exec_microsoft365_mail_messages_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.microsoft365 import Microsoft365APIError, list_mail_messages
+
+    cid, token = _microsoft365_token(ctx, params)
+    user_id = str(params.get("user_id") or params.get("userId") or "me")
+    try:
+        data = list_mail_messages(
+            token,
+            user_id=user_id,
+            top=int(params.get("top") or params.get("limit") or 25),
+            filter_query=params.get("filter") or params.get("filter_query"),
+        )
+    except Microsoft365APIError as exc:
+        raise _vendor_api_error(exc, "microsoft365") from exc
+    return NormalizedResult(
+        success=True,
+        action="microsoft365.mail.messages.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
+def _exec_microsoft365_calendar_events_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.microsoft365 import Microsoft365APIError, list_calendar_events
+
+    cid, token = _microsoft365_token(ctx, params)
+    user_id = str(params.get("user_id") or params.get("userId") or "me")
+    try:
+        data = list_calendar_events(
+            token,
+            user_id=user_id,
+            top=int(params.get("top") or params.get("limit") or 25),
+            start_datetime=params.get("start") or params.get("start_datetime"),
+            end_datetime=params.get("end") or params.get("end_datetime"),
+        )
+    except Microsoft365APIError as exc:
+        raise _vendor_api_error(exc, "microsoft365") from exc
+    return NormalizedResult(
+        success=True,
+        action="microsoft365.calendar.events.list",
+        connector_id=cid,
+        data=data,
+    )
+
+
 def _exec_github_pulls_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
-    if not owner or not repo:
-        raise ToolValidationError("github.pulls.list requires owner and repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     try:
-        pulls = list_pull_requests(token, str(owner), str(repo), state=str(params.get("state") or "open"))
+        pulls = list_pull_requests(token, owner, repo, state=str(params.get("state") or "open"))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
     return NormalizedResult(success=True, action="github.pulls.list", connector_id=cid, data={"pull_requests": pulls})
 
 
+def _exec_github_issues_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    issue_number = params.get("issue_number") or params.get("issueNumber")
+    if not issue_number:
+        raise ToolValidationError("github.issues.get requires issue_number")
+    try:
+        issue = get_issue(token, owner, repo, int(issue_number))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.issues.get", connector_id=cid, data={"issue": issue})
+
+
+def _exec_github_repos_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    try:
+        repository = get_repository(token, owner, repo)
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.repos.get", connector_id=cid, data={"repository": repository})
+
+
 def _exec_github_issues_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     title = params.get("title")
-    if not owner or not repo or not title:
-        raise ToolValidationError("github.issues.create requires owner, repo, and title")
+    if not title:
+        raise ToolValidationError("github.issues.create requires title")
     try:
-        issue = create_issue(token, str(owner), str(repo), title=str(title), body=params.get("body"), labels=params.get("labels"))
+        issue = create_issue(token, owner, repo, title=str(title), body=params.get("body"), labels=params.get("labels"))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
     return NormalizedResult(success=True, action="github.issues.create", connector_id=cid, data={"issue": issue})
@@ -2078,16 +2495,13 @@ def _exec_github_issues_create(ctx: ToolContext, params: dict[str, Any]) -> Norm
 
 def _exec_github_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     issue_number = params.get("issue_number") or params.get("issueNumber")
     body = params.get("body") or params.get("comment")
-    if not owner or not repo or not issue_number or not body:
-        raise ToolValidationError("github.issues.comment requires owner, repo, issue_number, body")
+    if not issue_number or not body:
+        raise ToolValidationError("github.issues.comment requires issue_number and body")
     try:
-        comment = create_issue_comment(token, str(owner), str(repo), int(issue_number), str(body))
+        comment = create_issue_comment(token, owner, repo, int(issue_number), str(body))
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
     return NormalizedResult(success=True, action="github.issues.comment", connector_id=cid, data={"comment": comment})
@@ -2095,17 +2509,14 @@ def _exec_github_issues_comment(ctx: ToolContext, params: dict[str, Any]) -> Nor
 
 def _exec_github_pulls_request_reviewer(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _github_token(ctx, params)
-    conn = get_connector(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) or {}
-    cfg = conn.get("config") or {}
-    owner = params.get("owner") or cfg.get("owner")
-    repo = params.get("repo") or cfg.get("repo")
+    owner, repo = _github_owner_repo(ctx, cid, params)
     pull_number = params.get("pull_number") or params.get("pullNumber")
     reviewers = params.get("reviewers")
-    if not owner or not repo or not pull_number or not isinstance(reviewers, list):
-        raise ToolValidationError("github.pulls.request_reviewer requires owner, repo, pull_number, reviewers[]")
+    if not pull_number or not isinstance(reviewers, list):
+        raise ToolValidationError("github.pulls.request_reviewer requires pull_number and reviewers[]")
     try:
         result = request_pull_request_reviewer(
-            token, str(owner), str(repo), int(pull_number), [str(r) for r in reviewers]
+            token, owner, repo, int(pull_number), [str(r) for r in reviewers]
         )
     except GitHubAPIError as exc:
         raise _vendor_api_error(exc, "github") from exc
@@ -2115,6 +2526,115 @@ def _exec_github_pulls_request_reviewer(ctx: ToolContext, params: dict[str, Any]
         connector_id=cid,
         data={"requested_reviewers": result},
     )
+
+
+def _exec_github_actions_dispatch(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    workflow_id = params.get("workflow_id") or params.get("workflowId")
+    ref = params.get("ref")
+    if not workflow_id or not ref:
+        raise ToolValidationError("github.actions.dispatch requires workflow_id and ref")
+    inputs = params.get("inputs")
+    if inputs is not None and not isinstance(inputs, dict):
+        raise ToolValidationError("github.actions.dispatch inputs must be an object")
+    try:
+        dispatch_workflow(
+            token,
+            owner,
+            repo,
+            str(workflow_id),
+            ref=str(ref),
+            inputs={str(k): str(v) for k, v in inputs.items()} if inputs else None,
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(
+        success=True,
+        action="github.actions.dispatch",
+        connector_id=cid,
+        data={"dispatched": True, "workflow_id": str(workflow_id), "ref": str(ref)},
+    )
+
+
+def _exec_github_pulls_merge(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    if not pull_number:
+        raise ToolValidationError("github.pulls.merge requires pull_number")
+    try:
+        result = merge_pull_request(
+            token,
+            owner,
+            repo,
+            int(pull_number),
+            commit_title=params.get("commit_title") or params.get("commitTitle"),
+            commit_message=params.get("commit_message") or params.get("commitMessage"),
+            merge_method=params.get("merge_method") or params.get("mergeMethod"),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.merge", connector_id=cid, data=result)
+
+
+def _exec_github_releases_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    tag_name = params.get("tag_name") or params.get("tagName")
+    if not tag_name:
+        raise ToolValidationError("github.releases.create requires tag_name")
+    try:
+        release = create_release(
+            token,
+            owner,
+            repo,
+            tag_name=str(tag_name),
+            name=params.get("name"),
+            body=params.get("body"),
+            draft=bool(params.get("draft", False)),
+            prerelease=bool(params.get("prerelease", False)),
+            target_commitish=params.get("target_commitish") or params.get("targetCommitish"),
+        )
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.releases.create", connector_id=cid, data={"release": release})
+
+
+def _exec_github_issues_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    try:
+        issues = list_issues(token, owner, repo, state=str(params.get("state") or "open"))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.issues.list", connector_id=cid, data={"issues": issues})
+
+
+def _exec_github_pulls_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    if not pull_number:
+        raise ToolValidationError("github.pulls.get requires pull_number")
+    try:
+        pull = get_pull_request(token, owner, repo, int(pull_number))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.get", connector_id=cid, data={"pull_request": pull})
+
+
+def _exec_github_pulls_close(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _github_token(ctx, params)
+    owner, repo = _github_owner_repo(ctx, cid, params)
+    pull_number = params.get("pull_number") or params.get("pullNumber")
+    if not pull_number:
+        raise ToolValidationError("github.pulls.close requires pull_number")
+    try:
+        pull = close_pull_request(token, owner, repo, int(pull_number))
+    except GitHubAPIError as exc:
+        raise _vendor_api_error(exc, "github") from exc
+    return NormalizedResult(success=True, action="github.pulls.close", connector_id=cid, data={"pull_request": pull})
 
 
 def _exec_calendar_freebusy(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -2151,6 +2671,45 @@ def _exec_calendar_events_create(ctx: ToolContext, params: dict[str, Any]) -> No
     except GoogleCalendarAPIError as exc:
         raise _vendor_api_error(exc, "google_calendar") from exc
     return NormalizedResult(success=True, action="calendar.events.create", connector_id=cid, data={"event": event})
+
+
+def _exec_calendar_events_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _google_calendar_token(ctx, params)
+    calendar_id = str(params.get("calendar_id") or params.get("calendarId") or "primary")
+    time_min = params.get("time_min") or params.get("timeMin")
+    time_max = params.get("time_max") or params.get("timeMax")
+    if not time_min or not time_max:
+        time_min, time_max = default_window_iso(hours=int(params.get("hours") or 168))
+    try:
+        data = list_events(
+            token,
+            calendar_id=calendar_id,
+            time_min=str(time_min),
+            time_max=str(time_max),
+            max_results=int(params.get("max_results") or params.get("maxResults") or 25),
+        )
+    except GoogleCalendarAPIError as exc:
+        raise _vendor_api_error(exc, "google_calendar") from exc
+    return NormalizedResult(
+        success=True,
+        action="calendar.events.list",
+        connector_id=cid,
+        data={"events": data.get("items") or [], "nextPageToken": data.get("nextPageToken")},
+    )
+
+
+def _exec_calendar_calendars_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _google_calendar_token(ctx, params)
+    try:
+        data = list_calendars(token, max_results=int(params.get("max_results") or params.get("maxResults") or 25))
+    except GoogleCalendarAPIError as exc:
+        raise _vendor_api_error(exc, "google_calendar") from exc
+    return NormalizedResult(
+        success=True,
+        action="calendar.calendars.list",
+        connector_id=cid,
+        data={"calendars": data.get("items") or [], "nextPageToken": data.get("nextPageToken")},
+    )
 
 
 def _exec_analytics_properties_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -2191,6 +2750,24 @@ def _exec_analytics_reports_run(ctx: ToolContext, params: dict[str, Any]) -> Nor
         action="analytics.reports.run",
         connector_id=cid,
         data={"property_id": property_id, "report": report},
+    )
+
+
+def _exec_analytics_metadata_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_analytics import GoogleAnalyticsAPIError, list_property_metadata
+
+    conn = _connector_by_type(ctx, "google_analytics", params)
+    cid, token = _google_vendor_token(ctx, "google_analytics", params)
+    property_id = _ga_property_id(conn, params)
+    try:
+        metadata = list_property_metadata(token, property_id)
+    except GoogleAnalyticsAPIError as exc:
+        raise _vendor_api_error(exc, "google_analytics") from exc
+    return NormalizedResult(
+        success=True,
+        action="analytics.metadata.list",
+        connector_id=cid,
+        data={"property_id": property_id, "metadata": metadata},
     )
 
 
@@ -2239,6 +2816,17 @@ def _exec_gmail_messages_send(ctx: ToolContext, params: dict[str, Any]) -> Norma
     return NormalizedResult(success=True, action="gmail.messages.send", connector_id=cid, data=data)
 
 
+def _exec_gmail_labels_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.gmail import GmailAPIError, list_labels
+
+    cid, token = _google_vendor_token(ctx, "gmail", params)
+    try:
+        data = list_labels(token, user_id=str(params.get("user_id") or params.get("userId") or "me"))
+    except GmailAPIError as exc:
+        raise _vendor_api_error(exc, "gmail") from exc
+    return NormalizedResult(success=True, action="gmail.labels.list", connector_id=cid, data=data)
+
+
 def _exec_drive_files_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.connectors.google_drive import GoogleDriveAPIError, list_files
 
@@ -2266,6 +2854,20 @@ def _exec_drive_files_get(ctx: ToolContext, params: dict[str, Any]) -> Normalize
     except GoogleDriveAPIError as exc:
         raise _vendor_api_error(exc, "google_drive") from exc
     return NormalizedResult(success=True, action="drive.files.get", connector_id=cid, data={"file": data})
+
+
+def _exec_drive_permissions_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_drive import GoogleDriveAPIError, list_permissions
+
+    cid, token = _google_vendor_token(ctx, "google_drive", params)
+    file_id = params.get("file_id") or params.get("fileId")
+    if not file_id:
+        raise ToolValidationError("drive.permissions.list requires file_id")
+    try:
+        data = list_permissions(token, str(file_id))
+    except GoogleDriveAPIError as exc:
+        raise _vendor_api_error(exc, "google_drive") from exc
+    return NormalizedResult(success=True, action="drive.permissions.list", connector_id=cid, data=data)
 
 
 def _exec_sheets_spreadsheets_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -2302,6 +2904,21 @@ def _exec_sheets_values_get(ctx: ToolContext, params: dict[str, Any]) -> Normali
     return NormalizedResult(success=True, action="sheets.values.get", connector_id=cid, data=data)
 
 
+def _exec_sheets_values_batch_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_sheets import GoogleSheetsAPIError, batch_get_values
+
+    cid, token = _google_vendor_token(ctx, "google_sheets", params)
+    spreadsheet_id = params.get("spreadsheet_id") or params.get("spreadsheetId")
+    ranges = params.get("ranges")
+    if not spreadsheet_id or not isinstance(ranges, list) or not ranges:
+        raise ToolValidationError("sheets.values.batch_get requires spreadsheet_id and ranges[]")
+    try:
+        data = batch_get_values(token, str(spreadsheet_id), [str(r) for r in ranges])
+    except GoogleSheetsAPIError as exc:
+        raise _vendor_api_error(exc, "google_sheets") from exc
+    return NormalizedResult(success=True, action="sheets.values.batch_get", connector_id=cid, data=data)
+
+
 def _exec_docs_documents_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     from app.connectors.google_docs import GoogleDocsAPIError, document_plain_text, get_document
 
@@ -2322,9 +2939,39 @@ def _exec_docs_documents_get(ctx: ToolContext, params: dict[str, Any]) -> Normal
     )
 
 
+def _exec_docs_documents_batch_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    from app.connectors.google_docs import GoogleDocsAPIError, batch_get_documents, document_plain_text
+
+    cid, token = _google_vendor_token(ctx, "google_docs", params)
+    document_ids = params.get("document_ids") or params.get("documentIds")
+    if not isinstance(document_ids, list) or not document_ids:
+        raise ToolValidationError("docs.documents.batch_get requires document_ids[]")
+    try:
+        docs = batch_get_documents(token, [str(d) for d in document_ids])
+    except GoogleDocsAPIError as exc:
+        raise _vendor_api_error(exc, "google_docs") from exc
+    return NormalizedResult(
+        success=True,
+        action="docs.documents.batch_get",
+        connector_id=cid,
+        data={
+            "documents": [
+                {"document": doc, "plain_text": document_plain_text(doc)} for doc in docs
+            ]
+        },
+    )
+
+
 _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "slack.post_message": _exec_slack_post_message,
+    "slack.conversations.list": _exec_slack_conversations_list,
+    "slack.conversations.history": _exec_slack_conversations_history,
+    "slack.users.list": _exec_slack_users_list,
     "email.send": _exec_email_send,
+    "email.messages.queue": _exec_email_messages_queue,
+    "email.delivery.status": _exec_email_delivery_status,
+    "email.send.template": _exec_email_send_template,
+    "email.batch.send": _exec_email_batch_send,
     "webhook.post": _exec_webhook_post,
     "hubspot.contacts.get": _exec_hubspot_contacts_get,
     "hubspot.contacts.update": _exec_hubspot_contacts_update,
@@ -2340,6 +2987,9 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.deals.delete": _exec_hubspot_deals_delete,
     "hubspot.deals.update": _exec_hubspot_deals_update,
     "hubspot.lists.add_contact": _exec_hubspot_lists_add_contact,
+    "hubspot.companies.search": _exec_hubspot_companies_search,
+    "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
+    "hubspot.tickets.create": _exec_hubspot_tickets_create,
     "salesforce.leads.get": _exec_salesforce_leads_get,
     "salesforce.leads.update": _exec_salesforce_leads_update,
     "salesforce.accounts.get": _exec_salesforce_accounts_get,
@@ -2364,6 +3014,10 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "quickbooks.bills.list": _exec_quickbooks_bills_list,
     "quickbooks.bills.get": _exec_quickbooks_bills_get,
     "quickbooks.companyinfo.get": _exec_quickbooks_companyinfo_get,
+    "quickbooks.invoices.create": _exec_quickbooks_invoices_create,
+    "quickbooks.customers.create": _exec_quickbooks_customers_create,
+    "quickbooks.payments.create": _exec_quickbooks_payments_create,
+    "quickbooks.journalentries.create": _exec_quickbooks_journalentries_create,
     "stripe.invoices.list": _exec_stripe_invoices_list,
     "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
     "pagerduty.incidents.acknowledge": _exec_pagerduty_incidents_acknowledge,
@@ -2391,22 +3045,42 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "zendesk.tickets.close": _exec_zendesk_tickets_close,
     "zendesk.tickets.update": _exec_zendesk_tickets_update,
     "zendesk.tickets.add_tags": _exec_zendesk_tickets_add_tags,
+    "zendesk.tickets.list": _exec_zendesk_tickets_list,
+    "zendesk.users.get": _exec_zendesk_users_get,
+    "microsoft365.users.get": _exec_microsoft365_users_get,
+    "microsoft365.mail.messages.list": _exec_microsoft365_mail_messages_list,
+    "microsoft365.calendar.events.list": _exec_microsoft365_calendar_events_list,
     "github.pulls.list": _exec_github_pulls_list,
+    "github.issues.get": _exec_github_issues_get,
+    "github.repos.get": _exec_github_repos_get,
     "github.issues.create": _exec_github_issues_create,
     "github.issues.comment": _exec_github_issues_comment,
     "github.pulls.request_reviewer": _exec_github_pulls_request_reviewer,
+    "github.actions.dispatch": _exec_github_actions_dispatch,
+    "github.pulls.merge": _exec_github_pulls_merge,
+    "github.releases.create": _exec_github_releases_create,
+    "github.issues.list": _exec_github_issues_list,
+    "github.pulls.get": _exec_github_pulls_get,
+    "github.pulls.close": _exec_github_pulls_close,
     "calendar.freebusy": _exec_calendar_freebusy,
     "calendar.events.create": _exec_calendar_events_create,
+    "calendar.events.list": _exec_calendar_events_list,
+    "calendar.calendars.list": _exec_calendar_calendars_list,
     "analytics.properties.list": _exec_analytics_properties_list,
     "analytics.reports.run": _exec_analytics_reports_run,
+    "analytics.metadata.list": _exec_analytics_metadata_list,
     "gmail.messages.list": _exec_gmail_messages_list,
     "gmail.messages.get": _exec_gmail_messages_get,
     "gmail.messages.send": _exec_gmail_messages_send,
+    "gmail.labels.list": _exec_gmail_labels_list,
     "drive.files.list": _exec_drive_files_list,
     "drive.files.get": _exec_drive_files_get,
+    "drive.permissions.list": _exec_drive_permissions_list,
     "sheets.spreadsheets.get": _exec_sheets_spreadsheets_get,
     "sheets.values.get": _exec_sheets_values_get,
+    "sheets.values.batch_get": _exec_sheets_values_batch_get,
     "docs.documents.get": _exec_docs_documents_get,
+    "docs.documents.batch_get": _exec_docs_documents_batch_get,
 }
 
 from app.services.linkedin_tools import LINKEDIN_TOOL_EXECUTORS
@@ -2420,6 +3094,17 @@ from app.services.fhir_tools import FHIR_TOOL_EXECUTORS
 from app.services.clio_tools import CLIO_TOOL_EXECUTORS
 from app.services.real_estate_tools import REAL_ESTATE_TOOL_EXECUTORS
 from app.services.greenhouse_tools import GREENHOUSE_TOOL_EXECUTORS
+from app.services.constant_contact_tools import CONSTANT_CONTACT_TOOL_EXECUTORS
+from app.services.clickup_tools import CLICKUP_TOOL_EXECUTORS
+from app.services.intercom_tools import INTERCOM_TOOL_EXECUTORS
+from app.services.asana_tools import ASANA_TOOL_EXECUTORS
+from app.services.monday_tools import MONDAY_TOOL_EXECUTORS
+from app.services.odoo_tools import ODOO_TOOL_EXECUTORS
+from app.services.canva_tools import CANVA_TOOL_EXECUTORS
+from app.services.figma_tools import FIGMA_TOOL_EXECUTORS
+from app.services.microsoft365_teams_tools import MICROSOFT365_TEAMS_SHAREPOINT_TOOLS
+from app.services.apollo_tools import APOLLO_TOOL_EXECUTORS
+from app.services.pipedrive_tools import PIPEDRIVE_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -2432,6 +3117,23 @@ _TOOL_REGISTRY.update(FHIR_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CLIO_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(REAL_ESTATE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(GREENHOUSE_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CONSTANT_CONTACT_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CLICKUP_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(INTERCOM_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(ASANA_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MONDAY_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(ODOO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(CANVA_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(FIGMA_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MICROSOFT365_TEAMS_SHAREPOINT_TOOLS)
+_TOOL_REGISTRY.update(APOLLO_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(PIPEDRIVE_TOOL_EXECUTORS)
+
+from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
+from app.connectors.catalog_http.registry import build_catalog_http_executors
+
+_TOOL_REGISTRY.update(PRIORITY_CONNECTOR_TOOLS)
+_TOOL_REGISTRY.update(build_catalog_http_executors(skip=set(_TOOL_REGISTRY.keys())))
 
 # Workflow step type → canonical tool action
 STEP_TYPE_TO_ACTION: dict[str, str] = {
@@ -2443,7 +3145,10 @@ STEP_TYPE_TO_ACTION: dict[str, str] = {
 
 def _resolve_tool_executor(action: str, ctx: ToolContext | None = None) -> ToolExecutor | None:
     """Resolve built-in, org-private sandbox, or public partner tool executor."""
-    executor = _TOOL_REGISTRY.get(action)
+    from app.connectors.action_catalog.tool_aliases import resolve_registry_action
+
+    resolved = resolve_registry_action(action, set(_TOOL_REGISTRY.keys()))
+    executor = _TOOL_REGISTRY.get(resolved)
     if executor:
         return executor
     if ctx and ctx.client and ctx.org_id and ctx.settings.private_connector_runtime_enabled:

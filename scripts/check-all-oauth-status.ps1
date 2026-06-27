@@ -7,15 +7,15 @@ $base = "$($ApiBase.TrimEnd('/'))/api/connectors/oauth"
 
 $tier1 = @(
     "hubspot", "salesforce", "quickbooks", "netsuite", "workday", "marketo",
-    "jira", "confluence", "pagerduty", "notion"
+    "jira", "confluence", "pagerduty", "notion", "slack"
 )
 $google = @(
     "google_analytics", "google_calendar", "gmail", "google_drive", "google_docs", "google_sheets"
 )
 $generic = @(
     "mailchimp", "constant_contact", "xero", "airtable", "asana", "clickup",
-    "freshdesk", "intercom", "monday", "microsoft365", "odoo", "github", "zendesk",
-    "zapier", "hootsuite", "gusto", "canva"
+    "freshdesk", "intercom", "monday", "microsoft365", "github", "zendesk",
+    "zapier", "hootsuite", "gusto", "canva", "figma"
 )
 
 function Test-Provider([string]$Provider) {

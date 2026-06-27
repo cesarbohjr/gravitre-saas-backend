@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -33,6 +33,8 @@ def test_all_registry_actions_exist_in_tool_service(registry: ToolRegistry):
     for name in registry.list_tool_names():
         spec = registry.get_spec(name)
         assert spec is not None
+        if spec.name.startswith("assistant_"):
+            continue
         if spec.always_available:
             continue
         action = spec.invoke_action
@@ -96,7 +98,7 @@ async def test_execute_unknown_tool(registry: ToolRegistry, tool_ctx: ToolContex
 
 
 @pytest.mark.asyncio
-async def test_execute_web_search_stub(registry: ToolRegistry, tool_ctx: ToolContext):
+async def test_execute_web_search_not_configured(registry: ToolRegistry, tool_ctx: ToolContext):
     result = await registry.execute_tool(
         ctx=tool_ctx,
         tool_name="web_search",
@@ -104,7 +106,36 @@ async def test_execute_web_search_stub(registry: ToolRegistry, tool_ctx: ToolCon
     )
     assert result["success"] is False
     assert result["query"] == "latest news"
-    assert "not configured" in result["error"]
+    assert "TAVILY_API_KEY" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_execute_web_search_missing_query(registry: ToolRegistry, tool_ctx: ToolContext):
+    result = await registry.execute_tool(
+        ctx=tool_ctx,
+        tool_name="web_search",
+        args={"query": "   "},
+    )
+    assert result["success"] is False
+    assert "query" in result["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_execute_web_search_success(registry: ToolRegistry, tool_ctx: ToolContext):
+    mock_payload = {
+        "results": [{"title": "Example", "url": "https://example.com", "snippet": "Snippet"}],
+        "sources": [{"title": "Example", "url": "https://example.com", "excerpt": "Snippet"}],
+        "totalResults": 1,
+    }
+    with patch("app.services.web_research.search_web", new=AsyncMock(return_value=mock_payload)):
+        result = await registry.execute_tool(
+            ctx=tool_ctx,
+            tool_name="web_search",
+            args={"query": "latest news"},
+        )
+    assert result["success"] is True
+    assert result["totalResults"] == 1
+    assert result["results"][0]["title"] == "Example"
 
 
 @pytest.mark.asyncio

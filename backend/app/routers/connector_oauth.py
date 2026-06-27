@@ -1,6 +1,7 @@
 """Connector OAuth start/callback routes (STA-13)."""
 from __future__ import annotations
 
+import logging
 import time
 from typing import Annotated
 from urllib.parse import urlencode
@@ -128,6 +129,7 @@ from app.connectors.oauth_pkce import (
 from app.connectors.oauth_provider_registry import (
     GENERIC_OAUTH_VENDORS,
     OAUTH_PROVIDER_REGISTRY,
+    PARTNER_GATED_OAUTH_VENDORS,
     normalize_generic_vendor,
 )
 from app.connectors.oauth_state import (
@@ -136,11 +138,17 @@ from app.connectors.oauth_state import (
     sign_oauth_state,
     verify_oauth_state,
 )
-from app.connectors.platform import mark_connector_pending_oauth, prepare_oauth_connector
+from app.connectors.platform import (
+    is_connector_type_schema_error,
+    mark_connector_pending_oauth,
+    prepare_oauth_connector,
+    raise_connector_type_schema_error,
+)
 from app.core.errors import error_detail
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/connectors/oauth", tags=["connector-oauth"])
+logger = logging.getLogger(__name__)
 
 SUPPORTED_OAUTH_PROVIDERS = frozenset(
     {
@@ -201,6 +209,8 @@ class OAuthStartRequest(BaseModel):
     munchkin_id: str | None = Field(default=None, alias="munchkinId")
     subdomain: str | None = None
     instance_url: str | None = Field(default=None, alias="instanceUrl")
+    owner: str | None = None
+    repo: str | None = None
 
     model_config = {"populate_by_name": True}  # noqa: RUF012 — pydantic model config
 
@@ -313,6 +323,16 @@ async def start_oauth(
     vendor = _resolve_oauth_vendor(provider)
     if vendor not in SUPPORTED_OAUTH_PROVIDERS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
+
+    if vendor in PARTNER_GATED_OAUTH_VENDORS:
+        label = vendor.replace("_", " ").title()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=error_detail(
+                f"{label} requires partner approval before OAuth connect",
+                "OAUTH_PARTNER_GATED",
+            ),
+        )
 
     if vendor == "hubspot" and not hubspot_oauth_configured(settings, environment_name):
         raise HTTPException(
@@ -446,6 +466,8 @@ async def start_oauth(
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001
+            if is_connector_type_schema_error(exc):
+                raise_connector_type_schema_error(exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),
@@ -462,7 +484,9 @@ async def start_oauth(
                 metadata={"environment": environment_name, "auth": "oauth"},
             )
 
-    if vendor in GENERIC_OAUTH_VENDORS and (body.subdomain or body.instance_url):
+    if vendor in GENERIC_OAUTH_VENDORS and (
+        body.subdomain or body.instance_url or body.owner or body.repo
+    ):
         persist_generic_oauth_connector_config(
             client,
             org_id,
@@ -470,6 +494,8 @@ async def start_oauth(
             vendor=vendor,
             subdomain=body.subdomain,
             instance_url=body.instance_url,
+            owner=body.owner,
+            repo=body.repo,
         )
 
     now = time.time()
@@ -680,6 +706,14 @@ async def start_oauth(
             instance_url=ctx_instance,
             code_challenge=pkce_challenge,
         )
+        if spec.requires_pkce:
+            logger.info(
+                "generic_oauth_authorize vendor=%s connector_id=%s redirect_uri=%s pkce=1 challenge_len=%s",
+                vendor,
+                connector_id,
+                redirect_uri,
+                len(pkce_challenge or ""),
+            )
 
     write_audit_event(
         client,
@@ -867,11 +901,23 @@ async def oauth_callback(
                 code_verifier=str(payload.get("pkce_verifier") or "") or None,
                 user_id=str(payload.get("user_id") or "") or None,
             )
-    except (httpx.HTTPError, ValueError):
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning(
+            "oauth_callback_failed vendor=%s connector_id=%s org_id=%s error=%s",
+            vendor,
+            connector_id,
+            org_id,
+            str(exc)[:200],
+        )
         return RedirectResponse(
             _frontend_redirect(
+                settings,
                 redirect_path,
-                {"oauth": "error", "provider": vendor, "message": "token_exchange_failed"},
+                {
+                    "oauth": "error",
+                    "provider": vendor,
+                    "message": str(exc)[:200] or "token_exchange_failed",
+                },
             ),
             status_code=302,
         )
@@ -895,6 +941,6 @@ async def oauth_callback(
         success_params["selectProperty"] = "1"
 
     return RedirectResponse(
-        _frontend_redirect(redirect_path, success_params),
+        _frontend_redirect(settings, redirect_path, success_params),
         status_code=302,
     )

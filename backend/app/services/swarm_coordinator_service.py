@@ -12,9 +12,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.services.council_service import DecisionMethod, coerce_council_agent_role, get_council_service
 from app.services.handoff_service import get_agent
+from app.services.notification_email_service import send_swarm_completion_email
+from app.services.notification_service import create_user_notification
 from app.workflows.audit import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -510,6 +512,42 @@ async def aggregate_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> di
             "finalConfidence": session.final_confidence,
         },
     )
+    created_by = str(swarm.get("created_by") or "")
+    if created_by:
+        recommendation = (session.final_recommendation or "Swarm finished.").strip()
+        confidence_note = (
+            f" Council confidence: {int(session.final_confidence * 100)}%."
+            if session.final_confidence is not None
+            else ""
+        )
+        dissent = session.dissenting_opinions or []
+        dissent_note = ""
+        if dissent:
+            dissent_note = f" {len(dissent)} alternate view(s) recorded."
+        create_user_notification(
+            client,
+            org_id=org_id,
+            user_id=created_by,
+            notification_type="run_completed",
+            title="Agent swarm complete",
+            body=f"{recommendation[:480]}{confidence_note}{dissent_note}",
+            url=f"/agents/swarm?runId={swarm_run_id}",
+            entity_type="agent_swarm_run",
+            entity_id=swarm_run_id,
+        )
+        send_swarm_completion_email(
+            client,
+            get_settings(),
+            org_id=org_id,
+            user_id=created_by,
+            swarm_run_id=swarm_run_id,
+            objective=str(swarm.get("objective") or "Agent swarm"),
+            final_recommendation=session.final_recommendation,
+            final_confidence=session.final_confidence,
+            decision_method=str(swarm.get("decision_method") or "majority_vote"),
+            subtasks=subtasks,
+            dissenting_opinions=session.dissenting_opinions,
+        )
     return _serialize_swarm(row, [_serialize_subtask(s) for s in subtasks])
 
 

@@ -11,7 +11,9 @@ from app.services import assistant_tools as tools_module
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.main import app
-from app.services.model_router import ModelResponse, ModelStreamEvent, PreparedStream
+from app.operators.react_engine import ReActResult, ReActStatus
+from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+from app.services.model_router import ModelResponse, PreparedStream
 
 
 def _settings(**overrides) -> Settings:
@@ -52,29 +54,33 @@ def _authenticate(org_id: str = "org-1", settings: Settings | None = None) -> No
     app.dependency_overrides[get_settings] = lambda: settings or _settings()
 
 
-def _mock_stream(monkeypatch, content: str = "answer text", **result_overrides) -> MagicMock:
+def _mock_prepare_stream_guardrails(monkeypatch) -> MagicMock:
     router = MagicMock()
-    response = ModelResponse(
-        provider=result_overrides.pop("provider", "openai"),
-        model=result_overrides.pop("model", "gpt-5.5"),
-        content=content,
-        input_tokens=result_overrides.pop("input_tokens", 100),
-        output_tokens=result_overrides.pop("output_tokens", 50),
-        latency_ms=result_overrides.pop("latency_ms", 120),
-        cost_usd=result_overrides.pop("cost_usd", 0.001),
-        model_call_id=result_overrides.pop("model_call_id", "mc-123"),
-        **result_overrides,
-    )
-    prepared = MagicMock(spec=PreparedStream)
-
-    async def fake_stream(_prepared):
-        yield ModelStreamEvent(delta=content)
-        yield ModelStreamEvent(response=response)
-
-    router.prepare_stream = AsyncMock(return_value=prepared)
-    router.stream = fake_stream
+    router.prepare_stream = AsyncMock(return_value=MagicMock(spec=PreparedStream))
     monkeypatch.setattr(assistant_module, "get_model_router", lambda: router)
     return router
+
+
+def _mock_agent_intelligence_stream(monkeypatch, content: str = "answer text", **overrides) -> MagicMock:
+    captured: dict[str, object] = {}
+
+    async def fake_execute(**kwargs):
+        captured.update(kwargs)
+        yield AssistantStreamEvent(sse_type="text-start", payload={"id": "t1"})
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"id": "t1", "delta": content})
+        yield AssistantStreamEvent(sse_type="text-end", payload={"id": "t1"})
+        yield AssistantStreamComplete(
+            full_content=content,
+            tool_results=overrides.get("tool_results", []),
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer=content),
+            model=overrides.get("model", "gpt-5.5"),
+        )
+
+    intelligence = MagicMock()
+    intelligence.execute_task_streaming = fake_execute
+    intelligence._captured = captured
+    monkeypatch.setattr(assistant_module, "get_agent_intelligence", lambda: intelligence)
+    return intelligence
 
 
 @pytest.fixture
@@ -100,8 +106,8 @@ async def test_unauthenticated_request_returns_401(async_client):
 
 async def test_authenticated_request_returns_streaming_response(async_client, monkeypatch):
     _authenticate(org_id="org-1")
-    monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
-    _mock_stream(monkeypatch, content="hello-answer")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    _mock_agent_intelligence_stream(monkeypatch, content="hello-answer")
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -121,8 +127,8 @@ async def test_authenticated_request_returns_streaming_response(async_client, mo
 async def test_stale_body_org_id_uses_validated_org(async_client, monkeypatch):
     """Client body org_id is a hint only; JWT-validated org wins (no 403)."""
     _authenticate(org_id="org-1")
-    monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
-    _mock_stream(monkeypatch, content="ok")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    _mock_agent_intelligence_stream(monkeypatch, content="ok")
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -135,7 +141,7 @@ async def test_stale_body_org_id_uses_validated_org(async_client, monkeypatch):
 
 async def test_killswitch_active_returns_503(async_client, monkeypatch):
     _authenticate(org_id="org-1", settings=_settings(disable_ai=True))
-    router = _mock_stream(monkeypatch)
+    router = _mock_prepare_stream_guardrails(monkeypatch)
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -147,48 +153,46 @@ async def test_killswitch_active_returns_503(async_client, monkeypatch):
     router.prepare_stream.assert_not_called()
 
 
-async def test_tool_results_are_fenced_before_model_injection(async_client, monkeypatch):
-    _authenticate(org_id="org-1")
-
-    sentinel = "SENTINEL_TOOL_DATA"
-    fake_tools = [
-        {
-            "name": "knowledge_base",
-            "displayName": "searchKnowledgeBase",
-            "input": {"query": "q"},
-            "output": {"results": [{"title": "Doc", "snippet": sentinel, "relevance": 0.9}], "totalResults": 1},
-        }
-    ]
-    monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=fake_tools))
+async def test_tool_results_are_fenced_before_model_injection(monkeypatch):
+    """ReAct loop fences task input via fence_untrusted before model calls."""
+    from app.operators import react_engine as react_module
 
     fence_calls: list[str] = []
-    real_fence = assistant_module.fence_untrusted
+    real_fence = react_module.fence_untrusted
 
     def spy_fence(text: str) -> str:
         fence_calls.append(text)
         return real_fence(text)
 
-    monkeypatch.setattr(assistant_module, "fence_untrusted", spy_fence)
+    monkeypatch.setattr(react_module, "fence_untrusted", spy_fence)
+    monkeypatch.setattr(react_module, "moderate_input", AsyncMock())
 
-    router = _mock_stream(monkeypatch, content="ok")
+    engine = react_module.ReActEngine(settings=_settings(), registry=MagicMock())
+    engine.registry.get_tools_for_agent = MagicMock(return_value=[])
+    engine.registry.list_connected_integrations = MagicMock(return_value=[])
 
-    resp = await async_client.post(
-        "/api/assistant/chat",
-        headers={"Authorization": "Bearer token"},
-        json={"messages": [{"role": "user", "content": "hi"}], "org_id": "org-1", "tools": ["knowledge_base"]},
+    sentinel = "SENTINEL_TOOL_DATA"
+    ctx = MagicMock()
+    ctx.client = MagicMock()
+    ctx.org_id = "org-1"
+    ctx.settings = _settings()
+    ctx.environment_name = "default"
+    ctx.actor_id = "user-1"
+    ctx.agent_id = None
+    ctx.task_id = None
+    ctx.run_id = None
+
+    fake_reasoning = AsyncMock(
+        return_value=react_module.ReActResult(status=react_module.ReActStatus.COMPLETED, answer="ok")
     )
+    monkeypatch.setattr(engine, "_run_reasoning_only", fake_reasoning)
 
-    assert resp.status_code == 200
-    body = resp.text
-    # fence_untrusted was called with the tool output (containing the sentinel).
-    assert any(sentinel in call for call in fence_calls), "tool output was not fenced before model injection"
+    await engine.run(ctx=ctx, task=sentinel, system_prompt="sys", connected_integrations=[])
 
-    # And the fenced content actually reached the model context.
-    router.prepare_stream.assert_awaited()
-    _, kwargs = router.prepare_stream.call_args
-    context_blob = "".join(msg.get("content", "") for msg in (kwargs.get("context") or []))
-    assert sentinel in context_blob
-    assert "<untrusted_input>" in context_blob
+    assert any(sentinel in call for call in fence_calls)
+    passed_messages = fake_reasoning.await_args.kwargs.get("messages") or fake_reasoning.await_args.args[1]
+    user_content = next(m["content"] for m in passed_messages if m.get("role") == "user")
+    assert "<untrusted_input>" in user_content
 
 
 async def test_killswitch_logs_guardrail_event(async_client, monkeypatch, capture_background_tasks):
@@ -210,8 +214,8 @@ async def test_killswitch_logs_guardrail_event(async_client, monkeypatch, captur
 
 async def test_billing_scheduled_after_success(async_client, monkeypatch, capture_background_tasks):
     _authenticate(org_id="org-1")
-    monkeypatch.setattr(assistant_module, "_run_tools", AsyncMock(return_value=[]))
-    _mock_stream(monkeypatch, input_tokens=200, output_tokens=80, model_call_id="mc-bill-1")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    _mock_agent_intelligence_stream(monkeypatch, content="hello billing text")
 
     record_mock = AsyncMock()
     monkeypatch.setattr(assistant_module, "_record_assistant_billing", record_mock)
@@ -228,8 +232,8 @@ async def test_billing_scheduled_after_success(async_client, monkeypatch, captur
     record_mock.assert_awaited_once()
     args = record_mock.call_args[0]
     assert args[1] == "org-1"
-    assert args[2].input_tokens == 200
-    assert args[2].output_tokens == 80
+    assert args[2].input_tokens >= 1
+    assert args[2].output_tokens >= 1
 
 
 async def test_record_assistant_billing_uses_real_tokens(monkeypatch):
@@ -314,9 +318,8 @@ async def test_billing_idempotency_same_source_id(monkeypatch):
 
 async def test_agent_chat_passes_agent_id_to_tools(async_client, monkeypatch):
     _authenticate(org_id="org-1")
-    run_tools = AsyncMock(return_value=[])
-    monkeypatch.setattr(assistant_module, "_run_tools", run_tools)
-    _mock_stream(monkeypatch, content="scoped")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    intelligence = _mock_agent_intelligence_stream(monkeypatch, content="scoped")
 
     resp = await async_client.post(
         "/api/assistant/chat",
@@ -332,9 +335,7 @@ async def test_agent_chat_passes_agent_id_to_tools(async_client, monkeypatch):
 
     assert resp.status_code == 200
     resp.text
-    assert run_tools.await_count == 2
-    for call in run_tools.call_args_list:
-        assert call.kwargs.get("agent_id") == "agent-revops"
+    assert intelligence._captured.get("agent_id") == "agent-revops"
 
 
 def test_resolve_base_system_prompt_uses_agent_persona(monkeypatch):

@@ -4,7 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-ActionTier = Literal["v1", "v2", "v3"]
+from app.connectors.action_catalog.tool_aliases import catalog_tool_is_implemented
+
+ActionTier = Literal["v1", "v2", "v3", "v4"]
 ActionKind = Literal["read", "write", "advanced"]
 
 
@@ -104,9 +106,10 @@ class VendorCatalogSpec:
     v3: tuple[ActionSpec, ...]
     demo_workflows: tuple[DemoWorkflowSpec, ...]
     shipped: bool = False
+    v4: tuple[ActionSpec, ...] = field(default_factory=tuple)
 
     def all_actions(self) -> tuple[ActionSpec, ...]:
-        return self.v1 + self.v2 + self.v3
+        return self.v1 + self.v2 + self.v3 + self.v4
 
     def to_dict(self, *, implemented_tools: set[str]) -> dict[str, Any]:
         def _tool_key(action: ActionSpec) -> str:
@@ -116,25 +119,36 @@ class VendorCatalogSpec:
 
         def _serialize(actions: tuple[ActionSpec, ...]) -> list[dict[str, Any]]:
             return [
-                action.to_dict(vendor=self.vendor, implemented=_tool_key(action) in implemented_tools)
+                action.to_dict(
+                    vendor=self.vendor,
+                    implemented=catalog_tool_is_implemented(_tool_key(action), implemented_tools),
+                )
                 for action in actions
             ]
 
         v1_list = _serialize(self.v1)
         v2_list = _serialize(self.v2)
         v3_list = _serialize(self.v3)
+        v4_list = _serialize(self.v4)
         read_tools = [a["tool"] for a in v1_list]
+        tiers: dict[str, Any] = {
+            "v1": {"label": "Read", "description": "List, get, and search — safe read-only API operations.", "actions": v1_list},
+            "v2": {"label": "Write", "description": "Create and update records — mutating operations, often approval-gated.", "actions": v2_list},
+            "v3": {"label": "Advanced", "description": "Search, batch, enroll, transition — orchestration and cross-object flows.", "actions": v3_list},
+        }
+        if v4_list:
+            tiers["v4"] = {
+                "label": "Orchestration",
+                "description": "Cross-object search, pipelines, and destructive orchestration — approval recommended.",
+                "actions": v4_list,
+            }
         return {
             "vendor": self.vendor,
             "displayName": self.display_name,
             "category": self.category,
             "apiDocsUrl": self.api_docs_url,
             "shipped": self.shipped,
-            "tiers": {
-                "v1": {"label": "Read", "description": "List, get, and search — safe read-only API operations.", "actions": v1_list},
-                "v2": {"label": "Write", "description": "Create and update records — mutating operations, often approval-gated.", "actions": v2_list},
-                "v3": {"label": "Advanced", "description": "Search, batch, enroll, transition — orchestration and cross-object flows.", "actions": v3_list},
-            },
+            "tiers": tiers,
             "readTools": read_tools,
             "demoWorkflows": [wf.to_dict(vendor=self.vendor) for wf in self.demo_workflows],
         }

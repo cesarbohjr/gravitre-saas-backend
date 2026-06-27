@@ -7,6 +7,7 @@ import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { sourceTypeVendorKey } from "@/lib/brand-vendor"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { SourceQueryPanel } from "@/components/gravitre/source-query-panel"
 import { Button } from "@/components/ui/button"
@@ -186,7 +187,7 @@ export default function SourceDetailPage() {
         <div className="mb-8 flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <ConnectorIcon
-              vendor={String(source.type ?? "")}
+              vendor={sourceTypeVendorKey(String(source.type ?? ""))}
               name={name}
               size="md"
               showStatusIndicator={false}

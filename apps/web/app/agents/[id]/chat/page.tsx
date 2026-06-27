@@ -370,7 +370,7 @@ export default function AgentChatPage({
           ...buildChatOrgPayload(),
           agent_id: agentId,
           mode: "agent",
-          tools: ["knowledge_base", "agent_status", "connector_status"],
+          tools: ["knowledge_base", "agent_status", "connector_status", "workflow_runs", "search_web"],
         }),
       }),
     [agentId]

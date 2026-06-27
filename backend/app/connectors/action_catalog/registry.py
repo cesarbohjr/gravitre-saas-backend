@@ -47,6 +47,7 @@ def list_full_catalog() -> dict[str, Any]:
             "v1": "Read",
             "v2": "Write",
             "v3": "Advanced",
+            "v4": "Orchestration",
         },
     }
 

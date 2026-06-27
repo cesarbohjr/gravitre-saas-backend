@@ -31,6 +31,12 @@ class OAuthProviderSpec:
     accept_header: str = "application/json"
     token_response_json: bool = True
     notes: str = ""
+    # Shorter app-domain callback (ClickUp/PagerDuty UIs reject long /api/connectors/oauth/... paths).
+    app_redirect_path: str = ""
+    # ClickUp UI often saves only the registrable domain (e.g. gravitre.app) — OAuth must use app root.
+    app_redirect_domain_only: bool = False
+    # Some vendors (ClickUp) omit redirect_uri on the token POST.
+    token_includes_redirect_uri: bool = True
 
 
 def _specs() -> dict[str, OAuthProviderSpec]:
@@ -75,6 +81,12 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             notes="Clio Manage API v4 read scopes for intake and conflict workflows",
         ),
         OAuthProviderSpec(
+            vendor="pipedrive",
+            authorize_url="https://oauth.pipedrive.com/oauth/authorize",
+            token_url="https://oauth.pipedrive.com/oauth/token",
+            notes="Scopes are configured in the Pipedrive Developer Hub app settings",
+        ),
+        OAuthProviderSpec(
             vendor="airtable",
             authorize_url="https://airtable.com/oauth2/v1/authorize",
             token_url="https://airtable.com/oauth2/v1/token",
@@ -91,6 +103,10 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             vendor="clickup",
             authorize_url="https://app.clickup.com/api",
             token_url="https://api.clickup.com/api/v2/oauth/token",
+            app_redirect_path="/api/auth/callback/clickup",
+            app_redirect_domain_only=True,
+            token_includes_redirect_uri=False,
+            notes="ClickUp app settings often store only the app domain as redirect URL",
         ),
         OAuthProviderSpec(
             vendor="freshdesk",
@@ -126,26 +142,41 @@ def _specs() -> dict[str, OAuthProviderSpec]:
             notes="Gusto partner / developer approval required",
         ),
         OAuthProviderSpec(
-            vendor="odoo",
-            authorize_url="{instance_url}/web/auth/oauth2/authorize",
-            token_url="{instance_url}/web/auth/oauth2/token",
-            requires_instance_url=True,
-            notes="Self-hosted; API key is common alternative",
-        ),
-        OAuthProviderSpec(
             vendor="canva",
             authorize_url="https://www.canva.com/api/oauth/authorize",
             token_url="https://api.canva.com/rest/v1/oauth/token",
+            scopes=(
+                "design:meta:read design:content:read design:content:write "
+                "folder:read asset:read asset:write "
+                "brandtemplate:meta:read brandtemplate:content:read"
+            ),
+            token_style=TokenRequestStyle.BASIC_AUTH,
             requires_pkce=True,
-            partner_gated=True,
-            notes="PKCE required; Canva Connect partner program",
+            authorize_extra={"code_challenge_method": "s256"},
+            notes="PKCE + Basic Auth token endpoint; Canva Connect partner program",
+        ),
+        OAuthProviderSpec(
+            vendor="figma",
+            authorize_url="https://www.figma.com/oauth",
+            token_url="https://api.figma.com/v1/oauth/token",
+            scopes=(
+                "current_user:read file_content:read file_metadata:read "
+                "file_comments:read file_comments:write file_dev_resources:write "
+                "file_versions:read projects:read"
+            ),
+            notes="Figma OAuth app; granular REST API scopes",
         ),
         OAuthProviderSpec(
             vendor="microsoft365",
             authorize_url="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
             token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-            scopes="offline_access User.Read Mail.Read Calendars.Read Files.Read.All",
-            notes="Microsoft Entra app; tenant-specific consent may apply",
+            scopes=(
+                "offline_access User.Read Mail.Read Mail.Send Calendars.ReadWrite "
+                "Files.ReadWrite.All ChannelMessage.Send Team.ReadBasic.All "
+                "Channel.ReadBasic.All ChannelMessage.Read.All OnlineMeetings.ReadWrite "
+                "Sites.Read.All Sites.ReadWrite.All"
+            ),
+            notes="Microsoft Entra app; Sites.* and Teams scopes may require admin consent",
         ),
         OAuthProviderSpec(
             vendor="zendesk",

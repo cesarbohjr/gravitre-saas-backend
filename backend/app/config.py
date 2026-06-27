@@ -149,6 +149,8 @@ class Settings(BaseSettings):
     # Generic OAuth — Clio Manage (STA-114)
     clio_client_id: str = ""
     clio_client_secret: str = ""
+    pipedrive_client_id: str = ""
+    pipedrive_client_secret: str = ""
     # Generic OAuth — Mailchimp
     mailchimp_client_id: str = ""
     mailchimp_client_secret: str = ""
@@ -202,6 +204,19 @@ class Settings(BaseSettings):
     internal_api_secret: str = ""
     # Tier 6 v2: platform CS escalation (Slack incoming webhook or generic JSON POST)
     platform_cs_escalation_webhook_url: str = ""
+    # Transactional notification email (swarm completion, etc.). Falls back to org email connector.
+    notification_email_enabled: bool = True
+    notification_smtp_host: str = ""
+    notification_smtp_port: int = 587
+    notification_smtp_username: str = ""
+    notification_smtp_password: str = ""
+    notification_smtp_from: str = ""
+    notification_smtp_use_tls: bool = True
+    # Platform email branding defaults (org white-label overrides per send).
+    notification_email_brand_name: str = "Gravitre"
+    notification_email_logo_url: str = ""
+    notification_email_primary_color: str = "#0091FF"
+    notification_email_accent_color: str = "#7C3AED"
     # Tier 6 v2: approval SLA targets (minutes) for mobile countdown UI
     approval_sla_minutes_high: int = 60
     approval_sla_minutes_medium: int = 240
@@ -215,6 +230,12 @@ class Settings(BaseSettings):
     # In-process usage-sync scheduler interval (seconds). 0 disables it (e.g. if
     # you use the GitHub Action / a Railway cron service instead).
     usage_sync_interval_seconds: int = 3600
+    # Company intelligence learning loop (Half B). 0 disables; default 8 hours.
+    company_intelligence_interval_seconds: int = 28800
+    # Memory promotion evaluation (v4). 0 disables; default 8 hours.
+    memory_promotion_eval_interval_seconds: int = 28800
+    # Memory expiration/decay checks (v4). 0 disables; default daily.
+    memory_expiration_check_interval_seconds: int = 86400
     # In-process async agent-job worker (durable operator/agent execution).
     agent_job_worker_enabled: bool = True
     agent_job_poll_seconds: int = 5
@@ -263,6 +284,10 @@ class Settings(BaseSettings):
     slack_client_secret: str = ""
     slack_app_id: str = ""
     slack_signing_secret: str = ""
+    canva_client_id: str = ""
+    canva_client_secret: str = ""
+    figma_client_id: str = ""
+    figma_client_secret: str = ""
 
     # Multi-provider failover
     gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)

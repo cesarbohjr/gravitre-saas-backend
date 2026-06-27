@@ -30,6 +30,8 @@ export interface CatalogConnectorEntry {
   shipped?: boolean
   /** OAuth start/callback routes implemented and verified for this vendor */
   oauthReady?: boolean
+  /** OAuth is primary connect path; PAT/API token available as fallback (GitHub, Zendesk) */
+  dualPatAuth?: boolean
   requiresSubdomain?: boolean
   requiresInstanceUrl?: boolean
   requiresPartnerApproval?: boolean
@@ -61,15 +63,16 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Confluence",
   "PagerDuty",
   "Notion",
+  "Slack",
   "Google Analytics",
   "Google Calendar",
   "Gmail",
   "Google Drive",
   "Google Docs",
   "Google Sheets",
-  "Zapier",
   "Mailchimp",
   "Constant Contact",
+  "Pipedrive",
   "Xero",
   "Airtable",
   "Asana",
@@ -78,9 +81,10 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Intercom",
   "Monday.com",
   "Microsoft 365",
-  "Odoo",
   "GitHub",
   "Zendesk",
+  "Canva",
+  "Figma",
 ] as const
 
 /** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
@@ -100,16 +104,16 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "confluence",
   "pagerduty",
   "notion",
+  "slack",
   "google_analytics",
   "google_calendar",
   "gmail",
   "google_drive",
   "google_docs",
   "google_sheets",
-  "zapier",
   "mailchimp",
   "constant_contact",
-  "hootsuite",
+  "pipedrive",
   "xero",
   "airtable",
   "asana",
@@ -117,13 +121,15 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "freshdesk",
   "intercom",
   "monday",
-  "gusto",
-  "odoo",
-  "canva",
   "microsoft365",
   "zendesk",
   "github",
+  "canva",
+  "figma",
 ])
+
+/** OAuth + optional PAT/API-token fallback at connect time. */
+export const DUAL_AUTH_VENDOR_KEYS = new Set(["github", "zendesk"])
 
 /** Per-connector API key / token / secret (not platform OAuth). */
 export const APIKEY_VENDOR_KEYS = new Set([
@@ -142,6 +148,7 @@ export const APIKEY_VENDOR_KEYS = new Set([
   "zendesk",
   "bamboohr",
   "greenhouse",
+  "odoo",
   "absorb_lms",
   "gorgias",
   "snowflake",
@@ -154,6 +161,14 @@ export const DATABASE_VENDOR_KEYS = new Set(["postgresql", "mongodb"])
 /** Cloud IAM / access-key style credentials per connector. */
 export const IAM_VENDOR_KEYS = new Set(["aws_s3"])
 
+/** Partner program / sales approval required before self-serve connect. */
+export const PARTNER_GATED_CONNECTOR_KEYS = new Set([
+  "adp",
+  "gusto",
+  "hootsuite",
+  "zapier",
+])
+
 /** Partner-gated or requires non-standard integration (not generic OAuth callback). */
 export const PARTNER_OR_CUSTOM_VENDOR_KEYS = new Set([
   "adp",
@@ -164,7 +179,6 @@ export const PARTNER_OR_CUSTOM_VENDOR_KEYS = new Set([
   "hootsuite",
   "gusto",
   "zapier",
-  "canva",
 ])
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -195,6 +209,7 @@ const VENDOR_LABELS: Record<string, string> = {
   zapier: "Zapier",
   sendgrid: "SendGrid",
   constant_contact: "Constant Contact",
+  pipedrive: "Pipedrive",
   hootsuite: "Hootsuite",
   n8n: "n8n",
   semrush: "SEMrush",
@@ -204,6 +219,7 @@ const VENDOR_LABELS: Record<string, string> = {
   apollo: "Apollo",
   odoo: "Odoo",
   canva: "Canva",
+  figma: "Figma",
   motion: "Motion",
 }
 
@@ -211,6 +227,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   // CRM / Marketing
   { type: "Salesforce", vendorKey: "salesforce", description: "CRM and sales automation", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
   { type: "HubSpot", vendorKey: "hubspot", description: "Marketing, sales, and service", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
+  { type: "Pipedrive", vendorKey: "pipedrive", description: "Sales CRM and pipeline management", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true, oauthReady: true },
   { type: "Google Analytics", vendorKey: "google_analytics", description: "GA4 campaign and conversion analytics", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
   { type: "Marketo", vendorKey: "marketo", description: "Enterprise marketing automation", authType: "oauth", credentialModel: "oauth2_custom", category: "CRM / Marketing", shipped: true },
   { type: "Segment", vendorKey: "segment", description: "Customer data platform", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing", shipped: true },
@@ -222,7 +239,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "StackAdapt", vendorKey: "stackadapt", description: "Programmatic advertising", authType: "apiKey", credentialModel: "api_key", category: "CRM / Marketing" },
   // Sales / Prospecting
   { type: "LinkedIn", vendorKey: "linkedin", description: "Prospect enrichment for Sales Agent", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
-  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting" },
+  { type: "Apollo", vendorKey: "apollo", description: "Sales intelligence and outreach", authType: "apiKey", credentialModel: "api_key", category: "Sales / Prospecting", shipped: true },
   // Payments / Finance
   { type: "Stripe", vendorKey: "stripe", description: "Payment processing", authType: "apiKey", credentialModel: "api_key", category: "Payments / Finance", shipped: true },
   { type: "QuickBooks", vendorKey: "quickbooks", description: "Accounting software", authType: "oauth", credentialModel: "oauth2", category: "Payments / Finance", shipped: true },
@@ -230,9 +247,9 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Xero", vendorKey: "xero", description: "Cloud accounting", authType: "oauth", credentialModel: "oauth2_custom", category: "Payments / Finance", oauthReady: true, shipped: true },
   { type: "Plaid", vendorKey: "plaid", description: "Financial data via Plaid Link (not OAuth callback)", authType: "apiKey", credentialModel: "plaid_link", category: "Payments / Finance", setupComplexity: "high" },
   // Communication
-  { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
+  { type: "Slack", vendorKey: "slack", description: "Team messaging", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true, oauthReady: true },
   { type: "Microsoft Teams", vendorKey: "microsoft_teams", description: "Collaboration hub", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
-  { type: "Microsoft 365", vendorKey: "microsoft365", description: "Outlook, Excel, and Microsoft Graph", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication", oauthReady: true },
+  { type: "Microsoft 365", vendorKey: "microsoft365", description: "Outlook, Teams, SharePoint, and Microsoft Graph", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication", oauthReady: true, shipped: true },
   { type: "Gmail", vendorKey: "gmail", description: "Email integration", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
   { type: "Google Calendar", vendorKey: "google_calendar", description: "Calendar availability and events", authType: "oauth", credentialModel: "oauth2", category: "Communication", shipped: true },
   { type: "Outlook", vendorKey: "outlook", description: "Microsoft email", authType: "oauth", credentialModel: "oauth2_custom", category: "Communication" },
@@ -241,7 +258,7 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Email", vendorKey: "email", description: "SMTP / send email from workflows", authType: "webhook", credentialModel: "api_key", category: "Communication", shipped: true },
   // DevOps / Incidents
   { type: "PagerDuty", vendorKey: "pagerduty", description: "Incident management and on-call", authType: "oauth", credentialModel: "oauth2", category: "DevOps / Incidents", shipped: true },
-  { type: "GitHub", vendorKey: "github", description: "Code repository and pull requests", authType: "apiKey", credentialModel: "api_key", category: "DevOps / Incidents", shipped: true, oauthReady: true },
+  { type: "GitHub", vendorKey: "github", description: "Code repository and pull requests", authType: "oauth", credentialModel: "oauth2", category: "DevOps / Incidents", shipped: true, oauthReady: true, dualPatAuth: true },
   // Operations / Workflow
   { type: "Notion", vendorKey: "notion", description: "All-in-one workspace", authType: "oauth", credentialModel: "oauth2", category: "Operations / Workflow", shipped: true },
   { type: "Confluence", vendorKey: "confluence", description: "Team documentation wiki", authType: "oauth", credentialModel: "oauth2", category: "Operations / Workflow", shipped: true },
@@ -253,9 +270,9 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Zapier", vendorKey: "zapier", description: "Automation between apps", authType: "oauth", credentialModel: "partner_oauth", category: "Operations / Workflow", requiresPartnerApproval: true, setupComplexity: "high" },
   { type: "n8n", vendorKey: "n8n", description: "Workflow automation", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow" },
   { type: "Motion", vendorKey: "motion", description: "AI calendar and task planning", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow" },
-  { type: "Odoo", vendorKey: "odoo", description: "ERP and business apps", authType: "oauth", credentialModel: "oauth2_custom", category: "Operations / Workflow", oauthReady: true, requiresInstanceUrl: true },
+  { type: "Odoo", vendorKey: "odoo", description: "ERP and business apps", authType: "apiKey", credentialModel: "api_key", category: "Operations / Workflow", requiresInstanceUrl: true, shipped: true },
   // Customer Support
-  { type: "Zendesk", vendorKey: "zendesk", description: "Customer service", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", shipped: true, oauthReady: true, requiresSubdomain: true },
+  { type: "Zendesk", vendorKey: "zendesk", description: "Customer service", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", shipped: true, oauthReady: true, requiresSubdomain: true, dualPatAuth: true },
   { type: "Intercom", vendorKey: "intercom", description: "Customer messaging", authType: "oauth", credentialModel: "oauth2", category: "Customer Support", oauthReady: true },
   { type: "Freshdesk", vendorKey: "freshdesk", description: "Help desk software", authType: "oauth", credentialModel: "oauth2_custom", category: "Customer Support", oauthReady: true, requiresSubdomain: true },
   { type: "Gorgias", vendorKey: "gorgias", description: "E-commerce helpdesk", authType: "apiKey", credentialModel: "api_key", category: "Customer Support", requiresSubdomain: true },
@@ -275,7 +292,8 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Google Sheets", vendorKey: "google_sheets", description: "Spreadsheets", authType: "oauth", credentialModel: "oauth2", category: "Storage / Dev / Infra", shipped: true },
   // Learning / Creative
   { type: "Absorb LMS", vendorKey: "absorb_lms", description: "Learning management system", authType: "apiKey", credentialModel: "api_key", category: "Learning / Creative" },
-  { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", oauthReady: true, requiresPartnerApproval: true, setupComplexity: "high" },
+  { type: "Canva", vendorKey: "canva", description: "Design and brand assets", authType: "oauth", credentialModel: "oauth2_custom", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "high" },
+  { type: "Figma", vendorKey: "figma", description: "Product design and prototyping", authType: "oauth", credentialModel: "oauth2", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "medium" },
 ]
 
 export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = CATALOG_ENTRIES
@@ -329,11 +347,6 @@ export const CONNECTOR_CATEGORIES = Object.fromEntries(
   }
 >
 
-export const AVAILABLE_CONNECTORS = CONNECTOR_CATALOG.map((entry) => ({
-  ...entry,
-  category: entry.category,
-}))
-
 export const MARKETING_INTEGRATION_APPS = [
   "Salesforce",
   "HubSpot",
@@ -365,7 +378,18 @@ export const MARKETING_INTEGRATION_APPS = [
   "Airtable",
   "Xero",
   "Canva",
+  "Figma",
 ] as const
+
+const CATEGORY_BY_VENDOR = new Map(
+  CONNECTOR_CATALOG.map((entry) => [entry.vendorKey, entry.category] as const),
+)
+
+/** Resolve catalog category for a connected instance (API rows omit category). */
+export function lookupConnectorCategory(vendor: string): string {
+  const key = connectorVendorKey(vendor)
+  return CATEGORY_BY_VENDOR.get(key) ?? ""
+}
 
 export function connectorVendorKey(type: string): string {
   const key = type.toLowerCase().replace(/\s+/g, "").replace(/\./g, "")
@@ -400,14 +424,48 @@ export function isOAuthVendorKey(vendorKey: string): boolean {
   return OAUTH_VENDOR_KEYS.has(vendorKey)
 }
 
-export function isShippedConnector(
-  entry: Pick<CatalogConnectorEntry, "vendorKey" | "shipped" | "oauthReady">
+export function isPartnerGatedConnector(
+  entry: Pick<CatalogConnectorEntry, "vendorKey" | "requiresPartnerApproval">
 ): boolean {
+  if (entry.requiresPartnerApproval === true) return true
+  return PARTNER_GATED_CONNECTOR_KEYS.has(entry.vendorKey)
+}
+
+export function isShippedConnector(
+  entry: Pick<
+    CatalogConnectorEntry,
+    "vendorKey" | "shipped" | "oauthReady" | "requiresPartnerApproval"
+  >
+): boolean {
+  if (isPartnerGatedConnector(entry)) return false
   return entry.shipped === true || entry.oauthReady === true
 }
 
-export function isOAuthConnectable(
-  entry: Pick<CatalogConnectorEntry, "authType" | "shipped" | "oauthReady">
+export function supportsDualPatAuth(
+  entry: Pick<CatalogConnectorEntry, "vendorKey" | "dualPatAuth">
 ): boolean {
-  return entry.authType === "oauth" && (entry.shipped === true || entry.oauthReady === true)
+  return entry.dualPatAuth === true || DUAL_AUTH_VENDOR_KEYS.has(entry.vendorKey)
 }
+
+export function isOAuthConnectable(
+  entry: Pick<
+    CatalogConnectorEntry,
+    "authType" | "shipped" | "oauthReady" | "vendorKey" | "requiresPartnerApproval" | "dualPatAuth"
+  >
+): boolean {
+  if (isPartnerGatedConnector(entry)) return false
+  if (entry.authType === "oauth" && (entry.shipped === true || entry.oauthReady === true)) {
+    return true
+  }
+  return supportsDualPatAuth(entry) && entry.oauthReady === true && entry.shipped === true
+}
+
+/** Self-serve connectors (shipped or OAuth-ready, not partner-gated). */
+export function listAvailableConnectors(): CatalogConnectorEntry[] {
+  return CONNECTOR_CATALOG.filter((entry) => isShippedConnector(entry))
+}
+
+export const AVAILABLE_CONNECTORS = listAvailableConnectors().map((entry) => ({
+  ...entry,
+  category: entry.category,
+}))

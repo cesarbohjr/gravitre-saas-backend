@@ -289,7 +289,7 @@ VENDORS: list[tuple] = [
         "Apollo",
         "Sales / Prospecting",
         "https://apolloio.github.io/apollo-api-docs/",
-        False,
+        True,
         "sales",
         [
             ("people.search", "Search people", "people:read"),
@@ -304,6 +304,11 @@ VENDORS: list[tuple] = [
             ("enrichment.bulk", "Bulk enrich records", "enrichment:write"),
             ("tasks.create", "Create outreach task", "tasks:write"),
             ("signals.subscribe", "Subscribe intent signals", "signals:read"),
+        ],
+        [
+            ("contacts.update", "Update contact", "contacts:write"),
+            ("contacts.delete", "Delete contact", "contacts:write"),
+            ("sequences.remove", "Remove contact from sequence", "sequences:write"),
         ],
     ),
     (
@@ -666,6 +671,11 @@ VENDORS: list[tuple] = [
             ("pulls.merge", "Merge pull request", "pulls:write"),
             ("releases.create", "Create release", "releases:write"),
         ],
+        [
+            ("issues.list", "List issues", "issues:read"),
+            ("pulls.get", "Get pull request", "pulls:read"),
+            ("pulls.close", "Close pull request", "pulls:write"),
+        ],
     ),
     (
         "notion",
@@ -897,7 +907,7 @@ VENDORS: list[tuple] = [
         "Odoo",
         "Operations / Workflow",
         "https://www.odoo.com/documentation/17.0/developer/reference/external_api.html",
-        False,
+        True,
         "operations",
         [
             ("partners.get", "Get partner", "partners:read"),
@@ -913,6 +923,11 @@ VENDORS: list[tuple] = [
             ("manufacturing.orders.create", "Create MO", "manufacturing:write"),
             ("crm.leads.convert", "Convert lead", "crm:write"),
             ("batch.partners", "Batch upsert partners", "partners:write"),
+        ],
+        [
+            ("partners.update", "Update partner", "partners:write"),
+            ("sales.orders.confirm", "Confirm sales order", "sales:write"),
+            ("invoices.post", "Post invoice", "invoices:write"),
         ],
     ),
     (
@@ -1277,7 +1292,7 @@ VENDORS: list[tuple] = [
         "Canva",
         "Learning / Creative",
         "https://www.canva.dev/docs/connect/",
-        False,
+        True,
         "marketing",
         [
             ("designs.list", "List designs", "designs:read"),
@@ -1293,12 +1308,45 @@ VENDORS: list[tuple] = [
             ("brand.templates.list", "List brand templates", "brand:read"),
             ("batch.exports", "Batch export assets", "exports:write"),
         ],
+        [
+            ("exports.get", "Get export job", "exports:read"),
+            ("brand.templates.get", "Get brand template", "brand:read"),
+            ("designs.delete", "Delete design", "designs:write"),
+        ],
+    ),
+    (
+        "figma",
+        "Figma",
+        "Learning / Creative",
+        "https://developers.figma.com/docs/rest-api/",
+        True,
+        "marketing",
+        [
+            ("files.get", "Get file", "files:read"),
+            ("files.meta", "Get file metadata", "files:read"),
+            ("projects.list", "List team projects", "projects:read"),
+        ],
+        [
+            ("comments.create", "Post comment", "comments:write"),
+            ("dev_resources.create", "Create dev resource", "dev_resources:write"),
+        ],
+        [
+            ("projects.files.list", "List project files", "projects:read"),
+            ("comments.list", "List file comments", "comments:read"),
+            ("batch.images.export", "Batch export nodes", "files:read"),
+        ],
+        [
+            ("comments.delete", "Delete comment", "comments:write"),
+            ("files.versions.list", "List file versions", "files:read"),
+            ("users.me", "Get current user", "users:read"),
+        ],
     ),
 ]
 
 
 def emit_vendor(defn: tuple) -> str:
-    vendor, display, category, docs, shipped, dept, v1, v2, v3 = defn
+    vendor, display, category, docs, shipped, dept, v1, v2, v3 = defn[:9]
+    v4 = defn[9] if len(defn) > 9 else ()
     lines = [
         "    build_vendor(",
         f'        "{vendor}",',
@@ -1327,6 +1375,23 @@ def emit_vendor(defn: tuple) -> str:
             f'            action("{vendor}", "{suffix}", "{name}", tier="v3", kind="{kind}", scope_suffix="{scope}"),'
         )
     lines.append("        ),")
+    if v4:
+        lines.append("        v4=(")
+        for suffix, name, scope in v4:
+            destructive = suffix.endswith(".delete") or suffix.endswith(".remove") or suffix.endswith(".update")
+            requires_approval = destructive
+            idempotent = suffix.endswith(".get")
+            extra = ""
+            if idempotent:
+                extra += ", idempotent=True"
+            if destructive:
+                extra += ", destructive=True"
+            if requires_approval:
+                extra += ", requires_approval=True"
+            lines.append(
+                f'            action("{vendor}", "{suffix}", "{name}", tier="v4", kind="advanced", scope_suffix="{scope}"{extra}),'
+            )
+        lines.append("        ),")
     lines.append("    ),")
     return "\n".join(lines)
 

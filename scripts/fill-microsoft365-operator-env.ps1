@@ -18,7 +18,10 @@ if (-not $ClientId -or -not $ClientSecret) {
     Write-Host "1. https://entra.microsoft.com -> App registrations -> New registration (multitenant Web)" -ForegroundColor Yellow
     Write-Host "2. Redirect URI:" -ForegroundColor Yellow
     Write-Host "   https://api.gravitre.app/api/connectors/oauth/microsoft365/callback" -ForegroundColor White
-    Write-Host "3. Graph delegated: offline_access User.Read Mail.Read Calendars.Read Files.Read.All" -ForegroundColor Yellow
+    Write-Host "3. Graph delegated scopes (add all):" -ForegroundColor Yellow
+    Write-Host "   offline_access User.Read Mail.Read Mail.Send Calendars.ReadWrite Files.ReadWrite.All" -ForegroundColor White
+    Write-Host "   ChannelMessage.Send Team.ReadBasic.All Channel.ReadBasic.All ChannelMessage.Read.All" -ForegroundColor White
+    Write-Host "   OnlineMeetings.ReadWrite Sites.Read.All Sites.ReadWrite.All" -ForegroundColor White
     Write-Host "4. Use Client secret VALUE (not Secret ID) from Certificates & secrets" -ForegroundColor Yellow
     Write-Host "5. Run:" -ForegroundColor Yellow
     Write-Host '   $env:MICROSOFT365_CLIENT_ID="<app-id>"; $env:MICROSOFT365_CLIENT_SECRET="<secret-value>"; npm run microsoft365:fill-env' -ForegroundColor White

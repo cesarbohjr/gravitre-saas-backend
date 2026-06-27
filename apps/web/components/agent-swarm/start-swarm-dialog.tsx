@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { agentSwarmApi, agentsApi } from "@/lib/api"
+import { ensureSelectedOrg } from "@/lib/org-context"
 import type { AgentSwarmDecisionMethod } from "@/types/api"
 
 type SubtaskDraft = { agentId: string; task: string }
@@ -96,6 +97,7 @@ export function StartSwarmDialog({
     if (!canSubmit) return
     setSubmitting(true)
     try {
+      await ensureSelectedOrg(true)
       const run = await agentSwarmApi.start({
         parentAgentId,
         objective: objective.trim(),

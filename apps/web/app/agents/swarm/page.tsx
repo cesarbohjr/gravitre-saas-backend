@@ -1,10 +1,12 @@
 "use client"
 
-import { Suspense, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { motion } from "framer-motion"
+import { toast } from "sonner"
 import {
   ChevronRight,
   Network,
@@ -15,6 +17,9 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { agentSwarmApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { ensureSelectedOrg } from "@/lib/org-context"
+import { formatSwarmReadableText } from "@/lib/swarm-result-format"
 import type { AgentSwarmRun } from "@/types/api"
 import { StartSwarmDialog } from "@/components/agent-swarm/start-swarm-dialog"
 import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
@@ -48,15 +53,31 @@ export default function AgentSwarmPage() {
 }
 
 function AgentSwarmContent() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [startOpen, setStartOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("runId"))
+  const prevStatusRef = useRef<Map<string, string>>(new Map())
+  const notifiedRef = useRef<Set<string>>(new Set())
 
+  useEffect(() => {
+    if (user) void ensureSelectedOrg(true).then(setOrgId)
+  }, [user])
+
+  useEffect(() => {
+    const runId = searchParams.get("runId")
+    if (runId) setSelectedId(runId)
+  }, [searchParams])
+
+  const swrKey = orgId ? `agent-swarm/runs:${orgId}` : null
   const {
     data,
     error,
     isLoading,
     mutate,
-  } = useSWR("agent-swarm/runs", () => agentSwarmApi.list({ limit: 30 }), {
+  } = useSWR(swrKey, () => agentSwarmApi.list({ limit: 30 }), {
     refreshInterval: (latest) => {
       const runs = latest?.runs ?? []
       return runs.some((r) => ACTIVE.has(r.status)) ? 5000 : 0
@@ -65,15 +86,48 @@ function AgentSwarmContent() {
 
   const runs = useMemo(() => data?.runs ?? [], [data])
 
+  useEffect(() => {
+    for (const run of runs) {
+      const previous = prevStatusRef.current.get(run.id)
+      prevStatusRef.current.set(run.id, run.status)
+      if (
+        run.status === "completed" &&
+        previous &&
+        previous !== "completed" &&
+        !notifiedRef.current.has(run.id)
+      ) {
+        notifiedRef.current.add(run.id)
+        const summary = formatSwarmReadableText(run.finalRecommendation, 140)
+        toast.success("Swarm complete", {
+          description: summary || run.objective,
+          action: {
+            label: "View results",
+            onClick: () => selectRun(run.id),
+          },
+        })
+      }
+    }
+  }, [runs])
+
   const stats = useMemo(() => {
     const active = runs.filter((r) => ACTIVE.has(r.status)).length
     const completed = runs.filter((r) => r.status === "completed").length
     return { active, completed, total: runs.length }
   }, [runs])
 
+  function selectRun(id: string) {
+    setSelectedId(id)
+    router.replace(`/agents/swarm?runId=${id}`, { scroll: false })
+  }
+
   function handleStarted(id: string) {
     void mutate()
-    setSelectedId(id)
+    selectRun(id)
+  }
+
+  function handleCloseDetail() {
+    setSelectedId(null)
+    router.replace("/agents/swarm", { scroll: false })
   }
 
   return (
@@ -93,11 +147,11 @@ function AgentSwarmContent() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => void mutate()} disabled={isLoading}>
+            <Button variant="outline" size="sm" onClick={() => void mutate()} disabled={isLoading || !orgId}>
               <RefreshCw className={cn("h-4 w-4 mr-1", isLoading && "animate-spin")} />
               Refresh
             </Button>
-            <Button size="sm" onClick={() => setStartOpen(true)} className="gap-1">
+            <Button size="sm" onClick={() => setStartOpen(true)} className="gap-1" disabled={!orgId}>
               <Plus className="h-4 w-4" />
               Start swarm
             </Button>
@@ -114,6 +168,8 @@ function AgentSwarmContent() {
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
             Failed to load swarm runs.
           </div>
+        ) : !orgId ? (
+          <p className="text-sm text-muted-foreground px-1">Loading organization…</p>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
             <section className="space-y-2">
@@ -139,7 +195,7 @@ function AgentSwarmContent() {
                       run={run}
                       index={index}
                       selected={selectedId === run.id}
-                      onSelect={() => setSelectedId(run.id)}
+                      onSelect={() => selectRun(run.id)}
                     />
                   ))}
                 </ul>
@@ -149,7 +205,7 @@ function AgentSwarmContent() {
             {selectedId ? (
               <SwarmRunDetailPanel
                 swarmRunId={selectedId}
-                onClose={() => setSelectedId(null)}
+                onClose={handleCloseDetail}
                 onMutateList={() => void mutate()}
               />
             ) : (
@@ -199,6 +255,10 @@ function SwarmRunRow({
   selected: boolean
   onSelect: () => void
 }) {
+  const preview = run.finalRecommendation
+    ? formatSwarmReadableText(run.finalRecommendation, 120)
+    : null
+
   return (
     <motion.li
       initial={{ opacity: 0, y: 8 }}
@@ -222,12 +282,12 @@ function SwarmRunRow({
               <span className="text-xs text-muted-foreground">{formatRelative(run.createdAt)}</span>
             </div>
             <p className="font-medium line-clamp-2">{run.objective}</p>
-            {run.finalRecommendation ? (
+            {preview ? (
               <div className="flex items-center gap-2 flex-wrap">
                 {isSwarmExecutionUnverified(run.executionVerified) ? (
                   <SwarmVerificationLabel compact />
                 ) : null}
-                <p className="text-xs text-muted-foreground line-clamp-1">{run.finalRecommendation}</p>
+                <p className="text-xs text-muted-foreground line-clamp-1">{preview}</p>
               </div>
             ) : null}
           </div>

@@ -1,9 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { clickupRootOAuthRedirect } from "@/lib/clickup-oauth-callback"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+
+  const clickupRedirect = clickupRootOAuthRedirect(request)
+  if (clickupRedirect) {
+    return clickupRedirect
+  }
 
   const { response: supabaseResponse, user } = await updateSession(request)
 

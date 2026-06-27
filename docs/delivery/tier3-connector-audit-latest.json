@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-06-24T20:01:26.496259+00:00",
+  "issue": "STA-283",
+  "apiBase": "https://api.gravitre.app",
+  "summary": {
+    "vendorsAudited": 3,
+    "fullDemoReady": 3,
+    "oauthGaps": [],
+    "toolGapVendors": []
+  },
+  "vendors": [
+    {
+      "vendor": "asana",
+      "displayName": "Asana",
+      "shipped": true,
+      "catalogActions": 12,
+      "implementedActions": 12,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/asana/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "monday",
+      "displayName": "Monday.com",
+      "shipped": true,
+      "catalogActions": 11,
+      "implementedActions": 11,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/monday/callback",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    },
+    {
+      "vendor": "clickup",
+      "displayName": "ClickUp",
+      "shipped": true,
+      "catalogActions": 12,
+      "implementedActions": 12,
+      "missingTools": [],
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app",
+        "ready": true
+      },
+      "demoReady": true,
+      "partialDemo": true
+    }
+  ]
+}

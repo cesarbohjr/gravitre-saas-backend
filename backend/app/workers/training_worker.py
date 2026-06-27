@@ -11,7 +11,7 @@ from app.ml.anomaly import AnomalyDetector
 from app.ml.base import ModelMetrics, ModelType
 from app.ml.classifiers import IntentClassifier, SklearnClassifier
 from app.ml.fine_tuning import FineTunedLLM, FineTuningConfig, convert_dataset_to_examples
-from app.ml.forecasting import WorkflowForecaster
+from app.ml.forecasting import WorkflowForecaster, WorkflowSuccessPredictor
 from app.ml.registry import get_model_registry
 from app.workers.queue import dequeue_training_job
 from app.workflows.repository import get_supabase_client
@@ -78,6 +78,9 @@ class TrainingWorker:
             elif model_base == "forecaster":
                 model_type = ModelType.FORECASTER
                 metrics, model_artifact = await self._train_forecaster(job, dataset, records)
+            elif model_base == "success_predictor":
+                model_type = ModelType.CLASSIFIER
+                metrics, model_artifact = await self._train_success_predictor(job, dataset, records)
             else:
                 raise ValueError(f"Unknown model base: {model_base}")
 
@@ -207,6 +210,22 @@ class TrainingWorker:
         forecaster = WorkflowForecaster(forecast_horizon=self.settings.ml_forecast_horizon)
         metrics = await forecaster.train(X, y)
         return metrics, forecaster.save()
+
+    async def _train_success_predictor(self, job: dict, dataset: dict, records: list[dict]) -> tuple[ModelMetrics, bytes]:
+        _ = job, dataset
+        X: list[dict] = []
+        y: list[bool] = []
+        for record in records:
+            try:
+                features = json.loads(record["input"])
+            except Exception:
+                features = {}
+            X.append(features)
+            label = str(record["expected_output"]).strip().lower()
+            y.append(label in {"1", "true", "success", "completed", "yes"})
+        predictor = WorkflowSuccessPredictor()
+        metrics = await predictor.train(X, y)
+        return metrics, predictor.save()
 
     async def poll_queue(self, interval: int = 5) -> None:
         self._running = True

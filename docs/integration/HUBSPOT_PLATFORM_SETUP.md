@@ -98,6 +98,8 @@ https://api.gravitre.com/api/connectors/oauth/hubspot/callback
 - `crm.objects.contacts.write`
 - `crm.objects.deals.read`
 - `crm.objects.deals.write`
+- `crm.objects.companies.read`
+- `crm.objects.tickets.write`
 - `crm.objects.notes.write`
 - `crm.lists.read`
 - `crm.lists.write`

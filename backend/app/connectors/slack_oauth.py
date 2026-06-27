@@ -21,7 +21,10 @@ from app.connectors.repository import get_decrypted_secret, set_secret
 
 logger = logging.getLogger(__name__)
 
-SLACK_SCOPES = "chat:write,channels:read,channels:join"
+SLACK_SCOPES = (
+    "chat:write,channels:read,channels:history,channels:join,users:read,"
+    "channels:manage,files:write,reactions:write"
+)
 SLACK_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
 SLACK_TOKEN_URL = "https://slack.com/api/oauth.v2.access"
 SLACK_AUTH_TEST_URL = "https://slack.com/api/auth.test"
@@ -203,6 +206,11 @@ def slack_connection_auth_status(
             data = response.json()
             if data.get("ok"):
                 return "connected"
+            logger.info(
+                "slack_auth_test_failed connector_id=%s error=%s",
+                connector_id,
+                data.get("error", "unknown"),
+            )
     except httpx.HTTPError:
         pass
     return "auth_expired"

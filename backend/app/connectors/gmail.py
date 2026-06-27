@@ -76,3 +76,87 @@ def send_message(
         f"/users/{user_id}/messages/send",
         json_body={"raw": raw},
     )
+
+
+def list_labels(access_token: str, *, user_id: str = "me") -> dict[str, Any]:
+    return _request(access_token, "GET", f"/users/{user_id}/labels")
+
+
+def create_draft(
+    access_token: str,
+    *,
+    to: str,
+    subject: str,
+    body: str,
+    user_id: str = "me",
+) -> dict[str, Any]:
+    mime = MIMEText(body)
+    mime["to"] = to
+    mime["subject"] = subject
+    raw = base64.urlsafe_b64encode(mime.as_bytes()).decode().rstrip("=")
+    return _request(
+        access_token,
+        "POST",
+        f"/users/{user_id}/drafts",
+        json_body={"message": {"raw": raw}},
+    )
+
+
+def create_label(
+    access_token: str,
+    *,
+    name: str,
+    user_id: str = "me",
+) -> dict[str, Any]:
+    return _request(
+        access_token,
+        "POST",
+        f"/users/{user_id}/labels",
+        json_body={"name": name, "labelListVisibility": "labelShow", "messageListVisibility": "show"},
+    )
+
+
+def modify_thread(
+    access_token: str,
+    *,
+    thread_id: str,
+    add_label_ids: list[str] | None = None,
+    remove_label_ids: list[str] | None = None,
+    user_id: str = "me",
+) -> dict[str, Any]:
+    body: dict[str, Any] = {}
+    if add_label_ids:
+        body["addLabelIds"] = add_label_ids
+    if remove_label_ids:
+        body["removeLabelIds"] = remove_label_ids
+    return _request(
+        access_token,
+        "POST",
+        f"/users/{user_id}/threads/{thread_id}/modify",
+        json_body=body,
+    )
+
+
+def batch_get_messages(
+    access_token: str,
+    message_ids: list[str],
+    *,
+    user_id: str = "me",
+) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = []
+    for message_id in message_ids:
+        messages.append(get_message(access_token, message_id, user_id=user_id))
+    return messages
+
+
+def create_watch(
+    access_token: str,
+    *,
+    topic_name: str,
+    label_ids: list[str] | None = None,
+    user_id: str = "me",
+) -> dict[str, Any]:
+    body: dict[str, Any] = {"topicName": topic_name}
+    if label_ids:
+        body["labelIds"] = label_ids
+    return _request(access_token, "POST", f"/users/{user_id}/watch", json_body=body)

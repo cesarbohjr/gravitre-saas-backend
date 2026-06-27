@@ -194,15 +194,6 @@ function briefingToneStyles(tone: BriefingBullet["tone"]) {
   }
 }
 
-function resolveAssistantTools(mode: IntelligenceMode): string[] {
-  const base = ["knowledge_base", "agent_status", "connector_status"]
-  if (mode === "fast") return base
-  if (mode === "standard") return [...base, "workflow_runs", "analytics"]
-  if (mode === "reasoning") {
-    return [...base, "workflow_runs", "analytics", "search_web", "generate_document"]
-  }
-  return [...base, "workflow_runs", "analytics", "run_agent_task", "create_workflow"]
-}
 
 interface SourceCitation {
   title: string
@@ -707,7 +698,6 @@ export default function AssistantPage() {
           mode,
           model_override: modelOverride,
           conversation_id: activeConversationIdRef.current,
-          tools: resolveAssistantTools(mode),
         }),
       }),
     [mode, modelOverride],

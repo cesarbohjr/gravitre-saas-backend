@@ -51,6 +51,33 @@ def test_prepare_oauth_reuses_existing():
     mark.assert_called_once()
 
 
+def test_prepare_oauth_recovers_soft_deleted_name_conflict():
+    client = MagicMock()
+    insert_exc = Exception(
+        'duplicate key value violates unique constraint "connectors_org_name_key" (23505)'
+    )
+    client.table.return_value.insert.return_value.execute.side_effect = insert_exc
+    with patch("app.connectors.platform.find_existing_oauth_connector", return_value=None):
+        with patch(
+            "app.connectors.platform._fetch_connector_by_org_name",
+            return_value={
+                "id": "c-slack",
+                "vendor": "slack",
+                "name": "slack",
+                "status": "disconnected",
+                "deleted_at": "2026-06-01T00:00:00Z",
+            },
+        ):
+            with patch("app.connectors.platform.mark_connector_pending_oauth") as mark:
+                cid, reconnect, is_new = prepare_oauth_connector(
+                    client, org_id="org-1", vendor="slack", name="slack", environment_name="production"
+                )
+    assert cid == "c-slack"
+    assert reconnect is False
+    assert is_new is False
+    mark.assert_called_once()
+
+
 def test_store_api_key_uses_connector_secrets():
     client = MagicMock()
     settings = SimpleNamespace(
@@ -69,3 +96,19 @@ def test_store_api_key_requires_encryption():
     with pytest.raises(HTTPException) as exc:
         store_connector_api_key(client, "org", "conn", "key", settings)
     assert exc.value.status_code == 503
+
+
+def test_prepare_oauth_type_check_error():
+    client = MagicMock()
+    client.table.return_value.insert.return_value.execute.side_effect = Exception(
+        'new row violates check constraint "connectors_type_check" (23514)'
+    )
+    with patch("app.connectors.platform.find_existing_oauth_connector", return_value=None):
+        with pytest.raises(HTTPException) as exc:
+            prepare_oauth_connector(
+                client, org_id="org-1", vendor="figma", name="figma", environment_name="production"
+            )
+    assert exc.value.status_code == 503
+    detail = exc.value.detail
+    if isinstance(detail, dict):
+        assert detail.get("code") == "CONNECTOR_TYPE_SCHEMA_OUTDATED"

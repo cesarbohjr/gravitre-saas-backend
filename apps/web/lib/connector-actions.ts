@@ -1,9 +1,9 @@
 /**
- * Connector action catalog types — v1 read, v2 write, v3 advanced + demo workflows.
+ * Connector action catalog types — v1 read, v2 write, v3 advanced, v4 orchestration + demo workflows.
  * Data served by GET /api/connectors/catalog/actions
  */
 
-export type ActionTier = "v1" | "v2" | "v3"
+export type ActionTier = "v1" | "v2" | "v3" | "v4"
 export type ActionKind = "read" | "write" | "advanced"
 
 export interface ConnectorActionDefinition {
@@ -58,6 +58,7 @@ export interface VendorActionCatalog {
     v1: ConnectorActionTier
     v2: ConnectorActionTier
     v3: ConnectorActionTier
+    v4?: ConnectorActionTier
   }
   readTools: string[]
   demoWorkflows: DemoWorkflowDefinition[]
@@ -74,23 +75,27 @@ export function readActions(catalog: VendorActionCatalog): ConnectorActionDefini
   return catalog.tiers.v1.actions
 }
 
-/** All tool keys across v1–v3. */
+/** All tool keys across v1–v4. */
 export function allToolKeys(catalog: VendorActionCatalog): string[] {
-  return [
+  const tiers = [
     ...catalog.tiers.v1.actions,
     ...catalog.tiers.v2.actions,
     ...catalog.tiers.v3.actions,
-  ].map((a) => a.tool)
+    ...(catalog.tiers.v4?.actions ?? []),
+  ]
+  return tiers.map((a) => a.tool)
 }
 
 /** Implemented tools only. */
 export function implementedTools(catalog: VendorActionCatalog): string[] {
+  const tiers = [
+    ...catalog.tiers.v1.actions,
+    ...catalog.tiers.v2.actions,
+    ...catalog.tiers.v3.actions,
+    ...(catalog.tiers.v4?.actions ?? []),
+  ]
   return allToolKeys(catalog).filter((tool) => {
-    const action = [
-      ...catalog.tiers.v1.actions,
-      ...catalog.tiers.v2.actions,
-      ...catalog.tiers.v3.actions,
-    ].find((a) => a.tool === tool)
+    const action = tiers.find((a) => a.tool === tool)
     return action?.implemented === true
   })
 }

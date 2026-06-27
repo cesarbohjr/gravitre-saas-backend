@@ -5,7 +5,9 @@ from typing import Any
 
 from app.connectors.netsuite import (
     NetSuiteAPIError,
+    create_item_fulfillment,
     create_journal_entry_draft,
+    create_sales_order,
     get_customer,
     get_invoice,
     get_item,
@@ -189,6 +191,40 @@ def _exec_netsuite_customers_update(ctx: ToolContext, params: dict[str, Any]) ->
     )
 
 
+def _exec_netsuite_salesorders_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _netsuite_connector_and_session(ctx, params)
+    payload = params.get("payload") or params.get("sales_order") or params.get("salesOrder")
+    if not isinstance(payload, dict) or not payload:
+        raise ToolValidationError("netsuite.salesorders.create requires payload object")
+    try:
+        data = create_sales_order(api_base, token, payload)
+    except NetSuiteAPIError as exc:
+        raise _handle_netsuite_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="netsuite.salesorders.create",
+        connector_id=cid,
+        data={"salesOrder": data},
+    )
+
+
+def _exec_netsuite_fulfillment_create(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token, api_base = _netsuite_connector_and_session(ctx, params)
+    payload = params.get("payload") or params.get("fulfillment") or params.get("item_fulfillment")
+    if not isinstance(payload, dict) or not payload:
+        raise ToolValidationError("netsuite.fulfillment.create requires payload object")
+    try:
+        data = create_item_fulfillment(api_base, token, payload)
+    except NetSuiteAPIError as exc:
+        raise _handle_netsuite_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="netsuite.fulfillment.create",
+        connector_id=cid,
+        data={"itemFulfillment": data},
+    )
+
+
 NETSUITE_TOOL_EXECUTORS: dict[str, Any] = {
     "netsuite.customers.get": _exec_netsuite_customers_get,
     "netsuite.invoices.list": _exec_netsuite_invoices_list,
@@ -197,4 +233,6 @@ NETSUITE_TOOL_EXECUTORS: dict[str, Any] = {
     "netsuite.items.get": _exec_netsuite_items_get,
     "netsuite.journalentries.create": _exec_netsuite_journalentries_create,
     "netsuite.customers.update": _exec_netsuite_customers_update,
+    "netsuite.salesorders.create": _exec_netsuite_salesorders_create,
+    "netsuite.fulfillment.create": _exec_netsuite_fulfillment_create,
 }

@@ -24,6 +24,7 @@ DEFAULT_LOOKBACK_DAYS = 30
 
 CONNECTOR_LABELS: dict[str, str] = {
     "hubspot": "HubSpot",
+    "pipedrive": "Pipedrive",
     "salesforce": "Salesforce",
     "zendesk": "Zendesk",
     "slack": "Slack",
@@ -35,6 +36,7 @@ CONNECTOR_LABELS: dict[str, str] = {
 
 CONNECTOR_TO_PACKS: dict[str, list[str]] = {
     "hubspot": ["sales-ops", "marketing-ops"],
+    "pipedrive": ["sales-ops"],
     "zendesk": ["support-ops"],
     "quickbooks": ["finance-ops"],
 }

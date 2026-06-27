@@ -162,6 +162,7 @@ def build_vendor(
     v1: tuple[ActionSpec, ...],
     v2: tuple[ActionSpec, ...],
     v3: tuple[ActionSpec, ...],
+    v4: tuple[ActionSpec, ...] = (),
 ) -> VendorCatalogSpec:
     read_primary = v1[0].id.split(".", 1)[-1]
     read_secondary = v1[1].id.split(".", 1)[-1] if len(v1) > 1 else read_primary
@@ -185,4 +186,5 @@ def build_vendor(
             advanced_primary=advanced_primary,
             department=department,
         ),
+        v4=v4,
     )

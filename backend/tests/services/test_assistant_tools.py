@@ -44,7 +44,7 @@ async def test_search_web_parses_tavily_response():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("app.services.assistant_tools.httpx.AsyncClient", return_value=mock_client):
+    with patch("app.services.web_research.httpx.AsyncClient", return_value=mock_client):
         output = await tools_module.tool_search_web(
             "latest AI news",
             _settings(tavily_api_key="tvly-test"),

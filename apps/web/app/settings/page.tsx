@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -68,7 +68,6 @@ const sections: SettingSection[] = [
   { id: "meson-addons", title: "Meson Addons", description: "Enable premium AI addon capabilities", icon: Sparkles },
   { id: "billing-usage", title: "Billing Usage", description: "Review outputs and overage usage", icon: DollarSign },
   { id: "webhooks", title: "Webhooks", description: "Configure outbound webhooks", icon: Webhook },
-  { id: "enterprise", title: "Enterprise", description: "Data region, branding, analytics, SIEM", icon: Globe },
 ]
 
 function OrganizationSettings({
@@ -1488,11 +1487,18 @@ function BillingUsageSettings() {
 
 function SettingsContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const initialSection = searchParams.get('section') || "organization"
+  const initialSection = searchParams.get("section") || "organization"
   const [activeSection, setActiveSection] = useState(initialSection)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const isAdmin = user?.role === "admin" || user?.role === "owner"
+
+  useEffect(() => {
+    if (searchParams.get("section") === "enterprise") {
+      router.replace("/settings/enterprise")
+    }
+  }, [searchParams, router])
 
   const { data: orgData, mutate: mutateOrg } = useSWR(
     user ? "/api/settings/organization" : null,
@@ -1518,7 +1524,6 @@ function SettingsContent() {
     "lite-seats",
     "meson-addons",
     "billing-usage",
-    "enterprise",
   ])
 
   if (authLoading) {
@@ -1570,20 +1575,6 @@ function SettingsContent() {
       case "billing-usage":
         return <BillingUsageSettings />
       case "webhooks": return <WebhooksSettings />
-      case "enterprise":
-        return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Configure data residency, white-label branding, workforce analytics, and SIEM export.
-            </p>
-            <Link href="/settings/enterprise">
-              <Button size="sm" variant="outline" className="gap-2">
-                <Globe className="h-3.5 w-3.5" />
-                Open Enterprise settings
-              </Button>
-            </Link>
-          </div>
-        )
       default:
         return (
           <OrganizationSettings

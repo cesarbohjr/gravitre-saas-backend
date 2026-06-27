@@ -25,7 +25,7 @@ from app.connectors.oauth_provider_registry import (
     resolve_url_template,
     TokenRequestStyle,
 )
-from app.public_urls import connector_oauth_callback_url
+from app.public_urls import connector_oauth_callback_url, is_legacy_platform_host
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,16 @@ def generic_oauth_configured(settings: Settings, vendor: str, environment_name: 
 
 
 def generic_redirect_uri(settings: Settings, vendor: str) -> str:
+    spec = OAUTH_PROVIDER_REGISTRY.get(vendor)
+    app_base = (settings.public_app_url or settings.NEXT_PUBLIC_APP_URL or "").strip().rstrip("/")
+    if spec and spec.app_redirect_domain_only:
+        if app_base and not is_legacy_platform_host(app_base):
+            return app_base
+    short_path = (spec.app_redirect_path if spec else "") or ""
+    if short_path:
+        if app_base and not is_legacy_platform_host(app_base):
+            path = short_path if short_path.startswith("/") else f"/{short_path}"
+            return f"{app_base}{path}"
     return connector_oauth_callback_url(
         public_app_url=settings.public_app_url,
         api_public_url=settings.api_public_url,
@@ -80,6 +90,11 @@ def _token_payload_from_response(
         "org_id": org_id,
         "user_id": user_id,
         "updated_at": now,
+        **(
+            {"api_domain": str(data["api_domain"]).rstrip("/")}
+            if data.get("api_domain")
+            else {}
+        ),
     }
 
 
@@ -97,6 +112,24 @@ def _parse_token_response(
 
     parsed = {k: v[0] for k, v in parse_qs(response.text).items()}
     return _token_payload_from_response(parsed, vendor=vendor, org_id=org_id, user_id=user_id)
+
+
+def _oauth_error_detail(response: httpx.Response, *, vendor: str, as_json: bool) -> str:
+    """Extract a safe error message from a failed token response (no secrets)."""
+    try:
+        if as_json:
+            data = response.json()
+            if isinstance(data, dict):
+                for key in ("error_description", "error", "message", "detail"):
+                    value = data.get(key)
+                    if value:
+                        return str(value)[:300]
+        text = (response.text or "").strip()
+        if text and len(text) <= 300:
+            return text
+    except Exception:  # noqa: BLE001
+        pass
+    return f"HTTP {response.status_code}"
 
 
 def _exchange_token(
@@ -131,7 +164,16 @@ def _exchange_token(
                 data=payload,
                 headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
             )
-        response.raise_for_status()
+        if not response.is_success:
+            detail = _oauth_error_detail(response, vendor=spec.vendor, as_json=spec.token_response_json)
+            logger.warning(
+                "generic_oauth_token_failed vendor=%s status=%s error=%s grant_type=%s",
+                spec.vendor,
+                response.status_code,
+                detail,
+                body.get("grant_type", ""),
+            )
+            raise ValueError(f"{spec.vendor} token exchange failed: {detail}")
         return _parse_token_response(
             response,
             as_json=spec.token_response_json,
@@ -139,6 +181,14 @@ def _exchange_token(
             org_id=org_id,
             user_id=user_id,
         )
+
+
+def validate_generic_redirect_uri(settings: Settings, vendor: str, redirect_uri: str) -> None:
+    """Ensure token exchange uses the same redirect URI as authorize (OAuth security)."""
+    expected = generic_redirect_uri(settings, vendor).rstrip("/")
+    actual = (redirect_uri or "").strip().rstrip("/")
+    if actual != expected:
+        raise ValueError(f"{vendor} redirect_uri mismatch")
 
 
 def exchange_generic_code(
@@ -151,12 +201,17 @@ def exchange_generic_code(
     code_verifier: str | None = None,
     org_id: str | None = None,
     user_id: str | None = None,
+    settings: Settings | None = None,
+    vendor: str | None = None,
 ) -> dict[str, Any]:
+    if settings is not None and vendor:
+        validate_generic_redirect_uri(settings, vendor, redirect_uri)
     body: dict[str, str] = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": redirect_uri,
     }
+    if spec.token_includes_redirect_uri:
+        body["redirect_uri"] = redirect_uri
     if spec.requires_pkce:
         if not code_verifier:
             raise ValueError(f"{spec.vendor} requires PKCE code_verifier")
@@ -234,6 +289,8 @@ def persist_generic_oauth_connector_config(
     vendor: str,
     subdomain: str | None = None,
     instance_url: str | None = None,
+    owner: str | None = None,
+    repo: str | None = None,
 ) -> None:
     existing = (
         client.table("connectors")
@@ -252,8 +309,10 @@ def persist_generic_oauth_connector_config(
             config["zendesk_subdomain"] = subdomain.strip()
     if instance_url:
         config["instance_url"] = instance_url.strip().rstrip("/")
-        if vendor == "odoo":
-            config["odoo_url"] = instance_url.strip().rstrip("/")
+    if owner:
+        config["owner"] = owner.strip()
+    if repo:
+        config["repo"] = repo.strip()
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 
 
@@ -325,16 +384,42 @@ def complete_generic_oauth_connection(
         raise ValueError(f"{vendor} PKCE code_verifier missing from OAuth state")
 
     redirect_uri = generic_redirect_uri(settings, vendor)
-    tokens = exchange_generic_code(
-        spec,
-        code,
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=redirect_uri,
-        code_verifier=code_verifier,
-        org_id=org_id,
-        user_id=user_id,
-    )
+    try:
+        if spec.requires_pkce:
+            logger.info(
+                "generic_oauth_token_exchange vendor=%s connector_id=%s redirect_uri=%s pkce=1 verifier_len=%s",
+                vendor,
+                connector_id,
+                redirect_uri,
+                len(code_verifier or ""),
+            )
+        tokens = exchange_generic_code(
+            spec,
+            code,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
+            org_id=org_id,
+            user_id=user_id,
+            settings=settings,
+            vendor=vendor,
+        )
+    except (httpx.HTTPError, ValueError) as exc:
+        mark_connector_oauth_failure(
+            client,
+            org_id,
+            connector_id,
+            str(exc)[:500],
+            environment_name=env,
+        )
+        logger.warning(
+            "generic_oauth_connect_failed vendor=%s connector_id=%s error=%s",
+            vendor,
+            connector_id,
+            str(exc)[:200],
+        )
+        raise
     if not tokens.get("access_token"):
         raise ValueError(f"{vendor} token exchange did not return access_token")
 

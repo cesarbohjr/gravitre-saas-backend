@@ -22,6 +22,7 @@ from app.operators import router as operators_router
 from app.routers import (
     agent_memories,
     agent_tool_permissions,
+    admin_intelligence,
     ai_system,
     agent_council,
     agent_interrupts,
@@ -41,6 +42,7 @@ from app.routers import (
     execution,
     entitlements,
     metrics,
+    memory_promotion,
     notifications,
     onboarding,
     optimization,
@@ -162,6 +164,15 @@ async def lifespan(app: FastAPI):
         start_connector_health_scheduler,
         stop_connector_health_scheduler,
     )
+    from app.schedulers.company_intelligence_scheduler import (
+        start_company_intelligence_scheduler,
+        stop_company_intelligence_scheduler,
+    )
+    from app.schedulers.memory_promotion_scheduler import (
+        start_memory_expiration_scheduler,
+        start_memory_promotion_scheduler,
+        stop_scheduler as stop_memory_scheduler,
+    )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
@@ -169,6 +180,9 @@ async def lifespan(app: FastAPI):
     app.state.source_sync_task = start_source_sync_scheduler()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.connector_health_task = start_connector_health_scheduler()
+    app.state.company_intelligence_task = start_company_intelligence_scheduler()
+    app.state.memory_promotion_task = start_memory_promotion_scheduler()
+    app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
     _log_billing_startup_config()
@@ -180,6 +194,9 @@ async def lifespan(app: FastAPI):
         await stop_source_sync_scheduler(getattr(app.state, "source_sync_task", None))
         await stop_workflow_schedule_scheduler(getattr(app.state, "workflow_schedule_task", None))
         await stop_connector_health_scheduler(getattr(app.state, "connector_health_task", None))
+        await stop_company_intelligence_scheduler(getattr(app.state, "company_intelligence_task", None))
+        await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
+        await stop_memory_scheduler(getattr(app.state, "memory_expiration_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 
@@ -392,5 +409,7 @@ app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
+app.include_router(admin_intelligence.router)
+app.include_router(memory_promotion.router)
 app.include_router(agent_tool_permissions.router)
 app.include_router(operators_router.sessions_router)

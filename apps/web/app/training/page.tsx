@@ -54,7 +54,14 @@ function formatTrainingError(error: unknown): string {
   return message
 }
 
-const BASE_MODEL_OPTIONS = ["gpt-4.1-mini", "gpt-5.5", "meson-base-v1"] as const
+const BASE_MODEL_OPTIONS = [
+  "gpt-4.1-mini",
+  "gpt-4.1",
+  "gpt-5.5",
+  "claude-sonnet-4-6",
+  "gemini-2.5-pro",
+  "grok-3",
+] as const
 
 const STARTER_EXAMPLES = [
   {

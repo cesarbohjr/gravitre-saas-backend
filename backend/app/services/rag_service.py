@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -18,8 +20,11 @@ from app.rag.hybrid_rerank import (
     rerank_score_threshold,
     rrf_merge,
 )
+from app.ml.learning_to_rank import get_weight_for_org
+from app.ml.source_reliability import apply_reliability_adjustment, fetch_source_reliability_scores
 from app.rag.retrieval import fetch_bm25_corpus, search_chunks
 from app.services.model_router import TaskType, get_model_router
+from app.services.rag_outcome_tracking import record_retrieval_outcomes
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -87,8 +92,10 @@ class RAGService:
         top_k: int = 8,
         filters: dict | None = None,
         agent_id: str | None = None,
+        message_id: str | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Hybrid retrieval rows with BE-10 metadata preserved for API/workflow callers."""
+        retrieval_started = time.monotonic()
         filters = dict(filters or {})
         if agent_id and not filters.get("agent_id"):
             filters["agent_id"] = agent_id
@@ -166,12 +173,28 @@ class RAGService:
             top_k=top_k,
             settings=self.settings,
         )
+        reliability_scores = await fetch_source_reliability_scores(org_id, client)
+        learned_weight = await get_weight_for_org(org_id, self.settings, client)
+        reranked = apply_reliability_adjustment(reranked, reliability_scores, learned_weight)
+        retrieval_latency_ms = int((time.monotonic() - retrieval_started) * 1000)
+        if message_id and reranked:
+            asyncio.create_task(
+                record_retrieval_outcomes(
+                    self.settings,
+                    org_id=org_id,
+                    message_id=message_id,
+                    rows=reranked,
+                    retrieval_latency_ms=retrieval_latency_ms,
+                    client=client,
+                )
+            )
         logger.info(
-            "rag_rerank org_id=%s method=%s candidates=%s cross_encoder_enabled=%s",
+            "rag_rerank org_id=%s method=%s candidates=%s cross_encoder_enabled=%s reliability_sources=%s",
             org_id,
             rerank_method,
             len(merged),
             cross_encoder_enabled(self.settings),
+            len(reliability_scores),
         )
         metrics = {
             "top_k": top_k,
@@ -183,6 +206,9 @@ class RAGService:
             "rerank_method": rerank_method,
             "cross_encoder_enabled": cross_encoder_enabled(self.settings),
             "rerank_threshold": rerank_score_threshold(self.settings),
+            "reliability_sources_scored": len(reliability_scores),
+            "reliability_weight": learned_weight,
+            "retrieval_latency_ms": retrieval_latency_ms,
         }
         return reranked, metrics
 
@@ -195,6 +221,7 @@ class RAGService:
         filters: dict | None = None,
         include_sources: bool = True,
         agent_id: str | None = None,
+        message_id: str | None = None,
     ) -> tuple[list[Chunk], dict[str, Any]]:
         """Hybrid retrieval without LLM answer synthesis (for agent/orchestrator context)."""
         rows, metrics = await self.retrieve_hybrid_rows(
@@ -204,6 +231,7 @@ class RAGService:
             top_k=top_k,
             filters=filters,
             agent_id=agent_id,
+            message_id=message_id,
         )
         chunks = [
             Chunk(
@@ -227,6 +255,7 @@ class RAGService:
         filters: dict | None = None,
         include_sources: bool = True,
         agent_id: str | None = None,
+        message_id: str | None = None,
     ) -> RAGResponse:
         chunks, metrics = await self.retrieve_chunks(
             org_id,
@@ -236,6 +265,7 @@ class RAGService:
             filters=filters,
             include_sources=include_sources,
             agent_id=agent_id,
+            message_id=message_id,
         )
         if metrics.get("fallback") == "voyage_dimension_mismatch":
             return RAGResponse(

@@ -5,12 +5,14 @@ Reason → Act → Observe loop with LLM tool calls routed through ToolRegistry 
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
 from app.config import MODEL_TIERS, Settings, get_settings
 from app.core.logging import get_logger
+from app.operators.stream_events import ReActStreamEvent
 from app.services.ai_guardrails import (
     fence_untrusted,
     harden_system_prompt,
@@ -141,21 +143,95 @@ class ReActEngine:
         audit_resource_id: str | None = None,
     ) -> ReActResult:
         """Execute a ReAct loop for a single agent task."""
+        result: ReActResult | None = None
+        async for event in self._react_loop(
+            ctx=ctx,
+            task=task,
+            system_prompt=system_prompt,
+            permitted_tools=permitted_tools,
+            connected_integrations=connected_integrations,
+            max_iterations=max_iterations,
+            model=model,
+            agent=agent,
+            audit_resource_type=audit_resource_type,
+            audit_resource_id=audit_resource_id,
+            emit_text_deltas=False,
+        ):
+            if event.kind == "done":
+                result = event.react_result
+        if result is None:
+            return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
+        return result
+
+    async def run_streaming(
+        self,
+        *,
+        ctx: ToolContext,
+        task: str,
+        system_prompt: str | None = None,
+        permitted_tools: list[str] | None = None,
+        connected_integrations: list[str] | None = None,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
+        model: str | None = None,
+        agent: dict[str, Any] | None = None,
+        audit_resource_type: str = "agent_job",
+        audit_resource_id: str | None = None,
+    ) -> AsyncIterator[ReActStreamEvent]:
+        """Streaming variant — same reasoning loop as run(), yields progress events."""
+        async for event in self._react_loop(
+            ctx=ctx,
+            task=task,
+            system_prompt=system_prompt,
+            permitted_tools=permitted_tools,
+            connected_integrations=connected_integrations,
+            max_iterations=max_iterations,
+            model=model,
+            agent=agent,
+            audit_resource_type=audit_resource_type,
+            audit_resource_id=audit_resource_id,
+            emit_text_deltas=True,
+        ):
+            yield event
+
+    async def _react_loop(
+        self,
+        *,
+        ctx: ToolContext,
+        task: str,
+        system_prompt: str | None = None,
+        permitted_tools: list[str] | None = None,
+        connected_integrations: list[str] | None = None,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
+        model: str | None = None,
+        agent: dict[str, Any] | None = None,
+        audit_resource_type: str = "agent_job",
+        audit_resource_id: str | None = None,
+        emit_text_deltas: bool,
+    ) -> AsyncIterator[ReActStreamEvent]:
+        """Shared ReAct implementation for run() and run_streaming()."""
+        import uuid
+
+        from app.operators.assistant_sse import chunk_text_deltas
+
         if getattr(self.settings, "disable_ai", False):
-            return ReActResult(
-                status=ReActStatus.ERROR,
-                answer="",
-                error="AI service is disabled",
+            yield ReActStreamEvent(
+                kind="done",
+                react_result=ReActResult(
+                    status=ReActStatus.ERROR,
+                    answer="",
+                    error="AI service is disabled",
+                ),
             )
+            return
 
         try:
             await moderate_input(task, self.settings, self.router._openai)
         except Exception as exc:  # noqa: BLE001
-            return ReActResult(
-                status=ReActStatus.ERROR,
-                answer="",
-                error=str(exc),
+            yield ReActStreamEvent(
+                kind="done",
+                react_result=ReActResult(status=ReActStatus.ERROR, answer="", error=str(exc)),
             )
+            return
 
         allowed = resolve_permitted_tools(agent, permitted_tools)
         connected = connected_integrations
@@ -181,16 +257,20 @@ class ReActEngine:
 
         tools = self.registry.get_tools_for_agent(allowed, connected)
         if not tools:
-            return await self._run_reasoning_only(
+            result = await self._run_reasoning_only(
                 ctx=ctx,
                 messages=messages,
                 model=resolved_model,
                 audit_resource_type=audit_resource_type,
                 audit_id=audit_id,
             )
+            if emit_text_deltas and result.answer:
+                for piece in chunk_text_deltas(result.answer):
+                    yield ReActStreamEvent(kind="text_delta", content=piece)
+            yield ReActStreamEvent(kind="done", react_result=result)
+            return
 
         allowed_tool_names = {t["function"]["name"] for t in tools}
-
         trace: list[ReActTraceStep] = []
         tool_calls_log: list[dict[str, Any]] = []
 
@@ -199,14 +279,18 @@ class ReActEngine:
                 response = await self._chat_with_tools(messages, tools, resolved_model)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("react_model_call_failed iteration=%s error=%s", iteration, exc)
-                return ReActResult(
-                    status=ReActStatus.ERROR,
-                    answer="",
-                    trace=trace,
-                    iterations=iteration - 1,
-                    tool_calls=tool_calls_log,
-                    error=str(exc),
+                yield ReActStreamEvent(
+                    kind="done",
+                    react_result=ReActResult(
+                        status=ReActStatus.ERROR,
+                        answer="",
+                        trace=trace,
+                        iterations=iteration - 1,
+                        tool_calls=tool_calls_log,
+                        error=str(exc),
+                    ),
                 )
+                return
 
             choice = response.choices[0]
             message = choice.message
@@ -224,13 +308,18 @@ class ReActEngine:
                     thought=question,
                     status=ReActStatus.NEEDS_HUMAN_INPUT.value,
                 )
-                return ReActResult(
+                result = ReActResult(
                     status=ReActStatus.NEEDS_HUMAN_INPUT,
                     answer=question,
                     trace=trace,
                     iterations=iteration,
                     tool_calls=tool_calls_log,
                 )
+                if emit_text_deltas:
+                    for piece in chunk_text_deltas(result.answer):
+                        yield ReActStreamEvent(kind="text_delta", content=piece)
+                yield ReActStreamEvent(kind="done", react_result=result)
+                return
 
             if not tool_calls:
                 final_answer = content or "Task completed."
@@ -243,13 +332,18 @@ class ReActEngine:
                     thought=final_answer[:500],
                     status=ReActStatus.COMPLETED.value,
                 )
-                return ReActResult(
+                result = ReActResult(
                     status=ReActStatus.COMPLETED,
                     answer=final_answer,
                     trace=trace,
                     iterations=iteration,
                     tool_calls=tool_calls_log,
                 )
+                if emit_text_deltas:
+                    for piece in chunk_text_deltas(final_answer):
+                        yield ReActStreamEvent(kind="text_delta", content=piece)
+                yield ReActStreamEvent(kind="done", react_result=result)
+                return
 
             assistant_message: dict[str, Any] = {
                 "role": "assistant",
@@ -271,12 +365,28 @@ class ReActEngine:
             for tc in tool_calls:
                 tool_name = tc.function.name
                 tool_args = _parse_tool_arguments(tc.function.arguments)
+                call_id = f"call-{uuid.uuid4().hex[:12]}"
+                if emit_text_deltas:
+                    yield ReActStreamEvent(
+                        kind="tool_start",
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        tool_call_id=call_id,
+                    )
                 observation = await self._execute_tool_call(
                     ctx,
                     tool_name,
                     tool_args,
                     allowed_tool_names=allowed_tool_names,
                 )
+                if emit_text_deltas:
+                    yield ReActStreamEvent(
+                        kind="tool_complete",
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        tool_call_id=call_id,
+                        result=observation,
+                    )
                 tool_calls_log.append(
                     {
                         "iteration": iteration,
@@ -313,7 +423,7 @@ class ReActEngine:
                 )
 
                 if observation.get("error_code") == "permission_denied":
-                    return ReActResult(
+                    result = ReActResult(
                         status=ReActStatus.NEEDS_HUMAN_INPUT,
                         answer=(
                             f"Tool '{tool_name}' requires additional permissions. "
@@ -323,8 +433,13 @@ class ReActEngine:
                         iterations=iteration,
                         tool_calls=tool_calls_log,
                     )
+                    if emit_text_deltas:
+                        for piece in chunk_text_deltas(result.answer):
+                            yield ReActStreamEvent(kind="text_delta", content=piece)
+                    yield ReActStreamEvent(kind="done", react_result=result)
+                    return
 
-        return ReActResult(
+        result = ReActResult(
             status=ReActStatus.MAX_ITERATIONS_REACHED,
             answer=(
                 "Maximum reasoning iterations reached. Break this task into smaller workflow "
@@ -334,6 +449,10 @@ class ReActEngine:
             iterations=max_iterations,
             tool_calls=tool_calls_log,
         )
+        if emit_text_deltas:
+            for piece in chunk_text_deltas(result.answer):
+                yield ReActStreamEvent(kind="text_delta", content=piece)
+        yield ReActStreamEvent(kind="done", react_result=result)
 
     async def _execute_tool_call(
         self,
