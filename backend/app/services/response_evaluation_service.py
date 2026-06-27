@@ -203,3 +203,150 @@ async def consolidate_recent(
         if evaluation:
             consolidated.append(evaluation)
     return consolidated
+
+
+def _serialize_evaluation_row(row: dict[str, Any]) -> dict[str, Any]:
+    summary = row.get("chunk_outcome_summary") or {}
+    chunk_summary = None
+    if summary:
+        chunk_summary = {
+            "chunksUsed": summary.get("chunks_used"),
+            "avgReliability": summary.get("avg_reliability"),
+            "flaggedStaleSources": summary.get("flagged_stale_sources") or [],
+            "retrievalLatencyMs": summary.get("retrieval_latency_ms"),
+        }
+    return {
+        "id": row.get("id"),
+        "messageId": row.get("message_id"),
+        "surface": row.get("surface"),
+        "ragQualityScore": row.get("rag_quality_score"),
+        "userFeedback": row.get("user_feedback"),
+        "feedbackReason": row.get("feedback_reason"),
+        "chunkOutcomeSummary": chunk_summary,
+        "retrievalLatencyMs": row.get("retrieval_latency_ms"),
+        "responseLatencyMs": row.get("response_latency_ms"),
+        "compositeScore": row.get("composite_score"),
+        "evaluatedAt": row.get("evaluated_at"),
+    }
+
+
+async def _load_retrieval_ranker_status(
+    settings: Any,
+    org_id: str,
+    client: Any,
+) -> dict[str, Any]:
+    from app.ml.base import ModelType
+    from app.ml.learning_to_rank import (
+        RETRIEVAL_RANKER_MODEL_NAME,
+        RetrievalRanker,
+        count_training_examples,
+        get_weight_for_org,
+    )
+    from app.ml.registry import get_model_registry
+    from app.ml.source_reliability import RELIABILITY_WEIGHT
+
+    training_count = await count_training_examples(org_id, client)
+    active_weight = await get_weight_for_org(org_id, settings, client)
+    is_trained = training_count >= RetrievalRanker.MIN_TRAINING_EXAMPLES
+    is_deployed = False
+    try:
+        registry = get_model_registry()
+        models = await registry.list_models(org_id=org_id, model_type=ModelType.CLASSIFIER)
+        ranker_model = next((m for m in models if m.name == RETRIEVAL_RANKER_MODEL_NAME), None)
+        is_deployed = bool(ranker_model and ranker_model.deployed_version)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("retrieval_ranker_status_skipped org_id=%s error=%s", org_id, exc)
+    return {
+        "trainingExamples": training_count,
+        "minTrainingExamples": RetrievalRanker.MIN_TRAINING_EXAMPLES,
+        "isTrained": is_trained,
+        "isDeployed": is_deployed,
+        "activeReliabilityWeight": active_weight,
+        "fallbackReliabilityWeight": RELIABILITY_WEIGHT,
+        "usingLearnedWeight": is_deployed and is_trained,
+        "modelName": RETRIEVAL_RANKER_MODEL_NAME,
+    }
+
+
+async def load_admin_response_evaluations(
+    settings: Any,
+    org_id: str,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    since_days: int | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Read-only admin payload for v7 response evaluation + ranker status."""
+    db = client or get_supabase_client(settings)
+    limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+
+    query = (
+        db.table("response_evaluations")
+        .select(
+            "id, message_id, surface, rag_quality_score, user_feedback, feedback_reason, "
+            "chunk_outcome_summary, retrieval_latency_ms, response_latency_ms, composite_score, evaluated_at",
+            count="exact",
+        )
+        .eq("org_id", org_id)
+        .order("evaluated_at", desc=True)
+    )
+    if since_days is not None and since_days > 0:
+        since = (datetime.now(timezone.utc) - timedelta(days=since_days)).isoformat()
+        query = query.gte("evaluated_at", since)
+    result = query.range(offset, offset + limit - 1).execute()
+    rows = result.data or []
+    total = int(getattr(result, "count", None) or len(rows))
+
+    helpful_count = 0
+    not_helpful_count = 0
+    composite_scores: list[float] = []
+    rag_scores: list[float] = []
+    retrieval_latencies: list[int] = []
+    response_latencies: list[int] = []
+    for row in rows:
+        feedback = row.get("user_feedback")
+        if feedback == "helpful":
+            helpful_count += 1
+        elif feedback == "not_helpful":
+            not_helpful_count += 1
+        if row.get("composite_score") is not None:
+            composite_scores.append(float(row["composite_score"]))
+        if row.get("rag_quality_score") is not None:
+            rag_scores.append(float(row["rag_quality_score"]))
+        if row.get("retrieval_latency_ms") is not None:
+            retrieval_latencies.append(int(row["retrieval_latency_ms"]))
+        if row.get("response_latency_ms") is not None:
+            response_latencies.append(int(row["response_latency_ms"]))
+
+    def _avg(values: list[float | int]) -> float | None:
+        if not values:
+            return None
+        return round(sum(values) / len(values), 4)
+
+    ranker_status = await _load_retrieval_ranker_status(settings, org_id, db)
+    return {
+        "summary": {
+            "totalEvaluations": total,
+            "pageCount": len(rows),
+            "helpfulCount": helpful_count,
+            "notHelpfulCount": not_helpful_count,
+            "avgCompositeScore": _avg(composite_scores),
+            "avgRagQualityScore": _avg(rag_scores),
+            "avgRetrievalLatencyMs": _avg(retrieval_latencies),
+            "avgResponseLatencyMs": _avg(response_latencies),
+        },
+        "compositeScoreWeights": {
+            "ragQualityScore": COMPOSITE_SCORE_WEIGHTS["rag_quality_score"],
+            "userFeedback": COMPOSITE_SCORE_WEIGHTS["user_feedback"],
+            "chunkReliabilityAvg": COMPOSITE_SCORE_WEIGHTS["chunk_reliability_avg"],
+        },
+        "retrievalRanker": ranker_status,
+        "evaluations": [_serialize_evaluation_row(row) for row in rows],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "hasMore": offset + len(rows) < total,
+        },
+    }
