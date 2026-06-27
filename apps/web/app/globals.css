@@ -14,8 +14,8 @@
   --card-foreground: oklch(0.18 0.02 160);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 160);
-  /* Primary: Emerald green brand color */
-  --primary: oklch(0.55 0.16 158);
+  /* Primary: Gravitre brand purple */
+  --primary: oklch(0.55 0.21 300);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.96 0.006 160);
   --secondary-foreground: oklch(0.18 0.02 160);
@@ -28,13 +28,13 @@
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.91 0.01 160);
   --input: oklch(0.96 0.006 160);
-  --ring: oklch(0.55 0.16 158);
+  --ring: oklch(0.55 0.21 300);
   /* Status colors */
   --success: oklch(0.55 0.18 145);
   --warning: oklch(0.65 0.18 75);
   --info: oklch(0.55 0.2 250);
-  /* Chart colors - green primary, blue secondary */
-  --chart-1: oklch(0.55 0.16 158);
+  /* Chart colors - purple primary, blue secondary */
+  --chart-1: oklch(0.55 0.21 300);
   --chart-2: oklch(0.55 0.2 250);
   --chart-3: oklch(0.65 0.18 75);
   --chart-4: oklch(0.55 0.18 320);
@@ -44,15 +44,15 @@
   --schedule-task: oklch(0.55 0.2 250);
   --schedule-job: oklch(0.55 0.16 158);
   --radius: 0.5rem;
-  /* Sidebar: subtle cool surface with emerald-green accents */
+  /* Sidebar: subtle cool surface with brand-purple accents */
   --sidebar: oklch(0.97 0.008 160);
   --sidebar-foreground: oklch(0.18 0.02 160);
-  --sidebar-primary: oklch(0.55 0.16 158);
+  --sidebar-primary: oklch(0.55 0.21 300);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.94 0.02 250);
   --sidebar-accent-foreground: oklch(0.40 0.12 250);
   --sidebar-border: oklch(0.91 0.008 250);
-  --sidebar-ring: oklch(0.55 0.2 250);
+  --sidebar-ring: oklch(0.55 0.21 300);
 }
 
 .dark {
@@ -64,8 +64,8 @@
   --card-foreground: oklch(0.95 0 0);
   --popover: oklch(0.11 0.01 250);
   --popover-foreground: oklch(0.95 0 0);
-  /* Primary: Electric blue accent */
-  --primary: oklch(0.65 0.2 250);
+  /* Primary: Gravitre brand purple */
+  --primary: oklch(0.7 0.19 300);
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.15 0.01 250);
   --secondary-foreground: oklch(0.95 0 0);
@@ -77,13 +77,13 @@
   --destructive-foreground: oklch(0.95 0 0);
   --border: oklch(0.20 0.01 250);
   --input: oklch(0.15 0.01 250);
-  --ring: oklch(0.65 0.2 250);
+  --ring: oklch(0.7 0.19 300);
   /* Status colors */
   --success: oklch(0.65 0.18 145);
   --warning: oklch(0.75 0.15 75);
   /* Info: Electric blue (primary accent) */
   --info: oklch(0.65 0.2 250);
-  --chart-1: oklch(0.65 0.2 250);
+  --chart-1: oklch(0.7 0.19 300);
   --chart-2: oklch(0.65 0.18 145);
   --chart-3: oklch(0.75 0.15 75);
   --chart-4: oklch(0.55 0.15 200);
@@ -95,12 +95,12 @@
   /* Sidebar: Even deeper */
   --sidebar: oklch(0.06 0.01 250);
   --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.65 0.2 250);
+  --sidebar-primary: oklch(0.7 0.19 300);
   --sidebar-primary-foreground: oklch(0.98 0 0);
   --sidebar-accent: oklch(0.12 0.01 250);
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(0.16 0.01 250);
-  --sidebar-ring: oklch(0.65 0.2 250);
+  --sidebar-ring: oklch(0.7 0.19 300);
 }
 
 @theme inline {
