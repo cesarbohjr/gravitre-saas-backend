@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from "react"
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence, useReducedMotion } from "framer-motion"
+import { motion, useMotionValue, useSpring, AnimatePresence, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 // ============================================================================
@@ -526,25 +526,6 @@ export function FloatingCard({
   className?: string
 }) {
   const [isHovered, setIsHovered] = useState(false)
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-
-  const rotateX = useTransform(y, [-100, 100], [5, -5])
-  const rotateY = useTransform(x, [-100, 100], [-5, 5])
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-    x.set(e.clientX - centerX)
-    y.set(e.clientY - centerY)
-  }
-
-  const handleMouseLeave = () => {
-    x.set(0)
-    y.set(0)
-    setIsHovered(false)
-  }
 
   const depthShadows = {
     1: "shadow-lg",
@@ -567,15 +548,8 @@ export function FloatingCard({
         glow && isHovered && glowColors[glowColor],
         className
       )}
-      style={{
-        perspective: 1000,
-        rotateX,
-        rotateY,
-        transformStyle: "preserve-3d",
-      }}
-      onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={() => setIsHovered(false)}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
     >
       {children}
