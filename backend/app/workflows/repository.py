@@ -764,6 +764,52 @@ def list_workflow_schedules(
     return list(r.data) if r.data else []
 
 
+def list_org_workflow_schedules(
+    client: Client,
+    org_id: str,
+    environment_name: str = "default",
+    workflow_id: str | None = None,
+) -> list[dict]:
+    q = (
+        client.table("workflow_schedules")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .order("created_at", desc=True)
+    )
+    if workflow_id:
+        q = q.eq("workflow_id", workflow_id)
+    r = q.execute()
+    return list(r.data) if r.data else []
+
+
+def workflow_names_for_ids(client: Client, org_id: str, workflow_ids: list[str]) -> dict[str, str]:
+    if not workflow_ids:
+        return {}
+    names: dict[str, str] = {}
+    primary = (
+        client.table("workflows")
+        .select("id, name")
+        .eq("org_id", org_id)
+        .in_("id", workflow_ids)
+        .execute()
+    )
+    for row in primary.data or []:
+        names[str(row["id"])] = row.get("name") or ""
+    missing = [wid for wid in workflow_ids if not names.get(wid)]
+    if missing:
+        legacy = (
+            client.table("workflow_defs")
+            .select("id, name")
+            .eq("org_id", org_id)
+            .in_("id", missing)
+            .execute()
+        )
+        for row in legacy.data or []:
+            names[str(row["id"])] = row.get("name") or ""
+    return names
+
+
 def get_workflow_schedule(
     client: Client,
     org_id: str,

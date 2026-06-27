@@ -245,3 +245,39 @@ async def test_chat_omitted_tools_uses_mode_config_defaults(async_client, monkey
     assert captured.get("requested_tools") is None
     assert captured.get("mode") == "standard"
     assert "search_web" in resolve_assistant_tool_names("standard", captured.get("requested_tools"))
+
+
+async def test_chat_surfaces_still_function_with_new_models(async_client, monkeypatch):
+    """Assistant chat SSE contract holds for each default mode model mapping."""
+    _authenticate()
+    _mock_prepare_stream(monkeypatch)
+
+    for mode, expected_model in (
+        ("fast", "gpt-5.4-mini"),
+        ("standard", "gpt-5.5"),
+        ("reasoning", "gpt-5.5"),
+        ("agent", "gpt-5.5"),
+    ):
+        async def fake_execute(**kwargs):
+            async for event in _fake_stream(model=expected_model):
+                yield event
+
+        intelligence = MagicMock()
+        intelligence.execute_task_streaming = fake_execute
+        monkeypatch.setattr(assistant_module, "get_agent_intelligence", lambda intel=intelligence: intel)
+
+        resp = await async_client.post(
+            "/api/assistant/chat",
+            headers={"Authorization": "Bearer token"},
+            json={
+                "messages": [{"role": "user", "content": f"hello-{mode}"}],
+                "org_id": "org-1",
+                "mode": mode,
+            },
+        )
+        assert resp.status_code == 200, mode
+        body = resp.text
+        assert '"type":"text-start"' in body, mode
+        assert '"type":"text-delta"' in body, mode
+        assert '"type":"text-end"' in body, mode
+        assert "data: [DONE]" in body, mode

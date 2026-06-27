@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.workflows.cron import compute_next_run_at
+from app.workflows.cron import compute_next_run_at, expand_cron_occurrences
 
 
 def test_compute_next_run_at_hourly_alias():
@@ -28,3 +28,10 @@ def test_compute_next_run_at_every_six_hours():
     assert nxt is not None
     parsed = datetime.fromisoformat(nxt)
     assert parsed.hour in {12, 18, 0, 6}
+
+
+def test_expand_cron_occurrences_within_bounds():
+    start = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 4, tzinfo=timezone.utc)
+    occurrences = expand_cron_occurrences("@daily", start, end)
+    assert len(occurrences) == 3

@@ -236,6 +236,44 @@ export interface WorkflowSchedule {
   created_at?: string
 }
 
+export type ScheduledItemKind = "workflow" | "task" | "job"
+
+export type ScheduledItemStatus =
+  | "enabled"
+  | "disabled"
+  | "running"
+  | "queued"
+  | "completed"
+  | "failed"
+  | "scheduled"
+
+export interface ScheduledItem {
+  kind: ScheduledItemKind
+  id: string
+  title: string
+  subtitle?: string
+  status: ScheduledItemStatus
+  cron?: string
+  nextRunAt?: string
+  lastRunAt?: string
+  startedAt?: string
+  completedAt?: string
+  workflowId?: string
+  progress?: number
+  occurrences?: string[]
+}
+
+export interface SchedulesListResponse {
+  items: ScheduledItem[]
+}
+
+export interface SchedulesListParams {
+  workflowId?: string
+  from?: string
+  to?: string
+  kinds?: ScheduledItemKind[]
+}
+
 // ============ Runs ============
 export interface RunStep {
   id: string

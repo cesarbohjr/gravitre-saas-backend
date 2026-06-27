@@ -56,6 +56,7 @@ from app.routers import (
     rag_enhanced,
     rag_admin,
     scim,
+    schedules,
     search,
     sso,
     training,
@@ -357,6 +358,7 @@ app.include_router(rag.router)
 app.include_router(rag_admin.router)
 app.include_router(search.router)
 app.include_router(training.router)
+app.include_router(schedules.router)
 app.include_router(sources.router)
 app.include_router(workflows.router)
 app.include_router(workflows.approvals_router)

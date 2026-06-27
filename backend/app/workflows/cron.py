@@ -1,7 +1,7 @@
 """Cron helpers for workflow schedules (STA-47)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.triggers.cron import CronTrigger
 
@@ -40,3 +40,47 @@ def compute_next_run_at(cron_expression: str, base: datetime | None = None) -> s
         return next_fire.astimezone(timezone.utc).isoformat()
     except Exception:
         return None
+
+
+def expand_cron_occurrences(
+    cron_expression: str,
+    start: datetime,
+    end: datetime,
+    *,
+    max_occurrences: int = 200,
+) -> list[str]:
+    """Return UTC ISO timestamps for cron fires in [start, end)."""
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = start.astimezone(timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    else:
+        end = end.astimezone(timezone.utc)
+    if end <= start:
+        return []
+
+    expr = normalize_cron_expression(cron_expression)
+    if not expr:
+        return []
+    try:
+        trigger = CronTrigger.from_crontab(expr, timezone=timezone.utc)
+    except Exception:
+        return []
+
+    occurrences: list[str] = []
+    cursor = start
+    while len(occurrences) < max_occurrences:
+        next_fire = trigger.get_next_fire_time(None, cursor)
+        if next_fire is None:
+            break
+        if next_fire.tzinfo is None:
+            next_fire = next_fire.replace(tzinfo=timezone.utc)
+        else:
+            next_fire = next_fire.astimezone(timezone.utc)
+        if next_fire >= end:
+            break
+        occurrences.append(next_fire.isoformat())
+        cursor = next_fire + timedelta(seconds=1)
+    return occurrences

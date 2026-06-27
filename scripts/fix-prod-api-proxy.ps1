@@ -29,8 +29,8 @@ try {
     Pop-Location
 }
 
-Write-Host "Checking gravitre.app/api health..." -ForegroundColor Cyan
-$health = curl.exe -s -w "`nHTTP:%{http_code}" "https://gravitre.app/api/health" 2>&1
+Write-Host "Checking api.gravitre.app health (backend /health, not /api/health)..." -ForegroundColor Cyan
+$health = curl.exe -s -w "`nHTTP:%{http_code}" "https://api.gravitre.app/health" 2>&1
 Write-Host $health
 if ($health -notmatch "HTTP:200") {
     Write-Host "Health check did not return 200 yet. Wait for deploy propagation." -ForegroundColor Yellow

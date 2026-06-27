@@ -955,12 +955,20 @@ class AgentIntelligence:
             elif event.kind == "done":
                 react_result = event.react_result
 
-        if text_id is not None:
-            yield sse_text_end(text_id)
-
         full_content = "".join(full_content_parts)
         if react_result is not None and not full_content.strip():
             full_content = react_result.answer or ""
+
+        # Some ReAct paths populate react_result.answer without emitting text_delta
+        # events (e.g. empty delta chunks). The UI contract still requires text-start/
+        # text-delta/text-end before finish events.
+        if full_content.strip() and text_id is None:
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, full_content)
+            yield sse_text_end(text_id)
+        elif text_id is not None:
+            yield sse_text_end(text_id)
 
         yield AssistantStreamComplete(
             full_content=full_content,

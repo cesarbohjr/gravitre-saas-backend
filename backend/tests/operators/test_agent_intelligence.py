@@ -14,6 +14,7 @@ from app.operators.agent_intelligence import (
 )
 from app.operators.agent_prompts import build_agent_system_prompt, normalize_agent_role
 from app.operators.react_engine import ReActResult, ReActStatus, ReActTraceStep
+from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 
 
 @pytest.fixture
@@ -400,6 +401,55 @@ def test_agent_result_to_handoff_dict():
     payload = result.to_handoff_dict()
     assert payload["summary"] == "Done"
     assert payload["confidence"] == 80
+
+
+@pytest.mark.asyncio
+async def test_streaming_emits_text_events_when_react_returns_answer_only(intelligence: AgentIntelligence):
+    """ReAct may finish with answer text but no text_delta chunks; SSE contract still requires text-* events."""
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+
+    async def fake_streaming(**kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer="smoke-ok"),
+        )
+
+    intelligence.react_engine.run_streaming = fake_streaming
+    orchestrator = MagicMock()
+    orchestrator.get_context_for_prompt = AsyncMock(return_value="")
+
+    events: list[object] = []
+    with patch("app.operators.agent_intelligence.get_company_intelligence_orchestrator", return_value=orchestrator):
+        with patch("app.operators.agent_intelligence.build_entity_context_section", AsyncMock(return_value="")):
+            with patch("app.operators.agent_intelligence.get_org_context_service") as org_service:
+                org_service.return_value.get_context_bundle.return_value = (
+                    {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
+                    "Org block",
+                )
+                with patch("app.operators.agent_intelligence.tool_knowledge_base", AsyncMock(return_value={"results": []})):
+                    with patch(
+                        "app.operators.agent_intelligence.maybe_summarize_history",
+                        AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
+                    ):
+                        async for event in intelligence.execute_task_streaming(
+                            org_id="org-1",
+                            user_id="user-1",
+                            query="Say smoke-ok in one word.",
+                            mode="standard",
+                            requested_tools=["agent_status"],
+                            client=client,
+                        ):
+                            events.append(event)
+
+    sse_types = [event.sse_type for event in events if isinstance(event, AssistantStreamEvent)]
+    assert "text-start" in sse_types
+    assert "text-delta" in sse_types
+    assert "text-end" in sse_types
+    complete = next(event for event in events if isinstance(event, AssistantStreamComplete))
+    assert complete.full_content == "smoke-ok"
 
 
 @pytest.mark.asyncio

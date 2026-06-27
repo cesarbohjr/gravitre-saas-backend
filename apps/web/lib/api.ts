@@ -26,6 +26,9 @@ import type {
   WorkflowNode,
   WorkflowEdge,
   WorkflowSchedule,
+  ScheduledItem,
+  SchedulesListParams,
+  SchedulesListResponse,
   CreateWorkflowRequest,
   UpdateWorkflowRequest,
   Run,
@@ -617,6 +620,19 @@ export const workflowsApi = {
       apiUrl(`/api/workflows/runs/${runId}/resume`),
       data,
     ),
+}
+
+// ============ Schedules dashboard ============
+export const schedulesApi = {
+  list: (params?: SchedulesListParams) => {
+    const query = new URLSearchParams()
+    if (params?.workflowId) query.set("workflow_id", params.workflowId)
+    if (params?.from) query.set("from", params.from)
+    if (params?.to) query.set("to", params.to)
+    if (params?.kinds?.length) query.set("kinds", params.kinds.join(","))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<SchedulesListResponse>(apiUrl(`/api/schedules${suffix}`))
+  },
 }
 
 // ============ Runs ============
@@ -2149,6 +2165,7 @@ export const api = {
   operators: operatorsApi,
   agents: agentsApi,
   workflows: workflowsApi,
+  schedules: schedulesApi,
   runs: runsApi,
   agentInterrupts: agentInterruptsApi,
   approvals: approvalsApi,

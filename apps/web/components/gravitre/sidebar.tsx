@@ -92,6 +92,7 @@ const adminNavigation: NavGroup[] = [
     group: "ACTIVITY",
     items: [
       { name: "Tasks", href: "/runs", icon: "listTodo" },
+      { name: "Schedules", href: "/schedules", icon: "calendar" },
       { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
     ],
   },

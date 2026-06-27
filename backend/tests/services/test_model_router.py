@@ -7,7 +7,10 @@ import pytest
 from pydantic import BaseModel
 
 import app.services.model_router as model_router_module
+from app.config import MODEL_TIERS, TASK_COMPLEXITY
+from app.services.assistant_mode import MODE_DEFAULT_MODELS, resolve_assistant_model
 from app.services.model_router import ModelRouter, PreparedStream, TaskType, get_model_router
+from app.services.providers.failover import build_priority
 from app.services.providers.base import CompletionOptions, ProviderResponse, StreamChunk
 
 
@@ -135,3 +138,41 @@ class TestModelRouter:
             router1 = get_model_router()
             router2 = get_model_router()
         assert router1 is router2
+
+
+def test_model_router_returns_updated_model_per_tier():
+    router = ModelRouter(
+        settings=SimpleNamespace(openai_api_key="sk-test", anthropic_api_key="", google_api_key="")
+    )
+    assert router._resolve_model(TaskType.CLASSIFICATION) == MODEL_TIERS["low"]["openai"]  # noqa: SLF001
+    assert router._resolve_model(TaskType.RAG_ANSWERING) == MODEL_TIERS["medium"]["openai"]  # noqa: SLF001
+    assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == MODEL_TIERS["high"]["openai"]  # noqa: SLF001
+    assert MODEL_TIERS["low"]["openai"] == "gpt-5.4-mini"
+    assert MODEL_TIERS["medium"]["openai"] == "gpt-5.5"
+    assert MODEL_TIERS["high"]["openai"] == "gpt-5.5"
+
+
+def test_existing_tier_routing_logic_unchanged_in_structure():
+    """Config-only model IDs; tier dispatch and mode mapping architecture unchanged."""
+    assert set(MODEL_TIERS) == {"low", "medium", "high"}
+    for tier in MODEL_TIERS:
+        assert set(MODEL_TIERS[tier]) == {"openai", "anthropic", "gemini"}
+
+    assert TASK_COMPLEXITY["summarization"] == "low"
+    assert TASK_COMPLEXITY["rag_answering"] == "medium"
+    assert TASK_COMPLEXITY["workflow_planning"] == "high"
+
+    low_priority = build_priority("auto", "low")
+    high_priority = build_priority("auto", "high")
+    assert low_priority[0] == ("openai", MODEL_TIERS["low"]["openai"])
+    assert high_priority[0] == ("anthropic", MODEL_TIERS["high"]["anthropic"])
+
+    fast_model, fast_task = resolve_assistant_model("fast", None)
+    standard_model, standard_task = resolve_assistant_model("standard", None)
+    reasoning_model, reasoning_task = resolve_assistant_model("reasoning", None)
+    assert fast_model == MODE_DEFAULT_MODELS["fast"]
+    assert standard_model == MODE_DEFAULT_MODELS["standard"]
+    assert reasoning_model == MODE_DEFAULT_MODELS["reasoning"]
+    assert fast_task.value == "summarization"
+    assert standard_task.value == "rag_answering"
+    assert reasoning_task.value == "decision_reasoning"
