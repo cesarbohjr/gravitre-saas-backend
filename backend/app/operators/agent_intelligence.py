@@ -751,7 +751,7 @@ class AgentIntelligence:
             org_id=org_id,
             query=task_text,
             client=client,
-            agent=agent if agent_id else None,
+            agent=agent,
             parameters={"surface": "assistant", "include_task_history": False},
             environment_name=environment_name,
             user_id=user_id,

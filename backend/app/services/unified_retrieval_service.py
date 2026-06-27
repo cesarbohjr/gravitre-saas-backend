@@ -56,6 +56,7 @@ class UnifiedRetrievalService:
     ) -> UnifiedRetrievalBundle:
         active_scopes = scopes or RetrievalScopes()
         params = parameters or {}
+        agent = agent or {}
         agent_id = str(agent.get("id") or "")
 
         org_context: dict[str, Any] = {}
