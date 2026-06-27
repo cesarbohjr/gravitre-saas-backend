@@ -1,20 +1,26 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
+import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import type { AssetCategory } from "@/lib/marketplace-category-icons"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
+import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { cn } from "@/lib/utils"
 import { ArrowLeft, Bookmark, ChevronRight, Star } from "lucide-react"
 
 export default function MarketplaceSavedPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const reduced = useReducedMotion()
   const { data, error, isLoading, mutate } = useSWR(user ? "marketplace-saves-page" : null, () =>
     marketplaceApi.listSaves({ limit: 100 }),
   )
@@ -48,25 +54,34 @@ export default function MarketplaceSavedPage() {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-            Could not load saved assets.
-          </div>
+          <ErrorState
+            title="Could not load saved assets"
+            description="Something went wrong fetching your bookmarks. Please try again."
+            onRetry={() => void mutate()}
+          />
         ) : saves.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
-            <p className="text-sm text-muted-foreground">No saved assets yet.</p>
-            <Button className="mt-4" asChild>
-              <Link href="/marketplace/assets">Browse catalog</Link>
-            </Button>
-          </div>
+          <EmptyState
+            icon={Bookmark}
+            title="No saved assets yet"
+            description="Bookmark assets from the marketplace catalog and they'll show up here for quick access."
+            action={{ label: "Browse catalog", onClick: () => router.push("/marketplace/assets") }}
+          />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
-            {saves.map((entry) => {
+            {saves.map((entry, index) => {
               const asset = entry.asset
               if (!asset) return null
               return (
-                <li
+                <motion.li
                   key={entry.id}
-                  className="flex flex-col rounded-xl border border-border bg-card p-4 shadow-sm"
+                  initial={reduced ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: reduced ? 0 : Math.min(index, 8) * 0.05 }}
+                  className={cn(
+                    "flex flex-col rounded-xl border border-border bg-card p-4 shadow-sm",
+                    "transition-[transform,box-shadow] duration-200 ease-out",
+                    "hover:-translate-y-1 hover:shadow-xl",
+                  )}
                 >
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <Link
@@ -112,7 +127,7 @@ export default function MarketplaceSavedPage() {
                       </Link>
                     </Button>
                   </div>
-                </li>
+                </motion.li>
               )
             })}
           </ul>
