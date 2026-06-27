@@ -683,7 +683,10 @@ class MemoryPromotionService:
         client = self._client()
         rows = (
             client.table("approvals")
-            .select("id, type, priority, status, context, reviewed_at")
+            .select(
+                "id, type, priority, status, context, reviewed_at, "
+                "numeric_value, numeric_value_currency, numeric_value_label"
+            )
             .eq("org_id", org_id)
             .in_("status", ["approved", "rejected"])
             .gte("reviewed_at", since)
@@ -695,7 +698,7 @@ class MemoryPromotionService:
         return rows
 
     def _detect_threshold_patterns(self, decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Simple threshold detection on type and priority fields confirmed in approvals schema."""
+        """Threshold detection on structured approval fields, including numeric_value when present."""
         patterns: list[dict[str, Any]] = []
         for field in ("type", "priority"):
             grouped: dict[str, list[str]] = {}
@@ -730,6 +733,56 @@ class MemoryPromotionService:
                         "sample_size": len(statuses),
                     }
                 )
+        patterns.extend(self._detect_numeric_threshold_patterns(decisions))
+        return patterns
+
+    def _detect_numeric_threshold_patterns(
+        self,
+        decisions: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        by_label: dict[str, list[dict[str, Any]]] = {}
+        for row in decisions:
+            raw_value = row.get("numeric_value")
+            if raw_value is None:
+                continue
+            label = str(row.get("numeric_value_label") or "numeric_value")
+            by_label.setdefault(label, []).append(row)
+        patterns: list[dict[str, Any]] = []
+        for label, rows in by_label.items():
+            if len(rows) < 15:
+                continue
+            approved_values = [
+                float(row["numeric_value"])
+                for row in rows
+                if str(row.get("status") or "").lower() == "approved"
+            ]
+            rejected_values = [
+                float(row["numeric_value"])
+                for row in rows
+                if str(row.get("status") or "").lower() == "rejected"
+            ]
+            if len(approved_values) < 12 or not rejected_values:
+                continue
+            threshold = max(approved_values)
+            if not all(value > threshold for value in rejected_values):
+                continue
+            patterns.append(
+                {
+                    "pattern_description": (
+                        f"Approvals with {label} at or below {threshold:g} were approved "
+                        f"{len(approved_values)}/{len(rows)} times in the last 30 days"
+                    ),
+                    "evidence": {
+                        "field": "numeric_value",
+                        "label": label,
+                        "threshold": threshold,
+                        "dominant_outcome": "approved",
+                        "dominant_count": len(approved_values),
+                        "total": len(rows),
+                    },
+                    "sample_size": len(rows),
+                }
+            )
         return patterns
 
     async def run_evaluation(self, org_id: str) -> dict[str, Any]:
