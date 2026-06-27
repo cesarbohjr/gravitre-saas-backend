@@ -80,28 +80,56 @@ class CompanyIntelligenceOrchestrator:
 
             intent_model_id = None
             if len(queries) >= self.MIN_QUERY_ROWS:
-                intent_model_id = await self._train_intent_classifier(org_id, queries)
+                try:
+                    intent_model_id = await self._train_intent_classifier(org_id, queries)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "company_intelligence_intent_skipped org_id=%s error=%s",
+                        org_id,
+                        exc,
+                    )
 
             anomaly_model_id = None
             recent_anomalies: list[dict[str, Any]] = []
             if len(workflow_features) >= self.MIN_WORKFLOW_ROWS:
-                anomaly_model_id, recent_anomalies = await self._train_anomaly_detector(
-                    org_id, workflow_features
-                )
+                try:
+                    anomaly_model_id, recent_anomalies = await self._train_anomaly_detector(
+                        org_id, workflow_features
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "company_intelligence_anomaly_skipped org_id=%s error=%s",
+                        org_id,
+                        exc,
+                    )
 
             forecaster_model_id = None
             forecast_summary: list[dict[str, Any]] | None = None
             if len(workflow_features) >= self.MIN_WORKFLOW_ROWS:
-                forecaster_model_id, forecast_summary = await self._train_forecaster(
-                    org_id, workflow_features
-                )
+                try:
+                    forecaster_model_id, forecast_summary = await self._train_forecaster(
+                        org_id, workflow_features
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "company_intelligence_forecaster_skipped org_id=%s error=%s",
+                        org_id,
+                        exc,
+                    )
 
             success_model_id = None
             success_predictions: list[dict[str, Any]] | None = None
             if len(workflow_features) >= self.MIN_WORKFLOW_ROWS:
-                success_model_id, success_predictions = await self._train_success_predictor(
-                    org_id, workflow_features, client
-                )
+                try:
+                    success_model_id, success_predictions = await self._train_success_predictor(
+                        org_id, workflow_features, client
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "company_intelligence_success_predictor_skipped org_id=%s error=%s",
+                        org_id,
+                        exc,
+                    )
 
             cluster_results: list[dict[str, Any]] | None = None
             if distinct_normalized_count(queries) >= self.MIN_CLUSTERING_ROWS:
@@ -131,7 +159,14 @@ class CompanyIntelligenceOrchestrator:
             ranker_model_id = None
             training_count = await count_training_examples(org_id, client)
             if training_count >= RetrievalRanker.MIN_TRAINING_EXAMPLES:
-                ranker_model_id = await self._train_retrieval_ranker(org_id, client)
+                try:
+                    ranker_model_id = await self._train_retrieval_ranker(org_id, client)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "company_intelligence_ranker_skipped org_id=%s error=%s",
+                        org_id,
+                        exc,
+                    )
 
             category_distribution = aggregate_query_categories(queries)
             org_deltas = await UserIntelligenceService()._get_changes_since(client, org_id)
@@ -383,8 +418,19 @@ class CompanyIntelligenceOrchestrator:
                 task_type=self.SNAPSHOT_TASK_TYPE,
             )
             model_id = model.id
-        await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
-        await registry.deploy_version(model_id)
+        try:
+            await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
+            await registry.deploy_version(model_id)
+        except ValueError as exc:
+            if "BLOB_READ_WRITE_TOKEN" in str(exc):
+                logger.warning(
+                    "company_intelligence_model_artifact_skipped org_id=%s name=%s error=%s",
+                    org_id,
+                    name,
+                    exc,
+                )
+                return None
+            raise
         return model_id
 
     async def _start_run_log(self, org_id: str) -> str:
