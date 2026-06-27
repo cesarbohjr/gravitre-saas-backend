@@ -439,6 +439,10 @@ const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label:
   council: { icon: Users, color: "bg-amber-500/20 border-amber-500/40 text-amber-400", label: "Agent Council" },
   }
 
+function getNodeTypeConfig(type: string) {
+  return nodeTypeConfig[type as NodeType] ?? nodeTypeConfig.task
+}
+
 // Node state visual config
 const nodeStateConfig: Record<NodeState, { border: string; bg: string; animation: string }> = {
   idle: { border: "", bg: "", animation: "" },
@@ -478,7 +482,7 @@ function CanvasNode({
   isDraggingConnection?: boolean
   isMobile?: boolean
   }) {
-  const config = nodeTypeConfig[node.type]
+  const config = getNodeTypeConfig(node.type)
   const Icon = config.icon
   const [isDragging, setIsDragging] = useState(false)
   const [isInteracting, setIsInteracting] = useState(false)
@@ -1965,7 +1969,7 @@ function ConfigPanel({
   
   if (!node) return null
 
-  const config = nodeTypeConfig[node.type]
+  const config = getNodeTypeConfig(node.type)
   const Icon = config.icon
   
   // Get available actions for this node's vendor
@@ -5324,7 +5328,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           </SheetHeader>
           <div className="flex-1 overflow-auto space-y-2 pb-safe">
             {nodes.map((node, index) => {
-              const config = nodeTypeConfig[node.type]
+              const config = getNodeTypeConfig(node.type)
               const Icon = config.icon
               const stateConfig = nodeStateConfig[node.state || "idle"]
               return (

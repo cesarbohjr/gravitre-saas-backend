@@ -39,6 +39,7 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import useSWR from "swr"
 import { conversationsApi, assistantApi } from "@/lib/api"
+import { ApiError } from "@/lib/fetcher"
 import type { Conversation } from "@/types/api"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
@@ -785,6 +786,14 @@ export default function AssistantPage() {
       } catch (error) {
         console.error("[v0] Load conversation failed:", error)
         setMessages([])
+        if (error instanceof ApiError && error.status === 404) {
+          localStorage.removeItem(CONVERSATION_ID_KEY)
+          setActiveConversationId(null)
+          activeConversationIdRef.current = null
+          setConversationMessagesError(null)
+          void mutateConversations()
+          return
+        }
         setConversationMessagesError(
           "We couldn't load this conversation. Check your connection and try again.",
         )
@@ -792,7 +801,7 @@ export default function AssistantPage() {
         setConversationMessagesLoading(false)
       }
     },
-    [setMessages, setConversationMessagesLoading, setConversationMessagesError],
+    [setMessages, mutateConversations],
   )
 
   useEffect(() => {

@@ -246,6 +246,22 @@ async def list_conversations(
     if search and search.strip():
         query = query.ilike("title", f"%{search.strip()}%")
     response = query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
+    list_error = response_error(response)
+    if list_error and _missing_column_error(list_error):
+        fallback_query = (
+            client.table("conversations")
+            .select("id, title, preview, message_count, created_at, updated_at, archived_at")
+            .eq("org_id", org_id)
+            .eq("user_id", user["user_id"])
+        )
+        if not include_archived:
+            fallback_query = fallback_query.is_("archived_at", "null")
+        if search and search.strip():
+            fallback_query = fallback_query.ilike("title", f"%{search.strip()}%")
+        response = fallback_query.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
+        if response_error(response):
+            raise HTTPException(status_code=500, detail=str(response_error(response)))
+        return {"conversations": [_normalize_conversation(row) for row in (response.data or [])]}
     if _is_missing_table_error(response_error(response)):
         return {"conversations": []}
     if response_error(response):
