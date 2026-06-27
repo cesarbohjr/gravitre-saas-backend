@@ -4,7 +4,7 @@
 import { createElement, useEffect, useMemo, useRef, useState } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { PageHeader, StatsGrid, StatCard } from "@/components/gravitre/page-header"
 import { 
@@ -308,25 +308,6 @@ function taskStatusBadgeClass(status: string): string {
 function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelected: boolean; onClick: () => void; index: number }) {
   const { reduced } = useMotionPrefs()
   const status = statusConfig[agent.status]
-  
-  // 3D hover effect
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const rotateX = useTransform(y, [-50, 50], [10, -10])
-  const rotateY = useTransform(x, [-50, 50], [-10, 10])
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-    x.set(e.clientX - centerX)
-    y.set(e.clientY - centerY)
-  }
-
-  const handleMouseLeave = () => {
-    x.set(0)
-    y.set(0)
-  }
 
   // Vivid per-department gradient orb (shared with the Marketplace department
   // packs so colors match across surfaces) + a meaningful, role-aware icon.
@@ -337,16 +318,13 @@ function AgentOrb({ agent, isSelected, onClick, index }: { agent: Agent; isSelec
     <motion.button
       type="button"
       onClick={onClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       layout
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 30, scale: 0.8 }}
       animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
       transition={reduced ? { duration: 0.12 } : { delay: Math.min(index, 8) * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={reduced ? undefined : { scale: 1.01, y: -2 }}
+      whileHover={reduced ? undefined : { scale: 1.02, y: -3 }}
       whileTap={reduced ? undefined : { scale: 0.98 }}
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
       className={cn(
         "relative group flex w-[168px] sm:w-[184px] flex-col items-center rounded-2xl border border-transparent px-3 py-4 text-left transition-[colors,box-shadow] duration-200",
         isSelected
