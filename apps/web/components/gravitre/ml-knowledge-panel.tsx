@@ -54,13 +54,19 @@ type RangeKey = keyof typeof modelHealthMetrics.tendency
 const RANGES: RangeKey[] = [30, 60, 90]
 
 // Green >= 75, amber 50-74, orange/red < 50 (mirrors the reference pattern).
+// Explicit hex values: recharts SVG fill/stroke attributes do NOT resolve
+// CSS custom properties (var(--x) falls back to black), so we pass real colors.
 function bandColor(value: number): string {
-  if (value >= 75) return "var(--schedule-job)" // green
-  if (value >= 50) return "#f59e0b" // amber
-  return "#f97316" // orange
+  if (value >= 75) return "#10b981" // emerald-500 (green)
+  if (value >= 50) return "#f59e0b" // amber-500
+  return "#f97316" // orange-500
 }
 
-const ACCENT = "var(--primary)" // page's purple accent
+// Brand accents — purple primary (matches the registry hero + schedules page),
+// with blue/green companions for the radar gradient.
+const ACCENT = "#8b5cf6" // violet-500 / purple
+const ACCENT_BLUE = "#3b82f6" // blue-500
+const ACCENT_GREEN = "#10b981" // emerald-500
 
 export function MlKnowledgePanel() {
   const [range, setRange] = useState<RangeKey>(30)
@@ -120,9 +126,16 @@ export function MlKnowledgePanel() {
         <div className="rounded-xl border border-border/60 bg-background/40 p-4">
           <p className="mb-1 text-sm font-medium text-foreground">Model Strengths Overview</p>
           <p className="mb-2 text-xs text-muted-foreground">Higher is better · 0–100 weighted score</p>
-          <div className="h-[220px] w-full">
+          <div className="h-[200px] w-full sm:h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData} outerRadius="72%">
+                <defs>
+                  <radialGradient id="radarFill" cx="50%" cy="50%" r="65%">
+                    <stop offset="0%" stopColor={ACCENT} stopOpacity={0.55} />
+                    <stop offset="60%" stopColor={ACCENT_BLUE} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={ACCENT_GREEN} stopOpacity={0.12} />
+                  </radialGradient>
+                </defs>
                 <PolarGrid stroke="var(--border)" />
                 <PolarAngleAxis
                   dataKey="label"
@@ -131,11 +144,13 @@ export function MlKnowledgePanel() {
                 <Radar
                   dataKey="value"
                   stroke={ACCENT}
-                  fill={ACCENT}
-                  fillOpacity={0.25}
+                  fill="url(#radarFill)"
+                  fillOpacity={1}
                   strokeWidth={2}
+                  dot={{ r: 3, fill: ACCENT, strokeWidth: 0 }}
+                  activeDot={{ r: 4 }}
                   isAnimationActive
-                  animationDuration={700}
+                  animationDuration={800}
                 />
               </RadarChart>
             </ResponsiveContainer>
@@ -145,9 +160,12 @@ export function MlKnowledgePanel() {
             {dims.map((d, i) => {
               const color = bandColor(d.value)
               return (
-                <li key={d.key} className="flex items-center gap-3">
+                <li
+                  key={d.key}
+                  className="flex items-center gap-3 rounded-md px-1.5 py-1 -mx-1.5 transition-colors hover:bg-muted/50"
+                >
                   <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
-                  <span className="w-32 shrink-0 truncate text-xs text-foreground sm:w-40">{d.label}</span>
+                  <span className="w-24 shrink-0 truncate text-xs text-foreground sm:w-40">{d.label}</span>
                   <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary/60">
                     <motion.span
                       className="absolute inset-y-0 left-0 rounded-full"
@@ -180,7 +198,7 @@ export function MlKnowledgePanel() {
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
                       range === r
-                        ? "bg-violet-500/15 text-violet-300"
+                        ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
@@ -266,18 +284,25 @@ function StatTile({
   hint: string
 }) {
   const toneStyles: Record<typeof tone, string> = {
-    violet: "border-violet-500/20 bg-violet-500/5 text-violet-300",
-    emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
-    amber: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+    violet: "border-violet-500/20 bg-violet-500/5 text-violet-600 dark:text-violet-300",
+    emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+    amber: "border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-400",
   }
   return (
-    <div className={cn("rounded-xl border p-3", toneStyles[tone])}>
+    <motion.div
+      whileHover={{ y: -3 }}
+      transition={{ type: "spring", stiffness: 320, damping: 22 }}
+      className={cn(
+        "rounded-xl border p-3 transition-shadow hover:shadow-md",
+        toneStyles[tone],
+      )}
+    >
       <div className="flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5" />
         <span className="text-[10px] font-medium uppercase tracking-wider opacity-90">{label}</span>
       </div>
       <p className="mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
       <p className="text-[10px] text-muted-foreground">{hint}</p>
-    </div>
+    </motion.div>
   )
 }
