@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
+import { MotionProvider } from '@/components/motion-provider'
 import { ViewModeProvider } from '@/lib/view-mode-context'
 import { Toaster } from '@/components/ui/sonner'
 import { NotificationProvider } from '@/components/gravitre/notification-center'
@@ -65,6 +66,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <MotionProvider>
           <AuthProvider>
             <OrgSyncBootstrap />
             <EnterpriseBrandingProvider>
@@ -83,6 +85,7 @@ export default function RootLayout({
             </EnterpriseBrandingProvider>
             <Toaster position="bottom-right" richColors closeButton />
           </AuthProvider>
+          </MotionProvider>
         </ThemeProvider>
         <Analytics />
       </body>
