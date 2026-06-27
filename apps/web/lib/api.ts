@@ -1503,6 +1503,28 @@ export const intelligenceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
   },
+  outcomes: () => fetcher<IntelligenceOutcomesResponse>(apiUrl("/api/admin/intelligence/outcomes")),
+}
+
+export type IntelligenceOutcomesAgentSummary = {
+  agentId: string
+  agentName?: string
+  sampleSize: number
+  minSampleSize: number
+  sufficientData: boolean
+  confidenceNote: string
+  message?: string
+  winRate?: number | null
+  avgMetricDelta?: number | null
+}
+
+export type IntelligenceOutcomesResponse = {
+  scopeNote: string
+  confidenceNote: string
+  minSampleSize: number
+  pendingMeasurements: number
+  observableMetrics: Array<{ connector: string; entityType: string; metric: string }>
+  agentSummaries: IntelligenceOutcomesAgentSummary[]
 }
 
 // ============ Memory Promotion (v4) ============

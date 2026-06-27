@@ -20,6 +20,8 @@ AUTO_GLOSSARY_PROVENANCE = f"{V4_PROVENANCE_PREFIX}auto:glossary"
 MANUAL_GLOSSARY_PROVENANCE = f"{V4_PROVENANCE_PREFIX}manual:glossary"
 MANUAL_WORKFLOW_PROVENANCE = f"{V4_PROVENANCE_PREFIX}manual:workflow_pattern"
 MANUAL_RESPONSE_PROVENANCE = f"{V4_PROVENANCE_PREFIX}manual:successful_response"
+MANUAL_OUTCOME_PROVENANCE = f"{V4_PROVENANCE_PREFIX}manual:outcome_pattern"
+MANUAL_DECISION_PROVENANCE = f"{V4_PROVENANCE_PREFIX}manual:decision_pattern"
 
 PENDING_MIN_FREQUENCY = 5
 
@@ -583,14 +585,218 @@ class MemoryPromotionService:
                 created.append(candidate)
         return created
 
+    async def detect_outcome_pattern_candidates(self, org_id: str) -> list[dict[str, Any]]:
+        """v8: correlational outcome patterns — always pending_approval."""
+        from app.services.outcome_attribution_service import (
+            MIN_SAMPLE_SIZE,
+            get_outcome_attribution_service,
+        )
+
+        outcome_service = get_outcome_attribution_service(self.settings)
+        client = self._client()
+        agents = (
+            client.table("agents")
+            .select("id, name")
+            .eq("org_id", org_id)
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+        created: list[dict[str, Any]] = []
+        for agent in agents:
+            agent_id = str(agent.get("id") or "")
+            if not agent_id:
+                continue
+            summary = await outcome_service.get_agent_outcome_summary(org_id, agent_id)
+            if not summary.get("sufficientData"):
+                continue
+            win_rate = float(summary.get("winRate") or 0.0)
+            sample_size = int(summary.get("sampleSize") or 0)
+            if win_rate < 0.55:
+                continue
+            content = (
+                f"Agent {agent.get('name') or agent_id}'s deal actions correlate with positive "
+                f"deal_amount changes in {win_rate:.0%} of {sample_size} observed cases "
+                f"(correlational only)."
+            )
+            candidate = self._upsert_candidate(
+                client,
+                org_id=org_id,
+                source_table="outcome_pattern",
+                source_id=None,
+                candidate_type="outcome_pattern",
+                content=content,
+                memory_category="pattern",
+                status=MemoryPromotionStatus.PENDING_APPROVAL.value,
+                frequency=sample_size,
+                department_count=0,
+                metadata={
+                    "agent_id": agent_id,
+                    "win_rate": win_rate,
+                    "sample_size": sample_size,
+                    "avg_metric_delta": summary.get("avgMetricDelta"),
+                },
+            )
+            if candidate:
+                created.append(candidate)
+        return created
+
+    async def detect_decision_pattern_candidates(self, org_id: str) -> list[dict[str, Any]]:
+        """v11: approval/rejection patterns over structured fields — always pending_approval."""
+        MIN_DECISIONS_FOR_PATTERN = 15
+        decisions = await self._load_recent_decisions(org_id)
+        if len(decisions) < MIN_DECISIONS_FOR_PATTERN:
+            return []
+
+        patterns = self._detect_threshold_patterns(decisions)
+        created: list[dict[str, Any]] = []
+        client = self._client()
+        for pattern in patterns:
+            if int(pattern.get("sample_size") or 0) < MIN_DECISIONS_FOR_PATTERN:
+                continue
+            content = str(pattern.get("pattern_description") or "")
+            if not content:
+                continue
+            candidate = self._upsert_candidate(
+                client,
+                org_id=org_id,
+                source_table="decision_pattern",
+                source_id=None,
+                candidate_type="decision_pattern",
+                content=content,
+                memory_category="rule",
+                status=MemoryPromotionStatus.PENDING_APPROVAL.value,
+                frequency=int(pattern.get("sample_size") or 0),
+                department_count=0,
+                metadata={
+                    "evidence": pattern.get("evidence") or {},
+                    "sample_size": pattern.get("sample_size"),
+                },
+            )
+            if candidate:
+                created.append(candidate)
+        return created
+
+    async def _load_recent_decisions(self, org_id: str) -> list[dict[str, Any]]:
+        since = (self._now() - timedelta(days=30)).isoformat()
+        client = self._client()
+        rows = (
+            client.table("approvals")
+            .select(
+                "id, type, priority, status, context, reviewed_at, "
+                "numeric_value, numeric_value_currency, numeric_value_label"
+            )
+            .eq("org_id", org_id)
+            .in_("status", ["approved", "rejected"])
+            .gte("reviewed_at", since)
+            .limit(500)
+            .execute()
+            .data
+            or []
+        )
+        return rows
+
+    def _detect_threshold_patterns(self, decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Threshold detection on structured approval fields, including numeric_value when present."""
+        patterns: list[dict[str, Any]] = []
+        for field in ("type", "priority"):
+            grouped: dict[str, list[str]] = {}
+            for row in decisions:
+                key = str(row.get(field) or "").strip().lower()
+                if not key:
+                    continue
+                grouped.setdefault(key, []).append(str(row.get("status") or "").lower())
+            for key, statuses in grouped.items():
+                if len(statuses) < 15:
+                    continue
+                approved = sum(1 for s in statuses if s == "approved")
+                rejected = len(statuses) - approved
+                dominant = "approved" if approved >= rejected else "rejected"
+                dominant_count = approved if dominant == "approved" else rejected
+                rate = dominant_count / len(statuses)
+                if rate < 0.8:
+                    continue
+                patterns.append(
+                    {
+                        "pattern_description": (
+                            f"Approvals with {field}={key!r} were {dominant} "
+                            f"{dominant_count}/{len(statuses)} times in the last 30 days"
+                        ),
+                        "evidence": {
+                            "field": field,
+                            "value": key,
+                            "dominant_outcome": dominant,
+                            "dominant_count": dominant_count,
+                            "total": len(statuses),
+                        },
+                        "sample_size": len(statuses),
+                    }
+                )
+        patterns.extend(self._detect_numeric_threshold_patterns(decisions))
+        return patterns
+
+    def _detect_numeric_threshold_patterns(
+        self,
+        decisions: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        by_label: dict[str, list[dict[str, Any]]] = {}
+        for row in decisions:
+            raw_value = row.get("numeric_value")
+            if raw_value is None:
+                continue
+            label = str(row.get("numeric_value_label") or "numeric_value")
+            by_label.setdefault(label, []).append(row)
+        patterns: list[dict[str, Any]] = []
+        for label, rows in by_label.items():
+            if len(rows) < 15:
+                continue
+            approved_values = [
+                float(row["numeric_value"])
+                for row in rows
+                if str(row.get("status") or "").lower() == "approved"
+            ]
+            rejected_values = [
+                float(row["numeric_value"])
+                for row in rows
+                if str(row.get("status") or "").lower() == "rejected"
+            ]
+            if len(approved_values) < 12 or not rejected_values:
+                continue
+            threshold = max(approved_values)
+            if not all(value > threshold for value in rejected_values):
+                continue
+            patterns.append(
+                {
+                    "pattern_description": (
+                        f"Approvals with {label} at or below {threshold:g} were approved "
+                        f"{len(approved_values)}/{len(rows)} times in the last 30 days"
+                    ),
+                    "evidence": {
+                        "field": "numeric_value",
+                        "label": label,
+                        "threshold": threshold,
+                        "dominant_outcome": "approved",
+                        "dominant_count": len(approved_values),
+                        "total": len(rows),
+                    },
+                    "sample_size": len(rows),
+                }
+            )
+        return patterns
+
     async def run_evaluation(self, org_id: str) -> dict[str, Any]:
         glossary = await self.evaluate_glossary_candidates(org_id)
         workflow = await self.detect_workflow_pattern_candidates(org_id)
         responses = await self.detect_successful_response_candidates(org_id)
+        outcomes = await self.detect_outcome_pattern_candidates(org_id)
+        decisions = await self.detect_decision_pattern_candidates(org_id)
         return {
             "glossary": glossary,
             "workflow_patterns_detected": len(workflow),
             "successful_responses_detected": len(responses),
+            "outcome_patterns_detected": len(outcomes),
+            "decision_patterns_detected": len(decisions),
         }
 
     async def approve_candidate(
@@ -619,13 +825,21 @@ class MemoryPromotionService:
             return {"candidate_id": candidate_id, "memory_ids": candidate.get("memory_ids") or []}
 
         candidate_type = str(candidate.get("candidate_type") or "")
-        if candidate_type not in {"glossary", "workflow_pattern", "successful_response"}:
+        if candidate_type not in {
+            "glossary",
+            "workflow_pattern",
+            "successful_response",
+            "outcome_pattern",
+            "decision_pattern",
+        }:
             raise ValueError("Unsupported candidate type")
 
         provenance_map = {
             "glossary": MANUAL_GLOSSARY_PROVENANCE,
             "workflow_pattern": MANUAL_WORKFLOW_PROVENANCE,
             "successful_response": MANUAL_RESPONSE_PROVENANCE,
+            "outcome_pattern": MANUAL_OUTCOME_PROVENANCE,
+            "decision_pattern": MANUAL_DECISION_PROVENANCE,
         }
         reasoning = (
             f"Manually approved {candidate_type} candidate after human review "

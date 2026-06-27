@@ -125,3 +125,42 @@ def get_subscription(
     except stripe.error.StripeError as exc:
         raise _map_stripe_error(exc) from exc
     return result.to_dict() if hasattr(result, "to_dict") else dict(result)
+
+
+def update_subscription(
+    api_key: str,
+    subscription_id: str,
+    changes: dict[str, Any],
+    *,
+    stripe_account: str | None = None,
+) -> dict[str, Any]:
+    if not changes:
+        raise StripeAPIError("At least one subscription change is required", status_code=400)
+    try:
+        result = stripe.Subscription.modify(
+            subscription_id,
+            api_key=api_key,
+            stripe_account=stripe_account,
+            **changes,
+        )
+    except stripe.error.StripeError as exc:
+        raise _map_stripe_error(exc) from exc
+    return result.to_dict() if hasattr(result, "to_dict") else dict(result)
+
+
+def subscription_state(payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract baseline/after fields observable via subscriptions.get."""
+    status = str(payload.get("status") or "").strip().lower()
+    mrr_cents = 0
+    for item in payload.get("items", {}).get("data") or []:
+        if not isinstance(item, dict):
+            continue
+        price = item.get("price") if isinstance(item.get("price"), dict) else {}
+        quantity = int(item.get("quantity") or 1)
+        unit_amount = price.get("unit_amount")
+        if unit_amount is not None:
+            try:
+                mrr_cents += int(unit_amount) * quantity
+            except (TypeError, ValueError):
+                continue
+    return {"status": status, "mrr_cents": float(mrr_cents)}

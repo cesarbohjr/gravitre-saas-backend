@@ -27,6 +27,7 @@ TOOL_DISPLAY_NAMES: dict[str, str] = {
     "generate_document": "generateDocument",
     "run_agent_task": "runAgentTask",
     "create_workflow": "createWorkflow",
+    "dependency_impact": "estimateDependencyImpact",
 }
 
 DEFAULT_ASSISTANT_TOOLS = ["knowledge_base", "agent_status", "connector_status"]
@@ -439,6 +440,25 @@ def tool_create_workflow(
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant create_workflow tool failed org_id=%s error=%s", org_id, str(exc))
         return {"error": "workflow create failed"}
+
+
+async def tool_dependency_impact(
+    org_id: str,
+    settings: Settings,
+    *,
+    question: str = "",
+    entity_type: str | None = None,
+    entity_id: str | None = None,
+) -> dict[str, Any]:
+    """v9: grounded dependency impact report (graph traversal, not simulation)."""
+    from app.services.dependency_impact_service import SCOPE_NOTE, get_dependency_impact_service
+
+    service = get_dependency_impact_service(settings)
+    if entity_type and entity_id:
+        return await service.estimate_removal_impact(org_id, entity_type, entity_id)
+    if not question.strip():
+        return {"error": "question or entity_type/entity_id is required", "scopeNote": SCOPE_NOTE}
+    return await service.answer_dependency_question(org_id, question)
 
 
 async def run_assistant_tools(

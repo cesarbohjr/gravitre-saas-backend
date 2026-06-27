@@ -292,6 +292,15 @@ def approve_job(
         .eq("org_id", org_id)
         .execute()
     )
+    from app.services.approval_record_service import finalize_contract_approval
+
+    finalize_contract_approval(
+        client,
+        org_id=org_id,
+        agent_job_id=job_id,
+        status="approved",
+        reviewed_by=approver_id,
+    )
     return upd.data[0] if upd.data else None
 
 
@@ -332,6 +341,15 @@ def reject_job(
         .eq("id", job_id)
         .eq("org_id", org_id)
         .execute()
+    )
+    from app.services.approval_record_service import finalize_contract_approval
+
+    finalize_contract_approval(
+        client,
+        org_id=org_id,
+        agent_job_id=job_id,
+        status="rejected",
+        reviewed_by=approver_id,
     )
     return upd.data[0] if upd.data else None
 
@@ -595,6 +613,9 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         result = await asyncio.wait_for(handler(settings, job), timeout=timeout_s)
         await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
         await asyncio.to_thread(complete_job, client, job["id"], result)
+        from app.services.approval_record_service import maybe_create_agent_job_approval
+
+        await asyncio.to_thread(maybe_create_agent_job_approval, client, job, result)
         await _notify_swarm_job_finished(settings, client, job)
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
     except AgentExecutionInterrupted as exc:
@@ -633,6 +654,9 @@ async def _process_one(settings: Settings) -> bool:
         result = await handler(settings, job)
         await asyncio.to_thread(_assert_job_runnable, client, job["org_id"], str(job["id"]))
         await asyncio.to_thread(complete_job, client, job["id"], result)
+        from app.services.approval_record_service import maybe_create_agent_job_approval
+
+        await asyncio.to_thread(maybe_create_agent_job_approval, client, job, result)
         await _notify_swarm_job_finished(settings, client, job)
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
     except AgentExecutionInterrupted as exc:

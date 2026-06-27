@@ -1751,6 +1751,19 @@ async def execute_workflow(
             )
         emit_execute_created(client, org_id, current_user["user_id"], run_id, workflow_id)
         emit_execute_pending_approval(client, org_id, current_user["user_id"], run_id, workflow_id)
+        from app.services.approval_record_service import sync_workflow_pending_approval
+
+        wf_name = definition.get("name") if isinstance(definition, dict) else None
+        sync_workflow_pending_approval(
+            client,
+            org_id=org_id,
+            run_id=run_id,
+            workflow_id=workflow_id,
+            workflow_name=str(wf_name or workflow_id),
+            requested_by=current_user["user_id"],
+            parameters=parameters if isinstance(parameters, dict) else None,
+            required_approvals=required_approvals,
+        )
         latency_ms = int((time.perf_counter() - start) * 1000)
         logger.info(
             "workflow_execute_created request_id=%s org_id=%s workflow_id=%s run_id=%s latency_ms=%s status=pending_approval",
@@ -2003,6 +2016,19 @@ def _execute_workflow_with_context(
             )
         emit_execute_created(client, org_id, actor_id, run_id, workflow_id)
         emit_execute_pending_approval(client, org_id, actor_id, run_id, workflow_id)
+        from app.services.approval_record_service import sync_workflow_pending_approval
+
+        wf_name = definition.get("name") if isinstance(definition, dict) else None
+        sync_workflow_pending_approval(
+            client,
+            org_id=org_id,
+            run_id=run_id,
+            workflow_id=workflow_id,
+            workflow_name=str(wf_name or workflow_id),
+            requested_by=actor_id,
+            parameters=parameters if isinstance(parameters, dict) else None,
+            required_approvals=required_approvals,
+        )
         latency_ms = int((time.perf_counter() - start) * 1000)
         logger.info(
             "workflow_execute_created request_id=%s org_id=%s workflow_id=%s run_id=%s latency_ms=%s status=pending_approval",
@@ -2434,6 +2460,15 @@ async def approve_run(
         comment=body.comment,
     )
     emit_execute_approval_recorded(client, org_id, current_user["user_id"], run_id_str, "approved")
+    from app.services.approval_record_service import finalize_contract_approval
+
+    finalize_contract_approval(
+        client,
+        org_id=org_id,
+        run_id=run_id_str,
+        status="approved",
+        reviewed_by=current_user["user_id"],
+    )
     try:
         from app.services.transparency_service import record_human_override
 
@@ -2591,6 +2626,15 @@ async def reject_run(
         approver_id=current_user["user_id"],
         status="rejected",
         comment=body.comment,
+    )
+    from app.services.approval_record_service import finalize_contract_approval
+
+    finalize_contract_approval(
+        client,
+        org_id=org_id,
+        run_id=run_id_str,
+        status="rejected",
+        reviewed_by=current_user["user_id"],
     )
     update_run(client, run_id_str, status="cancelled", approval_status="rejected")
     emit_execute_rejected(client, org_id, current_user["user_id"], run_id_str)

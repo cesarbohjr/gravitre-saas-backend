@@ -566,6 +566,24 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             integration="platform",
             always_available=False,
         ),
+        AgentToolSpec(
+            name="assistant_dependency_impact",
+            description=(
+                "Report what depends on a connector, agent, or workflow and what would break if removed. "
+                "Use for questions like 'what happens if we disconnect HubSpot?'"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "question": {"type": "string"},
+                    "entity_type": {"type": "string", "enum": ["connector", "agent", "workflow"]},
+                    "entity_id": {"type": "string"},
+                },
+            },
+            invoke_action="assistant.dependency_impact",
+            integration="platform",
+            always_available=False,
+        ),
     ]
     return {spec.name: spec for spec in specs}
 
@@ -855,6 +873,14 @@ class ToolRegistry:
                     goal,
                     settings,
                     user_id=user_id,
+                )
+            elif tool_name == "assistant_dependency_impact":
+                payload = await assistant_tools_module.tool_dependency_impact(
+                    org_id,
+                    settings,
+                    question=str(args.get("question") or args.get("query") or "").strip(),
+                    entity_type=str(args.get("entity_type") or args.get("entityType") or "").strip() or None,
+                    entity_id=str(args.get("entity_id") or args.get("entityId") or "").strip() or None,
                 )
             else:
                 return {"success": False, "tool": tool_name, "error": f"Unknown assistant tool: {tool_name}"}

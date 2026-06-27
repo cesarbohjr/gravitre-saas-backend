@@ -92,6 +92,8 @@ from app.connectors.stripe_api import (
     get_subscription,
     list_invoices,
     resolve_stripe_credentials,
+    subscription_state,
+    update_subscription,
 )
 from app.connectors.pagerduty import (
     PagerDutyAPIError,
@@ -360,6 +362,14 @@ def _exec_hubspot_deals_update_stage(ctx: ToolContext, params: dict[str, Any]) -
     deal_id = params.get("deal_id") or params.get("dealId")
     dealstage = params.get("dealstage") or params.get("stage")
     try:
+        from app.services.outcome_attribution_service import maybe_record_hubspot_deal_outcome_baseline
+
+        maybe_record_hubspot_deal_outcome_baseline(
+            ctx,
+            deal_id=str(deal_id),
+            action_type="hubspot.deals.update_stage",
+            token=token,
+        )
         data = update_deal_stage(token, str(deal_id), str(dealstage))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
@@ -491,6 +501,14 @@ def _exec_hubspot_deals_update(ctx: ToolContext, params: dict[str, Any]) -> Norm
     if not isinstance(properties, dict) or not properties:
         raise ToolValidationError("hubspot.deals.update requires properties object")
     try:
+        from app.services.outcome_attribution_service import maybe_record_hubspot_deal_outcome_baseline
+
+        maybe_record_hubspot_deal_outcome_baseline(
+            ctx,
+            deal_id=str(deal_id),
+            action_type="hubspot.deals.update",
+            token=token,
+        )
         data = update_deal(token, str(deal_id), properties)
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
@@ -1268,6 +1286,59 @@ def _exec_stripe_subscriptions_get(ctx: ToolContext, params: dict[str, Any]) -> 
     return NormalizedResult(
         success=True,
         action="stripe.subscriptions.get",
+        connector_id=cid,
+        data={"subscription": data},
+    )
+
+
+def _exec_stripe_subscriptions_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, api_key, stripe_account = _stripe_connector_and_key(ctx, params)
+    subscription_id = params.get("subscription_id") or params.get("subscriptionId")
+    if not subscription_id:
+        raise ToolValidationError("stripe.subscriptions.update requires subscription_id")
+    changes = params.get("changes") if isinstance(params.get("changes"), dict) else {}
+    if not changes:
+        for key in (
+            "cancel_at_period_end",
+            "cancel_at",
+            "description",
+            "metadata",
+            "items",
+            "proration_behavior",
+            "trial_end",
+        ):
+            if key in params:
+                changes[key] = params[key]
+    if not changes:
+        raise ToolValidationError("stripe.subscriptions.update requires at least one change field")
+    try:
+        before_payload = get_subscription(
+            api_key,
+            str(subscription_id),
+            stripe_account=stripe_account,
+        )
+        before = subscription_state(before_payload)
+        from app.services.outcome_attribution_service import (
+            maybe_record_stripe_subscription_outcome_baseline,
+        )
+
+        maybe_record_stripe_subscription_outcome_baseline(
+            ctx,
+            subscription_id=str(subscription_id),
+            action_type="stripe.subscriptions.update",
+            before_state=before,
+        )
+        data = update_subscription(
+            api_key,
+            str(subscription_id),
+            changes,
+            stripe_account=stripe_account,
+        )
+    except StripeAPIError as exc:
+        raise _handle_stripe_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="stripe.subscriptions.update",
         connector_id=cid,
         data={"subscription": data},
     )
@@ -3020,6 +3091,7 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "quickbooks.journalentries.create": _exec_quickbooks_journalentries_create,
     "stripe.invoices.list": _exec_stripe_invoices_list,
     "stripe.subscriptions.get": _exec_stripe_subscriptions_get,
+    "stripe.subscriptions.update": _exec_stripe_subscriptions_update,
     "pagerduty.incidents.acknowledge": _exec_pagerduty_incidents_acknowledge,
     "pagerduty.incidents.add_note": _exec_pagerduty_incidents_add_note,
     "pagerduty.incidents.escalate": _exec_pagerduty_incidents_escalate,

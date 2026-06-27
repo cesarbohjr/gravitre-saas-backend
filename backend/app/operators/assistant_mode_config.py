@@ -14,6 +14,7 @@ ALL_ASSISTANT_TOOL_NAMES: list[str] = [
     "generate_document",
     "run_agent_task",
     "create_workflow",
+    "dependency_impact",
 ]
 
 # Internal ToolRegistry names for assistant platform tools.
@@ -27,6 +28,7 @@ ASSISTANT_TOOL_TO_REGISTRY: dict[str, str | None] = {
     "generate_document": "assistant_generate_document",
     "run_agent_task": "assistant_run_agent_task",
     "create_workflow": "assistant_create_workflow",
+    "dependency_impact": "assistant_dependency_impact",
 }
 
 REGISTRY_TO_ASSISTANT_DISPLAY: dict[str, str] = {
@@ -37,6 +39,7 @@ REGISTRY_TO_ASSISTANT_DISPLAY: dict[str, str] = {
     "assistant_generate_document": "generateDocument",
     "assistant_run_agent_task": "runAgentTask",
     "assistant_create_workflow": "createWorkflow",
+    "assistant_dependency_impact": "estimateDependencyImpact",
     "web_search": "searchWeb",
 }
 
@@ -65,6 +68,7 @@ MODE_CONFIG: dict[str, dict[str, Any]] = {
             "analytics",
             "search_web",
             "generate_document",
+            "dependency_impact",
         ],
     },
     "agent": {
