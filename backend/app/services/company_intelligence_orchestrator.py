@@ -383,8 +383,19 @@ class CompanyIntelligenceOrchestrator:
                 task_type=self.SNAPSHOT_TASK_TYPE,
             )
             model_id = model.id
-        await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
-        await registry.deploy_version(model_id)
+        try:
+            await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
+            await registry.deploy_version(model_id)
+        except ValueError as exc:
+            if "BLOB_READ_WRITE_TOKEN" in str(exc):
+                logger.warning(
+                    "company_intelligence_model_artifact_skipped org_id=%s name=%s error=%s",
+                    org_id,
+                    name,
+                    exc,
+                )
+                return None
+            raise
         return model_id
 
     async def _start_run_log(self, org_id: str) -> str:
