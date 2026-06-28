@@ -1,8 +1,13 @@
 """App access rules derived from org billing status."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import Any
+
+from app.billing.entitlement_service import resolve_billing_state
+
 ACCESS_GRANT_STATUSES = frozenset({"active", "trialing", "free", "inactive"})
-ACCESS_DENY_STATUSES = frozenset({"cancelled", "canceled"})
+ACCESS_DENY_STATUSES = frozenset({"cancelled", "canceled", "trial_expired"})
 
 
 def normalize_billing_status(status: str | None) -> str:
@@ -13,35 +18,59 @@ def normalize_billing_status(status: str | None) -> str:
     return value or "trialing"
 
 
-def compute_app_access(billing_status: str | None) -> dict[str, bool | str | None]:
-    """Map billing status to frontend entitlement flags.
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value).strip()
+        if not text:
+            return None
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
-    Returns:
-        can_access_app: Whether the user may use the product shell.
-        requires_upgrade: Whether an upgrade prompt should be shown.
-        upgrade_reason: Machine-readable reason when upgrade is suggested.
-    """
-    status = normalize_billing_status(billing_status)
 
-    if status in ACCESS_GRANT_STATUSES:
-        return {
-            "can_access_app": True,
-            "requires_upgrade": False,
-            "upgrade_reason": None,
-        }
+def compute_app_access(
+    billing_status: str | None,
+    *,
+    trial_ends_at: Any = None,
+    sandbox_exempt: bool = False,
+    plan_code: str | None = None,
+) -> dict[str, bool | str | None]:
+    """Map billing state to frontend entitlement flags."""
+    state = resolve_billing_state(
+        billing_row={
+            "billing_status": normalize_billing_status(billing_status),
+            "plan_code": plan_code or "node",
+        },
+        trial_ends_at=_parse_iso_datetime(trial_ends_at),
+        sandbox_exempt=sandbox_exempt,
+    )
 
-    if status == "past_due":
-        return {
-            "can_access_app": True,
-            "requires_upgrade": True,
-            "upgrade_reason": "payment_past_due",
-        }
-
-    if status in ACCESS_DENY_STATUSES:
+    if state["is_blocked"]:
+        reason = "trial_expired" if state["status"] == "trial_expired" else (
+            "payment_past_due" if state["status"] == "past_due" else "subscription_cancelled"
+        )
         return {
             "can_access_app": False,
             "requires_upgrade": True,
-            "upgrade_reason": "subscription_cancelled",
+            "upgrade_reason": reason,
+        }
+
+    status = str(state["status"])
+    if status == "past_due":
+        return {
+            "can_access_app": False,
+            "requires_upgrade": True,
+            "upgrade_reason": "payment_past_due",
         }
 
     return {

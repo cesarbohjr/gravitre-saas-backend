@@ -40,6 +40,8 @@ def _normalize_detail(detail: Any) -> tuple[str, str, dict]:
 
 
 async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
+    if exc.status_code == 402 and isinstance(exc.detail, dict) and exc.detail.get("error") == "plan_required":
+        return JSONResponse(status_code=402, content=exc.detail)
     message, code, details = _normalize_detail(exc.detail)
     code = ERROR_CODE_BY_STATUS.get(exc.status_code, code)
     payload = {
