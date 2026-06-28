@@ -31,7 +31,11 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Gravitre - AI Operations Platform',
+  metadataBase: new URL('https://gravitre.com'),
+  title: {
+    default: 'Gravitre - AI Operations Platform',
+    template: '%s · Gravitre',
+  },
   description: 'Enterprise AI operator console for managing workflows, runs, approvals, and AI-assisted operations',
   generator: 'v0.app',
   icons: {
