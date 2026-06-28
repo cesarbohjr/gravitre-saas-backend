@@ -14,8 +14,18 @@ from app.services.entity_relationship_service import (
     load_entity_relationships_snapshot,
 )
 from app.services.outcome_attribution_service import get_outcome_attribution_service
+from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
 
 router = APIRouter(prefix="/api/admin/intelligence", tags=["intelligence-admin"])
+
+
+@router.get("/learning-progress")
+async def get_learning_progress(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+) -> dict[str, Any]:
+    """Usage counts vs company-intelligence thresholds (honest new-org progress)."""
+    return await get_company_intelligence_orchestrator().get_learning_progress(org_id)
 
 
 @router.get("/snapshot")

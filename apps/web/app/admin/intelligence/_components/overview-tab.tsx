@@ -1,9 +1,12 @@
 "use client"
 
+import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/gravitre/empty-state"
 import type { IntelligenceSnapshot } from "@/lib/api"
-import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots } from "@phosphor-icons/react"
+import { intelligenceApi } from "@/lib/api"
+import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots, BrainCircuit } from "@phosphor-icons/react"
 import { formatTime, readNumber } from "./shared"
 
 type Row = Record<string, unknown>
@@ -15,14 +18,36 @@ export function OverviewTab({
   data: IntelligenceSnapshot | undefined
   isLoading: boolean
 }) {
+  const { data: learningProgress, isLoading: progressLoading } = useSWR(
+    "admin/intelligence/learning-progress",
+    () => intelligenceApi.learningProgress(),
+    { revalidateOnFocus: false },
+  )
+
   const volume = data?.queryVolume
   const clusters = (data?.clusters ?? []) as Row[]
   const gaps = (data?.knowledgeGaps ?? []) as Row[]
   const glossary = (data?.glossary ?? []) as Row[]
   const failedRecent = (data?.recentFailedSearches ?? []) as Row[]
+  const showLearningEmpty =
+    !progressLoading && learningProgress && learningProgress.hasAnySnapshot === false
 
   return (
     <div className="space-y-6">
+      {showLearningEmpty ? (
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState
+              title="Still learning your organization"
+              description={`Gravitre needs a bit more usage before it can surface real patterns. ${learningProgress.queryRows} of ${learningProgress.queryRowsNeeded} queries logged, ${learningProgress.workflowRows} of ${learningProgress.workflowRowsNeeded} workflow runs observed.`}
+              iconSlot={
+                <BrainCircuit className="h-6 w-6 text-violet-500" weight="duotone" aria-hidden />
+              }
+              size="md"
+            />
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">

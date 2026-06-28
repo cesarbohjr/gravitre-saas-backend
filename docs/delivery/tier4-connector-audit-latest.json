@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-06-28T05:22:52.474233+00:00",
+  "issue": "STA-282",
+  "apiBase": "https://api.gravitre.app",
+  "scope": {
+    "tier4Partners": [
+      "SharePoint (microsoft365 v4)",
+      "Intercom"
+    ],
+    "hrisReference": "bamboohr",
+    "workdayExcluded": [
+      "workday"
+    ]
+  },
+  "summary": {
+    "vendorsAudited": 3,
+    "readDemoReady": 2,
+    "sharePointV4Implemented": 0,
+    "sharePointV4Catalog": 0
+  },
+  "vendors": [
+    {
+      "vendor": "intercom",
+      "displayName": "Intercom",
+      "shipped": true,
+      "catalogActions": 12,
+      "implementedActions": 12,
+      "missingTools": [],
+      "sharePointV4Actions": 0,
+      "sharePointV4Implemented": 0,
+      "demoExcluded": false,
+      "hrisReference": false,
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/intercom/callback",
+        "ready": true
+      },
+      "demoReadyRead": true,
+      "demoReadyFull": true,
+      "partnerEmbeddedNote": "SharePoint + Intercom are partner/embedded tier \u2014 approval-gated writes; reads OK for pilot demos when OAuth ready."
+    },
+    {
+      "vendor": "microsoft365",
+      "displayName": "Microsoft 365",
+      "shipped": true,
+      "catalogActions": 22,
+      "implementedActions": 22,
+      "missingTools": [],
+      "sharePointV4Actions": 0,
+      "sharePointV4Implemented": 0,
+      "demoExcluded": false,
+      "hrisReference": false,
+      "oauth": {
+        "configured": true,
+        "encryptionConfigured": true,
+        "redirectUri": "https://gravitre.app/api/connectors/oauth/microsoft365/callback",
+        "ready": true
+      },
+      "demoReadyRead": true,
+      "demoReadyFull": true,
+      "partnerEmbeddedNote": "SharePoint + Intercom are partner/embedded tier \u2014 approval-gated writes; reads OK for pilot demos when OAuth ready."
+    },
+    {
+      "vendor": "bamboohr",
+      "displayName": "BambooHR",
+      "shipped": true,
+      "catalogActions": 8,
+      "implementedActions": 8,
+      "missingTools": [],
+      "sharePointV4Actions": 0,
+      "sharePointV4Implemented": 0,
+      "demoExcluded": false,
+      "hrisReference": true,
+      "oauth": {
+        "configured": false,
+        "encryptionConfigured": false,
+        "redirectUri": null,
+        "ready": false,
+        "error": "HTTP Error 400: Bad Request"
+      },
+      "demoReadyRead": false,
+      "demoReadyFull": false,
+      "partnerEmbeddedNote": "SharePoint + Intercom are partner/embedded tier \u2014 approval-gated writes; reads OK for pilot demos when OAuth ready."
+    }
+  ],
+  "references": {
+    "hrisPattern": "docs/integration/HRIS_REFERENCE_PATTERN.md",
+    "simulationCoverage": "docs/delivery/demo-simulation-coverage-latest.json"
+  }
+}

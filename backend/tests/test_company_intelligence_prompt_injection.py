@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.operators.agent_intelligence import AgentIntelligence, RESEARCH_POLICY
+from app.operators.agent_intelligence import AgentIntelligence, NEW_ORG_FRAMING, RESEARCH_POLICY
 
 
 @pytest.mark.asyncio
@@ -28,6 +28,19 @@ async def test_company_section_empty_when_no_snapshot():
     intel = AgentIntelligence(settings=MagicMock())
     prompt = intel._build_system_prompt("assistant", None, [], {"orgName": "Acme"}, company_intelligence_section="")
     assert "## Learned Company Intelligence" not in prompt
+    assert NEW_ORG_FRAMING.strip() in prompt
+
+
+def test_empty_company_intelligence_omits_header():
+    intel = AgentIntelligence(settings=MagicMock())
+    prompt = intel._build_system_prompt("assistant", None, [], {"orgName": "Acme"}, company_intelligence_section=None)
+    assert "## Learned Company Intelligence" not in prompt
+
+
+def test_model_does_not_fabricate_learned_patterns_for_new_org():
+    intel = AgentIntelligence(settings=MagicMock())
+    prompt = intel._build_system_prompt("assistant", None, [], {"orgName": "Acme"}, company_intelligence_section="")
+    assert "do not fabricate or imply learned" in prompt.replace("\n", " ")
 
 
 @pytest.mark.asyncio

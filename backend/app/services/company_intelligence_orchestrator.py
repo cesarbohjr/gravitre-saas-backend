@@ -245,6 +245,31 @@ class CompanyIntelligenceOrchestrator:
             logger.debug("company_intelligence_prompt_load_skipped org_id=%s error=%s", org_id, exc)
             return ""
 
+    async def get_learning_progress(self, org_id: str) -> dict[str, Any]:
+        """Real usage counts vs training thresholds for new-org UX."""
+        client = self._client()
+        queries = await collect_query_corpus(self.settings, org_id, client=client)
+        workflow_features = collect_workflow_run_features(
+            self.settings,
+            org_id,
+            since_days=30,
+            client=client,
+        )
+        snapshot = await self._load_latest_snapshot(org_id)
+        has_snapshot = bool(
+            snapshot
+            and not self._is_stale(snapshot)
+            and str(snapshot.get("context_markdown") or "").strip()
+        )
+        return {
+            "queryRows": len(queries),
+            "queryRowsNeeded": self.MIN_QUERY_ROWS,
+            "workflowRows": len(workflow_features),
+            "workflowRowsNeeded": self.MIN_WORKFLOW_ROWS,
+            "clusteringRowsNeeded": self.MIN_CLUSTERING_ROWS,
+            "hasAnySnapshot": has_snapshot,
+        }
+
     async def _train_intent_classifier(self, org_id: str, queries: list[dict[str, Any]]) -> str | None:
         texts = [str(row.get("query_text") or "") for row in queries if row.get("query_text")]
         labels = [str(row.get("query_category") or "general") for row in queries if row.get("query_text")]

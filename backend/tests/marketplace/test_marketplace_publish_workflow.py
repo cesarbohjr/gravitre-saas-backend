@@ -156,3 +156,26 @@ def test_reject_returns_to_draft_with_reason(mock_fetch, mock_audit):
     )
     assert result["rejected"] is True
     assert "business outcome" in result["reason"]
+
+
+@patch("app.marketplace.publish.write_audit_event")
+@patch("app.marketplace.publish._fetch_asset")
+def test_reject_actually_changes_status(mock_fetch, mock_audit):
+    mock_fetch.side_effect = [
+        _draft_asset(status="pending_review"),
+        _draft_asset(status="draft"),
+    ]
+    client = MagicMock()
+    client.table.return_value = _table()
+
+    result = reject_asset_review(
+        client,
+        ORG_ID,
+        "asset-1",
+        actor_id="admin-1",
+        reason="Missing connector documentation",
+    )
+    assert result["rejected"] is True
+    assert result["asset"]["status"] == "draft"
+    update_payload = client.table.return_value.update.call_args.args[0]
+    assert update_payload["status"] == "draft"

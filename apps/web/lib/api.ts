@@ -1446,6 +1446,15 @@ export type IntelligenceSnapshot = {
   entityRelationships: Array<Record<string, unknown>>
 }
 
+export type IntelligenceLearningProgress = {
+  queryRows: number
+  queryRowsNeeded: number
+  workflowRows: number
+  workflowRowsNeeded: number
+  clusteringRowsNeeded: number
+  hasAnySnapshot: boolean
+}
+
 export type ResponseEvaluationRecord = {
   id: string
   messageId: string
@@ -1504,6 +1513,8 @@ export type IntelligenceEvaluationsResponse = {
 
 export const intelligenceApi = {
   snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
+  learningProgress: () =>
+    fetcher<IntelligenceLearningProgress>(apiUrl("/api/admin/intelligence/learning-progress")),
   evaluations: (params?: { limit?: number; offset?: number; sinceDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))
