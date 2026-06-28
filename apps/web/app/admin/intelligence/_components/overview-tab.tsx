@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState } from "@/components/gravitre/empty-state"
 import type { IntelligenceSnapshot } from "@/lib/api"
 import { intelligenceApi } from "@/lib/api"
-import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots, BrainCircuit } from "@phosphor-icons/react"
+import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots, Brain } from "@phosphor-icons/react"
 import { formatTime, readNumber } from "./shared"
 
 type Row = Record<string, unknown>
@@ -41,7 +41,7 @@ export function OverviewTab({
               title="Still learning your organization"
               description={`Gravitre needs a bit more usage before it can surface real patterns. ${learningProgress.queryRows} of ${learningProgress.queryRowsNeeded} queries logged, ${learningProgress.workflowRows} of ${learningProgress.workflowRowsNeeded} workflow runs observed.`}
               iconSlot={
-                <BrainCircuit className="h-6 w-6 text-violet-500" weight="duotone" aria-hidden />
+                <Brain className="h-6 w-6 text-violet-500" weight="duotone" aria-hidden />
               }
               size="md"
             />
