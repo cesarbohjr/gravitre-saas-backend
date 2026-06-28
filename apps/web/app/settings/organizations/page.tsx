@@ -27,6 +27,8 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { organizationsApi } from "@/lib/api"
 import { Icon } from "@/lib/icons"
+import { EmptyState } from "@/components/gravitre/empty-state"
+import { Building2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Organization, User } from "@/types/api"
 
@@ -268,10 +270,10 @@ export default function ManageOrganizationsPage() {
           {organizations.map((org, index) => (
             <Card 
               key={org.id} 
-              className={`relative overflow-hidden transition-all hover:shadow-md ${
+              className={`relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-both ${
                 currentOrgId === org.id ? "ring-2 ring-primary/20 bg-primary/[0.02]" : ""
               }`}
-              style={{ animationDelay: `${index * 50}ms` }}
+              style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
             >
               {currentOrgId === org.id && (
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-primary to-transparent" />
@@ -405,11 +407,13 @@ export default function ManageOrganizationsPage() {
           ))}
         </div>
         {!isLoading && organizations.length === 0 && (
-          <Card className="mt-4">
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              You are not a member of any organizations yet.
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Building2}
+            title="No organizations yet"
+            description="Organizations keep your teams, clients, and projects separate — each with its own agents, workflows, and billing. Create your first one to get started."
+            action={{ label: "Create organization", onClick: () => setShowCreateDialog(true) }}
+            className="mt-4"
+          />
         )}
 
         {/* Help Section */}
