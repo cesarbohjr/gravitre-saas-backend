@@ -5,38 +5,39 @@ import { createSupabaseServerClient } from "@/lib/supabase-server"
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as const
 
 export async function POST(request: NextRequest) {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
+  const headers = new Headers(request.headers)
+  const incomingAuth = request.headers.get("authorization")
 
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: "Unauthorized", detail: userError?.message ?? "No session" },
-      { status: 401, headers: JSON_HEADERS },
-    )
-  }
+  // Client-side apiFetch sends Bearer tokens; honor them directly.
+  if (!incomingAuth?.startsWith("Bearer ")) {
+    const supabase = await createSupabaseServerClient()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized", detail: userError?.message ?? "No session" },
+        { status: 401, headers: JSON_HEADERS },
+      )
+    }
 
-  const accessToken = session?.access_token
-  const authHeader = request.headers.get("authorization")
-  const bearer =
-    authHeader?.startsWith("Bearer ") ? authHeader : accessToken ? `Bearer ${accessToken}` : null
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-  if (!bearer) {
-    return NextResponse.json(
-      { error: "Unauthorized", detail: "No session token" },
-      { status: 401, headers: JSON_HEADERS },
-    )
+    if (!session?.access_token) {
+      return NextResponse.json(
+        { error: "Unauthorized", detail: "No session token" },
+        { status: 401, headers: JSON_HEADERS },
+      )
+    }
+
+    headers.set("authorization", `Bearer ${session.access_token}`)
   }
 
   const body = await request.text()
-  const headers = new Headers(request.headers)
-  headers.set("authorization", bearer)
   if (body && !headers.has("content-type")) {
     headers.set("content-type", "application/json")
   }
