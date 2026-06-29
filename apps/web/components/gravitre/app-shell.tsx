@@ -260,10 +260,10 @@ export function AppShell({ children, title }: AppShellProps) {
             const urgent = days !== null && days <= 3
             const warning = days !== null && days <= 7
             const bannerClass = urgent
-              ? "border-red-300 bg-red-50 text-red-900 animate-pulse"
+              ? "border-destructive/30 bg-destructive/10 text-foreground"
               : warning
-                ? "border-amber-300 bg-amber-50 text-amber-900"
-                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                ? "border-warning/30 bg-warning/10 text-foreground"
+                : "border-success/30 bg-success/10 text-foreground"
             return (
             <div className={cn("border-b px-4 py-2 text-sm flex items-center justify-between", bannerClass)}>
               <span>
@@ -293,10 +293,10 @@ export function AppShell({ children, title }: AppShellProps) {
 
           {/* Upgrade Nudge for past_due users */}
           {requiresUpgrade && canAccessApp && billingStatus === "past_due" && (
-            <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 flex items-center justify-between">
+            <div className="border-b border-warning/30 bg-warning/10 px-4 py-2 text-sm text-foreground flex items-center justify-between">
               <span>
                 Your payment needs attention.{" "}
-                <Link href="/settings/billing" className="underline font-medium hover:text-amber-700">
+                <Link href="/settings/billing" className="underline font-medium hover:opacity-80">
                   Update billing
                 </Link>
                 {" "}to avoid interruption.
@@ -306,11 +306,11 @@ export function AppShell({ children, title }: AppShellProps) {
 
           {/* Welcome Banner (after bootstrap) */}
           {meData?.onboarding?.seeded && !welcomeDismissed && (
-            <div className="border-b border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-950">
+            <div className="border-b border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground">
               <div className="flex items-start justify-between gap-4 max-w-4xl mx-auto">
                 <div>
                   <p className="font-medium">Welcome to Gravitre!</p>
-                  <p className="text-emerald-800">
+                  <p className="text-muted-foreground">
                     We&apos;ve set up a sample AI team to show you what&apos;s possible.
                     These are demo agents — connect your real tools to activate them.
                   </p>
@@ -322,7 +322,7 @@ export function AppShell({ children, title }: AppShellProps) {
                   <button 
                     onClick={handleDismissWelcome} 
                     aria-label="Dismiss welcome banner"
-                    className="p-1 hover:bg-emerald-200 rounded transition-colors"
+                    className="p-1 hover:bg-success/20 rounded transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
