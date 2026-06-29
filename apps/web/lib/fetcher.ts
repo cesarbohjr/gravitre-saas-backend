@@ -113,6 +113,20 @@ export class ApiError extends Error {
   }
 }
 
+export class PlanRequiredApiError extends ApiError {
+  planDetail: PlanRequiredDetail
+
+  constructor(planDetail: PlanRequiredDetail) {
+    super(
+      planDetail.message?.trim() ||
+        "Your trial has ended. Upgrade to continue using Gravitre.",
+      402,
+    )
+    this.name = "PlanRequiredApiError"
+    this.planDetail = planDetail
+  }
+}
+
 export function formatUnknownError(error: unknown, fallback = "Something went wrong"): string {
   if (error instanceof Error && error.message.trim()) return error.message
   if (typeof error === "string" && error.trim()) return error
@@ -163,7 +177,20 @@ export async function fetcher<T>(url: string): Promise<T> {
     try {
       const payload = await response.json()
       detail = formatErrorPayload(payload) ?? detail
-    } catch {
+      if (
+        response.status === 402 &&
+        payload &&
+        typeof payload === "object" &&
+        (payload as PlanRequiredDetail).error === "plan_required"
+      ) {
+        const planDetail = payload as PlanRequiredDetail
+        emitPlanRequired(planDetail)
+        throw new PlanRequiredApiError(planDetail)
+      }
+    } catch (parseError) {
+      if (parseError instanceof PlanRequiredApiError) {
+        throw parseError
+      }
       // Keep default detail when body is not JSON.
     }
     throw new ApiError(detail, response.status)

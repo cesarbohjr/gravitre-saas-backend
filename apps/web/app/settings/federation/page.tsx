@@ -13,8 +13,6 @@ import {
   Clock,
   Inbox,
   Send,
-  AlertTriangle,
-  RefreshCw,
   Lock,
 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -40,6 +38,7 @@ import { ProposeGrantDialog } from "@/components/federation/propose-grant-dialog
 import { CreateDelegatedTaskDialog } from "@/components/federation/create-delegated-task-dialog"
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
 import { TrustBoundaryVisual } from "@/components/federation/trust-boundary-visual"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -266,20 +265,13 @@ function FederationContent() {
       </div>
 
       {loadError ? (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
-              Federation data failed to load
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground text-pretty">
-              {formatUnknownError(loadError, "Check backend connectivity and migrations.")}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => refreshAll()}>
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retry
-          </Button>
+        <div className="mb-6">
+          <WorkSectionErrorCard
+            title="Federation data failed to load"
+            message={formatUnknownError(loadError, "Check backend connectivity and migrations.")}
+            error={loadError}
+            onRetry={() => refreshAll()}
+          />
         </div>
       ) : null}
 

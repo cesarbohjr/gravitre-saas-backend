@@ -29,6 +29,7 @@ import {
   SwarmVerificationLabel,
 } from "@/components/agent-swarm/swarm-verification-label"
 import { SwarmConvergenceDiagram } from "@/components/agent-swarm/swarm-convergence-diagram"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { cn } from "@/lib/utils"
 
 const ACTIVE = new Set(["pending", "running", "aggregating"])
@@ -165,9 +166,12 @@ function AgentSwarmContent() {
         </div>
 
         {error ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-            Failed to load swarm runs.
-          </div>
+          <WorkSectionErrorCard
+            title="Couldn't load swarm runs"
+            message="We couldn't fetch your swarm history. Check your connection and try again."
+            error={error}
+            onRetry={() => void mutate()}
+          />
         ) : !orgId ? (
           <p className="text-sm text-muted-foreground px-1">Loading organization…</p>
         ) : (
