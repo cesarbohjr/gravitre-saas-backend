@@ -117,6 +117,67 @@ def _subscription_line_items(
     return items
 
 
+def _payment_intent_client_secret(payment_intent: Any) -> str | None:
+    """Resolve a PaymentIntent client_secret from an object or an id (pre-Basil API)."""
+    if isinstance(payment_intent, dict):
+        return payment_intent.get("client_secret")
+    if isinstance(payment_intent, str) and payment_intent:
+        try:
+            return stripe.PaymentIntent.retrieve(payment_intent).get("client_secret")
+        except stripe.error.StripeError:
+            return None
+    return None
+
+
+def _invoice_client_secret(latest_invoice: Any) -> str | None:
+    """Extract the Payment Element client_secret from a subscription's latest invoice.
+
+    Stripe's Basil API release (2025-03-31) removed ``Invoice.payment_intent`` and
+    exposes the secret via ``invoice.confirmation_secret`` instead. Older API
+    versions still use ``invoice.payment_intent``. This handles both, and falls
+    back to retrieving the invoice/PaymentIntent by id when the field was not
+    expanded — without ever creating a second subscription.
+    """
+    if not latest_invoice:
+        return None
+
+    invoice_id: str | None = None
+    if isinstance(latest_invoice, dict):
+        invoice_id = latest_invoice.get("id")
+        # Basil+: confirmation_secret carries the client_secret.
+        confirmation_secret = latest_invoice.get("confirmation_secret") or {}
+        client_secret = confirmation_secret.get("client_secret")
+        if client_secret:
+            return client_secret
+        # Pre-Basil: payment_intent (object or id).
+        client_secret = _payment_intent_client_secret(latest_invoice.get("payment_intent"))
+        if client_secret:
+            return client_secret
+    elif isinstance(latest_invoice, str):
+        invoice_id = latest_invoice
+
+    if not invoice_id:
+        return None
+
+    # The secret was not present on the expanded object — retrieve it explicitly.
+    try:
+        invoice = stripe.Invoice.retrieve(invoice_id, expand=["confirmation_secret"])
+        confirmation_secret = invoice.get("confirmation_secret") or {}
+        client_secret = confirmation_secret.get("client_secret")
+        if client_secret:
+            return client_secret
+        return _payment_intent_client_secret(invoice.get("payment_intent"))
+    except stripe.error.InvalidRequestError:
+        # confirmation_secret is not a valid expand on this (older) API version.
+        try:
+            invoice = stripe.Invoice.retrieve(invoice_id, expand=["payment_intent"])
+            return _payment_intent_client_secret(invoice.get("payment_intent"))
+        except stripe.error.StripeError:
+            return None
+    except stripe.error.StripeError:
+        return None
+
+
 def create_subscription_for_payment_element(
     settings: Settings,
     customer_id: str,
@@ -132,13 +193,13 @@ def create_subscription_for_payment_element(
         metadata=metadata,
         payment_behavior="default_incomplete",
         payment_settings={"save_default_payment_method": "on_subscription"},
-        expand=["latest_invoice.payment_intent"],
+        # Basil API (2025-03-31+) exposes the secret via confirmation_secret;
+        # _invoice_client_secret() falls back to payment_intent for older versions.
+        expand=["latest_invoice.confirmation_secret"],
     )
-    latest_invoice = subscription.get("latest_invoice") or {}
-    payment_intent = latest_invoice.get("payment_intent") or {}
-    client_secret = payment_intent.get("client_secret")
+    client_secret = _invoice_client_secret(subscription.get("latest_invoice"))
     if not client_secret:
-        raise ValueError("Stripe subscription missing payment_intent client_secret")
+        raise ValueError("Stripe subscription missing payment client_secret")
     return {
         "subscription_id": subscription.get("id"),
         "customer_id": customer_id,

@@ -102,3 +102,56 @@ def test_payment_element_subscription_includes_metered_and_metadata(monkeypatch)
     assert prices == ["price_node_flat", "price_node_metered"]
     assert result["client_secret"] == "pi_secret_test"
     assert result["subscription_id"] == "sub_123"
+
+
+def test_payment_element_uses_confirmation_secret_basil_api(monkeypatch):
+    """Basil API (2025-03-31+) removed Invoice.payment_intent; the client_secret
+    now lives on latest_invoice.confirmation_secret. Regression test for the
+    'Stripe subscription missing payment_intent client_secret' checkout failure."""
+    captured = {}
+
+    def fake_create(**kw):
+        captured.update(kw)
+        return {
+            "id": "sub_basil",
+            "status": "incomplete",
+            "latest_invoice": {
+                "id": "in_basil",
+                "confirmation_secret": {"client_secret": "cs_basil_secret", "type": "payment_intent"},
+            },
+        }
+
+    monkeypatch.setattr(stripe.Subscription, "create", fake_create)
+    result = create_subscription_for_payment_element(
+        _settings(metered=False),
+        "cus_1",
+        "price_node_flat",
+        {"org_id": "org_1", "plan_code": "node"},
+    )
+    # We request the modern confirmation_secret expand.
+    assert captured["expand"] == ["latest_invoice.confirmation_secret"]
+    assert result["client_secret"] == "cs_basil_secret"
+    assert result["subscription_id"] == "sub_basil"
+
+
+def test_payment_element_retrieves_invoice_when_secret_not_expanded(monkeypatch):
+    """When latest_invoice comes back as a bare id (secret not inlined), the
+    secret is fetched via a follow-up Invoice.retrieve — never a second create."""
+    def fake_create(**kw):
+        return {"id": "sub_lazy", "status": "incomplete", "latest_invoice": "in_lazy"}
+
+    def fake_invoice_retrieve(invoice_id, **kw):
+        assert invoice_id == "in_lazy"
+        assert kw.get("expand") == ["confirmation_secret"]
+        return {"id": "in_lazy", "confirmation_secret": {"client_secret": "cs_retrieved"}}
+
+    monkeypatch.setattr(stripe.Subscription, "create", fake_create)
+    monkeypatch.setattr(stripe.Invoice, "retrieve", fake_invoice_retrieve)
+    result = create_subscription_for_payment_element(
+        _settings(metered=False),
+        "cus_1",
+        "price_node_flat",
+        {"org_id": "org_1"},
+    )
+    assert result["client_secret"] == "cs_retrieved"
+    assert result["subscription_id"] == "sub_lazy"
