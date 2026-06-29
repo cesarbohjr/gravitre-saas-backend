@@ -175,6 +175,25 @@ function MarketplaceHome() {
   const publisherOnboarded = Boolean(publisherData?.publisher?.publicPublishingEnabled)
 
   const packs = data?.assets ?? []
+
+  // Translate raw backend error codes/messages into friendly, user-facing copy.
+  const marketplaceError = (() => {
+    const raw = error instanceof Error ? error.message : ""
+    const code = raw.trim().toLowerCase()
+    if (code.includes("plan_required") || code.includes("plan required")) {
+      return {
+        title: "Upgrade to access the marketplace",
+        description: "Your trial has ended. Choose a plan to browse and install department packs.",
+        action: "upgrade" as const,
+      }
+    }
+    return {
+      title: "Could not load the marketplace",
+      description: "We couldn't reach the marketplace right now. Please try again in a moment.",
+      action: "retry" as const,
+    }
+  })()
+
   const installedCount = packs.filter((p) => p.installed).length
   const readyCount = packs.filter((p) => !p.installed && p.connectorsReady).length
   const departments = categories?.departments ?? []
@@ -382,15 +401,19 @@ function MarketplaceHome() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden />
-                Could not load the marketplace
+                {marketplaceError.title}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {error instanceof Error ? error.message : "Check backend connectivity and try again."}
-              </p>
+              <p className="text-sm text-muted-foreground">{marketplaceError.description}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => void mutate()}>
-              Retry
-            </Button>
+            {marketplaceError.action === "upgrade" ? (
+              <Button size="sm" asChild className="shrink-0">
+                <Link href="/settings/billing">Upgrade</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => void mutate()} className="shrink-0">
+                Retry
+              </Button>
+            )}
           </div>
         ) : null}
 
@@ -422,9 +445,9 @@ function MarketplaceHome() {
           ) : packs.length === 0 ? (
             <div className="rounded-xl border border-border bg-card py-16 text-center">
               <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
-              <p className="text-sm font-medium text-foreground">No department packs available</p>
+              <p className="text-sm font-medium text-foreground">No department packs available yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Run backend/scripts/seed_marketplace.py after applying marketplace migrations.
+                Check back soon — new ready-to-install packs are added regularly.
               </p>
             </div>
           ) : (
