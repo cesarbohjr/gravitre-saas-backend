@@ -186,10 +186,10 @@ function getAgentIcon(agent: Agent): LucideIcon {
 }
 
 const statusConfig = {
-  active: { label: "Active", color: "text-emerald-400", dotColor: "bg-emerald-500", animate: true },
-  idle: { label: "Idle", color: "text-zinc-400", dotColor: "bg-zinc-500", animate: false },
-  processing: { label: "Processing", color: "text-blue-400", dotColor: "bg-blue-500", animate: true },
-  error: { label: "Error", color: "text-red-400", dotColor: "bg-red-500", animate: false },
+  active: { label: "Active", color: "text-success", dotColor: "bg-success", animate: true },
+  idle: { label: "Idle", color: "text-muted-foreground", dotColor: "bg-muted-foreground", animate: false },
+  processing: { label: "Processing", color: "text-info", dotColor: "bg-info", animate: true },
+  error: { label: "Error", color: "text-destructive", dotColor: "bg-destructive", animate: false },
 }
 
 function shouldShowSuccessRate(agent: Agent): boolean {
@@ -197,15 +197,15 @@ function shouldShowSuccessRate(agent: Agent): boolean {
 }
 
 function successRateColorClass(rate: number): string {
-  if (rate >= 90) return "text-emerald-400"
-  if (rate >= 70) return "text-amber-400"
-  return "text-red-400"
+  if (rate >= 90) return "text-success"
+  if (rate >= 70) return "text-warning"
+  return "text-destructive"
 }
 
 function successRateBadgeClass(rate: number): string {
-  if (rate >= 90) return "bg-emerald-500/10 text-emerald-400"
-  if (rate >= 70) return "bg-amber-500/10 text-amber-400"
-  return "bg-red-500/10 text-red-400"
+  if (rate >= 90) return "bg-success/10 text-success"
+  if (rate >= 70) return "bg-warning/10 text-warning"
+  return "bg-destructive/10 text-destructive"
 }
 
 function formatModelDisplayName(model: string, maxLength = 15): string {
@@ -290,15 +290,15 @@ function getAgentRecentTasks(agent: Agent): AgentRecentTask[] {
 function taskStatusBadgeClass(status: string): string {
   switch (status) {
     case "completed":
-      return "bg-emerald-500/10 text-emerald-400"
+      return "bg-success/10 text-success"
     case "running":
     case "processing":
-      return "bg-blue-500/10 text-blue-400"
+      return "bg-info/10 text-info"
     case "failed":
     case "error":
-      return "bg-red-500/10 text-red-400"
+      return "bg-destructive/10 text-destructive"
     case "paused":
-      return "bg-amber-500/10 text-amber-400"
+      return "bg-warning/10 text-warning"
     default:
       return "bg-secondary text-muted-foreground"
   }
@@ -686,19 +686,19 @@ function AgentDetailPanel({
         </h3>
         <div className={cn(
           "rounded-lg border p-4",
-          agent.status === "error" ? "border-red-500/30 bg-red-500/5" : "border-border bg-secondary/30"
+          agent.status === "error" ? "border-destructive/30 bg-destructive/5" : "border-border bg-secondary/30"
         )}>
           <div className="flex items-start gap-3">
             <div className={cn(
               "h-8 w-8 rounded-full flex items-center justify-center",
-              agent.status === "error" ? "bg-red-500/10" : "bg-blue-500/10"
+              agent.status === "error" ? "bg-destructive/10" : "bg-info/10"
             )}>
               {agent.status === "processing" ? (
-                <Activity className="h-4 w-4 text-blue-400 animate-pulse" />
+                <Activity className="h-4 w-4 text-info animate-pulse" />
               ) : agent.status === "error" ? (
-                <Shield className="h-4 w-4 text-red-400" />
+                <Shield className="h-4 w-4 text-destructive" />
               ) : (
-                <Zap className="h-4 w-4 text-blue-400" />
+                <Zap className="h-4 w-4 text-info" />
               )}
             </div>
             <div className="flex-1">
@@ -768,7 +768,7 @@ function AgentQuickPanel({
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
-      className="fixed bottom-0 left-0 right-0 z-[60] border-t border-emerald-500/20 bg-card/95 shadow-2xl backdrop-blur-xl"
+      className="fixed bottom-0 left-0 right-0 z-[60] border-t border-success/20 bg-card/95 shadow-2xl backdrop-blur-xl"
     >
       <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
       <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:px-6 sm:py-4">
@@ -795,11 +795,11 @@ function AgentQuickPanel({
                 className={cn(
                   "ml-auto hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex",
                   agent.status === "error"
-                    ? "border-red-500/30 bg-red-500/10 text-red-400"
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
                     : agent.status === "processing"
-                      ? "border-blue-500/30 bg-blue-500/10 text-blue-400"
+                      ? "border-info/30 bg-info/10 text-info"
                       : agent.status === "active"
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                        ? "border-success/30 bg-success/10 text-success"
                         : "border-border bg-secondary text-muted-foreground",
                 )}
               >
@@ -828,19 +828,19 @@ function AgentQuickPanel({
         >
           <div className="grid grid-cols-3 gap-3 sm:gap-6">
             <div className="text-center">
-              <div className="text-lg font-semibold text-emerald-400 sm:text-xl">
+              <div className="text-lg font-semibold text-success sm:text-xl">
                 <AnimatedCounter value={activeCount} duration={0.8} />
               </div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Active</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-blue-400 sm:text-xl">
+              <div className="text-lg font-semibold text-info sm:text-xl">
                 <AnimatedCounter value={totalTasks} duration={1} />
               </div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tasks Today</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-emerald-400 sm:text-xl">
+              <div className="text-lg font-semibold text-success sm:text-xl">
                 {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : `${teamHealth}%`}
               </div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Health</div>
@@ -854,7 +854,7 @@ function AgentQuickPanel({
                   key={task.id}
                   className="flex items-center gap-2 text-xs text-muted-foreground"
                 >
-                  <Zap className="h-3 w-3 shrink-0 text-blue-400/80" />
+                  <Zap className="h-3 w-3 shrink-0 text-info/80" />
                   <span className="min-w-0 flex-1 truncate text-foreground">{task.title}</span>
                   <span
                     className={cn(
@@ -1165,7 +1165,7 @@ export default function AgentsPage() {
                   label="Active"
                   value={<AnimatedCounter value={activeCount} duration={0.8} />}
                   variant="success"
-                  className={activeCount > 0 ? "border-emerald-500/30" : undefined}
+                  className={activeCount > 0 ? "border-success/30" : undefined}
                 />
               </motion.div>
               <StatCard
@@ -1326,7 +1326,7 @@ export default function AgentsPage() {
                   }
                   transition={{ duration: 0.5, ease: "easeOut" }}
                 >
-                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
+                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-success/20">
                     {activeCount > 0 ? (
                       <StatusBeacon status="active" size="sm" pulse />
                     ) : (
@@ -1342,8 +1342,8 @@ export default function AgentsPage() {
                 </motion.div>
                 <div className="w-px h-8 bg-border" />
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-blue-400" />
+                  <div className="h-8 w-8 rounded-full bg-info/20 flex items-center justify-center">
+                    <Zap className="h-4 w-4 text-info" />
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Tasks Today</div>
@@ -1355,7 +1355,7 @@ export default function AgentsPage() {
                   <ActivityIndicator value={teamHealth} size={36} color="emerald" />
                   <div>
                     <div className="text-xs text-muted-foreground">Health</div>
-                    <div className="text-sm font-semibold text-emerald-400">{teamHealth}%</div>
+                    <div className="text-sm font-semibold text-success">{teamHealth}%</div>
                   </div>
                 </div>
               </div>
