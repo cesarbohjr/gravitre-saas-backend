@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Check, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { billingApi } from "@/lib/api"
+import { billingApi, ApiRequestError } from "@/lib/api"
 import { SELECTABLE_PLANS, formatPlanPrice } from "@/lib/plans"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -38,7 +38,13 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
       toast.error("Could not start checkout. Please try again.")
     } catch (error) {
       console.error("[v0] Upgrade checkout failed:", error)
-      toast.error("Failed to start checkout")
+      const message =
+        error instanceof ApiRequestError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to start checkout"
+      toast.error(message || "Failed to start checkout")
     } finally {
       setIsProcessing(false)
     }

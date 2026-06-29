@@ -65,7 +65,7 @@ import {
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
-import { billingApi } from "@/lib/api"
+import { billingApi, ApiRequestError } from "@/lib/api"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 
@@ -287,7 +287,13 @@ export default function BillingPage() {
       }
     } catch (error) {
       console.error("[v0] Checkout failed:", error)
-      toast.error("Failed to start checkout")
+      const message =
+        error instanceof ApiRequestError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to start checkout"
+      toast.error(message || "Failed to start checkout")
     } finally {
       setIsProcessing(false)
       setUpgradeModalOpen(false)
