@@ -230,9 +230,10 @@ export default function OnboardingPage() {
   }
 
   const runFirstTask = async () => {
+    // Onboarding preview only — shows the task UX without executing real work
+    // or persisting anything. Real runs happen after tools are connected.
     setTaskRunning(true)
-    // Simulate task execution
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    await new Promise(resolve => setTimeout(resolve, 2000))
     setTaskRunning(false)
     setTaskComplete(true)
   }
@@ -572,11 +573,14 @@ export default function OnboardingPage() {
           {stepId === "task" && (
             <div className="space-y-8">
               <div className="space-y-3 text-center">
+                <span className="inline-flex items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  Interactive preview
+                </span>
                 <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-                  Let&apos;s run your first task
+                  See how a task works
                 </h1>
                 <p className="text-muted-foreground">
-                  Tell your AI assistant what to do
+                  Tell your AI assistant what to do — this is a quick preview, so nothing is saved yet.
                 </p>
               </div>
               
@@ -649,18 +653,18 @@ export default function OnboardingPage() {
                   )}
                 </div>
               ) : (
-                <div className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-6">
+                <div className="rounded-lg border border-success/50 bg-success/10 p-6">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success">
                       <Check className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">Task completed successfully</p>
+                      <p className="font-medium text-foreground">That&apos;s the idea!</p>
                       <p className="mt-1 text-sm text-muted-foreground">{taskInput}</p>
                       <div className="mt-4 rounded-lg border border-border bg-card p-4">
-                        <p className="text-sm text-muted-foreground">Result preview:</p>
+                        <p className="text-sm text-muted-foreground">Example of what you&apos;d get:</p>
                         <p className="mt-2 text-sm text-foreground">
-                          Generated a comprehensive summary including 12 key metrics, 3 action items, and performance trends. The full report has been saved to your workspace.
+                          A summary with key metrics, action items, and trends — delivered to your workspace. Connect your tools to run this for real on your own data.
                         </p>
                       </div>
                     </div>
@@ -682,27 +686,28 @@ export default function OnboardingPage() {
               />
               <div className="space-y-3">
                 <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-                  You did it!
+                  You&apos;re all set!
                 </h1>
                 <p className="text-lg text-muted-foreground">
-                  You&apos;ve completed your first AI-powered task with Gravitre.
+                  You&apos;ve seen how Gravitre works. Connect your tools to run tasks for real.
                 </p>
               </div>
-              <div className="mx-auto max-w-md rounded-lg border border-border bg-card p-6">
-                <div className="grid grid-cols-3 gap-6">
-                  <div>
-                    <p className="text-3xl font-semibold text-emerald-500">1</p>
-                    <p className="text-sm text-muted-foreground">Task completed</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold text-foreground">3s</p>
-                    <p className="text-sm text-muted-foreground">Time saved</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-semibold text-foreground">1</p>
-                    <p className="text-sm text-muted-foreground">AI agent active</p>
-                  </div>
-                </div>
+              <div className="mx-auto max-w-md rounded-lg border border-border bg-card p-6 text-left">
+                <p className="text-sm font-medium text-foreground">Here&apos;s what you set up</p>
+                <ul className="mt-3 space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 shrink-0 text-success" />
+                    Your workspace is ready to go
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 shrink-0 text-success" />
+                    You&apos;ve seen how to assign a task
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 shrink-0 text-success" />
+                    Next: connect your tools to run tasks for real
+                  </li>
+                </ul>
               </div>
             </div>
           )}
