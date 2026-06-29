@@ -39,10 +39,22 @@ def _clear_overrides():
 
 
 def _authenticate(org_id: str = "org-1") -> None:
+    from app.middleware.entitlements import TIER_FEATURES, TIER_LIMITS, get_entitlements_dependency
+
     app.dependency_overrides[get_current_user] = lambda: {"user_id": "user-1", "email": "u@example.com"}
     app.dependency_overrides[get_org_context] = lambda: org_id
     app.dependency_overrides[get_settings] = lambda: _settings()
     app.dependency_overrides[get_environment_context] = lambda: "default"
+    app.dependency_overrides[get_entitlements_dependency] = lambda: {
+        "tier": "control",
+        "status": "active",
+        "seat_count": 1,
+        "lite_seats": 0,
+        "limits": dict(TIER_LIMITS["control"]),
+        "features": dict(TIER_FEATURES["control"]),
+        "addons": [],
+        "usage": {},
+    }
 
 
 def _mock_meson_service() -> MesonService:

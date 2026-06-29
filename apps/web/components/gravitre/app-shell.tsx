@@ -18,6 +18,14 @@ import { onboardingApi } from "@/lib/api"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
+import { UpgradeModal } from "@/components/billing/upgrade-modal"
+import {
+  PLAN_REQUIRED_EVENT,
+  readStoredPlanRequired,
+  clearStoredPlanRequired,
+  type PlanRequiredDetail,
+} from "@/lib/billing-plan-required"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -33,6 +41,8 @@ interface BillingStatus {
   trialEndsAt?: string | null
   currentPeriodEnd?: string | null
   cancelAtPeriodEnd?: boolean
+  trialExpired?: boolean
+  billingState?: string
 }
 
 interface MeData {
@@ -72,6 +82,8 @@ export function AppShell({ children, title }: AppShellProps) {
       localStorage.getItem("gravitre-welcome-dismissed") === "true",
   )
   const [bootstrapAttempted, setBootstrapAttempted] = useState(false)
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [planRequired, setPlanRequired] = useState<PlanRequiredDetail | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading } = useAuth()
@@ -103,13 +115,38 @@ export function AppShell({ children, title }: AppShellProps) {
 
   const billingAccessDenied =
     billingStatusData !== undefined && billingStatusData.canAccessApp === false
+  const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
+  const trialEndsAt = billingStatusData?.trialEndsAt
+  const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
+  const trialExpired =
+    billingStatusData?.trialExpired === true ||
+    billingStatusData?.billingState === "trial_expired" ||
+    billingStatusData?.upgradeReason === "trial_expired" ||
+    planRequired?.subscription_status === "trial_expired"
+  const billingHardBlock =
+    billingAccessDenied && !trialExpired
   const canAccessApp =
     billingStatusData?.canAccessApp ??
     meData?.billing?.can_access_app ??
     !billingAccessDenied
-  const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
-  const trialEndsAt = billingStatusData?.trialEndsAt
-  const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
+
+  useEffect(() => {
+    setPlanRequired(readStoredPlanRequired())
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<PlanRequiredDetail>).detail
+      setPlanRequired(detail)
+      setUpgradeModalOpen(true)
+    }
+    window.addEventListener(PLAN_REQUIRED_EVENT, handler)
+    return () => window.removeEventListener(PLAN_REQUIRED_EVENT, handler)
+  }, [])
+
+  useEffect(() => {
+    if (canAccessApp && billingStatusData?.canAccessApp !== false) {
+      clearStoredPlanRequired()
+      setPlanRequired(null)
+    }
+  }, [canAccessApp, billingStatusData?.canAccessApp])
 
   // Auto-bootstrap for OAuth users who skip /get-started
   useEffect(() => {
@@ -181,8 +218,15 @@ export function AppShell({ children, title }: AppShellProps) {
     )
   }
 
-  // Billing gate: only block when the API explicitly denies access.
-  if (billingAccessDenied && !billingError && !pathname.startsWith("/settings/billing")) {
+  // Hard redirect only for non-trial blocks (e.g. canceled). Expired trials stay in
+  // the product shell so the non-dismissible banner and 402 upgrade modal can surface.
+  useEffect(() => {
+    if (!billingHardBlock || billingError) return
+    if (pathname.startsWith("/settings/billing") || pathname.startsWith("/pricing")) return
+    router.replace("/settings/billing?reason=subscription_required")
+  }, [billingHardBlock, billingError, pathname, router])
+
+  if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -201,9 +245,17 @@ export function AppShell({ children, title }: AppShellProps) {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={() => setSidebarOpen(true)} />
+
+          {(trialExpired || planRequired?.error === "plan_required") && (
+            <TrialExpiredBanner
+              message={planRequired?.message}
+              upgradeUrl={planRequired?.upgrade_url ?? "/settings/billing"}
+              onUpgradeClick={() => setUpgradeModalOpen(true)}
+            />
+          )}
           
-          {/* Trial Banner */}
-          {billingStatus === "trialing" && !trialBannerDismissed && (() => {
+          {/* Trial Banner (active trial only — not after expiry) */}
+          {billingStatus === "trialing" && !trialExpired && !trialBannerDismissed && (() => {
             const days = trialEndsAt ? daysLeft(trialEndsAt) : null
             const urgent = days !== null && days <= 3
             const warning = days !== null && days <= 7
@@ -311,6 +363,11 @@ export function AppShell({ children, title }: AppShellProps) {
           console.log("Goal plan:", plan)
           router.push("/workflows/new/builder")
         }}
+      />
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        subscriptionStatus={planRequired?.subscription_status ?? billingStatusData?.billingState}
       />
     </NotificationProvider>
   )

@@ -349,7 +349,6 @@ async def get_billing_status(
     run_warn = usage_warning(runs_used, runs_included)
     billing_status = normalize_billing_status(billing.get("billing_status"))
     plan_code = (billing.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower()
-    access = compute_app_access(billing_status)
     trial_ends_at = billing.get("current_period_end")
     if billing_status == "trialing" and not trial_ends_at:
         org_row = (
@@ -366,6 +365,28 @@ async def get_billing_status(
             billing_settings = org_settings.get("billing") if isinstance(org_settings, dict) else {}
             if isinstance(billing_settings, dict):
                 trial_ends_at = billing_settings.get("trial_ends_at")
+    from app.billing.entitlement_service import get_org_billing_state
+
+    billing_state = get_org_billing_state(client, org_id)
+    if billing_state["is_blocked"]:
+        reason = (
+            "trial_expired"
+            if billing_state["status"] == "trial_expired"
+            else "payment_past_due"
+            if billing_state["status"] == "past_due"
+            else "subscription_cancelled"
+        )
+        access = {
+            "can_access_app": False,
+            "requires_upgrade": True,
+            "upgrade_reason": reason,
+        }
+    else:
+        access = compute_app_access(
+            billing_status,
+            trial_ends_at=trial_ends_at,
+            plan_code=plan_code,
+        )
     return {
         "plan": plan,
         "basePlan": base_plan,
@@ -377,6 +398,9 @@ async def get_billing_status(
         "requiresUpgrade": access["requires_upgrade"],
         "upgradeReason": access["upgrade_reason"],
         "trialEndsAt": trial_ends_at,
+        "billingState": billing_state.get("status"),
+        "trialExpired": billing_state.get("status") == "trial_expired",
+        "daysRemainingInTrial": billing_state.get("days_remaining_in_trial"),
         "currentPeriodEnd": billing.get("current_period_end"),
         "cancelAtPeriodEnd": billing.get("cancel_at_period_end") or False,
         "usage": {

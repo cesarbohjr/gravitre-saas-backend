@@ -11,6 +11,7 @@ from app.auth.dependencies import get_current_user, get_org_context, require_adm
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
 from app.core.logging import get_logger
+from app.middleware.entitlements import require_feature
 from app.services.b2b_handoff_service import (
     B2BHandoffError,
     accept_cross_org_handoff,
@@ -47,7 +48,11 @@ from app.services.federated_connector_service import (
     revoke_federated_grant,
 )
 
-router = APIRouter(prefix="/api/federation", tags=["federation"])
+router = APIRouter(
+    prefix="/api/federation",
+    tags=["federation"],
+    dependencies=[Depends(require_feature("api_full_access"))],
+)
 logger = get_logger(__name__)
 
 

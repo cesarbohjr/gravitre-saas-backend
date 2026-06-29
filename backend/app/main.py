@@ -233,6 +233,8 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(SettingsNotConfiguredError, settings_not_configured_handler)
 
 # Dev-safe CORS: single-origin proxy preferred (see docs). Bearer token model: credentials=false.
+from app.middleware.billing_gate import billing_access_gate_middleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -333,6 +335,11 @@ async def request_tracing(request: Request, call_next):
     if "x-request-id" not in response.headers:
         response.headers["x-request-id"] = request_id
     return response
+
+
+@app.middleware("http")
+async def billing_access_gate(request: Request, call_next):
+    return await billing_access_gate_middleware(request, call_next)
 
 
 app.include_router(health.router)

@@ -1,0 +1,5042 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/attach-all-metered-prices",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/attach-metered-price",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/budget-enforcement",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/sync-usage",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/evaluations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/learning-progress",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/outcomes",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/relationships",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/snapshot",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/knowledge/connectors/{connector_id}/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/knowledge/sync-jobs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/memory-promotion/audit",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/memory-promotion/candidates",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/memory-promotion/candidates/{candidate_id}/approve",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/memory-promotion/candidates/{candidate_id}/reject",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/memory-promotion/memories/{memory_id}/rollback",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/memory-promotion/recent-auto-promotions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/optimization-suggestions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/detect",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/apply",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/apply-preview",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/dismiss",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/mark-applied",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-council/start",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-interrupts",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-jobs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-jobs/{job_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/approve",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/cancel",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/pause",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/reject",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/retry",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-swarm",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-swarm/start",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-swarm/{swarm_run_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-swarm/{swarm_run_id}/aggregate",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-swarm/{swarm_run_id}/cancel",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/suggest-icon",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agents/{agent_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/agents/{agent_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/agents/{agent_id}/auto-execute",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/memories",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/memories",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/memories/search",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agents/{agent_id}/memories/{memory_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/memories/{memory_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/agents/{agent_id}/memories/{memory_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/run-budgets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/agents/{agent_id}/run-budgets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/start",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/stop",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/tool-permissions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/agents/{agent_id}/tool-permissions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agents/{agent_id}/tool-permissions/{permission_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/versions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/agents/{agent_id}/versions/{version_id}/activate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/approvals",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "GET",
+    "path": "/api/approvals/pending",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/api/approvals/{run_id}/approve",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/api/approvals/{run_id}/reject",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/api/assistant/chat",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/assistant/daily-briefing",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/assistant/org-context",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/assistant/preferences",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/assistant/preferences",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit/export",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit/summary",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit/{log_id}",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/avatar",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/change-password",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/me",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/auth/me",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sessions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sessions/revoke-all",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/auth/sessions/{session_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sso/callback",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "public SSO flow"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/callback",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "public SSO flow"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/auth/sso/config",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sso/config",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/config",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/config/disable",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/config/enable",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/init",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "public SSO flow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sso/metadata",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "public SSO flow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/cancel",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/checkout",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/checkout/public",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/health",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/invoices",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/invoices/{invoice_id}/pdf",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/plans",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/portal",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/reactivate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/seats",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/status",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/webhook",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/catalog/actions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/catalog/actions/{vendor}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/catalog/simulation-coverage",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/oauth/{provider}/callback",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "advanced_connectors plan feature"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/oauth/{provider}/start",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "advanced_connectors plan feature"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/oauth/{provider}/status",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "advanced_connectors plan feature"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/connectors/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/connectors/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/confluence-sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/confluence-sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/confluence-sync/run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/confluence-sync/search",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/delete",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/docs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/google-analytics/properties",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/google-analytics/property",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/hubspot-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/hubspot-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/notion-sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/notion-sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/notion-sync/run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/notion-sync/search",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/pagerduty-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/pagerduty-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/salesforce-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/salesforce-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/secrets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/segment-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/segment-triggers",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/test",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/workday-sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/workday-sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/workday-sync/run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/workday-sync/search",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/conversations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/conversations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/conversations/bulk-delete",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/conversations/{conversation_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/conversations/{conversation_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/conversations/{conversation_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/conversations/{conversation_id}/archive",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/conversations/{conversation_id}/messages",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/decisions/evaluate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/autonomous-run-budgets",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/autonomous-run-budgets",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/branding",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/branding",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/branding/domain-instructions",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/branding/verify-domain",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/compliance/soc2-export",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/connectors/{connector_id}/phi",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "advanced_connectors plan feature"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/cost-attribution",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/data-region",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/data-region",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/execution-region",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/hipaa",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/hipaa",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/hipaa/accept-baa",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/integration-health",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/integration-health/history",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-health/snapshot",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/integration-suggestions",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-suggestions/scan",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-suggestions/{suggestion_id}/apply",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-suggestions/{suggestion_id}/dismiss",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/siem",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/siem",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/siem/test",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/transparency-logs",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/transparency-logs/export",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/workforce-analytics",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "audit_logs plan feature on select routes"
+  },
+  {
+    "method": "GET",
+    "path": "/api/entitlements",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/environments",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/environments",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/environments/{env_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/execution/workflows/execute",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/connector-grants",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/connector-grants/{grant_id}",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants/{grant_id}/accept",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants/{grant_id}/reject",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants/{grant_id}/revoke",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/delegated-tasks",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/delegated-tasks/{task_id}",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/accept",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/cancel",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/complete",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/fail",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/reject",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/start",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/handoffs",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/handoffs/{handoff_id}",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs/{handoff_id}/accept",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs/{handoff_id}/complete",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs/{handoff_id}/reject",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/partnerships",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships/{partnership_id}/accept",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships/{partnership_id}/reject",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships/{partnership_id}/revoke",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_feature",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_feature:api_full_access)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/goals/{goal_id}/generate-plan",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/integrations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/integrations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/integrations/{integration_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/integrations/{integration_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/integrations/{integration_id}/secrets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/integrations/{integration_id}/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/billing/budget-enforcement",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/billing/sync-usage",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/knowledge/sync-due",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/company-intelligence-run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/connector-health",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/memory-expiration-run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/memory-promotion-run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/rollup-daily",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/platform/cs-workspace/snapshots/backfill-due",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/workflows/schedules/dispatch-due",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/knowledge/connectors/{connector_id}/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/knowledge/sync-jobs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/lite/assign",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/deliverables",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/deliverables/{deliverable_id}/download",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/home",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/results",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/tasks",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/tasks/{task_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/lite/tasks/{task_id}/cancel",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/workflows",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/analytics/roi",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/analytics/summary",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/marketplace/assets/{asset_ref}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/marketplace/assets/{asset_ref}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/approve",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/checkout",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/clone",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/entitlement",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/install",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/install-check",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/marketplace/assets/{asset_ref}/pricing",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/reject",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/reviews",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/marketplace/assets/{asset_ref}/reviews/mine",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/marketplace/assets/{asset_ref}/reviews/mine",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/rollback",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/marketplace/assets/{asset_ref}/save",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/save",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/submit-for-public-review",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/submit-for-review",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/uninstall",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/versions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/billing/connect/onboard",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/billing/connect/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/billing/pricing",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/marketplace/billing/pricing/{registry_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/billing/status",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/categories",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/federated-connectors",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/installs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/org/assets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/approve",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/featured",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/link-registry",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/pricing",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/reject",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/review",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/verified",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/platform/catalog",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/registry/{registry_id}/sync-asset",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/platform/review-queue",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/private-bundles",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/private-bundles",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/private-bundles/{bundle_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/private-bundles/{bundle_id}/activate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/private-bundles/{bundle_id}/disable",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/publisher/analytics",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/publisher/me",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/publisher/onboard",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/publisher/payouts/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/registry",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/role-packs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/role-packs/{pack_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/role-packs/{pack_id}/install",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/sandbox",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/sandbox",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/sandbox/demo",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/sandbox/reset",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/saves",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/submissions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/submissions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/submissions/mine",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/submissions/{submission_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/submissions/{submission_id}/rescan",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/submissions/{submission_id}/review",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/alerts",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/deploy",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/feedback",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/feedback/metrics",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/insights",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/interpret",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/optimizations/{workflow_id}",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/preferences",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/suggestions",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:control)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/connectors",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/export",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/insights",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/integrations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/overview",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/rag",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/runs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/timeseries",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/weekly-throughput",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/workflows",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ml/models",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/models",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ml/models/{model_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/models/{model_id}/deploy",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/models/{model_id}/predict",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/train/start",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "router_require_tier",
+    "status": "correctly_guarded",
+    "notes": "router Depends(router_require_tier:command)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications/preferences",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/notifications/preferences",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/read-all",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/notifications/{notification_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/{notification_id}/archive",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/{notification_id}/read",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/onboarding",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/bootstrap",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/complete-step",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/reset",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/skip",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operator/action-plan",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/connector/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/run/{run_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/source/{source_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/workflow/{workflow_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/prompts",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/sessions/{session_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/operators/{operator_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/action-plans",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}/links",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/links",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/operators/{operator_id}/links/{link_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}/sessions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/sessions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}/versions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/versions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/versions/{version_id}/activate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/optimization/analyze",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/org/members",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/org/members/invite",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/org/members/{member_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/org/members/{member_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/organizations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/organizations/{org_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/organizations/{org_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/organizations/{org_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/organizations/{org_id}/members",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations/{org_id}/members/invite",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/organizations/{org_id}/members/{user_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/organizations/{org_id}/members/{user_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations/{org_id}/switch",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations/{org_id}/transfer",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/cs-workspace/alerts",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "platform admin auth, not org tier"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/snapshots/backfill",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "platform admin auth, not org tier"
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/cs-workspace/tenants",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "platform admin auth, not org tier"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/tenants/{org_id}/assign",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "platform admin auth, not org tier"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/tenants/{org_id}/escalate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "platform admin auth, not org tier"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/tenants/{org_id}/snooze",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "platform admin auth, not org tier"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag-enhanced/ingest",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag-enhanced/query",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/documents",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/documents/{doc_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/embedding-status",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/ingest",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/ingest/file",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/ingest/{ingest_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/query",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/retrieve",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/sources",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/sources",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/sources/{source_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/rag/sources/{source_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/runs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/runs/{run_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/cancel",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/compensate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/pause",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/resume-paused",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/retry",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/rollback",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/steps/{step_id}/retry",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/samples/stripe-connect/webhooks/thin",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/schedules",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/search",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/search/history",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/search/history",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/search/history/{history_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sessions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions/{session_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions/{session_id}/context",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sessions/{session_id}/execute",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions/{session_id}/execution/{execution_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sessions/{session_id}/task",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/settings",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/billing-usage",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/settings/lite-seats",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/lite-seats",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/settings/lite-seats",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/settings/lite-seats",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/meson-addons",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/settings/meson-addons",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/model-policy",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/settings/model-policy",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/slack/commands/interrupt",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/connectors",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/test",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/types",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/sources/{source_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/{source_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/sources/{source_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/{source_id}/query",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/{source_id}/schema",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/{source_id}/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/{source_id}/sync-history",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/{source_id}/test",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-agent",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-ai",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-rag",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/agents/{agent_id}/fine-tuned-model",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/training/agents/{agent_id}/fine-tuned-model",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/datasets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/datasets",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/training/datasets/{dataset_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/datasets/{dataset_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/datasets/{dataset_id}/records",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/fine-tuned-models",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/instructions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/instructions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/training/instructions/{instruction_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/instructions/{instruction_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/training/instructions/{instruction_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/jobs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/jobs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/jobs/{job_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/jobs/{job_id}/cancel",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/workflow-agents",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/verticals/healthcare",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/verticals/healthcare/install",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/verticals/legal",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/verticals/legal/install",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/verticals/real-estate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/verticals/real-estate/install",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/hubspot/inbound",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/knowledge/{connector_id}/sync",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/pagerduty/inbound/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/salesforce/inbound/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/segment/inbound/{connector_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/stripe",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/triggers/{workflow_id}",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: custom_webhooks"
+  },
+  {
+    "method": "GET",
+    "path": "/api/webhooks/triggers/{workflow_id}/config",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: custom_webhooks"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/approvals/pending",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/connector-fixtures",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/connector-fixtures",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/connector-fixtures/{fixture_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/digital-twin",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/dry-run",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/edges/{edge_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/execute",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/failure-predictions",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/failure-predictions/scan",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/failure-predictions/{alert_id}/dismiss",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/from-goal",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/nodes/{node_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/nodes/{node_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/runs",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/runs/{run_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/approve",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/compensate",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/reject",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/resume",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/rollback",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/schedules/dispatch",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/schedules/{schedule_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/schedules/{schedule_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/stats",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/{workflow_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/active",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/chat",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/explain-step",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/improve-step",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/suggest-next",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/builder",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/workflows/{workflow_id}/builder",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/connections",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/{workflow_id}/connections/{connection_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/edges",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/edges",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/failure-predictions/scan",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/nodes",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/{workflow_id}/nodes",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/nodes",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/{workflow_id}/nodes/{node_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/schedules",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/schedules",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/{workflow_id}/schedules/{schedule_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/{workflow_id}/schedules/{schedule_id}",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/schema-sync/from-contract",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/stage",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/versions",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/versions",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/versions/{version_id}/activate",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/versions/{version_id}/promote",
+    "tier_required": "control",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "workflows require_feature(plan) for versioning/approvals"
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "none",
+    "status": "correctly_unguarded",
+    "notes": "infrastructure or inbound webhook"
+  },
+  {
+    "method": "GET",
+    "path": "/redoc",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/checkout",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/products",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/products/new",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/seller",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/seller/create",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/seller/onboard",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/store",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/success",
+    "tier_required": "none",
+    "guard_present": false,
+    "guard_location": "billing_gate",
+    "status": "correctly_unguarded",
+    "notes": "product route; subscription/trial enforced by billing_access_gate_middleware"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Groups",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "POST",
+    "path": "/scim/v2/Groups",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "DELETE",
+    "path": "/scim/v2/Groups/{group_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Groups/{group_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "PATCH",
+    "path": "/scim/v2/Groups/{group_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "PUT",
+    "path": "/scim/v2/Groups/{group_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Users",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "POST",
+    "path": "/scim/v2/Users",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "DELETE",
+    "path": "/scim/v2/Users/{user_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Users/{user_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "PATCH",
+    "path": "/scim/v2/Users/{user_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  },
+  {
+    "method": "PUT",
+    "path": "/scim/v2/Users/{user_id}",
+    "tier_required": "command",
+    "guard_present": true,
+    "guard_location": "inline",
+    "status": "correctly_guarded",
+    "notes": "inline feature check: sso_saml"
+  }
+]

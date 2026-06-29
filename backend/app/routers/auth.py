@@ -92,12 +92,27 @@ def _load_billing_summary(client, org_id: str | None) -> dict:
         "billing_status": "trialing",
     }
     status = normalize_billing_status(billing.get("billing_status"))
-    access = compute_app_access(status)
+    trial_ends_at = billing.get("current_period_end")
+    from app.billing.entitlement_service import get_org_billing_state
+
+    billing_state = get_org_billing_state(client, org_id)
+    if billing_state["is_blocked"]:
+        access = {
+            "can_access_app": False,
+            "requires_upgrade": True,
+            "upgrade_reason": "trial_expired"
+            if billing_state["status"] == "trial_expired"
+            else "payment_past_due"
+            if billing_state["status"] == "past_due"
+            else "subscription_cancelled",
+        }
+    else:
+        access = compute_app_access(status, trial_ends_at=trial_ends_at)
     return {
-        "status": status,
+        "status": billing_state.get("status") or status,
         "plan_code": (billing.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower(),
         "can_access_app": access["can_access_app"],
-        "trial_ends_at": billing.get("current_period_end"),
+        "trial_ends_at": trial_ends_at or billing_state.get("trial_ends_at"),
     }
 
 

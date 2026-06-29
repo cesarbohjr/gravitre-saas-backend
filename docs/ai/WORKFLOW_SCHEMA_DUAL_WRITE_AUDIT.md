@@ -1,6 +1,6 @@
 # Workflow schema dual-write audit (STA-271 Phase C)
 
-**Status:** Inventory complete — pending joint prod + migration sign-off  
+**Status:** Inventory complete — canonical decision in `docs/platform-reconciliation/CANONICAL_SCHEMA_DECISION.md` (STA-272)  
 **Date:** 2026-06-21  
 **Spec:** `docs/ai/UNIVERSAL_INTELLIGENCE_LAYER_SPEC.md` L206 / Phase C  
 **Contract reference:** `docs/SUPABASE_SCHEMA_CONTRACT.md` L7–18 (canonical), L63–68 (legacy)

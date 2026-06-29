@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-06-29T06:26:13.432018+00:00",
+  "test_org_id": "a1a0dc57-9612-405e-b16d-cf94cedd05f9",
+  "test_user_id": "10617b2d-2c2e-49cc-b44a-8340fbfda23d",
+  "test_email": "trial-expiry-test+1782714367@gravitre.app",
+  "expiry": {
+    "expired_iso": "2026-06-28T06:26:09+00:00",
+    "org_billing": {
+      "billing_status": "trialing",
+      "current_period_end": "2026-06-28T06:26:09+00:00"
+    },
+    "settings_trial_ends_at": "2026-06-28T06:26:09+00:00"
+  },
+  "a2_gated_endpoint": {
+    "pass": true,
+    "status": 402,
+    "body": {
+      "error": "plan_required",
+      "subscription_status": "trial_expired",
+      "message": "Your 7-day trial has ended. Upgrade to continue using Gravitre.",
+      "upgrade_url": "/settings/billing"
+    }
+  },
+  "a3_allowlisted": {
+    "pass": true,
+    "billing_status": 200,
+    "settings_status": 200,
+    "trialExpired": true
+  },
+  "conclusion": "PASS"
+}

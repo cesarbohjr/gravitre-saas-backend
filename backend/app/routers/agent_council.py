@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_org_context
+from app.middleware.entitlements import require_tier
 from app.services.council_service import (
     AgentCouncilService,
     CouncilSession,
@@ -14,7 +15,11 @@ from app.services.council_service import (
     get_council_service,
 )
 
-router = APIRouter(prefix="/api/agent-council", tags=["agent-council"])
+router = APIRouter(
+    prefix="/api/agent-council",
+    tags=["agent-council"],
+    dependencies=[Depends(require_tier("command"))],
+)
 
 
 class CouncilStartRequest(BaseModel):

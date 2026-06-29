@@ -93,6 +93,16 @@ current external information you cannot access —
 do not fabricate or guess at external facts.
 """
 
+NEW_ORG_FRAMING = """
+If a user asks what you've learned about their
+organization and no Learned Company Intelligence
+section appears above, say plainly that you haven't
+yet observed enough usage to identify patterns, and
+that this builds automatically as the organization
+uses Gravitre — do not fabricate or imply learned
+patterns that don't exist.
+"""
+
 RULES_SECTION = """
 ## Rules
 - Cite sources when drawing from specific internal documents
@@ -528,6 +538,8 @@ class AgentIntelligence:
             sections.append(handoff_section.strip())
         if memory_section and memory_section.strip():
             sections.append(memory_section.strip())
+        if not (company_intelligence_section and company_intelligence_section.strip()):
+            sections.extend(["", NEW_ORG_FRAMING.strip()])
         sections.extend(["", RESEARCH_POLICY.strip(), "", RULES_SECTION.strip()])
         return "\n".join(section for section in sections if section is not None)
 

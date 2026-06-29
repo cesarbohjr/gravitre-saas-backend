@@ -10,6 +10,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
+from app.middleware.entitlements import require_tier
 from app.services.council_service import DecisionMethod
 from app.services.swarm_coordinator_service import (
     SwarmCoordinatorError,
@@ -21,7 +22,11 @@ from app.services.swarm_coordinator_service import (
     start_swarm,
 )
 
-router = APIRouter(prefix="/api/agent-swarm", tags=["agent-swarm"])
+router = APIRouter(
+    prefix="/api/agent-swarm",
+    tags=["agent-swarm"],
+    dependencies=[Depends(require_tier("command"))],
+)
 
 
 class SwarmStartRequest(BaseModel):

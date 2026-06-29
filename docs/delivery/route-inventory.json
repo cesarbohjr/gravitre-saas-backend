@@ -1,0 +1,2802 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "name": "root"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/attach-all-metered-prices",
+    "name": "attach_all_metered_prices_admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/attach-metered-price",
+    "name": "attach_metered_price_admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/budget-enforcement",
+    "name": "set_budget_enforcement"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/billing/sync-usage",
+    "name": "sync_usage_admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/evaluations",
+    "name": "get_response_evaluations"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/learning-progress",
+    "name": "get_learning_progress"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/outcomes",
+    "name": "get_outcome_summaries"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/relationships",
+    "name": "get_entity_relationships"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/intelligence/snapshot",
+    "name": "get_intelligence_snapshot"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/knowledge/connectors/{connector_id}/sync",
+    "name": "admin_trigger_connector_sync"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/knowledge/sync-jobs",
+    "name": "admin_list_sync_jobs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/memory-promotion/audit",
+    "name": "list_promotion_audit"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/memory-promotion/candidates",
+    "name": "list_promotion_candidates"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/memory-promotion/candidates/{candidate_id}/approve",
+    "name": "approve_promotion_candidate"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/memory-promotion/candidates/{candidate_id}/reject",
+    "name": "reject_promotion_candidate"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/memory-promotion/memories/{memory_id}/rollback",
+    "name": "rollback_promoted_memory"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/memory-promotion/recent-auto-promotions",
+    "name": "list_recent_auto_promotions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/optimization-suggestions",
+    "name": "list_optimization_suggestions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/detect",
+    "name": "detect_optimization_suggestions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/apply",
+    "name": "apply_optimization_suggestion"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/apply-preview",
+    "name": "preview_optimization_suggestion_apply"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/dismiss",
+    "name": "dismiss_optimization_suggestion"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/optimization-suggestions/{suggestion_id}/mark-applied",
+    "name": "mark_optimization_suggestion_applied"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-council/start",
+    "name": "start_council"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-interrupts",
+    "name": "create_interrupt"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-jobs",
+    "name": "list_jobs_endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs",
+    "name": "enqueue_job"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-jobs/{job_id}",
+    "name": "get_job_status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/approve",
+    "name": "approve_job_endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/cancel",
+    "name": "cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/pause",
+    "name": "pause"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/reject",
+    "name": "reject_job_endpoint"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-jobs/{job_id}/retry",
+    "name": "retry"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-swarm",
+    "name": "get_swarm_runs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-swarm/start",
+    "name": "post_swarm_start"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent-swarm/{swarm_run_id}",
+    "name": "get_swarm_run_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-swarm/{swarm_run_id}/aggregate",
+    "name": "post_swarm_aggregate"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent-swarm/{swarm_run_id}/cancel",
+    "name": "post_swarm_cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents",
+    "name": "list_agents_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents",
+    "name": "create_agent_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/suggest-icon",
+    "name": "suggest_agent_icon"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agents/{agent_id}",
+    "name": "delete_agent_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}",
+    "name": "get_agent_detail_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/agents/{agent_id}",
+    "name": "update_agent_route"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/agents/{agent_id}/auto-execute",
+    "name": "configure_agent_auto_execute_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/memories",
+    "name": "list_memories_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/memories",
+    "name": "create_memory_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/memories/search",
+    "name": "search_memories_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agents/{agent_id}/memories/{memory_id}",
+    "name": "delete_memory_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/memories/{memory_id}",
+    "name": "get_memory_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/agents/{agent_id}/memories/{memory_id}",
+    "name": "update_memory_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/run-budgets",
+    "name": "get_agent_run_budgets_route"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/agents/{agent_id}/run-budgets",
+    "name": "configure_agent_run_budgets_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/start",
+    "name": "start_agent_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/stop",
+    "name": "stop_agent_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/agents/{agent_id}/tool-permissions",
+    "name": "list_tool_permissions"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/agents/{agent_id}/tool-permissions",
+    "name": "grant_tool_permission"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agents/{agent_id}/tool-permissions/{permission_id}",
+    "name": "revoke_tool_permission"
+  },
+  {
+    "method": "POST",
+    "path": "/api/agents/{agent_id}/versions",
+    "name": "create_agent_version_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/agents/{agent_id}/versions/{version_id}/activate",
+    "name": "activate_agent_version_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/approvals",
+    "name": "list_approvals_alias"
+  },
+  {
+    "method": "GET",
+    "path": "/api/approvals/pending",
+    "name": "list_pending_approvals_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/approvals/{run_id}/approve",
+    "name": "approve_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/approvals/{run_id}/reject",
+    "name": "reject_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/assistant/chat",
+    "name": "assistant_chat"
+  },
+  {
+    "method": "GET",
+    "path": "/api/assistant/daily-briefing",
+    "name": "assistant_daily_briefing"
+  },
+  {
+    "method": "GET",
+    "path": "/api/assistant/org-context",
+    "name": "assistant_org_context"
+  },
+  {
+    "method": "GET",
+    "path": "/api/assistant/preferences",
+    "name": "get_assistant_preferences"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/assistant/preferences",
+    "name": "update_assistant_preferences"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit",
+    "name": "list_audit_logs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit/export",
+    "name": "export_audit"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit/summary",
+    "name": "audit_summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit/{log_id}",
+    "name": "get_audit_log"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/avatar",
+    "name": "upload_avatar"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/change-password",
+    "name": "change_password"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/me",
+    "name": "me"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/auth/me",
+    "name": "update_me"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sessions",
+    "name": "list_sessions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sessions/revoke-all",
+    "name": "revoke_all_sessions"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/auth/sessions/{session_id}",
+    "name": "revoke_session"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sso/callback",
+    "name": "sso_callback"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/callback",
+    "name": "sso_callback"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/auth/sso/config",
+    "name": "delete_sso_config"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sso/config",
+    "name": "get_sso_config"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/config",
+    "name": "create_or_update_sso_config"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/config/disable",
+    "name": "disable_sso"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/config/enable",
+    "name": "enable_sso"
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/sso/init",
+    "name": "init_sso"
+  },
+  {
+    "method": "GET",
+    "path": "/api/auth/sso/metadata",
+    "name": "saml_metadata"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing",
+    "name": "billing_overview"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/cancel",
+    "name": "cancel_subscription"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/checkout",
+    "name": "create_checkout"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/checkout/public",
+    "name": "create_public_checkout"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/health",
+    "name": "billing_health"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/invoices",
+    "name": "list_invoices"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/invoices/{invoice_id}/pdf",
+    "name": "download_invoice_pdf"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/plans",
+    "name": "list_billing_plans"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/portal",
+    "name": "create_portal"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/reactivate",
+    "name": "reactivate_subscription"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/seats",
+    "name": "update_seats"
+  },
+  {
+    "method": "GET",
+    "path": "/api/billing/status",
+    "name": "get_billing_status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/billing/webhook",
+    "name": "handle_webhook"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors",
+    "name": "list_connectors_route_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors",
+    "name": "create_connector_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/catalog/actions",
+    "name": "list_connector_action_catalog"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/catalog/actions/{vendor}",
+    "name": "get_connector_action_catalog_vendor"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/catalog/simulation-coverage",
+    "name": "list_connector_simulation_coverage"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/oauth/{provider}/callback",
+    "name": "oauth_callback"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/oauth/{provider}/start",
+    "name": "start_oauth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/oauth/{provider}/status",
+    "name": "oauth_provider_status"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/connectors/{connector_id}",
+    "name": "delete_connector_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}",
+    "name": "get_connector_route_alias"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/connectors/{connector_id}",
+    "name": "update_connector_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/confluence-sync",
+    "name": "get_confluence_sync"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/confluence-sync",
+    "name": "update_confluence_sync"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/confluence-sync/run",
+    "name": "confluence_sync_run"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/confluence-sync/search",
+    "name": "confluence_sync_search"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/delete",
+    "name": "delete_connector_post_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/docs",
+    "name": "get_connector_docs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/google-analytics/properties",
+    "name": "list_google_analytics_properties"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/google-analytics/property",
+    "name": "link_google_analytics_property"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/hubspot-triggers",
+    "name": "list_hubspot_triggers"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/hubspot-triggers",
+    "name": "update_hubspot_triggers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/notion-sync",
+    "name": "get_notion_sync"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/notion-sync",
+    "name": "update_notion_sync"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/notion-sync/run",
+    "name": "notion_sync_run"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/notion-sync/search",
+    "name": "notion_sync_search"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/pagerduty-triggers",
+    "name": "list_pagerduty_triggers"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/pagerduty-triggers",
+    "name": "update_pagerduty_triggers"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/salesforce-triggers",
+    "name": "list_salesforce_triggers"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/salesforce-triggers",
+    "name": "update_salesforce_triggers"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/secrets",
+    "name": "set_connector_secret_alias"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/segment-triggers",
+    "name": "list_segment_triggers"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/segment-triggers",
+    "name": "update_segment_triggers"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/sync",
+    "name": "sync_connector_route_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/test",
+    "name": "test_connector_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/workday-sync",
+    "name": "get_workday_sync"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/connectors/{connector_id}/workday-sync",
+    "name": "update_workday_sync"
+  },
+  {
+    "method": "POST",
+    "path": "/api/connectors/{connector_id}/workday-sync/run",
+    "name": "workday_sync_run"
+  },
+  {
+    "method": "GET",
+    "path": "/api/connectors/{connector_id}/workday-sync/search",
+    "name": "workday_sync_search"
+  },
+  {
+    "method": "GET",
+    "path": "/api/conversations",
+    "name": "list_conversations"
+  },
+  {
+    "method": "POST",
+    "path": "/api/conversations",
+    "name": "create_conversation"
+  },
+  {
+    "method": "POST",
+    "path": "/api/conversations/bulk-delete",
+    "name": "bulk_delete_conversations"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/conversations/{conversation_id}",
+    "name": "delete_conversation"
+  },
+  {
+    "method": "GET",
+    "path": "/api/conversations/{conversation_id}",
+    "name": "get_conversation"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/conversations/{conversation_id}",
+    "name": "update_conversation"
+  },
+  {
+    "method": "POST",
+    "path": "/api/conversations/{conversation_id}/archive",
+    "name": "archive_conversation"
+  },
+  {
+    "method": "GET",
+    "path": "/api/conversations/{conversation_id}/messages",
+    "name": "list_conversation_messages"
+  },
+  {
+    "method": "POST",
+    "path": "/api/decisions/evaluate",
+    "name": "evaluate_decision"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/autonomous-run-budgets",
+    "name": "get_autonomous_run_budgets"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/autonomous-run-budgets",
+    "name": "update_autonomous_run_budgets"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/branding",
+    "name": "get_branding"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/branding",
+    "name": "update_branding"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/branding/domain-instructions",
+    "name": "get_domain_verification_instructions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/branding/verify-domain",
+    "name": "verify_branding_domain"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/compliance/soc2-export",
+    "name": "export_soc2_bundle"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/connectors/{connector_id}/phi",
+    "name": "update_connector_phi_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/cost-attribution",
+    "name": "cost_attribution"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/data-region",
+    "name": "get_data_region"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/data-region",
+    "name": "update_data_region"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/execution-region",
+    "name": "get_execution_region"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/hipaa",
+    "name": "get_hipaa_status_route"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/hipaa",
+    "name": "update_hipaa_mode_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/hipaa/accept-baa",
+    "name": "accept_hipaa_baa_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/integration-health",
+    "name": "get_integration_health_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/integration-health/history",
+    "name": "list_integration_health_history_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-health/snapshot",
+    "name": "record_integration_health_snapshot_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/integration-suggestions",
+    "name": "get_integration_suggestions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-suggestions/scan",
+    "name": "scan_integration_suggestions_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-suggestions/{suggestion_id}/apply",
+    "name": "apply_integration_suggestion_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/integration-suggestions/{suggestion_id}/dismiss",
+    "name": "dismiss_integration_suggestion_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/siem",
+    "name": "get_siem_config"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/enterprise/siem",
+    "name": "update_siem_config"
+  },
+  {
+    "method": "POST",
+    "path": "/api/enterprise/siem/test",
+    "name": "test_siem_delivery"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/transparency-logs",
+    "name": "get_transparency_logs_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/transparency-logs/export",
+    "name": "export_transparency_logs_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/enterprise/workforce-analytics",
+    "name": "workforce_analytics"
+  },
+  {
+    "method": "GET",
+    "path": "/api/entitlements",
+    "name": "get_entitlements_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/environments",
+    "name": "list_environments"
+  },
+  {
+    "method": "POST",
+    "path": "/api/environments",
+    "name": "create_environment"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/environments/{env_id}",
+    "name": "update_environment"
+  },
+  {
+    "method": "POST",
+    "path": "/api/execution/workflows/execute",
+    "name": "execute_workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/connector-grants",
+    "name": "get_connector_grants"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants",
+    "name": "post_connector_grant"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/connector-grants/{grant_id}",
+    "name": "get_connector_grant"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants/{grant_id}/accept",
+    "name": "post_connector_grant_accept"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants/{grant_id}/reject",
+    "name": "post_connector_grant_reject"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/connector-grants/{grant_id}/revoke",
+    "name": "post_connector_grant_revoke"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/delegated-tasks",
+    "name": "get_delegated_tasks"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks",
+    "name": "post_delegated_task"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/delegated-tasks/{task_id}",
+    "name": "get_delegated_task_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/accept",
+    "name": "post_delegated_task_accept"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/cancel",
+    "name": "post_delegated_task_cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/complete",
+    "name": "post_delegated_task_complete"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/fail",
+    "name": "post_delegated_task_fail"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/reject",
+    "name": "post_delegated_task_reject"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/delegated-tasks/{task_id}/start",
+    "name": "post_delegated_task_start"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/handoffs",
+    "name": "get_handoffs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs",
+    "name": "post_handoff"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/handoffs/{handoff_id}",
+    "name": "get_handoff"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs/{handoff_id}/accept",
+    "name": "post_handoff_accept"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs/{handoff_id}/complete",
+    "name": "post_handoff_complete"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/handoffs/{handoff_id}/reject",
+    "name": "post_handoff_reject"
+  },
+  {
+    "method": "GET",
+    "path": "/api/federation/partnerships",
+    "name": "get_partnerships"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships",
+    "name": "post_partnership_invite"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships/{partnership_id}/accept",
+    "name": "post_partnership_accept"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships/{partnership_id}/reject",
+    "name": "post_partnership_reject"
+  },
+  {
+    "method": "POST",
+    "path": "/api/federation/partnerships/{partnership_id}/revoke",
+    "name": "post_partnership_revoke"
+  },
+  {
+    "method": "POST",
+    "path": "/api/goals/{goal_id}/generate-plan",
+    "name": "generate_plan"
+  },
+  {
+    "method": "GET",
+    "path": "/api/integrations",
+    "name": "list_integrations_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/integrations",
+    "name": "create_integration_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/integrations/{integration_id}",
+    "name": "get_integration_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/integrations/{integration_id}",
+    "name": "update_integration_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/integrations/{integration_id}/secrets",
+    "name": "set_connector_secret"
+  },
+  {
+    "method": "POST",
+    "path": "/api/integrations/{integration_id}/sync",
+    "name": "sync_integration_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/billing/budget-enforcement",
+    "name": "set_budget_enforcement_internal"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/billing/sync-usage",
+    "name": "sync_usage_cron"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/knowledge/sync-due",
+    "name": "internal_sync_due"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/company-intelligence-run",
+    "name": "company_intelligence_run_cron"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/connector-health",
+    "name": "connector_health_cron"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/memory-expiration-run",
+    "name": "memory_expiration_run_cron"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/memory-promotion-run",
+    "name": "memory_promotion_run_cron"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/ops/rollup-daily",
+    "name": "rollup_daily_cron"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/platform/cs-workspace/snapshots/backfill-due",
+    "name": "internal_backfill_cs_snapshots"
+  },
+  {
+    "method": "POST",
+    "path": "/api/internal/workflows/schedules/dispatch-due",
+    "name": "internal_dispatch_due_schedules"
+  },
+  {
+    "method": "POST",
+    "path": "/api/knowledge/connectors/{connector_id}/sync",
+    "name": "customer_trigger_connector_sync"
+  },
+  {
+    "method": "GET",
+    "path": "/api/knowledge/sync-jobs",
+    "name": "customer_list_sync_jobs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/lite/assign",
+    "name": "assign_lite_work"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/deliverables",
+    "name": "list_lite_deliverables"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/deliverables/{deliverable_id}/download",
+    "name": "download_lite_deliverable"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/home",
+    "name": "get_lite_home"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/results",
+    "name": "get_lite_results"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/tasks",
+    "name": "list_lite_tasks"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/tasks/{task_id}",
+    "name": "get_lite_task"
+  },
+  {
+    "method": "POST",
+    "path": "/api/lite/tasks/{task_id}/cancel",
+    "name": "cancel_lite_task"
+  },
+  {
+    "method": "GET",
+    "path": "/api/lite/workflows",
+    "name": "get_lite_workflows"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/analytics/roi",
+    "name": "get_marketplace_roi_summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/analytics/summary",
+    "name": "get_marketplace_analytics_summary"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets",
+    "name": "list_marketplace_assets_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets",
+    "name": "create_marketplace_asset_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/marketplace/assets/{asset_ref}",
+    "name": "archive_marketplace_asset_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}",
+    "name": "get_marketplace_asset_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/marketplace/assets/{asset_ref}",
+    "name": "update_marketplace_asset_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/approve",
+    "name": "approve_marketplace_asset_for_internal_publish"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/checkout",
+    "name": "marketplace_asset_checkout"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/clone",
+    "name": "clone_marketplace_asset"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/entitlement",
+    "name": "marketplace_asset_entitlement"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/install",
+    "name": "marketplace_asset_install"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/install-check",
+    "name": "marketplace_asset_install_check"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/marketplace/assets/{asset_ref}/pricing",
+    "name": "update_org_asset_pricing_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/reject",
+    "name": "reject_marketplace_asset_review"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/reviews",
+    "name": "list_marketplace_asset_reviews"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/marketplace/assets/{asset_ref}/reviews/mine",
+    "name": "delete_marketplace_asset_review"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/marketplace/assets/{asset_ref}/reviews/mine",
+    "name": "upsert_marketplace_asset_review"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/rollback",
+    "name": "rollback_marketplace_asset_version"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/marketplace/assets/{asset_ref}/save",
+    "name": "unsave_marketplace_asset"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/save",
+    "name": "save_marketplace_asset"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/submit-for-public-review",
+    "name": "submit_marketplace_asset_for_public_review"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/submit-for-review",
+    "name": "submit_marketplace_asset_for_review"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/assets/{asset_ref}/uninstall",
+    "name": "uninstall_marketplace_asset_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/assets/{asset_ref}/versions",
+    "name": "list_marketplace_asset_versions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/billing/connect/onboard",
+    "name": "marketplace_billing_connect_onboard"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/billing/connect/sync",
+    "name": "marketplace_billing_connect_sync"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/billing/pricing",
+    "name": "marketplace_billing_pricing_list"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/marketplace/billing/pricing/{registry_id}",
+    "name": "marketplace_billing_pricing_upsert"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/billing/status",
+    "name": "marketplace_billing_status"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/categories",
+    "name": "get_marketplace_categories"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/federated-connectors",
+    "name": "list_federated_connectors"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/installs",
+    "name": "list_marketplace_installs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/org/assets",
+    "name": "list_org_marketplace_assets"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/approve",
+    "name": "approve_platform_public_asset"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/featured",
+    "name": "set_platform_asset_featured"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/link-registry",
+    "name": "platform_link_asset_registry"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/pricing",
+    "name": "update_platform_asset_pricing"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/reject",
+    "name": "reject_platform_public_asset"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/review",
+    "name": "platform_public_review_asset_detail"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/assets/{asset_ref}/verified",
+    "name": "set_platform_asset_verified"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/platform/catalog",
+    "name": "list_platform_catalog_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/platform/registry/{registry_id}/sync-asset",
+    "name": "platform_sync_registry_asset"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/platform/review-queue",
+    "name": "list_platform_public_review_queue"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/private-bundles",
+    "name": "marketplace_private_bundles_list"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/private-bundles",
+    "name": "marketplace_private_bundle_upload"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/private-bundles/{bundle_id}",
+    "name": "marketplace_private_bundle_get"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/private-bundles/{bundle_id}/activate",
+    "name": "marketplace_private_bundle_activate"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/private-bundles/{bundle_id}/disable",
+    "name": "marketplace_private_bundle_disable"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/publisher/analytics",
+    "name": "get_marketplace_publisher_analytics"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/publisher/me",
+    "name": "get_marketplace_publisher_profile"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/publisher/onboard",
+    "name": "onboard_marketplace_publisher"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/publisher/payouts/sync",
+    "name": "marketplace_publisher_payouts_sync"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/registry",
+    "name": "list_marketplace_registry"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/role-packs",
+    "name": "list_role_packs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/role-packs/{pack_id}",
+    "name": "get_role_pack"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/role-packs/{pack_id}/install",
+    "name": "install_role_pack"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/sandbox",
+    "name": "marketplace_sandbox_status"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/sandbox",
+    "name": "marketplace_sandbox_provision"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/sandbox/demo",
+    "name": "marketplace_sandbox_demo"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/sandbox/reset",
+    "name": "marketplace_sandbox_reset"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/saves",
+    "name": "list_marketplace_saves"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/submissions",
+    "name": "list_marketplace_submissions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/submissions",
+    "name": "submit_partner_connector"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/submissions/mine",
+    "name": "list_my_submissions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/marketplace/submissions/{submission_id}",
+    "name": "get_marketplace_submission"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/submissions/{submission_id}/rescan",
+    "name": "rescan_marketplace_submission"
+  },
+  {
+    "method": "POST",
+    "path": "/api/marketplace/submissions/{submission_id}/review",
+    "name": "review_marketplace_submission"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/alerts",
+    "name": "meson_alerts_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/deploy",
+    "name": "deploy_build_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/feedback",
+    "name": "meson_feedback_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/feedback/metrics",
+    "name": "meson_feedback_metrics_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/insights",
+    "name": "meson_insights_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/interpret",
+    "name": "interpret_build_request_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/optimizations/{workflow_id}",
+    "name": "meson_workflow_optimizations_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/meson/preferences",
+    "name": "meson_preferences_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/meson/suggestions",
+    "name": "meson_suggestions_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/connectors",
+    "name": "connectors"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/export",
+    "name": "export_metrics"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/insights",
+    "name": "metrics_insights"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/integrations",
+    "name": "integrations"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/overview",
+    "name": "overview"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/rag",
+    "name": "rag"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/runs",
+    "name": "runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/timeseries",
+    "name": "timeseries"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/weekly-throughput",
+    "name": "weekly_throughput"
+  },
+  {
+    "method": "GET",
+    "path": "/api/metrics/workflows",
+    "name": "workflows"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ml/models",
+    "name": "list_models"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/models",
+    "name": "create_model"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ml/models/{model_id}",
+    "name": "get_model"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/models/{model_id}/deploy",
+    "name": "deploy_model"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/models/{model_id}/predict",
+    "name": "predict"
+  },
+  {
+    "method": "POST",
+    "path": "/api/ml/train/start",
+    "name": "start_training"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications",
+    "name": "list_notifications"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications/preferences",
+    "name": "get_notification_preferences"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/notifications/preferences",
+    "name": "update_notification_preferences"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/read-all",
+    "name": "mark_all_read"
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "name": "get_unread_count"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/notifications/{notification_id}",
+    "name": "delete_notification"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/{notification_id}/archive",
+    "name": "archive_notification"
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/{notification_id}/read",
+    "name": "mark_read"
+  },
+  {
+    "method": "GET",
+    "path": "/api/onboarding",
+    "name": "get_progress"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/bootstrap",
+    "name": "bootstrap_org"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/complete-step",
+    "name": "complete_step"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/reset",
+    "name": "reset_onboarding"
+  },
+  {
+    "method": "POST",
+    "path": "/api/onboarding/skip",
+    "name": "skip_onboarding"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operator/action-plan",
+    "name": "create_action_plan"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/connector/{connector_id}",
+    "name": "get_connector_context"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/run/{run_id}",
+    "name": "get_run_context"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/source/{source_id}",
+    "name": "get_source_context"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/context/workflow/{workflow_id}",
+    "name": "get_workflow_context"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operator/prompts",
+    "name": "list_operator_prompts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators",
+    "name": "list_operators_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators",
+    "name": "create_operator_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/sessions/{session_id}",
+    "name": "get_operator_session_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}",
+    "name": "get_operator_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/operators/{operator_id}",
+    "name": "update_operator_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/action-plans",
+    "name": "create_operator_action_plan_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}/links",
+    "name": "list_operator_links_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/links",
+    "name": "create_operator_link_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/operators/{operator_id}/links/{link_id}",
+    "name": "delete_operator_link_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/run",
+    "name": "run_operator_action_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}/sessions",
+    "name": "list_operator_sessions_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/sessions",
+    "name": "create_operator_session_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/operators/{operator_id}/versions",
+    "name": "list_operator_versions_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/versions",
+    "name": "create_operator_version_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/operators/{operator_id}/versions/{version_id}/activate",
+    "name": "activate_operator_version_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/optimization/analyze",
+    "name": "analyze_workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/org/members",
+    "name": "list_members"
+  },
+  {
+    "method": "POST",
+    "path": "/api/org/members/invite",
+    "name": "invite_member"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/org/members/{member_id}",
+    "name": "remove_member"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/org/members/{member_id}",
+    "name": "update_member"
+  },
+  {
+    "method": "GET",
+    "path": "/api/organizations",
+    "name": "list_organizations"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations",
+    "name": "create_organization"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/organizations/{org_id}",
+    "name": "delete_organization"
+  },
+  {
+    "method": "GET",
+    "path": "/api/organizations/{org_id}",
+    "name": "get_organization"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/organizations/{org_id}",
+    "name": "update_organization"
+  },
+  {
+    "method": "GET",
+    "path": "/api/organizations/{org_id}/members",
+    "name": "list_organization_members"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations/{org_id}/members/invite",
+    "name": "invite_organization_member"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/organizations/{org_id}/members/{user_id}",
+    "name": "remove_organization_member"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/organizations/{org_id}/members/{user_id}",
+    "name": "update_organization_member_role"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations/{org_id}/switch",
+    "name": "switch_organization"
+  },
+  {
+    "method": "POST",
+    "path": "/api/organizations/{org_id}/transfer",
+    "name": "transfer_organization_ownership"
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/cs-workspace/alerts",
+    "name": "get_platform_cs_alerts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/snapshots/backfill",
+    "name": "backfill_platform_cs_snapshots"
+  },
+  {
+    "method": "GET",
+    "path": "/api/platform/cs-workspace/tenants",
+    "name": "get_platform_cs_workspace_tenants"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/tenants/{org_id}/assign",
+    "name": "assign_platform_cs_tenant"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/tenants/{org_id}/escalate",
+    "name": "escalate_platform_cs_tenant"
+  },
+  {
+    "method": "POST",
+    "path": "/api/platform/cs-workspace/tenants/{org_id}/snooze",
+    "name": "snooze_platform_cs_tenant"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag-enhanced/ingest",
+    "name": "ingest_document"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag-enhanced/query",
+    "name": "query_rag"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/documents",
+    "name": "list_documents_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/documents/{doc_id}",
+    "name": "get_document_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/embedding-status",
+    "name": "embedding_status_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/ingest",
+    "name": "ingest_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/ingest/file",
+    "name": "ingest_file_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/ingest/{ingest_id}",
+    "name": "get_ingest_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/query",
+    "name": "query_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/retrieve",
+    "name": "retrieve"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/sources",
+    "name": "list_sources_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/rag/sources",
+    "name": "create_source_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/rag/sources/{source_id}",
+    "name": "get_source_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/rag/sources/{source_id}",
+    "name": "update_source_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/runs",
+    "name": "list_runs_alias"
+  },
+  {
+    "method": "GET",
+    "path": "/api/runs/{run_id}",
+    "name": "get_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/cancel",
+    "name": "cancel_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/compensate",
+    "name": "compensate_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/pause",
+    "name": "pause_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/resume-paused",
+    "name": "resume_paused_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/retry",
+    "name": "retry_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/rollback",
+    "name": "rollback_run_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/runs/{run_id}/steps/{step_id}/retry",
+    "name": "retry_run_step_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/samples/stripe-connect/webhooks/thin",
+    "name": "thin_webhook"
+  },
+  {
+    "method": "GET",
+    "path": "/api/schedules",
+    "name": "list_schedules"
+  },
+  {
+    "method": "POST",
+    "path": "/api/search",
+    "name": "search_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/search/history",
+    "name": "clear_search_history_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/search/history",
+    "name": "search_history_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/search/history/{history_id}",
+    "name": "delete_search_history_item_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions",
+    "name": "list_sessions_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sessions",
+    "name": "create_session_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions/{session_id}",
+    "name": "get_session_detail"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions/{session_id}/context",
+    "name": "get_session_context"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sessions/{session_id}/execute",
+    "name": "execute_session_actions"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sessions/{session_id}/execution/{execution_id}",
+    "name": "get_session_execution"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sessions/{session_id}/task",
+    "name": "submit_session_task"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings",
+    "name": "get_settings_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/settings",
+    "name": "update_settings_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/billing-usage",
+    "name": "get_billing_usage_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/settings/lite-seats",
+    "name": "delete_lite_seat_department_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/lite-seats",
+    "name": "get_lite_seats_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/settings/lite-seats",
+    "name": "update_lite_seat_department_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/settings/lite-seats",
+    "name": "create_lite_seat_department_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/meson-addons",
+    "name": "get_meson_addons_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/settings/meson-addons",
+    "name": "update_meson_addons_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/settings/model-policy",
+    "name": "get_model_policy_route"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/settings/model-policy",
+    "name": "update_model_policy_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/slack/commands/interrupt",
+    "name": "slack_interrupt_command"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources",
+    "name": "list_sources"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources",
+    "name": "create_source_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/connectors",
+    "name": "list_source_connectors_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/test",
+    "name": "test_source_connection_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/types",
+    "name": "list_source_types_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/sources/{source_id}",
+    "name": "delete_source_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/{source_id}",
+    "name": "get_source_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/sources/{source_id}",
+    "name": "update_source_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/{source_id}/query",
+    "name": "query_source_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/{source_id}/schema",
+    "name": "get_source_schema_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/{source_id}/sync",
+    "name": "sync_source_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sources/{source_id}/sync-history",
+    "name": "get_source_sync_history_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/sources/{source_id}/test",
+    "name": "test_existing_source_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-agent",
+    "name": "test_agent_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-ai",
+    "name": "test_ai_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/test-rag",
+    "name": "test_rag_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/agents/{agent_id}/fine-tuned-model",
+    "name": "get_agent_fine_tuned_model_assignment"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/training/agents/{agent_id}/fine-tuned-model",
+    "name": "assign_agent_fine_tuned_model"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/datasets",
+    "name": "list_datasets"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/datasets",
+    "name": "create_dataset"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/training/datasets/{dataset_id}",
+    "name": "delete_dataset"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/datasets/{dataset_id}",
+    "name": "get_dataset"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/datasets/{dataset_id}/records",
+    "name": "upload_dataset_records"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/fine-tuned-models",
+    "name": "list_fine_tuned_models_for_agents"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/instructions",
+    "name": "list_instructions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/instructions",
+    "name": "create_instruction"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/training/instructions/{instruction_id}",
+    "name": "delete_instruction"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/instructions/{instruction_id}",
+    "name": "get_instruction"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/training/instructions/{instruction_id}",
+    "name": "update_instruction"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/jobs",
+    "name": "list_jobs"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/jobs",
+    "name": "create_job"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/jobs/{job_id}",
+    "name": "get_job"
+  },
+  {
+    "method": "POST",
+    "path": "/api/training/jobs/{job_id}/cancel",
+    "name": "cancel_job"
+  },
+  {
+    "method": "GET",
+    "path": "/api/training/workflow-agents",
+    "name": "list_workflow_agents"
+  },
+  {
+    "method": "GET",
+    "path": "/api/verticals/healthcare",
+    "name": "get_healthcare_vertical"
+  },
+  {
+    "method": "POST",
+    "path": "/api/verticals/healthcare/install",
+    "name": "install_healthcare_vertical"
+  },
+  {
+    "method": "GET",
+    "path": "/api/verticals/legal",
+    "name": "get_legal_vertical"
+  },
+  {
+    "method": "POST",
+    "path": "/api/verticals/legal/install",
+    "name": "install_legal_vertical"
+  },
+  {
+    "method": "GET",
+    "path": "/api/verticals/real-estate",
+    "name": "get_real_estate_vertical"
+  },
+  {
+    "method": "POST",
+    "path": "/api/verticals/real-estate/install",
+    "name": "install_real_estate_vertical"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/hubspot/inbound",
+    "name": "hubspot_inbound_webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/knowledge/{connector_id}/sync",
+    "name": "webhook_trigger_sync"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/pagerduty/inbound/{connector_id}",
+    "name": "pagerduty_inbound_webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/salesforce/inbound/{connector_id}",
+    "name": "salesforce_inbound_webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/segment/inbound/{connector_id}",
+    "name": "segment_inbound_webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/stripe",
+    "name": "stripe_webhook"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/triggers/{workflow_id}",
+    "name": "trigger_workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/webhooks/triggers/{workflow_id}/config",
+    "name": "get_webhook_config"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows",
+    "name": "list_workflows_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows",
+    "name": "create_workflow_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/approvals/pending",
+    "name": "list_pending_approvals"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/connector-fixtures",
+    "name": "get_connector_fixtures_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/connector-fixtures",
+    "name": "post_connector_fixture_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/connector-fixtures/{fixture_id}",
+    "name": "delete_connector_fixture_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/digital-twin",
+    "name": "digital_twin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/dry-run",
+    "name": "dry_run"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/edges/{edge_id}",
+    "name": "delete_workflow_edge_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/execute",
+    "name": "execute_workflow"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/failure-predictions",
+    "name": "list_workflow_failure_predictions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/failure-predictions/scan",
+    "name": "scan_org_failure_predictions_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/failure-predictions/{alert_id}/dismiss",
+    "name": "dismiss_workflow_failure_prediction"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/from-goal",
+    "name": "create_workflow_from_goal"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/nodes/{node_id}",
+    "name": "delete_workflow_node_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/nodes/{node_id}",
+    "name": "update_workflow_node_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/runs",
+    "name": "list_runs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/runs/{run_id}",
+    "name": "get_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/approve",
+    "name": "approve_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/compensate",
+    "name": "compensate_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/reject",
+    "name": "reject_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/resume",
+    "name": "resume_graph_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/runs/{run_id}/rollback",
+    "name": "rollback_run"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/schedules/dispatch",
+    "name": "dispatch_workflow_schedules"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/schedules/{schedule_id}",
+    "name": "delete_workflow_schedule_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/schedules/{schedule_id}",
+    "name": "update_workflow_schedule_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/stats",
+    "name": "workflow_org_stats"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}",
+    "name": "get_workflow"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/{workflow_id}",
+    "name": "update_workflow_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/active",
+    "name": "get_active_workflow_version_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/chat",
+    "name": "workflow_ai_chat"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/explain-step",
+    "name": "workflow_ai_explain_step"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/improve-step",
+    "name": "workflow_ai_improve_step"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/ai/suggest-next",
+    "name": "workflow_ai_suggest_next"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/builder",
+    "name": "get_workflow_builder"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/workflows/{workflow_id}/builder",
+    "name": "save_workflow_builder"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/connections",
+    "name": "create_workflow_connection_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/{workflow_id}/connections/{connection_id}",
+    "name": "delete_workflow_connection_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/edges",
+    "name": "list_workflow_edges_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/edges",
+    "name": "create_workflow_edge_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/failure-predictions/scan",
+    "name": "scan_workflow_failure_predictions_route"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/nodes",
+    "name": "list_workflow_nodes_route"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/{workflow_id}/nodes",
+    "name": "update_workflow_node_positions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/nodes",
+    "name": "create_workflow_node_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/{workflow_id}/nodes/{node_id}",
+    "name": "delete_workflow_node_alias"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/schedules",
+    "name": "list_workflow_schedules_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/schedules",
+    "name": "create_workflow_schedule_route"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/workflows/{workflow_id}/schedules/{schedule_id}",
+    "name": "delete_workflow_schedule_alias"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/workflows/{workflow_id}/schedules/{schedule_id}",
+    "name": "update_workflow_schedule_alias"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/schema-sync/from-contract",
+    "name": "sync_workflow_schema_from_contract"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/stage",
+    "name": "update_workflow_stage"
+  },
+  {
+    "method": "GET",
+    "path": "/api/workflows/{workflow_id}/versions",
+    "name": "list_workflow_versions_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/versions",
+    "name": "create_workflow_version_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/versions/{version_id}/activate",
+    "name": "activate_workflow_version_route"
+  },
+  {
+    "method": "POST",
+    "path": "/api/workflows/{workflow_id}/versions/{version_id}/promote",
+    "name": "promote_workflow_version_route"
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "name": "health"
+  },
+  {
+    "method": "GET",
+    "path": "/redoc",
+    "name": "redoc_html"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect",
+    "name": "sample_home"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/checkout",
+    "name": "start_checkout"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/products",
+    "name": "product_create"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/products/new",
+    "name": "product_form"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/seller",
+    "name": "seller_page"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/seller/create",
+    "name": "seller_create"
+  },
+  {
+    "method": "POST",
+    "path": "/samples/stripe-connect/seller/onboard",
+    "name": "seller_onboard"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/store",
+    "name": "storefront"
+  },
+  {
+    "method": "GET",
+    "path": "/samples/stripe-connect/success",
+    "name": "checkout_success"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Groups",
+    "name": "list_groups"
+  },
+  {
+    "method": "POST",
+    "path": "/scim/v2/Groups",
+    "name": "create_group"
+  },
+  {
+    "method": "DELETE",
+    "path": "/scim/v2/Groups/{group_id}",
+    "name": "delete_group"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Groups/{group_id}",
+    "name": "get_group"
+  },
+  {
+    "method": "PATCH",
+    "path": "/scim/v2/Groups/{group_id}",
+    "name": "patch_group"
+  },
+  {
+    "method": "PUT",
+    "path": "/scim/v2/Groups/{group_id}",
+    "name": "replace_group"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Users",
+    "name": "list_users"
+  },
+  {
+    "method": "POST",
+    "path": "/scim/v2/Users",
+    "name": "create_user"
+  },
+  {
+    "method": "DELETE",
+    "path": "/scim/v2/Users/{user_id}",
+    "name": "delete_user"
+  },
+  {
+    "method": "GET",
+    "path": "/scim/v2/Users/{user_id}",
+    "name": "get_user"
+  },
+  {
+    "method": "PATCH",
+    "path": "/scim/v2/Users/{user_id}",
+    "name": "patch_user"
+  },
+  {
+    "method": "PUT",
+    "path": "/scim/v2/Users/{user_id}",
+    "name": "replace_user"
+  }
+]

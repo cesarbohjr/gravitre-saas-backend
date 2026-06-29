@@ -24,8 +24,15 @@ def test_compute_app_access_cancelled_blocks():
     assert result["upgrade_reason"] == "subscription_cancelled"
 
 
-def test_compute_app_access_past_due_allows_with_upgrade_prompt():
+def test_compute_app_access_past_due_blocks_access():
     result = compute_app_access("past_due")
-    assert result["can_access_app"] is True
+    assert result["can_access_app"] is False
     assert result["requires_upgrade"] is True
     assert result["upgrade_reason"] == "payment_past_due"
+
+
+def test_compute_app_access_expired_trial_blocks():
+    past = "2020-01-01T00:00:00+00:00"
+    result = compute_app_access("trialing", trial_ends_at=past)
+    assert result["can_access_app"] is False
+    assert result["upgrade_reason"] == "trial_expired"

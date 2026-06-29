@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 interface EmptyStateProps {
   /** Icon to display */
   icon?: LucideIcon
+  /** Optional custom icon node (e.g. Phosphor) rendered instead of Lucide icon */
+  iconSlot?: ReactNode
   /** Title text */
   title: string
   /** Description text */
@@ -86,6 +88,7 @@ const sizeStyles = {
 
 export function EmptyState({
   icon,
+  iconSlot,
   title,
   description,
   variant = "default",
@@ -117,10 +120,10 @@ export function EmptyState({
         className={cn(
           "flex items-center justify-center rounded-xl mb-4",
           sizes.iconContainer,
-          styles.iconBg
+          iconSlot ? "bg-violet-500/10" : styles.iconBg
         )}
       >
-        <Icon className={cn(sizes.icon, styles.iconColor)} />
+        {iconSlot ? iconSlot : <Icon className={cn(sizes.icon, styles.iconColor)} />}
       </motion.div>
 
       {/* Title */}

@@ -470,6 +470,16 @@ async def list_connectors_route_alias(
     return {"connectors": items}
 
 
+@connectors_router.get("/catalog/simulation-coverage")
+async def list_connector_simulation_coverage(
+    _user: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    """Per-vendor demo-safe simulation coverage (STA-285). Zero coverage = demo-blocked."""
+    from app.connectors.simulation_coverage import build_simulation_coverage_report
+
+    return build_simulation_coverage_report()
+
+
 @connectors_router.get("/catalog/actions")
 async def list_connector_action_catalog(
     _user: Annotated[dict, Depends(get_current_user)],

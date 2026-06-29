@@ -1,6 +1,7 @@
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getAccessToken } from "@/lib/auth-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
+import { emitPlanRequired, type PlanRequiredDetail } from "@/lib/billing-plan-required"
 import { supabaseClient } from "@/lib/supabaseClient"
 
 function withSelectedOrg(url: string): string {
@@ -51,6 +52,17 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
 
   if (response.ok && typeof window !== "undefined") {
     window.sessionStorage.removeItem("gravitre_auth_login_redirect")
+  }
+
+  if (response.status === 402 && typeof window !== "undefined") {
+    try {
+      const payload = (await response.clone().json()) as PlanRequiredDetail
+      if (payload?.error === "plan_required") {
+        emitPlanRequired(payload)
+      }
+    } catch {
+      // ignore parse errors
+    }
   }
 
   if (response.status === 401 && typeof window !== "undefined") {

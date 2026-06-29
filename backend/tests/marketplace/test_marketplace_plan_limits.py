@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.marketplace.service import MarketplaceError, install_asset
+from app.billing.entitlement_service import PlanLimitExceededError
+from app.marketplace.service import install_asset
 
 ASSET_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -46,13 +47,13 @@ def test_limit_exceeded_returns_structured_error(mock_plan, mock_operators):
     client = MagicMock()
     client.table.side_effect = lambda name: assets if name == "marketplace_assets" else _table([])
 
-    with pytest.raises(MarketplaceError) as exc:
+    with pytest.raises(PlanLimitExceededError) as exc:
         install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
-    assert exc.value.code == "LIMIT_EXCEEDED"
-    assert exc.value.details["error"] == "plan_limit_exceeded"
-    assert exc.value.details["limit_type"] == "agent_count"
-    assert exc.value.details["current"] == 2
-    assert exc.value.details["max"] == 2
+    detail = exc.value.detail
+    assert detail["error"] == "plan_limit_exceeded"
+    assert detail["limit_type"] == "agent_count"
+    assert detail["current"] == 2
+    assert detail["max"] == 2
 
 
 @patch("app.marketplace.service.list_operators", return_value=[{"id": "op-1"}, {"id": "op-2"}])
@@ -63,6 +64,6 @@ def test_structured_error_includes_upgrade_path(mock_plan, mock_operators):
     client = MagicMock()
     client.table.side_effect = lambda name: assets if name == "marketplace_assets" else _table([])
 
-    with pytest.raises(MarketplaceError) as exc:
+    with pytest.raises(PlanLimitExceededError) as exc:
         install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
-    assert exc.value.details["upgrade_url"] == "/settings/billing"
+    assert exc.value.detail["upgrade_url"] == "/settings/billing"

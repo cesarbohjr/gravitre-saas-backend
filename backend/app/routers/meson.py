@@ -9,6 +9,7 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.middleware.entitlements import require_tier
 from app.services.meson_service import (
     MesonAlertsResponse,
     MesonDeployResult,
@@ -22,7 +23,11 @@ from app.services.meson_service import (
     get_meson_service,
 )
 
-router = APIRouter(prefix="/api/meson", tags=["meson"])
+router = APIRouter(
+    prefix="/api/meson",
+    tags=["meson"],
+    dependencies=[Depends(require_tier("control"))],
+)
 
 
 class MesonInterpretRequest(BaseModel):
