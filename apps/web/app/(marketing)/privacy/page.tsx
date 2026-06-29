@@ -50,7 +50,7 @@ While we strive to protect your information, no method of transmission over the 
     title: "Data Retention",
     content: `We retain your information for as long as your account is active or as needed to provide you services. We will retain and use your information as necessary to comply with our legal obligations, resolve disputes, and enforce our agreements.
 
-You may request deletion of your account and associated data at any time by contacting us at privacy@gravitre.com.`,
+You may request deletion of your account and associated data at any time by contacting us at privacy@gravitre.app.`,
   },
   {
     title: "Your Rights",
@@ -62,7 +62,7 @@ You may request deletion of your account and associated data at any time by cont
 - **Portability:** Request a copy of your data in a structured, machine-readable format
 - **Opt-out:** Opt out of certain data processing activities
 
-To exercise these rights, contact us at privacy@gravitre.com.`,
+To exercise these rights, contact us at privacy@gravitre.app.`,
   },
   {
     title: "Cookies and Tracking",
@@ -86,9 +86,8 @@ To exercise these rights, contact us at privacy@gravitre.com.`,
     title: "Contact Us",
     content: `If you have any questions about this privacy policy or our data practices, please contact us at:
 
-**Email:** privacy@gravitre.com
-**Address:** 548 Market St, Suite 35000, San Francisco, CA 94104
-**Data Protection Officer:** dpo@gravitre.com`,
+**Email:** privacy@gravitre.app
+**Data Protection Officer:** dpo@gravitre.app`,
   },
 ]
 

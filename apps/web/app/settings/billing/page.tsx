@@ -856,7 +856,7 @@ export default function BillingPage() {
                 <div className="flex items-center gap-3">
                   <Button variant="outline" size="sm" className="gap-2">
                     <Mail className="h-3.5 w-3.5" />
-                    billing@gravitre.io
+                    billing@gravitre.app
                   </Button>
                   <Button variant="ghost" size="sm" className="gap-2" asChild>
                     <Link href="/docs">

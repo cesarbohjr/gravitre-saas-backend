@@ -259,10 +259,10 @@ export default function SecurityPage() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
-                href="mailto:security@gravitre.com"
+                href="mailto:security@gravitre.app"
                 className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-zinc-800"
               >
-                security@gravitre.com
+                security@gravitre.app
                 <ArrowRight className="h-4 w-4" />
               </a>
               <Link

@@ -955,7 +955,7 @@ function AddConnectorModal({
     }
     if (isPartnerGatedConnector(connector)) {
       toast.message(`${connector.type} requires partner access`, {
-        description: "Contact sales@gravitre.com to enable this integration for your organization.",
+        description: "Contact sales@gravitre.app to enable this integration for your organization.",
       })
       return
     }

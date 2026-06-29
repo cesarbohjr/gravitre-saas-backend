@@ -129,8 +129,7 @@ Upon termination, your right to use our services ceases immediately. We will pro
     title: "15. Contact",
     content: `For questions about these terms, please contact us at:
 
-**Email:** legal@gravitre.com
-**Address:** 548 Market St, Suite 35000, San Francisco, CA 94104`,
+**Email:** legal@gravitre.app`,
   },
 ]
 
