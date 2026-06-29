@@ -7,12 +7,17 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_org_context
+from app.middleware.entitlements import require_tier
 from app.ml.base import ModelStatus, ModelType
 from app.ml.inference import get_inference_service
 from app.ml.registry import get_model_registry
 from app.workers.training_worker import create_training_worker
 
-router = APIRouter(prefix="/api/ml", tags=["ml-models"])
+router = APIRouter(
+    prefix="/api/ml",
+    tags=["ml-models"],
+    dependencies=[Depends(require_tier("command"))],
+)
 
 
 class ModelCreateRequest(BaseModel):

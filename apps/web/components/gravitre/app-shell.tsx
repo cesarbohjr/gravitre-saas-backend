@@ -115,17 +115,20 @@ export function AppShell({ children, title }: AppShellProps) {
 
   const billingAccessDenied =
     billingStatusData !== undefined && billingStatusData.canAccessApp === false
-  const canAccessApp =
-    billingStatusData?.canAccessApp ??
-    meData?.billing?.can_access_app ??
-    !billingAccessDenied
   const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
   const trialEndsAt = billingStatusData?.trialEndsAt
   const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
   const trialExpired =
     billingStatusData?.trialExpired === true ||
     billingStatusData?.billingState === "trial_expired" ||
+    billingStatusData?.upgradeReason === "trial_expired" ||
     planRequired?.subscription_status === "trial_expired"
+  const billingHardBlock =
+    billingAccessDenied && !trialExpired
+  const canAccessApp =
+    billingStatusData?.canAccessApp ??
+    meData?.billing?.can_access_app ??
+    !billingAccessDenied
 
   useEffect(() => {
     setPlanRequired(readStoredPlanRequired())
@@ -215,14 +218,15 @@ export function AppShell({ children, title }: AppShellProps) {
     )
   }
 
-  // Billing gate: redirect to billing settings when access denied (except on billing pages).
+  // Hard redirect only for non-trial blocks (e.g. canceled). Expired trials stay in
+  // the product shell so the non-dismissible banner and 402 upgrade modal can surface.
   useEffect(() => {
-    if (!billingAccessDenied || billingError) return
+    if (!billingHardBlock || billingError) return
     if (pathname.startsWith("/settings/billing") || pathname.startsWith("/pricing")) return
-    router.replace("/settings/billing?reason=trial_expired")
-  }, [billingAccessDenied, billingError, pathname, router])
+    router.replace("/settings/billing?reason=subscription_required")
+  }, [billingHardBlock, billingError, pathname, router])
 
-  if (billingAccessDenied && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
+  if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
