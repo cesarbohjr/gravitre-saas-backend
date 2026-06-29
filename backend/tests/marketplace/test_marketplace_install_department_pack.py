@@ -144,9 +144,8 @@ def test_department_pack_agent_limit_raises_structured_error(mock_plan, mock_ope
     client = MagicMock()
     client.table.side_effect = lambda name: assets if name == "marketplace_assets" else _table([])
 
-    from app.marketplace.service import MarketplaceError
+    from app.billing.entitlement_service import PlanLimitExceededError
 
-    with pytest.raises(MarketplaceError) as exc:
+    with pytest.raises(PlanLimitExceededError) as exc:
         install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
-    assert exc.value.code == "LIMIT_EXCEEDED"
-    assert exc.value.details["limit_type"] == "agent_count"
+    assert exc.value.detail["limit_type"] == "agent_count"

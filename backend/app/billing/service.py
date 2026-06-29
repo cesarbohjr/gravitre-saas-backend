@@ -557,9 +557,17 @@ def require_limit(current_count: int, limit: int | None, label: str) -> None:
     if limit is None:
         return
     if current_count >= limit:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_detail("Plan limit reached", "VALIDATION_ERROR", {"limit": label}),
+        from app.billing.entitlement_service import PlanLimitExceededError
+
+        limit_type = {
+            "agents": "agent_count",
+            "workflows": "workflow_count",
+            "environments": "environment_count",
+        }.get(label, label)
+        raise PlanLimitExceededError(
+            limit_type=limit_type,
+            current=current_count,
+            max_allowed=int(limit),
         )
 
 

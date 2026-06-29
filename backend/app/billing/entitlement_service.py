@@ -217,6 +217,28 @@ class PlanRequiredError(HTTPException):
         )
 
 
+class PlanLimitExceededError(HTTPException):
+    """402 — plan resource limit reached; same shape for every resource type."""
+
+    def __init__(
+        self,
+        limit_type: str,
+        current: int,
+        max_allowed: int,
+        upgrade_url: str = UPGRADE_URL,
+    ) -> None:
+        super().__init__(
+            status_code=402,
+            detail={
+                "error": "plan_limit_exceeded",
+                "limit_type": limit_type,
+                "current": current,
+                "max": max_allowed,
+                "upgrade_url": upgrade_url,
+            },
+        )
+
+
 def assert_org_not_blocked(client: Client, org_id: str) -> dict[str, Any]:
     state = get_org_billing_state(client, org_id)
     if state["is_blocked"]:

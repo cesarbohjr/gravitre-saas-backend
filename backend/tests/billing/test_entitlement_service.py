@@ -58,6 +58,20 @@ def test_plan_required_error_shape():
     assert err.detail["upgrade_url"] == "/settings/billing"
 
 
+def test_plan_limit_exceeded_error_shape():
+    from app.billing.entitlement_service import PlanLimitExceededError
+
+    err = PlanLimitExceededError("agent_count", current=2, max_allowed=2)
+    assert err.status_code == 402
+    assert err.detail == {
+        "error": "plan_limit_exceeded",
+        "limit_type": "agent_count",
+        "current": 2,
+        "max": 2,
+        "upgrade_url": "/settings/billing",
+    }
+
+
 def test_should_gate_path_allowlist():
     assert should_gate_path("/api/billing/status") is False
     assert should_gate_path("/api/auth/me") is False

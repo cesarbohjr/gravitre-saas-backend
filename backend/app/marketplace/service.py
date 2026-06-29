@@ -230,21 +230,17 @@ def _resolve_asset_payload(
 
 
 def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
+    from app.billing.entitlement_service import PlanLimitExceededError
+
     plan = get_plan_for_org(client, org_id)
     if asset_type in {"ai_agent", "department_pack"}:
         limit = plan.get("agents_limit")
         current = len(list_operators(client, org_id))
         if limit is not None and current >= int(limit):
-            raise MarketplaceError(
-                "Agent limit reached for current plan",
-                code="LIMIT_EXCEEDED",
-                details={
-                    "error": "plan_limit_exceeded",
-                    "limit_type": "agent_count",
-                    "current": current,
-                    "max": int(limit),
-                    "upgrade_url": "/settings/billing",
-                },
+            raise PlanLimitExceededError(
+                limit_type="agent_count",
+                current=current,
+                max_allowed=int(limit),
             )
     if asset_type in {"workflow", "department_pack"}:
         limit = plan.get("workflows_limit")
@@ -252,16 +248,10 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
             result = client.table("workflow_defs").select("id").eq("org_id", org_id).execute()
             current = len(result.data or [])
             if current >= int(limit):
-                raise MarketplaceError(
-                    "Workflow limit reached for current plan",
-                    code="LIMIT_EXCEEDED",
-                    details={
-                        "error": "plan_limit_exceeded",
-                        "limit_type": "workflow_count",
-                        "current": current,
-                        "max": int(limit),
-                        "upgrade_url": "/settings/billing",
-                    },
+                raise PlanLimitExceededError(
+                    limit_type="workflow_count",
+                    current=current,
+                    max_allowed=int(limit),
                 )
 
 

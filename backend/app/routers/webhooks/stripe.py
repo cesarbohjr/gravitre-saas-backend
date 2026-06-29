@@ -8,7 +8,15 @@ from supabase import create_client
 
 from app.billing.service import resolve_org_id_from_checkout_metadata
 from app.billing.stripe import verify_webhook
+from app.billing.webhook_idempotency import (
+    claim_webhook_event,
+    is_webhook_event_processed,
+    release_webhook_event_claim,
+)
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
@@ -86,28 +94,15 @@ def _upsert_subscription_from_event(client, settings: Settings, org_id: str | No
     client.table("subscriptions").upsert(payload, on_conflict="org_id").execute()
 
 
-@router.post("/stripe")
-async def stripe_webhook(
-    request: Request,
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict[str, bool]:
-    if not settings.stripe_webhook_secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe webhook secret is not configured",
-        )
-
-    payload_bytes = await request.body()
-    signature = request.headers.get("stripe-signature")
-    event = verify_webhook(settings, payload_bytes, signature)
-
-    event_type = str(event.get("type") or "")
-    data = event.get("data", {}).get("object", {}) or {}
-    metadata = data.get("metadata") or {}
-    org_id = metadata.get("org_id")
-
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-
+def _process_stripe_event(
+    client,
+    settings: Settings,
+    event_type: str,
+    data: dict[str, Any],
+    metadata: dict[str, Any],
+    org_id: str | None,
+    event: dict[str, Any],
+) -> None:
     if not org_id:
         org_id = resolve_org_id_from_checkout_metadata(client, metadata)
 
@@ -190,5 +185,46 @@ async def stripe_webhook(
             ).eq("org_id", org_id).execute()
 
     _write_event(client, org_id, event_type, event)
-    return {"received": True}
 
+
+@router.post("/stripe")
+async def stripe_webhook(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe webhook secret is not configured",
+        )
+
+    payload_bytes = await request.body()
+    signature = request.headers.get("stripe-signature")
+    event = verify_webhook(settings, payload_bytes, signature)
+
+    stripe_event_id = str(getattr(event, "id", None) or event.get("id") or "")
+    event_type = str(getattr(event, "type", None) or event.get("type") or "")
+    data = event.get("data", {}).get("object", {}) or {}
+    metadata = data.get("metadata") or {}
+    org_id = metadata.get("org_id")
+
+    if not stripe_event_id:
+        raise HTTPException(status_code=400, detail="Stripe event id missing")
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+
+    if is_webhook_event_processed(client, stripe_event_id):
+        logger.info("Skipping duplicate Stripe webhook event %s", stripe_event_id)
+        return {"status": "already_processed", "received": True}
+
+    if not claim_webhook_event(client, stripe_event_id, event_type, org_id):
+        logger.info("Skipping duplicate Stripe webhook event %s (concurrent claim)", stripe_event_id)
+        return {"status": "already_processed", "received": True}
+
+    try:
+        _process_stripe_event(client, settings, event_type, data, metadata, org_id, event)
+    except Exception:
+        release_webhook_event_claim(client, stripe_event_id)
+        raise
+
+    return {"received": True}
