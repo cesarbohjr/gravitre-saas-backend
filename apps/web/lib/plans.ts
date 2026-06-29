@@ -7,11 +7,18 @@ import { Zap, Sliders, Crown, Rocket, Sparkles, type LucideIcon } from "lucide-r
 
 export type PlanCode = "free" | "node" | "control" | "command" | "enterprise"
 
+export type BillingInterval = "monthly" | "annual"
+
 export type Plan = {
   code: PlanCode
   name: string
   /** Monthly price in USD. null = not publicly priced (free / custom enterprise). */
   price: number | null
+  /**
+   * Effective per-month price in USD when billed annually (mirrors the public
+   * pricing page). null = not publicly priced (free / custom enterprise).
+   */
+  annualPrice: number | null
   tagline: string
   features: string[]
   icon: LucideIcon
@@ -25,6 +32,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     code: "free",
     name: "Free",
     price: 0,
+    annualPrice: 0,
     tagline: "Explore the basics",
     features: ["1 workflow", "Community support", "Limited runs"],
     icon: Sparkles,
@@ -34,6 +42,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     code: "node",
     name: "Node",
     price: 49,
+    annualPrice: 41,
     tagline: "For individual operators",
     features: ["1 core user", "10 workflows", "Essential connectors"],
     icon: Zap,
@@ -43,6 +52,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     code: "control",
     name: "Control",
     price: 129,
+    annualPrice: 107,
     tagline: "For growing teams",
     features: ["5 lite seats", "Meson builder", "Advanced connectors"],
     icon: Sliders,
@@ -53,6 +63,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     code: "command",
     name: "Command",
     price: 299,
+    annualPrice: 249,
     tagline: "For scaling organizations",
     features: ["25 lite seats", "SSO & API access", "Unlimited workflows"],
     icon: Crown,
@@ -62,6 +73,7 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
     code: "enterprise",
     name: "Enterprise",
     price: null,
+    annualPrice: null,
     tagline: "For large deployments",
     features: ["Custom seats", "Dedicated support", "Custom security review"],
     icon: Rocket,
@@ -90,10 +102,28 @@ export function getPlan(code: string | null | undefined): Plan {
   return PLAN_CATALOG.node
 }
 
-export function formatPlanPrice(plan: Plan): string {
-  if (plan.price === null) return "Custom"
-  if (plan.price === 0) return "$0"
-  return `$${plan.price}`
+/** Effective per-month price for the given billing interval. */
+export function planPriceForInterval(plan: Plan, interval: BillingInterval = "monthly"): number | null {
+  return interval === "annual" ? plan.annualPrice : plan.price
+}
+
+export function formatPlanPrice(plan: Plan, interval: BillingInterval = "monthly"): string {
+  const price = planPriceForInterval(plan, interval)
+  if (price === null) return "Custom"
+  if (price === 0) return "$0"
+  return `$${price}`
+}
+
+/** Total charged once per year when billed annually (per-month rate × 12). */
+export function annualBilledTotal(plan: Plan): number | null {
+  if (plan.annualPrice === null || plan.annualPrice === 0) return plan.annualPrice
+  return plan.annualPrice * 12
+}
+
+/** Yearly savings vs. paying monthly, or 0 when not applicable. */
+export function annualSavings(plan: Plan): number {
+  if (plan.price === null || plan.annualPrice === null) return 0
+  return Math.max(0, (plan.price - plan.annualPrice) * 12)
 }
 
 /** "upgrade" | "downgrade" | "current" relative to the active tier. */

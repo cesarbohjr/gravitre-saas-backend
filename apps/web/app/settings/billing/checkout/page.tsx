@@ -1,15 +1,22 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { loadStripe } from "@stripe/stripe-js"
+import { useTheme } from "next-themes"
+import { loadStripe, type Appearance } from "@stripe/stripe-js"
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
-import { ArrowLeft, Loader2, Shield } from "lucide-react"
+import { ArrowLeft, Loader2, RefreshCw, Shield } from "lucide-react"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { billingApi, ApiRequestError } from "@/lib/api"
-import { getPlan, formatPlanPrice, type PlanCode } from "@/lib/plans"
+import {
+  getPlan,
+  formatPlanPrice,
+  annualBilledTotal,
+  type BillingInterval,
+  type PlanCode,
+} from "@/lib/plans"
 import { toast } from "sonner"
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""
@@ -17,7 +24,7 @@ const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : 
 
 type CheckoutFormProps = {
   planCode: PlanCode
-  billingInterval: "monthly" | "annual"
+  billingInterval: BillingInterval
   returnUrl: string
 }
 
@@ -28,6 +35,10 @@ function CheckoutForm({ planCode, billingInterval, returnUrl }: CheckoutFormProp
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [elementReady, setElementReady] = useState(false)
   const plan = getPlan(planCode)
+  const isAnnual = billingInterval === "annual"
+  const priceLabel = formatPlanPrice(plan, billingInterval)
+  const isPaidPlan = plan.price !== null && plan.price > 0
+  const annualTotal = annualBilledTotal(plan)
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -55,9 +66,10 @@ function CheckoutForm({ planCode, billingInterval, returnUrl }: CheckoutFormProp
             <p className="text-sm text-muted-foreground capitalize">{billingInterval} billing</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-primary">{formatPlanPrice(plan)}</p>
-            {plan.price !== null && plan.price > 0 && (
-              <p className="text-xs text-muted-foreground">/month</p>
+            <p className="text-2xl font-bold text-primary">{priceLabel}</p>
+            {isPaidPlan && <p className="text-xs text-muted-foreground">/month</p>}
+            {isPaidPlan && isAnnual && annualTotal !== null && (
+              <p className="mt-0.5 text-xs text-muted-foreground">Billed annually · ${annualTotal}/yr</p>
             )}
           </div>
         </div>
@@ -130,10 +142,18 @@ export default function BillingCheckoutPage() {
 
 function BillingCheckoutPageInner() {
   const searchParams = useSearchParams()
+  const { resolvedTheme } = useTheme()
   const planCode = parsePlanCode(searchParams.get("plan"))
   const billingInterval = parseBillingInterval(searchParams.get("interval"))
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const handleRetry = useCallback(() => {
+    setLoadError(null)
+    setClientSecret(null)
+    setReloadKey((key) => key + 1)
+  }, [])
 
   useEffect(() => {
     if (!planCode) return
@@ -161,7 +181,14 @@ function BillingCheckoutPageInner() {
     return () => {
       cancelled = true
     }
-  }, [planCode, billingInterval])
+  }, [planCode, billingInterval, reloadKey])
+
+  // Match the Stripe Payment Element to the app's active light/dark theme and
+  // brand corner radius so it doesn't render as a light card on a dark page.
+  const stripeAppearance: Appearance = {
+    theme: resolvedTheme === "dark" ? "night" : "stripe",
+    variables: { borderRadius: "8px" },
+  }
 
   const returnUrl =
     typeof window !== "undefined"
@@ -209,8 +236,12 @@ function BillingCheckoutPageInner() {
           )}
 
           {loadError && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-              {loadError}
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={handleRetry} className="mt-3">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Try again
+              </Button>
             </div>
           )}
 
@@ -226,12 +257,7 @@ function BillingCheckoutPageInner() {
               stripe={stripePromise}
               options={{
                 clientSecret,
-                appearance: {
-                  theme: "stripe",
-                  variables: {
-                    borderRadius: "8px",
-                  },
-                },
+                appearance: stripeAppearance,
               }}
             >
               <CheckoutForm planCode={planCode} billingInterval={billingInterval} returnUrl={returnUrl} />
