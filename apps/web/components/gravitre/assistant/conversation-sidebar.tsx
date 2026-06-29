@@ -155,7 +155,7 @@ export function ConversationSidebar({
   isOpen,
   onToggle,
   isLoading = false,
-  loadError = false,
+  loadError,
   onRetry,
 }: {
   conversations: Conversation[]
@@ -169,7 +169,7 @@ export function ConversationSidebar({
   isOpen: boolean
   onToggle: () => void
   isLoading?: boolean
-  loadError?: boolean
+  loadError?: unknown
   onRetry?: () => void
 }) {
   const [searchOpen, setSearchOpen] = useState(false)
@@ -471,6 +471,7 @@ export function ConversationSidebar({
             <WorkSectionErrorCard
               title="Couldn't load history"
               message="We couldn't fetch your conversations. Check your connection and try again."
+              error={loadError}
               onRetry={onRetry}
               className="mx-3 my-6 border-zinc-200 bg-red-50/90"
             />

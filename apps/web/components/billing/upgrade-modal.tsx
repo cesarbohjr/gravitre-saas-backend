@@ -1,13 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Check } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { billingApi } from "@/lib/api"
 import { SELECTABLE_PLANS, formatPlanPrice } from "@/lib/plans"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
 
 interface UpgradeModalProps {
   open: boolean
@@ -16,9 +15,9 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: UpgradeModalProps) {
+  const router = useRouter()
   // Default to the recommended middle tier so the primary action is never stuck.
   const [selectedPlan, setSelectedPlan] = useState<string>("control")
-  const [isProcessing, setIsProcessing] = useState(false)
 
   const title =
     subscriptionStatus === "trial_expired"
@@ -27,30 +26,18 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
         ? "Payment required"
         : "Choose a plan"
 
-  const handleContinue = async () => {
-    setIsProcessing(true)
-    try {
-      const response = await billingApi.createCheckoutForPlan(selectedPlan, "monthly")
-      if (response.checkout_url) {
-        window.location.assign(response.checkout_url)
-        return
-      }
-      toast.error("Could not start checkout. Please try again.")
-    } catch (error) {
-      console.error("[v0] Upgrade checkout failed:", error)
-      toast.error("Failed to start checkout")
-    } finally {
-      setIsProcessing(false)
-    }
+  const handleContinue = () => {
+    onOpenChange(false)
+    router.push(`/settings/billing/checkout?plan=${selectedPlan}&interval=monthly`)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" data-testid="upgrade-modal">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle data-testid="upgrade-modal-title">{title}</DialogTitle>
           <DialogDescription>
-            Select Node, Control, or Command to restore full access. Checkout uses your existing Stripe billing flow.
+            Select Node, Control, or Command to restore full access. You&apos;ll complete payment on the next step.
           </DialogDescription>
         </DialogHeader>
 
@@ -63,6 +50,7 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
                 type="button"
                 role="radio"
                 aria-checked={isSelected}
+                data-testid={`upgrade-plan-${plan.code}`}
                 onClick={() => setSelectedPlan(plan.code)}
                 className={cn(
                   "relative rounded-lg border p-4 text-left transition-all",
@@ -98,18 +86,11 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Not now
           </Button>
-          <Button onClick={handleContinue} disabled={isProcessing}>
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Starting checkout…
-              </>
-            ) : (
-              `Continue with ${SELECTABLE_PLANS.find((p) => p.code === selectedPlan)?.name ?? "plan"}`
-            )}
+          <Button onClick={handleContinue} data-testid="upgrade-continue-checkout">
+            {`Continue with ${SELECTABLE_PLANS.find((p) => p.code === selectedPlan)?.name ?? "plan"}`}
           </Button>
         </div>
       </DialogContent>

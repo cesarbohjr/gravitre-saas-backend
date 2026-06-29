@@ -1382,6 +1382,16 @@ export const billingApi = {
       plan_code: planCode,
       billing_interval: billingInterval,
     }),
+  createSubscriptionForPlan: (planCode: string, billingInterval: "monthly" | "annual" = "monthly") =>
+    postJson<{
+      client_secret: string
+      subscription_id: string
+      customer_id: string
+      subscription_status?: string
+    }>(apiUrl("/api/billing/subscribe"), {
+      plan_code: planCode,
+      billing_interval: billingInterval,
+    }),
   createPublicCheckoutForPlan: (
     planCode: string,
     billingInterval: "monthly" | "annual" = "monthly",

@@ -102,7 +102,13 @@
     "deploy:web": "vercel deploy --prod --yes",
     "deploy:web:preview": "vercel deploy --yes",
     "vercel:link": "vercel link --yes --project gravitre-saas-backend",
-    "security:audit-backend": "python scripts/pip-audit-backend.py"
+    "security:audit-backend": "python scripts/pip-audit-backend.py",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:install": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.195",

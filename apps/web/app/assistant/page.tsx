@@ -1050,7 +1050,7 @@ export default function AssistantPage() {
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
           isLoading={showConversationsSkeleton}
-          loadError={showConversationsError}
+          loadError={showConversationsError ? conversationsError : undefined}
           onRetry={() => void mutateConversations()}
         />
 

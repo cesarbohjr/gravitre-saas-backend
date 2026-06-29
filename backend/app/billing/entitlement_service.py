@@ -117,6 +117,17 @@ def _is_sandbox_exempt(client: Client, org_id: str) -> bool:
     return isinstance(marketplace, dict) and bool(marketplace.get("sandbox"))
 
 
+# Authoritative block-reason precedence when multiple signals apply (highest wins first):
+# active/sandbox_exempt → canceled → past_due → trial_expired (trialing + past date) → trialing
+BLOCK_REASON_PRECEDENCE: tuple[str, ...] = (
+    "active",
+    "canceled",
+    "past_due",
+    "trial_expired",
+    "trialing",
+)
+
+
 def resolve_billing_state(
     *,
     billing_row: dict[str, Any] | None,

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_org_member
 from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
@@ -27,6 +27,7 @@ from app.billing.service import (
 from app.billing.stripe import (
     create_checkout_session,
     create_customer_portal,
+    create_subscription_for_payment_element,
     plan_code_for_price,
     price_id_for_plan,
     verify_webhook,
@@ -44,6 +45,30 @@ def _raise_stripe_http_error(exc: stripe.error.StripeError) -> None:
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=error_detail(message, "STRIPE_ERROR"),
     ) from exc
+
+
+def _stripe_customer_missing(exc: stripe.error.StripeError) -> bool:
+    if not isinstance(exc, stripe.error.InvalidRequestError):
+        return False
+    message = (getattr(exc, "user_message", None) or str(exc) or "").lower()
+    return "no such customer" in message
+
+
+def _create_stripe_customer(settings: Settings, client, org_id: str, user_id: str, plan_code: str | None) -> str:
+    from stripe import Customer
+
+    Customer.api_key = settings.stripe_secret_key
+    customer = Customer.create(metadata={"org_id": org_id, "created_by": user_id})
+    customer_id = customer["id"]
+    client.table("org_billing").upsert(
+        {
+            "org_id": org_id,
+            "stripe_customer_id": customer_id,
+            "plan_code": plan_code,
+            "billing_status": "trialing",
+        }
+    ).execute()
+    return customer_id
 
 
 # Health check endpoint to verify Stripe configuration
@@ -430,10 +455,10 @@ async def get_billing_status(
 @router.post("/checkout")
 async def create_checkout(
     body: CheckoutRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    current_user, org_id = _admin
+    current_user, org_id, _role = member
     plan_code = (body.plan_code or "").strip().lower() or None
     billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None
@@ -450,28 +475,18 @@ async def create_checkout(
             detail=error_detail("Stripe is not configured", "INVALID_CONFIG"),
         )
     app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
-    success_url = f"{app_url}/billing?status=success"
-    cancel_url = f"{app_url}/pricing?status=cancelled"
+    success_url = f"{app_url}/settings/billing?status=success"
+    cancel_url = f"{app_url}/settings/billing?status=cancelled"
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     billing = get_org_billing(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
-        from stripe import Customer
-
-        Customer.api_key = settings.stripe_secret_key
         try:
-            customer = Customer.create(metadata={"org_id": org_id, "created_by": current_user["user_id"]})
-            customer_id = customer["id"]
+            customer_id = _create_stripe_customer(
+                settings, client, org_id, current_user["user_id"], plan_code
+            )
         except stripe.error.StripeError as exc:
             _raise_stripe_http_error(exc)
-        client.table("org_billing").upsert(
-            {
-                "org_id": org_id,
-                "stripe_customer_id": customer_id,
-                "plan_code": plan_code,
-                "billing_status": "trialing",
-            }
-        ).execute()
     try:
         session = create_checkout_session(
             settings=settings,
@@ -482,7 +497,27 @@ async def create_checkout(
             metadata={"org_id": org_id, "plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
         )
     except stripe.error.StripeError as exc:
-        _raise_stripe_http_error(exc)
+        if customer_id and _stripe_customer_missing(exc):
+            customer_id = _create_stripe_customer(
+                settings, client, org_id, current_user["user_id"], plan_code
+            )
+            try:
+                session = create_checkout_session(
+                    settings=settings,
+                    customer_id=customer_id,
+                    price_id=price_id,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                    metadata={
+                        "org_id": org_id,
+                        "plan_code": plan_code,
+                        "billing_interval": billing_interval or "monthly",
+                    },
+                )
+            except stripe.error.StripeError as retry_exc:
+                _raise_stripe_http_error(retry_exc)
+        else:
+            _raise_stripe_http_error(exc)
     write_audit_event(
         client,
         org_id=org_id,
@@ -493,6 +528,100 @@ async def create_checkout(
         metadata={"plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
     )
     return {"url": session.url, "checkout_url": session.url}
+
+
+@router.post("/subscribe")
+async def create_subscription_payment(
+    body: CheckoutRequest,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Create an incomplete Stripe subscription and return Payment Element client_secret."""
+    current_user, org_id, _role = member
+    plan_code = (body.plan_code or "").strip().lower() or None
+    billing_interval = (body.billing_interval or "").strip().lower() or None
+    price_id = (body.price_id or "").strip() or None
+    if not price_id and plan_code:
+        price_id = price_id_for_plan(settings, plan_code, billing_interval=billing_interval)
+    if not plan_code and price_id:
+        mapped = plan_code_for_price(settings, price_id)
+        plan_code = mapped or "free"
+    if not price_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_detail("Invalid plan", "VALIDATION_ERROR"))
+    if not settings.stripe_secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_detail("Stripe is not configured", "INVALID_CONFIG"),
+        )
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    billing = get_org_billing(client, org_id)
+    customer_id = billing.get("stripe_customer_id") if billing else None
+    if not customer_id:
+        try:
+            customer_id = _create_stripe_customer(
+                settings, client, org_id, current_user["user_id"], plan_code
+            )
+        except stripe.error.StripeError as exc:
+            _raise_stripe_http_error(exc)
+
+    metadata = {
+        "org_id": org_id,
+        "plan_code": plan_code,
+        "billing_interval": billing_interval or "monthly",
+    }
+    quantity = body.quantity or 1
+
+    try:
+        result = create_subscription_for_payment_element(
+            settings=settings,
+            customer_id=customer_id,
+            price_id=price_id,
+            metadata=metadata,
+            quantity=quantity,
+        )
+    except stripe.error.StripeError as exc:
+        if customer_id and _stripe_customer_missing(exc):
+            customer_id = _create_stripe_customer(
+                settings, client, org_id, current_user["user_id"], plan_code
+            )
+            try:
+                result = create_subscription_for_payment_element(
+                    settings=settings,
+                    customer_id=customer_id,
+                    price_id=price_id,
+                    metadata=metadata,
+                    quantity=quantity,
+                )
+            except stripe.error.StripeError as retry_exc:
+                _raise_stripe_http_error(retry_exc)
+        else:
+            _raise_stripe_http_error(exc)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=error_detail(str(exc), "STRIPE_ERROR"),
+        ) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action="billing.subscribe.created",
+        resource_type="org_billing",
+        resource_id=str(org_id),
+        metadata={
+            "plan_code": plan_code,
+            "billing_interval": billing_interval or "monthly",
+            "subscription_id": result["subscription_id"],
+        },
+    )
+    return {
+        "client_secret": result["client_secret"],
+        "subscription_id": result["subscription_id"],
+        "customer_id": result["customer_id"],
+        "subscription_status": result["subscription_status"],
+    }
 
 
 @router.post("/checkout/public")

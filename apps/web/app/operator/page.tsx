@@ -1049,6 +1049,7 @@ export default function OperatorPage() {
                   <WorkSectionErrorCard
                     title="Could not load tasks"
                     message="Your operator task queue could not be loaded."
+                    error={tasksError}
                     onRetry={() => void mutateTasks()}
                   />
                 ) : !tasksReady && tasksLoading ? (

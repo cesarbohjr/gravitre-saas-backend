@@ -5,7 +5,11 @@ from unittest.mock import MagicMock
 
 import stripe
 
-from app.billing.stripe import create_checkout_session, metered_price_id_for_plan
+from app.billing.stripe import (
+    create_checkout_session,
+    create_subscription_for_payment_element,
+    metered_price_id_for_plan,
+)
 from app.config import Settings
 from app.services.stripe_service import create_subscription
 
@@ -70,3 +74,31 @@ def test_subscription_includes_metered_item_when_configured(monkeypatch):
     items = captured["items"]
     assert items[0] == {"price": "price_node_flat", "quantity": 3}
     assert {"price": "price_node_metered"} in items
+
+
+def test_payment_element_subscription_includes_metered_and_metadata(monkeypatch):
+    captured = {}
+
+    def fake_create(**kw):
+        captured.update(kw)
+        return {
+            "id": "sub_123",
+            "status": "incomplete",
+            "latest_invoice": {
+                "payment_intent": {"client_secret": "pi_secret_test"},
+            },
+        }
+
+    monkeypatch.setattr(stripe.Subscription, "create", fake_create)
+    result = create_subscription_for_payment_element(
+        _settings(metered=True),
+        "cus_1",
+        "price_node_flat",
+        {"org_id": "org_1", "plan_code": "node"},
+    )
+    assert captured["metadata"] == {"org_id": "org_1", "plan_code": "node"}
+    assert captured["payment_behavior"] == "default_incomplete"
+    prices = [item["price"] for item in captured["items"]]
+    assert prices == ["price_node_flat", "price_node_metered"]
+    assert result["client_secret"] == "pi_secret_test"
+    assert result["subscription_id"] == "sub_123"

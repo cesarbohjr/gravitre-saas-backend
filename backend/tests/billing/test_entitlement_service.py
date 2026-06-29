@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.billing.entitlement_service import (
+    BLOCK_REASON_PRECEDENCE,
     PlanRequiredError,
     assert_org_not_blocked,
     get_org_billing_state,
@@ -23,6 +24,20 @@ def test_trial_expiry_computed_from_trial_ends_at_not_stripe_status_alone():
     )
     assert state["status"] == "trial_expired"
     assert state["is_blocked"] is True
+
+
+def test_cancelled_precedes_expired_trial_date():
+    past = datetime.now(timezone.utc) - timedelta(days=1)
+    state = resolve_billing_state(
+        billing_row={"billing_status": "cancelled", "plan_code": "node"},
+        trial_ends_at=past,
+    )
+    assert state["status"] == "canceled"
+    assert state["is_blocked"] is True
+
+
+def test_block_reason_precedence_order():
+    assert BLOCK_REASON_PRECEDENCE.index("canceled") < BLOCK_REASON_PRECEDENCE.index("trial_expired")
 
 
 def test_trial_active_allows_access():
