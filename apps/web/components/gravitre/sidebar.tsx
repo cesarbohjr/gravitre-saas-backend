@@ -36,10 +36,10 @@ const sectionColors = {
     activeIcon: "text-amber-500",
   },
   INSIGHTS: {
-    accent: "text-violet-500",
-    activeBg: "bg-violet-500/8",
-    activeBorder: "border-l-violet-500",
-    activeIcon: "text-violet-500",
+    accent: "text-rose-500",
+    activeBg: "bg-rose-500/8",
+    activeBorder: "border-l-rose-500",
+    activeIcon: "text-rose-500",
   },
   SETTINGS: {
     accent: "text-zinc-500",

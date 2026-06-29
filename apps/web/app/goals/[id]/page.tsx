@@ -57,8 +57,8 @@ export default function GoalDetailPage() {
           <>
             <div className="rounded-xl border border-border/60 bg-card/40 p-6">
               <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-violet-500/10 p-2">
-                  <Target className="h-5 w-5 text-violet-400" />
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Target className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h1 className="text-xl font-semibold text-foreground">{data.goal.objective}</h1>
@@ -83,7 +83,7 @@ export default function GoalDetailPage() {
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-violet-500 transition-all"
+                    className="h-full rounded-full bg-primary transition-all"
                     style={{ width: `${Math.min(100, Math.max(0, data.completionPercentage))}%` }}
                   />
                 </div>

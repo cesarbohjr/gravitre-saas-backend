@@ -16,6 +16,7 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: UpgradeModalProps) {
+  // Default to the recommended middle tier so the primary action is never stuck.
   const [selectedPlan, setSelectedPlan] = useState<string>("control")
   const [isProcessing, setIsProcessing] = useState(false)
 
