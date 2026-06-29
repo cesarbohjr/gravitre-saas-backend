@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -204,6 +204,14 @@ const forecastStatus = willExceed
     : { label: "On track", accent: "text-success", soft: "bg-success/10", dot: "bg-success" }
 
 export default function BillingPage() {
+  return (
+    <Suspense fallback={null}>
+      <BillingPageInner />
+    </Suspense>
+  )
+}
+
+function BillingPageInner() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()

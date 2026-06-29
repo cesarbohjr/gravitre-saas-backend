@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
@@ -112,6 +112,23 @@ function parseBillingInterval(value: string | null): "monthly" | "annual" {
 }
 
 export default function BillingCheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading checkout…
+          </div>
+        </AppShell>
+      }
+    >
+      <BillingCheckoutPageInner />
+    </Suspense>
+  )
+}
+
+function BillingCheckoutPageInner() {
   const searchParams = useSearchParams()
   const planCode = parsePlanCode(searchParams.get("plan"))
   const billingInterval = parseBillingInterval(searchParams.get("interval"))
