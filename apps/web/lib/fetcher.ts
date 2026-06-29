@@ -179,3 +179,13 @@ export async function fetcher<T>(url: string): Promise<T> {
     throw new ApiError("Invalid JSON response from server", response.status)
   }
 }
+
+declare global {
+  interface Window {
+    __gravitreApiFetch?: typeof apiFetch
+  }
+}
+
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1") {
+  window.__gravitreApiFetch = apiFetch
+}

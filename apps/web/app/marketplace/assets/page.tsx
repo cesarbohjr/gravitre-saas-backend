@@ -616,7 +616,7 @@ function MarketplaceAssetsContent() {
     if (departmentFilter) return `No assets in department "${departmentFilter.replace(/_/g, " ")}".`
     if (categoryFilter) return `No assets in category "${categoryFilter.replace(/_/g, " ")}".`
     if (typeFilter !== "all") return "No assets in this category yet."
-    if (categories?.totalAssets === 0) return "The starter catalog is empty. Run backend/scripts/seed_marketplace.py."
+    if (categories?.totalAssets === 0) return "The catalog is empty right now. Check back soon for new assets."
     return "No assets found."
   }, [debouncedSearch, departmentFilter, categoryFilter, typeFilter, categories?.totalAssets])
 

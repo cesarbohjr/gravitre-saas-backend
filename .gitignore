@@ -27,7 +27,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-# Node / Next.js
+# Playwright E2E fixture output (generated credentials)
+e2e/.fixtures/
+test-results/
+playwright-report/
+playwright/.cache/
 node_modules/
 apps/web/node_modules/
 .next/

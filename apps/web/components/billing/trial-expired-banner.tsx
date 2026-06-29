@@ -19,6 +19,7 @@ export function TrialExpiredBanner({
       className="border-b border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950"
       role="alert"
       aria-live="polite"
+      data-testid="trial-expired-banner"
     >
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
         <span>{message}</span>

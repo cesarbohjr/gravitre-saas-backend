@@ -49,7 +49,7 @@ def test_invoke_unknown_action(tool_ctx: ToolContext):
 def test_invoke_slack_success(tool_ctx: ToolContext):
     conn = {"id": "conn-slack", "type": "slack", "status": "active"}
     with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
-        with patch("app.services.tool_service.get_decrypted_secret", return_value="xoxb-test"):
+        with patch("app.connectors.connector_tool_auth.resolve_slack_bot_token", return_value="xoxb-test"):
             with patch("app.services.tool_service.enforce_rate_limit"):
                 with patch("app.services.tool_service.send_slack_message", return_value={"ts": "123", "_latency_ms": 42}):
                     with patch("app.services.tool_service.write_audit_event"):

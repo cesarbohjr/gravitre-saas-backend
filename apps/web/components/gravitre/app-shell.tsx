@@ -200,6 +200,18 @@ export function AppShell({ children, title }: AppShellProps) {
     router.replace("/login?intent=login")
   }, [loading, user, router])
 
+  // Hard redirect only for non-trial blocks (e.g. canceled). Expired trials stay in
+  // the product shell so the non-dismissible banner and 402 upgrade modal can surface.
+  useEffect(() => {
+    if (!billingHardBlock || billingError) return
+    if (pathname.startsWith("/settings/billing") || pathname.startsWith("/pricing")) return
+    router.replace("/settings/billing?reason=subscription_required")
+  }, [billingHardBlock, billingError, pathname, router])
+
+  const showTrialExpiredBanner =
+    trialExpired ||
+    planRequired?.subscription_status === "trial_expired"
+
   // Show loading only on the first auth/billing bootstrap — not on background revalidation.
   const awaitingInitialBilling = Boolean(user) && billingLoading && billingStatusData === undefined
   if (loading || awaitingInitialBilling) {
@@ -217,14 +229,6 @@ export function AppShell({ children, title }: AppShellProps) {
       </div>
     )
   }
-
-  // Hard redirect only for non-trial blocks (e.g. canceled). Expired trials stay in
-  // the product shell so the non-dismissible banner and 402 upgrade modal can surface.
-  useEffect(() => {
-    if (!billingHardBlock || billingError) return
-    if (pathname.startsWith("/settings/billing") || pathname.startsWith("/pricing")) return
-    router.replace("/settings/billing?reason=subscription_required")
-  }, [billingHardBlock, billingError, pathname, router])
 
   if (billingHardBlock && !billingError && !pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
     return (
@@ -246,7 +250,7 @@ export function AppShell({ children, title }: AppShellProps) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={() => setSidebarOpen(true)} />
 
-          {(trialExpired || planRequired?.error === "plan_required") && (
+          {showTrialExpiredBanner && (
             <TrialExpiredBanner
               message={planRequired?.message}
               upgradeUrl={planRequired?.upgrade_url ?? "/settings/billing"}
@@ -265,7 +269,7 @@ export function AppShell({ children, title }: AppShellProps) {
                 ? "border-amber-300 bg-amber-50 text-amber-900"
                 : "border-emerald-200 bg-emerald-50 text-emerald-900"
             return (
-            <div className={cn("border-b px-4 py-2 text-sm flex items-center justify-between", bannerClass)}>
+            <div className={cn("border-b px-4 py-2 text-sm flex items-center justify-between", bannerClass)} data-testid="active-trial-banner">
               <span>
                 You&apos;re on a 7-day free trial of Node.
                 {days !== null && ` ${days} day${days === 1 ? "" : "s"} left.`}
