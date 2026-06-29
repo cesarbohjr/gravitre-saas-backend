@@ -13,19 +13,6 @@ const benefits = [
   { icon: MapPin, title: "Offsites", description: "Regular team retreats to connect in person and have fun together" },
 ]
 
-const departments = ["Engineering", "Product", "Design", "Sales", "Marketing", "Operations"]
-
-const jobs = [
-  { id: 1, title: "Senior Software Engineer, Platform", department: "Engineering", location: "Remote (US)", type: "Full-time" },
-  { id: 2, title: "Staff Machine Learning Engineer", department: "Engineering", location: "San Francisco / Remote", type: "Full-time" },
-  { id: 3, title: "Senior Product Designer", department: "Design", location: "Remote (US/EU)", type: "Full-time" },
-  { id: 4, title: "Product Manager, AI Operator", department: "Product", location: "San Francisco", type: "Full-time" },
-  { id: 5, title: "Account Executive, Enterprise", department: "Sales", location: "New York / Remote", type: "Full-time" },
-  { id: 6, title: "Senior DevOps Engineer", department: "Engineering", location: "Remote", type: "Full-time" },
-  { id: 7, title: "Content Marketing Manager", department: "Marketing", location: "Remote (US)", type: "Full-time" },
-  { id: 8, title: "Solutions Engineer", department: "Sales", location: "San Francisco / London", type: "Full-time" },
-]
-
 export default function CareersPage() {
   return (
     <div className="bg-white">
@@ -102,32 +89,20 @@ export default function CareersPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <h2 className="text-3xl font-semibold text-zinc-900 mb-4">Open roles</h2>
             <p className="text-zinc-600">
-              Don&apos;t see a role that fits? Send us your resume at <a href="mailto:careers@gravitre.com" className="text-emerald-600 hover:text-emerald-500">careers@gravitre.com</a>
+              Don&apos;t see a role that fits? Send us your resume at <a href="mailto:careers@gravitre.app" className="text-emerald-600 hover:text-emerald-500">careers@gravitre.app</a>
             </p>
           </motion.div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-            <button className="rounded-full bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white">All</button>
-            {departments.map((dept) => (
-              <button key={dept} className="rounded-full border border-zinc-200 px-4 py-1.5 text-sm text-zinc-600 hover:text-zinc-900 hover:border-zinc-300 transition-colors">{dept}</button>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            {jobs.map((job, i) => (
-              <motion.a key={job.id} href={`/careers/${job.id}`} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="group flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md">
-                <div>
-                  <h3 className="font-medium text-zinc-900 group-hover:text-emerald-700 transition-colors">{job.title}</h3>
-                  <div className="flex items-center gap-4 mt-1">
-                    <span className="text-sm text-zinc-500">{job.department}</span>
-                    <span className="text-sm text-zinc-500 flex items-center gap-1"><MapPin className="h-3 w-3" />{job.location}</span>
-                    <span className="text-sm text-zinc-500">{job.type}</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-5 w-5 text-zinc-400 group-hover:text-emerald-600 transition-colors" />
-              </motion.a>
-            ))}
-          </div>
+          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-12 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+              <Users className="h-6 w-6 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-medium text-zinc-900 mb-2">No open roles right now</h3>
+            <p className="text-sm text-zinc-600 max-w-md mx-auto">
+              We don&apos;t have any positions open at the moment, but we&apos;re always growing. Send your resume to{" "}
+              <a href="mailto:careers@gravitre.app" className="text-emerald-600 hover:text-emerald-500">careers@gravitre.app</a> and we&apos;ll reach out when something opens up.
+            </p>
+          </motion.div>
         </div>
       </section>
 

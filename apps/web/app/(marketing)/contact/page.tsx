@@ -3,18 +3,12 @@
 import { useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowRight, Mail, MapPin, MessageSquare, Phone, Check, Loader2, Building2, Headphones, Users } from "lucide-react"
+import { ArrowRight, Mail, MessageSquare, Phone, Check, Loader2, Building2, Headphones, Users } from "lucide-react"
 
 const contactOptions = [
-  { icon: Headphones, title: "Support", description: "Get help with your account or technical issues", action: "support@gravitre.com", href: "mailto:support@gravitre.com" },
-  { icon: Building2, title: "Sales", description: "Learn about enterprise plans and custom solutions", action: "sales@gravitre.com", href: "mailto:sales@gravitre.com" },
-  { icon: Users, title: "Partnerships", description: "Explore integration and partnership opportunities", action: "partners@gravitre.com", href: "mailto:partners@gravitre.com" },
-]
-
-const offices = [
-  { city: "San Francisco", address: "548 Market St, Suite 35000", country: "United States" },
-  { city: "London", address: "30 Fenchurch Street", country: "United Kingdom" },
-  { city: "Singapore", address: "Marina Bay Sands Tower 1", country: "Singapore" },
+  { icon: Headphones, title: "Support", description: "Get help with your account or technical issues", action: "support@gravitre.app", href: "mailto:support@gravitre.app" },
+  { icon: Building2, title: "Sales", description: "Learn about enterprise plans and custom solutions", action: "sales@gravitre.app", href: "mailto:sales@gravitre.app" },
+  { icon: Users, title: "Partnerships", description: "Explore integration and partnership opportunities", action: "partners@gravitre.app", href: "mailto:partners@gravitre.app" },
 ]
 
 export default function ContactPage() {
@@ -117,29 +111,11 @@ export default function ContactPage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="lg:pl-12">
-              <h2 className="text-2xl font-semibold text-zinc-900 mb-6">Our Offices</h2>
-              <div className="space-y-6">
-                {offices.map((office) => (
-                  <div key={office.city} className="flex gap-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white border border-zinc-200 shadow-sm">
-                      <MapPin className="h-4 w-4 text-zinc-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-zinc-900">{office.city}</h3>
-                      <p className="text-sm text-zinc-500">{office.address}</p>
-                      <p className="text-sm text-zinc-500">{office.country}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-12 pt-12 border-t border-zinc-200">
-                <h3 className="font-medium text-zinc-900 mb-4">Other ways to reach us</h3>
-                <div className="space-y-3">
-                  <a href="mailto:hello@gravitre.com" className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><Mail className="h-4 w-4" /><span className="text-sm">hello@gravitre.com</span></a>
-                  <a href="tel:+1-888-555-0123" className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><Phone className="h-4 w-4" /><span className="text-sm">+1 (888) 555-0123</span></a>
-                  <button onClick={() => window.open('https://gravitre.com/chat', '_blank')} className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><MessageSquare className="h-4 w-4" /><span className="text-sm">Live chat (9am-6pm PT)</span></button>
-                </div>
+              <h2 className="text-2xl font-semibold text-zinc-900 mb-6">Other ways to reach us</h2>
+              <div className="space-y-3">
+                <a href="mailto:hello@gravitre.app" className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><Mail className="h-4 w-4" /><span className="text-sm">hello@gravitre.app</span></a>
+                <a href="tel:+1-888-555-0123" className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><Phone className="h-4 w-4" /><span className="text-sm">+1 (888) 555-0123</span></a>
+                <button onClick={() => window.open('https://gravitre.app/chat', '_blank')} className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><MessageSquare className="h-4 w-4" /><span className="text-sm">Live chat (9am-6pm PT)</span></button>
               </div>
             </motion.div>
           </div>
