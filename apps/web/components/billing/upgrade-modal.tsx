@@ -5,25 +5,9 @@ import { Check, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { billingApi } from "@/lib/api"
+import { SELECTABLE_PLANS, formatPlanPrice } from "@/lib/plans"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-const PLANS = [
-  { code: "node", name: "Node", price: "$49/mo", highlights: ["1 core user", "10 workflows", "Essential connectors"] },
-  {
-    code: "control",
-    name: "Control",
-    price: "$129/mo",
-    highlights: ["5 lite seats", "Meson builder", "Advanced connectors"],
-    badge: "Most popular",
-  },
-  {
-    code: "command",
-    name: "Command",
-    price: "$299/mo",
-    highlights: ["25 lite seats", "SSO & API access", "Unlimited workflows"],
-  },
-]
 
 interface UpgradeModalProps {
   open: boolean
@@ -71,7 +55,7 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
         </DialogHeader>
 
         <div role="radiogroup" aria-label="Choose a plan" className="grid gap-3 md:grid-cols-3">
-          {PLANS.map((plan) => {
+          {SELECTABLE_PLANS.map((plan) => {
             const isSelected = selectedPlan === plan.code
             return (
               <button
@@ -87,9 +71,9 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
                   isSelected ? "border-primary ring-2 ring-primary/20 bg-primary/[0.03]" : "border-border",
                 )}
               >
-                {plan.badge && (
+                {plan.popular && (
                   <span className="absolute -top-2 right-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
-                    {plan.badge}
+                    Most popular
                   </span>
                 )}
                 <span
@@ -102,9 +86,9 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
                   {isSelected && <Check className="h-3 w-3" />}
                 </span>
                 <p className="font-semibold text-foreground">{plan.name}</p>
-                <p className="text-lg font-semibold text-primary">{plan.price}</p>
+                <p className="text-lg font-semibold text-primary">{formatPlanPrice(plan)}/mo</p>
                 <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-                  {plan.highlights.map((item) => (
+                  {plan.features.map((item) => (
                     <li key={item}>• {item}</li>
                   ))}
                 </ul>
@@ -124,7 +108,7 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
                 Starting checkout…
               </>
             ) : (
-              `Continue with ${PLANS.find((p) => p.code === selectedPlan)?.name ?? "plan"}`
+              `Continue with ${SELECTABLE_PLANS.find((p) => p.code === selectedPlan)?.name ?? "plan"}`
             )}
           </Button>
         </div>

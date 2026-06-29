@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
@@ -59,14 +60,13 @@ import {
   Shield,
   ChevronRight,
   X,
-  Loader2,
-  Building2,
-  Rocket
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { billingApi } from "@/lib/api"
+import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 
 const invoices = [
@@ -115,41 +115,6 @@ const usageMetrics = [
     trendUp: false
   },
 ]
-
-const plans = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 99,
-    icon: Zap,
-    features: ["10,000 workflow runs", "5 team members", "10 GB storage", "100,000 API calls"],
-    current: false
-  },
-  {
-    id: "business",
-    name: "Business",
-    price: 499,
-    icon: Building2,
-    features: ["50,000 workflow runs", "25 team members", "50 GB storage", "500,000 API calls"],
-    current: true,
-    badge: "Current"
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 999,
-    icon: Rocket,
-    features: ["Unlimited workflow runs", "Unlimited team members", "500 GB storage", "Unlimited API calls"],
-    current: false,
-    badge: "Recommended"
-  }
-]
-
-const PLAN_PRICE_IDS: Record<string, string | undefined> = {
-  starter: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_NODE_MONTHLY,
-  business: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_CONTROL_MONTHLY,
-  enterprise: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_COMMAND_MONTHLY,
-}
 
 const colorClasses = {
   blue: {
@@ -249,6 +214,36 @@ export default function BillingPage() {
   const [editAddressModalOpen, setEditAddressModalOpen] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+
+  // Live subscription so the header reflects the user's actual plan instead of
+  // hardcoded values. Falls back gracefully while loading / if unavailable.
+  const { data: overview } = useSWR(
+    user ? "billing-overview" : null,
+    () => billingApi.overview(),
+    { revalidateOnFocus: false },
+  )
+  const subscription = overview?.subscription
+  const currentTier = (subscription?.tier ?? "node") as PlanCode
+  const currentPlan = getPlan(currentTier)
+  const subStatus = subscription?.status ?? "active"
+
+  const statusDisplay: Record<string, { label: string; classes: string; beacon: "active" | "warning" | "error" | "idle" }> = {
+    active: { label: "Active", classes: "bg-success/10 text-success border-success/20", beacon: "active" },
+    trialing: { label: "Trial", classes: "bg-info/10 text-info border-info/20", beacon: "active" },
+    past_due: { label: "Past due", classes: "bg-warning/10 text-warning border-warning/20", beacon: "warning" },
+    canceled: { label: "Canceled", classes: "bg-muted text-muted-foreground border-border", beacon: "idle" },
+  }
+  const status = statusDisplay[subStatus] ?? statusDisplay.active
+
+  const renewalLabel = (() => {
+    if (!subscription?.current_period_end) return null
+    const d = new Date(subscription.current_period_end)
+    if (Number.isNaN(d.getTime())) return null
+    const formatted = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
+    if (subStatus === "canceled" || subscription.cancel_at_period_end) return `Access ends ${formatted}`
+    if (subStatus === "trialing") return `Trial ends ${formatted}`
+    return `Renews ${formatted}`
+  })()
   
   // Form states
   const [cardNumber, setCardNumber] = useState("")
@@ -276,22 +271,19 @@ export default function BillingPage() {
   }, [])
 
   // Handler functions
-  const handleUpgrade = async (planId: string) => {
+  const handleUpgrade = async (planCode: string) => {
     if (!user) {
       toast.error("Sign in required")
       return
     }
-    setSelectedPlan(planId)
+    setSelectedPlan(planCode)
     setIsProcessing(true)
     try {
-      const priceId = PLAN_PRICE_IDS[planId]
-      if (!priceId) {
-        toast.error("Missing Stripe price ID configuration for selected plan")
-        return
-      }
-      const response = await billingApi.createCheckoutSession(priceId, 1)
+      const response = await billingApi.createCheckoutForPlan(planCode, "monthly")
       if (response.checkout_url) {
         window.location.assign(response.checkout_url)
+      } else {
+        toast.error("Could not start checkout. Please try again.")
       }
     } catch (error) {
       console.error("[v0] Checkout failed:", error)
@@ -480,14 +472,17 @@ export default function BillingPage() {
                     </motion.div>
                     <div>
                       <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-foreground">Business Plan</h1>
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                          <StatusBeacon status="active" size="sm" pulse />
-                          Active
+                        <h1 className="text-2xl font-bold text-foreground">{currentPlan.name} Plan</h1>
+                        <span className={cn(
+                          "flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border",
+                          status.classes
+                        )}>
+                          <StatusBeacon status={status.beacon} size="sm" pulse={subStatus === "active" || subStatus === "trialing"} />
+                          {status.label}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        Renews May 1, 2024
+                        {renewalLabel ?? currentPlan.tagline}
                       </p>
                     </div>
                   </div>
@@ -495,8 +490,10 @@ export default function BillingPage() {
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-4xl font-bold text-foreground tracking-tight">$499</p>
-                    <p className="text-sm text-muted-foreground">/month</p>
+                    <p className="text-4xl font-bold text-foreground tracking-tight">{formatPlanPrice(currentPlan)}</p>
+                    {currentPlan.price !== null && currentPlan.price > 0 && (
+                      <p className="text-sm text-muted-foreground">/month</p>
+                    )}
                   </div>
                   <div className="h-12 w-px bg-border" />
                   <div className="flex flex-col gap-2">
@@ -884,50 +881,62 @@ export default function BillingPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
-            {plans.map((plan) => {
+            {SELECTABLE_PLANS.map((plan) => {
               const PlanIcon = plan.icon
+              const isCurrent = plan.code === currentTier
+              const isSelected = selectedPlan === plan.code
+              const direction = planDirection(plan.code, currentTier)
               return (
-                <div
-                  key={plan.id}
+                <button
+                  type="button"
+                  key={plan.code}
+                  role="radio"
+                  aria-checked={isSelected}
+                  disabled={isCurrent}
                   className={cn(
-                    "relative rounded-xl border p-4 cursor-pointer transition-all",
-                    plan.current 
-                      ? "border-emerald-500/50 bg-emerald-500/5" 
-                      : selectedPlan === plan.id 
-                        ? "border-blue-500 bg-blue-500/5" 
-                        : "border-border hover:border-foreground/20"
+                    "relative rounded-xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isCurrent
+                      ? "border-success/50 bg-success/5 cursor-default"
+                      : isSelected
+                        ? "border-primary ring-2 ring-primary/30 bg-primary/5"
+                        : "border-border hover:border-foreground/20 hover:-translate-y-0.5"
                   )}
-                  onClick={() => !plan.current && setSelectedPlan(plan.id)}
+                  onClick={() => !isCurrent && setSelectedPlan(plan.code)}
                 >
-                  {plan.badge && (
+                  {(isCurrent || plan.popular) && (
                     <span className={cn(
-                      "absolute -top-2 right-2 px-2 py-0.5 text-[10px] font-medium rounded-full",
-                      plan.current 
-                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                        : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                      "absolute -top-2 right-2 px-2 py-0.5 text-[10px] font-medium rounded-full border",
+                      isCurrent
+                        ? "bg-success/10 text-success border-success/20"
+                        : "bg-primary/10 text-primary border-primary/20"
                     )}>
-                      {plan.badge}
+                      {isCurrent ? "Current" : "Most popular"}
                     </span>
                   )}
                   <div className="flex items-center gap-2 mb-3">
                     <div className={cn(
                       "h-8 w-8 rounded-lg flex items-center justify-center",
-                      plan.current ? "bg-emerald-500/10" : "bg-secondary"
+                      isCurrent ? "bg-success/10" : "bg-secondary"
                     )}>
-                      <PlanIcon className={cn("h-4 w-4", plan.current ? "text-emerald-500" : "text-muted-foreground")} />
+                      <PlanIcon className={cn("h-4 w-4", isCurrent ? "text-success" : "text-muted-foreground")} />
                     </div>
                     <span className="font-medium">{plan.name}</span>
                   </div>
-                  <p className="text-2xl font-bold mb-3">${plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+                  <p className="text-2xl font-bold mb-3">{formatPlanPrice(plan)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
                   <ul className="space-y-1.5">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="text-xs text-muted-foreground flex items-center gap-2">
-                        <Check className="h-3 w-3 text-emerald-500" />
+                        <Check className="h-3 w-3 text-success" />
                         {feature}
                       </li>
                     ))}
                   </ul>
-                </div>
+                  {!isCurrent && (
+                    <p className="mt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {direction === "downgrade" ? "Downgrade" : "Upgrade"}
+                    </p>
+                  )}
+                </button>
               )
             })}
           </div>
