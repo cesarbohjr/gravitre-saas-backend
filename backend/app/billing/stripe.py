@@ -105,6 +105,48 @@ def metered_price_id_for_plan(settings: Settings, plan_code: str | None) -> str 
     return (mapping.get(code or "") or "").strip() or None
 
 
+def _subscription_line_items(
+    settings: Settings,
+    price_id: str,
+    quantity: int = 1,
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = [{"price": price_id, "quantity": max(quantity, 1)}]
+    metered = metered_price_id_for_plan(settings, plan_code_for_price(settings, price_id))
+    if metered and metered != price_id:
+        items.append({"price": metered})
+    return items
+
+
+def create_subscription_for_payment_element(
+    settings: Settings,
+    customer_id: str,
+    price_id: str,
+    metadata: dict[str, Any],
+    quantity: int = 1,
+) -> dict[str, Any]:
+    """Create an incomplete subscription and return Payment Element client_secret."""
+    init_stripe(settings)
+    subscription = stripe.Subscription.create(
+        customer=customer_id,
+        items=_subscription_line_items(settings, price_id, quantity),
+        metadata=metadata,
+        payment_behavior="default_incomplete",
+        payment_settings={"save_default_payment_method": "on_subscription"},
+        expand=["latest_invoice.payment_intent"],
+    )
+    latest_invoice = subscription.get("latest_invoice") or {}
+    payment_intent = latest_invoice.get("payment_intent") or {}
+    client_secret = payment_intent.get("client_secret")
+    if not client_secret:
+        raise ValueError("Stripe subscription missing payment_intent client_secret")
+    return {
+        "subscription_id": subscription.get("id"),
+        "customer_id": customer_id,
+        "client_secret": client_secret,
+        "subscription_status": subscription.get("status"),
+    }
+
+
 def create_checkout_session(
     settings: Settings,
     customer_id: str,
@@ -114,12 +156,7 @@ def create_checkout_session(
     metadata: dict[str, Any],
 ) -> stripe.checkout.Session:
     init_stripe(settings)
-    # Flat plan price + (when configured) the plan's metered usage price so AI
-    # overage is actually billed. Metered line items carry no quantity.
-    line_items: list[dict[str, Any]] = [{"price": price_id, "quantity": 1}]
-    metered = metered_price_id_for_plan(settings, plan_code_for_price(settings, price_id))
-    if metered and metered != price_id:
-        line_items.append({"price": metered})
+    line_items = _subscription_line_items(settings, price_id, quantity=1)
     return stripe.checkout.Session.create(
         mode="subscription",
         customer=customer_id,

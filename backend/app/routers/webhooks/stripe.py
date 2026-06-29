@@ -144,12 +144,22 @@ def _process_stripe_event(
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
         _upsert_subscription_from_event(client, settings, org_id, data)
         if org_id:
+            items = (data.get("items") or {}).get("data") or []
+            primary_item = items[0] if items else {}
+            price_id = (primary_item.get("price") or {}).get("id")
+            plan_code = (metadata.get("plan_code") if isinstance(metadata, dict) else None) or _plan_from_price(
+                settings, price_id
+            )
+            billing_status = data.get("status") or "active"
+            if billing_status == "incomplete":
+                billing_status = "pending"
             client.table("org_billing").upsert(
                 {
                     "org_id": org_id,
                     "stripe_customer_id": data.get("customer"),
                     "stripe_subscription_id": data.get("id"),
-                    "billing_status": data.get("status") or "active",
+                    "plan_code": plan_code,
+                    "billing_status": billing_status,
                     "current_period_end": _to_iso(data.get("current_period_end")),
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 },

@@ -13,7 +13,7 @@ test.beforeAll(() => {
 })
 
 test.describe("Trial expiry billing flow", () => {
-  test("expired trial: banner, 402 modal, billing navigation, Stripe checkout", async ({ page }) => {
+  test("expired trial: banner, 402 modal, billing navigation, custom checkout", async ({ page }) => {
     const user = fixtures.expiredTrial
     await loginWithPassword(page, user.email, user.password)
     const billingStatus = await openProductPage(page, user.orgId, "/assistant")
@@ -92,30 +92,18 @@ test.describe("Trial expiry billing flow", () => {
     if (!process.env.STRIPE_SECRET_KEY) {
       test.info().annotations.push({
         type: "stripe",
-        description: "STRIPE_SECRET_KEY not set — checkout redirect not exercised",
+        description: "STRIPE_SECRET_KEY not set — custom checkout page not exercised",
       })
       return
     }
 
-    const checkoutResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/billing/checkout") &&
-        response.request().method() === "POST" &&
-        response.status() === 200,
-    )
-
     await Promise.all([
-      checkoutResponse,
+      page.waitForURL(/\/settings\/billing\/checkout\?plan=node/, { timeout: 60_000 }),
       modal.getByTestId("upgrade-continue-checkout").click(),
     ])
 
-    const checkoutBody = (await (await checkoutResponse).json()) as {
-      checkout_url?: string
-      url?: string
-    }
-    const checkoutUrl = checkoutBody.checkout_url ?? checkoutBody.url
-    expect(checkoutUrl).toMatch(/^https:\/\/checkout\.stripe\.com\//)
-    await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 })
+    await expect(page.getByTestId("payment-element-form")).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByRole("heading", { name: "Complete your subscription" })).toBeVisible()
   })
 
   test("canceled + expired trial: hard redirect, no expired-trial banner", async ({ page }) => {

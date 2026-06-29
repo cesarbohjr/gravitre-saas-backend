@@ -63,6 +63,7 @@ import {
   Loader2
 } from "lucide-react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { billingApi, ApiRequestError } from "@/lib/api"
@@ -204,6 +205,8 @@ const forecastStatus = willExceed
 
 export default function BillingPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const mounted = true
   const [animatedValues, setAnimatedValues] = useState<Record<string, number>>({})
   
@@ -270,35 +273,22 @@ export default function BillingPage() {
     return () => clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    if (searchParams.get("status") === "success") {
+      toast.success("Subscription activated. Full access is being restored.")
+      router.replace("/settings/billing")
+    }
+  }, [router, searchParams])
+
   // Handler functions
-  const handleUpgrade = async (planCode: string) => {
+  const handleUpgrade = (planCode: string) => {
     if (!user) {
       toast.error("Sign in required")
       return
     }
     setSelectedPlan(planCode)
-    setIsProcessing(true)
-    try {
-      const response = await billingApi.createCheckoutForPlan(planCode, "monthly")
-      if (response.checkout_url) {
-        window.location.assign(response.checkout_url)
-      } else {
-        toast.error("Could not start checkout. Please try again.")
-      }
-    } catch (error) {
-      console.error("[v0] Checkout failed:", error)
-      const message =
-        error instanceof ApiRequestError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to start checkout"
-      toast.error(message || "Failed to start checkout")
-    } finally {
-      setIsProcessing(false)
-      setUpgradeModalOpen(false)
-      setSelectedPlan(null)
-    }
+    setUpgradeModalOpen(false)
+    router.push(`/settings/billing/checkout?plan=${planCode}&interval=monthly`)
   }
 
   const handleCancelSubscription = async () => {
@@ -952,16 +942,9 @@ export default function BillingPage() {
             </Button>
             <Button 
               onClick={() => selectedPlan && handleUpgrade(selectedPlan)}
-              disabled={!selectedPlan || isProcessing}
+              disabled={!selectedPlan}
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Upgrade Plan"
-              )}
+              Upgrade Plan
             </Button>
           </DialogFooter>
         </DialogContent>
