@@ -12,9 +12,30 @@ import {
   Zap,
 } from "lucide-react"
 
+import type { Metadata } from "next"
+
 import { getDocsNavSections, getPublishedPublicDocs, getDocsSearchIndex } from "@/lib/docs/load-docs"
 import { DocsSearch } from "@/components/docs/docs-search"
 import { categoryIcon } from "@/components/docs/category-meta"
+
+const title = "Documentation | Gravitre"
+const description = "Guides, concepts, API reference, and integration setup for Gravitre."
+
+export const metadata: Metadata = {
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+    images: [{ url: "/og-docs.png", width: 1200, height: 630, alt: "Gravitre Docs" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/og-docs.png"],
+  },
+}
 
 const quickLinks = [
   {

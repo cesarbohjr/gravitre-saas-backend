@@ -33,9 +33,25 @@ export async function generateMetadata({
   const doc = getPublicDocBySlug(slug.join("/"))
   if (!doc) return { title: "Documentation | Gravitre" }
 
+  const title = `${doc.frontmatter.title} | Gravitre Docs`
+  const description = doc.frontmatter.description
+  const ogImage = { url: "/og-docs.png", width: 1200, height: 630, alt: "Gravitre Docs" }
+
   return {
-    title: `${doc.frontmatter.title} | Gravitre Docs`,
-    description: doc.frontmatter.description,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      images: [ogImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og-docs.png"],
+    },
   }
 }
 
