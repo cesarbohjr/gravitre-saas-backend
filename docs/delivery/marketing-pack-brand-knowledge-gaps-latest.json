@@ -1,0 +1,98 @@
+{
+  "issue": "STA-295",
+  "packSlug": "marketing-operations-pack",
+  "recommendation": "RAG-source-based brand knowledge via UnifiedRetrievalService + department-scoped RAG",
+  "v1StructuredBrandStoreRequired": false,
+  "brandVoiceSeedLabel": "rag:brand-voice",
+  "summary": {
+    "total": 8,
+    "missing": 2,
+    "partial": 3,
+    "exists": 3,
+    "packBlockers": [],
+    "v1Ready": true
+  },
+  "capabilities": [
+    {
+      "key": "unified_retrieval_service",
+      "displayName": "UnifiedRetrievalService (RAG + org + memory)",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Single retrieval path for AgentIntelligence; knowledge scope uses RAGService."
+    },
+    {
+      "key": "department_scoped_rag_migration",
+      "displayName": "Department-scoped RAG schema",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Migration 20260602130000 adds department_id/agent_id to rag_sources and rag_search filter."
+    },
+    {
+      "key": "rag_department_filtering",
+      "displayName": "RAG department/agent filtering at retrieval",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "rag_service.resolve_department_id_for_agent + scope agent/department; pack install must upload docs."
+    },
+    {
+      "key": "agent_intelligence_retrieval_wiring",
+      "displayName": "AgentIntelligence uses unified retrieval",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "agent_intelligence.py imports get_unified_retrieval_service for task runs."
+    },
+    {
+      "key": "pack_brand_voice_seed",
+      "displayName": "Marketing pack brand-voice RAG placeholder",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "depends",
+      "notes": "department_pack config seeds rag:brand-voice doc; customer uploads content post-install."
+    },
+    {
+      "key": "marketing_knowledge_pack",
+      "displayName": "Marketing operations knowledge pack",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Standalone knowledge_pack includes Brand Voice Guide + Campaign Playbooks placeholders."
+    },
+    {
+      "key": "structured_brand_store",
+      "displayName": "Structured brand/positioning store (non-RAG)",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "no",
+      "notes": "Not required for v1; recommendation is RAG-source-based brand knowledge only."
+    },
+    {
+      "key": "pack_scoped_brand_primitive",
+      "displayName": "Pack-scoped brand primitive API",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "No dedicated brand store table or pack-scoped schema beyond RAG source metadata."
+    }
+  ],
+  "generatedAt": "2026-06-30T04:59:35.120899+00:00"
+}

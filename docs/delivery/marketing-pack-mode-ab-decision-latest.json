@@ -1,0 +1,86 @@
+{
+  "issue": "STA-294",
+  "packSlug": "marketing-operations-pack",
+  "engineeringAuditIssue": "STA-293",
+  "assignTo": "Product owner for Marketing Operations Pack",
+  "signOffState": "awaiting",
+  "engineeringRecommendedDefault": "mode_a",
+  "summary": {
+    "total": 7,
+    "pending": 3,
+    "blocked": 4,
+    "resolved": 0,
+    "modeBShippingDecisionPending": true,
+    "modeBInfrastructureReady": false,
+    "modeBGuardrailsImplemented": false,
+    "pricingPlaceholderDocumented": true,
+    "canShipModeADefault": true,
+    "canShipModeB": false
+  },
+  "decisions": [
+    {
+      "key": "default_feedback_mode",
+      "displayName": "Default feedback mode for Marketing Operations Pack",
+      "category": "default",
+      "status": "pending",
+      "engineeringRecommendation": "mode_a",
+      "notes": "Human-approved suggestions before any agent behavior change."
+    },
+    {
+      "key": "mode_b_shipping",
+      "displayName": "Whether Mode B (autonomous replanning) ships at all",
+      "category": "mode_b",
+      "status": "pending",
+      "engineeringRecommendation": "opt_in_only_if_approved",
+      "notes": "Net-new platform work; brand-voice-affecting. Awaiting pack-owner sign-off."
+    },
+    {
+      "key": "mode_b_behavior_shift_cap",
+      "displayName": "Cap on behavior shift per cycle",
+      "category": "guardrail",
+      "status": "blocked",
+      "engineeringRecommendation": "required_if_mode_b",
+      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit)."
+    },
+    {
+      "key": "mode_b_autonomous_rollback",
+      "displayName": "Rollback if new behavior underperforms",
+      "category": "guardrail",
+      "status": "blocked",
+      "engineeringRecommendation": "required_if_mode_b",
+      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit)."
+    },
+    {
+      "key": "mode_b_post_hoc_audit",
+      "displayName": "Post-hoc audit trail without approval anchor",
+      "category": "guardrail",
+      "status": "blocked",
+      "engineeringRecommendation": "required_if_mode_b",
+      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit)."
+    },
+    {
+      "key": "mode_b_pricing_model",
+      "displayName": "Mode B pricing: included with risk gate vs add-on",
+      "category": "pricing",
+      "status": "pending",
+      "engineeringRecommendation": "included_with_risk_gate_or_addon_4900_cents",
+      "notes": "Documented placeholder MODE_B_AUTONOMOUS_ADDON_CENTS=4900; no Stripe SKU."
+    },
+    {
+      "key": "feedback_mode_toggle",
+      "displayName": "Org/pack feedback mode toggle (general primitive)",
+      "category": "engineering",
+      "status": "blocked",
+      "engineeringRecommendation": "build_after_sign_off",
+      "notes": "Depends on product decision; missing platform-wide (STA-293 audit)."
+    }
+  ],
+  "feedbackLoopAudit": {
+    "modeAMissing": 1,
+    "modeBMissing": 5,
+    "packBlockers": [
+      "post_publish_marketing_metrics"
+    ]
+  },
+  "generatedAt": "2026-06-30T04:59:42.564476+00:00"
+}
