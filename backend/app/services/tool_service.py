@@ -3426,6 +3426,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
+            try:
+                from app.services.post_publish_marketing_metrics_service import (
+                    maybe_record_post_publish_marketing_baseline,
+                )
+
+                maybe_record_post_publish_marketing_baseline(ctx, action=action, params=params, result=result)
+            except Exception:
+                pass
             return result
         except Exception as exc:
             tool_exc = _classify_error(exc)

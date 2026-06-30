@@ -15,7 +15,8 @@ from app.workflows.repository import get_supabase_client
 logger = get_logger(__name__)
 
 CONFIDENCE_NOTE = (
-    "correlational only; other factors may have contributed to this metric change"
+    "correlational only; marketing and revenue metrics may reflect external factors; "
+    "other factors may have contributed to this metric change"
 )
 MIN_SAMPLE_SIZE = 15
 DEFAULT_ATTRIBUTION_WINDOW_DAYS = 14
@@ -253,6 +254,19 @@ class OutcomeAttributionService:
                 return encode_subscription_status(str(state.get("status") or ""))
             if metric_name == METRIC_SUBSCRIPTION_MRR:
                 return float(state.get("mrr_cents") or 0.0)
+        from app.services.post_publish_marketing_metrics_service import (
+            MARKETING_ENTITY_TYPES,
+            fetch_marketing_metric_value,
+        )
+
+        if target_entity_type in MARKETING_ENTITY_TYPES:
+            return await fetch_marketing_metric_value(
+                org_id,
+                target_entity_type=target_entity_type,
+                target_entity_id=target_entity_id,
+                metric_name=metric_name,
+                settings=self.settings,
+            )
         return None
 
     async def get_agent_outcome_summary(self, org_id: str, agent_id: str) -> dict[str, Any]:
@@ -331,10 +345,14 @@ class OutcomeAttributionService:
             .is_("measured_at", "null")
             .execute()
         )
+        from app.services.post_publish_marketing_metrics_service import OBSERVABLE_MARKETING_METRICS
+
         return {
             "scopeNote": (
                 "Outcome summaries link agent actions to observable connector metrics "
-                "(HubSpot deal amount today). Correlational only — not causal inference or RL."
+                "(HubSpot deal amount, Stripe subscription, and post-publish marketing metrics "
+                "from google_analytics, linkedin, canva, and hubspot_campaign). "
+                "Correlational only — not causal inference or RL."
             ),
             "observableMetrics": [
                 {"connector": "hubspot", "entityType": ENTITY_DEAL, "metric": METRIC_DEAL_AMOUNT},
@@ -348,6 +366,7 @@ class OutcomeAttributionService:
                     "entityType": ENTITY_SUBSCRIPTION,
                     "metric": METRIC_SUBSCRIPTION_MRR,
                 },
+                *OBSERVABLE_MARKETING_METRICS,
             ],
             "confidenceNote": CONFIDENCE_NOTE,
             "minSampleSize": MIN_SAMPLE_SIZE,

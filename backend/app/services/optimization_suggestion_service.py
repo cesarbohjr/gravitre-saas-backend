@@ -54,6 +54,7 @@ class OptimizationSuggestionService:
         suggestions.extend(await self._detect_slow_steps(org_id))
         suggestions.extend(await self._detect_low_reliability_references(org_id))
         suggestions.extend(await self._detect_poor_outcome_patterns(org_id))
+        suggestions.extend(await self._detect_post_publish_marketing_underperformance(org_id))
         suggestions.extend(await self._detect_duplicate_steps(org_id))
         return suggestions
 
@@ -213,6 +214,84 @@ class OptimizationSuggestionService:
                     suggested_action=(
                         f"Agent {agent.get('name') or agent_id} shows a {win_rate:.0%} positive outcome rate "
                         f"over {summary.get('sampleSize')} measured actions. Review approach with operators."
+                    ),
+                    estimated_impact=None,
+                )
+            )
+        return suggestions
+
+    async def _detect_post_publish_marketing_underperformance(
+        self,
+        org_id: str,
+    ) -> list[dict[str, Any]]:
+        from app.services.post_publish_marketing_metrics_service import (
+            MARKETING_ENTITY_TYPES,
+            MARKETING_UNDERPERFORMANCE_DELTA_RATIO,
+            MIN_MARKETING_SUGGESTION_SAMPLES,
+        )
+
+        client = self._client()
+        rows = (
+            client.table("agent_action_outcomes")
+            .select("*")
+            .eq("org_id", org_id)
+            .not_.is_("measured_at", "null")
+            .limit(1000)
+            .execute()
+            .data
+            or []
+        )
+        grouped: dict[tuple[str, str, str], list[float]] = {}
+        for row in rows:
+            entity_type = str(row.get("target_entity_type") or "")
+            if entity_type not in MARKETING_ENTITY_TYPES:
+                continue
+            before = row.get("metric_value_before")
+            after = row.get("metric_value_after")
+            if before is None or after is None:
+                continue
+            try:
+                before_val = float(before)
+                after_val = float(after)
+            except (TypeError, ValueError):
+                continue
+            if before_val <= 0:
+                delta_ratio = after_val - before_val
+            else:
+                delta_ratio = (after_val - before_val) / before_val
+            key = (
+                entity_type,
+                str(row.get("target_entity_id") or ""),
+                str(row.get("metric_name") or ""),
+            )
+            grouped.setdefault(key, []).append(delta_ratio)
+
+        suggestions: list[dict[str, Any]] = []
+        for (entity_type, entity_id, metric_name), deltas in grouped.items():
+            if len(deltas) < MIN_MARKETING_SUGGESTION_SAMPLES:
+                continue
+            avg_delta = sum(deltas) / len(deltas)
+            if avg_delta >= MARKETING_UNDERPERFORMANCE_DELTA_RATIO:
+                continue
+            evidence = {
+                "source": "post_publish_marketing_metrics",
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "metric_name": metric_name,
+                "avg_delta_ratio": avg_delta,
+                "sample_size": len(deltas),
+            }
+            suggestions.append(
+                await self._insert_suggestion(
+                    org_id,
+                    target_entity_type=entity_type,
+                    target_entity_id=entity_id,
+                    suggestion_type="post_publish_marketing_underperformance",
+                    evidence=evidence,
+                    suggested_action=(
+                        f"Published {entity_type.replace('_', ' ')} `{entity_id}` shows "
+                        f"{avg_delta:.0%} average change in {metric_name} after publish "
+                        f"({len(deltas)} samples). Review creative, targeting, or channel mix."
                     ),
                     estimated_impact=None,
                 )

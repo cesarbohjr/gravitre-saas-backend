@@ -193,3 +193,35 @@ def enrich_prospect(
         except LinkedInAPIError:
             pass
     return build_stub_enrichment(params)
+
+
+def fetch_linkedin_post_engagement(access_token: str, post_id: str) -> float:
+    """Best-effort LinkedIn social engagement score for a published post/share URN."""
+    share_urn = post_id if post_id.startswith("urn:") else f"urn:li:share:{post_id}"
+    encoded = share_urn.replace(":", "%3A").replace("/", "%2F")
+    try:
+        stats = _request("GET", f"/socialActions/{encoded}/statistics", access_token)
+    except LinkedInAPIError:
+        return 0.0
+    if not isinstance(stats, dict):
+        return 0.0
+    elements = stats.get("elements")
+    if isinstance(elements, list) and elements:
+        row = elements[0] if isinstance(elements[0], dict) else {}
+        total = 0.0
+        for key in ("likeCount", "commentCount", "shareCount", "clickCount", "impressionCount"):
+            try:
+                total += float(row.get(key) or 0.0)
+            except (TypeError, ValueError):
+                continue
+        return total
+    total_share_statistics = stats.get("totalShareStatistics")
+    if isinstance(total_share_statistics, dict):
+        score = 0.0
+        for key in ("likeCount", "commentCount", "shareCount", "clickCount", "impressionCount"):
+            try:
+                score += float(total_share_statistics.get(key) or 0.0)
+            except (TypeError, ValueError):
+                continue
+        return score
+    return 0.0

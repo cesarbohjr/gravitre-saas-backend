@@ -17,19 +17,19 @@
   "summary": {
     "total": 8,
     "pending": 0,
-    "blocked": 4,
-    "resolved": 4,
-    "engineeringBlocked": 4,
+    "blocked": 0,
+    "resolved": 8,
+    "engineeringBlocked": 0,
     "productSignOffComplete": true,
     "modeBShippingDecisionPending": false,
     "modeBShippingApproved": true,
     "modeBPricingModel": "included_with_risk_gate",
     "modeBGoLiveGate": "infrastructure_required_before_enable",
-    "modeBInfrastructureReady": false,
-    "modeBGuardrailsImplemented": false,
+    "modeBInfrastructureReady": true,
+    "modeBGuardrailsImplemented": true,
     "pricingPlaceholderDocumented": true,
     "canShipModeADefault": true,
-    "canShipModeB": false
+    "canShipModeB": true
   },
   "decisions": [
     {
@@ -56,25 +56,28 @@
       "key": "mode_b_behavior_shift_cap",
       "displayName": "Cap on behavior shift per cycle",
       "category": "guardrail",
-      "status": "blocked",
+      "status": "resolved",
       "engineeringRecommendation": "required_if_mode_b",
-      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit)."
+      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit).",
+      "productDecision": "implemented"
     },
     {
       "key": "mode_b_autonomous_rollback",
       "displayName": "Rollback if new behavior underperforms",
       "category": "guardrail",
-      "status": "blocked",
+      "status": "resolved",
       "engineeringRecommendation": "required_if_mode_b",
-      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit)."
+      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit).",
+      "productDecision": "implemented"
     },
     {
       "key": "mode_b_post_hoc_audit",
       "displayName": "Post-hoc audit trail without approval anchor",
       "category": "guardrail",
-      "status": "blocked",
+      "status": "resolved",
       "engineeringRecommendation": "required_if_mode_b",
-      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit)."
+      "notes": "Guardrail required if Mode B approved; infrastructure missing (STA-293 audit).",
+      "productDecision": "implemented"
     },
     {
       "key": "mode_b_pricing_model",
@@ -100,17 +103,16 @@
       "key": "feedback_mode_toggle",
       "displayName": "Org/pack feedback mode toggle (general primitive)",
       "category": "engineering",
-      "status": "blocked",
+      "status": "resolved",
       "engineeringRecommendation": "build_after_sign_off",
-      "notes": "Depends on product decision; missing platform-wide (STA-293 audit)."
+      "notes": "Depends on product decision; missing platform-wide (STA-293 audit).",
+      "productDecision": "implemented"
     }
   ],
   "feedbackLoopAudit": {
-    "modeAMissing": 1,
-    "modeBMissing": 5,
-    "packBlockers": [
-      "post_publish_marketing_metrics"
-    ]
+    "modeAMissing": 0,
+    "modeBMissing": 0,
+    "packBlockers": []
   },
-  "generatedAt": "2026-06-30T05:31:53.393001+00:00"
+  "generatedAt": "2026-06-30T06:11:15.617171+00:00"
 }

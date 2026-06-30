@@ -138,6 +138,7 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
     pricing_decision = PRODUCT_SIGN_OFF.get("mode_b_pricing_model")
     default_decision = PRODUCT_SIGN_OFF.get("default_feedback_mode")
     go_live_gate = PRODUCT_SIGN_OFF.get("mode_b_go_live_gate")
+    mode_b_infra_ready = feedback_audit["summary"].get("modeBInfrastructureShipped") is True and not mode_b_missing
 
     rows: list[dict[str, Any]] = []
     pending_count = 0
@@ -146,12 +147,6 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
     engineering_blocked_count = 0
 
     for item in MODE_AB_DECISION_CHECKLIST:
-        live_blocked = False
-        if item.key == "feedback_mode_toggle":
-            live_blocked = True  # infrastructure not shipped yet
-        elif item.key in guardrail_keys:
-            live_blocked = guardrail_keys[item.key] in mode_b_missing
-
         status = item.status
         product_decision: str | None = None
 
@@ -167,17 +162,18 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
         elif item.key == "mode_b_go_live_gate" and go_live_gate:
             status = "resolved"
             product_decision = go_live_gate
-        elif item.category == "guardrail" and live_blocked:
-            status = "blocked"
-            engineering_blocked_count += 1
-        elif item.category == "engineering" and item.key == "feedback_mode_toggle" and live_blocked:
-            status = "blocked"
-            engineering_blocked_count += 1
+        elif item.key in guardrail_keys and mode_b_infra_ready:
+            status = "resolved"
+            product_decision = "implemented"
+        elif item.key == "feedback_mode_toggle" and mode_b_infra_ready:
+            status = "resolved"
+            product_decision = "implemented"
 
         if status == "pending":
             pending_count += 1
         elif status == "blocked":
             blocked_count += 1
+            engineering_blocked_count += 1
         else:
             resolved_count += 1
 
@@ -234,11 +230,11 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
             "modeBShippingApproved": mode_b_approved_opt_in,
             "modeBPricingModel": pricing_decision,
             "modeBGoLiveGate": go_live_gate,
-            "modeBInfrastructureReady": len(mode_b_missing) == 0,
-            "modeBGuardrailsImplemented": not mode_b_missing,
+            "modeBInfrastructureReady": mode_b_infra_ready,
+            "modeBGuardrailsImplemented": mode_b_infra_ready,
             "pricingPlaceholderDocumented": pricing_documented,
             "canShipModeADefault": default_decision == "mode_a",
-            "canShipModeB": mode_b_approved_opt_in and not mode_b_missing,
+            "canShipModeB": mode_b_approved_opt_in and mode_b_infra_ready,
         },
         "decisions": rows,
         "feedbackLoopAudit": {

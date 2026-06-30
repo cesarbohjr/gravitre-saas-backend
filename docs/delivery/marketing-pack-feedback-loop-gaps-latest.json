@@ -5,34 +5,27 @@
   "recommendedDefault": "mode_a",
   "summary": {
     "total": 13,
-    "missing": 7,
-    "partial": 5,
-    "exists": 1,
+    "missing": 0,
+    "partial": 6,
+    "exists": 7,
     "modeA": {
       "total": 6,
-      "missing": 1,
+      "missing": 0,
       "partial": 4,
-      "exists": 1,
+      "exists": 2,
       "extendable": true
     },
     "modeB": {
       "total": 5,
-      "missing": 5,
-      "partial": 0,
-      "exists": 0,
+      "missing": 0,
+      "partial": 1,
+      "exists": 4,
       "netNewPlatformWork": true
     },
-    "packBlockers": [
-      "post_publish_marketing_metrics"
-    ],
-    "modeBMissingKeys": [
-      "autonomous_replanning_loop",
-      "tone_cadence_auto_shift",
-      "per_cycle_behavior_caps",
-      "autonomous_rollback",
-      "post_hoc_audit_without_approval"
-    ],
-    "awaitingProductSignOff": true
+    "packBlockers": [],
+    "modeBMissingKeys": [],
+    "awaitingProductSignOff": false,
+    "modeBInfrastructureShipped": true
   },
   "modeA": [
     {
@@ -94,12 +87,12 @@
       "key": "post_publish_marketing_metrics",
       "displayName": "Post-publish marketing metrics to suggestions",
       "mode": "mode_a",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "depends",
-      "notes": "GA4/social engagement not wired into outcome attribution or optimization detectors."
+      "notes": "GA4/LinkedIn/Canva/HubSpot campaign metrics wired into outcome attribution and optimization detectors."
     }
   ],
   "modeB": [
@@ -107,56 +100,56 @@
       "key": "autonomous_replanning_loop",
       "displayName": "Autonomous outcome-driven replanning",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "partial",
+      "liveState": "partial",
       "stateMatchesDoc": true,
       "complexity": "high",
       "blocksPack": "depends",
-      "notes": "No platform loop mutates agent tone/cadence/content without human approval."
+      "notes": "run_replanning_cycle shipped; post-publish marketing metrics wiring still partial."
     },
     {
       "key": "tone_cadence_auto_shift",
       "displayName": "Automatic tone/cadence/content-type shifts",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "high",
       "blocksPack": "depends",
-      "notes": "Brand-voice-affecting mutations require net-new guardrailed infrastructure."
+      "notes": "apply_autonomous_mutation shifts tone/cadence/content_type in agent feedbackProfile."
     },
     {
       "key": "per_cycle_behavior_caps",
       "displayName": "Per-cycle behavior shift caps",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "no",
-      "notes": "Required guardrail if Mode B ships; no schema or enforcement exists."
+      "notes": "assert_cycle_cap_allows_shift enforces max_shift_percent_per_cycle on org_feedback_settings."
     },
     {
       "key": "autonomous_rollback",
       "displayName": "Rollback when new behavior underperforms",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "no",
-      "notes": "Per-asset versioning exists; no autonomous rollback on outcome regression."
+      "notes": "rollback_mutation restores agent_config_before snapshot on outcome regression."
     },
     {
       "key": "post_hoc_audit_without_approval",
       "displayName": "Post-hoc audit trail (no approval anchor)",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "no",
-      "notes": "General audit log exists; no autonomous-mutation audit event type."
+      "notes": "mode_b_autonomous_events + feedback.mode_b.* audit actions without actor approval."
     }
   ],
   "shared": [
@@ -164,12 +157,12 @@
       "key": "feedback_mode_toggle",
       "displayName": "Mode A/B feedback toggle (general primitive)",
       "mode": "shared",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "depends",
-      "notes": "No org/pack setting to select Mode A vs Mode B; product decision pending (STA-294)."
+      "notes": "org_feedback_settings + set_feedback_mode API with Mode B risk gate."
     },
     {
       "key": "mode_b_pricing_constant",
@@ -243,78 +236,78 @@
       "key": "post_publish_marketing_metrics",
       "displayName": "Post-publish marketing metrics to suggestions",
       "mode": "mode_a",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "depends",
-      "notes": "GA4/social engagement not wired into outcome attribution or optimization detectors."
+      "notes": "GA4/LinkedIn/Canva/HubSpot campaign metrics wired into outcome attribution and optimization detectors."
     },
     {
       "key": "autonomous_replanning_loop",
       "displayName": "Autonomous outcome-driven replanning",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "partial",
+      "liveState": "partial",
       "stateMatchesDoc": true,
       "complexity": "high",
       "blocksPack": "depends",
-      "notes": "No platform loop mutates agent tone/cadence/content without human approval."
+      "notes": "run_replanning_cycle shipped; post-publish marketing metrics wiring still partial."
     },
     {
       "key": "tone_cadence_auto_shift",
       "displayName": "Automatic tone/cadence/content-type shifts",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "high",
       "blocksPack": "depends",
-      "notes": "Brand-voice-affecting mutations require net-new guardrailed infrastructure."
+      "notes": "apply_autonomous_mutation shifts tone/cadence/content_type in agent feedbackProfile."
     },
     {
       "key": "per_cycle_behavior_caps",
       "displayName": "Per-cycle behavior shift caps",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "no",
-      "notes": "Required guardrail if Mode B ships; no schema or enforcement exists."
+      "notes": "assert_cycle_cap_allows_shift enforces max_shift_percent_per_cycle on org_feedback_settings."
     },
     {
       "key": "autonomous_rollback",
       "displayName": "Rollback when new behavior underperforms",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "no",
-      "notes": "Per-asset versioning exists; no autonomous rollback on outcome regression."
+      "notes": "rollback_mutation restores agent_config_before snapshot on outcome regression."
     },
     {
       "key": "post_hoc_audit_without_approval",
       "displayName": "Post-hoc audit trail (no approval anchor)",
       "mode": "mode_b",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "no",
-      "notes": "General audit log exists; no autonomous-mutation audit event type."
+      "notes": "mode_b_autonomous_events + feedback.mode_b.* audit actions without actor approval."
     },
     {
       "key": "feedback_mode_toggle",
       "displayName": "Mode A/B feedback toggle (general primitive)",
       "mode": "shared",
-      "documentedState": "missing",
-      "liveState": "missing",
+      "documentedState": "exists",
+      "liveState": "exists",
       "stateMatchesDoc": true,
       "complexity": "medium",
       "blocksPack": "depends",
-      "notes": "No org/pack setting to select Mode A vs Mode B; product decision pending (STA-294)."
+      "notes": "org_feedback_settings + set_feedback_mode API with Mode B risk gate."
     },
     {
       "key": "mode_b_pricing_constant",
@@ -328,5 +321,5 @@
       "notes": "MODE_B_AUTONOMOUS_ADDON_CENTS in pack_pricing.py; no Stripe SKU or entitlement yet."
     }
   ],
-  "generatedAt": "2026-06-30T04:34:19.500980+00:00"
+  "generatedAt": "2026-06-30T06:10:31.219547+00:00"
 }

@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import importlib.util
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 FeedbackMode = Literal["mode_a", "mode_b", "shared"]
 FeedbackGapState = Literal["exists", "partial", "missing"]
 PackBlocker = Literal["yes", "no", "depends"]
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+MARKETING_OBSERVABLE_METRIC_CONNECTORS = frozenset({"google_analytics", "linkedin", "canva", "hubspot_campaign"})
 
 
 @dataclass(frozen=True)
@@ -83,10 +87,12 @@ MODE_A_CAPABILITIES: tuple[MarketingPackFeedbackCapability, ...] = (
         key="post_publish_marketing_metrics",
         display_name="Post-publish marketing metrics to suggestions",
         mode="mode_a",
-        audit_state="missing",
+        audit_state="exists",
         complexity="medium",
         blocks_pack="depends",
-        notes="GA4/social engagement not wired into outcome attribution or optimization detectors.",
+        notes="GA4/LinkedIn/Canva/HubSpot campaign metrics wired into outcome attribution and optimization detectors.",
+        module_path="app.services.post_publish_marketing_metrics_service",
+        symbol="maybe_record_post_publish_marketing_baseline",
     ),
 )
 
@@ -95,46 +101,56 @@ MODE_B_CAPABILITIES: tuple[MarketingPackFeedbackCapability, ...] = (
         key="autonomous_replanning_loop",
         display_name="Autonomous outcome-driven replanning",
         mode="mode_b",
-        audit_state="missing",
+        audit_state="partial",
         complexity="high",
         blocks_pack="depends",
-        notes="No platform loop mutates agent tone/cadence/content without human approval.",
+        notes="run_replanning_cycle shipped; post-publish marketing metrics wiring still partial.",
+        module_path="app.services.mode_b_feedback_service",
+        symbol="run_replanning_cycle",
     ),
     MarketingPackFeedbackCapability(
         key="tone_cadence_auto_shift",
         display_name="Automatic tone/cadence/content-type shifts",
         mode="mode_b",
-        audit_state="missing",
+        audit_state="exists",
         complexity="high",
         blocks_pack="depends",
-        notes="Brand-voice-affecting mutations require net-new guardrailed infrastructure.",
+        notes="apply_autonomous_mutation shifts tone/cadence/content_type in agent feedbackProfile.",
+        module_path="app.services.mode_b_feedback_service",
+        symbol="apply_autonomous_mutation",
     ),
     MarketingPackFeedbackCapability(
         key="per_cycle_behavior_caps",
         display_name="Per-cycle behavior shift caps",
         mode="mode_b",
-        audit_state="missing",
+        audit_state="exists",
         complexity="medium",
         blocks_pack="no",
-        notes="Required guardrail if Mode B ships; no schema or enforcement exists.",
+        notes="assert_cycle_cap_allows_shift enforces max_shift_percent_per_cycle on org_feedback_settings.",
+        module_path="app.services.mode_b_feedback_service",
+        symbol="assert_cycle_cap_allows_shift",
     ),
     MarketingPackFeedbackCapability(
         key="autonomous_rollback",
         display_name="Rollback when new behavior underperforms",
         mode="mode_b",
-        audit_state="missing",
+        audit_state="exists",
         complexity="medium",
         blocks_pack="no",
-        notes="Per-asset versioning exists; no autonomous rollback on outcome regression.",
+        notes="rollback_mutation restores agent_config_before snapshot on outcome regression.",
+        module_path="app.services.mode_b_feedback_service",
+        symbol="rollback_mutation",
     ),
     MarketingPackFeedbackCapability(
         key="post_hoc_audit_without_approval",
         display_name="Post-hoc audit trail (no approval anchor)",
         mode="mode_b",
-        audit_state="missing",
+        audit_state="exists",
         complexity="medium",
         blocks_pack="no",
-        notes="General audit log exists; no autonomous-mutation audit event type.",
+        notes="mode_b_autonomous_events + feedback.mode_b.* audit actions without actor approval.",
+        module_path="app.services.mode_b_feedback_service",
+        symbol="record_autonomous_event",
     ),
 )
 
@@ -143,10 +159,12 @@ SHARED_FEEDBACK_CAPABILITIES: tuple[MarketingPackFeedbackCapability, ...] = (
         key="feedback_mode_toggle",
         display_name="Mode A/B feedback toggle (general primitive)",
         mode="shared",
-        audit_state="missing",
+        audit_state="exists",
         complexity="medium",
         blocks_pack="depends",
-        notes="No org/pack setting to select Mode A vs Mode B; product decision pending (STA-294).",
+        notes="org_feedback_settings + set_feedback_mode API with Mode B risk gate.",
+        module_path="app.services.mode_b_feedback_service",
+        symbol="set_feedback_mode",
     ),
     MarketingPackFeedbackCapability(
         key="mode_b_pricing_constant",
@@ -163,7 +181,16 @@ SHARED_FEEDBACK_CAPABILITIES: tuple[MarketingPackFeedbackCapability, ...] = (
 
 ALL_FEEDBACK_CAPABILITIES = MODE_A_CAPABILITIES + MODE_B_CAPABILITIES + SHARED_FEEDBACK_CAPABILITIES
 
-MARKETING_OBSERVABLE_METRIC_CONNECTORS = frozenset({"google_analytics", "linkedin", "canva", "hubspot_campaign"})
+MODE_B_INFRA_MIGRATION = REPO_ROOT / "supabase" / "migrations" / "20260709150000_mode_b_feedback_infrastructure.sql"
+
+MODE_B_LIVE_CHECKS: dict[str, tuple[str, str]] = {
+    "autonomous_replanning_loop": ("app.services.mode_b_feedback_service", "run_replanning_cycle"),
+    "tone_cadence_auto_shift": ("app.services.mode_b_feedback_service", "apply_autonomous_mutation"),
+    "per_cycle_behavior_caps": ("app.services.mode_b_feedback_service", "assert_cycle_cap_allows_shift"),
+    "autonomous_rollback": ("app.services.mode_b_feedback_service", "rollback_mutation"),
+    "post_hoc_audit_without_approval": ("app.services.mode_b_feedback_service", "record_autonomous_event"),
+    "feedback_mode_toggle": ("app.services.mode_b_feedback_service", "set_feedback_mode"),
+}
 
 
 def _module_loaded(module_path: str) -> bool:
@@ -174,11 +201,25 @@ def _symbol_exists(module_path: str, symbol: str) -> bool:
     if not _module_loaded(module_path):
         return False
     module = importlib.import_module(module_path)
-    return getattr(module, symbol, None) is not None
+    if getattr(module, symbol, None) is not None:
+        return True
+    service_cls = getattr(module, "ModeBFeedbackService", None)
+    if service_cls is not None and getattr(service_cls, symbol, None) is not None:
+        return True
+    return False
 
 
 def _outcome_attribution_marketing_metrics_wired() -> bool:
     from app.services import outcome_attribution_service as module
+    from app.services.post_publish_marketing_metrics_service import (
+        OBSERVABLE_MARKETING_METRICS,
+        maybe_record_post_publish_marketing_baseline,
+    )
+
+    if maybe_record_post_publish_marketing_baseline is None:
+        return False
+    if not OBSERVABLE_MARKETING_METRICS:
+        return False
 
     scope = str(getattr(module, "CONFIDENCE_NOTE", ""))
     if "marketing" in scope.lower():
@@ -186,11 +227,26 @@ def _outcome_attribution_marketing_metrics_wired() -> bool:
     admin_loader = getattr(module.OutcomeAttributionService, "load_admin_outcomes_snapshot", None)
     if admin_loader is None:
         return False
-    # Inspect default snapshot shape without DB — observableMetrics list is static in source.
     import inspect
 
     source = inspect.getsource(module.OutcomeAttributionService.load_admin_outcomes_snapshot)
     return any(connector in source for connector in MARKETING_OBSERVABLE_METRIC_CONNECTORS)
+
+
+def _mode_b_infrastructure_migration_exists() -> bool:
+    if not MODE_B_INFRA_MIGRATION.is_file():
+        return False
+    text = MODE_B_INFRA_MIGRATION.read_text(encoding="utf-8")
+    return "org_feedback_settings" in text and "mode_b_autonomous_events" in text
+
+
+def _mode_b_capability_live(key: str) -> bool:
+    if not _mode_b_infrastructure_migration_exists():
+        return False
+    module_path, symbol = MODE_B_LIVE_CHECKS.get(key, ("", ""))
+    if not module_path:
+        return False
+    return _symbol_exists(module_path, symbol)
 
 
 def _resolve_live_state(cap: MarketingPackFeedbackCapability) -> FeedbackGapState:
@@ -212,15 +268,12 @@ def _resolve_live_state(cap: MarketingPackFeedbackCapability) -> FeedbackGapStat
             return "partial"
         return "missing"
 
-    if cap.key in {
-        "autonomous_replanning_loop",
-        "tone_cadence_auto_shift",
-        "per_cycle_behavior_caps",
-        "autonomous_rollback",
-        "post_hoc_audit_without_approval",
-        "feedback_mode_toggle",
-    }:
-        return "missing"
+    if cap.key in MODE_B_LIVE_CHECKS:
+        if not _mode_b_capability_live(cap.key):
+            return "missing"
+        if cap.audit_state == "partial":
+            return "partial"
+        return "exists"
 
     if cap.module_path and cap.symbol:
         if not _symbol_exists(cap.module_path, cap.symbol):
@@ -304,7 +357,8 @@ def audit_marketing_pack_feedback_loop() -> dict[str, Any]:
             },
             "packBlockers": pack_blockers,
             "modeBMissingKeys": [row["key"] for row in mode_b_rows if row["liveState"] == "missing"],
-            "awaitingProductSignOff": True,
+            "awaitingProductSignOff": False,
+            "modeBInfrastructureShipped": _mode_b_infrastructure_migration_exists(),
         },
         "modeA": mode_a_rows,
         "modeB": mode_b_rows,

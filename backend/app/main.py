@@ -41,6 +41,7 @@ from app.routers import (
     decisions,
     execution,
     entitlements,
+    feedback_mode,
     metrics,
     memory_promotion,
     notifications,
@@ -421,6 +422,7 @@ app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
 app.include_router(admin_intelligence.router)
 app.include_router(optimization_suggestions.router)
+app.include_router(feedback_mode.router)
 app.include_router(memory_promotion.router)
 app.include_router(agent_tool_permissions.router)
 app.include_router(operators_router.sessions_router)

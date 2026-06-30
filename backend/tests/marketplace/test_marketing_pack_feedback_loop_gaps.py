@@ -41,20 +41,33 @@ def test_mode_a_human_approval_gate_exists():
     assert gate["stateMatchesDoc"] is True
 
 
-def test_post_publish_marketing_metrics_still_missing():
+def test_post_publish_marketing_metrics_wired():
     report = audit_marketing_pack_feedback_loop()
     gap = next(row for row in report["modeA"] if row["key"] == "post_publish_marketing_metrics")
-    assert gap["liveState"] == "missing"
+    assert gap["liveState"] == "exists"
     assert gap["stateMatchesDoc"] is True
-    assert "post_publish_marketing_metrics" in report["summary"]["packBlockers"]
+    assert "post_publish_marketing_metrics" not in report["summary"]["packBlockers"]
 
 
-def test_mode_b_capabilities_all_missing():
+def test_mode_b_guardrails_and_toggle_shipped():
     report = audit_marketing_pack_feedback_loop()
-    for row in report["modeB"]:
-        assert row["liveState"] == "missing"
-        assert row["stateMatchesDoc"] is True
-    assert report["summary"]["modeB"]["netNewPlatformWork"] is True
+    by_key = {row["key"]: row for row in report["capabilities"]}
+    for key in (
+        "per_cycle_behavior_caps",
+        "autonomous_rollback",
+        "post_hoc_audit_without_approval",
+        "feedback_mode_toggle",
+        "tone_cadence_auto_shift",
+    ):
+        assert by_key[key]["liveState"] == "exists"
+    assert by_key["autonomous_replanning_loop"]["liveState"] == "partial"
+    assert report["summary"]["modeBInfrastructureShipped"] is True
+
+
+def test_mode_b_capabilities_no_longer_all_missing():
+    report = audit_marketing_pack_feedback_loop()
+    assert report["summary"]["modeB"]["missing"] == 0
+    assert report["summary"]["modeB"]["exists"] >= 4
 
 
 def test_mode_b_pricing_constant_is_partial():
@@ -64,8 +77,8 @@ def test_mode_b_pricing_constant_is_partial():
     assert pricing["stateMatchesDoc"] is True
 
 
-def test_feedback_mode_toggle_missing_pending_product_signoff():
+def test_feedback_mode_toggle_exists():
     report = audit_marketing_pack_feedback_loop()
     toggle = next(row for row in report["shared"] if row["key"] == "feedback_mode_toggle")
-    assert toggle["liveState"] == "missing"
-    assert report["summary"]["awaitingProductSignOff"] is True
+    assert toggle["liveState"] == "exists"
+    assert report["summary"]["awaitingProductSignOff"] is False

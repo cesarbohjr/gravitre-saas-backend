@@ -26,6 +26,22 @@ def test_mode_a_default_confirmed():
     assert report["summary"]["canShipModeADefault"] is True
 
 
+def test_mode_b_infrastructure_ready_after_ship():
+    report = audit_marketing_pack_mode_ab_decision()
+    assert report["summary"]["modeBInfrastructureReady"] is True
+    assert report["summary"]["canShipModeB"] is True
+    assert report["summary"]["engineeringBlocked"] == 0
+
+
+def test_engineering_items_resolved_when_infra_shipped():
+    report = audit_marketing_pack_mode_ab_decision()
+    guardrails = [row for row in report["decisions"] if row["category"] == "guardrail"]
+    toggle = next(row for row in report["decisions"] if row["key"] == "feedback_mode_toggle")
+    assert all(row["status"] == "resolved" for row in guardrails)
+    assert toggle["status"] == "resolved"
+    assert report["summary"]["pending"] == 0
+
+
 def test_mode_b_go_live_gate_confirmed():
     report = audit_marketing_pack_mode_ab_decision()
     gate = next(row for row in report["decisions"] if row["key"] == "mode_b_go_live_gate")
@@ -43,23 +59,6 @@ def test_mode_b_shipping_signed_off_opt_in_only():
     assert report["summary"]["modeBShippingApproved"] is True
 
 
-def test_mode_b_not_ship_ready_until_infrastructure():
-    report = audit_marketing_pack_mode_ab_decision()
-    assert report["summary"]["canShipModeB"] is False
-    assert report["summary"]["modeBInfrastructureReady"] is False
-
-
-def test_engineering_items_still_blocked():
-    report = audit_marketing_pack_mode_ab_decision()
-    guardrails = [row for row in report["decisions"] if row["category"] == "guardrail"]
-    toggle = next(row for row in report["decisions"] if row["key"] == "feedback_mode_toggle")
-    assert len(guardrails) == 3
-    assert all(row["status"] == "blocked" for row in guardrails)
-    assert toggle["status"] == "blocked"
-    assert report["summary"]["engineeringBlocked"] == 4
-    assert report["summary"]["pending"] == 0
-
-
 def test_mode_b_pricing_signed_off_included_with_risk_gate():
     report = audit_marketing_pack_mode_ab_decision()
     pricing = next(row for row in report["decisions"] if row["key"] == "mode_b_pricing_model")
@@ -72,5 +71,5 @@ def test_mode_b_pricing_signed_off_included_with_risk_gate():
 def test_links_sta293_feedback_audit():
     report = audit_marketing_pack_mode_ab_decision()
     loop = report["feedbackLoopAudit"]
-    assert loop["modeBMissing"] == 5
-    assert "post_publish_marketing_metrics" in loop["packBlockers"]
+    assert loop["modeBMissing"] == 0
+    assert loop["packBlockers"] == []
