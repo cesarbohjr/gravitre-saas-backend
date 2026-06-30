@@ -5,7 +5,9 @@ briefings, role prompts, and ReAct tool loop.
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -24,6 +26,7 @@ from app.operators.assistant_mode_config import (
 )
 from app.operators.assistant_sse import (
     format_react_tool_output,
+    sse_intelligence_metadata,
     sse_knowledge_base_tool,
     sse_react_tool_complete,
     sse_react_tool_start,
@@ -34,14 +37,32 @@ from app.operators.assistant_sse import (
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.assistant_tools import TOOL_DISPLAY_NAMES, tool_knowledge_base
+from app.services.answer_explanation import generate_answer_explanation_cached
+from app.services.answer_validator import SAFE_FALLBACK, validate_grounded_answer
+from app.services.context_conflict_detection import (
+    dedupe_chunks,
+    detect_chunk_conflicts,
+    format_conflicts_for_prompt,
+)
 from app.services.conversation_context_service import format_summary_block, maybe_summarize_history
 from app.services.agent_finetune_service import resolve_agent_inference_model
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
 from app.services.entity_relationship_service import build_entity_context_section
 from app.services.execution_mode_service import resolve_execution_mode, resolve_execution_verified
+from app.services.intelligence_engine_settings import (
+    load_intelligence_engine_settings,
+    tier0_enabled,
+    tier0_ttl_seconds,
+    validation_enabled_for_mode,
+)
+from app.services.performance_tier import TIER_0, mode_to_tier
+from app.services.tier0_cache import get_tier0_answer, set_tier0_answer
+from app.services.latency_tracking import log_pipeline_latency
 from app.services.org_context_service import get_org_context_service
 from app.services.plan_resolution_service import PlanResolutionRequest, resolve_plan
+from app.services.query_rewriter import rewrite_for_retrieval
 from app.services.rag_service import RAGService
+from app.services.sync_confidence import compute_sync_confidence
 from app.services.unified_retrieval_service import UnifiedRetrievalService, get_unified_retrieval_service
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import ToolContext
@@ -401,7 +422,28 @@ class AgentIntelligence:
         return self.tool_registry.get_tools_for_agent(allowed, connected_integrations)
 
     @staticmethod
-    def _format_rag_context(rag_results: list[dict[str, Any]]) -> str:
+    def _extract_source_document_ids(rag_sources: list[dict[str, Any]]) -> list[str]:
+        doc_ids: list[str] = []
+        for source in rag_sources:
+            doc_id = source.get("document_id")
+            if doc_id:
+                value = str(doc_id)
+                if value not in doc_ids:
+                    doc_ids.append(value)
+        return doc_ids
+
+    @staticmethod
+    def _prepare_rag_sources(rag_results: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        deduped = dedupe_chunks(rag_results)
+        conflicts = detect_chunk_conflicts(deduped)
+        return deduped, conflicts
+
+    @staticmethod
+    def _format_rag_context(
+        rag_results: list[dict[str, Any]],
+        *,
+        conflicts: list[dict[str, Any]] | None = None,
+    ) -> str:
         if not rag_results:
             return (
                 "No internal knowledge excerpts were retrieved for this task. "
@@ -418,6 +460,9 @@ class AgentIntelligence:
             if score is not None:
                 line += f" (relevance: {score})"
             lines.append(line)
+        conflict_block = format_conflicts_for_prompt(conflicts or [])
+        if conflict_block:
+            lines.extend(["", conflict_block])
         return "\n".join(lines)
 
     @staticmethod
@@ -493,6 +538,7 @@ class AgentIntelligence:
         company_intelligence_section: str | None = None,
         entity_relationship_section: str | None = None,
         assistant_base_prompt: str | None = None,
+        conflicts: list[dict[str, Any]] | None = None,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         org_dict = org_context if isinstance(org_context, dict) else None
@@ -504,7 +550,7 @@ class AgentIntelligence:
             rag_available=bool(rag_results),
             assistant_base_prompt=assistant_base_prompt,
         )
-        rag_section = self._format_rag_context(rag_results)
+        rag_section = self._format_rag_context(rag_results, conflicts=conflicts)
         org_text = self._format_org_context_text(org_context, org_context_block=org_context_block)
         history_section = self._format_task_history(task_history)
         handoff_section = ""
@@ -542,6 +588,134 @@ class AgentIntelligence:
             sections.extend(["", NEW_ORG_FRAMING.strip()])
         sections.extend(["", RESEARCH_POLICY.strip(), "", RULES_SECTION.strip()])
         return "\n".join(section for section in sections if section is not None)
+
+    async def _regenerate_grounded_answer(
+        self,
+        *,
+        settings: Settings,
+        org_id: str,
+        query: str,
+        draft: str,
+        rag_sources: list[dict[str, Any]],
+    ) -> str:
+        from app.services.model_router import TaskType, get_model_router
+
+        context_lines = [
+            f"- {row.get('source') or row.get('title') or 'Source'}: "
+            f"{str(row.get('content') or '')[:500]}"
+            for row in rag_sources[:6]
+        ]
+        context_block = "\n".join(context_lines) or "(no retrieved context)"
+        prompt = (
+            "Rewrite the draft answer so every factual claim is supported by CONTEXT. "
+            "If CONTEXT is insufficient, say so explicitly.\n\n"
+            f"CONTEXT:\n{context_block}\n\n"
+            f"QUESTION:\n{query}\n\n"
+            f"DRAFT:\n{draft[:3000]}"
+        )
+        response = await get_model_router(settings).complete(
+            task_type=TaskType.RAG_ANSWERING,
+            prompt=prompt,
+            system_prompt="Ground answers strictly in provided context.",
+            org_id=org_id,
+            temperature=0.0,
+            max_tokens=1200,
+        )
+        return (response.content or "").strip()
+
+    async def _finalize_assistant_response(
+        self,
+        *,
+        settings: Settings,
+        org_id: str,
+        mode_key: str,
+        query: str,
+        answer: str,
+        rag_sources: list[dict[str, Any]],
+        react_result: Any,
+        engine_settings: Any,
+        message_id: str | None,
+        client: Any,
+        conflicts: list[dict[str, Any]] | None,
+        refined_query: str | None,
+    ) -> dict[str, Any]:
+        validation: dict[str, Any] | None = None
+        content = answer
+        should_validate = validation_enabled_for_mode(mode_key, engine_settings)
+        validation_started = time.monotonic() if should_validate else None
+
+        if should_validate and content.strip():
+            validation = await validate_grounded_answer(
+                content,
+                rag_sources,
+                confidence_threshold=engine_settings.confidence_threshold,
+                org_id=org_id,
+                settings=settings,
+            )
+            if not validation.get("is_valid"):
+                regenerated = await self._regenerate_grounded_answer(
+                    settings=settings,
+                    org_id=org_id,
+                    query=query,
+                    draft=content,
+                    rag_sources=rag_sources,
+                )
+                if regenerated:
+                    content = regenerated
+                    validation = await validate_grounded_answer(
+                        content,
+                        rag_sources,
+                        confidence_threshold=engine_settings.confidence_threshold,
+                        org_id=org_id,
+                        settings=settings,
+                    )
+                if not validation.get("is_valid"):
+                    content = SAFE_FALLBACK
+                    validation = {
+                        **validation,
+                        "is_valid": False,
+                        "issues": list(validation.get("issues") or []) + ["regeneration_failed"],
+                        "requires_human": True,
+                    }
+
+        if validation_started is not None and message_id:
+            validation_ms = int((time.monotonic() - validation_started) * 1000)
+            asyncio.create_task(
+                log_pipeline_latency(
+                    settings,
+                    org_id=org_id,
+                    stage_name="validation",
+                    duration_ms=validation_ms,
+                    message_id=message_id,
+                    tier=mode_to_tier(mode_key),
+                    client=client,
+                )
+            )
+
+        trace = []
+        if react_result is not None:
+            trace = react_result.to_dict().get("trace") or []
+        confidence = compute_sync_confidence(
+            query=query,
+            answer=content,
+            chunks=rag_sources,
+            validation_confidence=(validation or {}).get("confidence"),
+            conflict_count=len(conflicts or []),
+        )
+        explanation = await generate_answer_explanation_cached(
+            settings,
+            org_id,
+            rag_sources,
+            reasoning_trace=trace,
+            conflicts=conflicts,
+            refined_query=refined_query if refined_query and refined_query != query else None,
+        )
+        return {
+            "content": content,
+            "validation": validation,
+            "confidence": confidence,
+            "explanation": explanation,
+        }
 
     async def execute_task(
         self,
@@ -597,7 +771,7 @@ class AgentIntelligence:
         connected = org_context.get("connectedIntegrations") or self.tool_registry.list_connected_integrations(
             client, org_id, environment_name=environment_name
         )
-        rag_sources = retrieval.rag_sources
+        rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
         rag_section = retrieval.rag_section
         memory_section = retrieval.memory_section
 
@@ -644,6 +818,7 @@ class AgentIntelligence:
             connected_integrations=list(connected),
             company_intelligence_section=company_block or None,
             entity_relationship_section=entity_block or None,
+            conflicts=rag_conflicts,
         )
         persona = get_agent_persona(agent)
         model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
@@ -749,6 +924,67 @@ class AgentIntelligence:
         permitted_registry = resolve_registry_permitted_tools(tool_names)
         mode_key = normalize_mode(mode)
         max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
+        message_id = str(uuid.uuid4())
+        engine_settings = await load_intelligence_engine_settings(org_id, active_settings, client=client)
+        pipeline_tier = mode_to_tier(mode_key)
+
+        tier0_started = time.monotonic()
+        if tier0_enabled(engine_settings):
+            tier0_hit = await get_tier0_answer(
+                active_settings,
+                org_id=org_id,
+                query=task_text,
+                client=client,
+            )
+            if tier0_hit:
+                tier0_ms = int((time.monotonic() - tier0_started) * 1000)
+                asyncio.create_task(
+                    log_pipeline_latency(
+                        active_settings,
+                        org_id=org_id,
+                        stage_name="generation",
+                        duration_ms=tier0_ms,
+                        message_id=message_id,
+                        cache_hit=True,
+                        tier=TIER_0,
+                        client=client,
+                    )
+                )
+                answer = str(tier0_hit.get("answer") or "")
+                confidence = tier0_hit.get("confidence") or {}
+                explanation = str(tier0_hit.get("answer_explanation") or "")
+                text_id, start_event = sse_text_start()
+                yield start_event
+                yield sse_text_delta(text_id, answer)
+                yield sse_text_end(text_id)
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence=confidence if isinstance(confidence, dict) else None,
+                    answer_explanation=explanation or None,
+                    conflicts=None,
+                    refined_query=None,
+                    validation=None,
+                )
+                yield AssistantStreamComplete(
+                    full_content=answer,
+                    tool_results=[],
+                    react_result=None,
+                    model="cache",
+                    message_id=message_id,
+                    confidence=confidence if isinstance(confidence, dict) else None,
+                    answer_explanation=explanation or None,
+                )
+                return
+
+        refined_query = task_text
+        if mode_key != "fast":
+            rewrite = await rewrite_for_retrieval(
+                task_text,
+                conversation_history,
+                org_id=org_id,
+                settings=active_settings,
+            )
+            refined_query = rewrite.get("refined_query") or task_text
 
         if agent_id:
             agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)
@@ -761,12 +997,18 @@ class AgentIntelligence:
 
         retrieval = await self.unified_retrieval.retrieve(
             org_id=org_id,
-            query=task_text,
+            query=refined_query,
             client=client,
             agent=agent,
-            parameters={"surface": "assistant", "include_task_history": False},
+            parameters={
+                "surface": "assistant",
+                "include_task_history": False,
+                "rag_top_k": engine_settings.max_chunks,
+            },
             environment_name=environment_name,
             user_id=user_id,
+            message_id=message_id,
+            reranking_enabled=engine_settings.reranking_enabled,
         )
         org_context = retrieval.org_context
         connected = org_context.get("connectedIntegrations") or self.tool_registry.list_connected_integrations(
@@ -775,9 +1017,9 @@ class AgentIntelligence:
         connected_list = list(connected)
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
-        rag_section = retrieval.rag_section
+        rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
+        rag_section = self._format_rag_context(rag_sources, conflicts=rag_conflicts)
         memory_section = retrieval.memory_section
-        rag_sources = retrieval.rag_sources
 
         org_context_block = ""
         memory_block = memory_section or ""
@@ -843,6 +1085,7 @@ class AgentIntelligence:
             company_intelligence_section=company_block or None,
             entity_relationship_section=entity_block or None,
             assistant_base_prompt=assistant_base_prompt,
+            conflicts=rag_conflicts,
         )
 
         prepared_context = await maybe_summarize_history(
@@ -914,11 +1157,13 @@ class AgentIntelligence:
             actor_id=user_id or agent_id or "system",
             environment_name=environment_name,
             agent_id=agent_id or str(agent.get("id") or "") or None,
+            connector_timeout_seconds=engine_settings.connector_timeout_seconds,
         )
 
         text_id: str | None = None
         full_content_parts: list[str] = []
         react_result = None
+        generation_started = time.monotonic()
 
         async for event in self.react_engine.run_streaming(
             ctx=ctx,
@@ -967,9 +1212,45 @@ class AgentIntelligence:
             elif event.kind == "done":
                 react_result = event.react_result
 
-        full_content = "".join(full_content_parts)
-        if react_result is not None and not full_content.strip():
-            full_content = react_result.answer or ""
+        generation_ms = int((time.monotonic() - generation_started) * 1000)
+        asyncio.create_task(
+            log_pipeline_latency(
+                active_settings,
+                org_id=org_id,
+                stage_name="generation",
+                duration_ms=generation_ms,
+                message_id=message_id,
+                tier=pipeline_tier,
+                model_used=model,
+                client=client,
+            )
+        )
+
+        streamed_content = "".join(full_content_parts)
+        if react_result is not None and not streamed_content.strip():
+            streamed_content = react_result.answer or ""
+
+        finalized = await self._finalize_assistant_response(
+            settings=active_settings,
+            org_id=org_id,
+            mode_key=mode_key,
+            query=task_text,
+            answer=streamed_content,
+            rag_sources=rag_sources,
+            react_result=react_result,
+            engine_settings=engine_settings,
+            message_id=message_id,
+            client=client,
+            conflicts=rag_conflicts,
+            refined_query=refined_query,
+        )
+        full_content = finalized["content"]
+        if finalized["confidence"].get("needs_clarification") and mode_key != "fast":
+            clarification = (
+                "\n\nI may be missing context — could you clarify or point me to a specific record or document?"
+            )
+            if clarification.strip() not in full_content:
+                full_content = f"{full_content.rstrip()}{clarification}"
 
         # Some ReAct paths populate react_result.answer without emitting text_delta
         # events (e.g. empty delta chunks). The UI contract still requires text-start/
@@ -980,7 +1261,22 @@ class AgentIntelligence:
             yield sse_text_delta(text_id, full_content)
             yield sse_text_end(text_id)
         elif text_id is not None:
+            if full_content.strip() and full_content.strip() != streamed_content.strip():
+                suffix = full_content[len(streamed_content) :] if full_content.startswith(streamed_content) else (
+                    f"\n\n(Revised after verification)\n{full_content}"
+                )
+                if suffix.strip():
+                    yield sse_text_delta(text_id, suffix)
             yield sse_text_end(text_id)
+
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence=finalized["confidence"],
+            answer_explanation=finalized["explanation"],
+            conflicts=rag_conflicts,
+            refined_query=refined_query if refined_query != task_text else None,
+            validation=finalized["validation"],
+        )
 
         yield AssistantStreamComplete(
             full_content=full_content,
@@ -989,7 +1285,25 @@ class AgentIntelligence:
             model=model,
             summary=prepared_context.summary,
             summary_updated=prepared_context.summary_updated,
+            message_id=message_id,
+            confidence=finalized["confidence"],
+            answer_explanation=finalized["explanation"],
+            validation=finalized["validation"],
+            conflicts=rag_conflicts,
+            refined_query=refined_query if refined_query != task_text else None,
         )
+
+        if tier0_enabled(engine_settings) and full_content.strip():
+            await set_tier0_answer(
+                active_settings,
+                org_id=org_id,
+                query=task_text,
+                answer=full_content,
+                source_document_ids=self._extract_source_document_ids(rag_sources),
+                confidence=finalized["confidence"],
+                answer_explanation=finalized["explanation"],
+                ttl_seconds=tier0_ttl_seconds(engine_settings),
+            )
 
     @staticmethod
     def _build_task_prompt(

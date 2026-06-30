@@ -44,6 +44,30 @@ def sse_suggestions(suggestions: list[str]) -> AssistantStreamEvent:
     return _sse({"type": "data-suggestions", "data": {"suggestions": suggestions}})
 
 
+def sse_intelligence_metadata(
+    *,
+    message_id: str | None,
+    confidence: dict[str, Any] | None,
+    answer_explanation: str | None,
+    conflicts: list[dict[str, Any]] | None = None,
+    refined_query: str | None = None,
+    validation: dict[str, Any] | None = None,
+) -> AssistantStreamEvent:
+    return _sse(
+        {
+            "type": "data-intelligence",
+            "data": {
+                "messageId": message_id,
+                "confidence": confidence,
+                "answerExplanation": answer_explanation,
+                "conflicts": conflicts or [],
+                "refinedQuery": refined_query,
+                "validation": validation,
+            },
+        }
+    )
+
+
 def sse_knowledge_base_tool(
     *,
     call_id: str,

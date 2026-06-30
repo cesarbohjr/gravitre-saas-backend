@@ -176,6 +176,10 @@ async def lifespan(app: FastAPI):
         start_memory_promotion_scheduler,
         stop_scheduler as stop_memory_scheduler,
     )
+    from app.schedulers.cache_warming_scheduler import (
+        start_cache_warming_scheduler,
+        stop_cache_warming_scheduler,
+    )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
 
     app.state.usage_sync_task = start_usage_sync_scheduler()
@@ -186,6 +190,7 @@ async def lifespan(app: FastAPI):
     app.state.company_intelligence_task = start_company_intelligence_scheduler()
     app.state.memory_promotion_task = start_memory_promotion_scheduler()
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
+    app.state.cache_warming_task = start_cache_warming_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
     _log_billing_startup_config()
@@ -200,6 +205,7 @@ async def lifespan(app: FastAPI):
         await stop_company_intelligence_scheduler(getattr(app.state, "company_intelligence_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_expiration_task", None))
+        await stop_cache_warming_scheduler(getattr(app.state, "cache_warming_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 

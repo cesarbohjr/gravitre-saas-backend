@@ -51,6 +51,8 @@ from app.services.assistant_tools import (
     tool_connector_status,
     tool_knowledge_base,
 )
+from app.services.rag_outcome_tracking import apply_message_feedback
+from app.services.response_evaluation_service import consolidate_evaluation
 from app.services.user_intelligence import classify_query, get_user_intelligence_service
 from app.services.model_router import ModelResponse, TaskType, get_model_router
 from app.operators.agent_intelligence import get_agent_intelligence
@@ -345,7 +347,8 @@ def _persist_conversation_turn(
     user_text: str,
     assistant_text: str,
     tool_results: list[dict[str, Any]],
-) -> str | None:
+    assistant_message_id: str | None = None,
+) -> tuple[str | None, str | None]:
     """Append user/assistant messages to an owned conversation (best-effort)."""
     try:
         client = get_supabase_client(settings)
@@ -363,7 +366,7 @@ def _persist_conversation_turn(
                 .execute()
             )
             if _is_missing_table_error(getattr(owned, "error", None)):
-                return None
+                return None, None
             if not owned.data:
                 conv_id = None
             else:
@@ -389,12 +392,13 @@ def _persist_conversation_turn(
                 .execute()
             )
             if _is_missing_table_error(getattr(insert, "error", None)):
-                return None
+                return None, None
             if not insert.data:
-                return None
+                return None, None
             conv_id = str(insert.data[0]["id"])
             current_count = 0
 
+        assistant_id = (assistant_message_id or "").strip() or str(uuid.uuid4())
         tool_calls = (
             [
                 {
@@ -419,6 +423,7 @@ def _persist_conversation_turn(
                 {
                     "conversation_id": conv_id,
                     "role": "assistant",
+                    "id": assistant_id,
                     "content": assistant_text,
                     "tool_calls": tool_calls,
                     "created_at": now,
@@ -433,7 +438,7 @@ def _persist_conversation_turn(
                 "updated_at": now,
             }
         ).eq("id", conv_id).eq("org_id", org_id).eq("user_id", user_id).execute()
-        return conv_id
+        return conv_id, assistant_id
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "assistant conversation persist failed org_id=%s user_id=%s error=%s",
@@ -441,7 +446,7 @@ def _persist_conversation_turn(
             user_id,
             str(exc),
         )
-        return conversation_id
+        return conversation_id, assistant_message_id
 
 
 def _resolve_base_system_prompt(
@@ -646,6 +651,8 @@ def _build_stream(
                 model_used=complete.model,
                 response_time_ms=elapsed_ms,
                 surface="assistant",
+                message_id=complete.message_id,
+                rag_quality_score=(complete.confidence or {}).get("rag_quality_score"),
             )
         )
         if complete.summary_updated and conversation_id and user_id and complete.summary:
@@ -664,6 +671,7 @@ def _build_stream(
             user_text=user_text,
             assistant_text=complete.full_content,
             tool_results=complete.tool_results,
+            assistant_message_id=complete.message_id,
         )
 
     return generator()
@@ -927,3 +935,36 @@ async def update_assistant_preferences(
         preferred_model=body.preferred_model,
         preferred_mode=body.preferred_mode,
     )
+
+
+class AssistantFeedbackRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    message_id: str
+    helpful: bool
+    reason: str | None = None
+    corrected_answer: str | None = None
+
+
+@router.post("/feedback")
+async def submit_assistant_feedback(
+    body: AssistantFeedbackRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    message_id = body.message_id.strip()
+    if not message_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="message_id is required")
+    await apply_message_feedback(
+        settings,
+        org_id=org_id,
+        message_id=message_id,
+        helpful=body.helpful,
+        reason=body.reason,
+        corrected_answer=body.corrected_answer,
+    )
+    asyncio.create_task(consolidate_evaluation(settings, org_id, message_id))
+    return {"status": "ok"}

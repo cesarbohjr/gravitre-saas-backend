@@ -56,6 +56,7 @@ class ToolContext:
     connector_id: str | None = None
     step_id: str | None = None
     step_type: str | None = None
+    connector_timeout_seconds: int | None = None
 
 
 @dataclass

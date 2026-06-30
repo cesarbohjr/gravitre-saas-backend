@@ -53,6 +53,8 @@ class UnifiedRetrievalService:
         environment_name: str = "default",
         scopes: RetrievalScopes | None = None,
         user_id: str | None = None,
+        message_id: str | None = None,
+        reranking_enabled: bool | None = None,
     ) -> UnifiedRetrievalBundle:
         active_scopes = scopes or RetrievalScopes()
         params = parameters or {}
@@ -87,34 +89,41 @@ class UnifiedRetrievalService:
         metrics: dict[str, Any] = {}
         if active_scopes.knowledge:
             try:
-                chunks, metrics = await self.rag_service.retrieve_chunks(
+                top_k = int(params.get("rag_top_k") or self.settings.rag_top_k or 8)
+                filters: dict[str, Any] = {"environment": environment_name}
+                if reranking_enabled is False:
+                    filters["disable_rerank"] = True
+                rows, metrics = await self.rag_service.retrieve_hybrid_rows(
                     org_id,
                     query,
                     scope="agent",
-                    top_k=int(params.get("rag_top_k") or self.settings.rag_top_k or 8),
+                    top_k=top_k,
                     agent_id=agent_id or None,
-                    filters={"environment": environment_name},
+                    message_id=message_id,
+                    filters=filters,
                 )
                 rag_sources = [
                     {
-                        "id": chunk.id,
-                        "content": chunk.content[:500],
-                        "score": chunk.score,
-                        "source": chunk.source,
+                        "id": str(row.get("id") or row.get("chunk_id") or ""),
+                        "document_id": row.get("document_id"),
+                        "content": str(row.get("content") or "")[:500],
+                        "score": float(row.get("score") or 0.0),
+                        "source": str(row.get("title") or row.get("source_title") or row.get("source") or ""),
+                        "title": row.get("title") or row.get("source_title"),
                     }
-                    for chunk in chunks
+                    for row in rows
                 ]
-                if chunks:
+                if rows:
                     rag_section = (
                         "<knowledge_base>\n"
                         + json.dumps(
                             [
                                 {
-                                    "source": chunk.source,
-                                    "content": chunk.content[:1200],
-                                    "score": chunk.score,
+                                    "source": source.get("source"),
+                                    "content": source.get("content", "")[:1200],
+                                    "score": source.get("score"),
                                 }
-                                for chunk in chunks
+                                for source in rag_sources
                             ],
                             default=str,
                         )[:12000]

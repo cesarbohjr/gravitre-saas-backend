@@ -1221,6 +1221,12 @@ export const assistantApi = {
       apiUrl("/api/assistant/preferences"),
       data,
     ),
+  submitFeedback: (data: {
+    message_id: string
+    helpful: boolean
+    reason?: string
+    corrected_answer?: string
+  }) => postJson<{ status: string }>(apiUrl("/api/assistant/feedback"), data),
 }
 
 // ============ Training ============
@@ -1550,6 +1556,52 @@ export const intelligenceApi = {
     return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
   },
   outcomes: () => fetcher<IntelligenceOutcomesResponse>(apiUrl("/api/admin/intelligence/outcomes")),
+  engineSettings: () =>
+    fetcher<{
+      validationEnabled: boolean
+      rerankingEnabled: boolean
+      confidenceThreshold: number
+      maxChunks: number
+      connectorTimeoutSeconds: number
+      performanceMode: string
+    }>(apiUrl("/api/admin/intelligence/engine-settings")),
+  updateEngineSettings: (data: {
+    validation_enabled?: boolean
+    reranking_enabled?: boolean
+    confidence_threshold?: number
+    max_chunks?: number
+    connector_timeout_seconds?: number
+    performance_mode?: string
+  }) =>
+    patchJson<{
+      validationEnabled: boolean
+      rerankingEnabled: boolean
+      confidenceThreshold: number
+      maxChunks: number
+      connectorTimeoutSeconds: number
+      performanceMode: string
+    }>(apiUrl("/api/admin/intelligence/engine-settings"), data),
+  performanceMode: () =>
+    fetcher<{ mode: string }>(apiUrl("/api/admin/intelligence/performance-mode")),
+  updatePerformanceMode: (data: { mode: string }) =>
+    patchJson<{ mode: string }>(apiUrl("/api/admin/intelligence/performance-mode"), data),
+  performance: (params?: { period?: "1h" | "24h" | "7d" }) => {
+    const query = new URLSearchParams()
+    if (params?.period) query.set("period", params.period)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      period: string
+      avgTotalResponseMs: number
+      p50TotalResponseMs: number
+      p95TotalResponseMs: number
+      byStage: Record<string, { avgMs: number; p50Ms: number; p95Ms: number; count: number }>
+      cacheHitRate: Record<string, number>
+      timeoutRate: number
+      avgCostPerAnswerUsd: number
+      byTier: Record<string, { count: number; avgMs: number; avgCost: number }>
+      sampleCount: number
+    }>(apiUrl(`/api/admin/intelligence/performance${suffix}`))
+  },
 }
 
 export type IntelligenceOutcomesAgentSummary = {

@@ -25,6 +25,9 @@ from app.ml.source_reliability import apply_reliability_adjustment, fetch_source
 from app.rag.retrieval import fetch_bm25_corpus, search_chunks
 from app.services.model_router import TaskType, get_model_router
 from app.services.rag_outcome_tracking import record_retrieval_outcomes
+from app.services.cache_service import get_cache_service
+from app.services.latency_tracking import log_pipeline_latency
+from app.services.rag_cache_helpers import EMBEDDING_TTL_SECONDS, RETRIEVAL_TTL_SECONDS, retrieval_cache_parts
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -102,6 +105,27 @@ class RAGService:
         environment = str(filters.get("environment") or "default")
         top_k = top_k or self.settings.rag_top_k or 8
         client = get_supabase_client(self.settings)
+        cache = get_cache_service(self.settings)
+        cache_parts = retrieval_cache_parts(org_id, query, scope, top_k, filters)
+        cached_payload = cache.get_sync("retrieval", *cache_parts)
+        if isinstance(cached_payload, dict) and cached_payload.get("rows") is not None:
+            await cache.record_hit("retrieval")
+            cached_metrics = dict(cached_payload.get("metrics") or {})
+            cached_metrics["cache_hit"] = True
+            if message_id:
+                asyncio.create_task(
+                    log_pipeline_latency(
+                        self.settings,
+                        org_id=org_id,
+                        stage_name="retrieval",
+                        duration_ms=0,
+                        message_id=message_id,
+                        cache_hit=True,
+                        client=client,
+                    )
+                )
+            return list(cached_payload["rows"]), cached_metrics
+        await cache.record_miss("retrieval")
         department_id = filters.get("department_id")
         resolved_agent_id = filters.get("agent_id")
         if scope == "department" or scope == "agent":
@@ -115,8 +139,24 @@ class RAGService:
                 client, org_id, str(resolved_agent_id)
             )
         embedding_method = "none"
+        embedding_model = str(getattr(self.settings, "embedding_model", None) or EMBEDDING_MODEL)
+        cached_embedding = cache.get_sync("embedding", embedding_model, org_id, query)
         try:
-            query_embedding, embedding_method = embed_with_failover(query, self.settings, org_id=org_id)
+            if isinstance(cached_embedding, dict) and cached_embedding.get("vector"):
+                query_embedding = cached_embedding["vector"]
+                embedding_method = str(cached_embedding.get("method") or "openai")
+                await cache.record_hit("embedding")
+            else:
+                await cache.record_miss("embedding")
+                query_embedding, embedding_method = embed_with_failover(query, self.settings, org_id=org_id)
+                cache.set_sync(
+                    "embedding",
+                    {"vector": query_embedding, "method": embedding_method},
+                    EMBEDDING_TTL_SECONDS,
+                    embedding_model,
+                    org_id,
+                    query,
+                )
             logger.info("rag embedding org_id=%s method=%s", org_id, embedding_method)
         except EmbeddingDimensionMismatchError as exc:
             logger.warning("rag dimension mismatch org_id=%s error=%s", org_id, str(exc))
@@ -167,16 +207,45 @@ class RAGService:
         )
         keyword_rows = bm25_rank_rows(query, bm25_corpus, top_k=candidate_k)
         merged = rrf_merge(semantic_rows, keyword_rows, top_k=merge_k)
-        reranked, rerank_method = rerank_rows(
-            query,
-            merged,
-            top_k=top_k,
-            settings=self.settings,
-        )
+        retrieval_ms = int((time.monotonic() - retrieval_started) * 1000)
+        disable_rerank = bool((filters or {}).get("disable_rerank"))
+        rerank_started = time.monotonic()
+        if disable_rerank:
+            reranked = merged[:top_k]
+            rerank_method = "disabled"
+        else:
+            reranked, rerank_method = rerank_rows(
+                query,
+                merged,
+                top_k=top_k,
+                settings=self.settings,
+            )
+        rerank_ms = int((time.monotonic() - rerank_started) * 1000)
         reliability_scores = await fetch_source_reliability_scores(org_id, client)
         learned_weight = await get_weight_for_org(org_id, self.settings, client)
         reranked = apply_reliability_adjustment(reranked, reliability_scores, learned_weight)
         retrieval_latency_ms = int((time.monotonic() - retrieval_started) * 1000)
+        if message_id:
+            asyncio.create_task(
+                log_pipeline_latency(
+                    self.settings,
+                    org_id=org_id,
+                    stage_name="retrieval",
+                    duration_ms=retrieval_ms,
+                    message_id=message_id,
+                    client=client,
+                )
+            )
+            asyncio.create_task(
+                log_pipeline_latency(
+                    self.settings,
+                    org_id=org_id,
+                    stage_name="rerank",
+                    duration_ms=rerank_ms,
+                    message_id=message_id,
+                    client=client,
+                )
+            )
         if message_id and reranked:
             asyncio.create_task(
                 record_retrieval_outcomes(
@@ -210,6 +279,12 @@ class RAGService:
             "reliability_weight": learned_weight,
             "retrieval_latency_ms": retrieval_latency_ms,
         }
+        cache.set_sync(
+            "retrieval",
+            {"rows": reranked, "metrics": metrics},
+            RETRIEVAL_TTL_SECONDS,
+            *cache_parts,
+        )
         return reranked, metrics
 
     async def retrieve_chunks(

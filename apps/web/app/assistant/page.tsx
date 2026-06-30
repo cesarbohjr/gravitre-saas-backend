@@ -202,6 +202,44 @@ interface SourceCitation {
   relevance: number
 }
 
+type IntelligenceMeta = {
+  messageId?: string
+  confidence?: {
+    score?: number
+    band?: "high" | "medium" | "low"
+    needsClarification?: boolean
+  }
+  answerExplanation?: string
+  conflicts?: Array<Record<string, unknown>>
+}
+
+function confidenceBadgeClass(band?: string): string {
+  if (band === "high") return "bg-emerald-50 text-emerald-700 border-emerald-200"
+  if (band === "medium") return "bg-amber-50 text-amber-700 border-amber-200"
+  return "bg-zinc-100 text-zinc-600 border-zinc-200"
+}
+
+function WhyThisAnswerPanel({ explanation }: { explanation: string }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!explanation.trim()) return null
+  return (
+    <div className="mt-3 pt-3 border-t border-zinc-200">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-700 transition-colors"
+      >
+        <Sparkles className="h-3 w-3" />
+        <span>Why this answer?</span>
+        <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
+      </button>
+      {expanded ? (
+        <p className="mt-2 text-xs leading-relaxed text-zinc-600">{explanation}</p>
+      ) : null}
+    </div>
+  )
+}
+
 interface UIPartLike {
   type: string
   text?: string
@@ -346,6 +384,8 @@ function ChatMessage({
   showFollowUps,
   expandedToolId,
   onToggleTool,
+  intelligenceMeta,
+  onFeedback,
 }: {
   message: UIMessage
   isUser: boolean
@@ -357,6 +397,8 @@ function ChatMessage({
   showFollowUps?: boolean
   expandedToolId?: string | null
   onToggleTool?: (id: string) => void
+  intelligenceMeta?: IntelligenceMeta | null
+  onFeedback?: (helpful: boolean) => void
 }) {
   const { text, tools, sources } = normalizeMessage(message)
   const [copied, setCopied] = useState(false)
@@ -454,7 +496,22 @@ function ChatMessage({
           )}
 
           {/* Source citations */}
+          {!isUser && intelligenceMeta?.confidence?.score != null && !streaming && (
+            <div className="mb-2">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                  confidenceBadgeClass(intelligenceMeta.confidence.band),
+                )}
+              >
+                {Math.round((intelligenceMeta.confidence.score ?? 0) * 100)}% confidence
+              </span>
+            </div>
+          )}
           {!isUser && sources.length > 0 && <SourceCitations sources={sources} />}
+          {!isUser && intelligenceMeta?.answerExplanation && !streaming && (
+            <WhyThisAnswerPanel explanation={intelligenceMeta.answerExplanation} />
+          )}
           {!isUser && pendingConnectors.length > 0 && <ConnectorActionCard connectors={pendingConnectors} />}
         </div>
 
@@ -485,7 +542,11 @@ function ChatMessage({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button className="p-1.5 rounded-md text-zinc-400 hover:text-emerald-600 hover:bg-zinc-100 transition-colors" title="Good response">
+                  <button
+                    onClick={() => onFeedback?.(true)}
+                    className="p-1.5 rounded-md text-zinc-400 hover:text-emerald-600 hover:bg-zinc-100 transition-colors"
+                    title="Good response"
+                  >
                     👍
                   </button>
                 </TooltipTrigger>
@@ -495,7 +556,11 @@ function ChatMessage({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button className="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-zinc-100 transition-colors" title="Poor response">
+                  <button
+                    onClick={() => onFeedback?.(false)}
+                    className="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-zinc-100 transition-colors"
+                    title="Poor response"
+                  >
                     👎
                   </button>
                 </TooltipTrigger>
@@ -602,6 +667,8 @@ export default function AssistantPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   // G2: inline stream-health error (empty completion or transport failure) with retry.
   const [streamError, setStreamError] = useState<string | null>(null)
+  const [intelligenceByMessageId, setIntelligenceByMessageId] = useState<Record<string, IntelligenceMeta>>({})
+  const pendingIntelligenceRef = useRef<IntelligenceMeta | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [conversationMessagesLoading, setConversationMessagesLoading] = useState(false)
   const [conversationMessagesError, setConversationMessagesError] = useState<string | null>(null)
@@ -717,6 +784,14 @@ export default function AssistantPage() {
     onFinish: ({ message, isAbort, isDisconnect }) => {
       submitLockRef.current = false
       setIsSubmitting(false)
+      if (message?.role === "assistant" && message.id && pendingIntelligenceRef.current) {
+        const intel = pendingIntelligenceRef.current
+        pendingIntelligenceRef.current = null
+        setIntelligenceByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { ...intel, messageId: intel.messageId ?? message.id },
+        }))
+      }
       // G2 stream health: a finished assistant turn with no text means the
       // provider stream produced nothing (silent failover/guardrail). Surface
       // an inline retry instead of leaving an empty bubble. Ignore user-initiated
@@ -739,6 +814,10 @@ export default function AssistantPage() {
         if (Array.isArray(payload.suggestions)) {
           setFollowUpSuggestions(payload.suggestions)
         }
+      }
+      if (dataPart.type === "data-intelligence" && dataPart.data && typeof dataPart.data === "object") {
+        const payload = dataPart.data as IntelligenceMeta
+        pendingIntelligenceRef.current = payload
       }
     },
   })
@@ -767,6 +846,20 @@ export default function AssistantPage() {
   const isStreaming = status === "streaming"
   const isBusy = isLoading || isSubmitting
   const hasSentMessage = messages.some((m) => m.role === "user")
+  const handleMessageFeedback = useCallback(async (messageId: string | undefined, helpful: boolean) => {
+    const resolvedId = messageId ?? pendingIntelligenceRef.current?.messageId
+    if (!resolvedId) {
+      toast.error("Feedback is not available for this message yet.")
+      return
+    }
+    try {
+      await assistantApi.submitFeedback({ message_id: resolvedId, helpful })
+      toast.success(helpful ? "Thanks for the feedback" : "Feedback recorded")
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Could not submit feedback")
+    }
+  }, [])
+
   const currentModeConfig = getModeConfig(mode)
   const activeConversation = conversations.find((c) => c.id === activeConversationId)
 
@@ -1247,6 +1340,16 @@ export default function AssistantPage() {
                       showFollowUps={!input.trim() && !isLoading}
                       expandedToolId={expandedToolId}
                       onToggleTool={(id) => setExpandedToolId((prev) => (prev === id ? null : id))}
+                      intelligenceMeta={message.role === "assistant" ? intelligenceByMessageId[message.id] ?? null : null}
+                      onFeedback={
+                        message.role === "assistant"
+                          ? (helpful) =>
+                              void handleMessageFeedback(
+                                intelligenceByMessageId[message.id]?.messageId ?? message.id,
+                                helpful,
+                              )
+                          : undefined
+                      }
                     />
                   ))}
                   </AnimatePresence>

@@ -15,8 +15,10 @@ import { MemoryPromotionTab } from "./_components/memory-promotion-tab"
 import { RelationshipsTab } from "./_components/relationships-tab"
 import { EvaluationTab } from "./_components/evaluation-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
+import { EngineSettingsTab } from "./_components/engine-settings-tab"
+import { PerformanceTab } from "./_components/performance-tab"
 
-type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes"
+type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "engine" | "performance"
 
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
@@ -65,6 +67,8 @@ export default function AdminIntelligencePage() {
             <TabsTrigger value="relationships">Relationships</TabsTrigger>
             <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
             <TabsTrigger value="outcomes">Outcomes</TabsTrigger>
+            <TabsTrigger value="engine">Engine</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
@@ -85,6 +89,14 @@ export default function AdminIntelligencePage() {
 
           <TabsContent value="outcomes" className="mt-6">
             <OutcomesTab enabled={tab === "outcomes"} />
+          </TabsContent>
+
+          <TabsContent value="engine" className="mt-6">
+            <EngineSettingsTab enabled={tab === "engine"} />
+          </TabsContent>
+
+          <TabsContent value="performance" className="mt-6">
+            <PerformanceTab enabled={tab === "performance"} />
           </TabsContent>
         </Tabs>
       </div>

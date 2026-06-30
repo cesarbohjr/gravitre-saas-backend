@@ -53,21 +53,22 @@ async def apply_message_feedback(
     message_id: str,
     helpful: bool,
     reason: str | None = None,
+    corrected_answer: str | None = None,
     client: Any | None = None,
 ) -> None:
     """Record user feedback and propagate to chunk outcomes."""
     db = client or get_supabase_client(settings)
     feedback_value = "helpful" if helpful else "not_helpful"
+    row: dict[str, Any] = {
+        "org_id": org_id,
+        "message_id": message_id,
+        "feedback": feedback_value,
+        "reason": reason,
+    }
+    if corrected_answer:
+        row["corrected_answer"] = corrected_answer[:4000]
     try:
-        db.table("message_feedback").upsert(
-            {
-                "org_id": org_id,
-                "message_id": message_id,
-                "feedback": feedback_value,
-                "reason": reason,
-            },
-            on_conflict="message_id",
-        ).execute()
+        db.table("message_feedback").upsert(row, on_conflict="message_id").execute()
     except Exception as exc:  # noqa: BLE001
         logger.debug("message_feedback upsert skipped message_id=%s error=%s", message_id, exc)
         return

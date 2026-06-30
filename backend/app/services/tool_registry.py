@@ -789,7 +789,27 @@ class ToolRegistry:
             }
 
         try:
-            result = await asyncio.to_thread(invoke_tool, ctx, invoke_action, invoke_params)
+            timeout_s = int(ctx.connector_timeout_seconds or 30)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(invoke_tool, ctx, invoke_action, invoke_params),
+                timeout=timeout_s,
+            )
+        except asyncio.TimeoutError:
+            from app.services.cache_service import get_cache_service
+
+            cache = get_cache_service(ctx.settings)
+            await cache.record_event("connector_timeout")
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_action,
+                "error": (
+                    f"{spec.integration} did not respond within {timeout_s}s. "
+                    "Partial results may omit this connected system."
+                ),
+                "error_code": "connector_timeout",
+                "partial": True,
+            }
         except ToolNotFoundError as exc:
             return {"success": False, "tool": tool_name, "error": str(exc)}
         except ToolError as exc:
