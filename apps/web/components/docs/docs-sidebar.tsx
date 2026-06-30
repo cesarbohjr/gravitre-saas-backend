@@ -5,6 +5,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 
+import { categoryIcon } from "./category-meta"
+
 export interface DocsNavItem {
   title: string
   href: string
@@ -44,6 +46,7 @@ function SidebarSection({
 }) {
   const containsActive = section.items.some((item) => item.href === activeHref)
   const [open, setOpen] = useState(containsActive)
+  const Icon = categoryIcon(section.title)
 
   return (
     <div className="mb-1">
@@ -53,7 +56,10 @@ function SidebarSection({
         aria-expanded={open}
         className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 transition-colors hover:text-zinc-900"
       >
-        {section.title}
+        <span className="flex items-center gap-2">
+          <Icon className="h-3.5 w-3.5 text-zinc-400" />
+          {section.title}
+        </span>
         <ChevronRight
           className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`}
         />

@@ -125,6 +125,7 @@
     "date-fns": "^4.4.0",
     "framer-motion": "^12.38.0",
     "github-slugger": "^2.0.0",
+    "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "lottie-web": "^5.13.0",
     "lucide-react": "^1.11.0",

@@ -88,6 +88,24 @@ export function getPublishedPublicDocs(): DocEntry[] {
     .filter((doc): doc is DocEntry => doc !== null)
 }
 
+export type DocSearchItem = {
+  slug: string
+  title: string
+  description: string
+  category: string
+  tier?: string
+}
+
+export function getDocsSearchIndex(): DocSearchItem[] {
+  return getPublishedPublicDocs().map((doc) => ({
+    slug: doc.slug,
+    title: doc.frontmatter.title,
+    description: doc.frontmatter.description ?? "",
+    category: doc.frontmatter.category ?? "Documentation",
+    tier: doc.frontmatter.tier,
+  }))
+}
+
 export function getDocsNavSections() {
   const docs = getPublishedPublicDocs()
 

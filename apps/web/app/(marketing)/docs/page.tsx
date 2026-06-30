@@ -2,19 +2,19 @@ import Link from "next/link"
 import {
   Activity,
   ArrowRight,
-  BookOpen,
   Bot,
   Code,
   Database,
   MessageSquare,
   Package,
-  Shield,
   Terminal,
   Workflow,
   Zap,
 } from "lucide-react"
 
-import { getDocsNavSections, getPublishedPublicDocs } from "@/lib/docs/load-docs"
+import { getDocsNavSections, getPublishedPublicDocs, getDocsSearchIndex } from "@/lib/docs/load-docs"
+import { DocsSearch } from "@/components/docs/docs-search"
+import { categoryIcon } from "@/components/docs/category-meta"
 
 const quickLinks = [
   {
@@ -22,56 +22,48 @@ const quickLinks = [
     title: "Quickstart",
     description: "Account, Connector, and first Run in ~10 minutes",
     href: "/docs/getting-started/quickstart",
-    color: "text-emerald-600",
   },
   {
     icon: Bot,
     title: "AI Operator",
     description: "Action plans, context packs, and monitored jobs",
     href: "/docs/guides/how-to/ai-operator",
-    color: "text-cyan-600",
   },
   {
     icon: MessageSquare,
     title: "Assistant",
     description: "Org-aware chat, modes, and daily briefings",
     href: "/docs/guides/how-to/assistant",
-    color: "text-sky-600",
   },
   {
     icon: Workflow,
     title: "Workflows",
     description: "Triggers, versions, dry-run, and schedules",
     href: "/docs/guides/how-to/workflows",
-    color: "text-purple-600",
   },
   {
     icon: Database,
     title: "Connectors",
     description: "OAuth, sync, health, and vendor setup guides",
     href: "/docs/guides/how-to/connectors",
-    color: "text-amber-600",
   },
   {
     icon: Activity,
     title: "Runs",
     description: "Filter, debug, retry, and approve executions",
     href: "/docs/guides/how-to/runs",
-    color: "text-rose-600",
   },
   {
     icon: Package,
     title: "Marketplace",
     description: "Install agents, workflows, and department packs",
     href: "/docs/guides/how-to/marketplace",
-    color: "text-violet-600",
   },
   {
     icon: Code,
     title: "API quickstart",
     description: "REST at gravitre.app/api — keys, runs, webhooks",
     href: "/docs/api/quickstart",
-    color: "text-indigo-600",
   },
 ]
 
@@ -87,20 +79,10 @@ const FEATURED_GUIDE_SLUGS = [
   "guides/how-to/settings",
 ]
 
-const iconByCategory: Record<string, typeof BookOpen> = {
-  "Core Concepts": BookOpen,
-  "How-to Guides": Bot,
-  "API Reference": Code,
-  Security: Shield,
-  Integrations: Database,
-  FAQ: BookOpen,
-  Billing: Terminal,
-  "Getting Started": Zap,
-}
-
 export default function DocsPage() {
   const sections = getDocsNavSections()
   const allDocs = getPublishedPublicDocs()
+  const searchIndex = getDocsSearchIndex()
   const docsBySlug = new Map(allDocs.map((d) => [d.slug, d]))
 
   const featuredGuides = FEATURED_GUIDE_SLUGS.map((slug) => docsBySlug.get(slug)).filter(
@@ -118,7 +100,10 @@ export default function DocsPage() {
           <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600">
             Guides, concepts, API reference, and integration setup for Gravitre.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">
+          <div className="mx-auto mt-8 max-w-xl">
+            <DocsSearch index={searchIndex} placeholder="Search guides, concepts, and API reference…" />
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
             <Link
               href="/docs/getting-started/quickstart"
               className="rounded-full bg-zinc-900 px-5 py-2.5 font-medium text-white transition-colors hover:bg-zinc-800"
@@ -155,7 +140,9 @@ export default function DocsPage() {
                   href={link.href}
                   className="group block rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
                 >
-                  <Icon className={`mb-3 h-6 w-6 ${link.color}`} />
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100">
+                    <Icon className="h-5 w-5" />
+                  </div>
                   <h3 className="font-medium text-zinc-900 transition-colors group-hover:text-emerald-700">
                     {link.title}
                   </h3>
@@ -206,12 +193,12 @@ export default function DocsPage() {
           <h2 className="mb-12 text-2xl font-semibold text-zinc-900">Browse by topic</h2>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {sections.map((section) => {
-              const Icon = iconByCategory[section.title] ?? BookOpen
+              const Icon = categoryIcon(section.title)
               return (
                 <div key={section.title}>
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white shadow-sm">
-                      <Icon className="h-4 w-4 text-zinc-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                      <Icon className="h-4 w-4" />
                     </div>
                     <h3 className="font-medium text-zinc-900">{section.title}</h3>
                   </div>
