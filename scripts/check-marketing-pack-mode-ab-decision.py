@@ -29,8 +29,9 @@ def main() -> int:
 
     summary = report["summary"]
     print(f"STA-294 Mode A/B decision: sign-off={report['signOffState']}")
-    if report.get("productSignOff"):
-        print(f"Product sign-off: {report['productSignOff'].get('signed_at')} ({report['productSignOff'].get('signed_by_role')})")
+    print(f"Pack default: {report.get('packDefaultFeedbackMode', 'mode_a')}")
+    print(f"Product sign-off complete: {summary.get('productSignOffComplete')}")
+    print(f"Engineering blocked (Mode B infra): {summary.get('engineeringBlocked')}")
     print(f"Engineering default: {report['engineeringRecommendedDefault']}")
     print(f"Assign to: {report['assignTo']}")
     print(

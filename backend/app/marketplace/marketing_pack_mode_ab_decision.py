@@ -14,14 +14,6 @@ ModeBShippingDecision = Literal["opt_in_only", "do_not_ship"]
 ModeBPricingDecision = Literal["included_with_risk_gate", "addon_4900_cents"]
 
 
-# Product owner sign-off (STA-294, 2026-06-30).
-PRODUCT_SIGN_OFF: dict[str, str] = {
-    "mode_b_shipping": "opt_in_only",
-    "mode_b_pricing_model": "included_with_risk_gate",
-    "signed_at": "2026-06-30",
-    "signed_by_role": "product_owner",
-}
-
 PRODUCT_SIGN_OFF_LABELS: dict[str, str] = {
     "opt_in_only": "Mode B ships as opt-in only (not default; requires explicit org enablement).",
     "included_with_risk_gate": (
@@ -30,6 +22,21 @@ PRODUCT_SIGN_OFF_LABELS: dict[str, str] = {
     ),
     "addon_4900_cents": "Separate one-time $49 add-on (MODE_B_AUTONOMOUS_ADDON_CENTS).",
     "do_not_ship": "Mode B does not ship for Marketing Operations Pack v1.",
+    "mode_a": "Mode A (human-approved suggestions) is the pack default for all orgs.",
+    "infrastructure_required_before_enable": (
+        "Mode B must not be customer-enablable until guardrails and feedback toggle ship."
+    ),
+}
+
+
+# Product owner sign-off (STA-294, 2026-06-30).
+PRODUCT_SIGN_OFF: dict[str, str] = {
+    "default_feedback_mode": "mode_a",
+    "mode_b_shipping": "opt_in_only",
+    "mode_b_pricing_model": "included_with_risk_gate",
+    "mode_b_go_live_gate": "infrastructure_required_before_enable",
+    "signed_at": "2026-06-30",
+    "signed_by_role": "product_owner",
 }
 
 
@@ -93,6 +100,14 @@ MODE_AB_DECISION_CHECKLIST: tuple[ModeAbDecisionItem, ...] = (
         notes=f"Documented placeholder MODE_B_AUTONOMOUS_ADDON_CENTS={MODE_B_AUTONOMOUS_ADDON_CENTS}; no Stripe SKU.",
     ),
     ModeAbDecisionItem(
+        key="mode_b_go_live_gate",
+        display_name="Mode B go-live gate (guardrails + toggle required)",
+        category="engineering",
+        status="pending",
+        engineering_recommendation="infrastructure_required_before_enable",
+        notes="Product confirms Mode B is blocked until guardrails and feedback toggle ship.",
+    ),
+    ModeAbDecisionItem(
         key="feedback_mode_toggle",
         display_name="Org/pack feedback mode toggle (general primitive)",
         category="engineering",
@@ -121,32 +136,43 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
     }
     shipping_decision = PRODUCT_SIGN_OFF.get("mode_b_shipping")
     pricing_decision = PRODUCT_SIGN_OFF.get("mode_b_pricing_model")
+    default_decision = PRODUCT_SIGN_OFF.get("default_feedback_mode")
+    go_live_gate = PRODUCT_SIGN_OFF.get("mode_b_go_live_gate")
 
     rows: list[dict[str, Any]] = []
     pending_count = 0
     blocked_count = 0
     resolved_count = 0
+    engineering_blocked_count = 0
 
     for item in MODE_AB_DECISION_CHECKLIST:
         live_blocked = False
         if item.key == "feedback_mode_toggle":
-            live_blocked = shipping_decision != "opt_in_only"
+            live_blocked = True  # infrastructure not shipped yet
         elif item.key in guardrail_keys:
             live_blocked = guardrail_keys[item.key] in mode_b_missing
 
         status = item.status
         product_decision: str | None = None
 
-        if item.key == "mode_b_shipping" and shipping_decision:
+        if item.key == "default_feedback_mode" and default_decision:
+            status = "resolved"
+            product_decision = default_decision
+        elif item.key == "mode_b_shipping" and shipping_decision:
             status = "resolved"
             product_decision = shipping_decision
         elif item.key == "mode_b_pricing_model" and pricing_decision:
             status = "resolved"
             product_decision = pricing_decision
+        elif item.key == "mode_b_go_live_gate" and go_live_gate:
+            status = "resolved"
+            product_decision = go_live_gate
         elif item.category == "guardrail" and live_blocked:
             status = "blocked"
-        elif item.category == "engineering" and live_blocked:
+            engineering_blocked_count += 1
+        elif item.category == "engineering" and item.key == "feedback_mode_toggle" and live_blocked:
             status = "blocked"
+            engineering_blocked_count += 1
 
         if status == "pending":
             pending_count += 1
@@ -175,9 +201,18 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
         "MODE_B_AUTONOMOUS_ADDON_CENTS",
     )
     mode_b_approved_opt_in = shipping_decision == "opt_in_only"
+    product_sign_off_complete = all(
+        PRODUCT_SIGN_OFF.get(key)
+        for key in (
+            "default_feedback_mode",
+            "mode_b_shipping",
+            "mode_b_pricing_model",
+            "mode_b_go_live_gate",
+        )
+    )
     sign_off_state: SignOffState = "awaiting"
-    if shipping_decision and pricing_decision:
-        sign_off_state = "partial" if pending_count or blocked_count else "approved"
+    if product_sign_off_complete:
+        sign_off_state = "approved"
 
     return {
         "issue": "STA-294",
@@ -187,18 +222,22 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
         "signOffState": sign_off_state,
         "productSignOff": dict(PRODUCT_SIGN_OFF),
         "engineeringRecommendedDefault": "mode_a",
+        "packDefaultFeedbackMode": default_decision or "mode_a",
         "summary": {
             "total": len(rows),
             "pending": pending_count,
             "blocked": blocked_count,
             "resolved": resolved_count,
+            "engineeringBlocked": engineering_blocked_count,
+            "productSignOffComplete": product_sign_off_complete,
             "modeBShippingDecisionPending": not shipping_decision,
             "modeBShippingApproved": mode_b_approved_opt_in,
             "modeBPricingModel": pricing_decision,
+            "modeBGoLiveGate": go_live_gate,
             "modeBInfrastructureReady": len(mode_b_missing) == 0,
             "modeBGuardrailsImplemented": not mode_b_missing,
             "pricingPlaceholderDocumented": pricing_documented,
-            "canShipModeADefault": True,
+            "canShipModeADefault": default_decision == "mode_a",
             "canShipModeB": mode_b_approved_opt_in and not mode_b_missing,
         },
         "decisions": rows,

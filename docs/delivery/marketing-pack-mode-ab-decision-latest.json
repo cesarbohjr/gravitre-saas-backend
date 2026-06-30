@@ -3,22 +3,28 @@
   "packSlug": "marketing-operations-pack",
   "engineeringAuditIssue": "STA-293",
   "assignTo": "Product owner for Marketing Operations Pack",
-  "signOffState": "partial",
+  "signOffState": "approved",
   "productSignOff": {
+    "default_feedback_mode": "mode_a",
     "mode_b_shipping": "opt_in_only",
     "mode_b_pricing_model": "included_with_risk_gate",
+    "mode_b_go_live_gate": "infrastructure_required_before_enable",
     "signed_at": "2026-06-30",
     "signed_by_role": "product_owner"
   },
   "engineeringRecommendedDefault": "mode_a",
+  "packDefaultFeedbackMode": "mode_a",
   "summary": {
-    "total": 7,
-    "pending": 1,
+    "total": 8,
+    "pending": 0,
     "blocked": 4,
-    "resolved": 2,
+    "resolved": 4,
+    "engineeringBlocked": 4,
+    "productSignOffComplete": true,
     "modeBShippingDecisionPending": false,
     "modeBShippingApproved": true,
     "modeBPricingModel": "included_with_risk_gate",
+    "modeBGoLiveGate": "infrastructure_required_before_enable",
     "modeBInfrastructureReady": false,
     "modeBGuardrailsImplemented": false,
     "pricingPlaceholderDocumented": true,
@@ -30,9 +36,11 @@
       "key": "default_feedback_mode",
       "displayName": "Default feedback mode for Marketing Operations Pack",
       "category": "default",
-      "status": "pending",
+      "status": "resolved",
       "engineeringRecommendation": "mode_a",
-      "notes": "Human-approved suggestions before any agent behavior change."
+      "notes": "Human-approved suggestions before any agent behavior change.",
+      "productDecision": "mode_a",
+      "productDecisionLabel": "Mode A (human-approved suggestions) is the pack default for all orgs."
     },
     {
       "key": "mode_b_shipping",
@@ -79,6 +87,16 @@
       "productDecisionLabel": "Included at Tier 2 base unlock ($149) with in-product risk-acknowledgment gate; no separate $49 add-on required for v1."
     },
     {
+      "key": "mode_b_go_live_gate",
+      "displayName": "Mode B go-live gate (guardrails + toggle required)",
+      "category": "engineering",
+      "status": "resolved",
+      "engineeringRecommendation": "infrastructure_required_before_enable",
+      "notes": "Product confirms Mode B is blocked until guardrails and feedback toggle ship.",
+      "productDecision": "infrastructure_required_before_enable",
+      "productDecisionLabel": "Mode B must not be customer-enablable until guardrails and feedback toggle ship."
+    },
+    {
       "key": "feedback_mode_toggle",
       "displayName": "Org/pack feedback mode toggle (general primitive)",
       "category": "engineering",
@@ -94,5 +112,5 @@
       "post_publish_marketing_metrics"
     ]
   },
-  "generatedAt": "2026-06-30T05:18:55.004465+00:00"
+  "generatedAt": "2026-06-30T05:31:53.393001+00:00"
 }

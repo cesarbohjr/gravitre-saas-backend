@@ -26,6 +26,8 @@ DEPARTMENT_PACK_PRICING_TYPE = "paid"
 # not required for Marketing Operations Pack v1.
 MODE_B_AUTONOMOUS_ADDON_CENTS = 4900
 MODE_B_PRICING_MODEL = "included_with_risk_gate"
+DEFAULT_FEEDBACK_MODE = "mode_a"
+MODE_B_GO_LIVE_REQUIRES_INFRASTRUCTURE = True
 
 DEPARTMENT_PACK_SLUG_TIERS: dict[str, int] = {
     "marketing-operations-pack": 2,
