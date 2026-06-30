@@ -295,3 +295,63 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- Branded Swagger UI (scoped to .gravitre-swagger) ---- */
+.gravitre-swagger .swagger-ui .topbar,
+.gravitre-swagger .swagger-ui .information-container.wrapper {
+  display: none;
+}
+.gravitre-swagger .swagger-ui,
+.gravitre-swagger .swagger-ui .opblock-tag,
+.gravitre-swagger .swagger-ui .opblock .opblock-summary-operation-id,
+.gravitre-swagger .swagger-ui .opblock .opblock-summary-path,
+.gravitre-swagger .swagger-ui .info .title,
+.gravitre-swagger .swagger-ui table thead tr td,
+.gravitre-swagger .swagger-ui table thead tr th {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  color: oklch(0.18 0.02 160);
+}
+.gravitre-swagger .swagger-ui .opblock {
+  border-radius: 12px;
+  border-color: oklch(0.92 0.01 160);
+  box-shadow: none;
+  margin: 0 0 12px;
+}
+.gravitre-swagger .swagger-ui .opblock .opblock-summary {
+  border-radius: 12px;
+}
+/* GET */
+.gravitre-swagger .swagger-ui .opblock.opblock-get {
+  background: oklch(0.98 0.02 160);
+  border-color: oklch(0.85 0.06 160);
+}
+.gravitre-swagger .swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: oklch(0.55 0.12 160);
+}
+/* POST */
+.gravitre-swagger .swagger-ui .opblock.opblock-post {
+  background: oklch(0.98 0.02 160);
+  border-color: oklch(0.8 0.08 160);
+}
+.gravitre-swagger .swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background: oklch(0.5 0.13 160);
+}
+/* DELETE */
+.gravitre-swagger .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background: oklch(0.55 0.18 25);
+}
+.gravitre-swagger .swagger-ui .btn.authorize,
+.gravitre-swagger .swagger-ui .btn.execute {
+  background: oklch(0.5 0.13 160);
+  border-color: oklch(0.5 0.13 160);
+  color: white;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.gravitre-swagger .swagger-ui .btn.authorize svg { fill: white; }
+.gravitre-swagger .swagger-ui .opblock-tag {
+  border-bottom-color: oklch(0.92 0.01 160);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.gravitre-swagger .swagger-ui section.models { display: none; }
