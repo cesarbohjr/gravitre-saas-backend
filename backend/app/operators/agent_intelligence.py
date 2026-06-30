@@ -36,7 +36,13 @@ from app.operators.assistant_sse import (
 )
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
-from app.services.assistant_tools import TOOL_DISPLAY_NAMES, tool_knowledge_base
+from app.services.assistant_availability import (
+    apply_bounded_answer_if_needed,
+    build_bounded_unavailable_answer,
+    is_web_search_configured,
+    should_short_circuit_before_generation,
+)
+from app.services.assistant_tools import TOOL_DISPLAY_NAMES, knowledge_base_output_from_retrieval
 from app.services.answer_explanation import generate_answer_explanation_cached
 from app.services.answer_validator import SAFE_FALLBACK, validate_grounded_answer
 from app.services.context_conflict_detection import (
@@ -443,10 +449,23 @@ class AgentIntelligence:
         rag_results: list[dict[str, Any]],
         *,
         conflicts: list[dict[str, Any]] | None = None,
+        connected_integrations: list[str] | None = None,
     ) -> str:
         if not rag_results:
+            real_connectors = [
+                item
+                for item in (connected_integrations or [])
+                if str(item).strip() and str(item).lower() != "platform"
+            ]
+            connector_hint = (
+                "Connect integrations at /connectors and enable knowledge sync under Sources "
+                "to ingest CRM, docs, and support content. "
+                if not real_connectors
+                else ""
+            )
             return (
                 "No internal knowledge excerpts were retrieved for this task. "
+                f"{connector_hint}"
                 "Use tools or org context before relying on general knowledge."
             )
         lines: list[str] = []
@@ -1018,7 +1037,11 @@ class AgentIntelligence:
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
         rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
-        rag_section = self._format_rag_context(rag_sources, conflicts=rag_conflicts)
+        rag_section = self._format_rag_context(
+            rag_sources,
+            conflicts=rag_conflicts,
+            connected_integrations=connected_list,
+        )
         memory_section = retrieval.memory_section
 
         org_context_block = ""
@@ -1120,10 +1143,10 @@ class AgentIntelligence:
 
         tool_results: list[dict[str, Any]] = []
         if "knowledge_base" in tool_names:
-            kb_output = await tool_knowledge_base(
-                org_id,
-                task_text,
-                active_settings,
+            kb_output = knowledge_base_output_from_retrieval(
+                rag_sources,
+                retrieval.metrics,
+                retrieval.memory_context,
                 agent_id=agent_id,
             )
             kb_call_id = f"call-{uuid.uuid4().hex[:12]}"
@@ -1141,6 +1164,43 @@ class AgentIntelligence:
                     "output": kb_output,
                 }
             )
+
+        if should_short_circuit_before_generation(
+            query=task_text,
+            rag_sources=rag_sources,
+            settings=active_settings,
+            permitted_registry=permitted_registry,
+        ):
+            bounded = build_bounded_unavailable_answer(
+                web_configured=is_web_search_configured(active_settings),
+                web_attempted=False,
+                connected_integrations=connected_list,
+            )
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, bounded)
+            yield sse_text_end(text_id)
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": 0.2, "needs_clarification": True},
+                answer_explanation="Knowledge base and web search were unavailable for this external question.",
+                conflicts=rag_conflicts,
+                refined_query=refined_query if refined_query != task_text else None,
+                validation=None,
+            )
+            yield AssistantStreamComplete(
+                full_content=bounded,
+                tool_results=tool_results,
+                react_result=None,
+                model="bounded-fallback",
+                message_id=message_id,
+                confidence={"score": 0.2, "needs_clarification": True},
+                answer_explanation="Knowledge base and web search were unavailable for this external question.",
+                validation=None,
+                conflicts=rag_conflicts,
+                refined_query=refined_query if refined_query != task_text else None,
+            )
+            return
 
         model = model_override or select_model_for_agent(
             agent,
@@ -1229,6 +1289,15 @@ class AgentIntelligence:
         streamed_content = "".join(full_content_parts)
         if react_result is not None and not streamed_content.strip():
             streamed_content = react_result.answer or ""
+
+        streamed_content = apply_bounded_answer_if_needed(
+            streamed_content,
+            query=task_text,
+            rag_sources=rag_sources,
+            tool_results=tool_results,
+            settings=active_settings,
+            connected_integrations=connected_list,
+        )
 
         finalized = await self._finalize_assistant_response(
             settings=active_settings,

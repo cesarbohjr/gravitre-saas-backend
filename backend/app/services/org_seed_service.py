@@ -7,10 +7,13 @@ from typing import Any
 
 from supabase import Client
 
+from app.core.logging import get_logger
 from app.services.agent_tool_permissions import (
     default_demo_scopes_for_system,
     upsert_agent_tool_permission,
 )
+
+logger = get_logger(__name__)
 
 WELCOME_MESSAGE = (
     "Welcome to Gravitre. We've set up a sample AI team to show you what's possible. "
@@ -282,6 +285,14 @@ def seed_org_if_needed(client: Client, org_id: str) -> dict[str, Any]:
     onboarding.setdefault("checklist_dismissed", False)
     settings["onboarding"] = onboarding
     _save_org_settings(client, org_id, settings)
+
+    try:
+        from app.config import get_settings
+        from app.services.platform_knowledge_seed import seed_platform_knowledge_for_org
+
+        seed_platform_knowledge_for_org(client, org_id, get_settings(), environment_name="production")
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("platform_knowledge_seed_skipped org_id=%s error=%s", org_id, str(exc))
 
     return {
         "org_id": org_id,

@@ -429,20 +429,19 @@ async def test_streaming_emits_text_events_when_react_returns_answer_only(intell
                     {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
                     "Org block",
                 )
-                with patch("app.operators.agent_intelligence.tool_knowledge_base", AsyncMock(return_value={"results": []})):
-                    with patch(
-                        "app.operators.agent_intelligence.maybe_summarize_history",
-                        AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
+                with patch(
+                    "app.operators.agent_intelligence.maybe_summarize_history",
+                    AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
+                ):
+                    async for event in intelligence.execute_task_streaming(
+                        org_id="org-1",
+                        user_id="user-1",
+                        query="Say smoke-ok in one word.",
+                        mode="standard",
+                        requested_tools=["agent_status"],
+                        client=client,
                     ):
-                        async for event in intelligence.execute_task_streaming(
-                            org_id="org-1",
-                            user_id="user-1",
-                            query="Say smoke-ok in one word.",
-                            mode="standard",
-                            requested_tools=["agent_status"],
-                            client=client,
-                        ):
-                            events.append(event)
+                        events.append(event)
 
     sse_types = [event.sse_type for event in events if isinstance(event, AssistantStreamEvent)]
     assert "text-start" in sse_types

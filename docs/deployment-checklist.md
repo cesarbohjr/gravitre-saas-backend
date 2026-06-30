@@ -4,6 +4,7 @@
 
 ### Backend (Railway)
 - [ ] All env vars set (see `backend/.env.example`)
+- [ ] `TAVILY_API_KEY` set for assistant web search (`npm run tavily:fill-env` or Railway Variables)
 - [ ] `DISABLE_AI=false` (unless intentional)
 - [ ] `AI_HARD_BUDGET_ENABLED=true` for production
 - [ ] Supabase migrations applied: `supabase db push`
@@ -31,6 +32,8 @@
 ### After Deploy
 - [ ] Run: `bash scripts/test-integration.sh` (or on Windows: `$env:BACKEND_URL="https://your-backend.up.railway.app"; .\scripts\test-integration.ps1`)
 - [ ] Open `/assistant` and send a test message
+- [ ] Ask an external question (e.g. current industry news) — web search chip should be green or amber, not falsely green on error
+- [ ] Ask "what is Gravitre" — answer should cite platform knowledge (run `npm run rag:seed-platform` once if empty)
 - [ ] Open `/operator` and verify command input renders
 - [ ] Check Railway logs for any startup errors
 - [ ] Check Vercel function logs for any proxy errors

@@ -38,6 +38,8 @@
     "ai:fill-voyage-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-voyage-operator-env.ps1",
     "ai:push-railway-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/apply-railway-operator-env.ps1",
     "rag:seed-sample": "python scripts/seed-sample-rag-knowledge.py",
+    "rag:seed-platform": "python scripts/seed-platform-knowledge.py",
+    "tavily:fill-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-tavily-operator-env.ps1",
     "rag:voyage:check": "python scripts/check-voyage-reindex-corpus.py",
     "rag:voyage:dry-run": "python scripts/check-voyage-reindex-corpus.py --dry-run --batch-size 10 --max-batches 1",
     "rag:voyage:quality-check": "python scripts/check-voyage-rag-quality-prod.py",

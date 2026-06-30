@@ -35,6 +35,56 @@ DEFAULT_ASSISTANT_TOOLS = ["knowledge_base", "agent_status", "connector_status"]
 _SCHEMA_VERSION = 2
 
 
+def knowledge_base_output_from_retrieval(
+    rag_sources: list[dict[str, Any]],
+    metrics: dict[str, Any] | None = None,
+    memory_context: dict[str, Any] | None = None,
+    *,
+    agent_id: str | None = None,
+) -> dict[str, Any]:
+    """Shape unified retrieval hits like the knowledge_base tool (no second retrieve call)."""
+    scope = "agent" if agent_id else "organization"
+    results = [
+        {
+            "title": item.get("source") or "Knowledge Source",
+            "snippet": (item.get("content") or "")[:280],
+            "relevance": round(float(item.get("score") or 0.0), 2),
+        }
+        for item in rag_sources
+    ]
+    sources = [
+        {
+            "title": item.get("source") or "Knowledge Source",
+            "excerpt": (item.get("content") or "")[:280],
+        }
+        for item in rag_sources
+    ]
+    memory_hits: list[dict[str, Any]] = []
+    for key in ("memories", "patterns", "facts"):
+        for row in (memory_context or {}).get(key) or []:
+            if isinstance(row, dict):
+                memory_hits.append(
+                    {
+                        "category": key.rstrip("s") if key.endswith("s") else key,
+                        "content": str(row.get("content") or row.get("text") or "")[:280],
+                        "score": round(float(row.get("score") or 0.0), 2),
+                    }
+                )
+    payload: dict[str, Any] = {
+        "results": results,
+        "sources": sources,
+        "totalResults": len(results),
+        "method": str((metrics or {}).get("embedding_method") or "unified_retrieval"),
+        "scope": scope,
+    }
+    if memory_hits:
+        payload["memoryHits"] = memory_hits
+        payload["memoryHitCount"] = len(memory_hits)
+    if agent_id:
+        payload["agentId"] = agent_id
+    return payload
+
+
 async def tool_knowledge_base(
     org_id: str,
     query: str,
@@ -49,7 +99,6 @@ async def tool_knowledge_base(
         )
 
         client = get_supabase_client(settings)
-        scope = "agent" if agent_id else "organization"
         use_agent_memory = bool(agent_id)
         bundle = await get_unified_retrieval_service().retrieve(
             org_id=org_id,
@@ -63,45 +112,12 @@ async def tool_knowledge_base(
                 agent_memory=use_agent_memory,
             ),
         )
-        results = [
-            {
-                "title": item.get("source") or "Knowledge Source",
-                "snippet": (item.get("content") or "")[:280],
-                "relevance": round(float(item.get("score") or 0.0), 2),
-            }
-            for item in bundle.rag_sources
-        ]
-        sources = [
-            {
-                "title": item.get("source") or "Knowledge Source",
-                "excerpt": (item.get("content") or "")[:280],
-            }
-            for item in bundle.rag_sources
-        ]
-        memory_hits: list[dict[str, Any]] = []
-        for key in ("memories", "patterns", "facts"):
-            for row in bundle.memory_context.get(key) or []:
-                if isinstance(row, dict):
-                    memory_hits.append(
-                        {
-                            "category": key.rstrip("s") if key.endswith("s") else key,
-                            "content": str(row.get("content") or row.get("text") or "")[:280],
-                            "score": round(float(row.get("score") or 0.0), 2),
-                        }
-                    )
-        payload: dict[str, Any] = {
-            "results": results,
-            "sources": sources,
-            "totalResults": len(results),
-            "method": str(bundle.metrics.get("embedding_method") or "unified_retrieval"),
-            "scope": scope,
-        }
-        if memory_hits:
-            payload["memoryHits"] = memory_hits
-            payload["memoryHitCount"] = len(memory_hits)
-        if agent_id:
-            payload["agentId"] = agent_id
-        return payload
+        return knowledge_base_output_from_retrieval(
+            bundle.rag_sources,
+            bundle.metrics,
+            bundle.memory_context,
+            agent_id=agent_id,
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant knowledge_base tool failed org_id=%s error=%s", org_id, str(exc))
         return {"results": [], "totalResults": 0, "error": "knowledge base unavailable"}

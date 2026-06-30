@@ -4,6 +4,8 @@ import { useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
+  AlertCircle,
+  AlertTriangle,
   BarChart3,
   Bot,
   Check,
@@ -39,7 +41,63 @@ export interface ToolInvocation {
   durationMs?: number
 }
 
-function getToolLabel(name: string) {
+type ToolOutcome = "success" | "warning" | "error"
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  return null
+}
+
+function getToolOutcome(toolName: string, result: unknown): ToolOutcome {
+  const data = asRecord(result)
+  if (!data) return "warning"
+
+  const error = typeof data.error === "string" ? data.error.trim() : ""
+  if (error) return "error"
+  if (data.success === false) return "error"
+
+  if (toolName === "searchKnowledgeBase") {
+    const total = typeof data.totalResults === "number" ? data.totalResults : undefined
+    const results = Array.isArray(data.results) ? data.results : []
+    if ((total ?? results.length) === 0) return "warning"
+  }
+
+  if (toolName === "searchWeb") {
+    const total = typeof data.totalResults === "number" ? data.totalResults : undefined
+    const results = Array.isArray(data.results) ? data.results : []
+    const sources = Array.isArray(data.sources) ? data.sources : []
+    if ((total ?? results.length ?? sources.length) === 0) return "warning"
+  }
+
+  if (toolName === "getConnectorStatus" && Array.isArray(data.connectors)) {
+    const connectors = data.connectors as { status?: string }[]
+    if (connectors.length === 0) return "warning"
+    if (connectors.every((c) => c.status === "pending_auth" || c.status === "disconnected")) {
+      return "warning"
+    }
+  }
+
+  return "success"
+}
+
+function getToolLabel(name: string, result: unknown, outcome: ToolOutcome) {
+  if (outcome === "error") {
+    switch (name) {
+      case "searchWeb": return "Web search unavailable"
+      case "searchKnowledgeBase": return "Knowledge search failed"
+      default: return "Tool failed"
+    }
+  }
+  if (outcome === "warning") {
+    switch (name) {
+      case "searchWeb": return "Web search returned no results"
+      case "searchKnowledgeBase": return "No knowledge matches"
+      case "getConnectorStatus": return "No connectors connected"
+      default: return "No results"
+    }
+  }
   switch (name) {
     case "searchKnowledgeBase": return "Searched knowledge base"
     case "getAgentStatus": return "Checked agent status"
@@ -54,11 +112,39 @@ function getToolLabel(name: string) {
   }
 }
 
+function outcomeStyles(outcome: ToolOutcome, isComplete: boolean) {
+  if (!isComplete) {
+    return "bg-zinc-800 text-zinc-400 border border-zinc-700"
+  }
+  if (outcome === "error") {
+    return "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 cursor-pointer"
+  }
+  if (outcome === "warning") {
+    return "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 cursor-pointer"
+  }
+  return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer"
+}
+
 function renderToolDetails(toolName: string, result: unknown) {
-  const data = result as Record<string, unknown> | null
+  const data = asRecord(result)
   if (!data) return <p className="text-zinc-500">No results</p>
 
+  const error = typeof data.error === "string" ? data.error.trim() : ""
+  if (error) {
+    return <p className="text-red-300">{error}</p>
+  }
+
   if (toolName === "searchKnowledgeBase" && Array.isArray(data.results)) {
+    if (data.results.length === 0) {
+      return (
+        <div className="space-y-2 text-amber-300">
+          <p>No matching documents in your knowledge base.</p>
+          <Link href="/connectors" className="text-emerald-400 hover:underline text-[11px]">
+            Connect sources and enable knowledge sync →
+          </Link>
+        </div>
+      )
+    }
     return (
       <ul className="space-y-1.5">
         {(data.results as { title?: string; relevance?: number }[]).slice(0, 5).map((item, i) => (
@@ -72,6 +158,16 @@ function renderToolDetails(toolName: string, result: unknown) {
 
   if (toolName === "getConnectorStatus" && Array.isArray(data.connectors)) {
     const connectors = data.connectors as { name?: string; type?: string; status?: string }[]
+    if (connectors.length === 0) {
+      return (
+        <div className="space-y-2 text-amber-300">
+          <p>No integrations connected yet.</p>
+          <Link href="/connectors" className="text-emerald-400 hover:underline text-[11px]">
+            Connect CRM, docs, and analytics →
+          </Link>
+        </div>
+      )
+    }
     return (
       <div className="space-y-2">
         <ul className="space-y-1">
@@ -108,13 +204,29 @@ function renderToolDetails(toolName: string, result: unknown) {
     )
   }
 
-  if (toolName === "searchWeb" && data.query) {
-    return (
-      <div className="space-y-1 text-zinc-300">
-        <p>Query: {String(data.query)}</p>
-        {Array.isArray(data.sources) && <p>Sources: {(data.sources as unknown[]).length} results</p>}
-      </div>
-    )
+  if (toolName === "searchWeb") {
+    if (error) {
+      return <p className="text-red-300">{error}</p>
+    }
+    if (data.query) {
+      const results = Array.isArray(data.results) ? data.results : []
+      const sources = Array.isArray(data.sources) ? data.sources : []
+      const count = typeof data.totalResults === "number" ? data.totalResults : results.length || sources.length
+      if (count === 0) {
+        return (
+          <div className="space-y-1 text-amber-300">
+            <p>Query: {String(data.query)}</p>
+            <p>No web results returned.</p>
+          </div>
+        )
+      }
+      return (
+        <div className="space-y-1 text-zinc-300">
+          <p>Query: {String(data.query)}</p>
+          <p>Sources: {count} results</p>
+        </div>
+      )
+    }
   }
 
   if (toolName === "generateDocument" && data.title) {
@@ -143,8 +255,11 @@ export function ToolChip({
   onToggle: () => void
 }) {
   const isComplete = invocation.state === "result"
+  const outcome = isComplete ? getToolOutcome(invocation.toolName, invocation.result) : "success"
   const Icon = toolIcons[invocation.toolName] || Database
   const duration = invocation.durationMs != null ? ` (${(invocation.durationMs / 1000).toFixed(1)}s)` : ""
+  const StatusIcon =
+    !isComplete ? Loader2 : outcome === "error" ? AlertCircle : outcome === "warning" ? AlertTriangle : Check
 
   return (
     <div className="my-2">
@@ -153,14 +268,12 @@ export function ToolChip({
         disabled={!isComplete}
         className={cn(
           "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-          isComplete
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 cursor-pointer"
-            : "bg-zinc-800 text-zinc-400 border border-zinc-700",
+          outcomeStyles(outcome, isComplete),
         )}
       >
-        {isComplete ? <Check className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
+        <StatusIcon className={cn("h-3 w-3", !isComplete && "animate-spin")} />
         <Icon className="h-3 w-3" />
-        <span>{getToolLabel(invocation.toolName)}{isComplete ? duration : "..."}</span>
+        <span>{getToolLabel(invocation.toolName, invocation.result, outcome)}{isComplete ? duration : "..."}</span>
         {isComplete && <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />}
       </button>
 
