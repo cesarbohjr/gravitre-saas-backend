@@ -278,10 +278,10 @@ export default function ModelsPage() {
   }, [baseModelOptions])
 
   return (
-    <AppShell title="Model Registry">
+    <AppShell title="AI Models">
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <PageHeader
-          title="Model Registry"
+          title="AI Models"
           description="Register, version, and deploy org-scoped ML models used by workflows and agents."
           icon={Brain}
           iconColor="from-violet-500/20 to-fuchsia-500/20 ring-violet-500/20"

@@ -1,0 +1,50 @@
+---
+title: Training Hub
+description: Datasets, training jobs, custom instructions, and fine-tuned models for your agents.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 5 min
+prev:
+  title: Sources
+  href: /docs/concepts/sources
+next:
+  title: AI Models
+  href: /docs/concepts/ai-models
+---
+
+The **Training Hub** (`/training`) is where teams curate examples, run fine-tuning jobs, and attach custom behavior to agents.
+
+## Main areas
+
+| Area | Purpose |
+|------|---------|
+| **Datasets** | Labeled input/output examples for fine-tuning |
+| **Training jobs** | Track queued, running, and completed training runs |
+| **Custom instructions** | Org- or agent-scoped instruction snippets |
+| **Fine-tuned models** | Models produced from jobs, assignable to agents |
+| **Workflow agents** | Link trained models to specific agents |
+
+## How it fits together
+
+1. Create a **dataset** (for example type `examples`) and add records
+2. Start a **training job** against a base model
+3. When complete, register or assign the **fine-tuned model** to an agent
+4. Use **custom instructions** for lighter-weight tuning without a full job
+
+Training jobs also appear on the **Schedules** dashboard under the green **Job** kind when they have planned or active run windows.
+
+## Meson connection
+
+**Meson** can propose datasets, instructions, and training plans as part of a system build. Review Meson output in the Training Hub before promoting to production agents.
+
+## Plans
+
+Core dataset and instruction features are available on standard paid plans. Heavy fine-tuning volume may be metered — check **Settings → Billing usage** for your org.
+
+## Next steps
+
+- [Use the Training Hub](/docs/guides/how-to/training)
+- [AI Models](/docs/concepts/ai-models) for production ML registry and deployment

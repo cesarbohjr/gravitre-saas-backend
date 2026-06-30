@@ -1,0 +1,104 @@
+---
+title: Manage schedules
+description: Use the Schedules dashboard and per-workflow cron settings to plan and monitor timed automation.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Monitor Runs
+  href: /docs/guides/how-to/runs
+next:
+  title: Multi-Agent Run
+  href: /docs/guides/how-to/multi-agent-run
+---
+
+**Schedules** shows upcoming workflow crons, task runs, and training jobs in calendar, Gantt, and list views.
+
+## Open the org dashboard
+
+Sidebar → **ACTIVITY → Schedules** (`/schedules`).
+
+## Choose a view
+
+| View | Best for |
+|------|----------|
+| **Calendar** | Seeing which days are busy |
+| **Gantt** | Timeline overlap across kinds |
+| **List** | Sorting by next run or status |
+
+Use the month navigation arrows to change the visible window. Click **Refresh** to reload from the API.
+
+## Filter scheduled work
+
+- **Kind** — workflow (purple), task (blue), job (green); toggle any combination
+- **Workflow** — limit to one workflow’s schedules and related items
+- **Date range** — driven by the calendar month or Gantt window
+
+<Callout title="Sample data">
+If your org has no scheduled items yet, the UI may show clearly labelled sample data. Connect a workflow cron or run a job to see live entries.
+</Callout>
+
+## Add a workflow cron (per workflow)
+
+1. Open **Workflows → [your workflow]**
+2. Go to **Schedules** for that workflow (`/workflows/{id}/schedules`)
+3. Click **Add schedule**
+4. Enter a cron expression or pick a preset (for example weekdays at 9:00)
+5. Enable the schedule and save
+
+Common cron examples:
+
+```text
+0 * * * *        Every hour
+0 9 * * 1-5      Weekdays at 9:00
+0 0 * * *        Daily at midnight
+0 0 1 * *        First day of each month
+```
+
+Cron uses standard five-field syntax (minute hour day month weekday).
+
+## What happens when a cron fires
+
+The platform dispatch worker starts a workflow **Run** with `trigger_type=schedule`. Track execution under **Runs** — the Schedules view shows `nextRunAt` and `lastRunAt` on the schedule row.
+
+Idempotency: each fire window is deduplicated so the same schedule slot does not start duplicate runs.
+
+## Detail panel
+
+Click any occurrence to open the detail sheet — status, cron description, workflow link, and timestamps.
+
+## API
+
+**Unified dashboard (projections):**
+
+```bash
+curl -s "https://gravitre.app/api/schedules?from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Optional query params: `workflow_id`, `kinds` (comma-separated: `workflow`, `task`, `job`).
+
+**Per-workflow cron CRUD:**
+
+```bash
+# List schedules for a workflow
+curl -s "https://gravitre.app/api/workflows/WORKFLOW_ID/schedules" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Create schedule (admin)
+curl -s -X POST "https://gravitre.app/api/workflows/WORKFLOW_ID/schedules" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"cron_expression": "0 9 * * 1-5", "enabled": true}'
+```
+
+Updating and disabling schedules uses `PATCH` on `/api/workflows/schedules/{schedule_id}` — see [OpenAPI](/docs/api/openapi.json).
+
+## Related
+
+- [Schedules overview](/docs/concepts/schedules)
+- [Build and run workflows](/docs/guides/how-to/workflows)
+- [Monitor Runs](/docs/guides/how-to/runs)

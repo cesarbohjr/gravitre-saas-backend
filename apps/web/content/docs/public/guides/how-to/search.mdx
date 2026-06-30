@@ -1,0 +1,77 @@
+---
+title: Search your org
+description: Find runs, workflows, agents, connectors, sources, and documents with unified search.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 8 min
+prev:
+  title: Use the Assistant
+  href: /docs/guides/how-to/assistant
+next:
+  title: Manage assignments
+  href: /docs/guides/how-to/assignments
+---
+
+Sidebar **Search** opens `/chat` — Gravitre's unified lookup across operational entities.
+
+## Run a search
+
+1. Open **WORK → Search**
+2. Type a natural-language or keyword query
+3. Review grouped results by entity type
+4. Click a result to open the underlying run, workflow, agent, or document
+
+Suggestion chips and placeholders adapt to your org when data is available.
+
+## Example queries
+
+| Query pattern | Typical results |
+|---------------|-----------------|
+| `failed runs in the last 24 hours` | Recent errored workflow runs |
+| `workflows using the Slack connector` | Workflow defs referencing Slack |
+| `marketing agent` | Agents with matching names or roles |
+| `postgres source` | Source connections and related docs |
+
+Results depend on what exists in your org — phrases are templates, not guaranteed hits.
+
+## Result groups
+
+Each group shows icon, title, description, status metadata, and deep link:
+
+- **Workflow Runs** — jump to **Runs** detail
+- **Workflows** — open workflow editor or detail
+- **Agents** — open agent profile
+- **Connectors** — open integration settings
+- **Sources** — open Source detail
+- **Documents** — open RAG document view
+
+## Search history
+
+Recent queries appear below the search box. Click to rerun; delete individual entries or clear history when supported.
+
+## Typeahead
+
+While typing, typeahead may suggest entities (workflows, agents, connectors) before you submit — select to navigate directly.
+
+## API
+
+```bash
+curl -s -X POST "https://gravitre.app/api/search" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "failed runs today", "limit": 20}'
+
+curl -s "https://gravitre.app/api/search/history" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Response shape and filters are documented in [OpenAPI](/docs/api/openapi.json).
+
+## Related
+
+- [Search overview](/docs/concepts/search)
+- [Monitor Runs](/docs/guides/how-to/runs)
+- [Use the Assistant](/docs/guides/how-to/assistant)

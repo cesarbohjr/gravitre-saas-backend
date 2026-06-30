@@ -1,0 +1,162 @@
+---
+title: Connect integrations
+description: Add and manage Connectors, sync data, and use connector actions in workflows and agents.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 18 min
+prev:
+  title: Failure alerts
+  href: /docs/guides/how-to/failure-alerts
+next:
+  title: Connect Sources
+  href: /docs/guides/how-to/sources
+---
+
+**Connectors** link Gravitre to external SaaS tools — CRM, support, dev platforms, finance, Google Workspace, email, and more. Workflows, agents, the AI Operator, and Marketplace assets invoke Connector actions only when the integration is **connected**, **healthy**, and authorized in the active **Environment**.
+
+## Open Connectors
+
+Sidebar → **BUILD → Connectors** (`/connectors`).
+
+## Add a Connector
+
+1. Browse the catalog or search by vendor
+2. Click **Connect**
+3. Complete **OAuth** (redirect flow) or enter **API key / service account** fields
+4. Wait for status **Connected**
+5. Optional: run **Sync now** to pull initial metadata
+
+### OAuth vs API key
+
+| Method | Typical vendors | Notes |
+|--------|-----------------|-------|
+| **OAuth** | HubSpot, Salesforce, Google, GitHub | Tokens refresh automatically when configured |
+| **API key / PAT** | PagerDuty, some dev tools | Rotate on leak; store in Connector config only |
+| **SMTP / IMAP** | Email | See [Email integration](/docs/integrations/email) |
+
+## Connector lifecycle
+
+```text
+Not connected → Connected → Syncing → Healthy
+                    ↓
+              Error / Degraded → Reconnect or rotate credentials
+```
+
+Status appears on the Connector list and in **Metrics** / Enterprise **Integration health** summaries.
+
+## Use in workflows and agents
+
+After connection:
+
+1. **Workflow builder** — Connector actions appear in the step picker
+2. **Agents** — tools list includes vendor operations
+3. **AI Operator** — context packs load connector health and related workflows
+4. **Marketplace** — install checks pass when required Connectors are connected
+
+<Callout title="Strict execution policy">
+Actions execute only when the Connector is healthy in the **active environment**. Runs label steps that were analyzed but not executed due to missing auth or approval.
+</Callout>
+
+## Sync and health
+
+### Manual sync
+
+UI: Connector detail → **Sync now**
+
+```bash
+curl -s -X POST "https://gravitre.app/api/connectors/CONNECTOR_ID/sync" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Health checks
+
+- Last sync timestamp and error message on detail page
+- **Metrics** — connector error counts over time
+- **Failure alerts** — workflows depending on degraded connectors rank higher risk
+- Enterprise **Integration health** — org-wide snapshots (`GET /api/enterprise/integration-health`)
+
+### Operator context
+
+Debug a Connector from the AI Operator by attaching **Connector context**:
+
+```bash
+curl -s "https://gravitre.app/api/operator/context/connector/CONNECTOR_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Returns config summary and related workflows.
+
+## Sources vs Connectors
+
+| | **Connectors** | **Sources** |
+|---|----------------|-------------|
+| **Purpose** | Act on SaaS APIs (create, update, notify) | Query databases, warehouses, file stores |
+| **Nav** | BUILD → Connectors | BUILD → Sources |
+| **Docs** | This guide | [Connect Sources](/docs/guides/how-to/sources) |
+
+Many automations use both — Connector writes CRM records; Source supplies analytics SQL.
+
+## Partner Connections
+
+Organizations with **Partner Connections** enabled can install federated connectors from **Marketplace → Partner connectors**. See [Partner Connections](/docs/guides/how-to/partner-connections).
+
+## Production-ready integration guides
+
+Step-by-step setup for production-ready vendors:
+
+| Vendor | Guide |
+|--------|-------|
+| HubSpot | [Setup](/docs/integrations/hubspot) |
+| Salesforce | [Setup](/docs/integrations/salesforce) |
+| Jira | [Setup](/docs/integrations/jira) |
+| PagerDuty | [Setup](/docs/integrations/pagerduty) |
+| GitHub | [Setup](/docs/integrations/github) |
+| Google Workspace | [Setup](/docs/integrations/google-workspace) |
+| QuickBooks | [Setup](/docs/integrations/quickbooks) |
+| Odoo | [Setup](/docs/integrations/odoo) |
+| Zendesk | [Setup](/docs/integrations/zendesk) |
+| Email (SMTP) | [Setup](/docs/integrations/email) |
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| **Error** status after OAuth | Insufficient scopes | Reconnect; accept all requested scopes |
+| Sync stale | Token expired | Reconnect or rotate API key |
+| Workflow step skipped | Wrong environment | Connect same vendor in staging **and** production if needed |
+| 429 rate limits | Vendor throttling | Add delays in workflow; reduce schedule frequency |
+| Marketplace "N/M apps connected" | Missing prerequisite | Connect listed vendors before install |
+
+## Security practices
+
+- Use least-privilege OAuth scopes supported by your use case
+- Rotate API keys after team member offboarding
+- Restrict Connector admin actions to **Admin** role
+- Review Connector changes in **History** (`/audit`)
+
+## API
+
+```bash
+# List connectors
+curl -s "https://gravitre.app/api/connectors" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Get connector detail
+curl -s "https://gravitre.app/api/connectors/CONNECTOR_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Trigger sync
+curl -s -X POST "https://gravitre.app/api/connectors/CONNECTOR_ID/sync" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+See [OpenAPI](/docs/api/openapi.json) for create, update, and disconnect endpoints.
+
+## Related
+
+- [Build workflows](/docs/guides/how-to/workflows)
+- [Install from Marketplace](/docs/guides/how-to/marketplace)
+- [Configure Enterprise integration health](/docs/guides/how-to/enterprise#integration-health-command-center)

@@ -1,0 +1,357 @@
+---
+title: Configure Enterprise
+description: Set up integration health, data residency, white label, workforce analytics, cost budgets, and SIEM export.
+audience: public
+depth: deep
+tier: enterprise
+status: published
+category: How-to Guides
+readTime: 24 min
+prev:
+  title: Use Gravitre Lite
+  href: /docs/guides/how-to/gravitre-lite
+next:
+  title: Manage settings
+  href: /docs/guides/how-to/settings
+---
+
+Open **Settings → Enterprise** (`/settings/enterprise`). Requires **Enterprise plan** and **Owner** or **Admin** role.
+
+<Callout title="Admin access required">
+Members and viewers see a lock screen. Delegate Enterprise configuration to at least two admins for continuity.
+</Callout>
+
+## Navigate Enterprise tabs
+
+Use the left sub-nav (or `?tab=` query param):
+
+| Tab | Deep link |
+|-----|-----------|
+| Command Center | `/settings/enterprise?tab=cs` |
+| Knowledge Sync | `/settings/enterprise?tab=knowledge` |
+| Data Residency | `/settings/enterprise?tab=region` |
+| White Label | `/settings/enterprise?tab=branding` |
+| Workforce | `/settings/enterprise?tab=workforce` |
+| Cost Attribution | `/settings/enterprise?tab=cost` |
+| SIEM Export | `/settings/enterprise?tab=siem` |
+
+---
+
+## Integration health (Command Center)
+
+Monitor org-wide connector posture and act on recommendations.
+
+### Review current health
+
+1. Open **Command Center**
+2. Read the composite **score**, **grade**, and **dimensions** (sync freshness, error rates, coverage, etc.)
+3. Expand **risks** — each item links to affected connectors or workflows
+4. Adjust **lookback days** (7–90) if the default 30-day window misses seasonal patterns
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/integration-health?lookbackDays=30" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Response includes `score`, `grade`, `dimensions`, `risks`, `weights`, and `computedAt`.
+
+### Record snapshots
+
+Snapshots power trend charts in the UI and quarterly business reviews.
+
+1. Click **Take snapshot** (or call API after major connector changes)
+2. Open **History** in the same tab to compare scores over time
+
+```bash
+curl -s -X POST "https://gravitre.app/api/enterprise/integration-health/snapshot?lookbackDays=30" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s "https://gravitre.app/api/enterprise/integration-health/history?limit=30" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Integration suggestions
+
+Suggestions are generated from audit **tool usage** — gaps where teams manually work around missing connectors.
+
+| Action | When |
+|--------|------|
+| **Scan** | Monthly or after onboarding a new department |
+| **Apply** | When suggestion matches approved architecture |
+| **Dismiss** | When not relevant (logged for future scans) |
+
+```bash
+# Scan (7–90 day lookback)
+curl -s -X POST "https://gravitre.app/api/enterprise/integration-suggestions/scan?lookbackDays=30" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# List open suggestions
+curl -s "https://gravitre.app/api/enterprise/integration-suggestions?status=open" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Dismiss or apply
+curl -s -X POST "https://gravitre.app/api/enterprise/integration-suggestions/SUGGESTION_ID/dismiss" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/enterprise/integration-suggestions/SUGGESTION_ID/apply" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Triage checklist**
+
+- [ ] Degraded connectors reconciled in **BUILD → Connectors**
+- [ ] Snapshot taken after fixes
+- [ ] Open suggestions reviewed with workflow owners
+- [ ] High-risk workflows checked in **Failure alerts**
+
+---
+
+## Knowledge sync
+
+Feed **Org Learning**, **Search**, and agent RAG from connected knowledge pipelines.
+
+1. Open **Knowledge Sync**
+2. Review ingest jobs — status, last run, error messages
+3. Trigger **manual sync** for a connector knowledge source when supported
+4. Confirm new documents appear under **Sources** and in **Search**
+
+Coordinate with your account team for enterprise-only upstream systems. Misconfigured sync scopes are a common cause of stale Assistant answers — verify job errors before opening support tickets.
+
+---
+
+## Data residency
+
+Control where org data is stored and where jobs execute.
+
+### Review regions
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/data-region" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s "https://gravitre.app/api/enterprise/execution-region" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+`data-region` returns `region` (`us` or `eu`) and `storagePrefix`. `execution-region` returns `region` and `queueAvailable`.
+
+### Change data region (admin)
+
+```bash
+curl -s -X PUT "https://gravitre.app/api/enterprise/data-region" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"region": "eu"}'
+```
+
+<Callout title="Migration">
+Changing region after go-live may require scheduled maintenance and support-assisted data migration. Plan during a change window; notify workflow owners about paused schedules.
+</Callout>
+
+**Pre-migration checklist**
+
+- [ ] Export **History** and transparency logs for the compliance window
+- [ ] Pause production **Schedules**
+- [ ] Document active **Connectors** per environment
+- [ ] Confirm contract allows target region (`us` / `eu` only)
+
+---
+
+## White label
+
+Brand Gravitre for your users.
+
+### Configure branding
+
+1. Open **White Label**
+2. Set **logo URL**, **primary color**, **email from name**, optional **hide powered by**
+3. Enter **custom domain** (for example `app.yourcompany.com`)
+4. Save — audit event `enterprise.branding.updated` is written
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/branding" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X PUT "https://gravitre.app/api/enterprise/branding" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "logoUrl": "https://cdn.example.com/logo.svg",
+    "primaryColor": "#0f766e",
+    "customDomain": "app.example.com",
+    "hidePoweredBy": true,
+    "emailFromName": "Example Ops"
+  }'
+```
+
+### Verify custom domain
+
+1. Fetch DNS instructions:
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/branding/domain-instructions" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+2. Add CNAME/TXT records at your DNS provider
+3. Verify:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/enterprise/branding/verify-domain" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Successful verification sets `domainVerified` metadata and writes `enterprise.branding.domain_verified` to audit.
+
+**Troubleshooting**
+
+| Issue | Fix |
+|-------|-----|
+| Verification fails | Wait for DNS propagation (up to 48h); confirm token matches instructions |
+| TLS not provisioned | Contact support after DNS verifies |
+| Login still on gravitre.app | Confirm IdP redirect URIs include custom domain |
+
+---
+
+## Workforce analytics
+
+Understand agent workload — **not** the same as Marketplace "hours saved" estimates.
+
+1. Open **Workforce**
+2. Review agent job counts by status/kind
+3. Inspect **handoff** events from audit logs
+4. Share summaries with team leads for capacity planning
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/workforce-analytics" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Pair with [Manage agents](/docs/guides/how-to/agents) when rebalancing automation vs human steps.
+
+---
+
+## Cost attribution
+
+Align platform spend with teams and cap autonomous usage.
+
+### View spend
+
+1. Open **Cost Attribution**
+2. Review current-month breakdown from `usage_events` (agents, categories in metadata)
+3. Identify top workflows or agents driving spend
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/cost-attribution" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Autonomous run budgets
+
+Cap Operator and agent automation per day:
+
+| Limit | Field |
+|-------|-------|
+| Actions | `maxActionsPerDay` |
+| Tokens | `maxTokensPerDay` |
+| USD | `maxSpendUsdPerDay` |
+
+```bash
+# Read budgets
+curl -s "https://gravitre.app/api/enterprise/autonomous-run-budgets" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Update org defaults (admin)
+curl -s -X PUT "https://gravitre.app/api/enterprise/autonomous-run-budgets" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"maxSpendUsdPerDay": 250, "maxActionsPerDay": 500}'
+```
+
+When budgets approach limits, notify owners via **Settings → Notifications** and review [Metrics](/docs/guides/how-to/metrics) for run volume spikes.
+
+---
+
+## Security log export (SIEM)
+
+Stream audit events to Splunk, Datadog, Elastic, or any HTTPS collector.
+
+### Configure
+
+1. Open **SIEM Export**
+2. Enter **endpoint URL** and **signing secret**
+3. Enable export
+4. **Test connection** — sends `enterprise.siem.test` event
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/siem" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X PUT "https://gravitre.app/api/enterprise/siem" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint": "https://siem.example.com/ingest", "secret": "YOUR_HMAC_SECRET", "enabled": true}'
+
+curl -s -X POST "https://gravitre.app/api/enterprise/siem/test" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint": "https://siem.example.com/ingest", "secret": "YOUR_HMAC_SECRET"}'
+```
+
+Secrets are stored encrypted (`secretEnc`); PUT without `secret` retains the previous secret.
+
+### Transparency logs
+
+AI decision trails for compliance review:
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/transparency-logs?limit=50" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s "https://gravitre.app/api/enterprise/transparency-logs/export?from=2026-06-01&to=2026-06-30" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Requires **audit_logs** plan feature. Combine with [Review history](/docs/guides/how-to/history) for admin actions.
+
+---
+
+## HIPAA and SOC 2
+
+### HIPAA
+
+1. Review status: `GET /api/enterprise/hipaa`
+2. Accept BAA: `POST /api/enterprise/hipaa/accept-baa` with optional `baaVersion`
+3. Enable HIPAA mode: `PUT /api/enterprise/hipaa` with `{"enabled": true}`
+4. Mark PHI-capable connectors: `PUT /api/enterprise/connectors/{id}/phi` with `{"phiCapable": true}`
+
+Only route regulated data through connectors flagged PHI-capable when HIPAA mode is on.
+
+### SOC 2 evidence
+
+Export audit bundles for your compliance calendar:
+
+```bash
+curl -s "https://gravitre.app/api/enterprise/compliance/soc2-export?from=2026-01-01&to=2026-06-30" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Bundle includes filtered audit logs (tool invocations, connector events, admin/enterprise actions). Contact sales for current attestation letters — export supplements, not replaces, vendor SOC 2 reports.
+
+---
+
+## Enterprise rollout playbook
+
+```text
+Week 1: Data residency confirmed → SSO live (Settings → Security)
+Week 2: Integration health baseline snapshot → fix degraded connectors
+Week 3: SIEM test + enable → autonomous budgets set
+Week 4: White label DNS verified → workforce review with team leads
+```
+
+## Related
+
+- [Enterprise overview](/docs/concepts/enterprise)
+- [Security](/docs/concepts/security)
+- [Manage settings](/docs/guides/how-to/settings)
+- [Connect integrations](/docs/guides/how-to/connectors)

@@ -1,0 +1,49 @@
+---
+title: Search
+description: Unified search across runs, workflows, agents, connectors, sources, and documents.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 4 min
+prev:
+  title: Assistant
+  href: /docs/concepts/assistant
+next:
+  title: Assignments
+  href: /docs/concepts/assignments
+---
+
+**Search** (sidebar label; route `/chat`) finds records across your organization without starting a full chat thread.
+
+## What Search indexes
+
+Results are grouped by entity type:
+
+| Type | Examples |
+|------|----------|
+| **Workflow runs** | Failed runs, recent executions |
+| **Workflows** | Definitions using a connector |
+| **Agents** | Agent configs and roles |
+| **Connectors** | Integration status |
+| **Sources** | Connected databases and warehouses |
+| **Documents** | Ingested knowledge files |
+
+## Search vs Assistant
+
+| **Search** | **Assistant** |
+|------------|-----------------|
+| Structured results with links | Natural-language answers |
+| Best for known keywords | Best for exploratory dialogue |
+| `/chat` | `/assistant` |
+
+Use Search to locate an object; use Assistant to interpret and recommend next steps.
+
+## History
+
+Search saves recent queries per user (`GET /api/search/history`) for quick replay.
+
+## Next steps
+
+- [Search your org](/docs/guides/how-to/search)

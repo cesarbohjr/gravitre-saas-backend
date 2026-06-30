@@ -1,0 +1,97 @@
+---
+title: Platform overview
+description: A public-safe overview of how Gravitre is organized — without internal implementation details.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 8 min
+prev:
+  title: Introduction
+  href: /docs/concepts/introduction
+next:
+  title: Authentication
+  href: /docs/concepts/authentication
+---
+
+Gravitre is delivered as a web application backed by a secure API. You interact through the browser; integrations and automations call the same API your team can use programmatically.
+
+## What you interact with
+
+1. **Web app** — planning, building, monitoring, and settings at `https://gravitre.app`
+2. **REST API** — programmatic access at `https://gravitre.app/api/...` (same origin as the app)
+3. **Connectors** — authorized links to tools such as Salesforce, HubSpot, Google Workspace, and GitHub
+4. **Sources** — databases and warehouses for queries and RAG ingest
+5. **Notifications & webhooks** — outbound events when runs complete or need approval
+
+## Product surfaces at a glance
+
+| Surface | Route | Role |
+|---------|-------|------|
+| AI Operator | `/operator` | Assigned work with action plans |
+| Assistant | `/assistant` | Streaming chat and briefings |
+| Search | `/chat` | Cross-entity lookup |
+| Workflows | `/workflows` | Visual automation builder |
+| Connectors | `/connectors` | SaaS integrations |
+| Runs | `/runs` | Execution history |
+| Marketplace | `/marketplace` | Install templates and packs |
+| Metrics | `/metrics` | Operational dashboards |
+| History | `/audit` | Audit log |
+| Enterprise | `/settings/enterprise` | Admin controls (Enterprise plan) |
+| Gravitre Lite | `/lite` | Simplified seat experience |
+
+## How work flows (conceptual)
+
+```text
+You describe a goal (Operator, Goal, or Workflow trigger)
+    → Gravitre prepares a plan or loads a published version
+    → Connected tools are invoked when configured and approved
+    → Step results stream into Runs
+    → Approvals gate sensitive writes
+    → Metrics and History record outcomes
+```
+
+This is a **product-level** view. Gravitre does not expose proprietary planning algorithms, model routing rules, or internal scoring logic in public documentation.
+
+## Environments
+
+Most orgs use **staging** and **production** environments. Connectors, workflow versions, and Runs are scoped to the active environment — connecting HubSpot in staging does not automatically authorize production.
+
+See [Environments](/docs/concepts/environments).
+
+## Reliability and safety
+
+- Long-running work is tracked as **Runs** with step-level status
+- Sensitive actions can require **Approvals** before execution
+- **Expert Review** workflow nodes pause for human confirmation
+- **History** (audit) records administrative and security-relevant events
+- **Failure alerts** warn before high-risk scheduled workflows run
+- Enterprise customers configure SSO, data residency, white label, and SIEM export
+
+## API and OpenAPI
+
+All major product actions have REST counterparts:
+
+- Workflows and Runs — `/api/workflows`, `/api/runs`
+- Connectors — `/api/connectors`
+- Operator — `/api/operator/*`
+- Assistant — `/api/assistant/*`
+- Marketplace — `/api/marketplace/*`
+
+Published spec (redacted): [openapi.json](/docs/api/openapi.json) · [Swagger UI](/docs/api/swagger)
+
+## Deployment (high level)
+
+Gravitre runs as multi-tenant SaaS on modern cloud infrastructure. Enterprise customers may deploy dedicated environments — contact sales for VPC or single-tenant options.
+
+For internal engineering topology, see the private internal docs site (team access required).
+
+## Where to go next
+
+| Goal | Doc |
+|------|-----|
+| First run in 10 minutes | [Quickstart](/docs/getting-started/quickstart) |
+| Connect Salesforce or HubSpot | [Connectors](/docs/guides/how-to/connectors) |
+| REST integration | [API quickstart](/docs/api/quickstart) |
+| Compliance admin | [Enterprise](/docs/guides/how-to/enterprise) |

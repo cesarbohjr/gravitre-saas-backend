@@ -143,7 +143,7 @@ function LivePreview({
               <Home className="h-3.5 w-3.5" />
               Dashboard
             </div>
-            {["Agents", "Automations", "Approvals"].map((item) => (
+            {["Agents", "Workflows", "Approvals"].map((item) => (
               <div
                 key={item}
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground"

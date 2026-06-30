@@ -1,0 +1,46 @@
+---
+title: Webhooks
+description: Receive outbound events and configure inbound vendor webhooks.
+audience: public
+depth: deep
+tier: all
+status: published
+category: API Reference
+readTime: 7 min
+prev:
+  title: API authentication
+  href: /docs/api/authentication
+next:
+  title: FAQ
+  href: /docs/faq
+---
+
+## Outbound webhooks (your endpoints)
+
+Configure URLs under **Settings → Webhooks**. Gravitre POSTs JSON payloads when subscribed events occur (run completed, approval needed, etc.).
+
+Verify authenticity using the signing secret shown in settings (check `X-Gravitre-Signature` or documented header for your org).
+
+Example payload shape:
+
+```json
+{
+  "event": "run.completed",
+  "timestamp": "2026-06-07T12:00:00Z",
+  "data": {
+    "run_id": "run_abc",
+    "workflow_id": "wf_xyz",
+    "status": "succeeded"
+  }
+}
+```
+
+Exact event names and fields are listed in [OpenAPI](/docs/api/openapi.json) under webhook-related schemas.
+
+## Inbound vendor webhooks
+
+Gravitre exposes inbound routes for vendors such as HubSpot, Salesforce, PagerDuty, and Segment under `/api/webhooks/*`. Configure those URLs in the vendor admin console using your production API host.
+
+## Retry behavior
+
+Failed deliveries to your outbound endpoints are retried with backoff. Ensure idempotent handlers.

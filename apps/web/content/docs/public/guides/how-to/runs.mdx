@@ -1,0 +1,148 @@
+---
+title: Monitor Runs
+description: Track workflow and agent execution history, outputs, failures, and approvals in Runs.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 16 min
+prev:
+  title: Manage AI Models
+  href: /docs/guides/how-to/ai-models
+next:
+  title: Manage schedules
+  href: /docs/guides/how-to/schedules
+---
+
+**Runs** (`/runs`) is the canonical execution history for workflows, scheduled jobs, and operator-triggered automation. Every production automation should be debugged here — not on the legacy **Tasks** page.
+
+## Open Runs
+
+Sidebar → **ACTIVITY → Runs** (`/runs`).
+
+## Run list views
+
+Filter and sort to find problems quickly:
+
+| Filter | Values (examples) |
+|--------|-------------------|
+| **Status** | `queued`, `running`, `succeeded`, `failed`, `cancelled` |
+| **Approval** | `pending`, `approved`, `not_required` |
+| **Workflow** | Single workflow ID |
+| **Date range** | Last 24h, 7d, custom |
+| **Environment** | staging, production (via org environment selector) |
+
+The Runs API supports the same filters:
+
+```bash
+curl -s "https://gravitre.app/api/runs?status=failed&dateFrom=2026-06-01&limit=50" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Query parameters include `workflowId`, `approvalStatus`, `runType`, `page`, and `limit` (max 200).
+
+## Run detail anatomy
+
+Open a run to see:
+
+| Section | Contents |
+|---------|----------|
+| **Header** | Status, duration, trigger type, environment |
+| **Step timeline** | Per-step status, inputs/outputs, errors |
+| **Approval panel** | Pending human decisions |
+| **Verification labels** | Analyzed vs executed connector actions |
+| **Links** | Workflow version, schedule, rollback source |
+
+### Status meanings
+
+| Status | Meaning |
+|--------|---------|
+| **queued** | Waiting for worker capacity or approval |
+| **running** | Steps executing |
+| **succeeded** | All steps completed successfully |
+| **failed** | One or more steps failed (see `errorMessage`) |
+| **cancelled** | User or policy stopped the run |
+
+## Approve pending work
+
+When `approvalStatus` is **pending**:
+
+1. Open **ACTIVITY → Approvals**, or
+2. Approve from run detail, or
+3. API: approve endpoint on the run (see OpenAPI)
+
+Writes to external systems typically proceed only after approval when org policy requires it.
+
+## Debug failed runs
+
+Recommended triage order:
+
+1. Read **errorMessage** on the run header
+2. Open the **first failed step** in the timeline
+3. Check Connector status for that step's integration
+4. Confirm **active workflow version** matches what you expect
+5. Compare with last **succeeded** run for the same workflow
+6. Attach run to **AI Operator** context for a proposed fix plan
+
+Common failure causes:
+
+- Expired OAuth token → reconnect Connector
+- Missing required parameter → fix workflow version
+- Vendor 429/5xx → retry with backoff or reduce schedule
+- Approval timeout → clear **Approvals** queue
+
+## Run controls (UI and API)
+
+| Action | API (admin where noted) |
+|--------|---------------------------|
+| **Retry run** | `POST /api/runs/{id}/retry` |
+| **Retry step** | `POST /api/runs/{id}/steps/{stepId}/retry` |
+| **Resume paused** | `POST /api/runs/{id}/resume-paused` |
+| **Pause** | `POST /api/runs/{id}/pause` |
+| **Cancel** | `POST /api/runs/{id}/cancel` |
+| **Rollback** | `POST /api/runs/{id}/rollback` |
+| **Compensate** | `POST /api/runs/{id}/compensate` |
+
+Not every workflow defines rollback/compensation steps — availability depends on the graph.
+
+## Operator and Search integration
+
+- **AI Operator** — attach run context: `/api/operator/context/run/{id}`
+- **Search** — find runs by natural language (`/chat`)
+- **Metrics** — aggregate failure rates over time
+
+## Runs vs Schedules vs Assignments
+
+| Surface | Shows |
+|---------|-------|
+| **Runs** | What already executed |
+| **Schedules** | What will run next |
+| **Assignments** | Human/agent task tracking (not step logs) |
+
+## API examples
+
+```bash
+# Get run with steps
+curl -s "https://gravitre.app/api/runs/RUN_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# List failed runs for one workflow
+curl -s "https://gravitre.app/api/runs?workflowId=WORKFLOW_UUID&status=failed" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Retry (requires admin)
+curl -s -X POST "https://gravitre.app/api/runs/RUN_ID/retry" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Callout title="Legacy Tasks page">
+`/tasks` may show assignment-oriented views. For workflow execution audit trails, prefer **Runs**.
+</Callout>
+
+## Related
+
+- [Build workflows](/docs/guides/how-to/workflows)
+- [Manage approvals](/docs/guides/how-to/approvals)
+- [Failure alerts](/docs/guides/how-to/failure-alerts)
+- [View metrics](/docs/guides/how-to/metrics)

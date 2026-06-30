@@ -1,0 +1,116 @@
+---
+title: Settings
+description: Org profile, security, API keys, billing, Meson add-ons, Lite seats, and webhooks.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 12 min
+prev:
+  title: Enterprise
+  href: /docs/concepts/enterprise
+next:
+  title: Partner Connections
+  href: /docs/concepts/partner-connections
+---
+
+**Settings** (`/settings`) is the org administration hub — identity, security, AI defaults, integrations with billing, and platform extensions. Most sections require **Owner** or **Admin**; members can access **Notifications** only.
+
+## Settings hub sections
+
+The main Settings page uses in-page sections (desktop sidebar). Related routes open separately.
+
+| Section (UI) | Route | Purpose |
+|--------------|-------|---------|
+| **Organization** | `/settings` → organization | Name, slug, primary domain, logo |
+| **AI Models** | `/settings` → ai-models | Workspace, Operator, and agent default models |
+| **Security** | `/settings` → security | SSO (SAML/OIDC), 2FA policy, IP allowlist |
+| **API Keys** | `/settings` → api-keys | Programmatic REST access |
+| **Notifications** | `/settings` → notifications | Email and Slack alert channels |
+| **Team Members** | `/settings` → team | Invites, roles, removal |
+| **Lite Seats** | `/settings` → lite-seats | Department allocations for Gravitre Lite |
+| **Meson Addons** | `/settings` → meson-addons | Premium Meson capabilities |
+| **Billing Usage** | `/settings` → billing-usage | Outputs, runs, tokens this cycle |
+| **Webhooks** | `/settings` → webhooks | Outbound event subscriptions |
+| **Billing** | `/settings/billing` | Plan, checkout, invoices |
+| **Enterprise** | `/settings/enterprise` | Enterprise-only controls |
+| **Partner Connections** | `/settings/federation` | Cross-org partnerships (docs: Partner Connections) |
+
+Deep link a section: `/settings?section=security` (Enterprise redirects to `/settings/enterprise`).
+
+## Roles and permissions
+
+| Role | Typical access |
+|------|----------------|
+| **Owner** | All settings, billing, destructive org actions, Enterprise |
+| **Admin** | All settings except some billing owner actions |
+| **Member** | Notifications; operate product surfaces |
+| **Viewer** | Read-only product areas where enabled |
+
+API routes enforce the same RBAC — a Member cannot create API keys even with a stolen session cookie if the backend checks `require_admin`.
+
+## Settings vs Environments vs Enterprise
+
+| Surface | Configures |
+|---------|------------|
+| **Settings** | Org-wide identity, security, keys, notifications |
+| **Environments** (`/environments`) | Staging vs production scoping for workflows, Connectors, Runs |
+| **Enterprise** | Residency, SIEM, white label, cost budgets, integration health |
+
+Connect a Salesforce sandbox in **staging** Environment; production OAuth lives separately under **Connectors** when you switch environment badge.
+
+## AI Models section vs AI Models product
+
+**Settings → AI Models** sets **defaults** (workspace, Operator, new agents, fallback). The **AI Models** product area (`/models`, Command plan) is the production registry with deploy/predict — see [AI Models overview](/docs/concepts/ai-models).
+
+Model **policy** (allowed providers/models) is also available via API:
+
+- `GET /api/settings/model-policy`
+- `PUT /api/settings/model-policy`
+
+## Billing surfaces
+
+| Surface | Shows |
+|---------|-------|
+| **Billing Usage** (Settings) | Current-cycle outputs, workflow runs, API calls, AI tokens, estimated overage |
+| **Billing** (`/settings/billing`) | Plan tier, payment method, upgrade/checkout |
+| **Enterprise → Cost** | Agent/department attribution and autonomous budgets |
+
+See [Plans and checkout](/docs/billing/plans-and-checkout).
+
+## Security-related settings
+
+- **SSO** — SAML 2.0 or OIDC; SP metadata at `/api/auth/sso/metadata`
+- **2FA** — org-wide TOTP requirement (policy UI)
+- **IP allowlist** — restrict console access by CIDR
+- **API keys** — rotate on offboarding; events in **History**
+
+Enterprise customers add **Security log export** — [Enterprise overview](/docs/concepts/enterprise).
+
+## Common admin workflows
+
+**Onboard a builder**
+
+1. **Team Members** → invite as Admin
+2. **Environments** → confirm staging access
+3. **Connectors** → delegate integration ownership
+
+**Prepare production**
+
+1. **Security** → enable SSO + 2FA
+2. **API keys** → issue scoped key for CI
+3. **Webhooks** → subscribe to `run.failed` and `approval.pending`
+4. **Notifications** → route alerts to Slack
+
+**Lite rollout**
+
+1. Purchase Lite seats on billing plan
+2. **Lite Seats** → create departments and allocations
+3. Assign users — they land on `/lite`
+
+## Next steps
+
+- [Manage settings](/docs/guides/how-to/settings) — step-by-step for each section
+- [Configure Enterprise](/docs/guides/how-to/enterprise)
+- [Environments](/docs/concepts/environments)

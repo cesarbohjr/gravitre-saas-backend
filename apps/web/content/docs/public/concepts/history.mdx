@@ -1,0 +1,48 @@
+---
+title: History and audit
+description: Immutable audit trail of org actions for security review and compliance.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 5 min
+prev:
+  title: Metrics
+  href: /docs/concepts/metrics
+next:
+  title: Gravitre Lite
+  href: /docs/concepts/gravitre-lite
+---
+
+**History** (sidebar; route `/audit`) is Gravitre's audit log of significant org events — who did what, when, and on which resource.
+
+## What gets logged
+
+Typical audit events include:
+
+- Authentication and session changes (where configured)
+- Workflow publish, unpublish, and run triggers
+- Connector connect, disconnect, and credential rotation
+- Approval decisions (approve, reject, escalate)
+- Agent and workflow configuration changes
+- API key creation and revocation
+- Enterprise policy changes (Enterprise tier)
+
+Exact event types depend on org features and tier.
+
+## History vs Metrics
+
+| | **History** | **Metrics** |
+|---|-------------|-------------|
+| **Granularity** | Individual events | Aggregates and trends |
+| **Use case** | Investigation, compliance | Operational monitoring |
+| **Retention** | Policy-driven | Rolling windows for charts |
+
+## Export
+
+Org admins can export audit logs for SIEM or archival (`GET /api/audit/export` where enabled). Enterprise orgs also configure **Security log export** under [Enterprise](/docs/concepts/enterprise).
+
+## Next steps
+
+- [Review history and audit logs](/docs/guides/how-to/history)

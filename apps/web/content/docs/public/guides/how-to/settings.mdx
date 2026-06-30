@@ -1,0 +1,335 @@
+---
+title: Manage settings
+description: Configure org profile, security, API keys, webhooks, Meson add-ons, and Lite seats.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 22 min
+prev:
+  title: Configure Enterprise
+  href: /docs/guides/how-to/enterprise
+next:
+  title: Plans and checkout
+  href: /docs/billing/plans-and-checkout
+---
+
+Open **Settings** from the sidebar (`/settings`). Use the left section list on desktop or the section menu on mobile. Most sections require **Owner** or **Admin**.
+
+Deep link: `/settings?section=organization|ai-models|security|api-keys|notifications|team|lite-seats|meson-addons|billing-usage|webhooks`
+
+---
+
+## Organization
+
+Manage org identity visible to your team.
+
+1. Open **Settings → Organization**
+2. Update **Organization name** and **slug** (used in URLs and API org context)
+3. Set **Primary domain** — email domain hints for SSO and invites
+4. Optional: **Upload logo** (PNG, SVG, JPG — max 2MB in UI)
+5. **Save changes**
+
+```bash
+curl -s "https://gravitre.app/api/settings/organization" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X PATCH "https://gravitre.app/api/settings/organization" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Acme Ops", "slug": "acme-ops", "primaryDomain": "acme.com"}'
+```
+
+Changes write audit events viewable under **History**.
+
+---
+
+## AI Models (defaults)
+
+Set workspace-wide model defaults — distinct from the **AI Models** registry at `/models`.
+
+1. Open **Settings → AI Models**
+2. **Workspace default** — Auto (recommended) or explicit model
+3. **AI Operator default** — analysis and plan generation
+4. **Agent default** — inherited by newly created agents
+5. **Fallback model** — when primary is rate-limited or unavailable
+6. **Model policies** — allow user overrides; log model in activity
+7. Save
+
+Restrict which providers/models users may select (admin):
+
+```bash
+curl -s "https://gravitre.app/api/settings/model-policy" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X PUT "https://gravitre.app/api/settings/model-policy" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "restricted", "providers": ["openai", "anthropic"], "models": []}'
+```
+
+See [AI Models overview](/docs/concepts/ai-models) for deploy/predict on Command plan.
+
+---
+
+## Security
+
+### Single Sign-On (SSO)
+
+1. Open **Settings → Security**
+2. Click **Configure** on SSO
+3. Choose **SAML 2.0** or **OpenID Connect**
+4. Enter IdP fields (Entity ID, SSO URL, certificate — or OIDC issuer, client ID, secret)
+5. **Save configuration**
+6. Copy **SP metadata URL** (`/api/auth/sso/metadata`) into your IdP
+7. **Enable** SSO, then **Test SSO** login in an incognito window
+
+```bash
+# SSO config (session auth in browser; admin APIs under /api/auth/sso/*)
+curl -s "https://gravitre.app/api/auth/sso/config" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Disable or delete SSO only during maintenance windows — active users may be logged out.
+
+### Two-factor authentication (2FA)
+
+1. Security section → **Enable** on Two-Factor Authentication
+2. Confirm org policy — members set up TOTP on next login
+
+Pair with SSO so IdP MFA satisfies your policy where applicable.
+
+### IP allowlist
+
+1. Security → **Configure** IP Allowlist
+2. Enter CIDR ranges one per line (for example `203.0.113.0/24`)
+3. Save — console access from other IPs is rejected
+
+<Callout title="Break-glass">
+Maintain at least one owner account excluded from allowlist or document VPN egress IPs before enabling.
+</Callout>
+
+See [Security overview](/docs/concepts/security) and [Authentication](/docs/concepts/authentication).
+
+---
+
+## API keys
+
+Create keys for CI, scripts, and integrations.
+
+1. Open **Settings → API Keys**
+2. **Create new key** — label (for example `github-actions`)
+3. Copy the secret immediately — it is not shown again
+4. Use on all requests:
+
+```bash
+curl -s "https://gravitre.app/api/workflows" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Rotate a key
+
+1. **Create new key**
+2. Update GitHub Actions / Terraform / internal services
+3. **Rotate** or revoke old key
+4. Confirm `api_key.revoked` (or equivalent) in **History**
+
+```bash
+curl -s "https://gravitre.app/api/settings/api-keys" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/settings/api-keys" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Production CI"}'
+
+curl -s -X POST "https://gravitre.app/api/settings/api-keys/KEY_ID/rotate" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+See [API authentication](/docs/api/authentication) and [API quickstart](/docs/api/quickstart).
+
+---
+
+## Notifications
+
+Route operational alerts to humans.
+
+1. Open **Settings → Notifications**
+2. Toggle **Email notifications** and set **Alert recipients** (comma-separated)
+3. **Configure Slack** — incoming webhook URL and channel
+4. Select alert types: workflow failures, approval requests, optional success events
+5. Save
+
+Notifications complement **Webhooks** (machine-to-machine) and **Approvals** queue (in-app). Test by triggering a failed workflow in staging.
+
+```bash
+curl -s -X PATCH "https://gravitre.app/api/settings" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"settings": {"notifications": {"emailEnabled": true, "recipients": "ops@acme.com"}}}'
+```
+
+---
+
+## Team members
+
+1. Open **Settings → Team Members**
+2. **Invite member** — email and role (**Member** or **Admin**)
+3. Edit role or remove member when they leave
+
+<Callout title="Before removal">
+Reassign open **Approvals** and workflow ownership. Runs retain historical `triggeredBy` user IDs.
+</Callout>
+
+```bash
+curl -s "https://gravitre.app/api/settings/team" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/settings/team" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "builder@acme.com", "role": "admin"}'
+```
+
+SSO-provisioned users may appear automatically — invites still work for external collaborators.
+
+---
+
+## Lite seats
+
+Allocate **Gravitre Lite** seats by department.
+
+1. Open **Settings → Lite Seats**
+2. Review summary: **Included**, **Allocated**, **Used** (from subscription + departments)
+3. **Add department** — name and seat allocation count
+4. Adjust allocations with **+** / **−** or delete unused departments
+5. Assign users to departments in product UI (users then use `/lite`)
+
+```bash
+curl -s "https://gravitre.app/api/settings/lite-seats" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/settings/lite-seats" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Support", "lite_seat_allocation": 10}'
+
+curl -s -X PATCH "https://gravitre.app/api/settings/lite-seats" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"id": "DEPT_UUID", "lite_seat_allocation": 12}'
+```
+
+See [Use Gravitre Lite](/docs/guides/how-to/gravitre-lite).
+
+---
+
+## Meson add-ons
+
+Enable premium Meson capabilities billed monthly.
+
+1. Open **Settings → Meson Addons**
+2. Review catalog cards — description and `$ / mo`
+3. **Enable** or **Disable** per add-on
+4. Note **Monthly addon total** before confirming
+
+```bash
+curl -s "https://gravitre.app/api/settings/meson-addons" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X PATCH "https://gravitre.app/api/settings/meson-addons" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "MESON_CODE", "enabled": true}'
+```
+
+Configure add-on secrets in **Environments** when required. See [Build with Meson](/docs/guides/how-to/meson).
+
+---
+
+## Billing usage
+
+Monitor consumption against plan limits (all tiers).
+
+1. Open **Settings → Billing Usage**
+2. Review **Outputs**, **Workflow runs**, **API calls**, **AI tokens** for current cycle
+3. Check **Included outputs** and **Overage** estimate
+4. **Refresh** for near-real-time totals
+
+```bash
+curl -s "https://gravitre.app/api/settings/billing-usage" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+For plan changes and Payment Element checkout, open **Settings → Billing** — [Plans and checkout](/docs/billing/plans-and-checkout).
+
+Enterprise spend attribution lives under [Configure Enterprise → Cost](/docs/guides/how-to/enterprise#cost-attribution).
+
+---
+
+## Webhooks
+
+Send HTTP callbacks when platform events occur.
+
+1. Open **Settings → Webhooks**
+2. **Add webhook** — HTTPS URL
+3. Subscribe to events, for example:
+   - `workflow.completed` / `workflow.failed`
+   - `run.started` / `run.failed`
+   - `approval.pending` / `approval.completed`
+4. Save **signing secret** — verify HMAC on your server
+5. Send test delivery; expect HTTP 2xx
+
+See [Webhooks](/docs/api/webhooks) for signature verification, payload shapes, and retry behavior.
+
+<Callout title="HTTPS only">
+Use TLS endpoints reachable from Gravitre egress. Local tunnel URLs are fine for development.
+</Callout>
+
+---
+
+## Related routes (outside main Settings page)
+
+| Task | Route |
+|------|-------|
+| Upgrade plan | `/settings/billing` |
+| Enterprise controls | `/settings/enterprise` |
+| Partner Connections | `/settings/federation` — [guide](/docs/guides/how-to/partner-connections) | B2B partnerships, handoffs, read-only connector grants, delegated tasks |
+| Environments | `/environments` — [Environments](/docs/concepts/environments) |
+
+---
+
+## Admin checklists
+
+### New org hardening
+
+- [ ] SSO configured and tested
+- [ ] 2FA policy enabled
+- [ ] API keys issued only for automation — no shared personal keys
+- [ ] Webhooks + email alerts for failures and approvals
+- [ ] Staging and production **Environments** confirmed
+
+### Offboarding a admin
+
+- [ ] Rotate API keys they created
+- [ ] Remove from **Team Members**
+- [ ] Review **History** for recent settings changes
+- [ ] Update SSO group mappings in IdP
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Section shows "Admin required" | Member role | Ask owner to grant Admin |
+| API 403 org context | Key user not in org | Recreate key as org member |
+| SSO test loop | Redirect URI mismatch | Update IdP with SP metadata URL |
+| Lite seats over-allocated | Sum of departments > included | Reduce allocations or upgrade plan |
+| Webhooks not firing | Wrong event subscription or 4xx endpoint | Test URL; check server logs |
+
+## Related
+
+- [Settings overview](/docs/concepts/settings)
+- [Configure Enterprise](/docs/guides/how-to/enterprise)
+- [Security](/docs/concepts/security)

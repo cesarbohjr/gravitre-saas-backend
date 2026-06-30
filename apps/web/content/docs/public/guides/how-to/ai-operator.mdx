@@ -1,0 +1,191 @@
+---
+title: Use the AI Operator
+description: Plan and monitor work in natural language with human approval for sensitive steps.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 18 min
+prev:
+  title: Quickstart
+  href: /docs/getting-started/quickstart
+next:
+  title: Use the Assistant
+  href: /docs/guides/how-to/assistant
+---
+
+The **AI Operator** is Gravitre's natural-language command center for **assigned, monitored work**. Describe an outcome; Gravitre builds an action plan, surfaces context from Runs and Connectors, and tracks execution with explicit verification labels.
+
+## Open the Operator
+
+Sidebar → **WORK → AI Operator** (`/operator`).
+
+The page shows:
+
+- **Command input** — your instruction and optional context attachment
+- **Environment badge** — staging vs production scope
+- **Execution mode** — how aggressively the Operator may invoke tools
+- **Model selector** — Auto or explicit LLM routing
+- **Timeline** — findings, plan steps, and job status
+- **Suggested actions** — one-click follow-ups with confidence and approval badges
+
+## Operator vs Assistant
+
+| | **AI Operator** | **Assistant** |
+|---|-----------------|---------------|
+| **Goal** | Execute a plan with tracked jobs | Answer questions in chat |
+| **Output** | Action plan + Run linkage | Conversational reply |
+| **Route** | `/operator` | `/assistant` |
+
+Use the Operator when you want durable work with a visible plan. Use the Assistant for exploration and Q&A.
+
+## Typical flow
+
+```text
+Attach context (optional) → Enter goal → Review action plan → Approve gated steps → Monitor job → Read verification summary
+```
+
+### Step 1 — Attach context (recommended)
+
+Pin context so the plan is grounded in real org data:
+
+| Context type | When to use |
+|--------------|-------------|
+| **Run** | Debug or extend a failed/successful run |
+| **Workflow** | Change or troubleshoot a specific automation |
+| **Connector** | Fix sync errors or credential issues |
+| **Source** | Query or ingest related knowledge |
+
+Context packs load via `/api/operator/context/{type}/{id}` and appear as chips in the Operator UI.
+
+### Step 2 — Write a strong instruction
+
+Include **goal**, **systems**, **constraints**, and **approval preferences**:
+
+```text
+In production: when a PagerDuty incident resolves, post a summary to #incidents in Slack.
+Do not post until I approve the draft message.
+```
+
+```text
+Review failed workflow runs from the last 24 hours for the HubSpot sync workflow.
+Propose fixes but do not change workflows automatically.
+```
+
+### Step 3 — Review the action plan
+
+The plan lists numbered steps with status (pending, current, completed). Check:
+
+- **Required Connectors** — connect missing integrations before approving execution
+- **Approval required** badges — writes and high-risk steps
+- **Guardrail status** — pass, warn, or fail on suggested actions
+
+### Step 4 — Execute and monitor
+
+Start the job from suggested actions or the plan panel. Long jobs stream status updates. You can **pause**, **retry**, or **cancel** from the Operator timeline when supported.
+
+### Step 5 — Verify results
+
+Every Operator job should answer:
+
+- What was **analyzed** (read-only context)?
+- What **executed** (connector writes, workflow triggers)?
+- What was **skipped** (missing Connector, rejected approval)?
+
+Open the linked **Run** for step-level logs.
+
+## Suggested actions and trust badges
+
+Suggested actions show:
+
+- **Confidence score** — model certainty (advisory, not a guarantee)
+- **Guardrail status** — policy checks on the proposed action
+- **Token estimate** — rough cost signal
+- **Approval required** — must confirm before external writes
+
+Reject or edit actions that fail guardrails or lack required Connectors.
+
+## Sessions and history
+
+Operator sessions group related commands. Use session history to:
+
+- Resume work on the same workflow or run
+- Compare plans across attempts
+- Create **Assignments** from follow-up items (`ListTodo` actions in UI)
+
+## Example prompts by scenario
+
+**RevOps**
+
+```text
+Summarize open HubSpot deals closing this month. Flag deals with no activity in 14 days.
+```
+
+**Support**
+
+```text
+List Zendesk tickets tagged escalation opened today. Draft a handoff note — do not update tickets.
+```
+
+**Engineering**
+
+```text
+Show GitHub PRs waiting on review in repo acme/api. Suggest reviewers based on CODEOWNERS.
+```
+
+**Finance**
+
+```text
+Pull last week's QuickBooks expenses over $500 and export a CSV summary for approval.
+```
+
+## API
+
+Context packs:
+
+```bash
+curl -s "https://gravitre.app/api/operator/context/run/RUN_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s "https://gravitre.app/api/operator/context/workflow/WORKFLOW_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Generate an action plan:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/operator/action-plan" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operatorGoal": "Summarize failed runs today",
+    "primaryContext": {"type": "run", "id": "RUN_UUID"},
+    "relatedContexts": []
+  }'
+```
+
+List org prompt shortcuts:
+
+```bash
+curl -s "https://gravitre.app/api/operator/prompts" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Agent jobs initiated from the UI use the async job APIs documented under `/api/agents` in [OpenAPI](/docs/api/openapi.json). All Operator routes require org context and respect the active **Environment**.
+
+## Common issues
+
+| Issue | Resolution |
+|-------|------------|
+| Empty plan | Add primary context or narrow the goal |
+| Steps skipped | Connect required Connector in active environment |
+| Approval loop | Clear **Approvals** queue or reject stale items |
+| Staging vs prod mismatch | Switch environment badge before executing |
+
+## Related
+
+- [Use the Assistant](/docs/guides/how-to/assistant)
+- [Manage approvals](/docs/guides/how-to/approvals)
+- [Connect integrations](/docs/guides/how-to/connectors)
+- [Monitor Runs](/docs/guides/how-to/runs)

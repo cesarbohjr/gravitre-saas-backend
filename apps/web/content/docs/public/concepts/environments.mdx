@@ -1,0 +1,42 @@
+---
+title: Environments
+description: Organize dev, staging, and production automation using Environments (formerly Workspaces in older docs).
+audience: public
+depth: mid
+tier: all
+status: published
+category: Core Concepts
+readTime: 6 min
+prev:
+  title: Authentication
+  href: /docs/concepts/authentication
+next:
+  title: Security overview
+  href: /docs/concepts/security
+---
+
+**Environments** help teams separate test automation from production workflows.
+
+## Open Environments
+
+Go to **Settings → Environments** in the sidebar (SETTINGS section).
+
+## Recommended layout
+
+| Environment | Purpose |
+|-------------|---------|
+| **Development** | Experiment with workflows and connectors using sandbox credentials |
+| **Staging** | Validate changes with production-like data |
+| **Production** | Live automations that affect customers or revenue systems |
+
+## Team access
+
+Use **Settings → Team Members** to control who can edit workflows and connectors. Pair environment separation with role-based access for safer releases.
+
+## API
+
+Environment metadata is available at `/api/environments` for org admins automating setup.
+
+<Callout title="Legacy naming">
+Older docs and UI copies may say "Workspaces." The product label is now **Environments**; routes and APIs may still use `environment` or legacy identifiers internally.
+</Callout>

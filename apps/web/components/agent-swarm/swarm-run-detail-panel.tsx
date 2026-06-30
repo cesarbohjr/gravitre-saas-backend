@@ -103,7 +103,7 @@ export function SwarmRunDetailPanel({
     setBusy("aggregate")
     try {
       await agentSwarmApi.aggregate(swarmRunId)
-      toast.success("Swarm aggregated")
+      toast.success("Multi-agent run aggregated")
       await mutate()
       onMutateList()
     } catch (err) {
@@ -118,7 +118,7 @@ export function SwarmRunDetailPanel({
     setBusy("cancel")
     try {
       await agentSwarmApi.cancel(swarmRunId)
-      toast.success("Swarm cancelled")
+      toast.success("Multi-agent run cancelled")
       await mutate()
       onMutateList()
     } catch (err) {
@@ -134,7 +134,7 @@ export function SwarmRunDetailPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">
             <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-              Swarm detail
+              Run detail
               {run ? <SwarmRunStatusBadge status={run.status} /> : null}
             </CardTitle>
             <CardDescription className="line-clamp-3">
@@ -168,7 +168,7 @@ export function SwarmRunDetailPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {error ? (
-          <p className="text-sm text-destructive">Failed to load swarm run.</p>
+          <p className="text-sm text-destructive">Failed to load multi-agent run.</p>
         ) : isLoading && !run ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />

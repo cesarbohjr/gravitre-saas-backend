@@ -107,11 +107,11 @@ export function StartSwarmDialog({
           task: s.task.trim(),
         })),
       })
-      toast.success("Swarm run started")
+      toast.success("Multi-agent run started")
       onStarted(run.id)
       handleOpenChange(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to start swarm")
+      toast.error(err instanceof Error ? err.message : "Failed to start multi-agent run")
     } finally {
       setSubmitting(false)
     }
@@ -123,10 +123,10 @@ export function StartSwarmDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Network className="h-5 w-5 text-violet-500" />
-            Start agent swarm
+            Start multi-agent run
           </DialogTitle>
           <DialogDescription>
-            Coordinate multiple agents on subtasks, then aggregate results through the council pattern.
+            Coordinate multiple agents on subtasks, then merge their results into one recommendation.
           </DialogDescription>
         </DialogHeader>
 
@@ -153,7 +153,7 @@ export function StartSwarmDialog({
               id="swarm-objective"
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
-              placeholder="What should this swarm accomplish?"
+              placeholder="What should this multi-agent run accomplish?"
               rows={3}
             />
           </div>
@@ -234,7 +234,7 @@ export function StartSwarmDialog({
           </Button>
           <Button onClick={() => void handleSubmit()} disabled={!canSubmit || submitting}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Start swarm
+            Start multi-agent run
           </Button>
         </DialogFooter>
       </DialogContent>

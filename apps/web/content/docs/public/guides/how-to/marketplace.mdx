@@ -1,0 +1,109 @@
+---
+title: Install from the Marketplace
+description: Browse the catalog, check connector readiness, install agents and workflows, and manage deployed assets.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 16 min
+prev:
+  title: Connect Sources
+  href: /docs/guides/how-to/sources
+next:
+  title: Publish Marketplace assets
+  href: /docs/guides/how-to/marketplace-publish
+---
+
+The **Marketplace** (`/marketplace`) is the fastest way to deploy agents, workflows, knowledge packs, and department outcomes.
+
+## Open the Marketplace
+
+Sidebar → **BUILD → Marketplace**.
+
+## Browse the catalog
+
+1. Click **Browse catalog** (or go to `/marketplace/assets`)
+2. Filter by asset type: **Agents**, **Workflows**, **Knowledge**, **Department packs**, **Connectors**
+3. Open an asset detail page to read description, required Connectors, and trust badges
+
+## Check readiness before install
+
+Catalog cards show one of:
+
+- **Ready to install** — required Connectors are connected
+- **N/ M apps connected** — connect missing Connectors first ([Connect integrations](/docs/guides/how-to/connectors))
+- **Installed** — already deployed; manage from **Installed**
+
+Use **install check** on the asset page if you need a detailed prerequisite list.
+
+## Install an asset
+
+1. Open the asset detail page
+2. Resolve any missing Connectors
+3. Click **Install** (or purchase first for paid assets)
+4. Confirm install variables if prompted (for example environment or team names)
+5. Open the deployed agent or workflow from the success state or **Installed** list
+
+Installed workflows appear under **Workflows**; agents under **Agents**. Open the asset from **Installed** to configure environment-specific variables.
+
+### Paid assets
+
+Some catalog entries require purchase before install. Checkout flows through org billing — confirm plan limits on [Plans and checkout](/docs/billing/plans-and-checkout). After purchase, **Install** unlocks like free assets.
+
+### Post-install checklist
+
+- [ ] Required Connectors show **Connected**
+- [ ] Workflow has an **active version** in target environment
+- [ ] Run once manually before enabling schedules
+- [ ] Review **Approvals** policy for write steps in the template
+
+## Department packs
+
+**Department packs** bundle agents, workflows, and knowledge for a business function (Sales, Marketing, Support, Finance, HR).
+
+Browse via **Department packs** on the Marketplace home or filter `type=department_pack` in the catalog.
+
+## Saved assets
+
+Bookmark items from the catalog with **Save**. Review them under **Saved assets** (`/marketplace/saved`) before installing.
+
+## Installed assets
+
+**Installed** (`/marketplace/installed`) lists everything your org deployed. From here you can open, update, or uninstall assets when the catalog supports it.
+
+## Partner connectors
+
+**Partner connectors** (`/marketplace/connectors`) shows federated partner registry entries. Install like first-party Connectors when your org has Partner Connections enabled.
+
+## Org-internal assets
+
+**Your organization** (`/marketplace/org`) lists assets published only inside your company — useful for sharing approved templates without public catalog review.
+
+## Analytics (admins)
+
+Org admins may see **Marketplace analytics** and **estimated hours saved** views for adoption and ROI tracking. These are admin-only surfaces.
+
+## API
+
+```bash
+# List catalog registry entries
+curl -s "https://gravitre.app/api/marketplace/registry" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# List org installs
+curl -s "https://gravitre.app/api/marketplace/installs" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Install preview / install (see OpenAPI for bodies)
+curl -s "https://gravitre.app/api/marketplace/assets/ASSET_REF/install-check" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Full request schemas: [OpenAPI](/docs/api/openapi.json).
+
+## Related
+
+- [Marketplace overview](/docs/concepts/marketplace)
+- [Publish org assets](/docs/guides/how-to/marketplace-publish)
+- [Partner Connections](/docs/guides/how-to/partner-connections)

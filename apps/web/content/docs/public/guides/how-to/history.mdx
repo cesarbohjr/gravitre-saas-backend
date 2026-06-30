@@ -1,0 +1,73 @@
+---
+title: Review history and audit logs
+description: Filter audit events, investigate changes, and export logs for compliance.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: View metrics
+  href: /docs/guides/how-to/metrics
+next:
+  title: Use Gravitre Lite
+  href: /docs/guides/how-to/gravitre-lite
+---
+
+Open **INSIGHTS → History** (`/audit`) to review org audit events.
+
+## Browse events
+
+1. Open **History**
+2. Use filters — date range, actor, event type, resource
+3. Click a row for detail — payload summary, IP or client hints when logged
+4. Copy resource IDs for correlation with **Runs** or support tickets
+
+## Common investigations
+
+| Scenario | Filter approach |
+|----------|-----------------|
+| Unexpected workflow change | Event type = workflow, sort by time |
+| Connector credential change | Event type = connector, actor = admin |
+| Approval audit | Event type = approval, include decision |
+| API key leak response | Event type = api_key, revoke then verify revoke event |
+
+## Export
+
+When your role allows export:
+
+1. Set filters to the investigation window
+2. Choose **Export** (CSV or JSON per UI)
+3. Store according to your retention policy
+
+API export:
+
+```bash
+curl -s "https://gravitre.app/api/audit/export?from=2026-06-01&to=2026-06-07" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -o audit-export.json
+```
+
+Enterprise orgs may stream to SIEM via [Enterprise → Security log export](/docs/guides/how-to/enterprise#security-log-export-siem).
+
+## Retention
+
+Retention windows vary by plan. Enterprise **Data residency** settings may affect storage region — see [Enterprise](/docs/concepts/enterprise).
+
+## API
+
+List events:
+
+```bash
+curl -s "https://gravitre.app/api/audit?limit=50" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+See [OpenAPI](/docs/api/openapi.json) for query parameters and response fields.
+
+## Related
+
+- [History overview](/docs/concepts/history)
+- [Security](/docs/concepts/security)
+- [Enterprise](/docs/guides/how-to/enterprise)

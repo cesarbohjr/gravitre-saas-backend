@@ -1,0 +1,45 @@
+---
+title: Security overview
+description: How Gravitre protects customer data — encryption, access control, audit, and compliance options.
+audience: public
+depth: high
+tier: all
+status: published
+category: Security
+readTime: 8 min
+prev:
+  title: Environments
+  href: /docs/concepts/environments
+next:
+  title: Marketplace
+  href: /docs/concepts/marketplace
+---
+
+## Data protection
+
+- Data is encrypted in transit (TLS)
+- Sensitive credentials for Connectors are stored encrypted at rest
+- Org isolation is enforced on API and database access
+
+## Access control
+
+- Role-based permissions for team members
+- Optional IP allowlists (Enterprise)
+- Human-in-the-loop **Approvals** for sensitive workflow steps
+
+## Audit and monitoring
+
+- **History** provides an administrative audit trail
+- Enterprise customers can export security logs via **Security log export** (SIEM) settings
+
+## Compliance
+
+Gravitre supports enterprise compliance workflows including HIPAA controls, data residency selection, and SOC 2 evidence export for customers on eligible plans. Specific certifications and report availability depend on your contract — contact sales for current attestation letters.
+
+<Callout title="Public docs boundary">
+This page describes customer-facing controls. It does not document internal security architecture, key management procedures, or penetration-test findings.
+</Callout>
+
+## Report a issue
+
+Email **security@gravitre.app** for vulnerability reports.

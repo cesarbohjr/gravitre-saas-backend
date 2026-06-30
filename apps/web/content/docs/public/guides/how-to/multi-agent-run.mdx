@@ -1,0 +1,42 @@
+---
+title: Multi-Agent Run
+description: Coordinate parallel agent subtasks and merge results into one recommendation (Command plan).
+audience: public
+depth: mid
+tier: command
+status: published
+category: How-to Guides
+readTime: 8 min
+prev:
+  title: Manage schedules
+  href: /docs/guides/how-to/schedules
+next:
+  title: Build with Meson
+  href: /docs/guides/how-to/meson
+---
+
+**Multi-Agent Run** (sidebar: WORK → Multi-Agent Run) splits one objective across parallel agents, then merges their outputs.
+
+Requires **Command** plan or above.
+
+## Start a run
+
+1. Open **Multi-Agent Run** (`/agents/swarm`)
+2. Click **Start multi-agent run**
+3. Describe the objective and select participating agents
+4. Monitor subtasks until aggregation completes
+
+## What to expect
+
+- Sub-agents work on scoped subtasks in parallel
+- Results aggregate into a single recommendation — not live shared memory between agents
+- Each subtask shows verification consistent with other agent runs
+
+## API
+
+Endpoints are under `/api/agent-swarm` (Command tier). See [OpenAPI](/docs/api/openapi.json).
+
+## Related
+
+- [Agents overview](/docs/guides/how-to/agents)
+- [Expert Review workflow nodes](/docs/guides/how-to/workflows)

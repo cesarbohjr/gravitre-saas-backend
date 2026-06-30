@@ -1,0 +1,99 @@
+---
+title: Manage AI Models
+description: Register, train, deploy, and run inference with org-scoped models in the AI Models registry.
+audience: public
+depth: mid
+tier: command
+status: published
+category: How-to Guides
+readTime: 12 min
+prev:
+  title: Use the Training Hub
+  href: /docs/guides/how-to/training
+next:
+  title: Monitor Runs
+  href: /docs/guides/how-to/runs
+---
+
+**AI Models** (sidebar: BUILD → **AI Models**, `/models`) manages production ML assets for Command-tier organizations.
+
+## Open the registry
+
+The overview shows totals for registered, deployed, and in-training models plus connected data **Sources** available for training.
+
+Pick a **stack layer** template (generative, classical, forecasting, anomaly, MLOps) to pre-fill a create dialog.
+
+## Register a model
+
+1. Click **New model** or apply a layer template
+2. Set name, **model type** (classifier, fine-tuned LLM, anomaly detector, forecaster)
+3. Choose base model and optional dataset / task type
+4. Save — status starts as **draft**
+
+Model types map to inference and training behavior documented in [OpenAPI](/docs/api/openapi.json).
+
+## Train
+
+Start training from the model detail page or via API:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/ml/train/start" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model_id": "MODEL_ID"}'
+```
+
+Monitor status transitions: training → validating → ready (or failed).
+
+## Deploy
+
+When a model is **ready**, deploy to make it callable in production:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/ml/models/MODEL_ID/deploy" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Deployed models show a **deployed** badge in the registry list.
+
+## Run inference
+
+```bash
+curl -s -X POST "https://gravitre.app/api/ml/models/MODEL_ID/predict" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"features": {}}'
+```
+
+Request body shape depends on model type — inspect the model detail page and OpenAPI schema.
+
+## Connect data Sources
+
+Generative and tabular models may require **Sources** or Connectors marked as connected in the registry UI. Connect data before training if the template lists `requires_connection`.
+
+## List and filter
+
+Use list filters by status and model type. Open a model row for version metadata, linked workflows, and deployment history.
+
+## API summary
+
+| Action | Method | Path |
+|--------|--------|------|
+| List models | GET | `/api/ml/models` |
+| Get model | GET | `/api/ml/models/{id}` |
+| Create | POST | `/api/ml/models` |
+| Deploy | POST | `/api/ml/models/{id}/deploy` |
+| Predict | POST | `/api/ml/models/{id}/predict` |
+| Train | POST | `/api/ml/train/start` |
+
+All `/api/ml/*` routes require **Command** plan entitlements.
+
+<Callout title="Former name">
+Docs and UI previously said **Model Registry**. User-facing label is now **AI Models**; API paths remain `/api/ml`.
+</Callout>
+
+## Related
+
+- [AI Models overview](/docs/concepts/ai-models)
+- [Use the Training Hub](/docs/guides/how-to/training)
+- [Connect Sources](/docs/guides/how-to/sources)

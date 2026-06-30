@@ -1,0 +1,54 @@
+---
+title: Failure alerts
+description: Predict and triage workflow failures before they impact production runs.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Build workflows
+  href: /docs/guides/how-to/workflows
+next:
+  title: Connect integrations
+  href: /docs/guides/how-to/connectors
+---
+
+**Failure alerts** (`/workflows/failure-predictions`) surfaces workflows at elevated risk of failing based on recent run patterns, connector health, and configuration signals.
+
+## Open failure predictions
+
+1. Navigate from **BUILD → Workflows** or directly to `/workflows/failure-predictions`
+2. Review the ranked list — workflow name, risk score, contributing factors
+3. Open a workflow to inspect failing nodes or dependencies
+4. Cross-check **Runs** for recent errors matching the prediction
+
+## What influences predictions
+
+Signals may include:
+
+- Recent failure rate vs historical baseline
+- Connector sync errors on dependencies
+- Schema or API changes on integrated systems
+- Timeout or retry exhaustion patterns
+- Missing approvals on write steps
+
+Predictions are advisory — verify before changing production workflows.
+
+## Triage workflow
+
+1. **Confirm** — open latest failed **Runs** for the workflow
+2. **Stabilize** — fix connector auth, adjust timeouts, add error branches
+3. **Test** — run in a staging **Environment** when available
+4. **Monitor** — watch Metrics and failure list for 24–48h after fix
+
+## Link to Schedules
+
+Scheduled workflows with rising failure risk may need pause until fixed — see [Schedules](/docs/guides/how-to/schedules).
+
+## Related
+
+- [Build workflows](/docs/guides/how-to/workflows)
+- [Monitor Runs](/docs/guides/how-to/runs)
+- [View metrics](/docs/guides/how-to/metrics)

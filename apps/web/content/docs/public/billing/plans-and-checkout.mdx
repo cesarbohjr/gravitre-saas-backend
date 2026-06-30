@@ -1,0 +1,50 @@
+---
+title: Plans and checkout
+description: Subscription plans, trials, upgrades, and Payment Element checkout on gravitre.app.
+audience: public
+depth: mid
+tier: all
+status: published
+category: Billing
+readTime: 8 min
+prev:
+  title: Manage settings
+  href: /docs/guides/how-to/settings
+next:
+  title: FAQ
+  href: /docs/faq
+---
+
+## Plans
+
+| Plan | Typical use |
+|------|-------------|
+| **Free** | Explore with limits |
+| **Node** | Individual operators |
+| **Control** | Teams — Meson, Partner Connections, Enterprise branding entry |
+| **Command** | Scale — Multi-Agent Run, AI Models, SCIM |
+| **Enterprise** | Custom contract, support, advanced compliance |
+
+Pricing shown in-app at **Settings → Billing** and on the [pricing page](/pricing).
+
+## Trial and access
+
+New orgs start trialing. When the trial ends, the app prompts for upgrade and restricts access until billing is active.
+
+## Upgrade checkout
+
+1. Open the upgrade modal or **Settings → Billing**
+2. Select **Control**, **Command**, or another offered plan
+3. Complete payment on `/settings/billing/checkout` using Stripe Payment Element
+4. Return to billing settings — status should show active
+
+## Manage subscription
+
+Use **Manage billing** to open the Stripe customer portal for invoices, payment method, and cancellation.
+
+## API
+
+Billing status: `GET /api/billing/status`  
+Subscribe (Payment Element): `POST /api/billing/subscribe`
+
+See [OpenAPI](/docs/api/openapi.json) for request bodies.

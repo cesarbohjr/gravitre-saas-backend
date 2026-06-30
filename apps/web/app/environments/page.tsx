@@ -396,7 +396,7 @@ export default function EnvironmentsPage() {
           )}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-xl font-semibold text-foreground">System Topology</h1>
+              <h1 className="text-xl font-semibold text-foreground">Environments</h1>
               <p className="text-sm text-muted-foreground mt-1">Infrastructure overview and deployment pipeline</p>
             </div>
             <Button

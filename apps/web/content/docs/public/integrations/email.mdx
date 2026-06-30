@@ -1,0 +1,31 @@
+---
+title: Email (SMTP) integration
+description: Send email from workflows using your SMTP server.
+audience: public
+depth: mid
+tier: all
+status: published
+category: Integrations
+readTime: 5 min
+prev:
+  title: Zendesk
+  href: /docs/integrations/zendesk
+next:
+  title: FAQ
+  href: /docs/faq
+---
+
+Send outbound email from workflows using your organization's SMTP server.
+
+**Auth:** SMTP username and password
+
+## Setup
+
+1. Add the **Email** connector with SMTP host, port, TLS settings, and credentials.
+2. Run a workflow dry-run that sends to a test inbox.
+3. Enable production schedules only after deliverability checks.
+
+## Tips
+
+- Use application-specific passwords when MFA is enabled on the mail provider
+- Pair with **Approvals** before sending customer-facing messages

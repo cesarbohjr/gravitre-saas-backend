@@ -1,0 +1,47 @@
+---
+title: Assignments
+description: Track work delegated to agents and operators with status, owners, and due dates.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 5 min
+prev:
+  title: Search
+  href: /docs/concepts/search
+next:
+  title: Goals
+  href: /docs/concepts/goals
+---
+
+**Assignments** (`/assignments`) track units of work delegated to people, agents, or the AI Operator — distinct from **Runs**, which record workflow execution history.
+
+## Assignments vs Runs
+
+| | **Assignments** | **Runs** |
+|---|-----------------|----------|
+| **Purpose** | Human/agent task tracking | Automated workflow execution log |
+| **Lifecycle** | Planned → in progress → done | Queued → running → succeeded/failed |
+| **Route** | `/assignments` | `/runs` |
+
+An Assignment may spawn or reference Runs when automation executes the work.
+
+## Typical fields
+
+- **Title and description** — what needs to happen
+- **Owner** — user, agent, or team
+- **Status** — open, blocked, completed
+- **Priority and due date** — scheduling signals
+- **Linked entities** — workflows, connectors, goals
+
+## When to use Assignments
+
+- Delegate follow-ups from the AI Operator without building a full workflow
+- Track manual steps alongside automated Runs
+- Coordinate cross-team work with clear ownership
+
+## Next steps
+
+- [Manage assignments](/docs/guides/how-to/assignments)
+- [Goals](/docs/concepts/goals) for outcome-driven planning

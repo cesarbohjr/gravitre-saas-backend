@@ -1,0 +1,74 @@
+---
+title: Manage assignments
+description: Create, assign, update status, and link assignments to workflows and goals.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Search your org
+  href: /docs/guides/how-to/search
+next:
+  title: Define and track goals
+  href: /docs/guides/how-to/goals
+---
+
+Open **WORK → Assignments** (`/assignments`) to manage delegated work across your org.
+
+## View assignments
+
+The list supports filtering by status, owner, and priority. Each row shows title, assignee, due date, and linked entities when present.
+
+## Create an assignment
+
+1. Click **New assignment** (or equivalent action)
+2. Enter title and description
+3. Set **Owner** — team member, agent, or unassigned queue
+4. Optional: due date, priority, tags
+5. Save — the assignment appears in the active list
+
+## Update status
+
+Move assignments through your org's workflow:
+
+- **Open** — not started
+- **In progress** — actively worked
+- **Blocked** — waiting on dependency or approval
+- **Completed** — done; may link to closing Run or audit entry
+
+Status changes may emit audit events visible under **History**.
+
+## Link to automation
+
+When an assignment should run automatically:
+
+1. Link a **Workflow** or open the AI Operator from the assignment detail
+2. Monitor execution under **Runs**
+3. Mark the assignment complete when the Run succeeds or when manual verification passes
+
+<Callout title="Approvals">
+Write actions on Connectors still require [Approvals](/docs/guides/how-to/approvals) when your org policy mandates them — completing an Assignment does not bypass gates.
+</Callout>
+
+## From the AI Operator
+
+The Operator may create Assignments as follow-up items in a plan. Open **Assignments** to see items created from Operator sessions.
+
+## API
+
+Assignment endpoints are org-scoped under `/api/assignments` (list, create, patch, delete). See [OpenAPI](/docs/api/openapi.json) for schemas.
+
+Example list:
+
+```bash
+curl -s "https://gravitre.app/api/assignments?status=open" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Related
+
+- [Assignments overview](/docs/concepts/assignments)
+- [Monitor Runs](/docs/guides/how-to/runs)
+- [Use the AI Operator](/docs/guides/how-to/ai-operator)

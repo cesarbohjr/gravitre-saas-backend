@@ -1,0 +1,48 @@
+---
+title: Goals
+description: Outcome-driven objectives with AI-generated workflow plans and approval gates.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 5 min
+prev:
+  title: Assignments
+  href: /docs/concepts/assignments
+next:
+  title: Metrics
+  href: /docs/concepts/metrics
+---
+
+**Goals** (`/goals`) express measurable outcomes for your organization. Gravitre can propose workflow steps, required Connectors, and approval gates from a stated objective.
+
+## Goals vs Workflows
+
+| | **Goals** | **Workflows** |
+|---|-----------|---------------|
+| **Focus** | Business outcome | Step-by-step automation |
+| **Planning** | AI-generated plan with impact estimate | Manual or template-based graph |
+| **Route** | `/goals` | `/workflows` |
+
+A Goal plan often becomes a Workflow draft after review.
+
+## Plan generation
+
+`POST /api/goals/{goalId}/generate-plan` returns:
+
+- **Proposed steps** — ordered work items with suggested owners
+- **Required connectors** — integrations needed for the plan
+- **Approval gates** — pre-launch approval when risk is elevated
+- **Estimated impact** — confidence, expected lift, constraints
+
+Plans respect org context and constraints you supply in the request body.
+
+## Governance
+
+High-risk generated plans may require **owner approval** before launch. Connect missing Connectors before executing connector-dependent steps.
+
+## Next steps
+
+- [Define and track goals](/docs/guides/how-to/goals)
+- [Build workflows](/docs/guides/how-to/workflows)

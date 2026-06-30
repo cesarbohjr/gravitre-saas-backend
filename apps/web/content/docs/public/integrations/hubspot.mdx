@@ -1,0 +1,38 @@
+---
+title: HubSpot integration
+description: Connect HubSpot CRM to Gravitre with OAuth and use HubSpot actions in workflows and agents.
+audience: public
+depth: mid
+tier: all
+status: published
+category: Integrations
+readTime: 10 min
+prev:
+  title: Connect integrations
+  href: /docs/guides/how-to/connectors
+next:
+  title: Salesforce
+  href: /docs/integrations/salesforce
+---
+
+Sync CRM objects, run HubSpot actions in workflows and agents, and receive inbound webhooks when configured.
+
+**Auth:** OAuth (platform app)
+
+## Setup
+
+1. Open **Connectors → HubSpot → Connect**.
+2. Sign in to HubSpot and authorize the requested scopes.
+3. Verify the connector shows **Connected**.
+4. Use HubSpot actions in workflows or grant tools to agents.
+
+## Webhooks
+
+HubSpot can send events to Gravitre inbound webhook routes. Configure URLs in HubSpot using your production API host — see [Webhooks](/docs/api/webhooks).
+
+## API
+
+List connectors: `GET /api/connectors`  
+Manual sync: `POST /api/connectors/{id}/sync`
+
+OAuth callback path on your API host: `/api/connectors/oauth/hubspot/callback`

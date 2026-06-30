@@ -71,7 +71,7 @@ const adminNavigation: NavGroup[] = [
       { name: "Assistant", href: "/assistant", icon: "chat", badge: "Chat" },
       { name: "Search", href: "/chat", icon: "search" },
       { name: "Agents", href: "/agents", icon: "team" },
-      { name: "Agent Swarm", href: "/agents/swarm", icon: "network" },
+      { name: "Multi-Agent Run", href: "/agents/swarm", icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
       { name: "Goals", href: "/goals", icon: "target" },
     ],
@@ -80,18 +80,18 @@ const adminNavigation: NavGroup[] = [
     group: "BUILD",
     items: [
       { name: "Marketplace", href: "/marketplace", icon: "package" },
-      { name: "Automations", href: "/workflows", icon: "waypoints" },
+      { name: "Workflows", href: "/workflows", icon: "waypoints" },
       { name: "Failure Alerts", href: "/workflows/failure-predictions", icon: "shieldAlert" },
       { name: "Training", href: "/training", icon: "brain" },
-      { name: "Model Registry", href: "/models", icon: "cpu" },
-      { name: "Apps", href: "/connectors", icon: "blocks" },
-      { name: "Data", href: "/sources", icon: "database" },
+      { name: "AI Models", href: "/models", icon: "cpu" },
+      { name: "Connectors", href: "/connectors", icon: "blocks" },
+      { name: "Sources", href: "/sources", icon: "database" },
     ],
   },
   {
     group: "ACTIVITY",
     items: [
-      { name: "Tasks", href: "/runs", icon: "listTodo" },
+      { name: "Runs", href: "/runs", icon: "listTodo" },
       { name: "Schedules", href: "/schedules", icon: "calendar" },
       { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
     ],
@@ -99,7 +99,7 @@ const adminNavigation: NavGroup[] = [
   {
     group: "INSIGHTS",
     items: [
-      { name: "Dashboard", href: "/metrics", icon: "layoutDashboard" },
+      { name: "Metrics", href: "/metrics", icon: "layoutDashboard" },
       { name: "Intelligence", href: "/admin/intelligence", icon: "atom" },
       { name: "History", href: "/audit", icon: "history" },
     ],
@@ -107,7 +107,7 @@ const adminNavigation: NavGroup[] = [
   {
     group: "SETTINGS",
     items: [
-      { name: "Workspaces", href: "/environments", icon: "boxes" },
+      { name: "Environments", href: "/environments", icon: "boxes" },
       { name: "Enterprise", href: "/settings/enterprise", icon: "building" },
       { name: "Federation", href: "/settings/federation", icon: "handshake" },
       { name: "Settings", href: "/settings", icon: "sliders" },

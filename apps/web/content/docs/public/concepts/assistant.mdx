@@ -1,0 +1,51 @@
+---
+title: Assistant
+description: Conversational AI for org Q&A, connector-aware help, and daily briefings.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 5 min
+prev:
+  title: AI Models
+  href: /docs/concepts/ai-models
+next:
+  title: Search
+  href: /docs/concepts/search
+---
+
+The **Assistant** (`/assistant`) is Gravitre's streaming chat interface for org-aware questions, troubleshooting, and light operational tasks.
+
+## Assistant vs AI Operator
+
+| | **Assistant** | **AI Operator** |
+|---|---------------|-----------------|
+| **Interaction** | Multi-turn chat with history | Command center for plans and monitored jobs |
+| **Best for** | Q&A, exploration, quick fixes | End-to-end work assignment and execution tracking |
+| **Route** | `/assistant` | `/operator` |
+
+Both can use connected **Connectors** when configured; each run shows what was analyzed and what executed.
+
+## Key capabilities
+
+- **Conversation history** — sidebar of past threads, resumable sessions
+- **Intelligence modes** — Fast, Standard, Reasoning, and Agent modes for latency vs depth tradeoffs
+- **Model selection** — Auto or explicit provider models (GPT, Claude, Gemini, etc.)
+- **Org context pill** — surfaces what organizational context is in scope for the reply
+- **Tool chips** — shows connector lookups and actions attempted during a turn
+- **Daily briefing** — optional summary bullets linking to runs, workflows, or connectors that need attention
+- **Follow-up suggestions** — suggested next questions after each reply
+
+## When to use Assistant
+
+- "Which connectors failed sync overnight?"
+- "Summarize open approvals for my team"
+- "Draft steps to fix a recurring workflow error"
+
+For durable assigned work with explicit plans, prefer the **AI Operator**.
+
+## Next steps
+
+- [Use the Assistant](/docs/guides/how-to/assistant)
+- [Search](/docs/concepts/search) for cross-entity lookup without chat

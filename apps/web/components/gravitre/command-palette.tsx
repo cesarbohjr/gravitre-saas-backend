@@ -158,7 +158,7 @@ export function CommandPalette({
         <CommandGroup heading="Models">
           <CommandItem onSelect={() => runCommand(() => router.push("/models"))}>
             <Brain className="mr-2 h-4 w-4 text-blue-400" />
-            <span>Model Registry</span>
+            <span>AI Models</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/training"))}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />

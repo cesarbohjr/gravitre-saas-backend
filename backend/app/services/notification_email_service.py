@@ -335,7 +335,7 @@ def build_swarm_completion_email(
     next_steps: list[str],
     dissenting_opinions: list[str] | None = None,
 ) -> tuple[str, str]:
-    summary = format_readable_text(final_recommendation, 900) or "Your agent swarm finished successfully."
+    summary = format_readable_text(final_recommendation, 900) or "Your multi-agent run finished successfully."
     decision_label = decision_method.replace("_", " ").title()
     confidence_pct = int(final_confidence * 100) if final_confidence is not None else None
     view_url = f"{brand.app_base_url}/agents/swarm?runId={swarm_run_id}"
@@ -437,7 +437,7 @@ def build_swarm_completion_email(
                   <tr>
                     <td>
                       <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.88;">
-                        Agent Swarm · {html.escape(brand.brand_name)}
+                        Multi-Agent Run · {html.escape(brand.brand_name)}
                       </div>
                       <h1 style="margin:8px 0 0;font-size:28px;line-height:1.15;font-weight:700;color:#ffffff;">
                         Council reached a decision

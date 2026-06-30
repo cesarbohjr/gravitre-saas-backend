@@ -1,0 +1,41 @@
+---
+title: Manage agents
+description: Create, configure, and deploy AI agents with tools, memory, and marketplace templates.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Org Learning
+  href: /docs/guides/how-to/org-learning
+next:
+  title: Approvals
+  href: /docs/guides/how-to/approvals
+---
+
+**Agents** are configurable AI workers with instructions, tools, and optional memory.
+
+## Create an agent
+
+1. Sidebar → **WORK → Agents**
+2. Click **New agent** or install from **Marketplace**
+3. Set instructions, model preferences, and tool permissions
+4. Test in agent chat before assigning production work
+
+## Tools and Connectors
+
+Agents invoke connector tools when integrations are connected. Review tool permissions under agent settings.
+
+## Assignments and jobs
+
+Use **Assignments** or the AI Operator to route work. Long-running jobs appear in **Runs**.
+
+## API
+
+- `/api/agents` — agent CRUD
+- `/api/operators` — operator-facing agent runtime
+- `/api/agent-jobs` — async jobs
+
+See [OpenAPI](/docs/api/openapi.json).

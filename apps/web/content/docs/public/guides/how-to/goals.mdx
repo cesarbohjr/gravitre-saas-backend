@@ -1,0 +1,88 @@
+---
+title: Define and track goals
+description: Create goals, generate AI workflow plans, review connectors and approvals, and launch automation.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 12 min
+prev:
+  title: Manage assignments
+  href: /docs/guides/how-to/assignments
+next:
+  title: Build workflows
+  href: /docs/guides/how-to/workflows
+---
+
+Open **WORK → Goals** (`/goals`) to define outcomes and turn them into governed automation plans.
+
+## Create a goal
+
+1. Click **New goal**
+2. Enter a clear **objective** — measurable when possible (e.g. "Reduce invoice processing time by 30%")
+3. Add optional **context** — team, systems, timeframe
+4. Save — the goal appears in your list with status tracking
+
+## Generate a plan
+
+1. Open a goal detail view
+2. Choose **Generate plan** (or equivalent)
+3. Optionally refine:
+   - **Objective** override for this generation
+   - **Context** — org-specific notes
+   - **Constraints** — budget, compliance, tools to avoid
+4. Review the generated output:
+   - **Proposed steps** — titles and suggested owners
+   - **Required connectors** — connect any missing integrations first
+   - **Approval gates** — pre-launch owner approval when flagged
+   - **Estimated impact** — confidence and success criteria summary
+
+## Review before launch
+
+<Callout title="Human in the loop">
+Generated plans are proposals. Edit steps, remove risky automation, and route through [Approvals](/docs/guides/how-to/approvals) before production Runs.
+</Callout>
+
+Checklist:
+
+- [ ] Required Connectors connected and healthy
+- [ ] Steps match actual process owners
+- [ ] Approval gates configured for write actions
+- [ ] Success criteria are measurable
+
+## Convert to a workflow
+
+When satisfied with the plan:
+
+1. Export or **Create workflow from plan** (when available in UI)
+2. Open the workflow editor to adjust nodes (conditions, Expert Review, etc.)
+3. Test in a non-production **Environment** when possible
+4. Monitor **Runs** after publish
+
+## Track progress
+
+Update goal status as steps complete. Link **Assignments** and **Runs** to the goal for auditability.
+
+## API
+
+Generate plan:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/goals/GOAL_ID/generate-plan" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "objective": "Automate weekly revenue report",
+    "context": "Finance team, QuickBooks + Google Sheets",
+    "constraints": ["No PII in Slack messages"]
+  }'
+```
+
+Response includes `goalPlan`, `proposedSteps`, `requiredConnectors`, `approvalGates`, and `estimatedImpact`. See [OpenAPI](/docs/api/openapi.json).
+
+## Related
+
+- [Goals overview](/docs/concepts/goals)
+- [Build workflows](/docs/guides/how-to/workflows)
+- [Connect integrations](/docs/guides/how-to/connectors)

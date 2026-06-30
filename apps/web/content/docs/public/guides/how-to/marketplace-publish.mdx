@@ -1,0 +1,61 @@
+---
+title: Publish Marketplace assets
+description: How org admins and partners draft, review, and publish agents, workflows, and connectors to the catalog.
+audience: public
+depth: mid
+tier: control
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Install from the Marketplace
+  href: /docs/guides/how-to/marketplace
+next:
+  title: Use the Training Hub
+  href: /docs/guides/how-to/training
+---
+
+Publishing is for **org admins** and **partner publishers** who want to share assets inside their organization or with the public Gravitre catalog.
+
+## Internal publish (your org only)
+
+1. Open **Marketplace → Your organization** (`/marketplace/org`)
+2. Create a new asset or edit a draft
+3. Submit for **org review** via **Publish queue** (`/marketplace/org-admin`) if your org requires approval
+4. Once approved, members can install from **Your organization**
+
+Internal assets never appear in the public catalog unless separately submitted for platform review.
+
+## Public catalog (partners)
+
+1. Open **Become a publisher** (`/marketplace/publisher`) and complete publisher onboarding (Stripe Connect where required)
+2. Create or link assets with pricing and install variables
+3. Submit for **Public review** — platform admins queue at `/marketplace/platform-admin`
+4. After approval, assets appear in **Browse catalog** for all customers
+
+Publisher revenue and payout status: **Publisher revenue** (`/marketplace/publisher/analytics`).
+
+## Private connector bundles (admins)
+
+**Private bundles** (`/marketplace/private`) let you upload signed in-house connector bundles and activate them for your org without public listing.
+
+Use when a connector is custom-built or not yet in the public registry.
+
+## Partner connector submissions
+
+External partners submit connectors via **Submit connector** (`/marketplace/submit`). Submissions pass security scan and manual review before registry listing.
+
+## Connector submissions API (partners)
+
+Partners with API access can manage submissions under `/api/marketplace/submissions`. See [OpenAPI](/docs/api/openapi.json) for create, rescan, and review flows available to your role.
+
+## Governance tips
+
+- Require org review before internal publish for production-impacting workflows
+- Document required Connectors in asset descriptions
+- Test installs in a non-production **Environment** before promoting templates org-wide
+
+## Related
+
+- [Install from the Marketplace](/docs/guides/how-to/marketplace)
+- [Connect integrations](/docs/guides/how-to/connectors)

@@ -1,0 +1,107 @@
+---
+title: Introduction to Gravitre
+description: What Gravitre is, who it is for, and the core concepts behind AI-assisted automation.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 10 min
+prev:
+  title: Quickstart
+  href: /docs/getting-started/quickstart
+next:
+  title: Platform overview
+  href: /docs/concepts/platform-overview
+---
+
+Gravitre is an AI-assisted automation platform for teams that want to plan work in natural language, connect business tools, and run repeatable workflows with human oversight where it matters.
+
+## Who Gravitre is for
+
+- **Operations and RevOps** — sync CRM data, route approvals, schedule recurring jobs
+- **Team leads** — assign work to AI agents and track outcomes in **Runs**
+- **Builders** — design workflows, connect sources, and publish assets in the **Marketplace**
+- **Enterprise admins** — SSO, residency, branding, integration health, and SIEM export
+
+## How teams typically adopt Gravitre
+
+```text
+Week 1: Quickstart → one Connector → first Run
+Week 2: Workflows or Marketplace templates → Approvals policy
+Week 3: AI Operator + Assistant for daily ops → Metrics dashboards
+Month 2+: Goals, Multi-Agent Run, Enterprise controls (as plan allows)
+```
+
+## Core concepts
+
+| Concept | What it means |
+|---------|----------------|
+| **AI Operator** | Natural-language command center for plans and monitored execution |
+| **Assistant** | Conversational help and org Q&A |
+| **Agents** | Configurable AI workers with tools and memory |
+| **Workflows** | Visual automations with triggers, steps, and approvals |
+| **Connectors** | OAuth and API integrations to external systems |
+| **Sources** | Data connected for search, queries, and knowledge sync |
+| **Marketplace** | Catalog of installable agents, workflows, knowledge, and department packs |
+| **Training Hub** | Datasets, fine-tuning jobs, and custom instructions for agents |
+| **AI Models** | Production model registry, deploy, and inference (Command plan) |
+| **Schedules** | Calendar of upcoming workflow crons, tasks, and training jobs |
+| **Runs** | History and status of workflow and agent executions |
+| **Search** | Unified lookup across runs, workflows, agents, connectors, and documents |
+| **Assignments** | Delegated work tracking for people and agents |
+| **Goals** | Outcome-driven objectives with AI-generated workflow plans |
+| **Metrics** | Operational dashboards for runs, workflows, and connector health |
+| **History** | Audit log of org actions for security and compliance |
+| **Gravitre Lite** | Simplified seat-based experience at `/lite` |
+| **Enterprise** | Integration health, residency, white label, cost, and SIEM export |
+| **Settings** | Org profile, security, API keys, webhooks, and billing |
+| **Meson** | Gravitre's guided system builder for agents, workflows, and training from one request |
+
+## Sidebar map (product navigation)
+
+| Section | Key routes | Docs starting point |
+|---------|------------|---------------------|
+| **WORK** | Operator, Assistant, Search, Agents, Assignments, Goals | [AI Operator](/docs/guides/how-to/ai-operator) |
+| **BUILD** | Workflows, Connectors, Sources, Marketplace, Meson | [Workflows](/docs/guides/how-to/workflows) |
+| **ACTIVITY** | Runs, Schedules, Approvals | [Monitor Runs](/docs/guides/how-to/runs) |
+| **INSIGHTS** | Metrics, History | [View metrics](/docs/guides/how-to/metrics) |
+| **Settings** | Org, Security, API keys, Enterprise, Billing | [Manage settings](/docs/guides/how-to/settings) |
+
+## Learning paths
+
+**Operator-first** — [Quickstart](/docs/getting-started/quickstart) → [AI Operator](/docs/guides/how-to/ai-operator) → [Assistant](/docs/guides/how-to/assistant) → [Runs](/docs/guides/how-to/runs)
+
+**Builder-first** — [Workflows](/docs/guides/how-to/workflows) → [Connectors](/docs/guides/how-to/connectors) → [Marketplace](/docs/guides/how-to/marketplace) → [Schedules](/docs/guides/how-to/schedules)
+
+**Admin-first** — [Settings](/docs/guides/how-to/settings) → [Partner Connections](/docs/guides/how-to/partner-connections) → [Security](/docs/concepts/security) → [Enterprise](/docs/guides/how-to/enterprise) → [History](/docs/guides/how-to/history)
+
+<Callout title="Execution depends on your setup">
+Connector actions run when integrations are linked and configured. Gravitre shows what each run analyzed and executed — not every action is guaranteed without a connected integration.
+</Callout>
+
+## Plans at a glance
+
+| Plan | Best for |
+|------|----------|
+| **Free / Node** | Individuals exploring core workflows |
+| **Control** | Growing teams; includes Meson and Partner Connections |
+| **Command** | Advanced teams; Multi-Agent Run, AI Models, SCIM |
+| **Enterprise** | Custom deployment, support, and security reviews |
+
+See [Plans and checkout](/docs/billing/plans-and-checkout) for billing details.
+
+## Common use cases
+
+- Sync new CRM records on a schedule and notify Slack on failure
+- Route high-risk CRM writes through **Approvals** and **Expert Review** nodes
+- Generate weekly reports from connected analytics tools
+- Coordinate parallel agent work with **Multi-Agent Run** (Command plan)
+- Publish approved workflow templates to your org via **Marketplace**
+- Export audit logs to your SIEM (Enterprise **Security log export**)
+
+## Next steps
+
+- [Platform overview](/docs/concepts/platform-overview)
+- [Quickstart](/docs/getting-started/quickstart)
+- [FAQ](/docs/faq)

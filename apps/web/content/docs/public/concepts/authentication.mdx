@@ -1,0 +1,52 @@
+---
+title: Authentication
+description: Sign in to the app, use API keys, SSO, and SCIM for enterprise identity.
+audience: public
+depth: mid
+tier: all
+status: published
+category: Core Concepts
+readTime: 8 min
+prev:
+  title: Platform overview
+  href: /docs/concepts/platform-overview
+next:
+  title: Environments
+  href: /docs/concepts/environments
+---
+
+## Sign in to the web app
+
+Gravitre uses secure email/password and social sign-in through Supabase Auth. After sign-in, you operate within your **organization** context.
+
+## API keys (server-to-server)
+
+Generate keys under **Settings → API Keys**. Send the key on each request:
+
+```bash
+curl -s "https://gravitre.app/api/workflows" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+Keys are org-scoped. Rotate keys if a secret is exposed.
+
+## Session cookies (browser)
+
+The web app uses session cookies automatically. Do not embed session tokens in third-party sites.
+
+## SSO (Enterprise)
+
+Configure SAML or OIDC under **Settings → Security**. Contact support to enable IdP metadata exchange for your org.
+
+## SCIM provisioning (Command plan)
+
+IT teams can provision users and groups via **SCIM 2.0** at `/scim/v2` on your Gravitre API host. Requires Command plan or above.
+
+## Best practices
+
+- Use least-privilege API keys for integrations
+- Prefer SSO for employee access
+- Enable IP allowlists under **Settings → Security** when required by policy
+
+See [API authentication](/docs/api/authentication) for request header details.

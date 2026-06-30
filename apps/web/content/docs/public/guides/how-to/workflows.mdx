@@ -1,0 +1,182 @@
+---
+title: Build and run workflows
+description: Create visual workflows, schedule them, and monitor execution in Runs.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 22 min
+prev:
+  title: Define and track goals
+  href: /docs/guides/how-to/goals
+next:
+  title: Failure alerts
+  href: /docs/guides/how-to/failure-alerts
+---
+
+**Workflows** are repeatable automations built in the visual editor, generated from **Goals**, or installed from the **Marketplace**. Each published **version** runs in the active **Environment** and leaves an audit trail in **Runs**.
+
+## Open the builder
+
+1. Sidebar → **BUILD → Workflows** (`/workflows`)
+2. **Create workflow** or open an existing definition
+3. Confirm an **active version** exists for your environment before production schedules
+
+## Workflow anatomy
+
+| Piece | Purpose |
+|-------|---------|
+| **Trigger** | Starts the run (manual, schedule, webhook, connector event) |
+| **Steps / nodes** | Actions, conditions, agents, human review |
+| **Edges** | Control flow between nodes |
+| **Version** | Immutable snapshot; publish activates for an environment |
+| **Parameters** | Inputs passed at execute time |
+
+## Triggers
+
+| Trigger | Use when |
+|---------|----------|
+| **Manual / Run now** | Ad-hoc or Operator-triggered runs |
+| **Schedule (cron)** | Recurring reports, sync jobs |
+| **Webhook** | External system pushes events |
+| **Connector event** | React to CRM, support, or dev tool changes |
+
+Schedules appear on the org **Schedules** calendar — see [Manage schedules](/docs/guides/how-to/schedules).
+
+## Step types (common)
+
+- **Connector action** — read or write an integrated system (requires connected Connector)
+- **Condition / branch** — route on field values or run status
+- **Agent task** — invoke a configured agent with tools
+- **Expert Review** — pause for human review before continuing (formerly "Agent Council" in internal naming)
+- **Delay / wait** — time-based pause between steps
+- **Transform** — map data between steps
+
+Connector write steps honor org **approval policy** — they may create pending items in **Approvals** before executing.
+
+## Build a workflow (walkthrough)
+
+1. **Create workflow** → name and department tag
+2. Add a **Manual** trigger (simplest first run)
+3. Add a **Connector** step → pick connected integration and action
+4. Map parameters from trigger payload or defaults
+5. **Save** the graph
+6. **Create version** → **Activate** for staging
+7. **Dry run** or **Simulation preview** (see below)
+8. **Run now** → open **Runs** for timeline
+9. When stable, **Activate** for production and add a **Schedule**
+
+## Test safely
+
+### Dry run
+
+`POST /api/workflows/dry-run` validates definition and parameters without committing side effects where supported. Use dry-run before enabling cron schedules on write-heavy workflows.
+
+### Simulation preview
+
+**Simulation preview** (digital twin) models expected step outcomes for complex graphs — useful before Expert Review nodes or multi-connector branches. Access from the workflow builder when available.
+
+<Callout title="Staging first">
+Run new versions in **staging** Environment. Promote to production only after a successful Run and approval policy review.
+</Callout>
+
+## Versions and promotion
+
+Workflows are versioned:
+
+1. Edit graph → **Save**
+2. **Create version** — freezes definition
+3. **Activate** — binds version to current environment
+4. **Promote** — move tested version to another environment (staging → production)
+
+API highlights:
+
+- `POST /api/workflows/{id}/versions`
+- `POST /api/workflows/{id}/versions/{versionId}/activate`
+- `GET /api/workflows/{id}/active`
+
+Never schedule production crons against a draft with no active version.
+
+## Run and monitor
+
+| Action | Where |
+|--------|-------|
+| **Run now** | Workflow detail or list |
+| **Execute via API** | `POST /api/workflows/execute` |
+| **History** | **Runs** (`/runs`) |
+| **Upcoming** | **Schedules** (`/schedules`) |
+
+<Callout title="Legacy /tasks route">
+An older **Tasks** page may still exist for assignment-centric views. For automation history, use **Runs**.
+</Callout>
+
+## Run controls
+
+From run detail (UI or API):
+
+- **Retry** — re-run failed run (`POST /api/runs/{id}/retry`, admin)
+- **Retry step** — retry single failed step
+- **Pause / resume** — halt long runs
+- **Cancel** — stop in-flight execution
+- **Rollback / compensate** — reverse or offset effects when workflow supports it
+
+See [Monitor Runs](/docs/guides/how-to/runs).
+
+## Approvals
+
+Steps marked for human review appear in **Approvals** until accepted or rejected. Runs with pending approvals show `approvalStatus` in the Runs API.
+
+Policy resolution happens at execute time — if your org requires two approvers for production writes, the run queues until satisfied.
+
+## Failure predictions
+
+**Failure alerts** (`/workflows/failure-predictions`) rank workflows at elevated failure risk. Scan from the UI or:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/workflows/{workflowId}/failure-predictions/scan" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Review alerts before enabling new schedules — see [Failure alerts](/docs/guides/how-to/failure-alerts).
+
+## API reference (common)
+
+```bash
+# List workflows
+curl -s "https://gravitre.app/api/workflows" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Execute (requires active version)
+curl -s -X POST "https://gravitre.app/api/workflows/execute" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"workflowId": "WORKFLOW_UUID", "parameters": {}}'
+
+# List runs for a workflow
+curl -s "https://gravitre.app/api/runs?workflowId=WORKFLOW_UUID&status=failed" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Workflow schedules
+curl -s "https://gravitre.app/api/workflows/WORKFLOW_UUID/schedules" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Full schemas: [OpenAPI](/docs/api/openapi.json).
+
+## Design patterns
+
+**Idempotent sync** — use upsert actions and store external IDs in step outputs to avoid duplicates.
+
+**Approval gate before writes** — place Expert Review or policy-gated connector steps before CRM updates.
+
+**Error branch** — route failures to Slack/PagerDuty notify steps instead of silent failure.
+
+**Compensation** — pair financial or inventory writes with rollback steps when vendors support it.
+
+## Related
+
+- [Connect integrations](/docs/guides/how-to/connectors)
+- [Manage agents](/docs/guides/how-to/agents)
+- [Manage approvals](/docs/guides/how-to/approvals)
+- [Install from Marketplace](/docs/guides/how-to/marketplace)

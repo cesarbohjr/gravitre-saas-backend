@@ -1,0 +1,96 @@
+---
+title: Approvals
+description: Review and approve sensitive workflow and agent steps before they execute.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 12 min
+prev:
+  title: Manage agents
+  href: /docs/guides/how-to/agents
+next:
+  title: View metrics
+  href: /docs/guides/how-to/metrics
+---
+
+The **Approvals** queue holds steps that require human confirmation before execution — CRM writes, financial actions, bulk deletes, and any step your org policy flags.
+
+## Open Approvals
+
+Sidebar → **ACTIVITY → Approvals** (`/approvals`). Pending items also surface on **Runs** detail and in Lite mode when enabled.
+
+## When approvals trigger
+
+| Source | Example |
+|--------|---------|
+| **Workflow policy** | Production writes need owner approval |
+| **Expert Review node** | Human checkpoint mid-graph |
+| **AI Operator** | Suggested action with `approvalRequired` badge |
+| **Agent tool call** | High-risk connector operation |
+
+Runs show `approvalStatus`: `pending`, `approved`, `rejected`, or `not_required`.
+
+## Review flow
+
+1. Open a pending approval from the queue or run detail
+2. Read **context** — workflow name, step, proposed payload, affected Connector
+3. Verify environment (**staging** vs **production**)
+4. **Approve** to continue the run or **Reject** with a reason (logged to **History**)
+
+<Callout title="Production writes">
+Approving in production may immediately invoke vendor APIs. When unsure, reject and test the same workflow in **staging** first.
+</Callout>
+
+## Roles
+
+Who can approve depends on org RBAC — commonly **Owner**, **Admin**, or roles named in workflow policy (`approverRole`). Members may submit runs but not approve production writes.
+
+## Notifications
+
+Configure channels under **Settings → Notifications** (email, Slack, etc.) so approvers are alerted when:
+
+- A run enters `approvalStatus: pending`
+- Approvals sit unanswered past SLA thresholds (when configured)
+
+## Bulk and SLA practices
+
+- Assign a daily approver rotation for high-volume orgs
+- Reject stale approvals after workflow version changes — retry run on new version
+- Use **Metrics** to track approval turnaround time indirectly via failed/pending runs
+
+## API
+
+List pending:
+
+```bash
+curl -s "https://gravitre.app/api/approvals?status=pending" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Approve from run:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/runs/RUN_ID/approve" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"approved": true, "comment": "Verified deal amount"}'
+```
+
+Reject:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/runs/RUN_ID/approve" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"approved": false, "comment": "Wrong environment"}'
+```
+
+See [OpenAPI](/docs/api/openapi.json) for approval-specific routes and schemas.
+
+## Related
+
+- [Monitor Runs](/docs/guides/how-to/runs)
+- [Build workflows](/docs/guides/how-to/workflows) — Expert Review nodes
+- [Use the AI Operator](/docs/guides/how-to/ai-operator) — approval badges on suggested actions

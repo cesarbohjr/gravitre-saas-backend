@@ -84,13 +84,13 @@ export function ModelRegistryOverview({
                 transition={{ duration: 2.4, repeat: Infinity }}
                 className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500 dark:bg-violet-400"
               />
-              Org-scoped ML registry
+              Org-scoped AI models
             </div>
             <h2 className="text-balance text-xl font-semibold text-foreground sm:text-2xl">
               Register, train, and deploy models across your stack
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              The Model Registry is your control plane for production ML: capture metadata, track
+              AI Models is your control plane for production ML: capture metadata, track
               versions, wire datasets from{" "}
               <Link href="/training" className="text-violet-500 underline-offset-4 hover:underline dark:text-violet-300">
                 Training

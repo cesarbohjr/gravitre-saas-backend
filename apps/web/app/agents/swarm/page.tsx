@@ -45,7 +45,7 @@ function formatRelative(iso: string | null | undefined) {
 
 export default function AgentSwarmPage() {
   return (
-    <AppShell title="Agent Swarm">
+    <AppShell title="Multi-Agent Run">
       <Suspense fallback={null}>
         <AgentSwarmContent />
       </Suspense>
@@ -99,7 +99,7 @@ function AgentSwarmContent() {
       ) {
         notifiedRef.current.add(run.id)
         const summary = formatSwarmReadableText(run.finalRecommendation, 140)
-        toast.success("Swarm complete", {
+        toast.success("Multi-agent run complete", {
           description: summary || run.objective,
           action: {
             label: "View results",
@@ -141,9 +141,9 @@ function AgentSwarmContent() {
               <Network className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Agent swarm</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Multi-agent runs</h1>
               <p className="text-sm text-muted-foreground max-w-xl">
-                Coordinate multiple agents on parallel subtasks, then aggregate council recommendations.
+                Coordinate multiple agents on parallel subtasks, then merge their results into one recommendation.
               </p>
             </div>
           </div>
@@ -154,7 +154,7 @@ function AgentSwarmContent() {
             </Button>
             <Button size="sm" onClick={() => setStartOpen(true)} className="gap-1" disabled={!orgId}>
               <Plus className="h-4 w-4" />
-              Start swarm
+              Start multi-agent run
             </Button>
           </div>
         </div>
@@ -167,8 +167,8 @@ function AgentSwarmContent() {
 
         {error ? (
           <WorkSectionErrorCard
-            title="Couldn't load swarm runs"
-            message="We couldn't fetch your swarm history. Check your connection and try again."
+            title="Couldn't load multi-agent runs"
+            message="We couldn't fetch your run history. Check your connection and try again."
             error={error}
             onRetry={() => void mutate()}
           />
@@ -183,12 +183,12 @@ function AgentSwarmContent() {
               ) : runs.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border p-8 text-center">
                   <SwarmConvergenceDiagram variant="hero" className="mb-5" />
-                  <p className="text-sm font-medium text-foreground">No swarm runs yet</p>
+                  <p className="text-sm font-medium text-foreground">No multi-agent runs yet</p>
                   <p className="mx-auto mt-1 mb-4 max-w-sm text-xs text-muted-foreground">
-                    A swarm splits one objective across parallel agents, then merges their work into a single council recommendation.
+                    A multi-agent run splits one objective across parallel agents, then merges their work into a single recommendation.
                   </p>
                   <Button size="sm" onClick={() => setStartOpen(true)}>
-                    Start your first swarm
+                    Start your first run
                   </Button>
                 </div>
               ) : (

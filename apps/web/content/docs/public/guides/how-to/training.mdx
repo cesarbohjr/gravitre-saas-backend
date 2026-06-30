@@ -1,0 +1,90 @@
+---
+title: Use the Training Hub
+description: Create datasets, run fine-tuning jobs, manage custom instructions, and assign models to agents.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 12 min
+prev:
+  title: Publish Marketplace assets
+  href: /docs/guides/how-to/marketplace-publish
+next:
+  title: AI Models
+  href: /docs/guides/how-to/ai-models
+---
+
+Open **BUILD → Training** (`/training`) to improve agent behavior with your org's examples and instructions.
+
+## Create a dataset
+
+1. In **Datasets**, enter a name and choose a type (for example **examples**)
+2. Click **Create dataset**
+3. Open the dataset and **Add records** — each record has input text and expected output
+4. Use starter examples in the UI as templates for support or ops scenarios
+
+Wait until the dataset status shows **ready** before starting a training job.
+
+## Start a training job
+
+1. Go to **Training jobs**
+2. Select a **ready** dataset and base model (for example a supported GPT or Claude base)
+3. Start the job and monitor status: queued → training → completed or failed
+4. Cancel in-flight jobs from the job detail actions if needed
+
+Completed jobs produce or link **fine-tuned models** you can assign to agents.
+
+## Custom instructions
+
+**Custom instructions** are reusable prompt fragments scoped to the org or a specific agent:
+
+1. Open **Instructions**
+2. Create a name and body text
+3. Toggle **active** when ready
+4. Filter by agent when instructions target one worker
+
+Instructions apply without running a full fine-tune — useful for policy, tone, and domain vocabulary.
+
+## Assign a fine-tuned model to an agent
+
+1. Open **Fine-tuned models** or **Workflow agents** section
+2. Choose an agent and select the completed model
+3. Save assignment
+4. Test the agent in chat or via a workflow step before production traffic
+
+## Monitor on Schedules
+
+Active or scheduled training jobs may appear on **Schedules** with kind **Job** (green). Use that view alongside **Runs** for operational awareness.
+
+## API
+
+```bash
+# List datasets
+curl -s "https://gravitre.app/api/training/datasets" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Create dataset
+curl -s -X POST "https://gravitre.app/api/training/datasets" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Support examples", "type": "examples"}'
+
+# Start training job
+curl -s -X POST "https://gravitre.app/api/training/jobs" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"dataset_id": "DATASET_ID", "base_model": "gpt-4.1-mini"}'
+
+# List custom instructions
+curl -s "https://gravitre.app/api/training/instructions" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+See [OpenAPI](/docs/api/openapi.json) for record upload, cancel, and agent assignment endpoints.
+
+## Related
+
+- [Training Hub overview](/docs/concepts/training)
+- [Build with Meson](/docs/guides/how-to/meson)
+- [Manage agents](/docs/guides/how-to/agents)

@@ -1,0 +1,48 @@
+---
+title: Schedules
+description: How Gravitre surfaces upcoming workflow crons, task runs, and training jobs in one calendar.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 4 min
+prev:
+  title: Marketplace
+  href: /docs/concepts/marketplace
+next:
+  title: Sources
+  href: /docs/concepts/sources
+---
+
+**Schedules** is the org-wide view of timed work — not just workflow crons, but also projected task runs and training jobs.
+
+## Three kinds of scheduled work
+
+| Kind | Color (in UI) | What it represents |
+|------|---------------|-------------------|
+| **Workflow** | Purple | Recurring cron schedules attached to workflows |
+| **Task** | Blue | Individual runs or lite tasks with planned start times |
+| **Job** | Green | Training jobs with progress |
+
+The dashboard aggregates these from `GET /api/schedules` and expands cron expressions into concrete occurrences inside your selected date range.
+
+## Where to manage crons
+
+- **Org view** — sidebar **ACTIVITY → Schedules** (`/schedules`) for calendar, Gantt, and list views
+- **Per workflow** — **Workflows → [workflow] → Schedules** to add or edit cron expressions for that workflow only
+
+When a cron fires, execution appears in **Runs**.
+
+## Views
+
+- **Calendar** — month grid of occurrences
+- **Gantt** — timeline across the selected window
+- **List** — sortable table with next/last run timestamps
+
+Filter by workflow, kind, or date range. Refresh pulls the latest projection from the API.
+
+## Next steps
+
+- [Manage schedules](/docs/guides/how-to/schedules)
+- [Build and run workflows](/docs/guides/how-to/workflows)

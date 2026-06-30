@@ -1,0 +1,126 @@
+---
+title: API quickstart
+description: Make your first authenticated requests to the Gravitre REST API.
+audience: public
+depth: deep
+tier: all
+status: published
+category: API Reference
+readTime: 12 min
+prev:
+  title: API overview
+  href: /docs/api
+next:
+  title: API authentication
+  href: /docs/api/authentication
+---
+
+Gravitre exposes a REST API at **`https://gravitre.app/api`**. Browser sessions and API keys use the same routes; keys are required for server-to-server automation.
+
+## 1. Create an API key
+
+1. **Settings → API Keys → Create key**
+2. Label the key (for example `ci-deploy` or `reporting`)
+3. Copy the secret **once** — it cannot be retrieved later
+4. Store in your secret manager; rotate on offboarding
+
+See [API authentication](/docs/api/authentication) for Bearer header format and scoping notes.
+
+## 2. Verify access
+
+```bash
+curl -s "https://gravitre.app/api/workflows" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+A `403` with "Organization context required" usually means the key lacks org membership — confirm the user who created the key belongs to the target org.
+
+## 3. List and execute a workflow
+
+```bash
+# List workflows
+curl -s "https://gravitre.app/api/workflows" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Execute (requires active version in current environment)
+curl -s -X POST "https://gravitre.app/api/workflows/execute" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflowId": "WORKFLOW_UUID",
+    "parameters": {}
+  }'
+```
+
+Response includes a run ID when execution starts or queues for approval.
+
+## 4. Poll run status
+
+```bash
+curl -s "https://gravitre.app/api/runs/RUN_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+List with filters:
+
+```bash
+curl -s "https://gravitre.app/api/runs?status=failed&limit=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 5. Connectors and sync
+
+```bash
+curl -s "https://gravitre.app/api/connectors" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/connectors/CONNECTOR_ID/sync" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 6. Operator action plan
+
+```bash
+curl -s -X POST "https://gravitre.app/api/operator/action-plan" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operatorGoal": "Summarize connector errors",
+    "primaryContext": {"type": "connector", "id": "CONNECTOR_UUID"},
+    "relatedContexts": []
+  }'
+```
+
+## 7. Webhooks (outbound)
+
+Configure under **Settings → Webhooks**. Gravitre POSTs signed payloads when runs complete or approvals are needed. See [Webhooks](/docs/api/webhooks).
+
+## Environment header
+
+Many routes respect the active org **environment** (staging vs production). When calling from automation, pass the environment your org uses for API execution — details in [OpenAPI](/docs/api/openapi.json) parameter docs.
+
+## Error handling
+
+| HTTP code | Meaning |
+|-----------|---------|
+| `401` | Invalid or missing Bearer token |
+| `403` | Missing org context or insufficient role |
+| `404` | Resource not in org or environment |
+| `409` | No active workflow version, concurrency conflict |
+| `429` | Rate limited — backoff and retry |
+
+## Discover all endpoints
+
+- Interactive: [Swagger UI](/docs/api/swagger)
+- Machine-readable: [openapi.json](/docs/api/openapi.json) (internal admin routes redacted)
+
+<Callout title="No official SDK yet">
+Use `curl`, `fetch`, or your HTTP client of choice. Official Node/Python SDKs are not published today.
+</Callout>
+
+## Next steps
+
+- [Monitor Runs](/docs/guides/how-to/runs) — retry, cancel, rollback APIs
+- [Webhooks](/docs/api/webhooks)
+- [Manage settings](/docs/guides/how-to/settings) — API keys and org security

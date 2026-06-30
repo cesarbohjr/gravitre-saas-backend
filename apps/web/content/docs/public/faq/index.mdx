@@ -1,0 +1,157 @@
+---
+title: Frequently asked questions
+description: Common questions about Gravitre features, billing, and integrations.
+audience: public
+depth: high
+tier: all
+status: published
+category: FAQ
+readTime: 10 min
+prev:
+  title: Webhooks
+  href: /docs/api/webhooks
+---
+
+## Getting started
+
+### Where do I start after sign-up?
+
+Follow the [Quickstart](/docs/getting-started/quickstart), then connect one [Connector](/docs/guides/how-to/connectors) and run a [workflow](/docs/guides/how-to/workflows) or [AI Operator](/docs/guides/how-to/ai-operator) task.
+
+### What happened to Agent Swarm and Model Registry?
+
+They were renamed in the product UI to **Multi-Agent Run** and **AI Models**. Routes like `/agents/swarm` are unchanged.
+
+### Should I use Runs or Tasks?
+
+Use **Runs** for workflow execution history. The **Tasks** page is legacy assignment UI — prefer Runs for automation audit trails.
+
+## Marketplace
+
+### How do I install a workflow template?
+
+Open [Install from the Marketplace](/docs/guides/how-to/marketplace), browse the catalog, connect required Connectors, then click **Install**.
+
+### Can I share assets only inside my company?
+
+Yes. Publish to **Your organization** and use the org publish queue — see [Publish Marketplace assets](/docs/guides/how-to/marketplace-publish).
+
+## Schedules
+
+### Where do I see upcoming cron runs?
+
+Open **ACTIVITY → Schedules** for the org calendar, or a single workflow's **Schedules** tab. See [Manage schedules](/docs/guides/how-to/schedules).
+
+### What's the difference between Schedules and Runs?
+
+**Schedules** shows what is planned next (including projected cron occurrences). **Runs** shows execution history and outcomes after jobs start.
+
+## Sources and training
+
+### What's the difference between Sources and Connectors?
+
+**Connectors** act on SaaS apps (OAuth). **Sources** connect databases and warehouses for queries and sync. See [Sources overview](/docs/concepts/sources).
+
+### Where do I fine-tune an agent?
+
+Use the **Training Hub** (`/training`) for datasets, jobs, and custom instructions. See [Use the Training Hub](/docs/guides/how-to/training).
+
+### What is AI Models vs Training Hub?
+
+**Training Hub** is for agent-focused fine-tunes and instructions. **AI Models** is the full production registry with deploy and predict APIs — requires **Command** plan. See [AI Models overview](/docs/concepts/ai-models).
+
+## Assistant and Search
+
+### What's the difference between Assistant and AI Operator?
+
+**Assistant** (`/assistant`) is multi-turn chat for Q&A and light tasks. **AI Operator** (`/operator`) assigns and monitors durable work with explicit plans. See [Assistant](/docs/concepts/assistant) and [AI Operator](/docs/guides/how-to/ai-operator).
+
+### Where is Search in the app?
+
+Sidebar **Search** opens `/chat` — unified lookup, not a chat assistant. See [Search your org](/docs/guides/how-to/search).
+
+## Assignments and Goals
+
+### Assignments vs Runs?
+
+**Assignments** track delegated tasks with owners and due dates. **Runs** are workflow execution logs. See [Assignments](/docs/concepts/assignments).
+
+### How do Goals become workflows?
+
+Generate a plan on a goal, review connectors and approvals, then create or export a workflow. See [Define and track goals](/docs/guides/how-to/goals).
+
+## Insights
+
+### Metrics vs History?
+
+**Metrics** shows trends and dashboards. **History** (`/audit`) shows individual audit events. See [Metrics](/docs/concepts/metrics) and [History](/docs/concepts/history).
+
+### What are failure alerts?
+
+**Failure predictions** (`/workflows/failure-predictions`) flag workflows at elevated failure risk. See [Failure alerts](/docs/guides/how-to/failure-alerts).
+
+## Lite and Enterprise
+
+### What is Gravitre Lite?
+
+A reduced console at `/lite` for Lite seat users. Allocate seats under **Settings → Lite Seats**. See [Gravitre Lite](/docs/concepts/gravitre-lite).
+
+### Where are Enterprise controls?
+
+**Settings → Enterprise** — integration health, data residency, white label, cost, SIEM export. See [Configure Enterprise](/docs/guides/how-to/enterprise).
+
+### Settings vs Enterprise?
+
+**Settings** covers all plans (SSO, API keys, team, webhooks). **Enterprise** adds compliance and scale controls on Enterprise plan. See [Manage settings](/docs/guides/how-to/settings).
+
+## Execution and safety
+
+### Will Gravitre always execute actions I describe?
+
+Not without connected integrations and approvals where configured. Each run shows what was analyzed vs executed.
+
+### Where do approvals appear?
+
+**ACTIVITY → Approvals** and in run detail when a step requires human confirmation.
+
+## Plans and billing
+
+### What plan includes Meson?
+
+**Control** and above. See [Build with Meson](/docs/guides/how-to/meson).
+
+### What plan includes Multi-Agent Run?
+
+**Command** and above. See [Multi-Agent Run](/docs/guides/how-to/multi-agent-run).
+
+### How do I upgrade after trial expiry?
+
+**Settings → Billing** or the upgrade modal → Payment Element checkout. See [Plans and checkout](/docs/billing/plans-and-checkout).
+
+## API
+
+### Is there an official SDK?
+
+Not yet. Use REST with [API quickstart](/docs/api/quickstart) and [OpenAPI](/docs/api/openapi.json).
+
+### What is the API base URL?
+
+`https://gravitre.app/api` — not `api.gravitre.app/v1`.
+
+## Integrations
+
+### Which connectors have setup guides?
+
+Production-ready vendors listed on [Connect integrations](/docs/guides/how-to/connectors#production-ready-integration-guides).
+
+### Where is Partner Connections?
+
+**Settings → Federation** (`/settings/federation`) in the app; docs call this **Partner Connections**. Requires **Control** plan and admin role. Covers partnerships, cross-org handoffs, read-only connector grants, and delegated tasks. See [overview](/docs/concepts/partner-connections) and [guide](/docs/guides/how-to/partner-connections).
+
+### Can partners write to my CRM via connector grants?
+
+No — federated **connector grants** allow **read-only** actions only (list, get, search patterns). Writes stay inside each org's own connectors and approval policy. Grants expire (max 7 days) and are revocable.
+
+## Support
+
+Contact [support](/contact) or email support@gravitre.app.

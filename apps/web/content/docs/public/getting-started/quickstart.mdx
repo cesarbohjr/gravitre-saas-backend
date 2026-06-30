@@ -1,0 +1,139 @@
+---
+title: Quickstart
+description: Get up and running with Gravitre in under 10 minutes — create your organization, connect a tool, and run your first workflow.
+audience: public
+depth: high
+tier: all
+status: published
+category: Getting Started
+readTime: 12 min
+next:
+  title: Introduction
+  href: /docs/concepts/introduction
+---
+
+This guide walks a new admin from sign-up through the first successful **Run**. Expect about 10–15 minutes if you already have credentials for one external tool (HubSpot, Salesforce, GitHub, etc.).
+
+## Before you start
+
+| Requirement | Why |
+|-------------|-----|
+| Org admin or owner role | Connectors and billing live under Settings |
+| One SaaS account to connect | OAuth or API key for your first Connector |
+| Modern browser | Chrome, Edge, Firefox, or Safari (latest) |
+
+Optional but recommended: create **Environments** for staging vs production before publishing schedules.
+
+## 1. Create your account
+
+1. Sign up at [gravitre.app](https://gravitre.app)
+2. Verify your email
+3. Complete onboarding — role, team size, and first goal help tailor suggestions
+
+<Callout title="Trial access">
+New organizations start on a trial. When the trial ends, upgrade from **Settings → Billing** to keep using the app. Usage meters (AI credits, workflow runs) appear on the billing status API and in Settings.
+</Callout>
+
+## 2. Set up Environments
+
+1. Open **Settings → Environments** (`/environments`)
+2. Confirm default environments (for example **staging** and **production**)
+3. Note which environment is active in the top bar — workflows and Runs are scoped to it
+
+Use **staging** for dry-runs and template testing; switch to **production** only when connectors and approvals are ready. See [Environments](/docs/concepts/environments).
+
+## 3. Connect your first Connector
+
+1. Sidebar → **BUILD → Connectors** (`/connectors`)
+2. Pick a vendor (HubSpot is a common first choice)
+3. Click **Connect** and complete OAuth or paste API credentials
+4. Wait until status shows **Connected** — not **Pending** or **Error**
+
+<Callout title="Execution depends on your setup">
+Connector actions run only when an integration is linked and healthy. Each Run shows what was **analyzed** vs **executed** — skipped steps usually mean a missing Connector or approval gate.
+</Callout>
+
+Vendor-specific steps: [HubSpot](/docs/integrations/hubspot), [Salesforce](/docs/integrations/salesforce), [GitHub](/docs/integrations/github), or the full list on [Connect integrations](/docs/guides/how-to/connectors#production-ready-integration-guides).
+
+### Verify the connection
+
+- Open the Connector detail page — sync timestamp should update after first sync
+- Optional: trigger manual sync via UI or `POST /api/connectors/{id}/sync`
+
+## 4. Run your first automation
+
+Choose **one** path below. Most teams try the AI Operator first, then save work as a workflow.
+
+### Option A — AI Operator (fastest)
+
+1. Sidebar → **WORK → AI Operator** (`/operator`)
+2. Enter a concrete instruction, for example:
+
+```text
+List my three most recent HubSpot deals and summarize next steps for each.
+```
+
+3. Review the **action plan** — steps, suggested connectors, approval badges
+4. Approve steps that require human confirmation
+5. Read the run summary and open linked **Runs** for the timeline
+
+See [Use the AI Operator](/docs/guides/how-to/ai-operator).
+
+### Option B — Workflow from template
+
+1. Sidebar → **BUILD → Marketplace** → **Browse catalog**
+2. Filter **Workflows**, pick a template that lists your Connector as **Ready to install**
+3. Click **Install**, then open the workflow under **Workflows**
+4. Click **Run now** (or **Dry run** if available)
+5. Open **Runs** when execution completes
+
+See [Install from the Marketplace](/docs/guides/how-to/marketplace).
+
+### Option C — Build a simple workflow
+
+1. **BUILD → Workflows → Create workflow**
+2. Add a **Schedule** or **Manual** trigger
+3. Add one **Connector** step (for example "List records")
+4. **Save**, **Publish** an active version, then **Run now**
+
+See [Build and run workflows](/docs/guides/how-to/workflows).
+
+## 5. Monitor Runs and Approvals
+
+| Surface | Route | Use for |
+|---------|-------|---------|
+| **Runs** | `/runs` | Step timeline, outputs, errors, retry |
+| **Approvals** | `/approvals` | Pending human confirmations |
+| **Metrics** | `/metrics` | Success rate trends (after a few runs) |
+
+If a run shows **waiting for approval**, open **Approvals** or approve from run detail. Writes to external systems typically happen only after approval when policy requires it.
+
+## 6. Invite a teammate (optional)
+
+1. **Settings → Organization** → invite by email
+2. Assign **Admin** for builders, **Member** for operators
+3. Share this quickstart link
+
+## Checklist — you are done when…
+
+- [ ] At least one Connector shows **Connected**
+- [ ] One Run reached **succeeded** (or failed with a clear, fixable error)
+- [ ] You know where **Runs** and **Approvals** live
+- [ ] Active **Environment** matches where you intend to run automation
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Plan shows "connect HubSpot" but step skipped | Connector not connected in active environment | Reconnect under **Connectors** |
+| Run stuck on approval | Policy requires owner/admin approval | **Approvals** queue |
+| 403 on API calls | Missing org context or wrong API key | **Settings → API keys**, include Bearer token |
+| Empty Marketplace install | Missing Connectors on install check | Connect prerequisites, rerun install check |
+| Workflow won't run | No active version published | Publish version in workflow editor |
+
+## Next steps
+
+- [Introduction to Gravitre](/docs/concepts/introduction) — full concept map
+- [Use the Assistant](/docs/guides/how-to/assistant) — chat-based org Q&A
+- [Monitor Runs](/docs/guides/how-to/runs) — filters, retry, debugging
+- [API quickstart](/docs/api/quickstart) — automate from your stack

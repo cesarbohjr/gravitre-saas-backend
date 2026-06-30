@@ -137,7 +137,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
         <Button variant="ghost" size="sm" className="-ml-2 h-8" asChild>
           <Link href="/models">
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Model Registry
+            AI Models
           </Link>
         </Button>
 

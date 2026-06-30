@@ -1,0 +1,67 @@
+---
+title: Use Gravitre Lite
+description: Navigate Lite routes, use assistant and workflows, and understand seat limits.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Review history and audit logs
+  href: /docs/guides/how-to/history
+next:
+  title: Configure Enterprise
+  href: /docs/guides/how-to/enterprise
+---
+
+Users with a **Lite seat** land on `/lite` — a focused Gravitre experience.
+
+## Access Lite
+
+1. Sign in with an account assigned a Lite seat
+2. You are routed to `/lite` (or `/lite/dashboard`)
+3. Use the Lite sidebar — fewer sections than the full console
+
+Org admins assign Lite seats under **Settings → Gravitre Lite seats**.
+
+## Lite home
+
+The Lite dashboard typically includes:
+
+- Quick access to **Assistant**-style chat scoped to Lite permissions
+- Shortcuts to approved **Workflows**
+- Recent **Runs** for automation you can trigger or view
+
+## Run a Lite workflow
+
+1. Open **Workflows** under Lite
+2. Select an enabled workflow
+3. Provide required inputs
+4. Submit — track status on the run detail view
+
+Write actions still respect connector connection state and org approvals.
+
+## Upgrade path
+
+Need **Goals**, **Multi-Agent Run**, **Enterprise**, or full **Metrics**?
+
+- Ask your org admin to change seat type or plan
+- See [Plans and checkout](/docs/billing/plans-and-checkout)
+
+## API
+
+Lite-scoped endpoints live under `/api/lite/*`. They mirror subsets of full APIs — see [OpenAPI](/docs/api/openapi.json) tags for `lite`.
+
+Example (pattern varies by deployment):
+
+```bash
+curl -s "https://gravitre.app/api/lite/dashboard" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Related
+
+- [Gravitre Lite overview](/docs/concepts/gravitre-lite)
+- [Use the Assistant](/docs/guides/how-to/assistant)
+- [Settings](/docs/guides/how-to/settings)

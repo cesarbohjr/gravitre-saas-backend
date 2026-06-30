@@ -1,0 +1,45 @@
+---
+title: API overview
+description: REST API base URL, OpenAPI specification, and developer resources.
+audience: public
+depth: deep
+tier: all
+status: published
+category: API Reference
+readTime: 5 min
+next:
+  title: API quickstart
+  href: /docs/api/quickstart
+---
+
+Gravitre exposes a REST API on the same origin as the web app.
+
+## Base URL
+
+```text
+https://gravitre.app/api
+```
+
+During local development, the Next.js dev server proxies `/api/*` to your FastAPI backend.
+
+## OpenAPI specification
+
+Download the machine-readable spec (internal admin routes redacted):
+
+- [openapi.json](/docs/api/openapi.json)
+
+Interactive reference (Swagger UI):
+
+- [Swagger UI](/docs/api/swagger)
+
+## Authentication
+
+All authenticated endpoints require a Bearer API key or valid session. See [API authentication](/docs/api/authentication).
+
+## Versioning
+
+The API does not use a `/v1` prefix. Breaking changes are communicated via changelog and release notes.
+
+## Rate limits
+
+Contact support for current rate-limit tiers for your plan. Do not rely on undocumented limits in client code without confirming with Gravitre.

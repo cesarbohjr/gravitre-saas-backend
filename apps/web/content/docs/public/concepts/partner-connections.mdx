@@ -1,0 +1,109 @@
+---
+title: Partner Connections
+description: B2B partnerships for cross-org handoffs, shared connector access, and delegated tasks with mutual consent.
+audience: public
+depth: high
+tier: control
+status: published
+category: Core Concepts
+readTime: 12 min
+prev:
+  title: Settings
+  href: /docs/concepts/settings
+next:
+  title: Plans and checkout
+  href: /docs/billing/plans-and-checkout
+
+**Partner Connections** (`/settings/federation`) lets two Gravitre organizations collaborate under **mutual consent**. The UI may still label this area **Federation & B2B**; public docs use **Partner Connections** (the settings route and API paths keep the `federation` name).
+
+Requires **Control** plan or above (`api_full_access` feature). **Owner** or **Admin** role required to invite partners and approve cross-org exchanges.
+
+## Why Partner Connections exist
+
+Use Partner Connections when work spans company boundaries — prime/subcontractor models, agency/client ops, or shared integration access without merging orgs.
+
+| Without Partner Connections | With Partner Connections |
+|----------------------------|---------------------------|
+| Duplicate connectors in each org | Time-boxed **shared connector access** (read-only actions) |
+| Manual email handoffs | **Cross-org handoffs** with audit trail |
+| Informal task tracking | **Delegated tasks** with status sync |
+
+Each exchange is consent-gated — neither org can silently read the other's data.
+
+## Trust model
+
+```text
+Partnership invite → both orgs accept → active partnership
+    → per-resource consent (handoff / grant / delegated task)
+    → audit events on every state change
+    → either org can revoke partnership (stops future exchanges)
+```
+
+Cross-org flows **never** bypass:
+
+- Active **partnership** status
+- Receiver **accept** on each handoff, grant, or delegated task
+- Org **RBAC** (admin actions on federation APIs)
+
+## Four capabilities
+
+| Capability | Doc name | What crosses org boundary |
+|------------|----------|---------------------------|
+| **Partner links** | Partnerships | Trust relationship between org UUIDs |
+| **Handoffs** | Cross-org handoffs | Agent briefing, parameters, source output |
+| **Shared connector access** | Connector grants | Read-only connector tool actions (time-limited) |
+| **Delegated tasks** | Delegated tasks | Title, instructions, payload, completion result |
+
+### Partnerships
+
+States include **`pending_partner`** (awaiting counterparty consent) and **`active`**. Invitations use the partner organization's **UUID** — obtain from your partner's admin.
+
+### Cross-org handoffs
+
+Sender org packages agent context (`briefing`, `parameters`, optional `sourceOutput`) for a receiver org. Receiver must **accept** before work continues. Statuses include **`pending_receiver`** and **`accepted`**.
+
+Distinct from intra-org agent handoffs inside a single tenant.
+
+### Shared connector access (connector grants)
+
+Grantor org proposes access to a **specific connector** with an explicit list of **read-only** allowed actions. Grantee org accepts. Grants expire (default 24h, max 168h) and can be **revoked** early.
+
+Write actions (create, update, delete, send, etc.) are **not** permitted on federated grants — propose read/list/search style actions only.
+
+### Delegated tasks
+
+Delegator org assigns structured work (`title`, `instructions`, `payload`) to a delegate org. Delegate accepts → may **start** → **complete** or **fail**; delegator may **cancel**. Optional `spawnAgentJob` on accept runs automation in the delegate org.
+
+## Partner Connections vs related features
+
+| Feature | Scope | Route |
+|---------|-------|-------|
+| **Partner Connections** | Cross-org B2B | `/settings/federation` |
+| **Assignments** | Single-org task tracking | `/assignments` |
+| **Partner connectors (Marketplace)** | Federated connector catalog entries | `/marketplace/connectors` |
+| **Connectors** | Your org's integrations | `/connectors` |
+
+Marketplace **Partner connectors** install federated vendor entries; Partner Connections governs **which partner org** may invoke granted actions.
+
+## Audit and History
+
+Federation actions write audit events such as:
+
+- `federation.partnership.invited` / `.accepted` / `.revoked`
+- `federation.handoff.sent` / `.accepted` / `.completed`
+- `federation.grant.proposed` / `.accepted` / `.revoked`
+- `federation.task.delegated` / `.completed`
+
+Review in **History** (`/audit`) for compliance investigations.
+
+## API surface
+
+All routes under **`/api/federation/*`** require org context and Control-tier **`api_full_access`**. Admin role required for mutating routes.
+
+See [OpenAPI](/docs/api/openapi.json) tag `federation` and [Use Partner Connections](/docs/guides/how-to/partner-connections).
+
+## Next steps
+
+- [Use Partner Connections](/docs/guides/how-to/partner-connections)
+- [Manage settings](/docs/guides/how-to/settings)
+- [Connect integrations](/docs/guides/how-to/connectors)

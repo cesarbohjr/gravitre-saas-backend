@@ -1,0 +1,44 @@
+---
+title: Sources
+description: Connect databases and warehouses for queries, sync, and knowledge used by agents and workflows.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 4 min
+prev:
+  title: Schedules
+  href: /docs/concepts/schedules
+next:
+  title: Training Hub
+  href: /docs/concepts/training
+---
+
+**Sources** are data connections — SQL databases, document stores, and warehouses — that Gravitre can query, sync, and use for search and automation context.
+
+## Sources vs Connectors
+
+| | **Sources** | **Connectors** |
+|---|-------------|----------------|
+| **Purpose** | Read/query data, schema exploration, sync into knowledge | Act on external apps (create records, send messages) |
+| **Examples** | PostgreSQL, MySQL, MongoDB, Snowflake | Salesforce, HubSpot, Slack |
+| **Nav** | BUILD → **Sources** | BUILD → **Connectors** |
+
+Many workflows use both: a Connector writes to a CRM while a Source supplies analytics or document context.
+
+## What Sources enable
+
+- **Schema browsing** — inspect tables and columns before building automations
+- **Ad hoc query** — test SQL or API queries from the Sources UI
+- **Sync** — refresh data on a schedule; track last sync and health
+- **Downstream use** — workflows, operators, and RAG ingest can reference connected Sources
+
+## Environments
+
+Sources are scoped to your org and **Environment** (production vs staging). Use non-production Environments when testing new connections.
+
+## Next steps
+
+- [Connect and sync Sources](/docs/guides/how-to/sources)
+- [Connect integrations](/docs/guides/how-to/connectors)

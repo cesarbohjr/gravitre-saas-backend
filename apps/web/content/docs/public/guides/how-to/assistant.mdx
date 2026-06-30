@@ -1,0 +1,114 @@
+---
+title: Use the Assistant
+description: Chat with org-aware AI, pick modes and models, manage conversations, and use connector tools safely.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 16 min
+prev:
+  title: Use the AI Operator
+  href: /docs/guides/how-to/ai-operator
+next:
+  title: Search your org
+  href: /docs/guides/how-to/search
+---
+
+Open **WORK → Assistant** (`/assistant`) for conversational help across agents, workflows, connectors, and org data.
+
+## Start a conversation
+
+1. Type a question in the composer at the bottom
+2. Press **Send** or `Enter` (use `Shift+Enter` for a new line)
+3. Watch the reply stream in — tool activity appears as chips above the message
+4. Use **Stop** to cancel an in-flight generation
+
+Welcome quick actions suggest starter questions about **Agents**, **Workflows**, and **Connectors**.
+
+## Choose an intelligence mode
+
+| Mode | Use when |
+|------|----------|
+| **Fast** | Quick factual questions, low latency |
+| **Standard** | Balanced everyday help |
+| **Reasoning** | Multi-step analysis, tradeoffs, planning |
+| **Agent** | Tool use against connected integrations when configured |
+
+Modes change how deeply the Assistant thinks before responding — not every mode invokes connector actions.
+
+## Choose a model
+
+Open the model selector next to the mode control:
+
+- **Auto (recommended)** — platform routing
+- **Featured models** — GPT-5.5, Claude Sonnet, Gemini Pro
+- **Provider lists** — additional OpenAI, Anthropic, and Google models
+
+Model availability depends on your org configuration and provider keys.
+
+## When to prefer Assistant over Operator
+
+| Situation | Use |
+|-----------|-----|
+| Quick factual lookup | **Assistant** |
+| Multi-step assigned job with tracked plan | **AI Operator** |
+| Find a workflow by name | **Search** first, then Assistant |
+| Execute connector writes | **Operator** or **Workflows** with Approvals |
+
+## Conversation sidebar
+
+- **New chat** — fresh thread without losing history access
+- **Past conversations** — resume prior threads; titles generate from first message
+- Collapse the sidebar on smaller screens with the panel toggle
+
+Messages persist locally up to a capped count; server-side **conversations** API stores durable history when enabled for your org.
+
+## Org context
+
+The **org context** pill shows what scope the Assistant uses (org name, environment hints). Click to review before asking sensitive questions.
+
+## Connector actions in chat
+
+When integrations are connected, the Assistant may show:
+
+- **Tool chips** — named tools invoked (read-only vs write)
+- **Connector action cards** — proposed actions requiring confirmation
+- **Pending auth** prompts — link to connect a missing Connector
+
+<Callout title="Strict execution policy">
+Connector actions run only when integrations are linked and approved. The UI labels what was verified per turn — do not assume silent writes occurred.
+</Callout>
+
+## Daily briefing
+
+On load, the Assistant may show a **daily briefing** with bullets (errors, successes, warnings) linking to relevant pages. Dismiss or follow links to triage.
+
+## Keyboard shortcuts
+
+Work-page shortcuts may focus the composer — see in-app hint (`Cmd/Ctrl+K` patterns vary by page).
+
+## API
+
+Streaming chat:
+
+```bash
+curl -s -N -X POST "https://gravitre.app/api/assistant/chat" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Summarize failed runs today"}]}'
+```
+
+Other endpoints:
+
+- `GET /api/assistant/daily-briefing`
+- `GET /api/assistant/org-context`
+- `GET /api/assistant/preferences`
+
+Browser clients use session auth; server integrations use API keys. See [OpenAPI](/docs/api/openapi.json) for request schemas and SSE response format.
+
+## Related
+
+- [Assistant overview](/docs/concepts/assistant)
+- [AI Operator](/docs/guides/how-to/ai-operator)
+- [Connect integrations](/docs/guides/how-to/connectors)

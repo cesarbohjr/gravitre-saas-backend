@@ -5,6 +5,7 @@
   "scripts": {
     "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --port 8000",
     "dev:web": "cd apps/web && pnpm dev",
+    "dev:internal-docs": "cd apps/internal-docs && pnpm dev",
     "dev:full": "node scripts/dev.mjs",
     "dev": "cd apps/web && pnpm dev",
     "hubspot:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-hubspot-app.ps1",

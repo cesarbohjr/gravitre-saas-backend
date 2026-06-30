@@ -1,0 +1,127 @@
+---
+title: Enterprise
+description: Enterprise controls for integration health, data residency, white label, workforce analytics, cost, and SIEM export.
+audience: public
+depth: high
+tier: enterprise
+status: published
+category: Core Concepts
+readTime: 12 min
+prev:
+  title: Gravitre Lite
+  href: /docs/concepts/gravitre-lite
+next:
+  title: Settings
+  href: /docs/concepts/settings
+---
+
+**Enterprise** settings (`/settings/enterprise`) extend Gravitre for regulated and large organizations. Access requires an **Enterprise plan** and **Owner** or **Admin** role (platform admins may also access in support scenarios).
+
+## Who uses Enterprise settings
+
+| Persona | Typical tabs |
+|---------|----------------|
+| **IT / security admin** | Data residency, Security log export, HIPAA |
+| **RevOps / integration lead** | Integration health, Knowledge sync |
+| **Finance / ops** | Cost attribution, autonomous run budgets |
+| **Brand / IT** | White label |
+| **Leadership** | Workforce analytics |
+
+## Enterprise vs standard Settings
+
+| | **Settings** (`/settings`) | **Enterprise** (`/settings/enterprise`) |
+|---|---------------------------|------------------------------------------|
+| **Scope** | All plans — org, SSO, API keys, billing usage | Enterprise plan — compliance and scale controls |
+| **Audience** | Owners/admins for most sections | Owners/admins only |
+| **Docs** | [Settings overview](/docs/concepts/settings) | This page |
+
+Standard **History** (`/audit`) covers org audit events for all tiers. Enterprise adds **transparency logs**, **SOC 2 export**, and continuous **SIEM** streaming.
+
+## Enterprise tabs
+
+The UI uses tab labels below. Public docs use glossary names where they differ.
+
+| Tab (UI) | Doc name | Purpose |
+|----------|----------|---------|
+| Command Center | **Integration health** | Composite health score, risks, snapshots, integration suggestions |
+| Knowledge Sync | **Knowledge sync** | Connector knowledge ingest jobs and manual sync |
+| Data Residency | **Data residency** | Storage region (`us` / `eu`) and execution region |
+| White Label | **White label** | Logo, colors, custom domain, DNS verification |
+| Workforce | **Workforce analytics** | Agent job counts and handoff activity (not hours-saved ROI) |
+| Cost | **Cost attribution** | Spend by agent/department; autonomous run budgets |
+| SIEM Export | **Security log export** | Stream signed audit events to your SIEM |
+
+Deep links: `/settings/enterprise?tab=cs|knowledge|region|branding|workforce|cost|siem`
+
+## Integration health (Command Center)
+
+A composite **health score** (grade + dimensions + risks) summarizes connector posture over a lookback window (7–90 days). **Snapshots** persist scores for trend charts. **Integration suggestions** analyze audit tool usage and recommend connectors or workflow improvements — scan, dismiss, or apply per suggestion.
+
+Pair with [Connectors](/docs/guides/how-to/connectors) troubleshooting and [Metrics](/docs/concepts/metrics) for operational trends.
+
+## Knowledge sync
+
+Manages **connector knowledge ingest** — jobs that feed RAG, Search, and **Org Learning**. Admins trigger manual sync and monitor job status. Upstream systems and scopes depend on your Enterprise contract.
+
+## Data residency
+
+Organizations select where data is stored:
+
+- **Data region** — `us` or `eu` (storage prefix derived per org)
+- **Execution region** — where workflow jobs run; includes queue availability signal
+
+Changing region after go-live may require migration — coordinate with Gravitre support.
+
+## White label
+
+Customize customer-facing Gravitre:
+
+- Logo URL, primary color, email from name
+- **Custom domain** with DNS verification token (CNAME instructions via API)
+- Optional hide "Powered by Gravitre"
+
+Verified domains serve the app on your hostname subject to TLS provisioning.
+
+## Workforce analytics
+
+Operational view of **agent jobs** (status, kind) and **handoff** audit events — adoption and workload signals, not finance-grade ROI. Use alongside [Metrics](/docs/concepts/metrics) for reliability.
+
+## Cost attribution
+
+Monthly **usage_events** roll up spend by category (agents, departments in metadata). **Autonomous run budgets** cap daily actions, tokens, or USD spend for Operator/agent automation org-wide or per agent.
+
+Distinct from **Settings → Billing usage**, which tracks plan outputs and overage on standard tiers.
+
+## Security log export (SIEM)
+
+Configure HTTPS endpoint + signing secret. Gravitre dispatches structured audit events (including test events). Related:
+
+- **Transparency logs** — AI decision trails (`GET /api/enterprise/transparency-logs`)
+- **History export** — point-in-time org audit ([History](/docs/concepts/history))
+
+## Compliance features
+
+| Feature | API / action |
+|---------|----------------|
+| **SOC 2 evidence export** | `GET /api/enterprise/compliance/soc2-export?from=&to=` |
+| **HIPAA / BAA** | `GET /api/enterprise/hipaa`, `POST /api/enterprise/hipaa/accept-baa`, `PUT /api/enterprise/hipaa` |
+| **Connector PHI flag** | `PUT /api/enterprise/connectors/{id}/phi` |
+| **Transparency export** | `GET /api/enterprise/transparency-logs/export` |
+
+HIPAA mode and BAA acceptance require admin role. SOC 2 and transparency exports require **audit_logs** plan feature.
+
+## Enterprise vs other surfaces
+
+| Question | Use |
+|----------|-----|
+| "Why did this run fail?" | **Runs**, not Enterprise |
+| "Are connectors healthy?" | **Integration health** + **Connectors** |
+| "What did admins change?" | **History** |
+| "Stream logs to Splunk?" | **Security log export** |
+| "Cap autonomous spend?" | **Cost → autonomous run budgets** |
+
+## Next steps
+
+- [Configure Enterprise](/docs/guides/how-to/enterprise) — step-by-step for each tab
+- [Security](/docs/concepts/security)
+- [Manage settings](/docs/guides/how-to/settings)

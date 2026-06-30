@@ -1,0 +1,54 @@
+---
+title: View metrics
+description: Monitor run success, workflow throughput, and integration health from the Metrics dashboard.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Manage approvals
+  href: /docs/guides/how-to/approvals
+next:
+  title: Review history and audit logs
+  href: /docs/guides/how-to/history
+---
+
+Open **INSIGHTS → Metrics** (`/metrics`) for org-wide operational dashboards.
+
+## Open the dashboard
+
+1. Navigate to **Metrics** from the sidebar
+2. Select a **time range** — preset or custom when available
+3. Scan summary cards for run outcomes and active issues
+4. Drill into charts for workflows, agents, or connectors
+
+## Interpret common signals
+
+| Signal | Likely meaning | Action |
+|--------|----------------|--------|
+| Run failure spike | Workflow or connector regression | Open **Runs**, filter failed; check **Failure alerts** |
+| Flat run volume | Schedules paused or workflows unpublished | Review **Schedules** and workflow publish state |
+| Connector error count | Token expiry or API change | **Connectors** → reconnect or rotate credentials |
+| Agent errors | Prompt or tool misconfiguration | **Agents** → review logs linked from failed Runs |
+
+## Drill down
+
+Most widgets link to filtered views:
+
+- Failed runs → **Runs** list with status filter
+- Workflow name → workflow editor or detail
+- Connector name → integration settings
+
+Use **Search** when you know a specific entity name.
+
+## Export and API
+
+Dashboard data may be available via metrics or analytics API routes documented in [OpenAPI](/docs/api/openapi.json). Enterprise orgs can combine Metrics with **Cost attribution** under [Enterprise](/docs/concepts/enterprise).
+
+## Related
+
+- [Metrics overview](/docs/concepts/metrics)
+- [Monitor Runs](/docs/guides/how-to/runs)
+- [Failure alerts](/docs/guides/how-to/failure-alerts)

@@ -1,0 +1,83 @@
+---
+title: Connect Sources
+description: Add SQL, NoSQL, and warehouse Sources, test connections, sync data, and use them in workflows.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Connect integrations
+  href: /docs/guides/how-to/connectors
+next:
+  title: Install from the Marketplace
+  href: /docs/guides/how-to/marketplace
+---
+
+**Sources** (`/sources`) connect databases and warehouses so Gravitre can query data and keep knowledge fresh.
+
+## Add a Source
+
+1. Sidebar → **BUILD → Sources**
+2. Click **Add source**
+3. Choose a type (PostgreSQL, MySQL, MongoDB, Snowflake, etc.)
+4. Enter connection details and select **Environment**
+5. Run **Test connection** before saving
+
+Credentials are stored encrypted. Rotate credentials in the Source settings if they change.
+
+## Verify health
+
+Each Source card shows:
+
+- **Status** — connected, syncing, error, or disconnected
+- **Last sync** — relative time since the last successful sync
+- **Usage** — how many workflows or operators reference the Source
+
+Open a Source detail page for schema tables, sync history, and query tools.
+
+## Sync data
+
+Trigger **Sync now** from the Source detail page or API. Scheduled sync depends on your workflow and knowledge configuration.
+
+After sync, data may feed **Search** (`/chat`) and agent retrieval when RAG ingest is configured for that Source.
+
+## Run a test query
+
+From Source detail, use the query panel to run read-only queries against the connected schema. Validate results before embedding queries in workflows.
+
+## Use in automation
+
+- Reference Source-backed steps in **Workflows**
+- Give **Agents** tools that read from connected Sources
+- Pair with **Connectors** when automation both reads warehouse data and writes to SaaS apps
+
+<Callout title="Sources vs Connectors">
+Connectors **act** on apps (OAuth integrations). Sources **connect data stores**. See [Connect integrations](/docs/guides/how-to/connectors) for CRM and messaging setup.
+</Callout>
+
+## API
+
+```bash
+# List sources
+curl -s "https://gravitre.app/api/sources" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Test connection (before create)
+curl -s -X POST "https://gravitre.app/api/sources/test" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "postgresql", "config": {}}'
+
+# Trigger sync
+curl -s -X POST "https://gravitre.app/api/sources/SOURCE_ID/sync" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+RAG-specific source APIs live under `/api/rag/sources` when using document ingest — see [OpenAPI](/docs/api/openapi.json).
+
+## Related
+
+- [Sources overview](/docs/concepts/sources)
+- [Manage agents](/docs/guides/how-to/agents)

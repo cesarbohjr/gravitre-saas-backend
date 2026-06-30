@@ -1,0 +1,48 @@
+---
+title: Metrics
+description: Operational dashboards for runs, workflows, agents, and org health signals.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 5 min
+prev:
+  title: Goals
+  href: /docs/concepts/goals
+next:
+  title: History and audit
+  href: /docs/concepts/history
+---
+
+**Metrics** (`/metrics`) aggregates operational signals — run success rates, workflow throughput, agent activity, and connector health summaries — for day-to-day monitoring.
+
+## What Metrics covers
+
+Typical panels and charts include:
+
+- **Run volume and outcomes** — success, failure, cancellation over time
+- **Workflow performance** — top workflows by executions or error rate
+- **Agent utilization** — invocations and outcomes where tracked
+- **Connector health** — sync errors and degraded integrations (summary view)
+- **Time ranges** — last 24h, 7d, 30d, custom where supported
+
+Exact widgets depend on your tier and connected data.
+
+## Metrics vs Enterprise cost attribution
+
+| | **Metrics** (`/metrics`) | **Enterprise → Cost** |
+|---|---------------------------|-------------------------|
+| **Audience** | All operators | Enterprise admins |
+| **Focus** | Operational health | Spend, budgets, attribution by team |
+
+Enterprise customers use both: Metrics for reliability, Cost tab for finance alignment.
+
+## Metrics vs History
+
+**Metrics** shows trends and aggregates. **History** (`/audit`) shows immutable event lines for compliance and investigation.
+
+## Next steps
+
+- [View metrics](/docs/guides/how-to/metrics)
+- [History and audit](/docs/concepts/history)

@@ -1,0 +1,51 @@
+---
+title: API authentication
+description: Bearer API keys, session cookies, and org context for REST requests.
+audience: public
+depth: deep
+tier: all
+status: published
+category: API Reference
+readTime: 6 min
+prev:
+  title: API quickstart
+  href: /docs/api/quickstart
+next:
+  title: Webhooks
+  href: /docs/api/webhooks
+---
+
+## Bearer API keys
+
+Include your key on every server-side request:
+
+```http
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+Create and revoke keys in **Settings → API Keys**.
+
+## Org context
+
+Most endpoints infer organization from the key or session. Multi-org users should ensure the key was created in the intended org.
+
+## Browser session
+
+The web app sends session cookies automatically. Third-party sites must not embed Gravitre session tokens.
+
+## SSO users
+
+Employees signing in via SSO receive the same API access as local users, subject to role permissions.
+
+## Errors
+
+| Status | Meaning |
+|--------|---------|
+| `401` | Missing or invalid credentials |
+| `403` | Valid auth but insufficient role or plan tier |
+| `402` | Subscription required (trial expired or cancelled) |
+
+## SCIM tokens
+
+SCIM provisioning uses separate bearer tokens configured for Command+ plans. See [Authentication concepts](/docs/concepts/authentication).

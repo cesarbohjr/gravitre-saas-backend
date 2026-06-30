@@ -1,0 +1,371 @@
+---
+title: Partner Connections
+description: Link partner organizations, delegate tasks, share read-only connector access, and run consent-gated agent handoffs.
+audience: public
+depth: mid
+tier: control
+status: published
+category: How-to Guides
+readTime: 24 min
+prev:
+  title: Build with Meson
+  href: /docs/guides/how-to/meson
+next:
+  title: Org Learning
+  href: /docs/guides/how-to/org-learning
+---
+
+Open **Settings → Federation** (`/settings/federation`). The page title may show **Federation & B2B**; docs call this **Partner Connections**.
+
+Requires **Control** plan or above and **Owner** or **Admin** role for invites and approvals.
+
+<Callout title="Naming">
+URLs and API paths use `federation` (`/settings/federation`, `/api/federation/*`). User-facing docs use **Partner Connections**.
+</Callout>
+
+## Before you start
+
+| Requirement | Details |
+|-------------|---------|
+| **Plan** | Control or Command — federation APIs require `api_full_access` |
+| **Role** | Admin or Owner to invite, accept, propose grants, delegate tasks |
+| **Partner org ID** | Partner's Gravitre organization UUID (not slug or name) |
+| **Legal / policy** | Data-processing agreement between companies before sharing connector access |
+
+Obtain partner org UUID from the partner admin (**Settings → Organization** or your onboarding runbook).
+
+---
+
+## Understand the UI
+
+The Federation page has four areas:
+
+| Area | UI location | Purpose |
+|------|-------------|---------|
+| **Stats** | Hero cards | Active partners, pending invites, open handoffs |
+| **Partner organizations** | Left column | Invite, accept, reject, revoke partnerships |
+| **Handoffs** | Right tab | Cross-org agent handoffs |
+| **Connector grants** | Right tab | Shared read-only connector access |
+| **Delegated tasks** | Right tab | Cross-org assigned work |
+
+Until a partnership is **active**, handoff/grant/task buttons stay disabled.
+
+---
+
+## Step 1 — Establish a partnership
+
+Both organizations must consent before any B2B exchange.
+
+### Send an invitation (Org A)
+
+1. Open `/settings/federation`
+2. Click **Invite partner**
+3. Enter partner **organization UUID** (valid UUID format)
+4. Read consent terms — mutual acceptance, per-exchange consent, revocable grants
+5. Acknowledge and **Send invitation**
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/partnerships" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"partnerOrgId": "PARTNER_ORG_UUID"}'
+```
+
+Partnership status becomes **`pending_partner`** until the counterparty accepts.
+
+### Accept or decline (Org B)
+
+1. Partner admin opens **Federation**
+2. Yellow callout shows invitations **awaiting your consent**
+3. On the partner card: **Accept** or **Decline**
+4. On accept, status → **`active`**
+
+```bash
+# List partnerships
+curl -s "https://gravitre.app/api/federation/partnerships" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Accept
+curl -s -X POST "https://gravitre.app/api/federation/partnerships/PARTNERSHIP_ID/accept" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Reject
+curl -s -X POST "https://gravitre.app/api/federation/partnerships/PARTNERSHIP_ID/reject" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Revoke a partnership
+
+Either org can **Revoke** an active partnership — immediately blocks new handoffs, grants, and tasks (existing grants should be revoked separately).
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/partnerships/PARTNERSHIP_ID/revoke" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Partnership checklist**
+
+- [ ] Partner UUID verified out-of-band (not email alone)
+- [ ] Both admins accepted
+- [ ] Documented which connectors/actions are in scope
+- [ ] Revocation owner assigned on each side
+
+---
+
+## Step 2 — Cross-org handoffs
+
+Handoffs pass agent context from sender org to receiver org — briefing, parameters, optional prior step output.
+
+### Send a handoff (sender admin)
+
+1. Confirm partnership **active**
+2. **Handoffs** tab → **Send handoff**
+3. Select **receiver org** (active partner)
+4. Optional: **from agent**, **to agent**, message, briefing JSON
+5. Submit — status **`pending_receiver`**
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/handoffs" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receiverOrgId": "PARTNER_ORG_UUID",
+    "fromAgentId": "AGENT_UUID",
+    "toAgentId": "PARTNER_AGENT_UUID",
+    "message": "Please continue triage for incident INC-42",
+    "briefing": {"incidentId": "INC-42", "severity": "high"},
+    "parameters": {},
+    "sourceOutput": {"summary": "Initial analysis complete"}
+  }'
+```
+
+### Accept or reject (receiver admin)
+
+1. Open **Handoffs** tab — inbound items show in timeline
+2. **Accept** to allow partner agents to consume briefing
+3. **Decline** with optional reason
+
+```bash
+curl -s "https://gravitre.app/api/federation/handoffs?direction=inbound&status=pending_receiver" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/federation/handoffs/HANDOFF_ID/accept" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/federation/handoffs/HANDOFF_ID/reject" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Out of scope for our team"}'
+```
+
+### Complete a handoff
+
+Sender or receiver admin marks done when downstream work finishes:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/handoffs/HANDOFF_ID/complete" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Filter lists with `direction=all|inbound|outbound` and optional `status` query param.
+
+---
+
+## Step 3 — Shared connector access (connector grants)
+
+Allow a partner org to invoke **read-only** actions against **your** connector for a limited time.
+
+<Callout title="Read-only only">
+Federated grants reject write actions (create, update, delete, send, post, etc.). Use actions like list, get, or search patterns. Max expiry **168 hours** (7 days); default **24 hours**.
+</Callout>
+
+### Propose a grant (grantor admin)
+
+1. **Connector grants** tab → **Propose grant**
+2. Select **grantee org** (active partner)
+3. Choose **connector** from your org
+4. List **allowed actions** — read-only tool names (for example `hubspot.deals.list`)
+5. Optional label and expiry hours (1–168)
+6. Submit — status **`pending_grantee`**
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/connector-grants" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "granteeOrgId": "PARTNER_ORG_UUID",
+    "connectorId": "CONNECTOR_UUID",
+    "allowedActions": ["hubspot.deals.list", "hubspot.deals.get"],
+    "label": "QBR read access",
+    "expiresInHours": 48
+  }'
+```
+
+### Accept or reject (grantee admin)
+
+```bash
+curl -s "https://gravitre.app/api/federation/connector-grants" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/federation/connector-grants/GRANT_ID/accept" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+On accept, grantee may receive a short-lived **access token** in the API response — store securely; use only for federated tool invocation paths documented in OpenAPI.
+
+### Revoke early
+
+Either party can revoke:
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/connector-grants/GRANT_ID/revoke" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Expired grants transition to **`expired`** automatically.
+
+**Grant security checklist**
+
+- [ ] Minimum action list (not `"*"` or broad wildcards)
+- [ ] Shortest practical `expiresInHours`
+- [ ] Connector is healthy in grantor environment
+- [ ] Revoke after project end even if not expired
+
+---
+
+## Step 4 — Delegated tasks
+
+Prime/subcontractor pattern: delegator assigns work; delegate executes and reports back.
+
+### Delegate a task (delegator admin)
+
+1. **Delegated tasks** tab → **Delegate task**
+2. Select **delegate org**
+3. Enter **title**, **instructions**, optional JSON **payload**
+4. Optional: link **parent reference** (run ID, workflow ID), agent IDs
+5. Submit — status **`pending_delegate`**
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "delegateOrgId": "PARTNER_ORG_UUID",
+    "title": "Complete vendor security questionnaire",
+    "instructions": "Fill sections 1-3; do not submit until delegator reviews.",
+    "payload": {"questionnaireId": "vsq-2026-06"},
+    "parentReference": {"runId": "RUN_UUID"}
+  }'
+```
+
+### Accept and execute (delegate admin)
+
+```bash
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks/TASK_ID/accept" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"spawnAgentJob": true, "delegateAgentId": "AGENT_UUID"}'
+
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks/TASK_ID/start" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks/TASK_ID/complete" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"result": {"submitted": false, "draftUrl": "https://..."}}'
+```
+
+### Reject, fail, or cancel
+
+```bash
+# Delegate rejects
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks/TASK_ID/reject" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Missing prerequisites"}'
+
+# Delegate marks failed
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks/TASK_ID/fail" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Vendor API unavailable"}'
+
+# Delegator cancels
+curl -s -X POST "https://gravitre.app/api/federation/delegated-tasks/TASK_ID/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Scope changed"}'
+```
+
+List with `direction` and `status` filters like handoffs.
+
+### Delegated tasks vs Assignments
+
+| | **Delegated tasks** | **Assignments** |
+|---|---------------------|-----------------|
+| **Scope** | Cross-org (Partner Connections) | Single org |
+| **Consent** | Delegate must accept | Internal assignment |
+| **Route** | `/settings/federation` | `/assignments` |
+
+---
+
+## Partner connectors (Marketplace)
+
+**Marketplace → Partner connectors** (`/marketplace/connectors`) lists federated vendor catalog entries. Installing them is separate from B2B partnership consent — you still need an **active partnership** and appropriate **grants** for cross-org tool use.
+
+See [Install from Marketplace](/docs/guides/how-to/marketplace) and [Connect integrations](/docs/guides/how-to/connectors).
+
+---
+
+## Audit and compliance
+
+Every partnership, handoff, grant, and task transition writes **audit events** (`federation.*` actions). Export via:
+
+- **History** (`/audit`) for org admins
+- **Enterprise → Security log export** for SIEM streaming ([Configure Enterprise](/docs/guides/how-to/enterprise))
+
+Include Partner Connections events in quarterly access reviews.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| **Invite partner** disabled | Not admin | Use Owner/Admin account |
+| Handoff/grant buttons disabled | No **active** partnership | Complete accept flow on both sides |
+| `PARTNERSHIP_REQUIRED` (409) | Partnership missing or not active | Re-invite or accept partnership |
+| `403 Forbidden` on API | Wrong org context or non-admin | Switch org; verify API key user is admin |
+| Grant proposal fails on actions | Write action in `allowedActions` | Use read-only actions only |
+| Empty partnership list | Missing DB migrations / service role | Check backend logs; contact support |
+| `api_full_access` blocked | Free/Node plan | Upgrade to **Control** — [Plans](/docs/billing/plans-and-checkout) |
+| Partner UUID invalid | Typo or wrong identifier | Re-copy UUID from partner admin |
+
+---
+
+## B2B rollout playbook
+
+```text
+Week 1: Legal + DPA → exchange org UUIDs → active partnership
+Week 2: Pilot read-only connector grant (24h) → verify audit in History
+Week 3: Delegated task pilot → accept/start/complete loop
+Week 4: Production handoffs tied to agent workflows → revoke pilot grants
+```
+
+## API quick reference
+
+| Resource | Methods |
+|----------|---------|
+| Partnerships | `GET/POST /partnerships`, `POST .../accept|reject|revoke` |
+| Handoffs | `GET/POST /handoffs`, `GET /handoffs/{id}`, `POST .../accept|reject|complete` |
+| Connector grants | `GET/POST /connector-grants`, `GET .../{id}`, `POST .../accept|reject|revoke` |
+| Delegated tasks | `GET/POST /delegated-tasks`, `GET .../{id}`, `POST .../accept|reject|start|complete|fail|cancel` |
+
+Full schemas: [OpenAPI](/docs/api/openapi.json) · Tag: `federation`
+
+## Related
+
+- [Partner Connections overview](/docs/concepts/partner-connections)
+- [Manage settings](/docs/guides/how-to/settings)
+- [Manage assignments](/docs/guides/how-to/assignments)
+- [Review history](/docs/guides/how-to/history)

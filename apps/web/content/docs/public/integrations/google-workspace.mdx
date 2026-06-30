@@ -1,0 +1,40 @@
+---
+title: Google Workspace integrations
+description: Connect Gmail, Calendar, Drive, Docs, Sheets, and Google Analytics.
+audience: public
+depth: mid
+tier: all
+status: published
+category: Integrations
+readTime: 12 min
+prev:
+  title: QuickBooks
+  href: /docs/integrations/quickbooks
+next:
+  title: Odoo
+  href: /docs/integrations/odoo
+---
+
+Gravitre ships separate Connectors for Google apps, all using the shared Google OAuth application.
+
+## Supported apps
+
+| Connector | Typical actions |
+|-----------|-----------------|
+| **Gmail** | Read/send mail |
+| **Google Calendar** | List/create events |
+| **Google Drive** | List/upload files |
+| **Google Docs** | Read/create docs |
+| **Google Sheets** | Read/update sheets |
+| **Google Analytics** | Query GA4 reports |
+
+## Setup
+
+1. Open **Connectors** and choose the Google app you need.
+2. Complete Google OAuth consent with the account that owns the data.
+3. For Analytics, select the GA4 property when prompted.
+
+## Tips
+
+- Use dedicated service accounts or shared inboxes per your IT policy
+- Separate Connectors per Google product for clearer permission scopes

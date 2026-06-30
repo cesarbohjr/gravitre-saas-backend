@@ -1129,7 +1129,7 @@ export default function AgentsPage() {
                 />
                 <Button variant="outline" onClick={() => router.push("/agents/swarm")} className="gap-2">
                   <Users className="h-4 w-4" />
-                  Swarm
+                  Multi-Agent Run
                 </Button>
                 <Button onClick={() => router.push("/agents/new")} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
                   <Plus className="h-4 w-4" />

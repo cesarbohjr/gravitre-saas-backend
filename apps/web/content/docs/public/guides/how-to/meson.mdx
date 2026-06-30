@@ -1,0 +1,41 @@
+---
+title: Build with Meson
+description: Use Meson, Gravitre's guided system builder, to generate agents, workflows, and training from one request.
+audience: public
+depth: mid
+tier: control
+status: published
+category: How-to Guides
+readTime: 10 min
+prev:
+  title: Multi-Agent Run
+  href: /docs/guides/how-to/multi-agent-run
+next:
+  title: Partner Connections
+  href: /docs/guides/how-to/partner-connections
+---
+
+**Meson** is Gravitre's brand name for the guided system builder. It helps you go from a plain-language goal to deployable agents, workflows, and training artifacts — with review before production.
+
+Requires **Control** plan or above for full Meson API access.
+
+## Where to find Meson
+
+- **Agents** page → **Build with Meson** wizard
+- **Settings → Meson Addons** for premium capabilities
+- **Metrics** may show Meson-related insights when enabled
+
+## Typical flow
+
+1. Describe the system you want (team, tools, outcomes)
+2. Review Meson's proposed agents, workflows, and training plan
+3. Edit or reject pieces before deploy
+4. Publish to your org or test in a non-production Environment
+
+## API
+
+Meson endpoints live under `/api/meson/*` (Control tier). See [OpenAPI](/docs/api/openapi.json).
+
+<Callout title="Brand name">
+Meson is intentional product branding — not a generic feature label. Keep "Meson" in user-facing docs.
+</Callout>
