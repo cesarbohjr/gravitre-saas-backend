@@ -1,0 +1,274 @@
+{
+  "issue": "STA-296",
+  "packSlug": "marketing-operations-pack",
+  "relatedIssues": [
+    "STA-274",
+    "STA-290",
+    "STA-293"
+  ],
+  "recommendation": "v1: rely on per-asset marketplace rollback + member read-only audit RLS; defer coordinated pack rollback and append-only compliance until product requires it",
+  "summary": {
+    "total": 10,
+    "missing": 3,
+    "partial": 6,
+    "exists": 1,
+    "packBlockers": [],
+    "complianceBlockers": [
+      "retention_purge_rpc",
+      "approval_trail_append_only"
+    ],
+    "auditImmutabilityMigrationShipped": true,
+    "retentionPurgeDeletesAuditRows": true,
+    "perAssetRollbackShipped": true,
+    "packCoordinatedRollbackMissing": true,
+    "v1Ready": true,
+    "complianceHeavyApprovalTrailsBlocked": true
+  },
+  "auditImmutability": [
+    {
+      "key": "audit_immutability_migration",
+      "displayName": "Audit retention + member read-only RLS migration",
+      "category": "audit_immutability",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "20260708130000_audit_retention_and_immutability.sql aligns purge + SELECT-only member RLS."
+    },
+    {
+      "key": "audit_logs_member_read_only",
+      "displayName": "audit_logs member read-only (no client writes)",
+      "category": "audit_immutability",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "audit_logs_org_read policy; service role still writes via write_audit_event."
+    },
+    {
+      "key": "audit_events_member_read_only",
+      "displayName": "audit_events member read-only (no client writes)",
+      "category": "audit_immutability",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "audit_events_org_read policy in STA-274 migration."
+    },
+    {
+      "key": "retention_purge_rpc",
+      "displayName": "Retention purge RPC (explicit org-scoped runner)",
+      "category": "audit_immutability",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "complianceBlocker": true,
+      "notes": "retention_purge() deletes aged audit_events and audit_logs; not append-only forever."
+    },
+    {
+      "key": "approval_trail_append_only",
+      "displayName": "Approval/audit trail append-only (no aged deletion)",
+      "category": "audit_immutability",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "complianceBlocker": true,
+      "notes": "Compliance-heavy approval trails still subject to retention_purge deletion window."
+    }
+  ],
+  "packVersioning": [
+    {
+      "key": "marketplace_asset_version_history",
+      "displayName": "Per-asset marketplace version history",
+      "category": "pack_versioning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "marketplace_asset_versions + list_asset_versions for org-owned assets."
+    },
+    {
+      "key": "marketplace_asset_rollback",
+      "displayName": "Per-asset marketplace rollback API",
+      "category": "pack_versioning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "rollback_asset_version restores config snapshot; POST /api/marketplace/assets/{ref}/rollback."
+    },
+    {
+      "key": "department_pack_multi_entity_install",
+      "displayName": "Department pack install (agents + workflow + RAG)",
+      "category": "pack_versioning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "_install_department_pack creates multiple entities without coordinated snapshot."
+    },
+    {
+      "key": "pack_coordinated_rollback",
+      "displayName": "Coordinated pack-level rollback (multi-entity)",
+      "category": "pack_versioning",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "complianceBlocker": false,
+      "notes": "No rollback_department_pack_install or install snapshot primitive for marketing pack."
+    },
+    {
+      "key": "pack_install_entity_snapshot",
+      "displayName": "Pack install entity snapshot for rollback",
+      "category": "pack_versioning",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "complianceBlocker": false,
+      "notes": "Install records entity IDs but no versioned snapshot of all pack entities for restore."
+    }
+  ],
+  "capabilities": [
+    {
+      "key": "audit_immutability_migration",
+      "displayName": "Audit retention + member read-only RLS migration",
+      "category": "audit_immutability",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "20260708130000_audit_retention_and_immutability.sql aligns purge + SELECT-only member RLS."
+    },
+    {
+      "key": "audit_logs_member_read_only",
+      "displayName": "audit_logs member read-only (no client writes)",
+      "category": "audit_immutability",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "audit_logs_org_read policy; service role still writes via write_audit_event."
+    },
+    {
+      "key": "audit_events_member_read_only",
+      "displayName": "audit_events member read-only (no client writes)",
+      "category": "audit_immutability",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "audit_events_org_read policy in STA-274 migration."
+    },
+    {
+      "key": "retention_purge_rpc",
+      "displayName": "Retention purge RPC (explicit org-scoped runner)",
+      "category": "audit_immutability",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "complianceBlocker": true,
+      "notes": "retention_purge() deletes aged audit_events and audit_logs; not append-only forever."
+    },
+    {
+      "key": "approval_trail_append_only",
+      "displayName": "Approval/audit trail append-only (no aged deletion)",
+      "category": "audit_immutability",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "complianceBlocker": true,
+      "notes": "Compliance-heavy approval trails still subject to retention_purge deletion window."
+    },
+    {
+      "key": "marketplace_asset_version_history",
+      "displayName": "Per-asset marketplace version history",
+      "category": "pack_versioning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "marketplace_asset_versions + list_asset_versions for org-owned assets."
+    },
+    {
+      "key": "marketplace_asset_rollback",
+      "displayName": "Per-asset marketplace rollback API",
+      "category": "pack_versioning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "rollback_asset_version restores config snapshot; POST /api/marketplace/assets/{ref}/rollback."
+    },
+    {
+      "key": "department_pack_multi_entity_install",
+      "displayName": "Department pack install (agents + workflow + RAG)",
+      "category": "pack_versioning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "complianceBlocker": false,
+      "notes": "_install_department_pack creates multiple entities without coordinated snapshot."
+    },
+    {
+      "key": "pack_coordinated_rollback",
+      "displayName": "Coordinated pack-level rollback (multi-entity)",
+      "category": "pack_versioning",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "complianceBlocker": false,
+      "notes": "No rollback_department_pack_install or install snapshot primitive for marketing pack."
+    },
+    {
+      "key": "pack_install_entity_snapshot",
+      "displayName": "Pack install entity snapshot for rollback",
+      "category": "pack_versioning",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "complianceBlocker": false,
+      "notes": "Install records entity IDs but no versioned snapshot of all pack entities for restore."
+    }
+  ],
+  "generatedAt": "2026-06-30T06:43:56.124269+00:00"
+}

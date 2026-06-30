@@ -1,0 +1,148 @@
+{
+  "issue": "STA-298",
+  "packSlug": "marketing-operations-pack",
+  "relatedIssues": [
+    "STA-258",
+    "STA-274",
+    "STA-284",
+    "STA-259",
+    "STA-292"
+  ],
+  "recommendation": "Document discrepancies in onboarding/docs \u2014 do not assume CoordinationLayer or ExecutionCore names match runtime; connector inventory is 19 OAuth + 62 catalog vendors; graph is canonical but linear steps remain for legacy workflows",
+  "summary": {
+    "total": 5,
+    "confirmed": 3,
+    "partial": 2,
+    "resolved": 0,
+    "riskItems": [
+      "audit_retention_purge"
+    ],
+    "coordinationLayerKilled": true,
+    "agentIntelligenceIsExecutionPath": true,
+    "auditRetentionPurgeActive": true,
+    "auditRlsReadOnlyShipped": true,
+    "oauthProviderCount": 19,
+    "catalogVendorCount": 62,
+    "graphAndLinearExecutePaths": true,
+    "openDiscrepancies": 5
+  },
+  "architecture": [
+    {
+      "key": "coordination_layer_killed",
+      "displayName": "CoordinationLayer cut-over killed (not shipped)",
+      "category": "architecture",
+      "relatedIssue": "STA-258",
+      "severity": "info",
+      "documentedState": "confirmed",
+      "liveState": "confirmed",
+      "stateMatchesDoc": true,
+      "notes": "STA-258 gate forcedOutcome=kill; backend/app/coordination/ removed; swarm/workflow wrappers remain."
+    }
+  ],
+  "executionAndNaming": [
+    {
+      "key": "execution_core_naming",
+      "displayName": "ExecutionCore docs vs AgentIntelligence implementation",
+      "category": "naming",
+      "relatedIssue": "STA-284",
+      "severity": "warning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "notes": "Universal execution is AgentIntelligence; ExecutionCore class absent but string references linger in code."
+    },
+    {
+      "key": "linear_execute_path_split",
+      "displayName": "Graph canonical but linear step runner still separate",
+      "category": "execution",
+      "relatedIssue": "STA-259",
+      "severity": "warning",
+      "documentedState": "confirmed",
+      "liveState": "confirmed",
+      "stateMatchesDoc": true,
+      "notes": "execute_workflow_steps delegates to graph when definition.graph present; linear steps path remains for legacy defs."
+    }
+  ],
+  "complianceAndDocs": [
+    {
+      "key": "audit_retention_purge",
+      "displayName": "Audit retention purge still deletes aged events",
+      "category": "compliance",
+      "relatedIssue": "STA-274",
+      "severity": "risk",
+      "documentedState": "confirmed",
+      "liveState": "confirmed",
+      "stateMatchesDoc": true,
+      "notes": "Member RLS read-only shipped; retention_purge() still DELETEs audit_events/audit_logs after window."
+    },
+    {
+      "key": "connector_count_undercount",
+      "displayName": "Connector brief undercount (~19 total vs 19 OAuth + 62 catalog)",
+      "category": "documentation",
+      "relatedIssue": "STA-292",
+      "severity": "info",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "notes": "19 OAuth providers in oauth_provider_registry; 62 action-catalog vendors \u2014 audit doc updated, brief may still undercount."
+    }
+  ],
+  "discrepancies": [
+    {
+      "key": "coordination_layer_killed",
+      "displayName": "CoordinationLayer cut-over killed (not shipped)",
+      "category": "architecture",
+      "relatedIssue": "STA-258",
+      "severity": "info",
+      "documentedState": "confirmed",
+      "liveState": "confirmed",
+      "stateMatchesDoc": true,
+      "notes": "STA-258 gate forcedOutcome=kill; backend/app/coordination/ removed; swarm/workflow wrappers remain."
+    },
+    {
+      "key": "execution_core_naming",
+      "displayName": "ExecutionCore docs vs AgentIntelligence implementation",
+      "category": "naming",
+      "relatedIssue": "STA-284",
+      "severity": "warning",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "notes": "Universal execution is AgentIntelligence; ExecutionCore class absent but string references linger in code."
+    },
+    {
+      "key": "audit_retention_purge",
+      "displayName": "Audit retention purge still deletes aged events",
+      "category": "compliance",
+      "relatedIssue": "STA-274",
+      "severity": "risk",
+      "documentedState": "confirmed",
+      "liveState": "confirmed",
+      "stateMatchesDoc": true,
+      "notes": "Member RLS read-only shipped; retention_purge() still DELETEs audit_events/audit_logs after window."
+    },
+    {
+      "key": "connector_count_undercount",
+      "displayName": "Connector brief undercount (~19 total vs 19 OAuth + 62 catalog)",
+      "category": "documentation",
+      "relatedIssue": "STA-292",
+      "severity": "info",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "notes": "19 OAuth providers in oauth_provider_registry; 62 action-catalog vendors \u2014 audit doc updated, brief may still undercount."
+    },
+    {
+      "key": "linear_execute_path_split",
+      "displayName": "Graph canonical but linear step runner still separate",
+      "category": "execution",
+      "relatedIssue": "STA-259",
+      "severity": "warning",
+      "documentedState": "confirmed",
+      "liveState": "confirmed",
+      "stateMatchesDoc": true,
+      "notes": "execute_workflow_steps delegates to graph when definition.graph present; linear steps path remains for legacy defs."
+    }
+  ],
+  "generatedAt": "2026-06-30T07:10:43.275586+00:00"
+}

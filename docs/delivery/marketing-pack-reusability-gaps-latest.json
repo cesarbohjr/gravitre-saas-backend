@@ -1,0 +1,255 @@
+{
+  "issue": "STA-299",
+  "packSlug": "marketing-operations-pack",
+  "relatedIssues": [
+    "STA-290",
+    "STA-293",
+    "STA-292",
+    "STA-294",
+    "STA-297"
+  ],
+  "recommendation": "Reuse general primitives (department_pack type, tier pricing, entitlements, Mode A/B toggle) for next department packs; finish batch analytics + tier checkout gating before HR/Finance packs at scale; keep LinkedIn publish and post-publish metrics as marketing-first extensions",
+  "summary": {
+    "total": 10,
+    "missing": 1,
+    "partial": 3,
+    "exists": 6,
+    "generalPrimitiveCount": 7,
+    "generalPrimitivesReady": false,
+    "futurePackBlockers": [],
+    "tierEligibilityCheckoutMissing": true,
+    "batchPartialApprovalPartial": true,
+    "modeAbToggleShipped": true,
+    "packPricingFrameworkShipped": true,
+    "nextPackReady": true
+  },
+  "generalPrimitives": [
+    {
+      "key": "graph_handoff_agent_chains",
+      "displayName": "Graph + handoff agent chains (department packs)",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "no",
+      "notes": "next_agent_seed resolved at install; reusable for HR/Finance/Ops/Sales packs."
+    },
+    {
+      "key": "department_pack_marketplace_type",
+      "displayName": "department_pack marketplace asset type",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksFuturePacks": "no",
+      "notes": "schemas.py + seed_catalog department_pack entries for all department packs."
+    },
+    {
+      "key": "mode_ab_feedback_toggle",
+      "displayName": "Mode A/B feedback toggle (org-scoped)",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "no",
+      "notes": "org_feedback_settings + /api/admin/feedback-mode; Marketing is first consumer."
+    },
+    {
+      "key": "batch_partial_approval",
+      "displayName": "Batch + partial approval primitive",
+      "reuseScope": "general",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksFuturePacks": "depends",
+      "notes": "STA-290 schema + runtime shipped; analytics/reporting still missing (STA-297)."
+    },
+    {
+      "key": "rejection_upstream_routing",
+      "displayName": "Rejection -> upstream agent routing",
+      "reuseScope": "general",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "depends",
+      "notes": "on_reject=route_upstream + reject_route_node_id in execution_engine_runtime."
+    },
+    {
+      "key": "pack_tier_pricing_framework",
+      "displayName": "Pack tier pricing framework (one-time paid)",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksFuturePacks": "no",
+      "notes": "pack_pricing.py tier bands $49/$149/$299; pack_tier migration."
+    },
+    {
+      "key": "one_time_entitlement_path",
+      "displayName": "One-time paid entitlement + checkout",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "no",
+      "notes": "assert_install_entitlement + create_asset_checkout_session payment mode."
+    }
+  ],
+  "marketingSpecific": [
+    {
+      "key": "linkedin_publish_connector",
+      "displayName": "LinkedIn organic publishing connector",
+      "reuseScope": "marketing_specific",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksFuturePacks": "depends",
+      "notes": "LinkedIn read/enrich only; no posts.create / w_member_social publish action."
+    },
+    {
+      "key": "post_publish_engagement_metrics",
+      "displayName": "Post-publish marketing metrics -> suggestions",
+      "reuseScope": "marketing_specific",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "depends",
+      "notes": "GA4/LinkedIn/Canva/HubSpot wired via post_publish_marketing_metrics_service."
+    }
+  ],
+  "openUncertainties": [
+    {
+      "key": "tier_eligibility_checkout_gating",
+      "displayName": "Platform tier eligibility enforced at pack checkout",
+      "reuseScope": "open_uncertainty",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "depends",
+      "notes": "pack_pricing documents Control/Command requirement; checkout does not enforce platform tier."
+    }
+  ],
+  "capabilities": [
+    {
+      "key": "graph_handoff_agent_chains",
+      "displayName": "Graph + handoff agent chains (department packs)",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "no",
+      "notes": "next_agent_seed resolved at install; reusable for HR/Finance/Ops/Sales packs."
+    },
+    {
+      "key": "department_pack_marketplace_type",
+      "displayName": "department_pack marketplace asset type",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksFuturePacks": "no",
+      "notes": "schemas.py + seed_catalog department_pack entries for all department packs."
+    },
+    {
+      "key": "mode_ab_feedback_toggle",
+      "displayName": "Mode A/B feedback toggle (org-scoped)",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "no",
+      "notes": "org_feedback_settings + /api/admin/feedback-mode; Marketing is first consumer."
+    },
+    {
+      "key": "batch_partial_approval",
+      "displayName": "Batch + partial approval primitive",
+      "reuseScope": "general",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksFuturePacks": "depends",
+      "notes": "STA-290 schema + runtime shipped; analytics/reporting still missing (STA-297)."
+    },
+    {
+      "key": "rejection_upstream_routing",
+      "displayName": "Rejection -> upstream agent routing",
+      "reuseScope": "general",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "depends",
+      "notes": "on_reject=route_upstream + reject_route_node_id in execution_engine_runtime."
+    },
+    {
+      "key": "pack_tier_pricing_framework",
+      "displayName": "Pack tier pricing framework (one-time paid)",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksFuturePacks": "no",
+      "notes": "pack_pricing.py tier bands $49/$149/$299; pack_tier migration."
+    },
+    {
+      "key": "one_time_entitlement_path",
+      "displayName": "One-time paid entitlement + checkout",
+      "reuseScope": "general",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "no",
+      "notes": "assert_install_entitlement + create_asset_checkout_session payment mode."
+    },
+    {
+      "key": "linkedin_publish_connector",
+      "displayName": "LinkedIn organic publishing connector",
+      "reuseScope": "marketing_specific",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksFuturePacks": "depends",
+      "notes": "LinkedIn read/enrich only; no posts.create / w_member_social publish action."
+    },
+    {
+      "key": "post_publish_engagement_metrics",
+      "displayName": "Post-publish marketing metrics -> suggestions",
+      "reuseScope": "marketing_specific",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "depends",
+      "notes": "GA4/LinkedIn/Canva/HubSpot wired via post_publish_marketing_metrics_service."
+    },
+    {
+      "key": "tier_eligibility_checkout_gating",
+      "displayName": "Platform tier eligibility enforced at pack checkout",
+      "reuseScope": "open_uncertainty",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksFuturePacks": "depends",
+      "notes": "pack_pricing documents Control/Command requirement; checkout does not enforce platform tier."
+    }
+  ],
+  "generatedAt": "2026-06-30T07:10:45.926197+00:00"
+}

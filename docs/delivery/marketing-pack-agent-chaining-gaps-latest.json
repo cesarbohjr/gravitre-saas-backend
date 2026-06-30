@@ -1,0 +1,207 @@
+{
+  "issue": "STA-291",
+  "packSlug": "marketing-operations-pack",
+  "relatedIssues": [
+    "STA-296",
+    "STA-259",
+    "STA-18"
+  ],
+  "recommendation": "v1: 4-agent chain + handoff install path is shippable; defer pack-coordinated semver until product requires coordinated rollback across chain members",
+  "summary": {
+    "total": 8,
+    "missing": 1,
+    "partial": 0,
+    "exists": 7,
+    "packBlockers": [],
+    "fourAgentSeedShipped": true,
+    "handoffStepsShipped": true,
+    "installSmokeScriptShipped": true,
+    "packCoordinatedSemverMissing": true,
+    "v1Ready": true
+  },
+  "catalog": [
+    {
+      "key": "department_pack_asset_type",
+      "displayName": "department_pack marketplace asset type",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "schemas.py DepartmentPackAssetConfig + publish validation."
+    },
+    {
+      "key": "four_agent_marketing_pack_seed",
+      "displayName": "Marketing pack 4-agent seed catalog",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "marketing-operations-pack seeds 4 agents + campaign workflow in seed_catalog.py."
+    },
+    {
+      "key": "workflow_handoff_next_agent_seed",
+      "displayName": "Workflow handoff steps (next_agent_seed)",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Two agent steps chain ICP -> content -> design -> ops via next_agent_seed metadata."
+    },
+    {
+      "key": "standalone_agent_catalog_entries",
+      "displayName": "Standalone ai_agent catalog entries for chain members",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "pack_children includes 4 agent slugs + workflow + knowledge pack."
+    }
+  ],
+  "runtime": [
+    {
+      "key": "install_next_agent_resolution",
+      "displayName": "Install resolves next_agent_seed to org agent UUIDs",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "_install_department_pack maps next_agent_seed to next_agent_id at install."
+    },
+    {
+      "key": "handoff_service_execution",
+      "displayName": "Handoff service executes chained agent steps",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "execute_agent_step_with_handoff routes to next_agent_id with briefing."
+    },
+    {
+      "key": "install_smoke_script",
+      "displayName": "Staging install + handoff smoke script",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "scripts/smoke-marketing-operations-pack-install.py (STA-291)."
+    }
+  ],
+  "versioning": [
+    {
+      "key": "pack_coordinated_semver",
+      "displayName": "Pack-coordinated semver across chain members",
+      "category": "versioning",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "Per-agent versioning only; no coordinated pack rollback (STA-296)."
+    }
+  ],
+  "capabilities": [
+    {
+      "key": "department_pack_asset_type",
+      "displayName": "department_pack marketplace asset type",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "schemas.py DepartmentPackAssetConfig + publish validation."
+    },
+    {
+      "key": "four_agent_marketing_pack_seed",
+      "displayName": "Marketing pack 4-agent seed catalog",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "marketing-operations-pack seeds 4 agents + campaign workflow in seed_catalog.py."
+    },
+    {
+      "key": "workflow_handoff_next_agent_seed",
+      "displayName": "Workflow handoff steps (next_agent_seed)",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Two agent steps chain ICP -> content -> design -> ops via next_agent_seed metadata."
+    },
+    {
+      "key": "install_next_agent_resolution",
+      "displayName": "Install resolves next_agent_seed to org agent UUIDs",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "_install_department_pack maps next_agent_seed to next_agent_id at install."
+    },
+    {
+      "key": "handoff_service_execution",
+      "displayName": "Handoff service executes chained agent steps",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "execute_agent_step_with_handoff routes to next_agent_id with briefing."
+    },
+    {
+      "key": "standalone_agent_catalog_entries",
+      "displayName": "Standalone ai_agent catalog entries for chain members",
+      "category": "catalog",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "pack_children includes 4 agent slugs + workflow + knowledge pack."
+    },
+    {
+      "key": "install_smoke_script",
+      "displayName": "Staging install + handoff smoke script",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "scripts/smoke-marketing-operations-pack-install.py (STA-291)."
+    },
+    {
+      "key": "pack_coordinated_semver",
+      "displayName": "Pack-coordinated semver across chain members",
+      "category": "versioning",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "Per-agent versioning only; no coordinated pack rollback (STA-296)."
+    }
+  ],
+  "generatedAt": "2026-06-30T07:21:06.912733+00:00"
+}

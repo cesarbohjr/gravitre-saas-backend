@@ -1,0 +1,211 @@
+{
+  "issue": "STA-290",
+  "packSlug": "marketing-operations-pack",
+  "relatedIssues": [
+    "STA-297",
+    "STA-299"
+  ],
+  "recommendation": "v1: batch schema, service, API, and UI are shipped; upstream routing is partial; defer partial-batch analytics until STA-289/297 measurement path",
+  "summary": {
+    "total": 8,
+    "missing": 1,
+    "partial": 2,
+    "exists": 5,
+    "packBlockers": [],
+    "approvalBatchSchemaShipped": true,
+    "batchApprovalUiShipped": true,
+    "rejectionUpstreamPartial": true,
+    "partialBatchAnalyticsMissing": true,
+    "v1Ready": true,
+    "runtimeShipped": true
+  },
+  "dataModel": [
+    {
+      "key": "approval_batch_schema",
+      "displayName": "Approval batch + per-item decision schema",
+      "category": "data_model",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "approval_batches + approval_batch_items (20260709140000)."
+    },
+    {
+      "key": "approval_batch_service",
+      "displayName": "Batch grouping + partial approve/reject service",
+      "category": "data_model",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "create_approval_batch, apply_batch_decisions, summarize_batch_items."
+    }
+  ],
+  "runtime": [
+    {
+      "key": "partial_item_decisions",
+      "displayName": "Partial approve/reject within batch",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Per-item approved/rejected status with optional reject_comment."
+    },
+    {
+      "key": "batch_runtime_selective_resume",
+      "displayName": "Selective re-entry after batch resolution",
+      "category": "runtime",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "resolve_approval_batch_and_resume resumes approved items; full UI polish ongoing."
+    },
+    {
+      "key": "batch_approval_api",
+      "displayName": "Workflow run batch approval API",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "GET/POST /api/workflows/runs/{id}/approval-batch."
+    }
+  ],
+  "ui": [
+    {
+      "key": "batch_approval_ui",
+      "displayName": "Batch approval UI (partial-select panel)",
+      "category": "ui",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "ApprovalBatchPanel on run detail page with per-item approve/reject."
+    }
+  ],
+  "routing": [
+    {
+      "key": "rejection_upstream_routing",
+      "displayName": "Rejection routes to upstream agent (route_upstream)",
+      "category": "routing",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "on_reject=route_upstream + reject_route_node_id in execution_engine_runtime."
+    }
+  ],
+  "analytics": [
+    {
+      "key": "partial_batch_analytics",
+      "displayName": "Partial batch outcomes in analytics",
+      "category": "analytics",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "No analytics schema for batch item outcomes (STA-297)."
+    }
+  ],
+  "capabilities": [
+    {
+      "key": "approval_batch_schema",
+      "displayName": "Approval batch + per-item decision schema",
+      "category": "data_model",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "approval_batches + approval_batch_items (20260709140000)."
+    },
+    {
+      "key": "approval_batch_service",
+      "displayName": "Batch grouping + partial approve/reject service",
+      "category": "data_model",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "create_approval_batch, apply_batch_decisions, summarize_batch_items."
+    },
+    {
+      "key": "partial_item_decisions",
+      "displayName": "Partial approve/reject within batch",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Per-item approved/rejected status with optional reject_comment."
+    },
+    {
+      "key": "batch_runtime_selective_resume",
+      "displayName": "Selective re-entry after batch resolution",
+      "category": "runtime",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "resolve_approval_batch_and_resume resumes approved items; full UI polish ongoing."
+    },
+    {
+      "key": "batch_approval_api",
+      "displayName": "Workflow run batch approval API",
+      "category": "runtime",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "GET/POST /api/workflows/runs/{id}/approval-batch."
+    },
+    {
+      "key": "batch_approval_ui",
+      "displayName": "Batch approval UI (partial-select panel)",
+      "category": "ui",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "ApprovalBatchPanel on run detail page with per-item approve/reject."
+    },
+    {
+      "key": "rejection_upstream_routing",
+      "displayName": "Rejection routes to upstream agent (route_upstream)",
+      "category": "routing",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "on_reject=route_upstream + reject_route_node_id in execution_engine_runtime."
+    },
+    {
+      "key": "partial_batch_analytics",
+      "displayName": "Partial batch outcomes in analytics",
+      "category": "analytics",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "No analytics schema for batch item outcomes (STA-297)."
+    }
+  ],
+  "generatedAt": "2026-06-30T07:21:07.726106+00:00"
+}

@@ -1,0 +1,233 @@
+{
+  "issues": [
+    "STA-300",
+    "STA-301"
+  ],
+  "packSlug": "marketing-operations-pack",
+  "relatedIssues": [
+    "STA-294",
+    "STA-299"
+  ],
+  "recommendation": "Framework and Marketing Operations Pack $149 checkout are live; enforce platform tier eligibility at checkout before scaling additional department packs",
+  "summary": {
+    "total": 10,
+    "missing": 1,
+    "partial": 0,
+    "exists": 9,
+    "frameworkReady": true,
+    "marketingPackLiveReady": true,
+    "marketingPackPriceCents": 14900,
+    "marketingPackTier": 2,
+    "tierEligibilityCheckoutMissing": true,
+    "v1Ready": true
+  },
+  "framework": [
+    {
+      "key": "pack_tier_migration",
+      "displayName": "marketplace_assets.pack_tier migration",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "20260709120000_marketplace_pack_tier.sql adds tier column."
+    },
+    {
+      "key": "one_time_pricing_migration",
+      "displayName": "Department pack one-time paid pricing migration",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "20260709130000_department_pack_one_time_pricing.sql."
+    },
+    {
+      "key": "pack_pricing_module",
+      "displayName": "pack_pricing.py tier bands + validation",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "PACK_TIER_PRICE_CENTS $49/$149/$299; validate_department_pack_pricing()."
+    },
+    {
+      "key": "mode_b_pricing_signoff",
+      "displayName": "Mode B pricing product sign-off (STA-294)",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "Included at Tier 2 with risk gate; MODE_B_AUTONOMOUS_ADDON_CENTS reserved."
+    }
+  ],
+  "marketingPackLive": [
+    {
+      "key": "marketing_pack_tier_2_seed",
+      "displayName": "marketing-operations-pack Tier 2 seed",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "seed_catalog.py pack_tier=2, pricing_type=paid."
+    },
+    {
+      "key": "marketing_pack_price_14900",
+      "displayName": "Marketing Operations Pack $149 one-time (14900 cents)",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "price_cents=14900 matches tier 2 band."
+    },
+    {
+      "key": "install_entitlement_gating",
+      "displayName": "Install entitlement gating (402 PAYMENT_REQUIRED)",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "assert_install_entitlement blocks paid install without purchase."
+    },
+    {
+      "key": "stripe_checkout_payment_mode",
+      "displayName": "Stripe Checkout one-time payment mode",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "create_asset_checkout_session uses mode=payment for paid assets."
+    },
+    {
+      "key": "pricing_unit_tests",
+      "displayName": "Department pack pricing unit tests",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "test_department_pack_pricing.py covers tier bands + checkout."
+    }
+  ],
+  "openGaps": [
+    {
+      "key": "tier_eligibility_checkout_gating",
+      "displayName": "Platform tier eligibility enforced at checkout",
+      "scope": "open_gap",
+      "relatedIssue": "STA-299",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "notes": "pack_pricing documents Control/Command requirement; checkout does not enforce platform tier."
+    }
+  ],
+  "capabilities": [
+    {
+      "key": "pack_tier_migration",
+      "displayName": "marketplace_assets.pack_tier migration",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "20260709120000_marketplace_pack_tier.sql adds tier column."
+    },
+    {
+      "key": "one_time_pricing_migration",
+      "displayName": "Department pack one-time paid pricing migration",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "20260709130000_department_pack_one_time_pricing.sql."
+    },
+    {
+      "key": "pack_pricing_module",
+      "displayName": "pack_pricing.py tier bands + validation",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "PACK_TIER_PRICE_CENTS $49/$149/$299; validate_department_pack_pricing()."
+    },
+    {
+      "key": "mode_b_pricing_signoff",
+      "displayName": "Mode B pricing product sign-off (STA-294)",
+      "scope": "framework",
+      "relatedIssue": "STA-300",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "Included at Tier 2 with risk gate; MODE_B_AUTONOMOUS_ADDON_CENTS reserved."
+    },
+    {
+      "key": "marketing_pack_tier_2_seed",
+      "displayName": "marketing-operations-pack Tier 2 seed",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "seed_catalog.py pack_tier=2, pricing_type=paid."
+    },
+    {
+      "key": "marketing_pack_price_14900",
+      "displayName": "Marketing Operations Pack $149 one-time (14900 cents)",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "price_cents=14900 matches tier 2 band."
+    },
+    {
+      "key": "install_entitlement_gating",
+      "displayName": "Install entitlement gating (402 PAYMENT_REQUIRED)",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "assert_install_entitlement blocks paid install without purchase."
+    },
+    {
+      "key": "stripe_checkout_payment_mode",
+      "displayName": "Stripe Checkout one-time payment mode",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "create_asset_checkout_session uses mode=payment for paid assets."
+    },
+    {
+      "key": "pricing_unit_tests",
+      "displayName": "Department pack pricing unit tests",
+      "scope": "marketing_pack_live",
+      "relatedIssue": "STA-301",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "notes": "test_department_pack_pricing.py covers tier bands + checkout."
+    },
+    {
+      "key": "tier_eligibility_checkout_gating",
+      "displayName": "Platform tier eligibility enforced at checkout",
+      "scope": "open_gap",
+      "relatedIssue": "STA-299",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "notes": "pack_pricing documents Control/Command requirement; checkout does not enforce platform tier."
+    }
+  ],
+  "generatedAt": "2026-06-30T07:21:08.525015+00:00"
+}
