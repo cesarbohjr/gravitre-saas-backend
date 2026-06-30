@@ -35,10 +35,9 @@ function progressBarClass(value: number): string {
   return "bg-orange-500"
 }
 
-// Recharts SVG attributes need literal colors; values align with Tailwind tokens on this page.
-const CHART_VIOLET = "#8b5cf6" // violet-500 — registry badge / accent links
-const CHART_BLUE = "#3b82f6" // blue-500 — training pill
-const CHART_EMERALD = "#10b981" // emerald-500 — deployed pill
+// Recharts SVG attributes need literal colors; values align with Tailwind brand tokens.
+const CHART_EMERALD = "#10b981" // emerald-500 — brand primary
+const CHART_TEAL = "#14b8a6" // teal-500 — brand secondary
 
 export function MlKnowledgePanel() {
   const [range, setRange] = useState<RangeKey>(30)
@@ -73,7 +72,7 @@ export function MlKnowledgePanel() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-background/70 ring-1 ring-border/50">
-            <Gauge className="h-4 w-4 text-violet-500 dark:text-violet-300" />
+            <Gauge className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
           </span>
           <div>
             <h3 id="ml-knowledge-heading" className="text-sm font-semibold text-foreground">
@@ -84,7 +83,7 @@ export function MlKnowledgePanel() {
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-violet-600 dark:text-violet-300">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
           <Sparkles className="h-3 w-3" />
           Sample data
         </span>
@@ -99,8 +98,8 @@ export function MlKnowledgePanel() {
               <RadarChart data={radarData} outerRadius="72%">
                 <defs>
                   <radialGradient id="mlRadarFill" cx="50%" cy="50%" r="65%">
-                    <stop offset="0%" stopColor={CHART_VIOLET} stopOpacity={0.55} />
-                    <stop offset="60%" stopColor={CHART_BLUE} stopOpacity={0.3} />
+                    <stop offset="0%" stopColor={CHART_EMERALD} stopOpacity={0.55} />
+                    <stop offset="60%" stopColor={CHART_TEAL} stopOpacity={0.3} />
                     <stop offset="100%" stopColor={CHART_EMERALD} stopOpacity={0.12} />
                   </radialGradient>
                 </defs>
@@ -111,11 +110,11 @@ export function MlKnowledgePanel() {
                 />
                 <Radar
                   dataKey="value"
-                  stroke={CHART_VIOLET}
+                  stroke={CHART_EMERALD}
                   fill="url(#mlRadarFill)"
                   fillOpacity={1}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: CHART_VIOLET, strokeWidth: 0 }}
+                  dot={{ r: 3, fill: CHART_EMERALD, strokeWidth: 0 }}
                   activeDot={{ r: 4 }}
                   isAnimationActive
                   animationDuration={800}
@@ -161,7 +160,7 @@ export function MlKnowledgePanel() {
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
                       range === r
-                        ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
@@ -175,14 +174,14 @@ export function MlKnowledgePanel() {
                 <AreaChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                   <defs>
                     <linearGradient id="mlTendencyFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={CHART_VIOLET} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={CHART_VIOLET} stopOpacity={0} />
+                      <stop offset="0%" stopColor={CHART_EMERALD} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={CHART_EMERALD} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <Area
                     type="monotone"
                     dataKey="v"
-                    stroke={CHART_VIOLET}
+                    stroke={CHART_EMERALD}
                     strokeWidth={2}
                     fill="url(#mlTendencyFill)"
                     isAnimationActive
@@ -207,7 +206,7 @@ export function MlKnowledgePanel() {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <StatTile
               icon={TrendingUp}
-              tone="violet"
+              tone="teal"
               label="Knowledge growth"
               value={`+${mockModelHealthMetrics.knowledgeGrowthPct}%`}
               hint="this month"
@@ -241,13 +240,13 @@ function StatTile({
   hint,
 }: {
   icon: typeof TrendingUp
-  tone: "violet" | "emerald" | "amber"
+  tone: "teal" | "emerald" | "amber"
   label: string
   value: string
   hint: string
 }) {
   const toneStyles: Record<typeof tone, string> = {
-    violet: "border-violet-500/20 bg-violet-500/5 text-violet-600 dark:text-violet-300",
+    teal: "border-teal-500/20 bg-teal-500/5 text-teal-600 dark:text-teal-300",
     emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
     amber: "border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-400",
   }

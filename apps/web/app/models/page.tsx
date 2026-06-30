@@ -65,7 +65,7 @@ import { cn } from "@/lib/utils"
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
   training: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  validating: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  validating: "bg-teal-500/10 text-teal-400 border-teal-500/20",
   ready: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   deployed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   failed: "bg-red-500/10 text-red-400 border-red-500/20",
@@ -73,7 +73,7 @@ const statusStyles: Record<string, string> = {
 }
 
 const availabilityBadge: Record<string, string> = {
-  platform: "bg-violet-500/10 text-violet-300 border-violet-500/25",
+  platform: "bg-sky-500/10 text-sky-300 border-sky-500/25",
   connected: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
   requires_connection: "bg-amber-500/10 text-amber-400 border-amber-500/25",
 }
@@ -93,7 +93,7 @@ function ModelRow({ model, index }: { model: MlModelSummary; index: number }) {
     >
       <Link
         href={`/models/${model.id}`}
-        className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-violet-500/30 hover:bg-card/70 hover:shadow-sm"
+        className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-emerald-500/30 hover:bg-card/70 hover:shadow-sm"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -284,7 +284,7 @@ export default function ModelsPage() {
           title="AI Models"
           description="Register, version, and deploy org-scoped ML models used by workflows and agents."
           icon={Brain}
-          iconColor="from-violet-500/20 to-fuchsia-500/20 ring-violet-500/20"
+          iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           actions={
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
@@ -422,7 +422,7 @@ export default function ModelsPage() {
         <DialogContent className="flex max-h-[min(92vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
           <DialogHeader className="shrink-0 space-y-3 border-b border-border/60 px-6 pb-4 pt-6">
             <DialogTitle className="flex items-center gap-2 pr-8">
-              <Sparkles className="h-4 w-4 text-violet-400" />
+              <Sparkles className="h-4 w-4 text-emerald-500" />
               Register model
             </DialogTitle>
             <DialogDescription className="text-left">
@@ -433,11 +433,11 @@ export default function ModelsPage() {
               , then deploy from the model detail page.
             </DialogDescription>
             {activeTemplateLayer ? (
-              <div className="rounded-lg border border-violet-300/80 bg-violet-50 px-3 py-2.5 text-left text-xs dark:border-violet-500/30 dark:bg-violet-950/50">
-                <p className="font-semibold text-violet-950 dark:text-violet-100">
+              <div className="rounded-lg border border-emerald-300/80 bg-emerald-50 px-3 py-2.5 text-left text-xs dark:border-emerald-500/30 dark:bg-emerald-950/50">
+                <p className="font-semibold text-emerald-950 dark:text-emerald-100">
                   Template: {activeTemplateLayer.title}
                 </p>
-                <p className="mt-1 leading-relaxed text-violet-800 dark:text-violet-200">
+                <p className="mt-1 leading-relaxed text-emerald-800 dark:text-emerald-200">
                   Pre-filled for this stack layer — adjust name, base model, or task profile before creating.
                 </p>
               </div>

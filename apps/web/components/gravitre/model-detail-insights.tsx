@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const availabilityBadge: Record<string, string> = {
-  platform: "bg-violet-500/10 text-violet-300 border-violet-500/25",
+  platform: "bg-sky-500/10 text-sky-300 border-sky-500/25",
   connected: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
   requires_connection: "bg-amber-500/10 text-amber-400 border-amber-500/25",
 }
@@ -112,16 +112,16 @@ export function ModelDetailInsights({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-violet-500/5 p-5 sm:p-6"
+        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-emerald-500/5 p-5 sm:p-6"
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl"
+          className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl"
         />
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             {typeMeta ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
                 <Sparkles className="h-3 w-3" />
                 {typeMeta.label}
               </div>
@@ -178,7 +178,7 @@ export function ModelDetailInsights({
                   transition={{ delay: index * 0.05 }}
                   className={cn(
                     "rounded-xl border p-3 text-center transition-colors",
-                    current && "border-violet-500/40 bg-violet-500/5",
+                    current && "border-emerald-500/40 bg-emerald-500/5",
                     done && !current && "border-emerald-500/25 bg-emerald-500/5",
                     !done && !current && "border-border/60 bg-secondary/20"
                   )}
@@ -187,7 +187,7 @@ export function ModelDetailInsights({
                     {done ? (
                       <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     ) : (
-                      <Circle className={cn("h-5 w-5", current ? "text-violet-400" : "text-muted-foreground/40")} />
+                      <Circle className={cn("h-5 w-5", current ? "text-emerald-400" : "text-muted-foreground/40")} />
                     )}
                   </div>
                   <p className="text-xs font-medium">{step.label}</p>
@@ -219,7 +219,7 @@ export function ModelDetailInsights({
               {layer.highlights.map((h) => (
                 <li
                   key={h}
-                  className="text-[11px] text-muted-foreground before:mr-1.5 before:text-violet-400 before:content-['•']"
+                  className="text-[11px] text-muted-foreground before:mr-1.5 before:text-emerald-400 before:content-['•']"
                 >
                   {h}
                 </li>
@@ -346,10 +346,10 @@ export function ModelDetailInsights({
         </Card>
       </div>
 
-      <Card className="border-violet-500/20 bg-violet-500/[0.03]">
+      <Card className="border-emerald-500/20 bg-emerald-500/[0.03]">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Beaker className="h-4 w-4 text-violet-400" />
+            <Beaker className="h-4 w-4 text-emerald-500" />
             Training guidance
           </CardTitle>
         </CardHeader>
@@ -438,10 +438,10 @@ export function ModelDetailInsights({
         </CardContent>
       </Card>
 
-      <Card className="border-cyan-500/20 bg-cyan-500/[0.03]">
+      <Card className="border-teal-500/20 bg-teal-500/[0.03]">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4 text-cyan-400" />
+            <Activity className="h-4 w-4 text-teal-500" />
             Inference smoke test
           </CardTitle>
         </CardHeader>
