@@ -63,26 +63,26 @@ export function ModelRegistryOverview({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-violet-500/5 p-5 sm:p-6"
+      className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-emerald-500/5 p-5 sm:p-6"
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl"
+        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl"
+        className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-teal-500/10 blur-3xl"
       />
 
       <div className="relative flex flex-col gap-6">
         {/* Intro row */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-500 dark:text-violet-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
               <motion.span
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2.4, repeat: Infinity }}
-                className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500 dark:bg-violet-400"
+                className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
               />
               Org-scoped AI models
             </div>
@@ -92,7 +92,7 @@ export function ModelRegistryOverview({
             <p className="text-sm leading-relaxed text-muted-foreground">
               AI Models is your control plane for production ML: capture metadata, track
               versions, wire datasets from{" "}
-              <Link href="/training" className="text-violet-500 underline-offset-4 hover:underline dark:text-violet-300">
+              <Link href="/training" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
                 Training
               </Link>
               , and expose inference to workflows and agents. Pick a template below to pre-fill
@@ -103,7 +103,7 @@ export function ModelRegistryOverview({
 
           {/* Stat pills */}
           <div className="flex flex-wrap gap-2 text-xs lg:justify-end">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2.5 py-1.5 font-medium text-violet-600 dark:text-violet-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 font-medium text-emerald-600 dark:text-emerald-300">
               <Brain className="h-3.5 w-3.5" />
               {totalModels} registered
             </span>
@@ -117,7 +117,7 @@ export function ModelRegistryOverview({
                 {trainingCount} training
               </span>
             ) : null}
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-2.5 py-1.5 font-medium text-cyan-600 dark:text-cyan-400">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/20 bg-teal-500/5 px-2.5 py-1.5 font-medium text-teal-600 dark:text-teal-400">
               <Cable className="h-3.5 w-3.5" />
               {connectedDataSources.length > 0
                 ? `${connectedDataSources.length} data source${connectedDataSources.length === 1 ? "" : "s"}`
@@ -161,8 +161,8 @@ export function ModelRegistryOverview({
                     "group relative overflow-hidden rounded-xl border bg-background/50 p-4 text-left ring-1 backdrop-blur-sm transition-shadow",
                     layer.accent,
                     interactive &&
-                      "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50",
-                    isSelected && "ring-2 ring-violet-500/60 shadow-md",
+                      "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
+                    isSelected && "ring-2 ring-emerald-500/60 shadow-md",
                     !interactive && "cursor-default",
                   )}
                 >
@@ -183,7 +183,7 @@ export function ModelRegistryOverview({
                         <p className="text-sm font-semibold text-foreground">{layer.title}</p>
                       </div>
                       {interactive ? (
-                        <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-violet-500 dark:text-violet-300">
+                        <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
                           Use
                           <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5" />
                         </span>
@@ -196,7 +196,7 @@ export function ModelRegistryOverview({
                           key={h}
                           className="flex items-center gap-1.5 text-[11px] text-muted-foreground/90"
                         >
-                          <span className="h-1 w-1 shrink-0 rounded-full bg-violet-500/70 dark:bg-violet-400/70" />
+                          <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50" />
                           {h}
                         </li>
                       ))}

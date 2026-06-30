@@ -59,14 +59,14 @@ export const ML_STACK_LAYERS: MlStackLayer[] = [
     title: "Generative & agents",
     summary: "Fine-tune LLMs for domain tone, tools, and workflow agents.",
     highlights: ["RLHF / instruction tuning", "Agent tool routing", "Eval + guardrails"],
-    accent: "from-violet-500/20 to-fuchsia-500/10 ring-violet-500/20",
+    accent: "from-emerald-500/20 to-teal-500/10 ring-emerald-500/20",
   },
   {
     id: "classical",
     title: "Tabular & classification",
     summary: "Gradient-boosted and linear models on CRM, billing, and ops data.",
     highlights: ["Lead scoring", "Churn prediction", "Routing classifiers"],
-    accent: "from-blue-500/20 to-cyan-500/10 ring-blue-500/20",
+    accent: "from-sky-500/20 to-blue-500/10 ring-sky-500/20",
   },
   {
     id: "timeseries",
