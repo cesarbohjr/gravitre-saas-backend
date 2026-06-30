@@ -40,19 +40,32 @@ export default function CareersPage() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* How we work */}
       <section className="px-6 py-16 border-t border-zinc-200">
         <div className="mx-auto max-w-5xl">
-          <div className="grid gap-8 sm:grid-cols-4 text-center">
+          <div className="mb-10 text-center">
+            <h2 className="text-2xl font-semibold text-zinc-900">How we work</h2>
+            <p className="mt-2 text-zinc-600 max-w-2xl mx-auto text-pretty">
+              The principles that shape how we build, collaborate, and grow together.
+            </p>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { value: "80+", label: "Team members" },
-              { value: "15+", label: "Countries" },
-              { value: "4.8", label: "Glassdoor rating" },
-              { value: "$105M", label: "Total funding" },
-            ].map((stat, i) => (
-              <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                <div className="text-3xl font-semibold text-zinc-900">{stat.value}</div>
-                <div className="text-sm text-zinc-500 mt-1">{stat.label}</div>
+              { title: "Ownership", description: "You own outcomes end to end — from the first sketch to production." },
+              { title: "Customer obsession", description: "We start with the customer problem and work backward to the solution." },
+              { title: "Bias for action", description: "We ship, learn, and iterate quickly instead of waiting for perfect." },
+              { title: "Default to open", description: "We share context openly so everyone can do their best work." },
+            ].map((value, i) => (
+              <motion.div
+                key={value.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="border-l-2 border-emerald-200 pl-4"
+              >
+                <h3 className="font-medium text-zinc-900">{value.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-600">{value.description}</p>
               </motion.div>
             ))}
           </div>
