@@ -26,10 +26,13 @@ const getTypeIcon = (type: string) => {
 
 const getTypeColor = (type: string) => {
   switch (type) {
+    // "major" is the marquee release — strongest emerald emphasis.
+    case "major": return "bg-emerald-600 text-white border-emerald-600"
     case "feature": return "bg-emerald-100 text-emerald-700 border-emerald-200"
-    case "improvement": return "bg-cyan-100 text-cyan-700 border-cyan-200"
+    // Neutral zinc keeps "improvement" distinct without adding an off-brand hue.
+    case "improvement": return "bg-zinc-100 text-zinc-700 border-zinc-200"
+    // Amber is reserved for security/attention items.
     case "security": return "bg-amber-100 text-amber-700 border-amber-200"
-    case "major": return "bg-purple-100 text-purple-700 border-purple-200"
     default: return "bg-zinc-100 text-zinc-600 border-zinc-200"
   }
 }
