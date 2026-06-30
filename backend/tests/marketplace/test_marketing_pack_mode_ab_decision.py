@@ -11,7 +11,7 @@ def test_audit_returns_sta294_structure():
     report = audit_marketing_pack_mode_ab_decision()
     assert report["issue"] == "STA-294"
     assert report["engineeringAuditIssue"] == "STA-293"
-    assert report["signOffState"] == "awaiting"
+    assert report["signOffState"] == "partial"
     assert len(report["decisions"]) == len(MODE_AB_DECISION_CHECKLIST)
 
 
@@ -23,9 +23,17 @@ def test_engineering_recommends_mode_a_default():
     assert report["summary"]["canShipModeADefault"] is True
 
 
-def test_mode_b_not_ship_ready():
+def test_mode_b_shipping_signed_off_opt_in_only():
     report = audit_marketing_pack_mode_ab_decision()
-    assert report["summary"]["modeBShippingDecisionPending"] is True
+    shipping = next(row for row in report["decisions"] if row["key"] == "mode_b_shipping")
+    assert shipping["status"] == "resolved"
+    assert shipping["productDecision"] == "opt_in_only"
+    assert report["summary"]["modeBShippingDecisionPending"] is False
+    assert report["summary"]["modeBShippingApproved"] is True
+
+
+def test_mode_b_not_ship_ready_until_infrastructure():
+    report = audit_marketing_pack_mode_ab_decision()
     assert report["summary"]["canShipModeB"] is False
     assert report["summary"]["modeBInfrastructureReady"] is False
 
@@ -37,10 +45,12 @@ def test_mode_b_guardrails_blocked_pending_infrastructure():
     assert all(row["status"] == "blocked" for row in guardrails)
 
 
-def test_pricing_placeholder_documented():
+def test_mode_b_pricing_signed_off_included_with_risk_gate():
     report = audit_marketing_pack_mode_ab_decision()
     pricing = next(row for row in report["decisions"] if row["key"] == "mode_b_pricing_model")
-    assert pricing["status"] == "pending"
+    assert pricing["status"] == "resolved"
+    assert pricing["productDecision"] == "included_with_risk_gate"
+    assert report["summary"]["modeBPricingModel"] == "included_with_risk_gate"
     assert report["summary"]["pricingPlaceholderDocumented"] is True
 
 

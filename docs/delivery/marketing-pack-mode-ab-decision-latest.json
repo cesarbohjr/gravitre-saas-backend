@@ -3,14 +3,22 @@
   "packSlug": "marketing-operations-pack",
   "engineeringAuditIssue": "STA-293",
   "assignTo": "Product owner for Marketing Operations Pack",
-  "signOffState": "awaiting",
+  "signOffState": "partial",
+  "productSignOff": {
+    "mode_b_shipping": "opt_in_only",
+    "mode_b_pricing_model": "included_with_risk_gate",
+    "signed_at": "2026-06-30",
+    "signed_by_role": "product_owner"
+  },
   "engineeringRecommendedDefault": "mode_a",
   "summary": {
     "total": 7,
-    "pending": 3,
+    "pending": 1,
     "blocked": 4,
-    "resolved": 0,
-    "modeBShippingDecisionPending": true,
+    "resolved": 2,
+    "modeBShippingDecisionPending": false,
+    "modeBShippingApproved": true,
+    "modeBPricingModel": "included_with_risk_gate",
     "modeBInfrastructureReady": false,
     "modeBGuardrailsImplemented": false,
     "pricingPlaceholderDocumented": true,
@@ -30,9 +38,11 @@
       "key": "mode_b_shipping",
       "displayName": "Whether Mode B (autonomous replanning) ships at all",
       "category": "mode_b",
-      "status": "pending",
+      "status": "resolved",
       "engineeringRecommendation": "opt_in_only_if_approved",
-      "notes": "Net-new platform work; brand-voice-affecting. Awaiting pack-owner sign-off."
+      "notes": "Net-new platform work; brand-voice-affecting. Awaiting pack-owner sign-off.",
+      "productDecision": "opt_in_only",
+      "productDecisionLabel": "Mode B ships as opt-in only (not default; requires explicit org enablement)."
     },
     {
       "key": "mode_b_behavior_shift_cap",
@@ -62,9 +72,11 @@
       "key": "mode_b_pricing_model",
       "displayName": "Mode B pricing: included with risk gate vs add-on",
       "category": "pricing",
-      "status": "pending",
+      "status": "resolved",
       "engineeringRecommendation": "included_with_risk_gate_or_addon_4900_cents",
-      "notes": "Documented placeholder MODE_B_AUTONOMOUS_ADDON_CENTS=4900; no Stripe SKU."
+      "notes": "Documented placeholder MODE_B_AUTONOMOUS_ADDON_CENTS=4900; no Stripe SKU.",
+      "productDecision": "included_with_risk_gate",
+      "productDecisionLabel": "Included at Tier 2 base unlock ($149) with in-product risk-acknowledgment gate; no separate $49 add-on required for v1."
     },
     {
       "key": "feedback_mode_toggle",
@@ -82,5 +94,5 @@
       "post_publish_marketing_metrics"
     ]
   },
-  "generatedAt": "2026-06-30T04:59:42.564476+00:00"
+  "generatedAt": "2026-06-30T05:18:55.004465+00:00"
 }

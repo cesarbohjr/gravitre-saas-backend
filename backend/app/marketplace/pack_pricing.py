@@ -21,9 +21,11 @@ PACK_TIER_PRICE_CENTS: dict[int, int] = {
 
 DEPARTMENT_PACK_PRICING_TYPE = "paid"
 
-# Product decision pending pack-owner sign-off (Phase 6.2 / 8.3):
-# Mode B autonomous replanning as optional premium add-on vs included with risk gate.
+# STA-294 product sign-off (2026-06-30): Mode B ships opt-in only at Tier 2 base price
+# with in-product risk-acknowledgment gate. Reserved for future differentiated pricing;
+# not required for Marketing Operations Pack v1.
 MODE_B_AUTONOMOUS_ADDON_CENTS = 4900
+MODE_B_PRICING_MODEL = "included_with_risk_gate"
 
 DEPARTMENT_PACK_SLUG_TIERS: dict[str, int] = {
     "marketing-operations-pack": 2,

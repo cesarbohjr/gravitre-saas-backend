@@ -9,7 +9,28 @@ from app.marketplace.marketing_pack_feedback_loop_gaps import audit_marketing_pa
 from app.marketplace.pack_pricing import MODE_B_AUTONOMOUS_ADDON_CENTS
 
 DecisionStatus = Literal["resolved", "pending", "blocked"]
-SignOffState = Literal["awaiting", "approved", "rejected"]
+SignOffState = Literal["awaiting", "partial", "approved", "rejected"]
+ModeBShippingDecision = Literal["opt_in_only", "do_not_ship"]
+ModeBPricingDecision = Literal["included_with_risk_gate", "addon_4900_cents"]
+
+
+# Product owner sign-off (STA-294, 2026-06-30).
+PRODUCT_SIGN_OFF: dict[str, str] = {
+    "mode_b_shipping": "opt_in_only",
+    "mode_b_pricing_model": "included_with_risk_gate",
+    "signed_at": "2026-06-30",
+    "signed_by_role": "product_owner",
+}
+
+PRODUCT_SIGN_OFF_LABELS: dict[str, str] = {
+    "opt_in_only": "Mode B ships as opt-in only (not default; requires explicit org enablement).",
+    "included_with_risk_gate": (
+        "Included at Tier 2 base unlock ($149) with in-product risk-acknowledgment gate; "
+        "no separate $49 add-on required for v1."
+    ),
+    "addon_4900_cents": "Separate one-time $49 add-on (MODE_B_AUTONOMOUS_ADDON_CENTS).",
+    "do_not_ship": "Mode B does not ship for Marketing Operations Pack v1.",
+}
 
 
 @dataclass(frozen=True)
@@ -98,63 +119,87 @@ def audit_marketing_pack_mode_ab_decision() -> dict[str, Any]:
         "mode_b_autonomous_rollback": "autonomous_rollback",
         "mode_b_post_hoc_audit": "post_hoc_audit_without_approval",
     }
+    shipping_decision = PRODUCT_SIGN_OFF.get("mode_b_shipping")
+    pricing_decision = PRODUCT_SIGN_OFF.get("mode_b_pricing_model")
 
     rows: list[dict[str, Any]] = []
     pending_count = 0
     blocked_count = 0
+    resolved_count = 0
 
     for item in MODE_AB_DECISION_CHECKLIST:
         live_blocked = False
         if item.key == "feedback_mode_toggle":
-            live_blocked = feedback_audit["summary"]["awaitingProductSignOff"]
+            live_blocked = shipping_decision != "opt_in_only"
         elif item.key in guardrail_keys:
             live_blocked = guardrail_keys[item.key] in mode_b_missing
 
         status = item.status
-        if item.category == "guardrail" and live_blocked:
+        product_decision: str | None = None
+
+        if item.key == "mode_b_shipping" and shipping_decision:
+            status = "resolved"
+            product_decision = shipping_decision
+        elif item.key == "mode_b_pricing_model" and pricing_decision:
+            status = "resolved"
+            product_decision = pricing_decision
+        elif item.category == "guardrail" and live_blocked:
             status = "blocked"
-        if item.category == "engineering" and live_blocked:
+        elif item.category == "engineering" and live_blocked:
             status = "blocked"
 
         if status == "pending":
             pending_count += 1
         elif status == "blocked":
             blocked_count += 1
+        else:
+            resolved_count += 1
 
-        rows.append(
-            {
-                "key": item.key,
-                "displayName": item.display_name,
-                "category": item.category,
-                "status": status,
-                "engineeringRecommendation": item.engineering_recommendation,
-                "notes": item.notes,
-            }
-        )
+        row: dict[str, Any] = {
+            "key": item.key,
+            "displayName": item.display_name,
+            "category": item.category,
+            "status": status,
+            "engineeringRecommendation": item.engineering_recommendation,
+            "notes": item.notes,
+        }
+        if product_decision:
+            row["productDecision"] = product_decision
+            label = PRODUCT_SIGN_OFF_LABELS.get(product_decision)
+            if label:
+                row["productDecisionLabel"] = label
+        rows.append(row)
 
     pricing_documented = _module_has_symbol(
         "app.marketplace.pack_pricing",
         "MODE_B_AUTONOMOUS_ADDON_CENTS",
     )
+    mode_b_approved_opt_in = shipping_decision == "opt_in_only"
+    sign_off_state: SignOffState = "awaiting"
+    if shipping_decision and pricing_decision:
+        sign_off_state = "partial" if pending_count or blocked_count else "approved"
 
     return {
         "issue": "STA-294",
         "packSlug": "marketing-operations-pack",
         "engineeringAuditIssue": "STA-293",
         "assignTo": "Product owner for Marketing Operations Pack",
-        "signOffState": "awaiting",
+        "signOffState": sign_off_state,
+        "productSignOff": dict(PRODUCT_SIGN_OFF),
         "engineeringRecommendedDefault": "mode_a",
         "summary": {
             "total": len(rows),
             "pending": pending_count,
             "blocked": blocked_count,
-            "resolved": len(rows) - pending_count - blocked_count,
-            "modeBShippingDecisionPending": True,
+            "resolved": resolved_count,
+            "modeBShippingDecisionPending": not shipping_decision,
+            "modeBShippingApproved": mode_b_approved_opt_in,
+            "modeBPricingModel": pricing_decision,
             "modeBInfrastructureReady": len(mode_b_missing) == 0,
             "modeBGuardrailsImplemented": not mode_b_missing,
             "pricingPlaceholderDocumented": pricing_documented,
             "canShipModeADefault": True,
-            "canShipModeB": False,
+            "canShipModeB": mode_b_approved_opt_in and not mode_b_missing,
         },
         "decisions": rows,
         "feedbackLoopAudit": {
