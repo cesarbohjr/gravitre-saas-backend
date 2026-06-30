@@ -1827,6 +1827,9 @@ export interface MarketplaceAssetSummary {
   connectorsReady: boolean
   requiredConnectorsConnected: number
   requiredConnectorsTotal: number
+  requiresPayment?: boolean
+  hasEntitlement?: boolean
+  packItems?: MarketplacePackItem[]
   installCount?: number
   averageRating?: number | null
   reviewCount?: number

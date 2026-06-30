@@ -5,6 +5,7 @@ import re
 import uuid
 from typing import Any
 
+from app.marketplace.entitlements import asset_requires_payment
 from app.marketplace.service import MarketplaceError, validate_connectors_for_asset
 
 BROWSE_LIST_COLUMNS = (
@@ -170,6 +171,45 @@ def _serialize_asset_detail(
     return payload
 
 
+def _active_entitlements_by_asset(client: Any, org_id: str, asset_ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not asset_ids:
+        return {}
+    try:
+        result = (
+            client.table("marketplace_asset_entitlements")
+            .select("asset_id, status, pricing_type, price_cents, currency")
+            .eq("org_id", org_id)
+            .eq("status", "active")
+            .in_("asset_id", asset_ids)
+            .execute()
+        )
+    except Exception:
+        return {}
+    return {str(row["asset_id"]): dict(row) for row in (result.data or [])}
+
+
+def _pack_items_by_asset(client: Any, pack_asset_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    if not pack_asset_ids:
+        return {}
+    try:
+        result = (
+            client.table("marketplace_pack_items")
+            .select(f"pack_asset_id, {PACK_ITEM_COLUMNS}")
+            .in_("pack_asset_id", pack_asset_ids)
+            .order("sort_order")
+            .execute()
+        )
+    except Exception:
+        return {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in result.data or []:
+        pack_id = str(row.get("pack_asset_id") or "")
+        if not pack_id:
+            continue
+        grouped.setdefault(pack_id, []).append(_serialize_pack_item(dict(row)))
+    return grouped
+
+
 def _active_installs_by_asset(client: Any, org_id: str, asset_ids: list[str]) -> dict[str, dict[str, Any]]:
     if not asset_ids:
         return {}
@@ -279,6 +319,9 @@ def list_marketplace_assets(
     rows = [dict(row) for row in (result.data or [])]
     asset_ids = [str(row["id"]) for row in rows]
     installs = _active_installs_by_asset(client, org_id, asset_ids)
+    entitlements = _active_entitlements_by_asset(client, org_id, asset_ids)
+    pack_asset_ids = [str(row["id"]) for row in rows if row.get("asset_type") == "department_pack"]
+    pack_items_by_asset = _pack_items_by_asset(client, pack_asset_ids)
 
     assets: list[dict[str, Any]] = []
     for row in rows:
@@ -289,13 +332,17 @@ def list_marketplace_assets(
             environment_name=environment_name,
         )
         connector_summary = _checklist_summary(row.get("required_connectors"), validation)
-        assets.append(
-            _serialize_asset_summary(
-                row,
-                install=installs.get(str(row["id"])),
-                connector_summary=connector_summary,
-            )
+        asset_id = str(row["id"])
+        summary = _serialize_asset_summary(
+            row,
+            install=installs.get(asset_id),
+            connector_summary=connector_summary,
         )
+        summary["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
+        summary["hasEntitlement"] = asset_id in entitlements
+        if row.get("asset_type") == "department_pack":
+            summary["packItems"] = pack_items_by_asset.get(asset_id, [])
+        assets.append(summary)
 
     total = getattr(result, "count", None)
     if total is None:
@@ -366,14 +413,16 @@ def get_marketplace_asset(
     if row.get("asset_type") == "department_pack":
         pack_items = _fetch_pack_items(client, str(row["id"]))
 
-    return {
-        "asset": _serialize_asset_detail(
-            row,
-            install=installs.get(str(row["id"])),
-            connector_summary=connector_summary,
-            pack_items=pack_items,
-        )
-    }
+    asset_id = str(row["id"])
+    detail = _serialize_asset_detail(
+        row,
+        install=installs.get(asset_id),
+        connector_summary=connector_summary,
+        pack_items=pack_items,
+    )
+    detail["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
+    detail["hasEntitlement"] = asset_id in _active_entitlements_by_asset(client, org_id, [asset_id])
+    return {"asset": detail}
 
 
 def resolve_browsable_asset(client: Any, org_id: str, asset_ref: str) -> dict[str, Any]:

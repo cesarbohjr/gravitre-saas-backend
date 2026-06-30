@@ -46,11 +46,20 @@ import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
-  MarketplaceConnectorChecklistItem,
   MarketplaceInstallBlocker,
 } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
+import {
+  ConnectorChecklist,
+  EntitlementBadge,
+  NonAdminPurchaseNotice,
+  PackContentsPreview,
+  PriceBadge,
+  assetRequiresPurchase,
+  formatAssetPrice,
+  isFreeAsset,
+} from "@/components/marketplace/marketplace-asset-commerce"
 import type { AssetCategory } from "@/lib/marketplace-category-icons"
 
 const TYPE_FILTERS = [
@@ -59,7 +68,7 @@ const TYPE_FILTERS = [
   { id: "workflow", label: "Workflows", icon: Workflow },
   { id: "knowledge_pack", label: "Knowledge", icon: Database },
   { id: "department_pack", label: "Department packs", icon: Package },
-  { id: "connector_config", label: "Connectors", icon: Plug },
+  { id: "connector_config", label: "Partner connectors", icon: Plug },
 ] as const
 
 const PRICE_FILTERS = [
@@ -69,38 +78,6 @@ const PRICE_FILTERS = [
 ] as const
 
 type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
-
-function isFreeAsset(asset: MarketplaceAssetSummary): boolean {
-  return asset.pricingType === "free" || !asset.priceCents
-}
-
-/** Formats a paid asset's price, with a cadence suffix for known pricing models. */
-function formatAssetPrice(asset: MarketplaceAssetSummary): string {
-  const cents = asset.priceCents ?? 0
-  const amount = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  }).format(cents / 100)
-  if (asset.pricingType === "flat_monthly") return `${amount}/mo`
-  if (asset.pricingType === "per_invocation") return `${amount}/run`
-  return amount
-}
-
-function PriceBadge({ asset }: { asset: MarketplaceAssetSummary }) {
-  if (isFreeAsset(asset)) {
-    return (
-      <Badge variant="secondary" className="font-medium">
-        Free
-      </Badge>
-    )
-  }
-  return (
-    <Badge variant="outline" className="border-primary/30 bg-primary/5 font-semibold text-primary">
-      {formatAssetPrice(asset)}
-    </Badge>
-  )
-}
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
 
@@ -150,40 +127,6 @@ function ReadinessRing({
         {connected}/{total}
       </span>
     </div>
-  )
-}
-
-function checklistTone(item: MarketplaceConnectorChecklistItem) {
-  if (item.connected) return "text-success"
-  if (item.required) return "text-destructive"
-  return "text-warning"
-}
-
-function ConnectorChecklist({ items }: { items: MarketplaceConnectorChecklistItem[] }) {
-  if (!items.length) return null
-  return (
-    <ul className="space-y-2">
-      {items.map((item) => (
-        <li key={item.connectorType} className="flex items-start justify-between gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            {item.connected ? (
-              <CheckCircle2 className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-            ) : (
-              <Plug className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-            )}
-            <span className={cn(!item.connected && item.required && "font-medium")}>
-              {item.label || item.connectorType}
-              {item.required ? "" : " (optional)"}
-            </span>
-          </div>
-          {!item.connected ? (
-            <Button size="sm" variant="outline" asChild>
-              <Link href={item.action_url || item.connectPath}>Connect</Link>
-            </Button>
-          ) : null}
-        </li>
-      ))}
-    </ul>
   )
 }
 
@@ -252,6 +195,8 @@ function AssetCard({
 }) {
   const ready = asset.connectorsReady || asset.requiredConnectorsTotal === 0
   const blocked = !ready && !asset.installed
+  const needsPurchase = assetRequiresPurchase(asset)
+  const showPrimaryAction = isAdmin && !asset.installed
 
   return (
     <motion.article
@@ -292,7 +237,7 @@ function AssetCard({
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <PriceBadge asset={asset} />
-        {asset.installed ? <Badge variant="secondary">Installed</Badge> : null}
+        <EntitlementBadge asset={asset} />
         {asset.federated || asset.source === "partner_registry" ? (
           <Badge variant="outline">Partner registry</Badge>
         ) : null}
@@ -328,47 +273,55 @@ function AssetCard({
         ))}
       </div>
 
+      <PackContentsPreview items={asset.packItems} compact />
+
       {asset.connectorChecklist?.length ? (
         <div className="mb-4 rounded-lg border border-border/60 bg-muted/20 p-3">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Connector checklist
-          </p>
           <ConnectorChecklist items={asset.connectorChecklist} />
         </div>
       ) : null}
 
+      {!isAdmin && needsPurchase ? <div className="mb-4"><NonAdminPurchaseNotice /></div> : null}
+
       <div className="mt-auto flex flex-wrap gap-2">
-        <Button size="sm" variant="ghost" onClick={() => onOpenDetail(asset)}>
-          Details
-          <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
-        </Button>
-        {isAdmin && !asset.installed ? (
-          <Button size="sm" disabled={Boolean(busy)} onClick={() => onInstall(asset)} title={blocked ? "Connect required apps first" : undefined}>
+        {showPrimaryAction ? (
+          <Button
+            size="sm"
+            disabled={Boolean(busy)}
+            onClick={() => onInstall(asset)}
+            title={blocked && !needsPurchase ? "Connect required apps first" : undefined}
+          >
             {busy === asset.id ? (
               <>
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
                 Installing…
               </>
-            ) : blocked ? (
-              "Connect apps first"
-            ) : isFreeAsset(asset) ? (
-              "Install"
-            ) : (
+            ) : needsPurchase ? (
               <>
                 <ShoppingCart className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                 {`Buy · ${formatAssetPrice(asset)}`}
               </>
+            ) : blocked ? (
+              "Connect apps first"
+            ) : (
+              "Install"
             )}
           </Button>
         ) : null}
-        <Button size="sm" variant="secondary" disabled={Boolean(busy)} onClick={() => onClone(asset)}>
-          {busy === `clone:${asset.id}` ? (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          )}
-          Clone
+        <Button size="sm" variant={showPrimaryAction ? "outline" : "default"} onClick={() => onOpenDetail(asset)}>
+          Details
+          <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
         </Button>
+        {isAdmin ? (
+          <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => onClone(asset)}>
+            {busy === `clone:${asset.id}` ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            )}
+            Clone draft
+          </Button>
+        ) : null}
       </div>
     </motion.article>
   )
@@ -634,6 +587,23 @@ function MarketplaceAssetsContent() {
       )
     return [...catalog, ...federatedExtras]
   }, [data?.assets, federatedData?.assets, includeFederated])
+
+  useEffect(() => {
+    const purchase = searchParams.get("purchase")
+    const purchaseSlug = searchParams.get("slug")
+    if (purchase !== "success" || !purchaseSlug || !assets.length) return
+    const asset = assets.find((row) => row.slug === purchaseSlug)
+    if (asset) {
+      toast.success("Purchase complete", { description: "Continue with install into your workspace." })
+      setInstallTarget(asset)
+      setInstallOpen(true)
+    }
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("purchase")
+    params.delete("slug")
+    const next = params.toString()
+    router.replace(next ? `/marketplace/assets?${next}` : "/marketplace/assets", { scroll: false })
+  }, [assets, router, searchParams])
 
   const visibleAssets = useMemo(() => {
     if (priceFilter === "all") return assets

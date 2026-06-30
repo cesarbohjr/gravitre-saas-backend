@@ -71,6 +71,7 @@ def test_is_uuid():
 def test_list_marketplace_assets_serializes_summary():
     assets = _table([ASSET_ROW], count=1)
     installs = _table([])
+    entitlements = _table([])
     connectors = _table([{"type": "hubspot"}])
     client = MagicMock()
 
@@ -79,6 +80,8 @@ def test_list_marketplace_assets_serializes_summary():
             return assets
         if name == "marketplace_installs":
             return installs
+        if name == "marketplace_asset_entitlements":
+            return entitlements
         if name == "connectors":
             return connectors
         return _table([])
@@ -88,6 +91,8 @@ def test_list_marketplace_assets_serializes_summary():
     assert result["total"] == 1
     assert result["assets"][0]["slug"] == "marketing-analyst"
     assert result["assets"][0]["canInstall"] is True
+    assert result["assets"][0]["requiresPayment"] is False
+    assert result["assets"][0]["hasEntitlement"] is False
     assert result["assets"][0]["businessOutcome"] == "Reduce manual reporting time."
     assert result["assets"][0]["useCase"] == "Weekly marketing review"
     assert result["assets"][0]["estimatedHoursSaved"] == 4.0
@@ -96,6 +101,7 @@ def test_list_marketplace_assets_serializes_summary():
 def test_list_marketplace_assets_featured_filter():
     assets = _table([{**ASSET_ROW, "featured": True}], count=1)
     installs = _table([])
+    entitlements = _table([])
     connectors = _table([{"type": "hubspot"}])
     client = MagicMock()
 
@@ -104,6 +110,8 @@ def test_list_marketplace_assets_featured_filter():
             return assets
         if name == "marketplace_installs":
             return installs
+        if name == "marketplace_asset_entitlements":
+            return entitlements
         if name == "connectors":
             return connectors
         return _table([])
@@ -118,6 +126,7 @@ def test_list_marketplace_assets_featured_filter():
 def test_get_marketplace_asset_by_slug():
     assets = _table([ASSET_ROW])
     installs = _table([])
+    entitlements = _table([])
     connectors = _table([])
     client = MagicMock()
 
@@ -126,6 +135,8 @@ def test_get_marketplace_asset_by_slug():
             return assets
         if name == "marketplace_installs":
             return installs
+        if name == "marketplace_asset_entitlements":
+            return entitlements
         if name == "connectors":
             return connectors
         return _table([])

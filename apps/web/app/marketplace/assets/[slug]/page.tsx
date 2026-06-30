@@ -8,6 +8,15 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-button"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
+import {
+  ConnectorChecklist,
+  EntitlementBadge,
+  NonAdminPurchaseNotice,
+  PackContentsPreview,
+  PriceBadge,
+  assetRequiresPurchase,
+  formatAssetPrice,
+} from "@/components/marketplace/marketplace-asset-commerce"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -30,7 +39,7 @@ import {
   Copy,
   ExternalLink,
   Loader2,
-  Plug,
+  ShoppingCart,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -39,49 +48,10 @@ import type {
   MarketplaceAssetDetail,
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
-  MarketplaceConnectorChecklistItem,
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
-
-function formatPrice(cents?: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format((cents ?? 0) / 100)
-}
-
-function checklistTone(item: MarketplaceConnectorChecklistItem) {
-  if (item.connected) return "text-success"
-  if (item.required) return "text-destructive"
-  return "text-warning"
-}
-
-function ConnectorChecklist({ items }: { items: MarketplaceConnectorChecklistItem[] }) {
-  if (!items.length) return null
-  return (
-    <ul className="space-y-2">
-      {items.map((item) => (
-        <li key={item.connectorType} className="flex items-start justify-between gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            {item.connected ? (
-              <CheckCircle2 className={`h-4 w-4 shrink-0 ${checklistTone(item)}`} aria-hidden />
-            ) : (
-              <Plug className={`h-4 w-4 shrink-0 ${checklistTone(item)}`} aria-hidden />
-            )}
-            <span>{item.label || item.connectorType}</span>
-          </div>
-          {!item.connected ? (
-            <Button size="sm" variant="outline" asChild>
-              <Link href={item.action_url || item.connectPath}>Connect</Link>
-            </Button>
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  )
-}
 
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
@@ -266,7 +236,7 @@ function MarketplaceAssetDetailContent() {
   }, [mutateEntitlement, router, searchParams, slug])
 
   const needsPurchase = Boolean(
-    entitlement?.requiresPayment && !entitlement?.hasEntitlement && !asset?.installed,
+    asset && assetRequiresPurchase({ ...asset, hasEntitlement: entitlement?.hasEntitlement ?? asset.hasEntitlement }),
   )
 
   const handleClone = async () => {
@@ -335,23 +305,30 @@ function MarketplaceAssetDetailContent() {
           </div>
         ) : asset ? (
           <>
-            <header className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
-                {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
-                <AssetTrustBadges asset={asset} />
-                {asset.pricingType !== "free" && (asset.priceCents ?? 0) > 0 ? (
-                  <Badge variant="outline">{formatPrice(asset.priceCents, "usd")}</Badge>
+            <header className="space-y-4">
+              <div className="rounded-xl border bg-muted/20 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
+                  {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
+                  <AssetTrustBadges asset={asset} />
+                </div>
+                <h1 className="mt-3 text-2xl font-semibold text-foreground">{asset.title}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <PriceBadge asset={asset} className="text-sm" />
+                  <EntitlementBadge
+                    asset={{
+                      ...asset,
+                      hasEntitlement: entitlement?.hasEntitlement ?? asset.hasEntitlement,
+                      requiresPayment: entitlement?.requiresPayment ?? asset.requiresPayment,
+                    }}
+                  />
+                </div>
+                {needsPurchase && isAdmin ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    One-time purchase ({formatAssetPrice(asset)}) unlocks install into your workspace.
+                  </p>
                 ) : null}
-                {entitlement?.hasEntitlement ? <Badge>Purchased</Badge> : null}
-                {asset.installed ? <Badge>Installed</Badge> : null}
               </div>
-              <h1 className="text-2xl font-semibold text-foreground">{asset.title}</h1>
-              {needsPurchase && isAdmin ? (
-                <p className="text-sm text-muted-foreground">
-                  Purchase required before install ({formatPrice(entitlement?.priceCents, entitlement?.currency)}).
-                </p>
-              ) : null}
               {asset.description ? (
                 <p className="text-sm text-muted-foreground text-pretty">{asset.description}</p>
               ) : null}
@@ -385,54 +362,39 @@ function MarketplaceAssetDetailContent() {
 
             {asset.connectorChecklist?.length ? (
               <div className="rounded-lg border bg-muted/20 p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Connector checklist
-                </p>
                 <ConnectorChecklist items={asset.connectorChecklist} />
               </div>
             ) : null}
 
-            {asset.packItems?.length ? (
-              <div className="rounded-lg border p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Pack contents
-                </p>
-                <ul className="space-y-2 text-sm">
-                  {asset.packItems.map((item) => (
-                    <li key={item.child.id} className="flex items-center justify-between gap-2">
-                      <Link
-                        href={`/marketplace/assets/${encodeURIComponent(item.child.slug)}`}
-                        className="text-primary hover:underline"
-                      >
-                        {item.child.title}
-                      </Link>
-                      <Badge variant="outline" className="text-[10px]">
-                        {item.child.assetType}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+            <PackContentsPreview items={asset.packItems} linkChildren />
+
+            {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
 
             <div className="flex flex-wrap gap-2">
               {isAdmin && !asset.installed ? (
-                <Button disabled={!asset.canInstall && !needsPurchase} onClick={openInstall}>
-                  {needsPurchase
-                    ? "Purchase to install"
-                    : asset.canInstall
-                      ? "Install"
-                      : "Connect apps to install"}
+                <Button onClick={openInstall}>
+                  {needsPurchase ? (
+                    <>
+                      <ShoppingCart className="mr-1.5 h-4 w-4" aria-hidden />
+                      {`Buy · ${formatAssetPrice(asset)}`}
+                    </>
+                  ) : asset.canInstall ? (
+                    "Install into workspace"
+                  ) : (
+                    "Connect apps to install"
+                  )}
                 </Button>
               ) : null}
-              <Button variant="secondary" disabled={busy} onClick={handleClone}>
-                {busy ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
-                  <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                )}
-                Clone
-              </Button>
+              {isAdmin ? (
+                <Button variant="ghost" disabled={busy} onClick={handleClone}>
+                  {busy ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Clone draft
+                </Button>
+              ) : null}
               {asset.installed ? (
                 <>
                   <Button variant="outline" asChild>
