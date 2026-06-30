@@ -37,6 +37,7 @@ import {
   Package,
   Plug,
   Search,
+  ShoppingCart,
   Star,
   Workflow,
 } from "lucide-react"
@@ -60,6 +61,46 @@ const TYPE_FILTERS = [
   { id: "department_pack", label: "Department packs", icon: Package },
   { id: "connector_config", label: "Connectors", icon: Plug },
 ] as const
+
+const PRICE_FILTERS = [
+  { id: "all", label: "All prices" },
+  { id: "free", label: "Free" },
+  { id: "paid", label: "Paid" },
+] as const
+
+type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
+
+function isFreeAsset(asset: MarketplaceAssetSummary): boolean {
+  return asset.pricingType === "free" || !asset.priceCents
+}
+
+/** Formats a paid asset's price, with a cadence suffix for known pricing models. */
+function formatAssetPrice(asset: MarketplaceAssetSummary): string {
+  const cents = asset.priceCents ?? 0
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  }).format(cents / 100)
+  if (asset.pricingType === "flat_monthly") return `${amount}/mo`
+  if (asset.pricingType === "per_invocation") return `${amount}/run`
+  return amount
+}
+
+function PriceBadge({ asset }: { asset: MarketplaceAssetSummary }) {
+  if (isFreeAsset(asset)) {
+    return (
+      <Badge variant="secondary" className="font-medium">
+        Free
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant="outline" className="border-primary/30 bg-primary/5 font-semibold text-primary">
+      {formatAssetPrice(asset)}
+    </Badge>
+  )
+}
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
 
@@ -250,6 +291,7 @@ function AssetCard({
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
+        <PriceBadge asset={asset} />
         {asset.installed ? <Badge variant="secondary">Installed</Badge> : null}
         {asset.federated || asset.source === "partner_registry" ? (
           <Badge variant="outline">Partner registry</Badge>
@@ -309,8 +351,13 @@ function AssetCard({
               </>
             ) : blocked ? (
               "Connect apps first"
-            ) : (
+            ) : isFreeAsset(asset) ? (
               "Install"
+            ) : (
+              <>
+                <ShoppingCart className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                {`Buy · ${formatAssetPrice(asset)}`}
+              </>
             )}
           </Button>
         ) : null}
@@ -491,6 +538,7 @@ function MarketplaceAssetsContent() {
   const initialType = searchParams.get("type")
   const initialDepartment = searchParams.get("department")
   const initialCategory = searchParams.get("category")
+  const initialPrice = searchParams.get("price")
   const reduceMotion = useReducedMotion()
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
@@ -500,6 +548,9 @@ function MarketplaceAssetsContent() {
   )
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(initialDepartment)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(initialCategory)
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>(
+    initialPrice === "free" || initialPrice === "paid" ? initialPrice : "all",
+  )
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search.trim())
   const [busy, setBusy] = useState<string | null>(null)
@@ -517,12 +568,13 @@ function MarketplaceAssetsContent() {
     if (typeFilter !== "all") params.set("type", typeFilter)
     if (departmentFilter) params.set("department", departmentFilter)
     if (categoryFilter) params.set("category", categoryFilter)
+    if (priceFilter !== "all") params.set("price", priceFilter)
     if (debouncedSearch) params.set("search", debouncedSearch)
     const next = params.toString()
     const current = searchParams.toString()
     if (next === current) return
     router.replace(next ? `/marketplace/assets?${next}` : "/marketplace/assets", { scroll: false })
-  }, [categoryFilter, debouncedSearch, departmentFilter, router, searchParams, typeFilter])
+  }, [categoryFilter, debouncedSearch, departmentFilter, priceFilter, router, searchParams, typeFilter])
 
   useEffect(() => {
     syncFiltersToUrl()
@@ -583,6 +635,11 @@ function MarketplaceAssetsContent() {
     return [...catalog, ...federatedExtras]
   }, [data?.assets, federatedData?.assets, includeFederated])
 
+  const visibleAssets = useMemo(() => {
+    if (priceFilter === "all") return assets
+    return assets.filter((asset) => (priceFilter === "free" ? isFreeAsset(asset) : !isFreeAsset(asset)))
+  }, [assets, priceFilter])
+
   const openInstall = useCallback((asset: MarketplaceAssetSummary) => {
     setInstallTarget(asset)
     setInstallOpen(true)
@@ -612,13 +669,15 @@ function MarketplaceAssetsContent() {
   }
 
   const emptyMessage = useMemo(() => {
+    if (priceFilter === "free") return "No free assets match the current filters."
+    if (priceFilter === "paid") return "No paid assets match the current filters."
     if (debouncedSearch) return "No assets match your search."
     if (departmentFilter) return `No assets in department "${departmentFilter.replace(/_/g, " ")}".`
     if (categoryFilter) return `No assets in category "${categoryFilter.replace(/_/g, " ")}".`
     if (typeFilter !== "all") return "No assets in this category yet."
     if (categories?.totalAssets === 0) return "The catalog is empty right now. Check back soon for new assets."
     return "No assets found."
-  }, [debouncedSearch, departmentFilter, categoryFilter, typeFilter, categories?.totalAssets])
+  }, [priceFilter, debouncedSearch, departmentFilter, categoryFilter, typeFilter, categories?.totalAssets])
 
   return (
     <AppShell title="Marketplace">
@@ -683,7 +742,29 @@ function MarketplaceAssetsContent() {
                   {filter.label}
                 </Button>
               ))}
-              {typeFilter !== "all" || departmentFilter || categoryFilter || debouncedSearch ? (
+              <div
+                role="group"
+                aria-label="Filter by price"
+                className="ml-auto inline-flex items-center gap-0.5 rounded-lg border p-0.5"
+              >
+                {PRICE_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    aria-pressed={priceFilter === filter.id}
+                    onClick={() => setPriceFilter(filter.id)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      priceFilter === filter.id
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+              {typeFilter !== "all" || departmentFilter || categoryFilter || priceFilter !== "all" || debouncedSearch ? (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -691,6 +772,7 @@ function MarketplaceAssetsContent() {
                     setTypeFilter("all")
                     setDepartmentFilter(null)
                     setCategoryFilter(null)
+                    setPriceFilter("all")
                     setSearch("")
                   }}
                 >
@@ -722,11 +804,11 @@ function MarketplaceAssetsContent() {
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
                 Failed to load marketplace catalog.
               </div>
-            ) : assets.length === 0 ? (
+            ) : visibleAssets.length === 0 ? (
               <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {assets.map((asset, index) => (
+                {visibleAssets.map((asset, index) => (
                   <AssetCard
                     key={asset.id}
                     asset={asset}
