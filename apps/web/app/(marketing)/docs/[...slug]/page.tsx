@@ -2,10 +2,19 @@ import Link from "next/link"
 import { compileMDX } from "next-mdx-remote/rsc"
 import { notFound } from "next/navigation"
 import remarkGfm from "remark-gfm"
+import rehypeSlug from "rehype-slug"
 import { ArrowLeft, ArrowRight, Clock, ExternalLink } from "lucide-react"
 
 import { mdxComponents } from "@/lib/docs/mdx-components"
-import { getAllPublicDocSlugs, getPublicDocBySlug } from "@/lib/docs/load-docs"
+import {
+  getAllPublicDocSlugs,
+  getPublicDocBySlug,
+  getDocsNavSections,
+} from "@/lib/docs/load-docs"
+import { extractHeadings } from "@/lib/docs/toc"
+import { DocsShell } from "@/components/docs/docs-shell"
+import { DocsBreadcrumb } from "@/components/docs/docs-breadcrumb"
+import { PlanBadge } from "@/components/docs/plan-badge"
 
 import { DocPageMotion } from "./doc-page-motion"
 
@@ -47,86 +56,98 @@ export default async function DocsSlugPage({
       parseFrontmatter: false,
       mdxOptions: {
         remarkPlugins: [remarkGfm],
+        rehypePlugins: [rehypeSlug],
       },
     },
   })
 
   const { frontmatter } = doc
+  const headings = extractHeadings(doc.content)
+  const sections = getDocsNavSections()
 
   return (
     <div className="min-h-screen bg-white">
-      <section className="border-b border-zinc-200 bg-zinc-50/50">
-        <div className="mx-auto max-w-4xl px-6 py-8">
-          <DocPageMotion>
-            <Link
-              href="/docs"
-              className="mb-4 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900"
+      <DocsShell sections={sections} headings={headings}>
+        <DocPageMotion>
+          <DocsBreadcrumb category={frontmatter.category} title={frontmatter.title} />
+
+          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+            {frontmatter.category ? (
+              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                {frontmatter.category}
+              </span>
+            ) : null}
+            {frontmatter.tier && frontmatter.tier !== "all" ? (
+              <PlanBadge tier={frontmatter.tier} />
+            ) : null}
+            {frontmatter.readTime ? (
+              <span className="flex items-center gap-1 text-xs text-zinc-500">
+                <Clock className="h-3 w-3" />
+                {frontmatter.readTime} read
+              </span>
+            ) : null}
+          </div>
+
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl text-balance">
+            {frontmatter.title}
+          </h1>
+          {frontmatter.description ? (
+            <p className="mt-4 text-lg leading-relaxed text-zinc-600 text-pretty">
+              {frontmatter.description}
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex items-center gap-4 border-b border-zinc-200 pb-6 text-sm">
+            <a
+              href={`https://github.com/gravitre/docs/edit/main/content/docs/public/${doc.slug}.mdx`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-zinc-500 transition-colors hover:text-zinc-900"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Docs
-            </Link>
+              <ExternalLink className="h-3.5 w-3.5" />
+              Edit on GitHub
+            </a>
+          </div>
+        </DocPageMotion>
 
-            <div className="mb-3 flex items-center gap-3">
-              {frontmatter.category ? (
-                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600">
-                  {frontmatter.category}
-                </span>
-              ) : null}
-              {frontmatter.readTime ? (
-                <span className="flex items-center gap-1 text-xs text-zinc-500">
-                  <Clock className="h-3 w-3" />
-                  {frontmatter.readTime} read
-                </span>
-              ) : null}
+        <article className="prose prose-zinc mt-8 max-w-none">{content}</article>
+
+        {(frontmatter.prev || frontmatter.next) && (
+          <div className="mt-16 border-t border-zinc-200 pt-8">
+            <div className="flex items-center justify-between gap-4">
+              {frontmatter.prev ? (
+                <Link
+                  href={frontmatter.prev.href}
+                  className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                  <span>
+                    <span className="block text-xs text-zinc-500">Previous</span>
+                    <span className="font-medium text-zinc-900">{frontmatter.prev.title}</span>
+                  </span>
+                </Link>
+              ) : (
+                <div />
+              )}
+
+              {frontmatter.next ? (
+                <Link
+                  href={frontmatter.next.href}
+                  className="group flex items-center gap-2 text-right text-sm text-zinc-500 hover:text-zinc-900"
+                >
+                  <span>
+                    <span className="block text-xs text-zinc-500">Next</span>
+                    <span className="font-medium text-zinc-900">{frontmatter.next.title}</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              ) : (
+                <div />
+              )}
             </div>
-
-            <h1 className="text-3xl font-semibold text-zinc-900 sm:text-4xl">{frontmatter.title}</h1>
-            <p className="mt-4 max-w-3xl text-lg text-zinc-600">{frontmatter.description}</p>
-          </DocPageMotion>
-        </div>
-      </section>
-
-      <section className="px-6 py-12">
-        <div className="mx-auto max-w-4xl">
-          <article className="prose prose-zinc max-w-none">{content}</article>
-
-          {(frontmatter.prev || frontmatter.next) && (
-            <div className="mt-16 border-t border-zinc-200 pt-8">
-              <div className="flex items-center justify-between">
-                {frontmatter.prev ? (
-                  <Link
-                    href={frontmatter.prev.href}
-                    className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900"
-                  >
-                    <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                    <span>
-                      <span className="block text-xs text-zinc-500">Previous</span>
-                      <span className="font-medium text-zinc-900">{frontmatter.prev.title}</span>
-                    </span>
-                  </Link>
-                ) : (
-                  <div />
-                )}
-
-                {frontmatter.next ? (
-                  <Link
-                    href={frontmatter.next.href}
-                    className="group flex items-center gap-2 text-right text-sm text-zinc-500 hover:text-zinc-900"
-                  >
-                    <span>
-                      <span className="block text-xs text-zinc-500">Next</span>
-                      <span className="font-medium text-zinc-900">{frontmatter.next.title}</span>
-                    </span>
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                ) : (
-                  <div />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+          </div>
+        )}
+      </DocsShell>
 
       <section className="border-t border-zinc-200 bg-zinc-50/50 px-6 py-12">
         <div className="mx-auto max-w-4xl text-center">

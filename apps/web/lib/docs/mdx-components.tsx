@@ -1,7 +1,22 @@
-import type { ReactElement, ReactNode, HTMLAttributes, AnchorHTMLAttributes } from "react"
+import type { ReactNode, HTMLAttributes } from "react"
 import Link from "next/link"
 
-import { CodeBlock, Callout } from "@/components/docs/mdx-client"
+import { CodeBlock, Callout, Tabs, Tab } from "@/components/docs/mdx-client"
+import {
+  Steps,
+  Step,
+  Card,
+  CardGrid,
+  Screenshot,
+  ScreenshotPlaceholder,
+  Diagram,
+  TierCallout,
+  VendorLogo,
+  FAQItem,
+  CompareTable,
+  Prerequisites,
+} from "@/components/docs/mdx-elements"
+import { PlanBadge } from "@/components/docs/plan-badge"
 
 function extractText(node: ReactNode): string {
   if (typeof node === "string") return node
@@ -19,10 +34,10 @@ export const mdxComponents = {
     <h1 className="mb-4 mt-8 text-2xl font-semibold text-zinc-900 first:mt-0" {...props} />
   ),
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="mb-3 mt-10 text-xl font-semibold text-zinc-900" {...props} />
+    <h2 className="mb-3 mt-10 scroll-mt-24 text-xl font-semibold text-zinc-900" {...props} />
   ),
   h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3 className="mb-2 mt-6 text-lg font-medium text-zinc-900" {...props} />
+    <h3 className="mb-2 mt-6 scroll-mt-24 text-lg font-medium text-zinc-900" {...props} />
   ),
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
     <p className="mb-4 leading-7 text-zinc-600" {...props} />
@@ -76,5 +91,35 @@ export const mdxComponents = {
     <blockquote className="my-4 border-l-4 border-emerald-300 pl-4 text-zinc-600" {...props} />
   ),
   hr: () => <hr className="my-8 border-zinc-200" />,
+  table: (props: React.HTMLAttributes<HTMLTableElement>) => (
+    <div className="my-6 overflow-x-auto rounded-xl border border-zinc-200">
+      <table className="w-full text-sm" {...props} />
+    </div>
+  ),
+  thead: (props: React.HTMLAttributes<HTMLTableSectionElement>) => (
+    <thead className="border-b border-zinc-200 bg-zinc-50 text-left" {...props} />
+  ),
+  th: (props: React.HTMLAttributes<HTMLTableCellElement>) => (
+    <th className="px-4 py-2.5 font-medium text-zinc-700" {...props} />
+  ),
+  td: (props: React.HTMLAttributes<HTMLTableCellElement>) => (
+    <td className="border-b border-zinc-100 px-4 py-2.5 text-zinc-600" {...props} />
+  ),
+  // Doc authoring components
   Callout,
+  Tabs,
+  Tab,
+  Steps,
+  Step,
+  Card,
+  CardGrid,
+  Screenshot,
+  ScreenshotPlaceholder,
+  Diagram,
+  TierCallout,
+  PlanBadge,
+  VendorLogo,
+  FAQItem,
+  CompareTable,
+  Prerequisites,
 }
