@@ -132,20 +132,20 @@ async def test_builds_cluster_glossary_relationships():
     assert captured[0]["relationship_type"] == REL_COOCCURS_WITH
 
 
-def test_no_new_entity_discovery_only_restatement():
-    """Regression guard: builder must only read v3/v4 tables, not discover new entities."""
+def test_crm_builder_restates_outcome_rows_only():
+    """Regression guard: CRM builder reads v8 outcomes, not a parallel CRM sync pipeline."""
     from pathlib import Path
 
     path = Path(__file__).resolve().parents[1] / "app" / "services" / "entity_relationship_builder.py"
     text = path.read_text(encoding="utf-8")
-    allowed_sources = {
+    assert "agent_action_outcomes" in text
+    assert "build_relationships_from_crm_data" in text
+    assert "business_entities" not in text
+    for source in (
         "org_glossary_terms",
         "agent_memories",
         "org_query_clusters",
         "departments",
         "org_entity_relationships",
-    }
-    for forbidden in ("hubspot", "salesforce", "spacy", "crm", "email", "meeting"):
-        assert forbidden not in text.lower()
-    for source in allowed_sources:
+    ):
         assert source in text

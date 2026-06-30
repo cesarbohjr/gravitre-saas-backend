@@ -304,7 +304,10 @@ class ModelRouter:
             [name for name, _ in priority],
         )
         try:
-            result = await run_failover(self._adapters, priority, messages, options, self._breaker)
+            from app.services.ai_tracing import trace_span
+
+            with trace_span("model_router.complete", task_type=task_type.value, org_id=org_id):
+                result = await run_failover(self._adapters, priority, messages, options, self._breaker)
         except ProviderInvalidResponseError as exc:
             self._log_call_failure(task_type, model, "varied", start, exc)
             await self._log_guardrail_event(org_id, task_type, "ai_failover_invalid", [], str(exc))

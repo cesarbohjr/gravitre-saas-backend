@@ -144,25 +144,28 @@ class ReActEngine:
         audit_resource_id: str | None = None,
     ) -> ReActResult:
         """Execute a ReAct loop for a single agent task."""
-        result: ReActResult | None = None
-        async for event in self._react_loop(
-            ctx=ctx,
-            task=task,
-            system_prompt=system_prompt,
-            permitted_tools=permitted_tools,
-            connected_integrations=connected_integrations,
-            max_iterations=max_iterations,
-            model=model,
-            agent=agent,
-            audit_resource_type=audit_resource_type,
-            audit_resource_id=audit_resource_id,
-            emit_text_deltas=False,
-        ):
-            if event.kind == "done":
-                result = event.react_result
-        if result is None:
-            return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
-        return result
+        from app.services.ai_tracing import trace_span
+
+        with trace_span("react_engine.run", org_id=ctx.org_id, agent_id=ctx.agent_id):
+            result: ReActResult | None = None
+            async for event in self._react_loop(
+                ctx=ctx,
+                task=task,
+                system_prompt=system_prompt,
+                permitted_tools=permitted_tools,
+                connected_integrations=connected_integrations,
+                max_iterations=max_iterations,
+                model=model,
+                agent=agent,
+                audit_resource_type=audit_resource_type,
+                audit_resource_id=audit_resource_id,
+                emit_text_deltas=False,
+            ):
+                if event.kind == "done":
+                    result = event.react_result
+            if result is None:
+                return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
+            return result
 
     async def run_streaming(
         self,

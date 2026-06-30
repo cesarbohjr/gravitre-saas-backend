@@ -19,6 +19,37 @@ ENTITY_GLOSSARY = "glossary_term"
 ENTITY_DEPARTMENT = "department"
 ENTITY_AGENT = "agent"
 ENTITY_QUERY_CLUSTER = "query_cluster"
+ENTITY_WORKFLOW_RUN = "workflow_run"
+
+# Connector-sourced business entities (v6 extension — same soft-reference table)
+ENTITY_CUSTOMER = "customer"
+ENTITY_LEAD = "lead"
+ENTITY_DEAL = "deal"
+ENTITY_CAMPAIGN = "campaign"
+ENTITY_SUPPORT_TICKET = "support_ticket"
+ENTITY_INVOICE = "invoice"
+ENTITY_PROJECT = "project"
+ENTITY_EMPLOYEE = "employee"
+ENTITY_VENDOR = "vendor"
+
+BUSINESS_ENTITY_TYPES = frozenset(
+    {
+        ENTITY_CUSTOMER,
+        ENTITY_LEAD,
+        ENTITY_DEAL,
+        ENTITY_CAMPAIGN,
+        ENTITY_SUPPORT_TICKET,
+        ENTITY_INVOICE,
+        ENTITY_PROJECT,
+        ENTITY_EMPLOYEE,
+        ENTITY_VENDOR,
+    }
+)
+
+REL_TRACKED_BY = "tracked-by"
+REL_OBSERVED_IN = "observed-in"
+REL_BELONGS_TO = "belongs-to"
+REL_INFLUENCED_BY = "influenced-by"
 
 
 def _now_iso() -> str:
@@ -250,24 +281,125 @@ async def build_relationships_from_query_clusters(
     return count
 
 
+async def build_relationships_from_crm_data(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> int:
+    """
+    Restate connector-observed CRM entities from v8 outcome baselines and marketing
+    attribution rows — no new CRM polling/sync pipeline.
+    """
+    active_settings = settings or get_settings()
+    db = client or get_supabase_client(active_settings)
+    rows = (
+        db.table("agent_action_outcomes")
+        .select("agent_id, workflow_run_id, target_entity_type, target_entity_id, action_type")
+        .eq("org_id", org_id)
+        .limit(5000)
+        .execute()
+        .data
+        or []
+    )
+    count = 0
+    seen: set[tuple[str, ...]] = set()
+    for row in rows:
+        entity_type = str(row.get("target_entity_type") or "").strip()
+        entity_id = str(row.get("target_entity_id") or "").strip()
+        if not entity_type or not entity_id:
+            continue
+        if entity_type not in BUSINESS_ENTITY_TYPES and entity_type not in {
+            "subscription",
+            "marketing_campaign",
+            "hubspot_campaign",
+            "linkedin_post",
+            "canva_export",
+        }:
+            continue
+        normalized_type = ENTITY_DEAL if entity_type == "subscription" else entity_type
+        if normalized_type == "hubspot_campaign":
+            normalized_type = ENTITY_CAMPAIGN
+        elif normalized_type == "marketing_campaign":
+            normalized_type = ENTITY_CAMPAIGN
+
+        agent_id = str(row.get("agent_id") or "").strip()
+        if agent_id:
+            key = (normalized_type, entity_id, REL_TRACKED_BY, ENTITY_AGENT, agent_id)
+            if key not in seen:
+                seen.add(key)
+                if _upsert_relationship(
+                    db,
+                    org_id=org_id,
+                    source_entity_type=normalized_type,
+                    source_entity_id=entity_id,
+                    relationship_type=REL_TRACKED_BY,
+                    target_entity_type=ENTITY_AGENT,
+                    target_entity_id=agent_id,
+                    confidence=0.75,
+                    evidence_count=1,
+                ):
+                    count += 1
+
+        run_id = str(row.get("workflow_run_id") or "").strip()
+        if run_id:
+            key = (normalized_type, entity_id, REL_OBSERVED_IN, ENTITY_WORKFLOW_RUN, run_id)
+            if key not in seen:
+                seen.add(key)
+                if _upsert_relationship(
+                    db,
+                    org_id=org_id,
+                    source_entity_type=normalized_type,
+                    source_entity_id=entity_id,
+                    relationship_type=REL_OBSERVED_IN,
+                    target_entity_type=ENTITY_WORKFLOW_RUN,
+                    target_entity_id=run_id,
+                    confidence=0.7,
+                    evidence_count=1,
+                ):
+                    count += 1
+
+        action_type = str(row.get("action_type") or "")
+        if normalized_type == ENTITY_CAMPAIGN and "linkedin" in action_type:
+            post_id = entity_id
+            key = (ENTITY_CAMPAIGN, post_id, REL_INFLUENCED_BY, "linkedin_post", post_id)
+            if key not in seen:
+                seen.add(key)
+                if _upsert_relationship(
+                    db,
+                    org_id=org_id,
+                    source_entity_type=ENTITY_CAMPAIGN,
+                    source_entity_id=post_id,
+                    relationship_type=REL_INFLUENCED_BY,
+                    target_entity_type="linkedin_post",
+                    target_entity_id=post_id,
+                    confidence=0.65,
+                    evidence_count=1,
+                ):
+                    count += 1
+    return count
+
+
 async def rebuild_org_entity_relationships(
     org_id: str,
     *,
     settings: Settings | None = None,
     client: Any | None = None,
 ) -> dict[str, int]:
-    """Rebuild all v6 relationships from existing v3/v4 tables."""
+    """Rebuild all v6 relationships from existing v3/v4/v8 signal tables."""
     active_settings = settings or get_settings()
     db = client or get_supabase_client(active_settings)
     db.table("org_entity_relationships").delete().eq("org_id", org_id).execute()
     glossary_count = await build_relationships_from_glossary(org_id, settings=active_settings, client=db)
     memory_count = await build_relationships_from_agent_memories(org_id, settings=active_settings, client=db)
     cluster_count = await build_relationships_from_query_clusters(org_id, settings=active_settings, client=db)
+    crm_count = await build_relationships_from_crm_data(org_id, settings=active_settings, client=db)
     summary = {
         "glossary_department": glossary_count,
         "agent_glossary": memory_count,
         "cluster_glossary": cluster_count,
-        "total": glossary_count + memory_count + cluster_count,
+        "crm_outcomes": crm_count,
+        "total": glossary_count + memory_count + cluster_count + crm_count,
     }
     logger.info("entity_relationships_rebuilt org_id=%s summary=%s", org_id, summary)
     return summary

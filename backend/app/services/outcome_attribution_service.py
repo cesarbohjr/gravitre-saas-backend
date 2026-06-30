@@ -27,18 +27,23 @@ ATTRIBUTION_WINDOWS_BY_ACTION_TYPE = {
     # CRM stage/amount changes are observable within ~2 weeks of pipeline motion.
     "stripe.subscriptions.update": 30,
     # Subscription outcomes need at least one billing cycle; sooner moves are noise.
+    "quickbooks.invoices.create": 30,
+    # Invoice balance/payment outcomes need a billing cycle to measure reliably.
 }
 
 ENTITY_DEAL = "deal"
 ENTITY_SUBSCRIPTION = "subscription"
+ENTITY_INVOICE = "invoice"
 METRIC_DEAL_AMOUNT = "deal_amount"
 METRIC_SUBSCRIPTION_STATUS = "subscription_status"
 METRIC_SUBSCRIPTION_MRR = "subscription_mrr_cents"
+METRIC_INVOICE_BALANCE = "invoice_balance"
 
 HUBSPOT_DEAL_ACTIONS = frozenset(
     {"hubspot.deals.update", "hubspot.deals.update_stage"}
 )
 STRIPE_SUBSCRIPTION_ACTIONS = frozenset({"stripe.subscriptions.update"})
+QUICKBOOKS_INVOICE_ACTIONS = frozenset({"quickbooks.invoices.create"})
 
 SUBSCRIPTION_STATUS_CODES: dict[str, float] = {
     "active": 1.0,
@@ -455,6 +460,61 @@ def maybe_record_stripe_subscription_outcome_baseline(
             "outcome_baseline_record_failed org=%s subscription=%s action=%s error=%s",
             ctx.org_id,
             subscription_id,
+            action_type,
+            exc,
+        )
+
+
+def _parse_invoice_balance(invoice_payload: dict[str, Any]) -> float | None:
+    invoice = invoice_payload.get("Invoice") if isinstance(invoice_payload.get("Invoice"), dict) else invoice_payload
+    if not isinstance(invoice, dict):
+        return None
+    raw = invoice.get("Balance") if invoice.get("Balance") is not None else invoice.get("TotalAmt")
+    if raw is None or raw == "":
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def maybe_record_quickbooks_invoice_outcome_baseline(
+    ctx: ToolContext,
+    *,
+    invoice_id: str,
+    action_type: str,
+    invoice_payload: dict[str, Any],
+) -> None:
+    """Sync hook from invoke_tool after QuickBooks invoice creation."""
+    if action_type not in QUICKBOOKS_INVOICE_ACTIONS:
+        return
+    balance = _parse_invoice_balance(invoice_payload)
+    if balance is None:
+        return
+    try:
+        service = OutcomeAttributionService(settings=ctx.settings)
+        client = service._client()
+        payload = {
+            "org_id": ctx.org_id,
+            "agent_id": ctx.agent_id,
+            "workflow_run_id": ctx.run_id,
+            "action_type": action_type,
+            "target_entity_type": ENTITY_INVOICE,
+            "target_entity_id": str(invoice_id),
+            "action_taken_at": datetime.now(timezone.utc).isoformat(),
+            "metric_name": METRIC_INVOICE_BALANCE,
+            "metric_value_before": float(balance),
+            "metric_value_after": None,
+            "attribution_window_days": get_attribution_window(action_type),
+            "measured_at": None,
+            "confidence_note": CONFIDENCE_NOTE,
+        }
+        client.table("agent_action_outcomes").insert(payload).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "outcome_baseline_record_failed org=%s invoice=%s action=%s error=%s",
+            ctx.org_id,
+            invoice_id,
             action_type,
             exc,
         )

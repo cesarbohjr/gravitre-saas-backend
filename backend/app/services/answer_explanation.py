@@ -60,6 +60,29 @@ def generate_answer_explanation(
     return " ".join(parts) if parts else "This answer combined retrieved context with tool results."
 
 
+def generate_suggestion_explanation(
+    suggestion: dict[str, Any],
+) -> str:
+    """Human-readable summary for v10 optimization suggestions — not chain-of-thought."""
+    evidence = suggestion.get("evidence") if isinstance(suggestion.get("evidence"), dict) else {}
+    source = str(evidence.get("source") or "platform analysis").strip()
+    suggestion_type = str(suggestion.get("suggestion_type") or suggestion.get("suggestionType") or "suggestion")
+    sample_size = evidence.get("sample_size") or evidence.get("sampleSize")
+    parts = [
+        f"This {suggestion_type.replace('_', ' ')} recommendation is based on {source}.",
+    ]
+    if sample_size:
+        parts.append(f"It used {sample_size} observed samples before surfacing.")
+    confidence_note = evidence.get("confidence_note") or evidence.get("confidenceNote")
+    if confidence_note:
+        parts.append(str(confidence_note))
+    elif suggestion.get("estimated_impact") or suggestion.get("estimatedImpact"):
+        parts.append(str(suggestion.get("estimated_impact") or suggestion.get("estimatedImpact")))
+    else:
+        parts.append("Review the cited evidence before applying any change.")
+    return " ".join(parts)
+
+
 async def generate_answer_explanation_cached(
     settings: Any,
     org_id: str,

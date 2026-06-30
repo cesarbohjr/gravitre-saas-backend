@@ -770,6 +770,36 @@ class MesonService:
                 )
             )
 
+        try:
+            pending_business = (
+                client.table("optimization_suggestions")
+                .select("suggestion_type")
+                .eq("org_id", org_id)
+                .eq("status", "pending_review")
+                .in_(
+                    "suggestion_type",
+                    ["stalled_deal", "overdue_invoice", "support_backlog_growth"],
+                )
+                .limit(10)
+                .execute()
+            )
+            business_rows = pending_business.data if isinstance(pending_business.data, list) else []
+            if business_rows:
+                types = sorted({str(r.get("suggestion_type") or "") for r in business_rows})
+                insights.append(
+                    MesonInsight(
+                        id="business-signals-pending",
+                        title="Business signals awaiting review",
+                        summary=(
+                            f"{len(business_rows)} proactive business signal(s) "
+                            f"({', '.join(t.replace('_', ' ') for t in types)}) need operator review."
+                        ),
+                        category="business",
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson insights business signals lookup: %s", exc)
+
         if not insights:
             insights.append(
                 MesonInsight(

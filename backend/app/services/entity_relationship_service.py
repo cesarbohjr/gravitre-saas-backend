@@ -6,10 +6,12 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.entity_relationship_builder import (
+    BUSINESS_ENTITY_TYPES,
     ENTITY_DEPARTMENT,
     ENTITY_GLOSSARY,
     ENTITY_QUERY_CLUSTER,
     ENTITY_AGENT,
+    ENTITY_WORKFLOW_RUN,
     _load_glossary_terms,
     _text_contains_term,
     rebuild_org_entity_relationships,
@@ -153,6 +155,8 @@ async def _resolve_entity_label(
         if rows:
             return str(rows[0].get("cluster_label") or entity_id)
         return entity_id
+    if entity_type in BUSINESS_ENTITY_TYPES or entity_type == ENTITY_WORKFLOW_RUN:
+        return f"{entity_type.replace('_', ' ')}:{entity_id}"
     return entity_id
 
 

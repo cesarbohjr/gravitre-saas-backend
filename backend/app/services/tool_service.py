@@ -1166,6 +1166,17 @@ def _exec_quickbooks_invoices_create(ctx: ToolContext, params: dict[str, Any]) -
         data = create_invoice(api_base, token, payload)
     except QuickBooksAPIError as exc:
         raise _handle_quickbooks_error(exc) from exc
+    invoice = data.get("Invoice") or data
+    invoice_id = str((invoice or {}).get("Id") or "")
+    if invoice_id:
+        from app.services.outcome_attribution_service import maybe_record_quickbooks_invoice_outcome_baseline
+
+        maybe_record_quickbooks_invoice_outcome_baseline(
+            ctx,
+            invoice_id=invoice_id,
+            action_type="quickbooks.invoices.create",
+            invoice_payload=data,
+        )
     return NormalizedResult(
         success=True,
         action="quickbooks.invoices.create",

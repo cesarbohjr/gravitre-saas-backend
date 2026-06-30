@@ -56,6 +56,9 @@ class OptimizationSuggestionService:
         suggestions.extend(await self._detect_poor_outcome_patterns(org_id))
         suggestions.extend(await self._detect_post_publish_marketing_underperformance(org_id))
         suggestions.extend(await self._detect_duplicate_steps(org_id))
+        suggestions.extend(await self._detect_stalled_deals(org_id))
+        suggestions.extend(await self._detect_overdue_invoices(org_id))
+        suggestions.extend(await self._detect_support_backlog_growth(org_id))
         return suggestions
 
     async def _detect_slow_steps(self, org_id: str) -> list[dict[str, Any]]:
@@ -358,6 +361,181 @@ class OptimizationSuggestionService:
                     )
                 )
         return suggestions
+
+    async def _detect_stalled_deals(self, org_id: str) -> list[dict[str, Any]]:
+        """Deals with v8 baselines but no measurement after attribution window (connector-backed signal)."""
+        client = self._client()
+        cutoff = self._now() - timedelta(days=21)
+        rows = (
+            client.table("agent_action_outcomes")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("target_entity_type", "deal")
+            .is_("measured_at", "null")
+            .lt("action_taken_at", cutoff.isoformat())
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+        if len(rows) < MIN_SAMPLE_SIZE:
+            return []
+        deal_ids = sorted({str(r.get("target_entity_id") or "") for r in rows if r.get("target_entity_id")})
+        evidence = {
+            "source": "agent_action_outcomes",
+            "signal": "stalled_deal_measurement",
+            "deal_ids": deal_ids[:10],
+            "sample_size": len(rows),
+            "confidence_note": (
+                "correlational only; stalled status inferred from unmeasured v8 baselines past window"
+            ),
+        }
+        return [
+            await self._insert_suggestion(
+                org_id,
+                target_entity_type="deal",
+                target_entity_id=deal_ids[0],
+                suggestion_type="stalled_deal",
+                evidence=evidence,
+                suggested_action=(
+                    f"{len(deal_ids)} deal(s) have outcome baselines with no follow-up measurement "
+                    f"after the attribution window. Review pipeline stage and owner activity."
+                ),
+                estimated_impact=None,
+            )
+        ]
+
+    async def _detect_overdue_invoices(self, org_id: str) -> list[dict[str, Any]]:
+        from app.connectors.quickbooks import QuickBooksAPIError, list_invoices
+        from app.connectors.quickbooks_oauth import ensure_quickbooks_session
+        from app.connectors.repository import get_connector_by_type
+
+        client = self._client()
+        conn = get_connector_by_type(client, org_id, "quickbooks", environment_name="default")
+        if not conn:
+            return []
+        cid = str(conn["id"])
+        token, _realm, api_base, err = ensure_quickbooks_session(
+            client,
+            org_id,
+            cid,
+            self.settings,
+            environment_name=str(conn.get("environment") or "default"),
+        )
+        if err or not token or not api_base:
+            logger.debug("overdue_invoice_detector_auth_failed org=%s error=%s", org_id, err)
+            return []
+        try:
+            data = list_invoices(api_base, token, max_results=100)
+        except QuickBooksAPIError as exc:
+            logger.debug("overdue_invoice_detector_fetch_failed org=%s error=%s", org_id, exc)
+            return []
+
+        query_response = data.get("QueryResponse") if isinstance(data, dict) else {}
+        invoice_rows = query_response.get("Invoice") if isinstance(query_response, dict) else []
+        if isinstance(invoice_rows, dict):
+            invoice_rows = [invoice_rows]
+        if not isinstance(invoice_rows, list):
+            invoice_rows = []
+        today = self._now().date()
+        overdue: list[dict[str, Any]] = []
+        for invoice in invoice_rows:
+            if not isinstance(invoice, dict):
+                continue
+            due_raw = invoice.get("DueDate")
+            balance_raw = invoice.get("Balance")
+            if not due_raw:
+                continue
+            try:
+                due_date = datetime.fromisoformat(str(due_raw)).date()
+                balance = float(balance_raw or 0)
+            except (TypeError, ValueError):
+                continue
+            if balance > 0 and due_date < today:
+                overdue.append(
+                    {
+                        "id": str(invoice.get("Id") or ""),
+                        "due_date": str(due_raw),
+                        "balance": balance,
+                    }
+                )
+        if not overdue:
+            return []
+        evidence = {
+            "source": "quickbooks.invoices.list",
+            "overdue_count": len(overdue),
+            "sample_invoices": overdue[:5],
+            "confidence_note": "connector read at detection time; balances may change externally",
+        }
+        return [
+            await self._insert_suggestion(
+                org_id,
+                target_entity_type="invoice",
+                target_entity_id=str(overdue[0].get("id") or "unknown"),
+                suggestion_type="overdue_invoice",
+                evidence=evidence,
+                suggested_action=(
+                    f"{len(overdue)} QuickBooks invoice(s) are past due with open balances. "
+                    "Review collections workflow or payment follow-up."
+                ),
+                estimated_impact=None,
+            )
+        ]
+
+    async def _detect_support_backlog_growth(self, org_id: str) -> list[dict[str, Any]]:
+        from app.connectors.connector_tool_auth import resolve_zendesk_auth
+        from app.connectors.repository import get_connector_by_type
+        from app.connectors.zendesk import ZendeskAPIError, list_tickets
+
+        client = self._client()
+        conn = get_connector_by_type(client, org_id, "zendesk", environment_name="default")
+        if not conn:
+            return []
+        try:
+            subdomain, email, api_token, oauth_token = resolve_zendesk_auth(
+                client,
+                org_id,
+                str(conn["id"]),
+                self.settings,
+                environment_name=str(conn.get("environment") or "default"),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("support_backlog_detector_auth_failed org=%s error=%s", org_id, exc)
+            return []
+        try:
+            open_tickets = list_tickets(
+                subdomain,
+                email,
+                api_token,
+                status="open",
+                limit=100,
+                oauth_access_token=oauth_token,
+            )
+        except ZendeskAPIError as exc:
+            logger.debug("support_backlog_detector_fetch_failed org=%s error=%s", org_id, exc)
+            return []
+
+        open_count = len(open_tickets)
+        if open_count < 25:
+            return []
+        evidence = {
+            "source": "zendesk.tickets.list",
+            "open_ticket_count": open_count,
+            "confidence_note": "snapshot at detection time; not a trend unless compared historically",
+        }
+        return [
+            await self._insert_suggestion(
+                org_id,
+                target_entity_type="support_ticket",
+                target_entity_id="backlog",
+                suggestion_type="support_backlog_growth",
+                evidence=evidence,
+                suggested_action=(
+                    f"Zendesk shows {open_count} open tickets. Review staffing, SLA risk, and triage automation."
+                ),
+                estimated_impact=None,
+            )
+        ]
 
     async def _insert_suggestion(
         self,
