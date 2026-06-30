@@ -16,7 +16,7 @@ import type { Metadata } from "next"
 
 import { getDocsNavSections, getPublishedPublicDocs, getDocsSearchIndex } from "@/lib/docs/load-docs"
 import { DocsSearch } from "@/components/docs/docs-search"
-import { categoryIcon } from "@/components/docs/category-meta"
+import { categoryIcon, categoryDescription, categoryLanding } from "@/components/docs/category-meta"
 
 const title = "Documentation | Gravitre"
 const description = "Guides, concepts, API reference, and integration setup for Gravitre."
@@ -211,31 +211,39 @@ export default function DocsPage() {
 
       <section className="border-t border-zinc-200 bg-zinc-50 px-6 py-16">
         <div className="mx-auto max-w-5xl">
-          <h2 className="mb-12 text-2xl font-semibold text-zinc-900">Browse by topic</h2>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-8 max-w-2xl">
+            <h2 className="text-2xl font-semibold text-zinc-900">Browse by topic</h2>
+            <p className="mt-2 text-zinc-600">
+              Jump into a section to see every guide and reference page it contains.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sections.map((section) => {
               const Icon = categoryIcon(section.title)
+              const href = categoryLanding(section.title, section.items[0]?.href ?? "/docs")
+              const count = section.items.length
               return (
-                <div key={section.title}>
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <h3 className="font-medium text-zinc-900">{section.title}</h3>
+                <Link
+                  key={section.title}
+                  href={href}
+                  className="group flex flex-col rounded-xl border border-zinc-200 bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-md"
+                >
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <ul className="space-y-2">
-                    {section.items.map((link) => (
-                      <li key={link.href}>
-                        <Link
-                          href={link.href}
-                          className="text-sm text-zinc-600 transition-colors hover:text-emerald-600"
-                        >
-                          {link.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  <h3 className="font-medium text-zinc-900 transition-colors group-hover:text-emerald-700">
+                    {section.title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-500">
+                    {categoryDescription(section.title)}
+                  </p>
+                  <div className="mt-auto flex items-center gap-1 pt-4 text-sm font-medium text-emerald-600">
+                    <span>
+                      {count} {count === 1 ? "article" : "articles"}
+                    </span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
               )
             })}
           </div>
