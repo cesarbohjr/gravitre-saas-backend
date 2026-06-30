@@ -9,7 +9,7 @@ from app.marketplace.service import MarketplaceError, validate_connectors_for_as
 
 BROWSE_LIST_COLUMNS = (
     "id, slug, title, description, asset_type, category, department, tags, "
-    "visibility, status, pricing_type, price_cents, currency, required_connectors, "
+    "visibility, status, pricing_type, price_cents, pack_tier, currency, required_connectors, "
     "install_count, clone_count, average_rating, review_count, current_version, "
     "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
     "featured, verified, review_scope, partner_registry_id, "
@@ -91,6 +91,7 @@ def _serialize_asset_summary(
         "status": row.get("status"),
         "pricingType": row.get("pricing_type"),
         "priceCents": row.get("price_cents"),
+        "packTier": row.get("pack_tier"),
         "currency": row.get("currency"),
         "installCount": row.get("install_count"),
         "cloneCount": row.get("clone_count"),

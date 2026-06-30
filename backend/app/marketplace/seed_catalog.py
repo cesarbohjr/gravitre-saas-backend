@@ -48,6 +48,9 @@ class CatalogAsset:
     business_outcome: str | None = None
     use_case: str | None = None
     estimated_hours_saved: float | None = None
+    pricing_type: str = "free"
+    price_cents: int = 0
+    pack_tier: int | None = None
 
 
 def _agent_seed(slug: str) -> str:
@@ -113,12 +116,31 @@ def _invoke(step_id: str, name: str, action: str, *, connector: str | None = Non
     return step
 
 
-def _agent_step(step_id: str, name: str, agent_slug: str, task: str) -> dict[str, Any]:
+def _agent_step(
+    step_id: str,
+    name: str,
+    agent_slug: str,
+    task: str,
+    *,
+    next_agent_slug: str | None = None,
+    briefing_from_steps: bool = False,
+    receiver_task: str | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "agent_seed": _agent_seed(agent_slug),
+        "task": task,
+    }
+    if next_agent_slug:
+        metadata["next_agent_seed"] = _agent_seed(next_agent_slug)
+    if briefing_from_steps:
+        metadata["briefing_from_steps"] = True
+    if receiver_task:
+        metadata["receiver_task"] = receiver_task
     return {
         "id": step_id,
         "name": name,
         "type": "agent",
-        "metadata": {"agent_seed": _agent_seed(agent_slug), "task": task},
+        "metadata": metadata,
     }
 
 
@@ -146,6 +168,10 @@ def _department_pack_config(
 def _ai_agents() -> list[CatalogAsset]:
     specs = [
         ("marketing-analyst", "Marketing Analyst", "Marketing", "MARKETING", ["hubspot", "google_analytics"], ["campaign-analysis", "attribution"]),
+        ("product-icp-strategist", "Product & ICP Strategist", "Marketing", "MARKETING", ["hubspot"], ["icp", "positioning"]),
+        ("content-writer", "Content Writer", "Marketing", "MARKETING", ["hubspot"], ["copywriting"]),
+        ("marketing-designer", "Marketing Designer", "Marketing", "MARKETING", ["canva"], ["creative-brief"]),
+        ("marketing-ops-coordinator", "Marketing Ops Coordinator", "Marketing", "MARKETING", ["hubspot", "google_analytics"], ["campaign-ops"]),
         ("seo-analyst", "SEO Analyst", "Marketing", "MARKETING", ["google_analytics"], ["seo-audit", "keyword-research"]),
         ("competitor-research-agent", "Competitor Research Agent", "Marketing", "MARKETING", ["hubspot"], ["competitive-intel", "market-scan"]),
         ("revenue-operations-agent", "Revenue Operations Agent", "Revenue Operations", "REVENUE_OPS", ["hubspot", "salesforce"], ["pipeline-hygiene", "forecasting"]),
@@ -211,6 +237,32 @@ def _workflows() -> list[CatalogAsset]:
             [
                 _invoke("accounts", "Pull account signals", "hubspot.search_contacts", connector="hubspot"),
                 _agent_step("health", "Health score review", "customer-success-agent", "Flag at-risk accounts."),
+            ],
+        ),
+        (
+            "marketing-campaign-production",
+            "Marketing Campaign Production",
+            "Marketing",
+            [HUBSPOT, GOOGLE_ANALYTICS],
+            [
+                _invoke("traffic", "Analytics snapshot", "analytics.reports.run", connector="google_analytics"),
+                _agent_step(
+                    "icp_content",
+                    "ICP strategy and content draft",
+                    "product-icp-strategist",
+                    "Define ICP focus and campaign thesis for this run.",
+                    next_agent_slug="content-writer",
+                    receiver_task="Draft campaign copy using the ICP briefing and brand voice guide.",
+                ),
+                _agent_step(
+                    "design_ops",
+                    "Design brief and ops handoff",
+                    "marketing-designer",
+                    "Produce a creative brief from prior campaign context.",
+                    next_agent_slug="marketing-ops-coordinator",
+                    briefing_from_steps=True,
+                    receiver_task="Build publish checklist and coordinate next marketing actions.",
+                ),
             ],
         ),
         (
@@ -356,32 +408,91 @@ def _knowledge_packs() -> list[CatalogAsset]:
 
 def _department_packs() -> list[CatalogAsset]:
     marketing_agents = [
-        _agent("marketing-analyst", name="Marketing Analyst", purpose="Campaign and funnel analysis.", role="Marketing Analyst", department="Marketing", persona_key="MARKETING", systems=["hubspot"], capabilities=["attribution"]),
-        _agent("seo-analyst", name="SEO Analyst", purpose="SEO audits and recommendations.", role="SEO Analyst", department="Marketing", persona_key="MARKETING", systems=["google_analytics"], capabilities=["seo"]),
+        _agent(
+            "product-icp-strategist",
+            name="Product & ICP Strategist",
+            purpose="Define ICP positioning and campaign thesis.",
+            role="Product Marketing",
+            department="Marketing",
+            persona_key="MARKETING",
+            systems=["hubspot"],
+            capabilities=["icp", "positioning"],
+        ),
+        _agent(
+            "content-writer",
+            name="Content Writer",
+            purpose="Draft campaign copy aligned to brand voice.",
+            role="Content Marketing",
+            department="Marketing",
+            persona_key="MARKETING",
+            systems=["hubspot"],
+            capabilities=["copywriting"],
+        ),
+        _agent(
+            "marketing-designer",
+            name="Marketing Designer",
+            purpose="Spec creative assets and design briefs.",
+            role="Creative",
+            department="Marketing",
+            persona_key="MARKETING",
+            systems=["canva"],
+            capabilities=["creative-brief"],
+        ),
+        _agent(
+            "marketing-ops-coordinator",
+            name="Marketing Ops Coordinator",
+            purpose="Coordinate publish checklist and channel handoff.",
+            role="Marketing Operations",
+            department="Marketing",
+            persona_key="MARKETING",
+            systems=["hubspot", "google_analytics"],
+            capabilities=["campaign-ops"],
+        ),
     ]
     marketing_pack = CatalogAsset(
         slug="marketing-operations-pack",
         title="Marketing Operations Pack",
-        description="Marketing agents, brand RAG, and attribution workflow.",
+        description="Four-agent campaign chain: ICP → content → design → marketing ops, with brand RAG.",
         asset_type="department_pack",
         category="department_pack",
         department="Marketing",
-        tags=["marketing", "department-pack", "starter"],
+        tags=["marketing", "department-pack", "tier-2"],
+        pricing_type="paid",
+        price_cents=14900,
+        pack_tier=2,
         config=_department_pack_config(
-            workflow_name="Marketing attribution review",
-            workflow_description="Pull analytics, review attribution, and draft actions.",
+            workflow_name="Marketing campaign production chain",
+            workflow_description="Sequential handoffs: ICP strategist → content writer → designer → marketing ops.",
             agents=marketing_agents,
             rag_sources=[_rag_doc("rag:brand-voice", "Brand Voice Guide", pack="marketing-operations-pack")],
             workflow_steps=[
                 _invoke("traffic", "Analytics snapshot", "analytics.reports.run", connector="google_analytics"),
-                _agent_step("attribute", "Attribution review", "marketing-analyst", "Summarize marketing performance."),
+                _agent_step(
+                    "icp_content",
+                    "ICP strategy and content draft",
+                    "product-icp-strategist",
+                    "Define ICP focus and campaign thesis for this run.",
+                    next_agent_slug="content-writer",
+                    receiver_task="Draft campaign copy using the ICP briefing and brand voice guide.",
+                ),
+                _agent_step(
+                    "design_ops",
+                    "Design brief and ops handoff",
+                    "marketing-designer",
+                    "Produce a creative brief from prior campaign context.",
+                    next_agent_slug="marketing-ops-coordinator",
+                    briefing_from_steps=True,
+                    receiver_task="Build publish checklist and coordinate next marketing actions.",
+                ),
             ],
         ),
         required_connectors=[HUBSPOT, GOOGLE_ANALYTICS],
         pack_children=[
-            "marketing-analyst",
-            "seo-analyst",
-            "marketing-attribution-analysis",
+            "product-icp-strategist",
+            "content-writer",
+            "marketing-designer",
+            "marketing-ops-coordinator",
+            "marketing-campaign-production",
             "marketing-operations-knowledge",
         ],
     )

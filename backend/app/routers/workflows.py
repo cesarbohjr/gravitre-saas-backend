@@ -2,7 +2,7 @@
 BE-20: Execute, approve, reject endpoints."""
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -149,6 +149,20 @@ class ApproveRejectRequest(BaseModel):
 class ResumeGraphRunRequest(BaseModel):
     decision: str = Field(..., description="approved or rejected")
     comment: str | None = Field(default=None)
+
+
+class ApprovalBatchItemDecision(BaseModel):
+    item_key: str = Field(..., alias="itemKey")
+    decision: str = Field(..., description="approved or rejected")
+    comment: str | None = None
+    route_to_node_id: str | None = Field(default=None, alias="routeToNodeId")
+
+    model_config = {"populate_by_name": True}
+
+
+class ApprovalBatchDecideRequest(BaseModel):
+    decisions: list[ApprovalBatchItemDecision] = Field(default_factory=list)
+    resume: bool = Field(default=True, description="Resume run after all items decided")
 
 
 class ScheduleCreateRequest(BaseModel):
@@ -2746,6 +2760,164 @@ async def resume_graph_run(
         "status": final_status,
         "steps": [_step_to_out(s) for s in step_rows],
     }
+
+
+def _require_graph_approval_admin(
+    client: Any,
+    org_id: str,
+    user_id: str,
+    settings: Settings,
+) -> None:
+    require_feature(get_plan_for_org(client, org_id), "approvals")
+    try:
+        role = get_user_role(client, org_id, user_id)
+    except PolicyResolutionError as e:
+        logger.error(
+            "approval_batch_role_failure org_id=%s user_id=%s error=%s stop_condition",
+            org_id,
+            user_id,
+            e,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Role validation failed",
+        ) from e
+    from app.auth.platform_admin import is_org_admin_role
+
+    if not is_org_admin_role(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+
+
+@router.get("/runs/{run_id}/approval-batch")
+async def get_run_approval_batch(
+    run_id: UUID,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Fetch the active batch approval gate for a paused graph run (STA-290)."""
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    client = get_supabase_client(settings)
+    _require_graph_approval_admin(client, org_id, current_user["user_id"], settings)
+    run_id_str = str(run_id)
+    run = get_run_with_steps(client, org_id, run_id_str, environment_name)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    if run.get("status") != RUN_STATUS_AWAITING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Run is not awaiting in-graph approval",
+        )
+    from app.workflows.approval_batch_service import get_active_batch_for_run, normalize_batch_for_api
+
+    batch = get_active_batch_for_run(client, org_id, run_id_str)
+    if not batch:
+        return {"batch": None}
+    return {"batch": normalize_batch_for_api(batch)}
+
+
+@router.post("/runs/{run_id}/approval-batch/decide")
+async def decide_run_approval_batch(
+    run_id: UUID,
+    body: ApprovalBatchDecideRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Apply per-item batch approval decisions and optionally resume the run (STA-290)."""
+    if settings.disable_execute:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Execute is disabled")
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    client = get_supabase_client(settings)
+    _require_graph_approval_admin(client, org_id, current_user["user_id"], settings)
+    run_id_str = str(run_id)
+    run = get_run_with_steps(client, org_id, run_id_str, environment_name)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    if run.get("status") != RUN_STATUS_AWAITING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Run is not awaiting in-graph approval",
+        )
+
+    from app.workflows.approval_batch_service import (
+        ApprovalBatchError,
+        apply_batch_decisions,
+        get_active_batch_for_run,
+        normalize_batch_for_api,
+        summarize_batch_items,
+    )
+    from app.workflows.execution_engine import GraphValidationError, resolve_approval_batch_and_resume
+
+    batch = get_active_batch_for_run(client, org_id, run_id_str)
+    if not batch:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active approval batch for run")
+    if not body.decisions:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one item decision is required")
+
+    try:
+        updated = apply_batch_decisions(
+            client,
+            batch_id=str(batch["id"]),
+            org_id=org_id,
+            actor_id=current_user["user_id"],
+            decisions=[decision.model_dump(by_alias=False) for decision in body.decisions],
+        )
+    except ApprovalBatchError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    summary = summarize_batch_items(updated.get("items") or [])
+    response: dict[str, Any] = {
+        "batch": normalize_batch_for_api(updated),
+        "summary": {
+            "allApproved": summary["all_approved"],
+            "allRejected": summary["all_rejected"],
+            "hasPartial": summary["has_partial"],
+            "pendingCount": len(summary["pending"]),
+        },
+    }
+    if not body.resume or summary["pending"]:
+        return response
+
+    try:
+        final_status, step_rows, _, rate_limited = resolve_approval_batch_and_resume(
+            settings=settings,
+            org_id=org_id,
+            user_id=current_user["user_id"],
+            run_id=run_id_str,
+            batch_id=str(batch["id"]),
+            client=client,
+            environment_name=environment_name,
+        )
+    except GraphValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if rate_limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+        )
+    response.update(
+        {
+            "run_id": run_id_str,
+            "status": final_status,
+            "steps": [_step_to_out(s) for s in step_rows],
+        }
+    )
+    return response
 
 
 @router.get("/approvals/pending")

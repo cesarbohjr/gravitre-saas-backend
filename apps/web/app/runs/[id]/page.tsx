@@ -27,7 +27,8 @@ import { approvalsApi, runsApi, workflowsApi } from "@/lib/api"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { useAuth } from "@/lib/auth-context"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
-import type { RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
+import { ApprovalBatchPanel } from "@/components/runs/approval-batch-panel"
+import type { ApprovalBatchView, RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
 type StepStatus = ExecutionStepView["status"]
 
@@ -211,6 +212,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const canResolveGraphApproval = run.status === "awaiting_approval" && isAdmin
   const canResolveExecuteApproval = run.status === "pending_approval" && isAdmin
 
+  const { data: approvalBatchData, mutate: mutateApprovalBatch } = useSWR<{ batch: ApprovalBatchView | null }>(
+    canResolveGraphApproval ? `/api/workflows/runs/${id}/approval-batch` : null,
+    () => workflowsApi.getApprovalBatch(id),
+    { refreshInterval: canResolveGraphApproval ? 2000 : 0 },
+  )
+  const approvalBatch = approvalBatchData?.batch ?? null
+
   async function handlePause() {
     if (!isAdmin) {
       toast.error("Admin access required to pause runs")
@@ -349,9 +357,40 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     try {
       await workflowsApi.resumeRun(id, { decision })
       toast.success(decision === "approved" ? "Approval recorded — run resumed" : "Run rejected")
-      await mutate()
+      await Promise.all([mutate(), mutateApprovalBatch()])
     } catch (err) {
       toast.error("Could not resolve approval", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      })
+    } finally {
+      setIsResolvingApproval(false)
+    }
+  }
+
+  const handleBatchApproval = async (
+    decisions: Array<{ itemKey: string; decision: "approved" | "rejected"; comment?: string }>,
+  ) => {
+    if (!isAdmin) {
+      toast.error("Admin access required to resume this run")
+      return
+    }
+    setIsResolvingApproval(true)
+    try {
+      const result = await workflowsApi.decideApprovalBatch(id, {
+        decisions: decisions.map((entry) => ({
+          itemKey: entry.itemKey,
+          decision: entry.decision,
+          comment: entry.comment,
+        })),
+        resume: true,
+      })
+      const resumed = Boolean(result.status)
+      toast.success(
+        resumed ? "Batch decisions applied — run resumed" : "Batch decisions saved",
+      )
+      await Promise.all([mutate(), mutateApprovalBatch()])
+    } catch (err) {
+      toast.error("Could not submit batch approval", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
@@ -583,9 +622,19 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
               {canResolveGraphApproval
-                ? "This run paused at an approval node in the workflow graph. Approve to continue execution or reject to stop."
+                ? approvalBatch
+                  ? "Review each deliverable below. Approved items continue; rejected items can re-enter upstream agents."
+                  : "This run paused at an approval node in the workflow graph. Approve to continue execution or reject to stop."
                 : "This run is waiting for admin approval before it can execute."}
             </p>
+            {approvalBatch ? (
+              <ApprovalBatchPanel
+                batch={approvalBatch}
+                disabled={!isAdmin || authLoading}
+                isSubmitting={isResolvingApproval}
+                onSubmit={handleBatchApproval}
+              />
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"

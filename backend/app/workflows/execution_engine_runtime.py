@@ -96,11 +96,14 @@ def _node_policy(node: dict[str, Any]) -> dict[str, Any]:
     if on_failure not in {"retry", "skip", "fail_workflow"}:
         on_failure = "fail_workflow"
     on_reject = str(config.get("on_reject") or metadata.get("onReject") or "fail_workflow").lower()
+    if on_reject not in {"fail_workflow", "skip", "route_upstream"}:
+        on_reject = "fail_workflow"
     return {
         "on_failure": on_failure,
         "max_retries": max(1, int(config.get("max_retries") or metadata.get("maxRetries") or 1)),
         "retry_backoff_ms": max(0, int(config.get("retry_backoff_ms") or metadata.get("retryBackoffMs") or 200)),
         "on_reject": on_reject,
+        "reject_route_node_id": metadata.get("reject_route_node_id") or metadata.get("rejectRouteNodeId"),
     }
 
 
@@ -234,13 +237,44 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
 
     if _is_approval_node(node):
         upstream = _upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
+        node_metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
         approval_context = {
             "node_id": node_id,
             "node_name": node.get("name") or node.get("title") or node_id,
             "upstream_outputs": upstream,
-            "prompt": (node.get("metadata") or {}).get("prompt") or node.get("description") or "Approve to continue",
+            "prompt": node_metadata.get("prompt") or node.get("description") or "Approve to continue",
             "on_reject": policy["on_reject"],
+            "reject_route_node_id": policy.get("reject_route_node_id"),
         }
+        try:
+            from app.workflows.approval_batch_service import create_approval_batch
+
+            batch = create_approval_batch(
+                ctx.client,
+                org_id=ctx.org_id,
+                run_id=ctx.run_id,
+                node_id=node_id,
+                approval_context=approval_context,
+                node_metadata=node_metadata,
+            )
+            if batch:
+                approval_context["batch_id"] = str(batch["id"])
+                approval_context["batch_items"] = [
+                    {
+                        "itemKey": item["item_key"],
+                        "label": item["label"],
+                        "status": item["status"],
+                        "sourceNodeId": item.get("source_node_id"),
+                    }
+                    for item in (batch.get("items") or [])
+                ]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "approval batch creation skipped run_id=%s node_id=%s error=%s",
+                ctx.run_id,
+                node_id,
+                str(exc),
+            )
         with ctx.lock:
             ctx.node_outputs[node_id] = {"awaiting_approval": True, "approval_context": approval_context}
         return _NodeRunResult(node_id, step_index, halt="awaiting_approval", error=json.dumps(approval_context))
@@ -697,6 +731,207 @@ def execute_workflow_graph(
     return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=run_error_message, rate_limited=rate_limited)
 
 
+def _resume_graph_from_node(
+    ctx: _GraphRunContext,
+    batches: list[list[str]],
+    *,
+    start_node_id: str,
+    batch_index: int,
+    node_output_patch: dict[str, Any] | None = None,
+    parameter_patch: dict[str, Any] | None = None,
+) -> tuple[str, list[dict], list[str], bool]:
+    downstream = _downstream_node_ids(ctx.graph, start_node_id)
+    for downstream_id in downstream:
+        ctx.node_outputs.pop(downstream_id, None)
+    ctx.node_outputs.pop(start_node_id, None)
+    if node_output_patch:
+        ctx.node_outputs.update(node_output_patch)
+    if parameter_patch:
+        ctx.parameters.update(parameter_patch)
+    merge_run_parameters(
+        ctx.client,
+        ctx.run_id,
+        {_CHECKPOINT_KEY: None, "paused_at_node": None, "approval_context": None, **(parameter_patch or {})},
+    )
+    update_run(ctx.client, ctx.run_id, status="running")
+    final_status, errors, rate_limited = _run_graph_batches(
+        ctx,
+        batches,
+        start_batch=batch_index,
+        skip_nodes_with_outputs=True,
+    )
+    run_error_message = errors[0] if errors else None
+    return _finalize_run(
+        ctx,
+        final_status=final_status,
+        errors=errors,
+        run_error_message=run_error_message,
+        rate_limited=rate_limited,
+    )
+
+
+def _route_upstream_on_reject(
+    ctx: _GraphRunContext,
+    batches: list[list[str]],
+    *,
+    batch_index: int,
+    paused_at: str,
+    approval_context: dict[str, Any],
+    comment: str | None,
+) -> tuple[str, list[dict], list[str], bool]:
+    route_node = approval_context.get("reject_route_node_id")
+    if not route_node:
+        return _finalize_run(
+            ctx,
+            final_status=RUN_STATUS_FAILED,
+            errors=["Approval rejected; missing reject_route_node_id for route_upstream"],
+            run_error_message="Approval rejected",
+            rate_limited=False,
+        )
+    route_node = str(route_node)
+    ctx.node_outputs[str(paused_at)] = {
+        "approved": False,
+        "decision": "rejected",
+        "comment": comment,
+        "approval_context": approval_context,
+        "route_upstream": route_node,
+    }
+    start_batch = _batch_index_for_node(batches, route_node)
+    return _resume_graph_from_node(
+        ctx,
+        batches,
+        start_node_id=route_node,
+        batch_index=start_batch,
+    )
+
+
+def resolve_approval_batch_and_resume(
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    run_id: str,
+    *,
+    batch_id: str,
+    client: Any,
+    environment_name: str = "default",
+) -> tuple[str, list[dict], list[str], bool]:
+    """Resolve a batch approval gate after per-item decisions (STA-290)."""
+    from app.workflows.approval_batch_service import (
+        get_active_batch_for_run,
+        summarize_batch_items,
+    )
+
+    batch = get_active_batch_for_run(client, org_id, run_id)
+    if not batch or str(batch["id"]) != str(batch_id):
+        raise GraphValidationError("Approval batch not found for run")
+    summary = summarize_batch_items(batch.get("items") or [])
+    if summary["pending"]:
+        raise GraphValidationError("All batch items must be decided before resume")
+
+    if summary["all_approved"]:
+        return resume_workflow_graph(
+            settings,
+            org_id,
+            user_id,
+            run_id,
+            decision="approved",
+            client=client,
+            environment_name=environment_name,
+        )
+    if summary["all_rejected"]:
+        return resume_workflow_graph(
+            settings,
+            org_id,
+            user_id,
+            run_id,
+            decision="rejected",
+            client=client,
+            environment_name=environment_name,
+        )
+
+    run = get_run_with_steps(client, org_id, run_id, environment_name)
+    if not run:
+        raise GraphValidationError("Run not found")
+    params = dict(run.get("parameters") or {})
+    checkpoint = params.get(_CHECKPOINT_KEY) or {}
+    paused_at = checkpoint.get("paused_at_node") or params.get("paused_at_node")
+    if not paused_at:
+        raise GraphValidationError("Missing paused_at_node checkpoint")
+
+    nodes = checkpoint.get("nodes") or (run.get("definition_snapshot") or {}).get("graph", {}).get("nodes") or []
+    edges = checkpoint.get("edges") or (run.get("definition_snapshot") or {}).get("graph", {}).get("edges") or []
+    graph = build_execution_graph(nodes, edges)
+    batches = topological_batches(graph)
+    batch_index = int(checkpoint.get("batch_index") or 0)
+    approval_context = dict(checkpoint.get("approval_context") or params.get("approval_context") or {})
+    on_reject = str(approval_context.get("on_reject") or "fail_workflow")
+
+    rejected = summary["rejected"]
+    route_candidates = [
+        str(item.get("route_to_node_id") or item.get("source_node_id") or "")
+        for item in rejected
+        if item.get("route_to_node_id") or item.get("source_node_id")
+    ]
+    route_node = next((node_id for node_id in route_candidates if node_id in graph.nodes_by_id), None)
+    if not route_node and on_reject != "route_upstream":
+        raise GraphValidationError("Partial rejection requires route_to_node_id on rejected items or route_upstream policy")
+    if not route_node:
+        route_node = approval_context.get("reject_route_node_id")
+    if not route_node or str(route_node) not in graph.nodes_by_id:
+        raise GraphValidationError("Partial rejection missing valid upstream route node")
+
+    approved_items = [
+        {
+            "itemKey": item["item_key"],
+            "label": item["label"],
+            "sourceNodeId": item.get("source_node_id"),
+            "payload": item.get("payload") or {},
+        }
+        for item in summary["approved"]
+    ]
+    ctx = _GraphRunContext(
+        settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        run_id=run_id,
+        graph=graph,
+        edge_dicts=_edges_as_dicts(graph.edges),
+        parameters=params,
+        client=client,
+        environment_name=environment_name,
+        node_outputs=dict(checkpoint.get("node_outputs") or {}),
+        skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
+        step_index=int(checkpoint.get("step_index") or 0),
+    )
+    ctx.node_outputs[str(paused_at)] = {
+        "approved": False,
+        "decision": "partial",
+        "approval_context": approval_context,
+        "batch_id": batch_id,
+        "approved_items": approved_items,
+        "rejected_items": [
+            {
+                "itemKey": item["item_key"],
+                "label": item["label"],
+                "sourceNodeId": item.get("source_node_id"),
+                "rejectComment": item.get("reject_comment"),
+            }
+            for item in rejected
+        ],
+    }
+    client.table("approval_batches").update({"status": "resolved", "updated_at": datetime.now(timezone.utc).isoformat()}).eq(
+        "id", batch_id
+    ).execute()
+    start_batch = _batch_index_for_node(batches, str(route_node))
+    return _resume_graph_from_node(
+        ctx,
+        batches,
+        start_node_id=str(route_node),
+        batch_index=start_batch,
+        parameter_patch={"batch_approved_items": approved_items},
+    )
+
+
 def resume_workflow_graph(
     settings: Settings,
     org_id: str,
@@ -759,6 +994,15 @@ def resume_workflow_graph(
             update_run(client, run_id, status="running")
             final_status, errors, rate_limited = _run_graph_batches(ctx, batches, start_batch=batch_index + 1)
             return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=errors[0] if errors else None, rate_limited=rate_limited)
+        if on_reject == "route_upstream":
+            return _route_upstream_on_reject(
+                ctx,
+                batches,
+                batch_index=batch_index,
+                paused_at=str(paused_at),
+                approval_context=approval_context,
+                comment=comment,
+            )
         return _finalize_run(
             ctx,
             final_status=RUN_STATUS_FAILED,
@@ -769,6 +1013,12 @@ def resume_workflow_graph(
 
     if normalized != "approved":
         raise GraphValidationError("decision must be approved or rejected")
+
+    batch_id = approval_context.get("batch_id")
+    if batch_id:
+        client.table("approval_batches").update(
+            {"status": "resolved", "updated_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", str(batch_id)).execute()
 
     ctx.node_outputs[str(paused_at)] = {
         "approved": True,

@@ -2284,6 +2284,34 @@ export interface ResumeGraphRunRequest {
   comment?: string | null
 }
 
+export interface ApprovalBatchItemView {
+  itemKey: string
+  label: string
+  sourceNodeId?: string | null
+  routeToNodeId?: string | null
+  status: "pending" | "approved" | "rejected"
+  rejectComment?: string | null
+  payload?: Record<string, unknown>
+}
+
+export interface ApprovalBatchView {
+  batchId: string
+  runId: string
+  nodeId: string
+  status: string
+  items: ApprovalBatchItemView[]
+}
+
+export interface ApprovalBatchDecideRequest {
+  decisions: Array<{
+    itemKey: string
+    decision: "approved" | "rejected"
+    comment?: string | null
+    routeToNodeId?: string | null
+  }>
+  resume?: boolean
+}
+
 // Agent swarm (STA-119)
 export type AgentSwarmRunStatus =
   | "pending"

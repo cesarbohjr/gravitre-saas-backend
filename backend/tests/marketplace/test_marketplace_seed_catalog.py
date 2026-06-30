@@ -12,11 +12,11 @@ def test_catalog_asset_counts():
     by_type: dict[str, int] = {}
     for asset in assets:
         by_type[asset.asset_type] = by_type.get(asset.asset_type, 0) + 1
-    assert by_type["ai_agent"] == 14
-    assert by_type["workflow"] == 17
+    assert by_type["ai_agent"] == 18
+    assert by_type["workflow"] == 18
     assert by_type["knowledge_pack"] == 14
     assert by_type["department_pack"] == 5
-    assert len(assets) == 50
+    assert len(assets) == 55
 
 
 @pytest.mark.parametrize("asset_slug", sorted(catalog_assets_by_slug()))
@@ -45,3 +45,24 @@ def test_legacy_pack_slug_map_targets_catalog():
     by_slug = catalog_assets_by_slug()
     for legacy_id, mapped_slug in LEGACY_PACK_SLUG_MAP.items():
         assert mapped_slug in by_slug, f"legacy {legacy_id} maps to missing slug {mapped_slug}"
+
+
+def test_marketing_operations_pack_four_agent_handoff_chain():
+    pack = catalog_assets_by_slug()["marketing-operations-pack"]
+    assert pack.asset_type == "department_pack"
+    assert len(pack.config["agents"]) == 4
+    slugs = {agent["config"]["marketplaceSlug"] for agent in pack.config["agents"]}
+    assert slugs == {
+        "product-icp-strategist",
+        "content-writer",
+        "marketing-designer",
+        "marketing-ops-coordinator",
+    }
+    handoff_steps = [
+        step
+        for step in pack.config["workflow_steps"]
+        if step.get("metadata", {}).get("next_agent_seed")
+    ]
+    assert len(handoff_steps) == 2
+    assert handoff_steps[0]["metadata"]["next_agent_seed"] == "agent:content-writer"
+    assert handoff_steps[1]["metadata"]["next_agent_seed"] == "agent:marketing-ops-coordinator"

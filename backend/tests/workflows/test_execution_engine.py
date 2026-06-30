@@ -225,6 +225,79 @@ def test_execute_workflow_graph_pauses_at_approval(monkeypatch):
     assert checkpoint_calls[0].get("paused_at_node") == "ap1"
 
 
+def test_resume_workflow_graph_route_upstream_on_reject(monkeypatch):
+    nodes = [
+        {"id": "s1", "node_type": "source", "title": "Trigger"},
+        {"id": "writer", "node_type": "agent", "title": "Writer", "metadata": {"agent_id": "writer", "task": "Draft"}},
+        {
+            "id": "ap1",
+            "node_type": "approval",
+            "title": "Review",
+            "metadata": {"onReject": "route_upstream", "rejectRouteNodeId": "writer"},
+        },
+        {"id": "a2", "node_type": "agent", "title": "After", "metadata": {"agent_id": "after", "task": "Finish"}},
+    ]
+    edges = [
+        {"from_node_id": "s1", "to_node_id": "writer"},
+        {"from_node_id": "writer", "to_node_id": "ap1"},
+        {"from_node_id": "ap1", "to_node_id": "a2"},
+    ]
+    executed: list[str] = []
+
+    class FakeHandler:
+        supports_execute = True
+
+        def execute(self, context):
+            executed.append(context.step_id)
+            return {"ok": True, "step": context.step_id}
+
+    _patch_runtime(monkeypatch, lambda _t: FakeHandler())
+
+    checkpoint = {
+        "paused_at_node": "ap1",
+        "batch_index": 2,
+        "step_index": 2,
+        "node_outputs": {
+            "s1": {"passthrough": True},
+            "writer": {"draft": "v1"},
+            "ap1": {"awaiting_approval": True},
+        },
+        "skipped_nodes": [],
+        "approval_context": {
+            "node_id": "ap1",
+            "on_reject": "route_upstream",
+            "reject_route_node_id": "writer",
+        },
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+    def fake_get_run(_client, _org, _run_id, _env):
+        return {
+            "status": RUN_STATUS_AWAITING_APPROVAL,
+            "parameters": {"_graph_execution": checkpoint},
+            "definition_snapshot": {"graph": {"nodes": nodes, "edges": edges}},
+            "steps": [],
+        }
+
+    monkeypatch.setattr(f"{_RUNTIME}.get_run_with_steps", fake_get_run)
+
+    settings = MagicMock()
+    client = MagicMock()
+    status, _, errors, _ = resume_workflow_graph(
+        settings,
+        "org-1",
+        "user-1",
+        "run-1",
+        decision="rejected",
+        client=client,
+    )
+
+    assert status == RUN_STATUS_AWAITING_APPROVAL
+    assert not errors
+    assert "writer" in executed
+
+
 def test_resume_workflow_graph_after_approval(monkeypatch):
     nodes, edges = _approval_graph_nodes_edges()
     executed: list[str] = []

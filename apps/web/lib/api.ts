@@ -152,6 +152,8 @@ import type {
   KnowledgeSyncTriggerResponse,
   WorkflowDigitalTwinResponse,
   ResumeGraphRunRequest,
+  ApprovalBatchView,
+  ApprovalBatchDecideRequest,
   RunCompensationSummary,
   AutonomousRunBudgetLimits,
   AutonomousRunBudgetUsage,
@@ -618,6 +620,13 @@ export const workflowsApi = {
   resumeRun: (runId: string, data: ResumeGraphRunRequest) =>
     postJson<{ run_id: string; status: string; steps?: Record<string, unknown>[] }>(
       apiUrl(`/api/workflows/runs/${runId}/resume`),
+      data,
+    ),
+  getApprovalBatch: (runId: string) =>
+    fetcher<{ batch: ApprovalBatchView | null }>(apiUrl(`/api/workflows/runs/${runId}/approval-batch`)),
+  decideApprovalBatch: (runId: string, data: ApprovalBatchDecideRequest) =>
+    postJson<{ batch: ApprovalBatchView; status?: string; run_id?: string }>(
+      apiUrl(`/api/workflows/runs/${runId}/approval-batch/decide`),
       data,
     ),
 }

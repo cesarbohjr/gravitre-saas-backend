@@ -281,6 +281,11 @@ def _resolve_workflow_steps(
             agent_seed = metadata.pop("agent_seed", None)
             if agent_seed:
                 metadata["agent_id"] = agent_ids.get(str(agent_seed))
+            next_agent_seed = metadata.pop("next_agent_seed", None)
+            if next_agent_seed:
+                next_agent_id = agent_ids.get(str(next_agent_seed))
+                if next_agent_id:
+                    metadata["next_agent_id"] = next_agent_id
             row["metadata"] = metadata
         resolved.append(row)
     if not resolved:
