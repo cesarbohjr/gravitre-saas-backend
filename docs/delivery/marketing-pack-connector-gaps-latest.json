@@ -1,0 +1,129 @@
+{
+  "issue": "STA-292",
+  "packSlug": "marketing-operations-pack",
+  "summary": {
+    "total": 8,
+    "missing": 3,
+    "partial": 5,
+    "exists": 0,
+    "packBlockers": [
+      "linkedin_publish"
+    ],
+    "linkedinPublishGap": true
+  },
+  "connectors": [
+    {
+      "key": "apollo",
+      "displayName": "Apollo.io",
+      "vendor": "apollo",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "packWorkflowUse": "Prospect enrichment and outbound sequencing",
+      "implementedTools": 11,
+      "catalogTools": 11,
+      "notes": "API-key auth via apollo_api.py; action catalog + apollo_tools shipped."
+    },
+    {
+      "key": "notion",
+      "displayName": "Notion",
+      "vendor": "notion",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "packWorkflowUse": "Campaign briefs and knowledge handoff",
+      "implementedTools": 9,
+      "catalogTools": 9,
+      "notes": "OAuth via notion_oauth.py; pages/databases actions and sync service."
+    },
+    {
+      "key": "google_drive",
+      "displayName": "Google Drive",
+      "vendor": "google_drive",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "packWorkflowUse": "Asset storage and creative exports",
+      "implementedTools": 9,
+      "catalogTools": 9,
+      "notes": "Google vendor OAuth + google_drive tools in tool_service."
+    },
+    {
+      "key": "dropbox",
+      "displayName": "Dropbox",
+      "vendor": null,
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "packWorkflowUse": "Optional file handoff alternative to Drive",
+      "implementedTools": 0,
+      "catalogTools": 0,
+      "notes": "No vendor definition or OAuth spec."
+    },
+    {
+      "key": "canva",
+      "displayName": "Canva",
+      "vendor": "canva",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "packWorkflowUse": "Creative production in designer agent step",
+      "implementedTools": 11,
+      "catalogTools": 11,
+      "notes": "OAuth in registry; designs/export/autofill via canva_tools."
+    },
+    {
+      "key": "adobe_creative_cloud",
+      "displayName": "Adobe Creative Cloud",
+      "vendor": null,
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "packWorkflowUse": "Enterprise design toolchain alternative to Canva",
+      "implementedTools": 0,
+      "catalogTools": 0,
+      "notes": "Adobe Marketo exists; no Creative Cloud / Express design connector."
+    },
+    {
+      "key": "engagebay",
+      "displayName": "Engagebay",
+      "vendor": null,
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "packWorkflowUse": "SMB marketing automation alternative to HubSpot",
+      "implementedTools": 0,
+      "catalogTools": 0,
+      "notes": "Not present in vendor catalog or OAuth registry."
+    },
+    {
+      "key": "linkedin_publish",
+      "displayName": "LinkedIn (organic publishing)",
+      "vendor": "linkedin",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "yes",
+      "packWorkflowUse": "Social publish step in campaign workflow",
+      "implementedTools": 8,
+      "catalogTools": 8,
+      "notes": "LinkedIn enrich/ads/leads only; no posts.create / w_member_social publish action."
+    }
+  ],
+  "generatedAt": "2026-06-30T04:14:40.093892+00:00"
+}

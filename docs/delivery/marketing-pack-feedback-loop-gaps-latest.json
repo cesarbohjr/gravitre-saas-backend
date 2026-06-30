@@ -1,0 +1,332 @@
+{
+  "issue": "STA-293",
+  "packSlug": "marketing-operations-pack",
+  "productDecisionTicket": "STA-294",
+  "recommendedDefault": "mode_a",
+  "summary": {
+    "total": 13,
+    "missing": 7,
+    "partial": 5,
+    "exists": 1,
+    "modeA": {
+      "total": 6,
+      "missing": 1,
+      "partial": 4,
+      "exists": 1,
+      "extendable": true
+    },
+    "modeB": {
+      "total": 5,
+      "missing": 5,
+      "partial": 0,
+      "exists": 0,
+      "netNewPlatformWork": true
+    },
+    "packBlockers": [
+      "post_publish_marketing_metrics"
+    ],
+    "modeBMissingKeys": [
+      "autonomous_replanning_loop",
+      "tone_cadence_auto_shift",
+      "per_cycle_behavior_caps",
+      "autonomous_rollback",
+      "post_hoc_audit_without_approval"
+    ],
+    "awaitingProductSignOff": true
+  },
+  "modeA": [
+    {
+      "key": "company_intelligence_orchestrator",
+      "displayName": "Company intelligence learning loop",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Per-org ML loop (intent, anomaly, forecaster, success); not marketing-metrics-aware."
+    },
+    {
+      "key": "outcome_attribution",
+      "displayName": "Outcome attribution (correlational)",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "HubSpot deal amount + Stripe subscription metrics only; correlational, not RL."
+    },
+    {
+      "key": "integration_suggestions",
+      "displayName": "Integration suggestions (human apply)",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Audit-usage scan \u2192 integration_suggestions table; apply requires human actor."
+    },
+    {
+      "key": "optimization_suggestions",
+      "displayName": "Optimization suggestions (human apply)",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Evidence-backed suggestions; never auto-applies \u2014 human preview/apply gate."
+    },
+    {
+      "key": "human_approval_gate",
+      "displayName": "Human approval before behavior change",
+      "mode": "mode_a",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "apply_integration_suggestion + apply_optimization_suggestion require actor_id."
+    },
+    {
+      "key": "post_publish_marketing_metrics",
+      "displayName": "Post-publish marketing metrics to suggestions",
+      "mode": "mode_a",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "GA4/social engagement not wired into outcome attribution or optimization detectors."
+    }
+  ],
+  "modeB": [
+    {
+      "key": "autonomous_replanning_loop",
+      "displayName": "Autonomous outcome-driven replanning",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "No platform loop mutates agent tone/cadence/content without human approval."
+    },
+    {
+      "key": "tone_cadence_auto_shift",
+      "displayName": "Automatic tone/cadence/content-type shifts",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "Brand-voice-affecting mutations require net-new guardrailed infrastructure."
+    },
+    {
+      "key": "per_cycle_behavior_caps",
+      "displayName": "Per-cycle behavior shift caps",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Required guardrail if Mode B ships; no schema or enforcement exists."
+    },
+    {
+      "key": "autonomous_rollback",
+      "displayName": "Rollback when new behavior underperforms",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Per-asset versioning exists; no autonomous rollback on outcome regression."
+    },
+    {
+      "key": "post_hoc_audit_without_approval",
+      "displayName": "Post-hoc audit trail (no approval anchor)",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "General audit log exists; no autonomous-mutation audit event type."
+    }
+  ],
+  "shared": [
+    {
+      "key": "feedback_mode_toggle",
+      "displayName": "Mode A/B feedback toggle (general primitive)",
+      "mode": "shared",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "No org/pack setting to select Mode A vs Mode B; product decision pending (STA-294)."
+    },
+    {
+      "key": "mode_b_pricing_constant",
+      "displayName": "Mode B pricing placeholder",
+      "mode": "shared",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "MODE_B_AUTONOMOUS_ADDON_CENTS in pack_pricing.py; no Stripe SKU or entitlement yet."
+    }
+  ],
+  "capabilities": [
+    {
+      "key": "company_intelligence_orchestrator",
+      "displayName": "Company intelligence learning loop",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Per-org ML loop (intent, anomaly, forecaster, success); not marketing-metrics-aware."
+    },
+    {
+      "key": "outcome_attribution",
+      "displayName": "Outcome attribution (correlational)",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "HubSpot deal amount + Stripe subscription metrics only; correlational, not RL."
+    },
+    {
+      "key": "integration_suggestions",
+      "displayName": "Integration suggestions (human apply)",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Audit-usage scan \u2192 integration_suggestions table; apply requires human actor."
+    },
+    {
+      "key": "optimization_suggestions",
+      "displayName": "Optimization suggestions (human apply)",
+      "mode": "mode_a",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "Evidence-backed suggestions; never auto-applies \u2014 human preview/apply gate."
+    },
+    {
+      "key": "human_approval_gate",
+      "displayName": "Human approval before behavior change",
+      "mode": "mode_a",
+      "documentedState": "exists",
+      "liveState": "exists",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "apply_integration_suggestion + apply_optimization_suggestion require actor_id."
+    },
+    {
+      "key": "post_publish_marketing_metrics",
+      "displayName": "Post-publish marketing metrics to suggestions",
+      "mode": "mode_a",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "GA4/social engagement not wired into outcome attribution or optimization detectors."
+    },
+    {
+      "key": "autonomous_replanning_loop",
+      "displayName": "Autonomous outcome-driven replanning",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "No platform loop mutates agent tone/cadence/content without human approval."
+    },
+    {
+      "key": "tone_cadence_auto_shift",
+      "displayName": "Automatic tone/cadence/content-type shifts",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "high",
+      "blocksPack": "depends",
+      "notes": "Brand-voice-affecting mutations require net-new guardrailed infrastructure."
+    },
+    {
+      "key": "per_cycle_behavior_caps",
+      "displayName": "Per-cycle behavior shift caps",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Required guardrail if Mode B ships; no schema or enforcement exists."
+    },
+    {
+      "key": "autonomous_rollback",
+      "displayName": "Rollback when new behavior underperforms",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "Per-asset versioning exists; no autonomous rollback on outcome regression."
+    },
+    {
+      "key": "post_hoc_audit_without_approval",
+      "displayName": "Post-hoc audit trail (no approval anchor)",
+      "mode": "mode_b",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "no",
+      "notes": "General audit log exists; no autonomous-mutation audit event type."
+    },
+    {
+      "key": "feedback_mode_toggle",
+      "displayName": "Mode A/B feedback toggle (general primitive)",
+      "mode": "shared",
+      "documentedState": "missing",
+      "liveState": "missing",
+      "stateMatchesDoc": true,
+      "complexity": "medium",
+      "blocksPack": "depends",
+      "notes": "No org/pack setting to select Mode A vs Mode B; product decision pending (STA-294)."
+    },
+    {
+      "key": "mode_b_pricing_constant",
+      "displayName": "Mode B pricing placeholder",
+      "mode": "shared",
+      "documentedState": "partial",
+      "liveState": "partial",
+      "stateMatchesDoc": true,
+      "complexity": "low",
+      "blocksPack": "no",
+      "notes": "MODE_B_AUTONOMOUS_ADDON_CENTS in pack_pricing.py; no Stripe SKU or entitlement yet."
+    }
+  ],
+  "generatedAt": "2026-06-30T04:34:19.500980+00:00"
+}

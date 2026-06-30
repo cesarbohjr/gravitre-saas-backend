@@ -30,6 +30,30 @@ GOOGLE_ANALYTICS = {
     "required": False,
     "connectPath": "/connectors?type=google_analytics",
 }
+APOLLO = {
+    "connectorType": "apollo",
+    "label": "Apollo.io",
+    "required": False,
+    "connectPath": "/connectors?type=apollo",
+}
+NOTION = {
+    "connectorType": "notion",
+    "label": "Notion",
+    "required": False,
+    "connectPath": "/connectors?type=notion",
+}
+GOOGLE_DRIVE = {
+    "connectorType": "google_drive",
+    "label": "Google Drive",
+    "required": False,
+    "connectPath": "/connectors?type=google_drive",
+}
+CANVA = {
+    "connectorType": "canva",
+    "label": "Canva",
+    "required": False,
+    "connectPath": "/connectors?type=canva",
+}
 
 
 @dataclass(frozen=True)
@@ -486,7 +510,7 @@ def _department_packs() -> list[CatalogAsset]:
                 ),
             ],
         ),
-        required_connectors=[HUBSPOT, GOOGLE_ANALYTICS],
+        required_connectors=[HUBSPOT, GOOGLE_ANALYTICS, APOLLO, NOTION, GOOGLE_DRIVE, CANVA],
         pack_children=[
             "product-icp-strategist",
             "content-writer",
