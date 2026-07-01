@@ -11,9 +11,16 @@ from app.services.unified_retrieval_service import RetrievalScopes, UnifiedRetri
 @pytest.mark.asyncio
 async def test_unified_retrieval_composes_bundle():
     rag = MagicMock()
-    rag.retrieve_chunks = AsyncMock(
+    rag.retrieve_hybrid_rows = AsyncMock(
         return_value=(
-            [SimpleNamespace(id="c1", content="Policy", score=0.9, source="KB")],
+            [
+                {
+                    "chunk_id": "c1",
+                    "content": "Policy",
+                    "score": 0.9,
+                    "source_title": "KB",
+                }
+            ],
             {"reranked": 1},
         )
     )
@@ -43,7 +50,7 @@ async def test_unified_retrieval_composes_bundle():
                     environment_name="production",
                 )
 
-    rag.retrieve_chunks.assert_awaited_once()
+    rag.retrieve_hybrid_rows.assert_awaited_once()
     assert len(bundle.rag_sources) == 1
     assert bundle.org_context["orgName"] == "Acme"
     assert "<knowledge_base>" in bundle.rag_section

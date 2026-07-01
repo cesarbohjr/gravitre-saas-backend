@@ -38,9 +38,19 @@ def test_public_assets_visible_to_all_orgs(mock_validate):
     }
     assets = _table([public_row])
     installs = _table([])
+    entitlements = _table([])
+
+    def _table_for(name: str):
+        if name == "marketplace_installs":
+            return installs
+        if name == "marketplace_asset_entitlements":
+            return entitlements
+        if name == "marketplace_pack_items":
+            return _table([])
+        return assets
 
     client = MagicMock()
-    client.table.side_effect = lambda name: installs if name == "marketplace_installs" else assets
+    client.table.side_effect = _table_for
 
     result = list_marketplace_assets(client, "org-other")
     assert result["total"] >= 1

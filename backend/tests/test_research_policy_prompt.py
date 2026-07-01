@@ -13,6 +13,10 @@ from app.operators.agent_intelligence import (
 from app.operators.assistant_mode_config import resolve_assistant_tool_names
 from app.operators.react_engine import ReActResult, ReActStatus
 from app.operators.stream_events import AssistantStreamComplete
+from app.services.intelligence_engine_settings import IntelligenceEngineSettings
+
+
+_ENGINE_SETTINGS = IntelligenceEngineSettings(validation_enabled=False)
 
 
 @pytest.fixture
@@ -164,18 +168,39 @@ async def test_policy_appears_for_assistant_streaming(intelligence: AgentIntelli
             {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
             "Org block",
         )
-        with patch("app.operators.agent_intelligence.tool_knowledge_base", AsyncMock(return_value={"results": []})):
-            with patch("app.operators.agent_intelligence.maybe_summarize_history", AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False))):
-                events = []
-                async for event in intelligence.execute_task_streaming(
-                    org_id="org-1",
-                    user_id="user-1",
-                    query="What is happening externally?",
-                    mode="standard",
-                    requested_tools=None,
-                    client=client,
-                ):
-                    events.append(event)
+        with patch(
+            "app.operators.agent_intelligence.rewrite_for_retrieval",
+            AsyncMock(return_value={"refined_query": "What is happening externally?"}),
+        ):
+            with patch(
+                "app.operators.agent_intelligence.load_intelligence_engine_settings",
+                AsyncMock(return_value=_ENGINE_SETTINGS),
+            ):
+                with patch("app.operators.agent_intelligence.tier0_enabled", return_value=False):
+                    with patch("app.operators.agent_intelligence.get_company_intelligence_orchestrator") as ci:
+                        ci.return_value.get_context_for_prompt = AsyncMock(return_value="")
+                        with patch(
+                            "app.operators.agent_intelligence.build_entity_context_section",
+                            AsyncMock(return_value=""),
+                        ):
+                            with patch(
+                                "app.operators.agent_intelligence.maybe_summarize_history",
+                                AsyncMock(
+                                    return_value=SimpleNamespace(
+                                        messages=[], summary=None, summary_updated=False
+                                    )
+                                ),
+                            ):
+                                events = []
+                                async for event in intelligence.execute_task_streaming(
+                                    org_id="org-1",
+                                    user_id="user-1",
+                                    query="What is happening externally?",
+                                    mode="standard",
+                                    requested_tools=None,
+                                    client=client,
+                                ):
+                                    events.append(event)
 
     assert captured["system_prompt"]
     assert "## Research Policy" in captured["system_prompt"]
@@ -209,20 +234,47 @@ async def test_policy_appears_for_agent_chat_ui(intelligence: AgentIntelligence)
                 {"orgName": "Acme", "connectedIntegrations": ["hubspot"]},
                 "Org block",
             )
-            with patch("app.operators.agent_intelligence.tool_knowledge_base", AsyncMock(return_value={"results": []})):
-                with patch("app.operators.agent_intelligence.maybe_summarize_history", AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False))):
-                    with patch("app.services.agent_memory_service.build_task_retrieval_context", return_value={}):
-                        with patch("app.services.agent_memory_service.format_retrieval_prompt_section", return_value=""):
-                            async for _ in intelligence.execute_task_streaming(
-                                org_id="org-1",
-                                user_id="user-1",
-                                query="Pipeline risks",
-                                mode="agent",
-                                requested_tools=scoped_tools,
-                                agent_id="agent-1",
-                                client=client,
+            with patch(
+                "app.operators.agent_intelligence.rewrite_for_retrieval",
+                AsyncMock(return_value={"refined_query": "Pipeline risks"}),
+            ):
+                with patch(
+                    "app.operators.agent_intelligence.load_intelligence_engine_settings",
+                    AsyncMock(return_value=_ENGINE_SETTINGS),
+                ):
+                    with patch("app.operators.agent_intelligence.tier0_enabled", return_value=False):
+                        with patch("app.operators.agent_intelligence.get_company_intelligence_orchestrator") as ci:
+                            ci.return_value.get_context_for_prompt = AsyncMock(return_value="")
+                            with patch(
+                                "app.operators.agent_intelligence.build_entity_context_section",
+                                AsyncMock(return_value=""),
                             ):
-                                pass
+                                with patch(
+                                    "app.operators.agent_intelligence.maybe_summarize_history",
+                                    AsyncMock(
+                                        return_value=SimpleNamespace(
+                                            messages=[], summary=None, summary_updated=False
+                                        )
+                                    ),
+                                ):
+                                    with patch(
+                                        "app.services.agent_memory_service.build_task_retrieval_context",
+                                        return_value={},
+                                    ):
+                                        with patch(
+                                            "app.services.agent_memory_service.format_retrieval_prompt_section",
+                                            return_value="",
+                                        ):
+                                            async for _ in intelligence.execute_task_streaming(
+                                                org_id="org-1",
+                                                user_id="user-1",
+                                                query="Pipeline risks",
+                                                mode="agent",
+                                                requested_tools=scoped_tools,
+                                                agent_id="agent-1",
+                                                client=client,
+                                            ):
+                                                pass
 
     assert "## Research Policy" in captured["system_prompt"]
     assert resolve_assistant_tool_names("agent", scoped_tools)

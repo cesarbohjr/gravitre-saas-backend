@@ -53,7 +53,8 @@ async def get_temporal_client() -> Client:
     api_key = (os.environ.get("TEMPORAL_API_KEY") or "").strip()
     connect_kwargs: dict = {"namespace": namespace}
     if api_key:
-        connect_kwargs["rpc_metadata"] = {"authorization": f"Bearer {api_key}"}
+        connect_kwargs["api_key"] = api_key
+        connect_kwargs["tls"] = True
     return await Client.connect(host, **connect_kwargs)
 
 

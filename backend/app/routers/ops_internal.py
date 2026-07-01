@@ -110,8 +110,22 @@ async def company_intelligence_run_cron(
     """Manual/GitHub-Actions trigger for the company intelligence learning loop."""
     from app.services.company_intelligence_collectors import get_active_org_ids
     from app.services.company_intelligence_orchestrator import CompanyIntelligenceOrchestrator
+    from app.temporal.starters import start_company_intelligence_workflow, temporal_enabled
 
     req = body or CompanyIntelligenceRunRequest()
+    if temporal_enabled():
+        if req.org_id:
+            started = await start_company_intelligence_workflow(req.org_id)
+            return {"temporal": True, "processed": 1, "started": [started]}
+        org_ids = await asyncio.to_thread(get_active_org_ids, settings, since_days=7, limit=20)
+        started: list[dict[str, Any]] = []
+        for org_id in org_ids:
+            try:
+                started.append(await start_company_intelligence_workflow(org_id))
+            except Exception as exc:  # noqa: BLE001
+                started.append({"org_id": org_id, "error": str(exc)})
+        return {"temporal": True, "processed": len(started), "started": started}
+
     orchestrator = CompanyIntelligenceOrchestrator(settings=settings)
     if req.org_id:
         summary = await orchestrator.run_for_org(req.org_id)
@@ -125,6 +139,28 @@ async def company_intelligence_run_cron(
         except Exception as exc:  # noqa: BLE001
             results.append({"org_id": org_id, "error": str(exc)})
     return {"processed": len(results), "results": results}
+
+
+@router.get("/infrastructure-health")
+async def infrastructure_health_cron(
+    apply_clickhouse_schema: bool = False,
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Verify Temporal + ClickHouse connectivity from the running Railway process."""
+    from app.services.infrastructure_health_service import get_infrastructure_health
+
+    return await get_infrastructure_health(apply_clickhouse_schema=apply_clickhouse_schema)
+
+
+@router.post("/clickhouse-apply-schema")
+async def clickhouse_apply_schema_cron(
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    from app.services.infrastructure_health_service import apply_clickhouse_schema, check_clickhouse_connection
+
+    applied = apply_clickhouse_schema()
+    status = await check_clickhouse_connection(apply_schema=False)
+    return {"apply": applied, "status": status}
 
 
 class MemoryPromotionRunRequest(BaseModel):
