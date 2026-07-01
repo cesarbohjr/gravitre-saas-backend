@@ -2,7 +2,7 @@ export const WORK_SHORTCUT_EVENT = "gravitre:work-shortcut"
 export const FOCUS_SEARCH_AFTER_NAV_KEY = "gravitre:focus-search-on-load"
 
 export const WORK_SECTION_PATH_PREFIXES = [
-  "/chat",
+  "/search",
   "/operator",
   "/assistant",
   "/agents",

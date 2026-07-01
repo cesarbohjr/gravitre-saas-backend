@@ -115,7 +115,7 @@ export default function ContactPage() {
               <div className="space-y-3">
                 <a href="mailto:hello@gravitre.app" className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><Mail className="h-4 w-4" /><span className="text-sm">hello@gravitre.app</span></a>
                 <a href="tel:+1-888-555-0123" className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><Phone className="h-4 w-4" /><span className="text-sm">+1 (888) 555-0123</span></a>
-                <button onClick={() => window.open('https://gravitre.app/chat', '_blank')} className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><MessageSquare className="h-4 w-4" /><span className="text-sm">Live chat (9am-6pm PT)</span></button>
+                <button onClick={() => window.open('https://gravitre.app/search', '_blank')} className="flex items-center gap-3 text-zinc-600 hover:text-zinc-900 transition-colors"><MessageSquare className="h-4 w-4" /><span className="text-sm">Live chat (9am-6pm PT)</span></button>
               </div>
             </motion.div>
           </div>

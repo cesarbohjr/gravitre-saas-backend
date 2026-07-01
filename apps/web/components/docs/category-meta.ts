@@ -23,6 +23,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Concepts: BookOpen,
   "How-to Guides": Bot,
   Guides: Bot,
+  "Command Center": Sparkles,
   "AI Operator": Sparkles,
   Workflows: Workflow,
   "API Reference": Code,

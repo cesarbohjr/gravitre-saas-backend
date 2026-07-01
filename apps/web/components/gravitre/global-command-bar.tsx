@@ -24,8 +24,33 @@ interface CommandItem {
 }
 
 const navigationItems: CommandItem[] = [
-  { id: "nav-operator", type: "navigation", title: "AI Assistant", subtitle: "Command center", icon: "ai", href: "/operator", keywords: ["ai", "analyze", "debug"] },
-  { id: "nav-search", type: "navigation", title: "Knowledge Search", subtitle: "Search data", icon: "search", href: "/chat", keywords: ["search", "find", "query"] },
+  {
+    id: "nav-operator",
+    type: "navigation",
+    title: "Command Center",
+    subtitle: "Delegate tasks and track execution",
+    icon: "ai",
+    href: "/operator",
+    keywords: ["operator", "execute", "task", "delegate"],
+  },
+  {
+    id: "nav-assistant",
+    type: "navigation",
+    title: "Workspace Chat",
+    subtitle: "Multi-turn chat with tools",
+    icon: "chat",
+    href: "/assistant",
+    keywords: ["assistant", "chat", "conversation", "help"],
+  },
+  {
+    id: "nav-search",
+    type: "navigation",
+    title: "Universal Search",
+    subtitle: "Find workflows, runs, and docs",
+    icon: "search",
+    href: "/search",
+    keywords: ["search", "find", "query", "records"],
+  },
   { id: "nav-agents", type: "navigation", title: "Agents", subtitle: "AI agents", icon: "agents", href: "/agents", keywords: ["bot", "automation"] },
   { id: "nav-workflows", type: "navigation", title: "Workflows", subtitle: "Automation flows", icon: "automations", href: "/workflows", keywords: ["flow", "pipeline"] },
   { id: "nav-connectors", type: "navigation", title: "Connectors", subtitle: "Integrations", icon: "apps", href: "/connectors", keywords: ["api", "integration"] },

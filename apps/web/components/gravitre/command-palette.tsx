@@ -69,13 +69,13 @@ export function CommandPalette({
   const router = useRouter()
   const pathname = usePathname()
 
-  const openSemanticSearch = useCallback(() => {
-    if (pathname === "/chat") {
+  const openUniversalSearch = useCallback(() => {
+    if (pathname === "/search") {
       dispatchWorkShortcut("focus-search")
       return
     }
     markFocusSearchAfterNav()
-    router.push("/chat")
+    router.push("/search")
   }, [pathname, router])
 
   useEffect(() => {
@@ -84,12 +84,12 @@ export function CommandPalette({
         if (isEditableTarget(e.target)) return
         e.preventDefault()
 
-        if (pathname === "/chat") {
+        if (pathname === "/search") {
           dispatchWorkShortcut("focus-search")
           return
         }
         if (isWorkSectionPath(pathname)) {
-          openSemanticSearch()
+          openUniversalSearch()
           return
         }
 
@@ -99,7 +99,7 @@ export function CommandPalette({
 
     document.addEventListener("keydown", down)
     return () => document.removeEventListener("keydown", down)
-  }, [pathname, openSemanticSearch])
+  }, [pathname, openUniversalSearch])
 
   const runCommand = useCallback((command: () => void) => {
     setOpen(false)
@@ -113,9 +113,10 @@ export function CommandPalette({
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Search">
-          <CommandItem onSelect={() => runCommand(openSemanticSearch)}>
+          <CommandItem onSelect={() => runCommand(openUniversalSearch)}>
             <Search className="mr-2 h-4 w-4 text-emerald-400" />
-            <span>Semantic Search</span>
+            <span>Universal Search</span>
+            <span className="ml-2 text-xs text-muted-foreground">Find records — not chat</span>
             <CommandShortcut>⌘K</CommandShortcut>
           </CommandItem>
         </CommandGroup>

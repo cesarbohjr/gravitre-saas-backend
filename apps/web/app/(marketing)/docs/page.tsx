@@ -46,15 +46,21 @@ const quickLinks = [
   },
   {
     icon: Bot,
-    title: "AI Operator",
-    description: "Action plans, context packs, and monitored jobs",
+    title: "Command Center",
+    description: "Delegate tracked work — plans, async jobs, and approvals",
     href: "/docs/guides/how-to/ai-operator",
   },
   {
     icon: MessageSquare,
-    title: "Assistant",
-    description: "Org-aware chat, modes, and daily briefings",
+    title: "Workspace Chat",
+    description: "Multi-turn org-aware chat, modes, and daily briefings",
     href: "/docs/guides/how-to/assistant",
+  },
+  {
+    icon: Terminal,
+    title: "Universal Search",
+    description: "Find runs, workflows, and agents — links, not chat",
+    href: "/docs/guides/how-to/search",
   },
   {
     icon: Workflow,

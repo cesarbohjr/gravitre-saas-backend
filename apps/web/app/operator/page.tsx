@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { Timeline, TimelineItem } from "@/components/gravitre/timeline-item"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { cn } from "@/lib/utils"
@@ -918,7 +919,7 @@ export default function OperatorPage() {
   }
 
   return (
-    <AppShell title="AI Operator">
+    <AppShell title="Command Center">
       <div className="relative flex flex-col h-full overflow-hidden">
         {/* Subtle ambient background */}
         <div className="absolute inset-0 pointer-events-none z-0">
@@ -933,6 +934,13 @@ export default function OperatorPage() {
               content below it. Required because backdrop-blur creates a stacking
               context that would otherwise trap the dropdown beneath page content. */}
           <div className="relative z-20 shrink-0 border-b border-border px-4 py-3 md:px-6 md:py-5 bg-card/50 backdrop-blur-sm">
+            <div className="mb-3">
+              <h1 className="text-base font-semibold text-foreground">Command Center</h1>
+              <p className="text-xs text-muted-foreground text-pretty">
+                Delegate tasks, run execution plans, and track async work — not a free-form chat.
+              </p>
+            </div>
+            <AiWorkSurfacesCallout current="command-center" compact className="mb-3 md:mb-4" />
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <AIPresence 

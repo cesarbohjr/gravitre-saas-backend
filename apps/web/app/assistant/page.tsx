@@ -56,6 +56,7 @@ import {
 } from "@/components/gravitre/assistant/tool-chip"
 import { FollowUpSuggestions } from "@/components/gravitre/assistant/follow-up-suggestions"
 import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
+import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
 import {
   Tooltip,
@@ -1128,7 +1129,7 @@ export default function AssistantPage() {
   useWorkPageShortcut("focus-search", () => inputRef.current?.focus())
 
   return (
-    <AppShell title="Assistant">
+    <AppShell title="Workspace Chat">
       <div className="flex h-full bg-zinc-50">
         {/* Conversation Sidebar */}
         <ConversationSidebar
@@ -1189,7 +1190,7 @@ export default function AssistantPage() {
                     </h1>
                   </button>
                 )}
-                <p className="text-[11px] text-zinc-500">AI-powered automation help</p>
+                <p className="text-[11px] text-zinc-500">Multi-turn chat with tools — not task delegation</p>
               </div>
             </div>
             <Button
@@ -1205,6 +1206,12 @@ export default function AssistantPage() {
 
           <OrgContextPill enabled={Boolean(user)} />
 
+          {user ? (
+            <div className="border-b border-zinc-200 bg-zinc-50/80 px-4 py-3 md:px-6">
+              <AiWorkSurfacesCallout current="workspace-chat" compact />
+            </div>
+          ) : null}
+
           {/* Messages area */}
           <div className="flex-1 overflow-auto">
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
@@ -1219,7 +1226,7 @@ export default function AssistantPage() {
                   </div>
                   <h2 className="text-xl font-semibold text-zinc-900 mb-2">Sign in to continue</h2>
                   <p className="text-sm text-zinc-500 max-w-sm">
-                    Sign in to use the Gravitre AI Assistant and get help with your automation workflows.
+                    Sign in to use Workspace Chat for multi-turn help with your automation platform.
                   </p>
                 </motion.div>
               ) : conversationMessagesLoading && activeConversationId ? (
@@ -1278,7 +1285,7 @@ export default function AssistantPage() {
                     </div>
                   ) : null}
                   <p className="text-sm text-zinc-500 mb-10 max-w-md">
-                    I can help manage agents, troubleshoot workflows, check connector status, and answer questions about your automation platform.
+                    Ask questions, troubleshoot workflows, and explore ideas in a saved thread. Need to delegate tracked work? Use Command Center instead.
                   </p>
 
                   {!hasSentMessage && (

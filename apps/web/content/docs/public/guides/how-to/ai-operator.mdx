@@ -1,6 +1,6 @@
 ---
-title: Use the AI Operator
-description: Plan and monitor work in natural language with human approval for sensitive steps.
+title: Use Command Center
+description: Delegate tracked work in natural language — action plans, async jobs, and human approval for sensitive steps.
 audience: public
 depth: mid
 tier: all
@@ -11,15 +11,15 @@ prev:
   title: Quickstart
   href: /docs/getting-started/quickstart
 next:
-  title: Use the Assistant
+  title: Use Workspace Chat
   href: /docs/guides/how-to/assistant
 ---
 
-The **AI Operator** is Gravitre's natural-language command center for **assigned, monitored work**. Describe an outcome; Gravitre builds an action plan, surfaces context from Runs and Connectors, and tracks execution with explicit verification labels.
+The **Command Center** (`/operator`) is Gravitre's work console for **assigned, monitored execution**. Describe an outcome; Gravitre builds an action plan, surfaces context from Runs and Connectors, and tracks async jobs with explicit verification labels. It is not a free-form chat thread.
 
-## Open the Operator
+## Open Command Center
 
-Sidebar → **WORK → AI Operator** (`/operator`).
+Sidebar → **WORK → Command Center** (`/operator`).
 
 The page shows:
 
@@ -30,15 +30,15 @@ The page shows:
 - **Timeline** — findings, plan steps, and job status
 - **Suggested actions** — one-click follow-ups with confidence and approval badges
 
-## Operator vs Assistant
+## Command Center vs Workspace Chat vs Universal Search
 
-| | **AI Operator** | **Assistant** |
-|---|-----------------|---------------|
-| **Goal** | Execute a plan with tracked jobs | Answer questions in chat |
-| **Output** | Action plan + Run linkage | Conversational reply |
-| **Route** | `/operator` | `/assistant` |
+| | **Command Center** | **Workspace Chat** | **Universal Search** |
+|---|---------------------|--------------------|----------------------|
+| **Goal** | Execute a plan with tracked jobs | Answer questions in chat | Find records with deep links |
+| **Output** | Action plan + Run linkage | Conversational reply | Grouped search results |
+| **Route** | `/operator` | `/assistant` | `/search` |
 
-Use the Operator when you want durable work with a visible plan. Use the Assistant for exploration and Q&A.
+Use Command Center when you want durable work with a visible plan. Use Workspace Chat for exploration and Q&A. Use Universal Search when you know what you are looking for and need a link — not a chat reply.
 
 ## Typical flow
 
@@ -185,7 +185,8 @@ Agent jobs initiated from the UI use the async job APIs documented under `/api/a
 
 ## Related
 
-- [Use the Assistant](/docs/guides/how-to/assistant)
+- [Use Workspace Chat](/docs/guides/how-to/assistant)
+- [Universal Search](/docs/guides/how-to/search)
 - [Manage approvals](/docs/guides/how-to/approvals)
 - [Connect integrations](/docs/guides/how-to/connectors)
 - [Monitor Runs](/docs/guides/how-to/runs)

@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { searchApi, assistantApi } from "@/lib/api"
@@ -682,7 +683,7 @@ export default function ChatPage() {
   )
 
   return (
-    <AppShell title="Search">
+    <AppShell title="Universal Search">
       <div className="flex h-full flex-col md:flex-row">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
@@ -692,9 +693,9 @@ export default function ChatPage() {
                   <Search className="h-4 w-4 md:h-5 md:w-5 text-emerald-400" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-base md:text-lg font-semibold text-foreground">Semantic Search</h1>
-                  <p className="text-xs md:text-sm text-muted-foreground truncate">
-                    AI-powered search across workflows, agents, connectors, and docs
+                  <h1 className="text-base md:text-lg font-semibold text-foreground">Universal Search</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground text-pretty">
+                    Find workflows, runs, agents, and docs — returns links to records, not chat replies
                   </p>
                 </div>
               </div>
@@ -702,6 +703,7 @@ export default function ChatPage() {
                 <AnimatedCounter value={results.length} duration={0.6} /> result{results.length === 1 ? "" : "s"}
               </div>
             </div>
+            <AiWorkSurfacesCallout current="universal-search" compact className="mt-3" />
           </div>
 
           <div className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm md:px-6">
@@ -721,7 +723,7 @@ export default function ChatPage() {
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">Sign in required</h2>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    Semantic search and search history are available after authentication.
+                    Universal Search and search history are available after authentication.
                   </p>
                 </motion.div>
               ) : !hasSearched && !isSearching ? (

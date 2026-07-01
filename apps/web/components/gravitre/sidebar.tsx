@@ -55,6 +55,7 @@ interface NavItem {
   icon: IconName
   badge?: string
   emphasis?: boolean
+  hint?: string
 }
 
 interface NavGroup {
@@ -67,9 +68,28 @@ const adminNavigation: NavGroup[] = [
   {
     group: "WORK",
     items: [
-      { name: "AI Operator", href: "/operator", icon: "ai", badge: "AI", emphasis: true },
-      { name: "Assistant", href: "/assistant", icon: "chat", badge: "Chat" },
-      { name: "Search", href: "/chat", icon: "search" },
+      {
+        name: "Command Center",
+        href: "/operator",
+        icon: "ai",
+        badge: "Execute",
+        emphasis: true,
+        hint: "Delegate tasks and track execution",
+      },
+      {
+        name: "Workspace Chat",
+        href: "/assistant",
+        icon: "chat",
+        badge: "Chat",
+        hint: "Multi-turn chat with tools and briefings",
+      },
+      {
+        name: "Universal Search",
+        href: "/search",
+        icon: "search",
+        badge: "Find",
+        hint: "Find records across your org — not a chat",
+      },
       { name: "Agents", href: "/agents", icon: "team" },
       { name: "Multi-Agent Run", href: "/agents/swarm", icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
@@ -352,8 +372,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 )}
                               </Link>
                             </TooltipTrigger>
-                            <TooltipContent side="right" className="text-xs md:block xl:hidden hidden">
-                              {item.name}
+                            <TooltipContent side="right" className="max-w-xs text-xs md:block xl:hidden hidden">
+                              <p className="font-medium">{item.name}</p>
+                              {item.hint ? (
+                                <p className="mt-0.5 text-muted-foreground">{item.hint}</p>
+                              ) : null}
                             </TooltipContent>
                           </Tooltip>
                         </li>

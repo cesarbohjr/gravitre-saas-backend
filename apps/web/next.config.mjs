@@ -35,6 +35,7 @@ const nextConfig = {
       { source: "/docs/workspaces", destination: "/docs/concepts/environments", permanent: true },
       { source: "/docs/security", destination: "/docs/concepts/security", permanent: true },
       { source: "/docs/api/reference", destination: "/docs/api/swagger", permanent: true },
+      { source: "/chat", destination: "/search", permanent: true },
     ]
   },
 }

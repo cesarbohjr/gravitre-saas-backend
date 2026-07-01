@@ -1,5 +1,5 @@
 ---
-title: Search
+title: Universal Search
 description: Unified search across runs, workflows, agents, connectors, sources, and documents.
 audience: public
 depth: high
@@ -8,16 +8,16 @@ status: published
 category: Core Concepts
 readTime: 4 min
 prev:
-  title: Assistant
+  title: Workspace Chat
   href: /docs/concepts/assistant
 next:
   title: Assignments
   href: /docs/concepts/assignments
 ---
 
-**Search** (sidebar label; route `/chat`) finds records across your organization without starting a full chat thread.
+**Universal Search** (sidebar label; route `/search`) finds records across your organization without starting a chat thread. The legacy URL `/chat` redirects to `/search`.
 
-## What Search indexes
+## What Universal Search indexes
 
 Results are grouped by entity type:
 
@@ -30,15 +30,15 @@ Results are grouped by entity type:
 | **Sources** | Connected databases and warehouses |
 | **Documents** | Ingested knowledge files |
 
-## Search vs Assistant
+## Universal Search vs Workspace Chat vs Command Center
 
-| **Search** | **Assistant** |
-|------------|-----------------|
-| Structured results with links | Natural-language answers |
-| Best for known keywords | Best for exploratory dialogue |
-| `/chat` | `/assistant` |
+| **Universal Search** | **Workspace Chat** | **Command Center** |
+|----------------------|--------------------|--------------------|
+| Structured results with links | Natural-language answers in a thread | Action plans and tracked jobs |
+| Best for known keywords | Best for exploratory dialogue | Best for delegated execution |
+| `/search` | `/assistant` | `/operator` |
 
-Use Search to locate an object; use Assistant to interpret and recommend next steps.
+Use Universal Search to locate an object; use Workspace Chat to interpret and recommend next steps; use Command Center to assign and monitor work.
 
 ## History
 
@@ -46,4 +46,6 @@ Search saves recent queries per user (`GET /api/search/history`) for quick repla
 
 ## Next steps
 
-- [Search your org](/docs/guides/how-to/search)
+- [Universal Search](/docs/guides/how-to/search)
+- [Use Workspace Chat](/docs/guides/how-to/assistant)
+- [Use Command Center](/docs/guides/how-to/ai-operator)
