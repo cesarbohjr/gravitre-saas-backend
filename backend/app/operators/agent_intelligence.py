@@ -558,6 +558,7 @@ class AgentIntelligence:
         entity_relationship_section: str | None = None,
         assistant_base_prompt: str | None = None,
         conflicts: list[dict[str, Any]] | None = None,
+        assembled_context: dict[str, Any] | None = None,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         org_dict = org_context if isinstance(org_context, dict) else None
@@ -603,6 +604,17 @@ class AgentIntelligence:
             sections.append(handoff_section.strip())
         if memory_section and memory_section.strip():
             sections.append(memory_section.strip())
+        if assembled_context:
+            extra_memory = assembled_context.get("memory_context")
+            if isinstance(extra_memory, dict) and extra_memory:
+                sections.append(
+                    f"## Assembled Memory Context\n{json.dumps(extra_memory, default=str)[:4000]}"
+                )
+            extra_graph = assembled_context.get("graph_context")
+            if isinstance(extra_graph, dict) and extra_graph:
+                sections.append(
+                    f"## Assembled Graph Context\n{json.dumps(extra_graph, default=str)[:4000]}"
+                )
         if not (company_intelligence_section and company_intelligence_section.strip()):
             sections.extend(["", NEW_ORG_FRAMING.strip()])
         sections.extend(["", RESEARCH_POLICY.strip(), "", RULES_SECTION.strip()])
@@ -995,6 +1007,14 @@ class AgentIntelligence:
                 )
                 return
 
+        from app.services.task_classifier import get_task_classifier
+
+        pipeline_classification = await get_task_classifier(active_settings).classify(
+            org_id,
+            task_text,
+            conversation_history,
+        )
+
         refined_query = task_text
         if mode_key != "fast":
             rewrite = await rewrite_for_retrieval(
@@ -1373,6 +1393,21 @@ class AgentIntelligence:
                 answer_explanation=finalized["explanation"],
                 ttl_seconds=tier0_ttl_seconds(engine_settings),
             )
+
+        from app.services.outcome_tracker import get_outcome_tracker
+
+        get_outcome_tracker(active_settings).track(
+            org_id,
+            agent_id,
+            message_id,
+            None,
+            {
+                "answer": full_content,
+                "confidence": finalized["confidence"],
+                "explanation": finalized["explanation"],
+            },
+            pipeline_classification,
+        )
 
     @staticmethod
     def _build_task_prompt(

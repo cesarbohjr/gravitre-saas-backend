@@ -1,0 +1,157 @@
+"""Task classification with pipeline routing flags — wraps IntentClassifier / classify_query."""
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from app.config import Settings, get_settings
+from app.ml.base import ModelStatus
+from app.ml.model_catalog import get_org_model_status
+from app.services.user_intelligence import classify_query
+
+REVENUE_PATTERN = re.compile(r"revenue|mrr|arr|churn|forecast|pipeline|deal", re.I)
+WORKFLOW_PATTERN = re.compile(r"workflow|run|execute|automation|approve", re.I)
+CRM_PATTERN = re.compile(r"contact|deal|account|hubspot|salesforce|crm", re.I)
+
+TASK_TYPE_PIPELINE_MAP: dict[str, dict[str, Any]] = {
+    "question_answering": {
+        "requires_prediction": False,
+        "requires_causal": False,
+        "requires_graph": False,
+        "requires_action": False,
+        "requires_web_search": False,
+        "risk_level": "low",
+        "latency_target": "tier_1",
+    },
+    "data_analysis": {
+        "requires_prediction": True,
+        "requires_causal": True,
+        "requires_graph": False,
+        "requires_action": False,
+        "requires_web_search": False,
+        "risk_level": "low",
+        "latency_target": "tier_2",
+    },
+    "workflow_execution": {
+        "requires_prediction": False,
+        "requires_causal": False,
+        "requires_graph": False,
+        "requires_action": True,
+        "requires_approval": True,
+        "requires_web_search": False,
+        "risk_level": "medium",
+        "latency_target": "tier_3",
+    },
+    "crm_lookup": {
+        "requires_prediction": False,
+        "requires_causal": False,
+        "requires_graph": True,
+        "requires_action": False,
+        "requires_web_search": False,
+        "risk_level": "low",
+        "latency_target": "tier_1",
+    },
+    "analytics": {
+        "requires_prediction": True,
+        "requires_causal": True,
+        "requires_graph": False,
+        "requires_action": False,
+        "requires_web_search": False,
+        "risk_level": "low",
+        "latency_target": "tier_2",
+    },
+    "general": {
+        "requires_prediction": False,
+        "requires_causal": False,
+        "requires_graph": False,
+        "requires_action": False,
+        "requires_web_search": False,
+        "risk_level": "low",
+        "latency_target": "tier_1",
+    },
+}
+
+_CATEGORY_TO_INTENT = {
+    "workflow_status": "workflow_execution",
+    "analytics": "data_analysis",
+    "connector_health": "crm_lookup",
+    "help": "question_answering",
+    "general": "question_answering",
+}
+
+
+class TaskClassifier:
+    """
+    Extends IntentClassifier output with pipeline routing flags.
+    Does NOT replace IntentClassifier — wraps ML status + rule fallback.
+    """
+
+    def __init__(self, settings: Settings | None = None) -> None:
+        self.settings = settings or get_settings()
+
+    async def classify(
+        self,
+        org_id: str,
+        request: str,
+        conversation_history: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        base = await self._classify_with_ml(org_id, request)
+        intent = str(base.get("intent") or "question_answering")
+        pipeline_flags = dict(
+            TASK_TYPE_PIPELINE_MAP.get(intent, TASK_TYPE_PIPELINE_MAP["general"])
+        )
+        if REVENUE_PATTERN.search(request):
+            pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["data_analysis"])
+            intent = "data_analysis"
+        elif WORKFLOW_PATTERN.search(request) and "what should" not in request.lower():
+            pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["workflow_execution"])
+            intent = "workflow_execution"
+        elif CRM_PATTERN.search(request):
+            pipeline_flags.setdefault("requires_graph", True)
+            if intent == "question_answering":
+                intent = "crm_lookup"
+                pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["crm_lookup"])
+
+        department = None
+        lowered = request.lower()
+        for dept in ("finance", "sales", "marketing", "hr", "engineering", "support"):
+            if dept in lowered:
+                department = dept
+                break
+
+        return {
+            **base,
+            **pipeline_flags,
+            "intent": intent,
+            "department": department,
+            "request": request,
+        }
+
+    async def _classify_with_ml(self, org_id: str, request: str) -> dict[str, Any]:
+        category = classify_query(request)
+        intent = _CATEGORY_TO_INTENT.get(category, "question_answering")
+        confidence = 0.55
+        source = "rule_based_classify_query"
+        try:
+            status = await get_org_model_status(org_id, "intent_classifier", settings=self.settings)
+            if status.get("catalog_status") == ModelStatus.TRAINED.value:
+                source = "intent_classifier_catalog"
+                confidence = 0.7
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "intent": intent,
+            "query_category": category,
+            "classification_confidence": confidence,
+            "classification_source": source,
+        }
+
+
+_task_classifier: TaskClassifier | None = None
+
+
+def get_task_classifier(settings: Settings | None = None) -> TaskClassifier:
+    global _task_classifier
+    if _task_classifier is None or settings is not None:
+        _task_classifier = TaskClassifier(settings)
+    return _task_classifier
