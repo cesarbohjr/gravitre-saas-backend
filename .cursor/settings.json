@@ -20,6 +20,12 @@
     },
     "pinecone": {
       "enabled": true
+    },
+    "tavily": {
+      "enabled": true
+    },
+    "clickhouse-cursor-plugin": {
+      "enabled": true
     }
   }
 }

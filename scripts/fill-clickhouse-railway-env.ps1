@@ -44,5 +44,7 @@ if (-not $password) {
 }
 
 railway variables --service $Service --set "CLICKHOUSE_PASSWORD=$password" | Out-Null
+railway variable delete CLICKHOUSE_SECRET_KEY --service $Service --json 2>$null | Out-Null
 Write-Host "Updated CLICKHOUSE_PASSWORD on Railway service $Service" -ForegroundColor Green
+Write-Host "Removed stale CLICKHOUSE_SECRET_KEY (SQL auth uses CLICKHOUSE_PASSWORD only)." -ForegroundColor Green
 Write-Host "Redeploy or wait for auto-deploy, then run: npm run infra:verify" -ForegroundColor Yellow
