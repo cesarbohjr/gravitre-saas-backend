@@ -46,6 +46,7 @@ import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import type {
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,
+  MarketplaceFacetCount,
   MarketplaceInstallBlocker,
 } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
@@ -78,6 +79,34 @@ const PRICE_FILTERS = [
 ] as const
 
 type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
+
+/** Single-line summary of an asset's connector setup, shown on catalog cards. */
+function connectorSummary(asset: MarketplaceAssetSummary): string {
+  const total = asset.connectorChecklist?.length ?? 0
+  if (total === 0) return "No setup required"
+  const required = asset.requiredConnectorsTotal ?? 0
+  const optional = total - required
+  const parts: string[] = []
+  if (required > 0) parts.push(`${required} required`)
+  if (optional > 0) parts.push(`${optional} optional`)
+  const detail = parts.length ? ` · ${parts.join(", ")}` : ""
+  return `${total} app${total === 1 ? "" : "s"} to connect${detail}`
+}
+
+/**
+ * Merges facet counts whose labels are equivalent once normalized (casing,
+ * spacing, separators), so e.g. "Operations" never appears twice in the rail.
+ */
+function dedupeFacets(items: MarketplaceFacetCount[]): MarketplaceFacetCount[] {
+  const merged = new Map<string, MarketplaceFacetCount>()
+  for (const item of items) {
+    const norm = item.key.trim().toLowerCase().replace(/[\s_-]+/g, " ")
+    const existing = merged.get(norm)
+    if (existing) existing.count += item.count
+    else merged.set(norm, { ...item })
+  }
+  return Array.from(merged.values())
+}
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
 
@@ -275,11 +304,10 @@ function AssetCard({
 
       <PackContentsPreview items={asset.packItems} compact />
 
-      {asset.connectorChecklist?.length ? (
-        <div className="mb-4 rounded-lg border border-border/60 bg-muted/20 p-3">
-          <ConnectorChecklist items={asset.connectorChecklist} />
-        </div>
-      ) : null}
+      <div className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Plug className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{connectorSummary(asset)}</span>
+      </div>
 
       {!isAdmin && needsPurchase ? <div className="mb-4"><NonAdminPurchaseNotice /></div> : null}
 
@@ -490,7 +518,6 @@ function MarketplaceAssetsContent() {
   const initialSlug = searchParams.get("slug")
   const initialType = searchParams.get("type")
   const initialDepartment = searchParams.get("department")
-  const initialCategory = searchParams.get("category")
   const initialPrice = searchParams.get("price")
   const reduceMotion = useReducedMotion()
   const role = user?.role
@@ -500,7 +527,6 @@ function MarketplaceAssetsContent() {
     initialType && validTypes.has(initialType as (typeof TYPE_FILTERS)[number]["id"]) ? initialType : "all",
   )
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(initialDepartment)
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(initialCategory)
   const [priceFilter, setPriceFilter] = useState<PriceFilter>(
     initialPrice === "free" || initialPrice === "paid" ? initialPrice : "all",
   )
@@ -520,35 +546,33 @@ function MarketplaceAssetsContent() {
     const params = new URLSearchParams()
     if (typeFilter !== "all") params.set("type", typeFilter)
     if (departmentFilter) params.set("department", departmentFilter)
-    if (categoryFilter) params.set("category", categoryFilter)
     if (priceFilter !== "all") params.set("price", priceFilter)
     if (debouncedSearch) params.set("search", debouncedSearch)
     const next = params.toString()
     const current = searchParams.toString()
     if (next === current) return
     router.replace(next ? `/marketplace/assets?${next}` : "/marketplace/assets", { scroll: false })
-  }, [categoryFilter, debouncedSearch, departmentFilter, priceFilter, router, searchParams, typeFilter])
+  }, [debouncedSearch, departmentFilter, priceFilter, router, searchParams, typeFilter])
 
   useEffect(() => {
     syncFiltersToUrl()
   }, [syncFiltersToUrl])
 
   const swrKey = user
-    ? (["marketplace-assets", typeFilter, departmentFilter, categoryFilter, debouncedSearch] as const)
+    ? (["marketplace-assets", typeFilter, departmentFilter, debouncedSearch] as const)
     : null
 
   const { data, error, isLoading, mutate } = useSWR(swrKey, () =>
     marketplaceApi.listAssets({
       assetType: typeFilter === "all" ? undefined : typeFilter,
       department: departmentFilter ?? undefined,
-      category: categoryFilter ?? undefined,
       search: debouncedSearch || undefined,
       limit: 100,
     }),
   )
 
   const includeFederated =
-    (typeFilter === "all" || typeFilter === "connector_config") && !departmentFilter && !categoryFilter
+    (typeFilter === "all" || typeFilter === "connector_config") && !departmentFilter
   const federatedKey =
     user && includeFederated
       ? (["marketplace-federated-connectors", debouncedSearch] as const)
@@ -561,6 +585,8 @@ function MarketplaceAssetsContent() {
   )
 
   const { data: categories } = useSWR(user ? "marketplace-categories" : null, () => marketplaceApi.listCategories())
+
+  const departmentFacets = useMemo(() => dedupeFacets(categories?.departments ?? []), [categories?.departments])
 
   const assets = useMemo(() => {
     const catalog = data?.assets ?? []
@@ -643,11 +669,10 @@ function MarketplaceAssetsContent() {
     if (priceFilter === "paid") return "No paid assets match the current filters."
     if (debouncedSearch) return "No assets match your search."
     if (departmentFilter) return `No assets in department "${departmentFilter.replace(/_/g, " ")}".`
-    if (categoryFilter) return `No assets in category "${categoryFilter.replace(/_/g, " ")}".`
     if (typeFilter !== "all") return "No assets in this category yet."
     if (categories?.totalAssets === 0) return "The catalog is empty right now. Check back soon for new assets."
     return "No assets found."
-  }, [priceFilter, debouncedSearch, departmentFilter, categoryFilter, typeFilter, categories?.totalAssets])
+  }, [priceFilter, debouncedSearch, departmentFilter, typeFilter, categories?.totalAssets])
 
   return (
     <AppShell title="Marketplace">
@@ -658,12 +683,9 @@ function MarketplaceAssetsContent() {
             <MarketplaceFacetSidebar
               className="hidden lg:block"
               totalAssets={categories.totalAssets}
-              departments={categories.departments}
-              categories={categories.categories}
+              departments={departmentFacets}
               activeDepartment={departmentFilter}
-              activeCategory={categoryFilter}
               onDepartmentChange={setDepartmentFilter}
-              onCategoryChange={setCategoryFilter}
             />
           ) : null}
 
@@ -734,14 +756,13 @@ function MarketplaceAssetsContent() {
                   </button>
                 ))}
               </div>
-              {typeFilter !== "all" || departmentFilter || categoryFilter || priceFilter !== "all" || debouncedSearch ? (
+              {typeFilter !== "all" || departmentFilter || priceFilter !== "all" || debouncedSearch ? (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => {
                     setTypeFilter("all")
                     setDepartmentFilter(null)
-                    setCategoryFilter(null)
                     setPriceFilter("all")
                     setSearch("")
                   }}
@@ -755,12 +776,9 @@ function MarketplaceAssetsContent() {
               <MarketplaceFacetSidebar
                 className="lg:hidden"
                 totalAssets={categories.totalAssets}
-                departments={categories.departments.slice(0, 6)}
-                categories={categories.categories.slice(0, 6)}
+                departments={departmentFacets.slice(0, 6)}
                 activeDepartment={departmentFilter}
-                activeCategory={categoryFilter}
                 onDepartmentChange={setDepartmentFilter}
-                onCategoryChange={setCategoryFilter}
               />
             ) : null}
 

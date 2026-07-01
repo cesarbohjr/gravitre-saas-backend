@@ -58,20 +58,14 @@ function FacetGroup({
 export function MarketplaceFacetSidebar({
   totalAssets,
   departments,
-  categories,
   activeDepartment,
-  activeCategory,
   onDepartmentChange,
-  onCategoryChange,
   className,
 }: {
   totalAssets: number
   departments: MarketplaceFacetCount[]
-  categories: MarketplaceFacetCount[]
   activeDepartment: string | null
-  activeCategory: string | null
   onDepartmentChange: (key: string | null) => void
-  onCategoryChange: (key: string | null) => void
   className?: string
 }) {
   return (
@@ -85,12 +79,6 @@ export function MarketplaceFacetSidebar({
         items={departments}
         activeKey={activeDepartment}
         onSelect={onDepartmentChange}
-      />
-      <FacetGroup
-        label="Categories"
-        items={categories}
-        activeKey={activeCategory}
-        onSelect={onCategoryChange}
       />
     </aside>
   )
