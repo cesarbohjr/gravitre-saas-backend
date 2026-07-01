@@ -1,0 +1,181 @@
+"""
+Gravitre Enterprise Cognitive Architecture registry.
+
+Four layers:
+  PERCEPTION — connectors, RAG, event hooks
+  MEMORY — pgvector, agent_memories, entity graph, glossary, clusters
+  REASONING — AgentIntelligence, company intelligence, ML catalog, decision intelligence
+  AUTONOMY — approvals, execution, v10 optimization, continuous learning
+"""
+from __future__ import annotations
+
+from typing import Any
+
+AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
+    "enterprise_knowledge_graph": {
+        "status": "live",
+        "service": "KnowledgeGraphService",
+        "module": "app.services.knowledge_graph_service",
+        "backed_by": "org_entity_relationships (v6)",
+        "risk_level": "low",
+        "approval_required": False,
+        "advisory_only": False,
+    },
+    "event_driven_intelligence": {
+        "status": "live",
+        "service": "EventIntelligenceService",
+        "module": "app.services.event_intelligence_service",
+        "risk_level": "low",
+        "approval_required": False,
+        "advisory_only": True,
+    },
+    "digital_twin": {
+        "status": "partial",
+        "service": "DigitalTwinService",
+        "module": "app.services.digital_twin_service",
+        "note": "Admin-entered organization_process_inventory only. No simulation.",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "process_mining": {
+        "status": "partial",
+        "service": "ProcessMiningService",
+        "module": "app.services.process_mining_service",
+        "note": "Pattern detection live. Conformance checking planned.",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "multi_agent_swarms": {
+        "status": "live",
+        "service": "SwarmOrchestrator",
+        "module": "app.operators.swarm_orchestrator",
+        "backed_by": "SwarmCoordinatorService + ExecutionCore",
+        "risk_level": "medium",
+        "approval_required": True,
+        "advisory_only": False,
+    },
+    "model_routing": {
+        "status": "live",
+        "service": "ModelRouter",
+        "module": "app.services.model_router",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "synthetic_workforce": {
+        "status": "live",
+        "service": "AGENT_PERSONAS + DEPARTMENT_PERSONA_METADATA",
+        "module": "app.operators.agent_prompts",
+        "risk_level": "medium",
+        "approval_required": True,
+        "advisory_only": False,
+    },
+    "decision_intelligence": {
+        "status": "live",
+        "service": "DecisionIntelligenceService",
+        "module": "app.services.decision_intelligence_service",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "autonomous_optimization": {
+        "status": "live",
+        "service": "OptimizationSuggestionService",
+        "module": "app.services.optimization_suggestion_service",
+        "note": "Human-gated permanently. Auto-apply scope: slow_step only (v10.1).",
+        "risk_level": "medium",
+        "approval_required": True,
+        "advisory_only": False,
+    },
+    "ai_trust_layer": {
+        "status": "live",
+        "service": "AITrustLayer",
+        "module": "app.services.ai_trust_layer",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "hybrid_memory": {
+        "status": "live",
+        "service": "HybridMemoryService",
+        "module": "app.services.hybrid_memory_service",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "predictive_operations": {
+        "status": "live",
+        "endpoint": "/api/admin/intelligence/predictive-ops",
+        "module": "app.services.ai_architecture_status_service",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "world_models": {
+        "status": "planned",
+        "service": "WorldModelScaffold",
+        "module": "app.ml.world_models",
+        "activation": "6+ months v8 outcome data + CausalImpactAnalyzer active",
+        "risk_level": "high",
+        "approval_required": True,
+        "advisory_only": True,
+    },
+    "generative_agents": {
+        "status": "live",
+        "service": "GenerativeAgentCoordinator",
+        "module": "app.operators.generative_agent_coordinator",
+        "risk_level": "medium",
+        "approval_required": True,
+        "advisory_only": False,
+    },
+    "agent_protocols": {
+        "status": "live",
+        "service": "AgentHandoffProtocol",
+        "module": "app.operators.agent_protocol",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "ai_os_layer": {
+        "status": "live",
+        "endpoint": "/api/admin/ai-os/status",
+        "module": "app.services.ai_architecture_status_service",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "autonomous_research": {
+        "status": "live",
+        "service": "AutonomousResearchService",
+        "module": "app.services.research_service",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "continuous_learning": {
+        "status": "live",
+        "endpoint": "/api/admin/learning/status",
+        "backed_by": "v1-v11 ML roadmap + company intelligence orchestrator",
+        "module": "app.services.ai_architecture_status_service",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "rads": {
+        "status": "live",
+        "service": "RetrievalAugmentedDecisionService",
+        "module": "app.services.rads_service",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "cognitive_architecture": {
+        "status": "live",
+        "documentation": "backend/app/ai_architecture_registry.py",
+        "endpoint": "/api/admin/ai-architecture/registry",
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+}
+
+
+def get_registry() -> dict[str, dict[str, Any]]:
+    return {key: dict(value) for key, value in AI_ARCHITECTURE_REGISTRY.items()}
+
+
+def count_by_status() -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for meta in AI_ARCHITECTURE_REGISTRY.values():
+        status = str(meta.get("status") or "unknown")
+        counts[status] = counts.get(status, 0) + 1
+    return counts

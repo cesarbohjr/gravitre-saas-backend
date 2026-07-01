@@ -579,3 +579,101 @@ def build_agent_system_prompt(
         if custom:
             lines.append(f"Agent-specific instructions:\n{custom}")
     return "\n".join(lines)
+
+
+DEPARTMENT_PERSONA_METADATA: dict[str, dict[str, Any]] = {
+    "marketing_agent": {
+        "role": "Marketing Specialist Agent",
+        "persona_key": "MARKETING",
+        "capabilities": [
+            "campaign_planning",
+            "content_creation",
+            "performance_analysis",
+            "lead_scoring",
+        ],
+        "preferred_connectors": ["hubspot", "google_analytics", "mailchimp", "linkedin"],
+        "requires_approval_for": ["campaign_launch", "budget_change", "content_publish"],
+        "advisory_only": False,
+    },
+    "sales_agent": {
+        "role": "Sales Specialist Agent",
+        "persona_key": "SALES",
+        "capabilities": [
+            "lead_qualification",
+            "pipeline_management",
+            "follow_up_drafting",
+            "deal_analysis",
+        ],
+        "preferred_connectors": ["hubspot", "salesforce", "apollo"],
+        "requires_approval_for": ["email_send", "deal_stage_update", "proposal_send"],
+        "advisory_only": False,
+    },
+    "support_agent": {
+        "role": "Customer Support Agent",
+        "persona_key": "CS",
+        "capabilities": ["ticket_triage", "response_drafting", "escalation_detection", "kb_search"],
+        "preferred_connectors": ["zendesk", "intercom", "freshdesk"],
+        "requires_approval_for": ["ticket_close", "refund_initiation", "escalation"],
+        "advisory_only": False,
+    },
+    "operations_agent": {
+        "role": "Operations Specialist Agent",
+        "persona_key": "REVENUE_OPS",
+        "capabilities": [
+            "workflow_optimization",
+            "bottleneck_detection",
+            "automation_identification",
+        ],
+        "preferred_connectors": ["asana", "monday", "clickup", "jira"],
+        "requires_approval_for": ["all_actions"],
+        "advisory_only": True,
+    },
+    "hr_agent": {
+        "role": "HR Specialist Agent",
+        "persona_key": "HR",
+        "capabilities": ["policy_lookup", "onboarding_workflows", "compliance_checking"],
+        "preferred_connectors": ["workday", "bamboohr"],
+        "requires_approval_for": ["all_actions"],
+        "advisory_only": True,
+        "sensitivity": "high",
+    },
+    "finance_agent": {
+        "role": "Finance Specialist Agent",
+        "persona_key": "FINANCE",
+        "capabilities": [
+            "invoice_management",
+            "budget_tracking",
+            "expense_analysis",
+            "forecast_review",
+        ],
+        "preferred_connectors": ["quickbooks", "xero", "netsuite"],
+        "requires_approval_for": ["all_actions"],
+        "advisory_only": True,
+        "sensitivity": "high",
+    },
+    "engineering_agent": {
+        "role": "Engineering Specialist Agent",
+        "persona_key": "DEVOPS",
+        "capabilities": [
+            "pr_review_summary",
+            "issue_triage",
+            "deployment_status",
+            "incident_summary",
+        ],
+        "preferred_connectors": ["github", "jira"],
+        "requires_approval_for": ["pr_merge", "deployment_trigger"],
+        "advisory_only": False,
+    },
+}
+
+
+def infer_task_persona_key(task_text: str) -> str:
+    """Map free-text task description to an AGENT_PERSONAS key."""
+    matched = _match_persona_from_text(task_text)
+    if matched and matched in AGENT_PERSONAS:
+        return matched
+    lowered = (task_text or "").lower()
+    for agent_key, meta in DEPARTMENT_PERSONA_METADATA.items():
+        if agent_key.replace("_agent", "") in lowered:
+            return str(meta.get("persona_key") or "DEFAULT")
+    return "DEFAULT"

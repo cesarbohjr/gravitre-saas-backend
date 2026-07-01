@@ -28,6 +28,7 @@ from app.ml.planning_models import AgentPlanningModel
 from app.ml.retrieval_learning import RetrievalMemoryLearner
 from app.ml.revenue_forecasting import RevenueForecaster
 from app.ml.self_supervised import SelfSupervisedEmbeddingLearner
+from app.ml.world_models import WorldModelScaffold
 from app.workflows.repository import get_supabase_client
 
 GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
@@ -141,6 +142,11 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
         "activation": "Accumulate v8 trajectory data, extend ReActEngine",
         "advisory_only": True,
     },
+    "world_model": {
+        "status": ModelStatus.PLANNED,
+        "activation": "6+ months v8 outcome data + CausalImpactAnalyzer active",
+        "advisory_only": True,
+    },
     "domain_specific_llm": {
         "status": ModelStatus.PLANNED,
         "activation": "1000+ examples per dept, FineTunedLLM pipeline",
@@ -181,6 +187,7 @@ _MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
     "meta_learning": MetaLearningAdaptor,
     "neuro_symbolic": NeuroSymbolicReasoningEngine,
     "agentic_planning": AgentPlanningModel,
+    "world_model": WorldModelScaffold,
     "domain_specific_llm": DomainSpecificLLMRouter,
     "federated_learning": FederatedLearningCoordinator,
     "diffusion_model": DiffusionModelConnector,

@@ -563,6 +563,48 @@ class OptimizationSuggestionService:
         inserted = client.table("optimization_suggestions").insert(payload).execute()
         return inserted.data[0] if inserted.data else payload
 
+    async def get_summary(self, org_id: str) -> dict[str, Any]:
+        client = self._client()
+        rows = (
+            client.table("optimization_suggestions")
+            .select("suggestion_type, status, estimated_impact")
+            .eq("org_id", org_id)
+            .eq("status", "pending_review")
+            .execute()
+            .data
+            or []
+        )
+        by_type: dict[str, int] = {
+            "slow_step": 0,
+            "low_reliability_source": 0,
+            "poor_outcome_pattern": 0,
+            "duplicate_step": 0,
+            "stalled_deals": 0,
+            "overdue_invoices": 0,
+        }
+        high_impact = 0
+        hours_saved = 0.0
+        for row in rows:
+            stype = str(row.get("suggestion_type") or "")
+            key = stype
+            if stype == "stalled_deal":
+                key = "stalled_deals"
+            elif stype == "overdue_invoice":
+                key = "overdue_invoices"
+            if key in by_type:
+                by_type[key] += 1
+            impact = str(row.get("estimated_impact") or "")
+            if "high" in impact.lower() or "%" in impact:
+                high_impact += 1
+            if "hour" in impact.lower():
+                hours_saved += 1.0
+        return {
+            "pending_suggestions": len(rows),
+            "high_impact_count": high_impact,
+            "estimated_hours_saved": round(hours_saved, 2),
+            "by_type": by_type,
+        }
+
     async def list_suggestions(
         self,
         org_id: str,

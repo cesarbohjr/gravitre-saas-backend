@@ -56,6 +56,7 @@ from app.routers import (
     lite,
     ml_models,
     ml_admin,
+    ai_architecture_admin,
     rag,
     rag_enhanced,
     rag_admin,
@@ -447,7 +448,8 @@ app.include_router(optimization.router)
 app.include_router(goals.router)
 app.include_router(scim.router)
 app.include_router(ml_models.router)
-app.include_router(ml_admin.router)
+    app.include_router(ml_admin.router)
+    app.include_router(ai_architecture_admin.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
 app.include_router(conversations.router)

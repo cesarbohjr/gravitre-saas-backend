@@ -828,6 +828,57 @@ class ModelRouter:
         "sales": None,
     }
 
+    SENSITIVITY_ROUTING: dict[str, dict[str, Any] | str] = {
+        "high": {
+            "preferred_provider": "anthropic",
+            "avoid": ["gemini"],
+            "reason": "data residency + compliance",
+        },
+        "medium": "standard_tier",
+        "low": "fast_tier",
+    }
+
+    VISION_MODELS: dict[str, str] = {
+        "openai": "gpt-4o",
+        "anthropic": "claude-3-5-sonnet-20241022",
+    }
+
+    def route_for_sensitivity(self, sensitivity: str, task_complexity: str = "medium") -> str:
+        """Pick model tier with sensitivity-aware provider preference."""
+        level = (sensitivity or "medium").strip().lower()
+        rule = self.SENSITIVITY_ROUTING.get(level, "standard_tier")
+        if isinstance(rule, dict):
+            return MODEL_TIERS.get("high", MODEL_TIERS["medium"])["anthropic"]
+        if rule == "fast_tier":
+            return self._get_model_for_complexity("low")
+        return self._get_model_for_complexity(task_complexity)
+
+    async def route_with_cost_awareness(
+        self,
+        task_complexity: str,
+        budget_remaining_usd: float | None = None,
+    ) -> str:
+        """Fall back to cheaper tier when budget is low."""
+        if budget_remaining_usd is not None and budget_remaining_usd < 1.0:
+            logger.info(
+                "model_router_cost_downgrade budget_remaining_usd=%s complexity=%s->low",
+                budget_remaining_usd,
+                task_complexity,
+            )
+            return self._get_model_for_complexity("low")
+        return self._get_model_for_complexity(task_complexity)
+
+    async def route_for_modality(
+        self,
+        has_image: bool = False,
+        has_audio: bool = False,
+    ) -> str:
+        if has_image:
+            return self.VISION_MODELS.get("openai") or MODEL_TIERS["vision"]["openai"]
+        if has_audio:
+            return "planned"
+        return self._get_model_for_complexity("medium")
+
     def _get_model_for_complexity(self, task_complexity: str) -> str:
         tier = MODEL_TIERS.get(task_complexity, MODEL_TIERS["medium"])
         return tier["openai"]

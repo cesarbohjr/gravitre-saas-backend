@@ -3445,6 +3445,30 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 maybe_record_post_publish_marketing_baseline(ctx, action=action, params=params, result=result)
             except Exception:
                 pass
+            try:
+                from app.services.event_intelligence_service import get_event_intelligence_service
+
+                ei = get_event_intelligence_service(ctx.settings)
+                if ei.is_write_action(action):
+                    entity_id = str(
+                        params.get("id")
+                        or params.get("entity_id")
+                        or (result.data if isinstance(result.data, dict) else {}).get("id")
+                        or cid
+                        or ""
+                    )
+                    payload = dict(params)
+                    if isinstance(result.data, dict):
+                        payload.update(result.data)
+                    ei.schedule_connector_event(
+                        ctx.org_id,
+                        connector_type,
+                        action,
+                        entity_id,
+                        payload,
+                    )
+            except Exception:
+                pass
             return result
         except Exception as exc:
             tool_exc = _classify_error(exc)
