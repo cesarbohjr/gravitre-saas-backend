@@ -10,6 +10,7 @@ from app.temporal.workflows import (
     CompanyIntelligenceWorkflow,
     MarketplaceInstallWorkflow,
     MemoryPromotionWorkflow,
+    MLModelTrainingWorkflow,
     OutcomeMeasurementWorkflow,
 )
 
@@ -64,6 +65,24 @@ async def start_marketplace_install_workflow(
         task_queue=TASK_QUEUE,
     )
     return {"workflow_id": handle.id, "run_id": handle.result_run_id}
+
+
+async def start_ml_model_training_workflow(org_id: str, model_name: str) -> dict[str, Any]:
+    if not temporal_enabled():
+        return {"temporal": False}
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        MLModelTrainingWorkflow.run,
+        args=[org_id, model_name],
+        id=f"ml-training-{org_id}-{model_name}",
+        task_queue=TASK_QUEUE,
+    )
+    return {
+        "temporal": True,
+        "workflow_id": handle.id,
+        "run_id": handle.result_run_id,
+        "model_name": model_name,
+    }
 
 
 def temporal_enabled() -> bool:

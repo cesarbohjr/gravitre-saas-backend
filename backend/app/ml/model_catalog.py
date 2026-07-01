@@ -1,0 +1,340 @@
+"""Gravitre ML model catalog — all 14+ model types with honest status."""
+from __future__ import annotations
+
+import os
+import time
+from datetime import datetime, timezone
+from typing import Any, Callable
+
+from app.config import Settings, get_settings
+from app.ml.active_learning import ActiveLearningCoordinator
+from app.ml.anomaly import AnomalyDetector
+from app.ml.base import ModelStatus
+from app.ml.causal_analysis import CausalImpactAnalyzer
+from app.ml.churn_scoring import ChurnRiskScorer
+from app.ml.classifiers import IntentClassifier
+from app.ml.clustering import QueryClusterer
+from app.ml.domain_llm import DomainSpecificLLMRouter
+from app.ml.federated_learning import FederatedLearningCoordinator
+from app.ml.forecasting import WorkflowForecaster, WorkflowSuccessPredictor
+from app.ml.generative_models import DiffusionModelConnector
+from app.ml.graph_models import GraphNeuralNetworkScorer
+from app.ml.learning_to_rank import RetrievalRanker
+from app.ml.memory_promotion_scorer import MemoryPromotionScorer
+from app.ml.meta_learning import MetaLearningAdaptor
+from app.ml.multimodal_models import MultimodalRouter
+from app.ml.neuro_symbolic import NeuroSymbolicReasoningEngine
+from app.ml.planning_models import AgentPlanningModel
+from app.ml.retrieval_learning import RetrievalMemoryLearner
+from app.ml.revenue_forecasting import RevenueForecaster
+from app.ml.self_supervised import SelfSupervisedEmbeddingLearner
+from app.workflows.repository import get_supabase_client
+
+GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
+    "intent_classifier": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["query_routing", "department_detection"],
+        "min_data": "50 labeled queries",
+        "fallback": "rule_based_classify_query",
+        "advisory_only": False,
+    },
+    "workflow_anomaly_detector": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["bottleneck_detection"],
+        "min_data": "30 workflow runs",
+        "fallback": "threshold_based_detection",
+        "advisory_only": True,
+    },
+    "workflow_duration_forecaster": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["performance_planning"],
+        "min_data": "30 workflow runs",
+        "fallback": "historical_average",
+        "advisory_only": True,
+    },
+    "workflow_success_predictor": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["risk_identification"],
+        "min_data": "30 workflow runs",
+        "fallback": "historical_success_rate",
+        "advisory_only": True,
+    },
+    "retrieval_ranker": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["rag_quality_improvement"],
+        "min_data": "100 evaluated responses",
+        "fallback": "fixed_reliability_weight",
+        "advisory_only": False,
+    },
+    "query_clusterer": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["knowledge_gap_detection"],
+        "min_data": "40 distinct queries",
+        "fallback": "no_clustering",
+        "advisory_only": False,
+    },
+    "memory_promotion_scorer": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["memory_promotion_prioritization"],
+        "min_data": "15 resolved promotion candidates",
+        "fallback": "rule_based_promotion_thresholds",
+        "advisory_only": True,
+    },
+    "retrieval_memory_learner": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["unified_retrieval_quality"],
+        "note": "Unified interface over v3/v4/v5/v7",
+        "advisory_only": False,
+    },
+    "revenue_forecaster": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["revenue_forecasting"],
+        "activation": "14+ revenue data points from CRM/finance connectors",
+        "fallback": "insufficient_data_response",
+        "advisory_only": True,
+    },
+    "churn_risk_scorer": {
+        "status": ModelStatus.TRAINED,
+        "use_cases": ["customer_risk_scoring"],
+        "activation": "30+ customer engagement data points",
+        "fallback": "rule_based_risk_signals",
+        "advisory_only": True,
+    },
+    "causal_impact_analyzer": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["causal_business_impact"],
+        "activation": "30+ pre/post action observations per metric",
+        "fallback": "correlation_with_disclosure",
+        "advisory_only": True,
+    },
+    "graph_neural_network": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["relationship_scoring"],
+        "activation": "10k+ entity relationships, PyTorch Geometric, GPU",
+        "fallback": "postgres_confidence_traversal",
+        "advisory_only": False,
+    },
+    "multimodal_router": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["image_document_processing"],
+        "activation": "model_router vision tier (partially active)",
+        "advisory_only": False,
+    },
+    "active_learning": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["label_prioritization"],
+        "activation": "uncertainty sampling over InferenceService distributions",
+        "advisory_only": False,
+    },
+    "meta_learning": {
+        "status": ModelStatus.PLANNED,
+        "activation": "Same as FederatedLearning",
+        "advisory_only": False,
+    },
+    "neuro_symbolic": {
+        "status": ModelStatus.PLANNED,
+        "note": "LLM + structured rules injection is current equivalent",
+        "advisory_only": False,
+    },
+    "agentic_planning": {
+        "status": ModelStatus.PLANNED,
+        "activation": "Accumulate v8 trajectory data, extend ReActEngine",
+        "advisory_only": True,
+    },
+    "domain_specific_llm": {
+        "status": ModelStatus.PLANNED,
+        "activation": "1000+ examples per dept, FineTunedLLM pipeline",
+        "advisory_only": False,
+    },
+    "federated_learning": {
+        "status": ModelStatus.DISABLED,
+        "activation": "Legal review, consent mechanism, Flower framework, 100+ participating orgs",
+        "advisory_only": False,
+    },
+    "diffusion_model": {
+        "status": ModelStatus.PLANNED,
+        "activation": "Image generation provider via ToolRegistry connector",
+        "advisory_only": False,
+    },
+    "self_supervised_embeddings": {
+        "status": ModelStatus.PLANNED,
+        "note": "Current embedding model sufficient. Activate if v7 shows quality gap.",
+        "advisory_only": False,
+    },
+}
+
+_MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
+    "intent_classifier": IntentClassifier,
+    "workflow_anomaly_detector": AnomalyDetector,
+    "workflow_duration_forecaster": WorkflowForecaster,
+    "workflow_success_predictor": WorkflowSuccessPredictor,
+    "retrieval_ranker": RetrievalRanker,
+    "query_clusterer": QueryClusterer,
+    "memory_promotion_scorer": MemoryPromotionScorer,
+    "retrieval_memory_learner": RetrievalMemoryLearner,
+    "revenue_forecaster": RevenueForecaster,
+    "churn_risk_scorer": ChurnRiskScorer,
+    "causal_impact_analyzer": CausalImpactAnalyzer,
+    "graph_neural_network": GraphNeuralNetworkScorer,
+    "multimodal_router": MultimodalRouter,
+    "active_learning": ActiveLearningCoordinator,
+    "meta_learning": MetaLearningAdaptor,
+    "neuro_symbolic": NeuroSymbolicReasoningEngine,
+    "agentic_planning": AgentPlanningModel,
+    "domain_specific_llm": DomainSpecificLLMRouter,
+    "federated_learning": FederatedLearningCoordinator,
+    "diffusion_model": DiffusionModelConnector,
+    "self_supervised_embeddings": SelfSupervisedEmbeddingLearner,
+}
+
+
+def get_catalog() -> dict[str, dict[str, Any]]:
+    catalog: dict[str, dict[str, Any]] = {}
+    for name, meta in GRAVITRE_ML_CATALOG.items():
+        entry = dict(meta)
+        status = entry.get("status")
+        if isinstance(status, ModelStatus):
+            entry["status"] = status.value
+        catalog[name] = entry
+    return catalog
+
+
+def get_model_instance(model_name: str) -> Any:
+    factory = _MODEL_CLASS_MAP.get(model_name)
+    if not factory:
+        raise ValueError(f"Unknown catalog model: {model_name}")
+    return factory()
+
+
+def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> dict[str, Any]:
+    client = get_supabase_client(settings)
+    meta = GRAVITRE_ML_CATALOG[model_name]
+    activation = meta.get("activation") or meta.get("min_data") or ""
+    counts: dict[str, int] = {}
+
+    if model_name in {"workflow_anomaly_detector", "workflow_duration_forecaster", "workflow_success_predictor"}:
+        rows = client.table("workflow_runs").select("id", count="exact").eq("org_id", org_id).execute()
+        counts["workflow_runs"] = int(rows.count or 0)
+    elif model_name == "intent_classifier":
+        rows = client.table("user_query_patterns").select("id", count="exact").eq("org_id", org_id).execute()
+        counts["logged_queries"] = int(rows.count or 0)
+    elif model_name == "query_clusterer":
+        rows = client.table("user_query_patterns").select("id", count="exact").eq("org_id", org_id).execute()
+        counts["logged_queries"] = int(rows.count or 0)
+    elif model_name == "retrieval_ranker":
+        rows = (
+            client.table("rag_chunk_outcomes")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .not_.is_("outcome_helpful", "null")
+            .execute()
+        )
+        counts["scored_chunks"] = int(rows.count or 0)
+    elif model_name == "memory_promotion_scorer":
+        rows = (
+            client.table("memory_promotion_candidates")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .in_("status", ["approved", "auto_promoted", "written", "rejected", "rolled_back", "expired"])
+            .execute()
+        )
+        counts["resolved_candidates"] = int(rows.count or 0)
+    elif model_name == "revenue_forecaster":
+        rows = (
+            client.table("agent_action_outcomes")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        counts["outcome_rows"] = int(rows.count or 0)
+    elif model_name == "churn_risk_scorer":
+        rows = client.table("agent_action_outcomes").select("id", count="exact").eq("org_id", org_id).execute()
+        counts["outcome_rows"] = int(rows.count or 0)
+    elif model_name == "graph_neural_network":
+        rows = (
+            client.table("org_entity_relationships")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        counts["relationship_rows"] = int(rows.count or 0)
+
+    return {"activation_requirement": activation, "data_counts": counts}
+
+
+async def get_org_model_status(org_id: str, model_name: str, *, settings: Settings | None = None) -> dict[str, Any]:
+    active = settings or get_settings()
+    if model_name not in GRAVITRE_ML_CATALOG:
+        raise ValueError(f"Unknown catalog model: {model_name}")
+    meta = GRAVITRE_ML_CATALOG[model_name]
+    status = meta["status"]
+    payload = {
+        "model_name": model_name,
+        "catalog_status": status.value,
+        "advisory_only": bool(meta.get("advisory_only", False)),
+        "use_cases": meta.get("use_cases", []),
+        "activation": meta.get("activation") or meta.get("min_data") or meta.get("note"),
+        "fallback": meta.get("fallback"),
+    }
+    if status == ModelStatus.TRAINED:
+        payload.update(_count_org_data_points(org_id, model_name, active))
+    return payload
+
+
+async def train_ml_model_for_org(org_id: str, model_name: str, *, settings: Settings | None = None) -> dict[str, Any]:
+    active = settings or get_settings()
+    if model_name not in GRAVITRE_ML_CATALOG:
+        raise ValueError(f"Unknown catalog model: {model_name}")
+    meta = GRAVITRE_ML_CATALOG[model_name]
+    if meta["status"] != ModelStatus.TRAINED:
+        raise ValueError(f"{model_name} is {meta['status'].value}; training not available")
+
+    start = time.perf_counter()
+
+    if model_name in {"causal_impact_analyzer", "graph_neural_network", "multimodal_router"}:
+        instance = get_model_instance(model_name)
+        structured = await instance.predict_structured()
+        return {"trained": False, "result": structured}
+
+    from app.ml.intelligence_training import TRAINING_DISPATCH, train_catalog_model
+
+    if model_name not in TRAINING_DISPATCH:
+        raise ValueError(f"No training pipeline for {model_name}")
+
+    result = await train_catalog_model(org_id, model_name, settings=active)
+    used_fallback = not result.get("trained", False)
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    await _log_ml_prediction(active, org_id, model_name, meta["status"].value, latency_ms, used_fallback)
+    return {**result, "latency_ms": latency_ms}
+
+
+async def _log_ml_prediction(
+    settings: Settings,
+    org_id: str,
+    model_name: str,
+    model_status: str,
+    latency_ms: int,
+    used_fallback: bool,
+) -> None:
+    try:
+        from app.services.clickhouse_service import get_clickhouse_service
+
+        ch = get_clickhouse_service()
+        if not ch.is_available():
+            return
+        await ch.insert_events(
+            "gravitre.ml_predictions",
+            [
+                {
+                    "org_id": org_id,
+                    "model_name": model_name,
+                    "model_status": model_status,
+                    "confidence": 0.0,
+                    "latency_ms": latency_ms,
+                    "used_fallback": used_fallback,
+                    "created_at": datetime.now(timezone.utc),
+                }
+            ],
+        )
+    except Exception:  # noqa: BLE001
+        return

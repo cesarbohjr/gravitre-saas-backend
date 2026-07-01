@@ -14,6 +14,7 @@ with workflow.unsafe.imports_passed_through():
         measure_outcome_after_window,
         run_company_intelligence_for_org,
         run_memory_promotion_evaluation,
+        train_ml_model_for_org,
     )
 
 
@@ -96,3 +97,20 @@ class MarketplaceInstallWorkflow:
             )
             results.append(step)
         return {"installed": len(results), "steps": results}
+
+
+@workflow.defn
+class MLModelTrainingWorkflow:
+    """Durable ML model training per org and catalog model name."""
+
+    @workflow.run
+    async def run(self, org_id: str, model_name: str) -> dict[str, Any]:
+        return await workflow.execute_activity(
+            train_ml_model_for_org,
+            args=[org_id, model_name],
+            start_to_close_timeout=timedelta(minutes=60),
+            retry_policy=RetryPolicy(
+                maximum_attempts=3,
+                initial_interval=timedelta(seconds=60),
+            ),
+        )

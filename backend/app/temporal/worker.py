@@ -14,11 +14,13 @@ from app.temporal.activities import (
     measure_outcome_after_window,
     run_company_intelligence_for_org,
     run_memory_promotion_evaluation,
+    train_ml_model_for_org,
 )
 from app.temporal.workflows import (
     CompanyIntelligenceWorkflow,
     MarketplaceInstallWorkflow,
     MemoryPromotionWorkflow,
+    MLModelTrainingWorkflow,
     OutcomeMeasurementWorkflow,
 )
 
@@ -31,6 +33,7 @@ _WORKFLOWS = [
     MemoryPromotionWorkflow,
     OutcomeMeasurementWorkflow,
     MarketplaceInstallWorkflow,
+    MLModelTrainingWorkflow,
 ]
 
 _ACTIVITIES = [
@@ -40,6 +43,7 @@ _ACTIVITIES = [
     measure_outcome_after_window,
     install_marketplace_asset,
     install_marketplace_asset_step,
+    train_ml_model_for_org,
 ]
 
 

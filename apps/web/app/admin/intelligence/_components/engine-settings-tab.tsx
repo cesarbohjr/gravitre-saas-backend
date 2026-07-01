@@ -56,7 +56,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
         max_chunks: maxChunks,
         connector_timeout_seconds: connectorTimeoutSeconds,
       })
-      toast.success("Intelligence engine settings saved")
+      toast.success("Search & grounding settings saved")
       await mutate()
     } catch (saveError) {
       toast.error(saveError instanceof ApiError ? saveError.message : "Could not save settings")
@@ -70,7 +70,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <GearSix className="h-5 w-5 text-violet-500" weight="duotone" aria-hidden />
-          <CardTitle>Intelligence engine</CardTitle>
+          <CardTitle>Search & grounding</CardTitle>
         </div>
         <CardDescription>
           Tune grounding validation, reranking, confidence gating, and retrieval limits for this organization.

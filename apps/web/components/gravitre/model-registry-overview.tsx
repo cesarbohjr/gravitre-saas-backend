@@ -87,17 +87,22 @@ export function ModelRegistryOverview({
               Org-scoped AI models
             </div>
             <h2 className="text-balance text-xl font-semibold text-foreground sm:text-2xl">
-              Register, train, and deploy models across your stack
+              Register, train, and deploy production ML
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              AI Models is your control plane for production ML: capture metadata, track
-              versions, wire datasets from{" "}
+              Model Registry is the production control plane: capture metadata, track versions, wire datasets
+              from{" "}
               <Link href="/training" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
-                Training
+                Agent Training
               </Link>
-              , and expose inference to workflows and agents. Pick a template below to pre-fill
-              ChatGPT, Claude, Gemini, Grok, or tabular model bases — then customize before
-              registering.
+              , and expose inference to workflows. For automatic org learning from usage, see{" "}
+              <Link
+                href="/admin/intelligence"
+                className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300"
+              >
+                Org Learning
+              </Link>
+              .
             </p>
           </div>
 

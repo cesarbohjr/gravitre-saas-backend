@@ -8,7 +8,12 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.ml.anomaly import AnomalyDetector
 from app.ml.base import ModelMetrics, ModelType
-from app.ml.classifiers import IntentClassifier
+from app.ml.intelligence_training import (
+    train_v2_intent_classifier,
+    train_v3_query_clusterer,
+    train_v4_memory_promotion_scorer,
+    train_v5_retrieval_ranker,
+)
 from app.ml.feature_extraction import (
     collect_workflow_run_features,
     features_to_anomaly_input,
@@ -27,10 +32,8 @@ from app.services.company_intelligence_synthesis import synthesize_company_intel
 from app.ml.learning_to_rank import (
     RETRIEVAL_RANKER_MODEL_NAME,
     RetrievalRanker,
-    collect_training_examples,
     count_training_examples,
 )
-from app.ml.registry import get_model_registry
 from app.services.entity_relationship_builder import rebuild_org_entity_relationships
 from app.services.knowledge_intelligence_service import (
     distinct_normalized_count,
@@ -81,7 +84,13 @@ class CompanyIntelligenceOrchestrator:
             intent_model_id = None
             if len(queries) >= self.MIN_QUERY_ROWS:
                 try:
-                    intent_model_id = await self._train_intent_classifier(org_id, queries)
+                    intent_result = await train_v2_intent_classifier(
+                        org_id,
+                        settings=self.settings,
+                        client=client,
+                        registry_name=COMPANY_MODEL_NAMES["intent"],
+                    )
+                    intent_model_id = intent_result.get("model_id")
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(
                         "company_intelligence_intent_skipped org_id=%s error=%s",
@@ -131,10 +140,42 @@ class CompanyIntelligenceOrchestrator:
                         exc,
                     )
 
+            cluster_model_id = None
             cluster_results: list[dict[str, Any]] | None = None
             if distinct_normalized_count(queries) >= self.MIN_CLUSTERING_ROWS:
                 cluster_results = await run_query_clustering(
                     self.settings, org_id, queries, client=client
+                )
+                try:
+                    cluster_result = await train_v3_query_clusterer(
+                        org_id,
+                        settings=self.settings,
+                        client=client,
+                        persist_clusters=False,
+                        registry_name="company-query-clusterer",
+                    )
+                    cluster_model_id = cluster_result.get("model_id")
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "company_intelligence_clusterer_skipped org_id=%s error=%s",
+                        org_id,
+                        exc,
+                    )
+
+            memory_promotion_model_id = None
+            try:
+                memory_result = await train_v4_memory_promotion_scorer(
+                    org_id,
+                    settings=self.settings,
+                    client=client,
+                    registry_name="company-memory-promotion",
+                )
+                memory_promotion_model_id = memory_result.get("model_id")
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "company_intelligence_memory_promotion_skipped org_id=%s error=%s",
+                    org_id,
+                    exc,
                 )
 
             glossary_results = await run_glossary_extraction(
@@ -160,7 +201,13 @@ class CompanyIntelligenceOrchestrator:
             training_count = await count_training_examples(org_id, client)
             if training_count >= RetrievalRanker.MIN_TRAINING_EXAMPLES:
                 try:
-                    ranker_model_id = await self._train_retrieval_ranker(org_id, client)
+                    ranker_result = await train_v5_retrieval_ranker(
+                        org_id,
+                        settings=self.settings,
+                        client=client,
+                        registry_name=COMPANY_MODEL_NAMES["retrieval_ranker"],
+                    )
+                    ranker_model_id = ranker_result.get("model_id")
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(
                         "company_intelligence_ranker_skipped org_id=%s error=%s",
@@ -202,6 +249,8 @@ class CompanyIntelligenceOrchestrator:
                     "entity_relationship_count": relationship_summary.get("total", 0),
                     "evaluation_count": len(evaluations_consolidated),
                     "retrieval_ranker_trained": ranker_model_id is not None,
+                    "cluster_model_trained": cluster_model_id is not None,
+                    "memory_promotion_model_trained": memory_promotion_model_id is not None,
                 },
             )
 
@@ -214,6 +263,8 @@ class CompanyIntelligenceOrchestrator:
                 "forecaster_model_id": forecaster_model_id,
                 "success_model_id": success_model_id,
                 "ranker_model_id": ranker_model_id,
+                "cluster_model_id": cluster_model_id,
+                "memory_promotion_model_id": memory_promotion_model_id,
                 "evaluations_consolidated": len(evaluations_consolidated),
                 "snapshot_chars": len(context_markdown),
                 "cluster_count": len(cluster_results or []),
@@ -269,22 +320,6 @@ class CompanyIntelligenceOrchestrator:
             "clusteringRowsNeeded": self.MIN_CLUSTERING_ROWS,
             "hasAnySnapshot": has_snapshot,
         }
-
-    async def _train_intent_classifier(self, org_id: str, queries: list[dict[str, Any]]) -> str | None:
-        texts = [str(row.get("query_text") or "") for row in queries if row.get("query_text")]
-        labels = [str(row.get("query_category") or "general") for row in queries if row.get("query_text")]
-        if len(texts) < self.MIN_QUERY_ROWS:
-            return None
-        classifier = IntentClassifier()
-        metrics = await classifier.train_from_text(texts, labels)
-        return await self._register_or_update_model(
-            org_id,
-            name=COMPANY_MODEL_NAMES["intent"],
-            model_type=ModelType.CLASSIFIER,
-            base_model="intent_classifier",
-            artifact=classifier.save(),
-            metrics=metrics,
-        )
 
     async def _train_anomaly_detector(
         self,
@@ -402,21 +437,6 @@ class CompanyIntelligenceOrchestrator:
             result["workflow_id"] = wf_id
             predictions.append(result)
         return sorted(predictions, key=lambda row: float(row.get("success_probability") or 1.0))
-
-    async def _train_retrieval_ranker(self, org_id: str, client: Any) -> str | None:
-        examples = await collect_training_examples(org_id, client)
-        if len(examples) < RetrievalRanker.MIN_TRAINING_EXAMPLES:
-            return None
-        ranker = RetrievalRanker()
-        metrics = await ranker.train(examples)
-        return await self._register_or_update_model(
-            org_id,
-            name=COMPANY_MODEL_NAMES["retrieval_ranker"],
-            model_type=ModelType.CLASSIFIER,
-            base_model="retrieval_ranker",
-            artifact=ranker.save(),
-            metrics=metrics,
-        )
 
     async def _register_or_update_model(
         self,

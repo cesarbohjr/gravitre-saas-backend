@@ -1630,6 +1630,46 @@ export const intelligenceApi = {
   },
 }
 
+export type MlAdminOrgModelStatus = {
+  model_name: string
+  catalog_status: string
+  advisory_only?: boolean
+  use_cases?: string[]
+  activation?: string
+  fallback?: string
+  data_counts?: Record<string, number>
+}
+
+export type MlAdminCatalogResponse = {
+  catalog: Record<string, Record<string, unknown>>
+  orgTrainingStatus: Record<string, MlAdminOrgModelStatus>
+}
+
+export type MlAdminTrainResult = {
+  model_name?: string
+  org_id?: string
+  trained?: boolean
+  temporal?: boolean
+  workflow_id?: string
+  reason?: string
+  required?: number
+  query_rows?: number
+  distinct_queries?: number
+  resolved_candidates?: number
+  training_examples?: number
+  model_id?: string | null
+  latency_ms?: number
+  message?: string
+}
+
+export const mlAdminApi = {
+  listCatalog: () => fetcher<MlAdminCatalogResponse>(apiUrl("/api/admin/ml/models")),
+  modelStatus: (modelName: string) =>
+    fetcher<MlAdminOrgModelStatus>(apiUrl(`/api/admin/ml/models/${modelName}/status`)),
+  trainModel: (modelName: string) =>
+    postJson<MlAdminTrainResult>(apiUrl(`/api/admin/ml/models/${modelName}/train`), {}),
+}
+
 export type IntelligenceOutcomesAgentSummary = {
   agentId: string
   agentName?: string
@@ -2287,6 +2327,7 @@ export const api = {
   billing: billingApi,
   metrics: metricsApi,
   intelligence: intelligenceApi,
+  mlAdmin: mlAdminApi,
   memoryPromotion: memoryPromotionApi,
   settings: settingsApi,
   environments: environmentsApi,

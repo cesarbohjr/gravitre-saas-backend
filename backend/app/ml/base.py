@@ -17,6 +17,8 @@ class ModelType(str, Enum):
     """Types of ML models supported."""
 
     CLASSIFIER = "classifier"
+    REGRESSOR = "regressor"
+    CAUSAL_MODEL = "causal_model"
     FINE_TUNED_LLM = "fine_tuned_llm"
     ANOMALY_DETECTOR = "anomaly_detector"
     FORECASTER = "forecaster"
@@ -33,6 +35,9 @@ class ModelStatus(str, Enum):
     DEPLOYED = "deployed"
     FAILED = "failed"
     ARCHIVED = "archived"
+    TRAINED = "trained"
+    PLANNED = "planned"
+    DISABLED = "disabled"
 
 
 class ModelMetrics(BaseModel):

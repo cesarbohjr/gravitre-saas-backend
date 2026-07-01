@@ -358,6 +358,11 @@ MODEL_TIERS: dict[str, dict[str, str]] = {
         "anthropic": "claude-sonnet-4-6",
         "gemini": "gemini-2.5-pro",
     },
+    "vision": {
+        "openai": "gpt-4o",
+        "anthropic": "claude-3-5-sonnet-20241022",
+        "gemini": "gemini-2.5-pro",
+    },
 }
 
 # task-type string (TaskType value) -> complexity tier

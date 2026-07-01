@@ -819,8 +819,38 @@ class ModelRouter:
         except Exception as exc:  # noqa: BLE001
             logger.warning("guardrail_events insert failed: %s", str(exc))
 
+    DEPARTMENT_MODEL_OVERRIDES: dict[str, str | None] = {
+        "finance": None,
+        "legal": None,
+        "hr": None,
+        "engineering": None,
+        "marketing": None,
+        "sales": None,
+    }
 
-_model_router_singleton: ModelRouter | None = None
+    def _get_model_for_complexity(self, task_complexity: str) -> str:
+        tier = MODEL_TIERS.get(task_complexity, MODEL_TIERS["medium"])
+        return tier["openai"]
+
+    async def get_model_for_department(
+        self,
+        department: str,
+        task_complexity: str = "medium",
+    ) -> str:
+        override = self.DEPARTMENT_MODEL_OVERRIDES.get(department.strip().lower())
+        if override:
+            return override
+        return self._get_model_for_complexity(task_complexity)
+
+    async def route_with_vision(
+        self,
+        messages: list[dict],
+        has_image: bool = False,
+    ) -> str:
+        _ = messages
+        if has_image:
+            return MODEL_TIERS["vision"]["openai"]
+        return self._get_model_for_complexity("medium")
 
 
 def get_model_router() -> ModelRouter:

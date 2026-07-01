@@ -41,3 +41,15 @@ CREATE TABLE IF NOT EXISTS gravitre.mcp_executions (
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(created_at)
 ORDER BY (org_id, created_at);
+
+CREATE TABLE IF NOT EXISTS gravitre.ml_predictions (
+  org_id UUID,
+  model_name LowCardinality(String),
+  model_status LowCardinality(String),
+  confidence Float32,
+  latency_ms UInt32,
+  used_fallback Bool,
+  created_at DateTime64(3, 'UTC')
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(created_at)
+ORDER BY (org_id, model_name, created_at);

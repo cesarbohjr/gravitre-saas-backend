@@ -16,8 +16,9 @@ import { MemoryPromotionTab } from "./_components/memory-promotion-tab"
 import { RelationshipsTab } from "./_components/relationships-tab"
 import { EvaluationTab } from "./_components/evaluation-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
-import { EngineSettingsTab } from "./_components/engine-settings-tab"
+import { EngineTab } from "./_components/engine-tab"
 import { PerformanceTab } from "./_components/performance-tab"
+import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 
 type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "engine" | "performance"
 
@@ -33,8 +34,8 @@ export default function AdminIntelligencePage() {
 
   if (!user) {
     return (
-      <AppShell title="Intelligence">
-        <EmptyState title="Sign in required" description="Log in to view org intelligence." />
+      <AppShell title="Org Learning">
+        <EmptyState title="Sign in required" description="Log in to view org learning." />
       </AppShell>
     )
   }
@@ -42,18 +43,20 @@ export default function AdminIntelligencePage() {
   if (error) {
     const message = error instanceof ApiError ? error.message : "Failed to load intelligence data."
     return (
-      <AppShell title="Intelligence">
-        <ErrorState title="Unable to load intelligence" description={message} onRetry={() => mutate()} />
+      <AppShell title="Org Learning">
+        <ErrorState title="Unable to load org learning" description={message} onRetry={() => mutate()} />
       </AppShell>
     )
   }
 
   return (
-    <AppShell title="Intelligence">
+    <AppShell title="Org Learning">
       <div className="space-y-6 p-4 md:p-6">
+        <LearningSurfacesCallout current="org-learning" />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground text-pretty">
-            Query observability, memory promotion, entity relationships, response evaluation, and outcome-linked learning.
+            Monitor automatic learning from usage — query patterns, memory promotion, search quality, and
+            outcome-linked signals. Train org learning models on the Engine tab.
           </p>
           <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
             <ArrowsClockwise className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`} weight="bold" aria-hidden />
@@ -94,7 +97,7 @@ export default function AdminIntelligencePage() {
           </TabsContent>
 
           <TabsContent value="engine" className="mt-6">
-            <EngineSettingsTab enabled={tab === "engine"} />
+            <EngineTab enabled={tab === "engine"} />
           </TabsContent>
 
           <TabsContent value="performance" className="mt-6">

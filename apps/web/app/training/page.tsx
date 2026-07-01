@@ -21,6 +21,7 @@ import type {
   WorkflowAgent,
 } from "@/types/api"
 import { cn } from "@/lib/utils"
+import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
@@ -400,8 +401,9 @@ function TrainingPageContent() {
     (instructionsError ? formatTrainingError(instructionsError) : null)
 
   return (
-    <AppShell title="Training Hub">
+    <AppShell title="Agent Training">
       <div className="relative p-6 space-y-6 overflow-hidden">
+        <LearningSurfacesCallout current="agent-training" className="relative z-10" />
         <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
         {loadError && (
@@ -926,9 +928,9 @@ export default function TrainingPage() {
   return (
     <Suspense
       fallback={
-        <AppShell title="Training Hub">
+        <AppShell title="Agent Training">
           <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-            Loading training hub…
+            Loading agent training…
           </div>
         </AppShell>
       }

@@ -76,6 +76,14 @@ async def measure_outcome_after_window(outcome_id: str) -> dict[str, Any]:
 
 
 @activity.defn
+async def train_ml_model_for_org(org_id: str, model_name: str) -> dict[str, Any]:
+    from app.ml.model_catalog import train_ml_model_for_org as run_training
+
+    settings = get_settings()
+    return await run_training(org_id, model_name, settings=settings)
+
+
+@activity.defn
 async def install_marketplace_asset_step(payload: dict[str, Any]) -> dict[str, Any]:
     """Single install step; workflow checkpoints between asset entity installs."""
     from app.marketplace.service import install_asset

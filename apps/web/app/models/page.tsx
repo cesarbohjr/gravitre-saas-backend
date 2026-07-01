@@ -61,6 +61,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
@@ -278,11 +279,12 @@ export default function ModelsPage() {
   }, [baseModelOptions])
 
   return (
-    <AppShell title="AI Models">
+    <AppShell title="Model Registry">
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <LearningSurfacesCallout current="model-registry" />
         <PageHeader
-          title="AI Models"
-          description="Register, version, and deploy org-scoped ML models used by workflows and agents."
+          title="Model Registry"
+          description="Register, version, and deploy production ML models for workflows and services — not org learning or agent fine-tunes."
           icon={Brain}
           iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           actions={
