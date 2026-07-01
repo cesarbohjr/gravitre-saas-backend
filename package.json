@@ -130,6 +130,7 @@
     "linear:marketing-pack-audit": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-marketing-pack-audit-linear.ps1",
     "deploy:web": "vercel deploy --prod --yes",
     "deploy:web:preview": "vercel deploy --yes",
+    "infra:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-temporal-clickhouse-activation.ps1",
     "vercel:link": "vercel link --yes --project gravitre-saas-backend",
     "security:audit-backend": "python scripts/pip-audit-backend.py",
     "test:e2e": "playwright test",
