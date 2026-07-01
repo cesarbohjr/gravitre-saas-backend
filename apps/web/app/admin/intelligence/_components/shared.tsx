@@ -1,16 +1,31 @@
 "use client"
 
 import { type ReactNode } from "react"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
 import { ErrorState } from "@/components/gravitre/empty-state"
 import { Info } from "@phosphor-icons/react"
 
 /** Color a 0..1 score: strong (emerald), moderate (amber), weak (rose). */
-export function scoreColor(score: number): { bar: string; text: string } {
-  if (score >= 0.75) return { bar: "bg-emerald-500", text: "text-emerald-600" }
-  if (score >= 0.5) return { bar: "bg-amber-500", text: "text-amber-600" }
-  return { bar: "bg-rose-500", text: "text-rose-600" }
+export function scoreColor(score: number): { bar: string; text: string; glow: string } {
+  if (score >= 0.75)
+    return {
+      bar: "bg-gradient-to-r from-emerald-500 to-teal-400",
+      text: "text-emerald-600",
+      glow: "shadow-[0_0_12px_-2px] shadow-emerald-500/50",
+    }
+  if (score >= 0.5)
+    return {
+      bar: "bg-gradient-to-r from-amber-500 to-yellow-400",
+      text: "text-amber-600",
+      glow: "shadow-[0_0_12px_-2px] shadow-amber-500/50",
+    }
+  return {
+    bar: "bg-gradient-to-r from-rose-500 to-red-400",
+    text: "text-rose-600",
+    glow: "shadow-[0_0_12px_-2px] shadow-rose-500/50",
+  }
 }
 
 export function formatScore(score: number | null): string {
@@ -53,15 +68,17 @@ export function ScoreBar({
   weight?: number
 }) {
   const clamped = Math.max(0, Math.min(1, score))
-  const { bar, text } = scoreColor(clamped)
+  const { bar, text, glow } = scoreColor(clamped)
   return (
-    <div>
+    <div className="group/score">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-sm text-foreground">{label}</span>
         <span className="flex items-baseline gap-2 text-sm">
-          <span className={cn("font-semibold tabular-nums", text)}>{formatScore(clamped)}</span>
+          <span className={cn("font-semibold tabular-nums transition-colors", text)}>{formatScore(clamped)}</span>
           {weight != null ? (
-            <span className="text-xs text-muted-foreground">weight {formatPercent(weight)}</span>
+            <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              weight {formatPercent(weight)}
+            </span>
           ) : null}
         </span>
       </div>
@@ -73,7 +90,12 @@ export function ScoreBar({
         aria-valuemax={100}
         aria-label={`${label} score`}
       >
-        <div className={cn("h-full rounded-full transition-all", bar)} style={{ width: `${clamped * 100}%` }} />
+        <motion.div
+          className={cn("h-full rounded-full", bar, glow)}
+          initial={{ width: 0 }}
+          animate={{ width: `${clamped * 100}%` }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        />
       </div>
     </div>
   )
@@ -86,6 +108,7 @@ export function SectionCard({
   action,
   children,
   className,
+  delay = 0,
 }: {
   title: string
   description?: string
@@ -93,12 +116,32 @@ export function SectionCard({
   action?: ReactNode
   children: ReactNode
   className?: string
+  /** Stagger delay (seconds) for the entrance animation. */
+  delay?: number
 }) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-card p-5", className)}>
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
+      className={cn(
+        "group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-5 shadow-sm",
+        "transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-md hover:shadow-emerald-500/5",
+        className,
+      )}
+    >
+      {/* Brand accent line that reveals on hover */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+      />
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          {icon ? <span className="mt-0.5 shrink-0 text-primary">{icon}</span> : null}
+          {icon ? (
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 transition-transform duration-300 group-hover:scale-105 dark:text-emerald-400">
+              {icon}
+            </span>
+          ) : null}
           <div>
             <h2 className="text-base font-semibold text-foreground">{title}</h2>
             {description ? (
@@ -109,7 +152,7 @@ export function SectionCard({
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       <div className="mt-4">{children}</div>
-    </section>
+    </motion.section>
   )
 }
 

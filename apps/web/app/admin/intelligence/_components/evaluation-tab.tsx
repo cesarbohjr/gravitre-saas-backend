@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { motion } from "framer-motion"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
@@ -50,19 +51,36 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
           icon={<Gauge className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] md:items-center">
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background/60 px-6 py-5 text-center">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Composite</span>
+            <div className="relative flex min-w-[10rem] flex-col items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-secondary/60 to-background px-8 py-6 text-center">
               <span
+                aria-hidden
                 className={cn(
-                  "mt-1 text-4xl font-semibold tabular-nums",
+                  "pointer-events-none absolute -top-8 left-1/2 h-24 w-24 -translate-x-1/2 rounded-full opacity-25 blur-2xl",
+                  composite != null && composite >= 0.75
+                    ? "bg-emerald-500"
+                    : composite != null && composite >= 0.5
+                      ? "bg-amber-500"
+                      : "bg-rose-500",
+                )}
+              />
+              <span className="relative text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Composite
+              </span>
+              <motion.span
+                key={formatScore(composite)}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                className={cn(
+                  "relative mt-1 text-5xl font-semibold tabular-nums",
                   compositeColor?.text ?? "text-muted-foreground",
                 )}
               >
                 {formatScore(composite)}
-              </span>
-              <span className="mt-0.5 text-xs text-muted-foreground">out of 1.00</span>
+              </motion.span>
+              <span className="relative mt-0.5 text-xs text-muted-foreground">out of 1.00</span>
               {data ? (
-                <span className="mt-2 text-xs text-muted-foreground tabular-nums">
+                <span className="relative mt-2 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
                   {data.summary.totalEvaluations} evaluation{data.summary.totalEvaluations === 1 ? "" : "s"}
                 </span>
               ) : null}
@@ -85,19 +103,23 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
           ) : null}
         </SectionCard>
 
-        {data ? <LearningToRankCard status={data.retrievalRanker} /> : null}
+        {data ? <LearningToRankCard status={data.retrievalRanker} delay={0.06} /> : null}
 
         <SectionCard
           title="Scored responses"
           description="Recent answers with their individual quality scores."
           icon={<ListChecks className="h-5 w-5" weight="duotone" aria-hidden />}
+          delay={0.12}
         >
           {samples.length > 0 ? (
             <ul className="divide-y divide-border">
               {samples.map((s) => {
                 const { text } = scoreColor(s.compositeScore ?? 0)
                 return (
-                  <li key={s.id} className="py-3 first:pt-0 last:pb-0">
+                  <li
+                    key={s.id}
+                    className="-mx-2 rounded-lg px-2 py-3 transition-colors first:pt-0 last:pb-0 hover:bg-secondary/50"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <Badge variant="outline">{s.surface}</Badge>
@@ -106,8 +128,8 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
                             variant="secondary"
                             className={
                               s.userFeedback === "helpful"
-                                ? "border-emerald-300 text-emerald-700"
-                                : "border-rose-300 text-rose-700"
+                                ? "border-emerald-300 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/40 dark:text-emerald-300"
+                                : "border-rose-300 bg-rose-500/10 text-rose-700 dark:border-rose-500/40 dark:text-rose-300"
                             }
                           >
                             {s.userFeedback === "helpful" ? "helpful" : "not helpful"}

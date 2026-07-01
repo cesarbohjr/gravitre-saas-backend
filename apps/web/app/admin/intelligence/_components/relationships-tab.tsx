@@ -58,7 +58,7 @@ export function RelationshipsTab({
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Graph className="h-5 w-5 text-primary" weight="duotone" aria-hidden />
+          <Graph className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
           <CardTitle>Entity relationships</CardTitle>
         </div>
         <CardDescription>
