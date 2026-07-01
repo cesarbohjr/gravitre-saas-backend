@@ -95,8 +95,9 @@ if (-not $response.clickhouse.ok) {
     if ($response.clickhouse.missing_tables) {
         Write-Host "Missing tables: $($response.clickhouse.missing_tables -join ', ')" -ForegroundColor Yellow
     }
-    Write-Host "Reset password at https://clickhouse.cloud then run: npm run clickhouse:push-railway-env" -ForegroundColor Yellow
-    exit 1
+    Write-Host "Reset SQL password at https://clickhouse.cloud then run: npm run clickhouse:push-railway-env" -ForegroundColor Yellow
+} else {
+    Write-Host "ClickHouse health: OK" -ForegroundColor Green
 }
 
 Write-Host "`n=== A7: Trigger Temporal company-intelligence workflow ===" -ForegroundColor Cyan
@@ -104,4 +105,11 @@ $triggerUri = "$ApiBase/api/internal/ops/company-intelligence-run"
 $trigger = Invoke-RestMethod -Uri $triggerUri -Headers @{ "X-Internal-Secret" = $secret; "Content-Type" = "application/json" } -Method Post -Body "{}"
 $trigger | ConvertTo-Json -Depth 6
 
-Write-Host "`nAll activation checks passed. Confirm workflow in Temporal Cloud UI." -ForegroundColor Green
+Write-Host "`nAll activation checks finished." -ForegroundColor Green
+if ($response.clickhouse.ok) {
+    Write-Host "Temporal + ClickHouse confirmed live." -ForegroundColor Green
+} else {
+    Write-Host "Temporal confirmed live. ClickHouse pending correct CLICKHOUSE_PASSWORD on Railway." -ForegroundColor Yellow
+}
+Write-Host "Confirm CompanyIntelligenceWorkflow in Temporal Cloud UI." -ForegroundColor Green
+if (-not $response.clickhouse.ok) { exit 1 }
