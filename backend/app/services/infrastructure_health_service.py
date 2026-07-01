@@ -116,9 +116,16 @@ def apply_clickhouse_schema() -> dict[str, Any]:
 
 
 async def check_clickhouse_connection(*, apply_schema: bool = False) -> dict[str, Any]:
-    ch = get_clickhouse_service()
+    try:
+        ch = get_clickhouse_service()
+    except Exception as exc:  # noqa: BLE001
+        return {"configured": True, "ok": False, "error": f"client_init_failed: {exc}"}
     if not ch.is_available():
-        return {"configured": False, "ok": False, "error": "CLICKHOUSE_HOST unset"}
+        return {
+            "configured": bool((os.getenv("CLICKHOUSE_HOST") or "").strip()),
+            "ok": False,
+            "error": "ClickHouse client unavailable (check CLICKHOUSE_PASSWORD / CLICKHOUSE_SECRET_KEY)",
+        }
     if apply_schema:
         try:
             apply_clickhouse_schema()

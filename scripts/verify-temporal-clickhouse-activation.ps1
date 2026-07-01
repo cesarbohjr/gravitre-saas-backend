@@ -63,17 +63,39 @@ if ($missing.Count -gt 0) {
 
 $secret = Get-EnvValue $OperatorFile "INTERNAL_API_SECRET"
 if (-not $secret) {
-    Write-Host "INTERNAL_API_SECRET not found in $OperatorFile" -ForegroundColor Red
+    $remoteSecret = [string]$remote.INTERNAL_API_SECRET
+    if ($remoteSecret) {
+        $lines = Get-Content $OperatorFile | Where-Object {
+            $t = $_.Trim()
+            -not ($t -and -not $t.StartsWith("#") -and $t.StartsWith("INTERNAL_API_SECRET="))
+        }
+        $lines += "INTERNAL_API_SECRET=$remoteSecret"
+        $lines | Set-Content $OperatorFile -Encoding utf8
+        $secret = $remoteSecret
+        Write-Host "INTERNAL_API_SECRET synced from Railway to operator local." -ForegroundColor Yellow
+    }
+}
+if (-not $secret) {
+    Write-Host "INTERNAL_API_SECRET not found in $OperatorFile or Railway" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "`n=== A4-A5: Apply schema + health check (production process) ===" -ForegroundColor Cyan
+Write-Host "`n=== A2-A3/A4-A5: Infrastructure health (production process) ===" -ForegroundColor Cyan
 $uri = "$ApiBase/api/internal/ops/infrastructure-health?apply_clickhouse_schema=true"
 $response = Invoke-RestMethod -Uri $uri -Headers @{ "X-Internal-Secret" = $secret } -Method Get
 $response | ConvertTo-Json -Depth 8
 
-if (-not $response.ok) {
-    Write-Host "Infrastructure health check failed." -ForegroundColor Red
+if (-not $response.temporal.ok) {
+    Write-Host "Temporal health check failed." -ForegroundColor Red
+    exit 1
+}
+
+if (-not $response.clickhouse.ok) {
+    Write-Host "ClickHouse not fully active: $($response.clickhouse.error)" -ForegroundColor Yellow
+    if ($response.clickhouse.missing_tables) {
+        Write-Host "Missing tables: $($response.clickhouse.missing_tables -join ', ')" -ForegroundColor Yellow
+    }
+    Write-Host "Reset password at https://clickhouse.cloud then run: npm run clickhouse:push-railway-env" -ForegroundColor Yellow
     exit 1
 }
 

@@ -149,7 +149,16 @@ async def infrastructure_health_cron(
     """Verify Temporal + ClickHouse connectivity from the running Railway process."""
     from app.services.infrastructure_health_service import get_infrastructure_health
 
-    return await get_infrastructure_health(apply_clickhouse_schema=apply_clickhouse_schema)
+    try:
+        return await get_infrastructure_health(apply_clickhouse_schema=apply_clickhouse_schema)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("infrastructure_health_failed")
+        return {
+            "ok": False,
+            "error": str(exc),
+            "temporal": {"ok": False, "error": "health_check_crashed"},
+            "clickhouse": {"ok": False, "error": "health_check_crashed"},
+        }
 
 
 @router.post("/clickhouse-apply-schema")
