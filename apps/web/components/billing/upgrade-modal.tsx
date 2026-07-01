@@ -74,7 +74,10 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
                   {isSelected && <Check className="h-3 w-3" />}
                 </span>
                 <p className="font-semibold text-foreground">{plan.name}</p>
-                <p className="text-lg font-semibold text-primary">{formatPlanPrice(plan)}/mo</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {formatPlanPrice(plan)}
+                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                </p>
                 <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
                   {plan.features.map((item) => (
                     <li key={item}>• {item}</li>
