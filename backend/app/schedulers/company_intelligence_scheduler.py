@@ -1,4 +1,9 @@
-"""In-process company intelligence scheduler."""
+"""In-process company intelligence scheduler.
+
+When TEMPORAL_HOST is set, CompanyIntelligenceWorkflow in app/temporal/
+replaces this loop — see main.py lifespan. Kept as asyncio fallback when
+Temporal is not configured (no retry on Railway restarts).
+"""
 from __future__ import annotations
 
 import asyncio

@@ -39,6 +39,44 @@ async def load_performance_dashboard(
     client: Any | None = None,
 ) -> dict[str, Any]:
     hours = PERIOD_HOURS.get(period, 24)
+    from app.services.clickhouse_service import get_clickhouse_service
+
+    ch = get_clickhouse_service()
+    if ch.is_available():
+        ch_result = await _query_clickhouse_performance(ch, org_id, hours, period)
+        if ch_result is not None:
+            return ch_result
+    return await _query_postgres_performance(settings, org_id, hours, period, client=client)
+
+
+async def _query_clickhouse_performance(
+    ch: Any,
+    org_id: str,
+    hours: int,
+    period: str,
+) -> dict[str, Any] | None:
+    rows = await ch.query(
+        """
+        SELECT stage_name, duration_ms, cache_hit, tier, cost_usd
+        FROM gravitre.pipeline_events
+        WHERE org_id = {org_id:UUID}
+          AND created_at >= now() - INTERVAL {hours:UInt32} HOUR
+        """,
+        {"org_id": org_id, "hours": hours},
+    )
+    if not rows:
+        return None
+    return _build_performance_payload(rows, period)
+
+
+async def _query_postgres_performance(
+    settings: Any,
+    org_id: str,
+    hours: int,
+    period: str,
+    *,
+    client: Any | None = None,
+) -> dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     db = client or get_supabase_client(settings)
     rows = (
@@ -50,7 +88,26 @@ async def load_performance_dashboard(
         .data
         or []
     )
+    normalized = [
+        {
+            "stage_name": r.get("stage_name"),
+            "duration_ms": r.get("duration_ms"),
+            "cache_hit": r.get("cache_hit"),
+            "tier": r.get("tier"),
+            "cost_usd": r.get("estimated_cost_usd"),
+        }
+        for r in rows
+    ]
+    return _build_performance_payload(normalized, period, raw_postgres_rows=rows)
 
+
+def _build_performance_payload(
+    rows: list[dict[str, Any]],
+    period: str,
+    *,
+    raw_postgres_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    settings_rows = raw_postgres_rows or rows
     by_stage: dict[str, list[int]] = {}
     by_tier: dict[str, list[int]] = {}
     costs: list[float] = []
@@ -63,13 +120,17 @@ async def load_performance_dashboard(
         by_stage.setdefault(stage, []).append(duration)
         tier = str(row.get("tier") or TIER_2)
         by_tier.setdefault(tier, []).append(duration)
-        if row.get("estimated_cost_usd") is not None:
-            costs.append(float(row["estimated_cost_usd"]))
+        cost_val = row.get("cost_usd") if row.get("cost_usd") is not None else row.get("estimated_cost_usd")
+        if cost_val is not None:
+            costs.append(float(cost_val))
         if tier == TIER_0:
             tier0_total += 1
             if row.get("cache_hit"):
                 tier0_hits += 1
 
+    from app.config import get_settings
+
+    settings = get_settings()
     cache = get_cache_service(settings)
     cache_stats = {
         namespace: _cache_hit_rate(cache.stats(namespace))
@@ -82,6 +143,7 @@ async def load_performance_dashboard(
 
     all_durations = [value for values in by_stage.values() for value in values]
     total_stats = _latency_stats(all_durations)
+    pg_rows = settings_rows
 
     return {
         "period": period,
@@ -111,8 +173,12 @@ async def load_performance_dashboard(
                 "count": len(values),
                 "avgMs": _latency_stats(values)["avg_ms"],
                 "avgCost": round(
-                    sum(float(r.get("estimated_cost_usd") or 0) for r in rows if str(r.get("tier") or "") == tier)
-                    / max(1, sum(1 for r in rows if str(r.get("tier") or "") == tier)),
+                    sum(
+                        float(r.get("estimated_cost_usd") or r.get("cost_usd") or 0)
+                        for r in pg_rows
+                        if str(r.get("tier") or "") == tier
+                    )
+                    / max(1, sum(1 for r in pg_rows if str(r.get("tier") or "") == tier)),
                     6,
                 ),
             }

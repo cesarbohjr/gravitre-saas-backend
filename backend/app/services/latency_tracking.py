@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 from uuid import uuid4
@@ -56,6 +57,28 @@ async def log_pipeline_latency(
             stage_name,
             exc,
         )
+        return
+
+    # ClickHouse dual-write (fire-and-forget; Postgres write above is authoritative)
+    try:
+        from app.services.clickhouse_service import get_clickhouse_service
+
+        ch_row = {
+            "org_id": org_id,
+            "message_id": message_id,
+            "stage_name": stage_name,
+            "tier": tier or "",
+            "duration_ms": int(duration_ms),
+            "cache_hit": bool(cache_hit),
+            "model_used": model_used or "",
+            "cost_usd": float(estimated_cost_usd or 0),
+            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+        asyncio.create_task(
+            get_clickhouse_service().insert_events("gravitre.pipeline_events", [ch_row])
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("clickhouse_pipeline_event_skipped org_id=%s error=%s", org_id, exc)
 
 
 def latency_stage(stage_name: str) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:

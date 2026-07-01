@@ -698,11 +698,91 @@ class ToolRegistry:
             tools.append(spec.to_openai_tool())
         return tools
 
+    async def get_available_tools(
+        self,
+        org_id: str,
+        permitted_tools: list[str],
+        connected_integrations: list[str],
+    ) -> list[dict[str, Any]]:
+        """Native connector tools plus org MCP tools (native names win on collision)."""
+        native_tools = self.get_tools_for_agent(permitted_tools, connected_integrations)
+        from app.services.mcp_client_service import get_mcp_client_service
+
+        mcp_tools = await get_mcp_client_service().get_enabled_tools_for_org(org_id)
+        native_names = {str(tool.get("function", {}).get("name") or tool.get("name") or "") for tool in native_tools}
+        filtered_mcp: list[dict[str, Any]] = []
+        for tool in mcp_tools:
+            name = str(tool.get("name") or "")
+            if not name or name in native_names:
+                continue
+            filtered_mcp.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "description": str(tool.get("description") or "MCP tool"),
+                        "parameters": tool.get("input_schema")
+                        if isinstance(tool.get("input_schema"), dict) and tool.get("input_schema")
+                        else {"type": "object", "properties": tool.get("parameters") or {}},
+                    },
+                    "mcp_tool_id": tool.get("mcp_tool_id"),
+                    "capability_tier": tool.get("capability_tier"),
+                }
+            )
+        return native_tools + filtered_mcp
+
     def get_handler(self, tool_name: str) -> Callable[..., Any] | None:
         """Return async handler for a tool name, or None if unknown."""
-        if tool_name not in self._specs:
-            return None
-        return self.execute_tool
+        if tool_name in self._specs or tool_name.startswith("mcp_"):
+            return self.execute_tool
+        return None
+
+    async def _execute_mcp_tool(
+        self,
+        ctx: ToolContext,
+        tool_name: str,
+        args: dict[str, Any],
+    ) -> dict[str, Any]:
+        from app.services.mcp_client_service import get_mcp_client_service
+
+        service = get_mcp_client_service(ctx.settings)
+        tools = await service.get_enabled_tools_for_org(ctx.org_id)
+        tool_id = None
+        for row in tools:
+            if str(row.get("name") or "") == tool_name:
+                tool_id = str(row.get("mcp_tool_id") or "")
+                break
+        if not tool_id:
+            return {"success": False, "tool": tool_name, "error": "MCP tool not registered for org"}
+        approval_id = str(args.pop("approval_id", "") or args.pop("approvalId", "") or "") or None
+        payload = await service.execute_tool(
+            tool_id,
+            ctx.org_id,
+            args,
+            agent_id=ctx.agent_id,
+            workflow_run_id=ctx.run_id,
+            approval_id=approval_id,
+        )
+        if payload.get("status") == "pending_approval":
+            return {
+                "success": False,
+                "tool": tool_name,
+                "pending_approval": True,
+                "approval_id": payload.get("approval_id"),
+                "message": payload.get("message"),
+            }
+        if payload.get("status") == "completed":
+            return {
+                "success": True,
+                "tool": tool_name,
+                "result": payload.get("result"),
+                "latency_ms": payload.get("latency_ms"),
+            }
+        return {
+            "success": False,
+            "tool": tool_name,
+            "error": payload.get("error") or "MCP tool execution failed",
+        }
 
     async def execute_tool(
         self,
@@ -717,6 +797,8 @@ class ToolRegistry:
         Returns a normalized dict suitable for injection into the LLM as a tool result.
         """
         spec = self._specs.get(tool_name)
+        if not spec and tool_name.startswith("mcp_"):
+            return await self._execute_mcp_tool(ctx, tool_name, args or {})
         if not spec:
             return {"success": False, "error": f"Unknown tool: {tool_name}", "tool": tool_name}
 

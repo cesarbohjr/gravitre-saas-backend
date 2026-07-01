@@ -1,4 +1,9 @@
-"""In-process memory promotion and expiration schedulers (v4)."""
+"""In-process memory promotion and expiration schedulers (v4).
+
+Promotion evaluation and outcome measurement migrate to Temporal workflows
+(MemoryPromotionWorkflow, OutcomeMeasurementWorkflow) when TEMPORAL_HOST is set.
+Expiration checks stay here — missed ticks are low impact and idempotent.
+"""
 from __future__ import annotations
 
 import asyncio

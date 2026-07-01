@@ -1,4 +1,8 @@
-"""In-process connector OAuth health monitor (30s default)."""
+"""In-process connector OAuth health monitor (30s default).
+
+Intentionally NOT migrated to Temporal: idempotent health probe; a missed
+30s tick has no lasting effect on data correctness.
+"""
 from __future__ import annotations
 
 import asyncio

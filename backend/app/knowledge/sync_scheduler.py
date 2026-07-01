@@ -1,4 +1,8 @@
-"""In-process knowledge sync scheduler (STA-45)."""
+"""In-process knowledge sync scheduler (STA-45).
+
+Intentionally NOT migrated to Temporal: sync is idempotent and re-runs on the
+next tick if a deploy interrupts an in-flight sync.
+"""
 from __future__ import annotations
 
 import asyncio

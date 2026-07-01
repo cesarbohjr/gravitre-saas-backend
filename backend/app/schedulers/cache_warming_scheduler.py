@@ -1,4 +1,8 @@
-"""Background cache warming for frequent org queries (embedding + retrieval caches)."""
+"""Background cache warming for frequent org queries (embedding + retrieval caches).
+
+Intentionally NOT migrated to Temporal: best-effort performance optimization;
+a missed warm tick has no correctness impact.
+"""
 from __future__ import annotations
 
 import asyncio

@@ -1,6 +1,7 @@
 """v8 Outcome-Linked Learning — correlational attribution, not reinforcement learning."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -157,7 +158,9 @@ class OutcomeAttributionService:
             "confidence_note": CONFIDENCE_NOTE,
         }
         inserted = client.table("agent_action_outcomes").insert(payload).execute()
-        return inserted.data[0] if inserted.data else payload
+        row = inserted.data[0] if inserted.data else payload
+        self._mirror_outcome_to_clickhouse(row, after=False)
+        return row
 
     async def measure_outcomes_due(self, org_id: str) -> int:
         """Scheduled job: populate metric_value_after after attribution window elapses."""
@@ -197,8 +200,40 @@ class OutcomeAttributionService:
                     "confidence_note": CONFIDENCE_NOTE,
                 }
             ).eq("id", row["id"]).execute()
+            updated = {**row, "metric_value_after": float(after_value), "measured_at": now.isoformat()}
+            self._mirror_outcome_to_clickhouse(updated, after=True)
             measured += 1
         return measured
+
+    def _mirror_outcome_to_clickhouse(self, row: dict[str, Any], *, after: bool) -> None:
+        """Fire-and-forget analytics replica — never blocks Postgres writes."""
+        try:
+            from app.services.clickhouse_service import get_clickhouse_service
+
+            before = row.get("metric_value_before")
+            metric_after = row.get("metric_value_after")
+            delta = None
+            if before is not None and metric_after is not None:
+                delta = float(metric_after) - float(before)
+            ch_row = {
+                "org_id": str(row.get("org_id") or ""),
+                "agent_id": str(row.get("agent_id") or "00000000-0000-0000-0000-000000000000"),
+                "workflow_run_id": str(
+                    row.get("workflow_run_id") or "00000000-0000-0000-0000-000000000000"
+                ),
+                "action_type": str(row.get("action_type") or ""),
+                "metric_name": str(row.get("metric_name") or ""),
+                "metric_before": float(before or 0),
+                "metric_after": float(metric_after or 0) if after else float(before or 0),
+                "delta": float(delta or 0),
+                "attribution_window_days": int(row.get("attribution_window_days") or 14),
+                "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
+            asyncio.create_task(
+                get_clickhouse_service().insert_events("gravitre.outcome_events", [ch_row])
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("clickhouse_outcome_event_skipped error=%s", exc)
 
     async def _fetch_current_metric_value(
         self,

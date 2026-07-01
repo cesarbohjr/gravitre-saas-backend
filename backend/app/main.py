@@ -1,4 +1,5 @@
 """BE-00: FastAPI application skeleton. Auth baseline, health, CORS, logging."""
+import asyncio
 import os
 import time
 import uuid
@@ -23,6 +24,7 @@ from app.routers import (
     agent_memories,
     agent_tool_permissions,
     admin_intelligence,
+    mcp_admin,
     ai_system,
     agent_council,
     agent_interrupts,
@@ -182,13 +184,33 @@ async def lifespan(app: FastAPI):
     )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
 
+    temporal_host = (os.environ.get("TEMPORAL_HOST") or "").strip()
+    use_temporal = bool(temporal_host)
+
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
     app.state.source_sync_task = start_source_sync_scheduler()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.connector_health_task = start_connector_health_scheduler()
-    app.state.company_intelligence_task = start_company_intelligence_scheduler()
-    app.state.memory_promotion_task = start_memory_promotion_scheduler()
+    if use_temporal:
+        logger.info(
+            "Temporal enabled — company intelligence, memory promotion/outcomes, "
+            "and marketplace installs use durable workflows (asyncio fallback disabled)"
+        )
+        app.state.company_intelligence_task = None
+        app.state.memory_promotion_task = None
+        from app.temporal.worker import start_temporal_worker
+
+        app.state.temporal_worker_task = asyncio.create_task(start_temporal_worker())
+    else:
+        logger.warning(
+            "TEMPORAL_HOST not set — durable workflow execution disabled. "
+            "Company intelligence, marketplace installs, and outcome measurement "
+            "will use asyncio fallback (no retry on restart)."
+        )
+        app.state.company_intelligence_task = start_company_intelligence_scheduler()
+        app.state.memory_promotion_task = start_memory_promotion_scheduler()
+        app.state.temporal_worker_task = None
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
     app.state.agent_job_task = start_agent_job_worker()
@@ -204,6 +226,15 @@ async def lifespan(app: FastAPI):
         await stop_connector_health_scheduler(getattr(app.state, "connector_health_task", None))
         await stop_company_intelligence_scheduler(getattr(app.state, "company_intelligence_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
+        temporal_task = getattr(app.state, "temporal_worker_task", None)
+        if temporal_task is not None:
+            temporal_task.cancel()
+            try:
+                await temporal_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("temporal worker stop error: %s", exc)
         await stop_memory_scheduler(getattr(app.state, "memory_expiration_task", None))
         await stop_cache_warming_scheduler(getattr(app.state, "cache_warming_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
@@ -427,6 +458,7 @@ app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
 app.include_router(admin_intelligence.router)
+app.include_router(mcp_admin.router)
 app.include_router(optimization_suggestions.router)
 app.include_router(feedback_mode.router)
 app.include_router(memory_promotion.router)
