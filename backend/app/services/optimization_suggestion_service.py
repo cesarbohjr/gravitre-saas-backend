@@ -9,6 +9,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.ml.source_reliability import MIN_OUTCOMES_FOR_SCORING, compute_source_reliability
+from app.services.answer_explanation import generate_suggestion_explanation
 from app.services.outcome_attribution_service import MIN_SAMPLE_SIZE, get_outcome_attribution_service
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
@@ -590,6 +591,20 @@ class OptimizationSuggestionService:
             },
         }
 
+    async def get_suggestion(self, org_id: str, suggestion_id: str) -> dict[str, Any]:
+        client = self._client()
+        result = (
+            client.table("optimization_suggestions")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("id", suggestion_id)
+            .limit(1)
+            .execute()
+        )
+        if not result.data:
+            raise ValueError("Optimization suggestion not found")
+        return _serialize_suggestion(result.data[0])
+
     async def dismiss_suggestion(
         self,
         org_id: str,
@@ -828,7 +843,7 @@ class OptimizationSuggestionService:
 
 
 def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+    serialized = {
         "id": row.get("id"),
         "targetEntityType": row.get("target_entity_type"),
         "targetEntityId": row.get("target_entity_id"),
@@ -842,6 +857,14 @@ def _serialize_suggestion(row: dict[str, Any]) -> dict[str, Any]:
         "appliedChangeSummary": row.get("applied_change_summary"),
         "createdAt": row.get("created_at"),
     }
+    serialized["explanation"] = generate_suggestion_explanation(
+        {
+            "suggestion_type": row.get("suggestion_type"),
+            "evidence": row.get("evidence") or {},
+            "estimated_impact": row.get("estimated_impact"),
+        }
+    )
+    return serialized
 
 
 _optimization_suggestion_service: OptimizationSuggestionService | None = None

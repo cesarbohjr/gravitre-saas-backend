@@ -22,6 +22,7 @@ from app.services.intelligence_engine_settings import (
     PERFORMANCE_MODES,
 )
 from app.services.performance_dashboard_service import load_performance_dashboard
+from app.services.business_impact_service import load_business_impact_snapshot
 
 router = APIRouter(prefix="/api/admin/intelligence", tags=["intelligence-admin"])
 
@@ -161,6 +162,16 @@ async def update_performance_mode(
         return {"mode": "balanced"}
     saved = await save_intelligence_engine_settings(org_id, settings, {"performance_mode": body.mode})
     return {"mode": saved.performance_mode}
+
+
+@router.get("/business-impact")
+async def get_business_impact_snapshot(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Revenue Risk Radar + Business Impact Score over existing v8/v10 signals."""
+    return await load_business_impact_snapshot(org_id, settings=settings)
 
 
 @router.get("/performance")

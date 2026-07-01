@@ -8,7 +8,10 @@ from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_org_context, require_admin
 from app.config import Settings, get_settings
-from app.services.optimization_suggestion_service import get_optimization_suggestion_service
+from app.services.optimization_suggestion_service import (
+    get_optimization_suggestion_service,
+    _serialize_suggestion,
+)
 
 router = APIRouter(prefix="/api/admin/optimization-suggestions", tags=["optimization-suggestions-admin"])
 
@@ -51,7 +54,24 @@ async def detect_optimization_suggestions(
 ) -> dict[str, Any]:
     service = get_optimization_suggestion_service(settings)
     suggestions = await service.detect_suggestions_for_org(org_id)
-    return {"detected": len(suggestions), "suggestions": suggestions}
+    return {
+        "detected": len(suggestions),
+        "suggestions": [_serialize_suggestion(row) for row in suggestions],
+    }
+
+
+@router.get("/{suggestion_id}")
+async def get_optimization_suggestion(
+    suggestion_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    service = get_optimization_suggestion_service(settings)
+    try:
+        return await service.get_suggestion(org_id, suggestion_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post("/{suggestion_id}/dismiss")

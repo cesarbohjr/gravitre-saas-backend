@@ -1556,6 +1556,32 @@ export const intelligenceApi = {
     return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
   },
   outcomes: () => fetcher<IntelligenceOutcomesResponse>(apiUrl("/api/admin/intelligence/outcomes")),
+  businessImpact: () =>
+    fetcher<{
+      scopeNote: string
+      businessImpactScore: number
+      scoreLabel: string
+      pendingReviewCount: number
+      pendingBusinessSignals: number
+      poorOutcomeAgents: number
+      avgOutcomeWinRate: number | null
+      revenueRiskItems: Array<{
+        id: string
+        severity: string
+        title: string
+        summary: string
+        explanation?: string
+        source: string
+        suggestionType: string
+        status?: string
+        createdAt?: string | null
+      }>
+      dimensions: {
+        revenueRisk: number
+        outcomeHealth: number
+        operationalLoad: number
+      }
+    }>(apiUrl("/api/admin/intelligence/business-impact")),
   engineSettings: () =>
     fetcher<{
       validationEnabled: boolean

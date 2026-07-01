@@ -11,6 +11,7 @@ import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { ArrowsClockwise } from "@phosphor-icons/react"
 import { OverviewTab } from "./_components/overview-tab"
+import { BusinessImpactCard } from "./_components/business-impact-card"
 import { MemoryPromotionTab } from "./_components/memory-promotion-tab"
 import { RelationshipsTab } from "./_components/relationships-tab"
 import { EvaluationTab } from "./_components/evaluation-tab"
@@ -71,7 +72,8 @@ export default function AdminIntelligencePage() {
             <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-6">
+          <TabsContent value="overview" className="mt-6 space-y-6">
+            <BusinessImpactCard />
             <OverviewTab data={data} isLoading={isLoading} />
           </TabsContent>
 
