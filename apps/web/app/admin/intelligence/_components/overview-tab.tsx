@@ -1,15 +1,71 @@
 "use client"
 
+import type { ComponentType } from "react"
+import { motion } from "framer-motion"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import type { IntelligenceSnapshot } from "@/lib/api"
 import { intelligenceApi } from "@/lib/api"
+import type { IconProps } from "@phosphor-icons/react"
 import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots, Brain } from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
 import { formatTime, readNumber } from "./shared"
 
 type Row = Record<string, unknown>
+
+const STAT_TONES = {
+  emerald: "bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:text-emerald-400",
+  sky: "bg-sky-500/10 text-sky-600 ring-sky-500/20 dark:text-sky-400",
+  amber: "bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:text-amber-400",
+} as const
+
+/** A layered KPI tile with a brand-tinted icon chip, hover lift, and entrance. */
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  emphasize,
+  delay = 0,
+}: {
+  icon: ComponentType<IconProps>
+  label: string
+  value: string | number
+  tone: keyof typeof STAT_TONES
+  emphasize?: boolean
+  delay?: number
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
+      className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-md hover:shadow-emerald-500/5"
+    >
+      <span
+        className={cn(
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset transition-transform duration-300 group-hover:scale-105",
+          STAT_TONES[tone],
+        )}
+      >
+        <Icon className="h-5 w-5" weight="duotone" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p
+          className={cn(
+            "text-2xl font-semibold tabular-nums",
+            emphasize ? "text-amber-600 dark:text-amber-400" : "text-foreground",
+          )}
+        >
+          {value}
+        </p>
+      </div>
+    </motion.div>
+  )
+}
 
 export function OverviewTab({
   data,
@@ -41,7 +97,7 @@ export function OverviewTab({
               title="Still learning your organization"
               description={`Gravitre needs a bit more usage before it can surface real patterns. ${learningProgress.queryRows} of ${learningProgress.queryRowsNeeded} queries logged, ${learningProgress.workflowRows} of ${learningProgress.workflowRowsNeeded} workflow runs observed.`}
               iconSlot={
-                <Brain className="h-6 w-6 text-violet-500" weight="duotone" aria-hidden />
+                <Brain className="h-6 w-6 text-emerald-500" weight="duotone" aria-hidden />
               }
               size="md"
             />
@@ -49,28 +105,28 @@ export function OverviewTab({
         </Card>
       ) : null}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Logged queries</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">{isLoading ? "…" : (volume?.totalLogged ?? 0)}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Distinct normalized</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {isLoading ? "…" : (volume?.distinctNormalized ?? 0)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Failed searches</CardDescription>
-            <CardTitle className="text-2xl tabular-nums text-amber-600">
-              {isLoading ? "…" : (volume?.failedSearchCount ?? 0)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+        <StatTile
+          icon={ChatCircleDots}
+          label="Logged queries"
+          value={isLoading ? "…" : (volume?.totalLogged ?? 0)}
+          tone="emerald"
+          delay={0}
+        />
+        <StatTile
+          icon={Stack}
+          label="Distinct normalized"
+          value={isLoading ? "…" : (volume?.distinctNormalized ?? 0)}
+          tone="sky"
+          delay={0.05}
+        />
+        <StatTile
+          icon={Warning}
+          label="Failed searches"
+          value={isLoading ? "…" : (volume?.failedSearchCount ?? 0)}
+          tone="amber"
+          emphasize
+          delay={0.1}
+        />
       </div>
 
       <Card>
@@ -115,7 +171,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Stack className="h-5 w-5 text-primary" weight="duotone" aria-hidden />
+            <Stack className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             <CardTitle>Query clusters</CardTitle>
           </div>
           <CardDescription>Recurring query themes from normalized history (requires sufficient volume).</CardDescription>
@@ -155,7 +211,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" weight="duotone" aria-hidden />
+            <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             <CardTitle>Company glossary</CardTitle>
           </div>
           <CardDescription>
@@ -203,7 +259,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <ChatCircleDots className="h-5 w-5 text-primary" weight="duotone" aria-hidden />
+            <ChatCircleDots className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             <CardTitle>Recent failed searches</CardTitle>
           </div>
           <CardDescription>Raw failed-search log (unclustered detail).</CardDescription>
