@@ -26,6 +26,14 @@ function Get-EnvValue([string]$File, [string]$Key) {
     return $null
 }
 
+# Load RAILWAY_TOKEN from operator file if not already set
+if (-not $env:RAILWAY_TOKEN -and (Test-Path $OperatorFile)) {
+    $tokenLine = Get-Content $OperatorFile | Where-Object { $_ -match '^\s*RAILWAY_TOKEN=' } | Select-Object -First 1
+    if ($tokenLine) {
+        $env:RAILWAY_TOKEN = ($tokenLine -replace '^\s*RAILWAY_TOKEN=','').Trim()
+    }
+}
+
 Write-Host "=== A1: Railway variable presence ===" -ForegroundColor Cyan
 if (-not (Get-Command railway -ErrorAction SilentlyContinue)) {
     Write-Host "Railway CLI not installed." -ForegroundColor Red
@@ -33,7 +41,7 @@ if (-not (Get-Command railway -ErrorAction SilentlyContinue)) {
 }
 $rawJson = railway variables --service $Service --json 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "railway variables failed — run: railway login" -ForegroundColor Red
+    Write-Host "railway variables failed - run: railway login" -ForegroundColor Red
     exit $LASTEXITCODE
 }
 $remote = $rawJson | ConvertFrom-Json

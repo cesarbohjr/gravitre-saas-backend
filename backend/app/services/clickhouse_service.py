@@ -18,14 +18,26 @@ class ClickHouseService:
         if host:
             import clickhouse_connect
 
-            self._client = clickhouse_connect.get_client(
-                host=host,
-                port=int(os.getenv("CLICKHOUSE_PORT", "8443")),
-                username=os.getenv("CLICKHOUSE_USER", "default"),
-                password=os.getenv("CLICKHOUSE_PASSWORD", ""),
-                database=os.getenv("CLICKHOUSE_DATABASE", "gravitre"),
-                secure=True,
-            )
+            try:
+                password = (
+                    (os.getenv("CLICKHOUSE_SECRET_KEY") or "").strip()
+                    or (os.getenv("CLICKHOUSE_PASSWORD") or "").strip()
+                )
+                self._client = clickhouse_connect.get_client(
+                    host=host,
+                    port=int(os.getenv("CLICKHOUSE_PORT", "8443")),
+                    username=os.getenv("CLICKHOUSE_USER", "default"),
+                    password=password,
+                    database=os.getenv("CLICKHOUSE_DATABASE", "gravitre"),
+                    secure=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._client = None
+                logger.warning(
+                    "ClickHouse client init failed host=%s error=%s — analytics fall back to Postgres.",
+                    host,
+                    exc,
+                )
         else:
             self._client = None
             logger.warning(

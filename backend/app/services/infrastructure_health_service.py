@@ -50,10 +50,56 @@ async def check_temporal_connection() -> dict[str, Any]:
         return {"configured": True, "ok": False, "error": str(exc)}
 
 
+_CLICKHOUSE_SCHEMA_SQL = """
+CREATE DATABASE IF NOT EXISTS gravitre;
+
+CREATE TABLE IF NOT EXISTS gravitre.pipeline_events (
+  org_id UUID,
+  message_id UUID,
+  stage_name LowCardinality(String),
+  tier LowCardinality(String),
+  duration_ms UInt32,
+  cache_hit Bool,
+  model_used LowCardinality(String),
+  cost_usd Float32,
+  created_at DateTime64(3, 'UTC')
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(created_at)
+ORDER BY (org_id, created_at, stage_name);
+
+CREATE TABLE IF NOT EXISTS gravitre.outcome_events (
+  org_id UUID,
+  agent_id UUID,
+  workflow_run_id UUID,
+  action_type LowCardinality(String),
+  metric_name LowCardinality(String),
+  metric_before Float64,
+  metric_after Float64,
+  delta Float64,
+  attribution_window_days UInt8,
+  created_at DateTime64(3, 'UTC')
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(created_at)
+ORDER BY (org_id, created_at, metric_name);
+
+CREATE TABLE IF NOT EXISTS gravitre.mcp_executions (
+  org_id UUID,
+  tool_id UUID,
+  capability_tier LowCardinality(String),
+  status LowCardinality(String),
+  latency_ms UInt32,
+  created_at DateTime64(3, 'UTC')
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(created_at)
+ORDER BY (org_id, created_at);
+"""
+
+
 def _clickhouse_schema_statements() -> list[str]:
-    repo_root = Path(__file__).resolve().parents[3]
-    schema_path = repo_root / "scripts" / "clickhouse_schema.sql"
-    raw = schema_path.read_text(encoding="utf-8")
+    schema_path = Path(__file__).resolve().parents[3] / "scripts" / "clickhouse_schema.sql"
+    raw = _CLICKHOUSE_SCHEMA_SQL
+    if schema_path.is_file():
+        raw = schema_path.read_text(encoding="utf-8")
     return [part.strip() for part in raw.split(";") if part.strip()]
 
 
