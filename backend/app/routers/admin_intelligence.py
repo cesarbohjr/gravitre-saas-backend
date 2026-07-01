@@ -23,6 +23,11 @@ from app.services.intelligence_engine_settings import (
 )
 from app.services.performance_dashboard_service import load_performance_dashboard
 from app.services.business_impact_service import load_business_impact_snapshot
+from app.services.outcome_learning_service import get_outcome_learning_service
+from app.services.intelligence_evaluation_service import get_intelligence_evaluation_service
+from app.services.simulation_service import get_simulation_service
+from app.services.training_signal_service import get_training_signal_service
+from app.services.ai_trust_layer import get_ai_trust_layer
 
 router = APIRouter(prefix="/api/admin/intelligence", tags=["intelligence-admin"])
 
@@ -86,10 +91,112 @@ async def get_outcome_summaries(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
+    period_days: int = Query(default=7, ge=1, le=90, alias="periodDays"),
 ) -> dict[str, Any]:
-    """v8 org-scoped outcome-linked learning summaries (correlational, not RL)."""
+    """v8 correlational outcomes plus unified intelligence outcome events."""
     service = get_outcome_attribution_service(settings)
-    return await service.load_admin_outcomes_snapshot(org_id, settings=settings)
+    v8 = await service.load_admin_outcomes_snapshot(org_id, settings=settings)
+    unified = await get_outcome_learning_service(settings).load_admin_outcomes_summary(
+        org_id, period_days=period_days
+    )
+    return {"v8_outcome_attribution": v8, **unified}
+
+
+@router.get("/evaluations/intelligence")
+async def get_intelligence_evaluations(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    period_days: int = Query(default=7, ge=1, le=90, alias="periodDays"),
+) -> dict[str, Any]:
+    return await get_intelligence_evaluation_service(settings).load_admin_evaluations_summary(
+        org_id, period_days=period_days
+    )
+
+
+@router.get("/routing")
+async def get_routing_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
+    events = await get_outcome_learning_service(settings)._fetch_events(org_id)
+    model_distribution: dict[str, int] = {}
+    confidence_bands: dict[str, int] = {"high": 0, "medium": 0, "low": 0, "insufficient": 0}
+    confidences: list[float] = []
+    escalations = 0
+    trust = get_ai_trust_layer()
+    for row in events:
+        model = str(row.get("model_name") or "unknown")
+        model_distribution[model] = model_distribution.get(model, 0) + 1
+        score = row.get("confidence_score")
+        if score is not None:
+            confidences.append(float(score))
+            band = trust.confidence_band(float(score))
+            confidence_bands[band] = confidence_bands.get(band, 0) + 1
+        if row.get("outcome_event") == "approval_required":
+            escalations += 1
+    guardrail_count = 0
+    try:
+        guard = (
+            client.table("guardrail_events")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        guardrail_count = int(guard.count or 0)
+    except Exception:  # noqa: BLE001
+        pass
+    return {
+        "routing_decisions_24h": len(events),
+        "escalations_to_human": escalations + guardrail_count,
+        "model_distribution": model_distribution,
+        "confidence_band_distribution": confidence_bands,
+        "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else None,
+    }
+
+
+@router.get("/simulations")
+async def get_simulations_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    return await get_simulation_service(settings).load_admin_simulations_summary(org_id)
+
+
+@router.get("/trust-summary")
+async def get_trust_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    period_days: int = Query(default=7, ge=1, le=90, alias="periodDays"),
+) -> dict[str, Any]:
+    events = await get_outcome_learning_service(settings)._fetch_events(org_id)
+    confidences = [float(r["confidence_score"]) for r in events if r.get("confidence_score") is not None]
+    trust = get_ai_trust_layer()
+    low = sum(1 for c in confidences if trust.confidence_band(c) in {"low", "insufficient"})
+    advisory = sum(1 for r in events if r.get("outcome_event") == "recommendation_created")
+    return {
+        "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else None,
+        "low_confidence_rate": round(low / len(confidences), 4) if confidences else None,
+        "missing_context_rate": None,
+        "advisory_only_rate": round(advisory / max(len(events), 1), 4),
+        "sources_cited_rate": None,
+        "period_days": period_days,
+    }
+
+
+@router.get("/training-readiness")
+async def get_training_readiness(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    return await get_training_signal_service(settings).get_training_readiness(org_id)
 
 
 class IntelligenceEngineSettingsUpdate(BaseModel):

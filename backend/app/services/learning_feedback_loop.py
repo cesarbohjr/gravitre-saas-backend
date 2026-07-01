@@ -37,8 +37,28 @@ class LearningFeedbackLoop:
                 await get_memory_promotion_service(self.settings).detect_decision_pattern_candidates(org_id)
             elif feedback_type == "user_correction":
                 await self._update_retrieval_signals(org_id, feedback_data)
+            if feedback_data.get("agent_id") and feedback_type in {"action_outcome", "approval_decision"}:
+                await self._update_agent_memory_from_outcome(org_id, feedback_data)
         except Exception as exc:  # noqa: BLE001
             logger.debug("learning_feedback_loop_skipped org_id=%s type=%s error=%s", org_id, feedback_type, exc)
+
+    async def _update_agent_memory_from_outcome(self, org_id: str, feedback_data: dict[str, Any]) -> None:
+        agent_id = str(feedback_data.get("agent_id") or "")
+        if not agent_id:
+            return
+        from app.services import agent_memory_service
+        from app.workflows.repository import get_supabase_client
+
+        client = get_supabase_client(self.settings)
+        outcome_event = str(feedback_data.get("outcome_event") or "workflow_executed")
+        await agent_memory_service.update_agent_memory_from_outcome(
+            self.settings,
+            client,
+            org_id,
+            agent_id,
+            outcome_event,
+            feedback_data,
+        )
 
     async def _update_retrieval_signals(self, org_id: str, feedback_data: dict[str, Any]) -> None:
         sources = feedback_data.get("sources") or []

@@ -215,12 +215,23 @@ class IntelligenceRouter:
             "estimated_impact": "medium",
             "is_destructive": False,
         }
+        risk_level = str(classification.get("risk_level") or "low")
+        simulation_summary = None
+        if risk_level != "low":
+            from app.services.simulation_service import get_simulation_service
+
+            simulation_summary = await get_simulation_service(self.settings).simulate_action(
+                org_id,
+                str(action.get("type") or "connector_write_action"),
+                {"workflow_id": classification.get("entity_id"), "connector_id": None},
+            )
         risk = await self._risk_evaluator.evaluate(
             org_id,
             user_id,
             action,
             classification,
             agent_selection.get("persona") or {},
+            simulation_summary=simulation_summary,
         )
         explanation = await get_explanation_generator().explain(
             "decision",
@@ -243,7 +254,11 @@ class IntelligenceRouter:
             actions_taken=[],
             actions_pending_approval=[action],
             advisory_only=not risk.get("can_proceed_without_approval"),
+            simulation_summary=simulation_summary,
+            action_safety_level=risk_level,
+            routing_summary=str(classification.get("intent")),
         )
+        wrapped["simulation_summary"] = simulation_summary
         wrapped["classification"] = classification
         wrapped["agent_selection"] = agent_selection
         wrapped["tool_selection"] = tool_selection

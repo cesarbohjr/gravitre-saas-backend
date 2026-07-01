@@ -321,3 +321,165 @@ def format_retrieval_prompt_section(context: dict[str, Any]) -> str:
     if not context.get("memories") and not context.get("rag_chunks"):
         return ""
     return f"<agent_memory_context>{json.dumps(context, default=str)[:12000]}</agent_memory_context>\n"
+
+
+MIN_DECISIONS_FOR_PATTERN = 3
+
+
+async def remember_user_preference(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    preference_description: str,
+    source: str,
+    confidence: float = 0.7,
+) -> None:
+    create_agent_memory(
+        settings,
+        client,
+        org_id,
+        agent_id,
+        user_id=None,
+        content=f"User preference: {preference_description}",
+        category="preference",
+        provenance=source,
+        confidence=confidence * 100,
+    )
+
+
+async def remember_workflow_outcome(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    workflow_id: str,
+    outcome: str,
+    key_insight: str,
+) -> None:
+    create_agent_memory(
+        settings,
+        client,
+        org_id,
+        agent_id,
+        user_id=None,
+        content=f"Workflow {workflow_id} outcome={outcome}: {key_insight}",
+        category="pattern",
+        provenance="outcome_learning",
+        confidence=70,
+    )
+
+
+async def remember_approval_pattern(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    pattern_description: str,
+    evidence_count: int,
+) -> None:
+    if evidence_count < MIN_DECISIONS_FOR_PATTERN:
+        return
+    create_agent_memory(
+        settings,
+        client,
+        org_id,
+        agent_id,
+        user_id=None,
+        content=f"Approval pattern ({evidence_count} decisions): {pattern_description}",
+        category="pattern",
+        provenance="outcome_learning",
+        confidence=min(95, 50 + evidence_count * 5),
+    )
+
+
+async def remember_prediction_outcome(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    model_name: str,
+    prediction_accuracy: float,
+    task_type: str,
+) -> None:
+    create_agent_memory(
+        settings,
+        client,
+        org_id,
+        agent_id,
+        user_id=None,
+        content=f"Model {model_name} accuracy={prediction_accuracy:.2f} on {task_type}",
+        category="fact",
+        provenance="outcome_learning",
+        confidence=prediction_accuracy * 100,
+    )
+
+
+async def get_relevant_agent_memory(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    query: str,
+    memory_categories: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    if memory_categories:
+        results: list[dict[str, Any]] = []
+        for category in memory_categories:
+            results.extend(list_agent_memories(client, org_id, agent_id, category=category, query=query))
+        return results
+    return search_agent_memories(settings, client, org_id, agent_id, query)
+
+
+async def update_agent_memory_from_outcome(
+    settings: Settings,
+    client: Any,
+    org_id: str,
+    agent_id: str,
+    outcome_event: str,
+    outcome_data: dict[str, Any],
+) -> None:
+    import asyncio
+
+    async def _run() -> None:
+        if outcome_event in {"workflow_executed", "workflow_failed"}:
+            await remember_workflow_outcome(
+                settings,
+                client,
+                org_id,
+                agent_id,
+                str(outcome_data.get("workflow_id") or ""),
+                "success" if outcome_event == "workflow_executed" else "failure",
+                str(outcome_data.get("key_insight") or outcome_data.get("task_description") or outcome_event),
+            )
+        elif outcome_event == "user_feedback_positive":
+            await remember_user_preference(
+                settings,
+                client,
+                org_id,
+                agent_id,
+                str(outcome_data.get("preference_description") or "positive feedback"),
+                str(outcome_data.get("source") or "outcome_learning"),
+            )
+        elif outcome_event == "approval_granted":
+            await remember_approval_pattern(
+                settings,
+                client,
+                org_id,
+                agent_id,
+                str(outcome_data.get("pattern_description") or "approval granted"),
+                int(outcome_data.get("evidence_count") or MIN_DECISIONS_FOR_PATTERN),
+            )
+        elif outcome_event == "prediction_validated":
+            await remember_prediction_outcome(
+                settings,
+                client,
+                org_id,
+                agent_id,
+                str(outcome_data.get("model_name") or "unknown"),
+                float(outcome_data.get("prediction_accuracy") or 0.5),
+                str(outcome_data.get("task_type") or "unknown"),
+            )
+
+    asyncio.create_task(_run())
+

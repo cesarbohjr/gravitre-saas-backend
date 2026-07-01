@@ -33,9 +33,24 @@ class AITrustLayer:
         actions_taken: list[dict[str, Any]],
         actions_pending_approval: list[dict[str, Any]],
         advisory_only: bool,
+        *,
+        internal_sources: list[dict[str, Any]] | None = None,
+        connector_sources: list[dict[str, Any]] | None = None,
+        memory_sources: list[dict[str, Any]] | None = None,
+        graph_sources: list[dict[str, Any]] | None = None,
+        ml_models_used: list[str] | None = None,
+        ai_systems_used: list[str] | None = None,
+        assumptions: list[str] | None = None,
+        risks: list[str] | None = None,
+        missing_context: list[str] | None = None,
+        data_freshness: str | None = None,
+        recommended_next_action: str | None = None,
+        routing_summary: str | None = None,
+        simulation_summary: dict[str, Any] | None = None,
+        action_safety_level: str | None = None,
     ) -> dict[str, Any]:
         band = self.confidence_band(confidence)
-        return {
+        base = {
             "answer": answer,
             "confidence": round(max(0.0, min(1.0, float(confidence))), 4),
             "confidence_band": band,
@@ -45,7 +60,79 @@ class AITrustLayer:
             "actions_pending_approval": actions_pending_approval,
             "advisory_only": advisory_only,
             "show_why_this_answer": bool(reasoning_summary),
+            "source_breakdown": {
+                "internal": internal_sources or [],
+                "connectors": connector_sources or [],
+                "memory": memory_sources or [],
+                "graph": graph_sources or [],
+            },
+            "ml_models_used": ml_models_used or [],
+            "ai_systems_used": ai_systems_used or [],
+            "assumptions": assumptions or [],
+            "risks": risks or [],
+            "missing_context": missing_context or [],
+            "data_freshness": data_freshness,
+            "recommended_next_action": recommended_next_action,
+            "routing_summary": routing_summary,
+            "simulation_summary": simulation_summary,
+            "action_safety_level": action_safety_level or "low",
         }
+        return base
+
+    async def generate_answer_explanation(
+        self,
+        sources: list[dict[str, Any]],
+        model_used: str,
+        confidence: float,
+    ) -> str:
+        internal = sum(1 for s in sources if s.get("type") in {"document", "rag", "internal"})
+        connector = sum(1 for s in sources if s.get("type") in {"connector", "prediction"})
+        band = self.confidence_band(confidence)
+        return (
+            f"Answer based on {internal} internal source(s) and {connector} connector/prediction source(s). "
+            f"Model: {model_used}. Confidence: {confidence:.2f} ({band})."
+        )
+
+    async def generate_prediction_explanation(
+        self,
+        model_name: str,
+        confidence: float,
+        data_points_used: int,
+        confidence_note: str,
+    ) -> str:
+        return (
+            f"Prediction from {model_name} using {data_points_used} data point(s). "
+            f"Confidence: {confidence:.2f}. {confidence_note}"
+        )
+
+    async def generate_missing_context_warning(
+        self,
+        missing_sources: list[str],
+        confidence: float,
+    ) -> str:
+        if confidence >= 0.65:
+            return ""
+        missing = ", ".join(missing_sources) if missing_sources else "additional org context"
+        return (
+            f"Low confidence ({confidence:.2f}): answer may be incomplete because {missing} was unavailable."
+        )
+
+    def generate_action_safety_explanation(
+        self,
+        action_type: str,
+        risk_level: str,
+        approval_required: bool,
+        simulation_summary: dict[str, Any] | None,
+    ) -> str:
+        parts = [f"Action '{action_type}' has risk level {risk_level}."]
+        if approval_required:
+            parts.append("Human approval is required before execution.")
+        if simulation_summary:
+            status = simulation_summary.get("simulation_status")
+            parts.append(f"Pre-execution simulation status: {status}.")
+            if simulation_summary.get("reversible") is False:
+                parts.append("This action is treated as irreversible.")
+        return " ".join(parts)
 
 
 _ai_trust_layer: AITrustLayer | None = None

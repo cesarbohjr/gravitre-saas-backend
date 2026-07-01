@@ -76,8 +76,20 @@ class OutcomeTracker:
                     "response": response,
                     "classification": classification,
                     "action_taken": action_taken,
+                    "agent_id": agent_id,
                 },
             )
+            from app.services.outcome_learning_service import get_outcome_learning_service
+
+            learning = get_outcome_learning_service(self.settings)
+            if message_id:
+                learning.record_recommendation_outcome_async(
+                    org_id=org_id,
+                    recommendation_id=message_id,
+                    outcome_event="recommendation_created",
+                    task_type=classification.get("intent"),
+                    confidence_score=response.get("confidence"),
+                )
             asyncio.create_task(self._write_clickhouse(org_id, classification, message_id))
         except Exception as exc:  # noqa: BLE001
             logger.debug("outcome_tracker_skipped org_id=%s error=%s", org_id, exc)

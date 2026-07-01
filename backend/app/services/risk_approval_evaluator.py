@@ -24,6 +24,7 @@ class RiskApprovalEvaluator:
         action: dict[str, Any],
         classification: dict[str, Any],
         persona: dict[str, Any],
+        simulation_summary: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         _ = user_id
         client = get_supabase_client(self.settings)
@@ -55,6 +56,7 @@ class RiskApprovalEvaluator:
             "can_proceed_without_approval": not requires,
             "approval_type": action_type if requires else None,
             "estimated_impact": str(action.get("estimated_impact") or "low"),
+            "simulation_summary": simulation_summary,
         }
 
 

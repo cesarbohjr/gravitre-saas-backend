@@ -904,6 +904,154 @@ class ModelRouter:
         return self._get_model_for_complexity("medium")
 
 
+_model_router_singleton: ModelRouter | None = None
+
+
+class ConfidenceRoutingMixin:
+    """Confidence-aware routing helpers mixed into ModelRouter."""
+
+    MIN_EVALUATIONS = 5
+    MIN_OUTCOMES = 5
+
+
+def _apply_confidence_routing_mixin() -> None:
+    async def route_with_confidence(
+        self: ModelRouter,
+        task_type: str,
+        initial_confidence: float,
+        context_available: bool = True,
+        org_id: str | None = None,
+    ) -> dict[str, Any]:
+        _ = org_id
+        confidence = max(0.0, min(1.0, float(initial_confidence)))
+        if confidence >= 0.85:
+            tier = "low"
+            escalate = False
+        elif confidence >= 0.65:
+            tier = "medium"
+            escalate = False
+        elif confidence >= 0.40:
+            tier = "medium" if context_available else "high"
+            escalate = False
+        else:
+            tier = "high"
+            escalate = True
+        model = self._get_model_for_complexity(tier)
+        return {
+            "model": model,
+            "tier": tier,
+            "confidence": confidence,
+            "escalate_to_human": escalate,
+            "retrieve_more_context": confidence < 0.65 and not context_available,
+        }
+
+    async def route_with_historical_performance(
+        self: ModelRouter,
+        task_type: str,
+        department: str | None,
+        org_id: str,
+        evaluation_service: Any,
+    ) -> dict[str, Any]:
+        best = await evaluation_service.recommend_best_model_for_task(org_id, task_type, department)
+        if best.get("status") == "insufficient_data":
+            model = self._get_model_for_complexity("medium")
+            return {"model": model, "source": "default_routing", "task_type": task_type}
+        return {
+            "model": best.get("recommended_model"),
+            "source": "historical_performance",
+            "score": best.get("score"),
+            "task_type": task_type,
+        }
+
+    async def route_with_outcome_score(
+        self: ModelRouter,
+        task_type: str,
+        department: str | None,
+        org_id: str,
+        outcome_service: Any,
+    ) -> dict[str, Any]:
+        from app.services.model_selector import get_model_selector
+
+        selector = get_model_selector(self.settings)
+        base = await selector.select(org_id, {"intent": task_type, "department": department})
+        model_name = str(base.get("ml_model_name") or base.get("model") or self._get_model_for_complexity("medium"))
+        score_result = await outcome_service.get_model_outcome_score(org_id, model_name)
+        if score_result.get("status") == "insufficient_data":
+            return {**base, "routing_source": "default", "outcome_score": None}
+        outcome_score = float(score_result.get("score") or 0)
+        deprioritize = outcome_score < 0.35
+        return {
+            **base,
+            "routing_source": "outcome_adjusted",
+            "outcome_score": outcome_score,
+            "deprioritized": deprioritize,
+        }
+
+    async def route_with_multistep_fallback(
+        self: ModelRouter,
+        task_type: str,
+        confidence: float,
+        attempts: int = 0,
+        max_attempts: int = 2,
+    ) -> dict[str, Any]:
+        if attempts >= max_attempts:
+            return {
+                "model": self._get_model_for_complexity("high"),
+                "escalate_to_human": True,
+                "attempts": attempts,
+                "max_attempts": max_attempts,
+            }
+        routed = await route_with_confidence(self, task_type, confidence, context_available=attempts > 0)
+        if routed.get("escalate_to_human") and attempts + 1 < max_attempts:
+            return await route_with_multistep_fallback(
+                self, task_type, confidence + 0.1, attempts=attempts + 1, max_attempts=max_attempts
+            )
+        routed["attempts"] = attempts
+        routed["max_attempts"] = max_attempts
+        return routed
+
+    def should_retrieve_more_context(self: ModelRouter, confidence: float, context_size: int) -> bool:
+        return confidence < 0.65 and context_size < 8
+
+    def should_escalate_to_human(self: ModelRouter, confidence: float, risk_level: str) -> bool:
+        return confidence < 0.40 or str(risk_level or "").lower() == "high"
+
+    def should_trigger_agent_debate(self: ModelRouter, confidence: float, task_complexity: str) -> bool:
+        return confidence < 0.55 and task_complexity in ("high", "critical")
+
+    def explain_routing_decision(
+        self: ModelRouter,
+        selected_model: str,
+        task_type: str,
+        confidence: float,
+        routing_inputs: dict[str, Any],
+    ) -> str:
+        from app.services.ai_trust_layer import get_ai_trust_layer
+
+        historical = routing_inputs.get("historical_score")
+        parts = [
+            f"Selected {selected_model} for {task_type} task.",
+            f"Confidence: {confidence:.2f} ({get_ai_trust_layer().confidence_band(confidence)} band).",
+        ]
+        if historical is not None:
+            parts.append(f"Historical performance score: {historical:.2f}.")
+        if routing_inputs.get("escalate_to_human"):
+            parts.append("Escalated to human review due to low confidence or high risk.")
+        return " ".join(parts)
+
+    ModelRouter.route_with_confidence = route_with_confidence  # type: ignore[attr-defined]
+    ModelRouter.route_with_historical_performance = route_with_historical_performance  # type: ignore[attr-defined]
+    ModelRouter.route_with_outcome_score = route_with_outcome_score  # type: ignore[attr-defined]
+    ModelRouter.route_with_multistep_fallback = route_with_multistep_fallback  # type: ignore[attr-defined]
+    ModelRouter.should_retrieve_more_context = should_retrieve_more_context  # type: ignore[attr-defined]
+    ModelRouter.should_escalate_to_human = should_escalate_to_human  # type: ignore[attr-defined]
+    ModelRouter.should_trigger_agent_debate = should_trigger_agent_debate  # type: ignore[attr-defined]
+    ModelRouter.explain_routing_decision = explain_routing_decision  # type: ignore[attr-defined]
+
+
+_apply_confidence_routing_mixin()
+
+
 def get_model_router() -> ModelRouter:
     global _model_router_singleton
     if _model_router_singleton is None:

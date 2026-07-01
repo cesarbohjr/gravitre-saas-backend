@@ -50,6 +50,31 @@ class OptimizationSuggestionService:
     def _now(self) -> datetime:
         return datetime.now(timezone.utc)
 
+    async def _record_recommendation_outcome(
+        self,
+        org_id: str,
+        suggestion_id: str,
+        outcome_event: str,
+        *,
+        task_type: str | None = None,
+    ) -> None:
+        try:
+            from app.services.outcome_learning_service import get_outcome_learning_service
+
+            await get_outcome_learning_service(self.settings).record_recommendation_outcome(
+                org_id=org_id,
+                recommendation_id=suggestion_id,
+                outcome_event=outcome_event,
+                task_type=task_type,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "recommendation_outcome_skipped id=%s event=%s error=%s",
+                suggestion_id,
+                outcome_event,
+                exc,
+            )
+
     async def detect_suggestions_for_org(self, org_id: str) -> list[dict[str, Any]]:
         suggestions: list[dict[str, Any]] = []
         suggestions.extend(await self._detect_slow_steps(org_id))
@@ -561,7 +586,16 @@ class OptimizationSuggestionService:
             "status": "pending_review",
         }
         inserted = client.table("optimization_suggestions").insert(payload).execute()
-        return inserted.data[0] if inserted.data else payload
+        row = inserted.data[0] if inserted.data else payload
+        suggestion_id = str(row.get("id") or "")
+        if suggestion_id:
+            await self._record_recommendation_outcome(
+                org_id,
+                suggestion_id,
+                "recommendation_created",
+                task_type=suggestion_type,
+            )
+        return row
 
     async def get_summary(self, org_id: str) -> dict[str, Any]:
         client = self._client()
@@ -687,6 +721,7 @@ class OptimizationSuggestionService:
         )
         if not updated.data:
             raise ValueError("Optimization suggestion not found")
+        await self._record_recommendation_outcome(org_id, suggestion_id, "recommendation_rejected")
         return _serialize_suggestion(updated.data[0])
 
     async def _load_suggestion(self, org_id: str, suggestion_id: str) -> dict[str, Any]:
@@ -853,6 +888,7 @@ class OptimizationSuggestionService:
         )
         if not updated.data:
             raise ValueError("Optimization suggestion not found")
+        await self._record_recommendation_outcome(org_id, suggestion_id, "recommendation_approved")
         return _serialize_suggestion(updated.data[0])
 
     async def mark_applied(
@@ -881,6 +917,7 @@ class OptimizationSuggestionService:
         )
         if not updated.data:
             raise ValueError("Optimization suggestion not found")
+        await self._record_recommendation_outcome(org_id, suggestion_id, "recommendation_approved")
         return _serialize_suggestion(updated.data[0])
 
 
