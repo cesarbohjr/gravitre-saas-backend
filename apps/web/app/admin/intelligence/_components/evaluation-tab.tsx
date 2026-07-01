@@ -5,10 +5,20 @@ import { motion } from "framer-motion"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
-import { Gauge, ListChecks } from "@phosphor-icons/react"
+import { Gauge, ListChecks, Clock, Hash } from "@phosphor-icons/react"
 import { SectionCard, NotYetPopulated, TabStateGate, ScoreBar, scoreColor, formatScore, formatTime } from "./shared"
 import { LearningToRankCard } from "./learning-to-rank-card"
 import { cn } from "@/lib/utils"
+
+/** A compact labeled metric shown on a scored-response row. */
+function MetricPill({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5 rounded-md border border-border/60 bg-secondary/40 px-2 py-1">
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={cn("text-xs font-semibold tabular-nums", tone ?? "text-foreground")}>{value}</span>
+    </span>
+  )
+}
 
 export function EvaluationTab({ enabled }: { enabled: boolean }) {
   const { data, error, isLoading, mutate } = useSWR(
@@ -122,7 +132,9 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <Badge variant="outline">{s.surface}</Badge>
+                        <Badge variant="outline" className="capitalize">
+                          {s.surface}
+                        </Badge>
                         {s.userFeedback ? (
                           <Badge
                             variant="secondary"
@@ -132,29 +144,58 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
                                 : "border-rose-300 bg-rose-500/10 text-rose-700 dark:border-rose-500/40 dark:text-rose-300"
                             }
                           >
-                            {s.userFeedback === "helpful" ? "helpful" : "not helpful"}
+                            {s.userFeedback === "helpful" ? "Rated helpful" : "Rated not helpful"}
                           </Badge>
-                        ) : null}
-                        <span className="truncate text-xs text-muted-foreground">msg {s.messageId.slice(0, 8)}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No user rating</span>
+                        )}
                       </div>
-                      <span className={cn("shrink-0 text-sm font-semibold tabular-nums", text)}>
-                        {formatScore(s.compositeScore)}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end leading-none">
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Overall quality
+                        </span>
+                        <span className={cn("mt-1 text-lg font-semibold tabular-nums", text)}>
+                          {formatScore(s.compositeScore)}
+                          <span className="text-xs font-normal text-muted-foreground"> / 1.00</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums">
-                      <span>RAG {formatScore(s.ragQualityScore)}</span>
-                      <span>
-                        Reliability{" "}
-                        {s.chunkOutcomeSummary?.avgReliability != null
-                          ? formatScore(s.chunkOutcomeSummary.avgReliability)
-                          : "—"}
-                      </span>
-                      {s.retrievalLatencyMs != null ? <span>{Math.round(s.retrievalLatencyMs)}ms retrieval</span> : null}
-                      <span>{formatTime(s.evaluatedAt)}</span>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <MetricPill
+                        label="RAG quality"
+                        value={formatScore(s.ragQualityScore)}
+                        tone={s.ragQualityScore != null ? scoreColor(s.ragQualityScore).text : undefined}
+                      />
+                      {s.chunkOutcomeSummary?.avgReliability != null ? (
+                        <MetricPill
+                          label="Source reliability"
+                          value={formatScore(s.chunkOutcomeSummary.avgReliability)}
+                          tone={scoreColor(s.chunkOutcomeSummary.avgReliability).text}
+                        />
+                      ) : null}
+                      {s.chunkOutcomeSummary?.chunksUsed != null ? (
+                        <MetricPill label="Chunks used" value={String(s.chunkOutcomeSummary.chunksUsed)} />
+                      ) : null}
+                      {s.retrievalLatencyMs != null ? (
+                        <MetricPill label="Retrieval" value={`${Math.round(s.retrievalLatencyMs)} ms`} />
+                      ) : null}
                     </div>
                     {s.feedbackReason ? (
-                      <p className="mt-1 text-xs text-muted-foreground text-pretty">{s.feedbackReason}</p>
+                      <p className="mt-2 rounded-md bg-secondary/40 px-2.5 py-1.5 text-xs text-muted-foreground text-pretty">
+                        <span className="font-medium text-foreground">Feedback: </span>
+                        {s.feedbackReason}
+                      </p>
                     ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" aria-hidden />
+                        {formatTime(s.evaluatedAt)}
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-mono" title={`Message ${s.messageId}`}>
+                        <Hash className="h-3 w-3" aria-hidden />
+                        {s.messageId.slice(0, 8)}
+                      </span>
+                    </div>
                   </li>
                 )
               })}
