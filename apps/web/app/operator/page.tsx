@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { Timeline, TimelineItem } from "@/components/gravitre/timeline-item"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { cn } from "@/lib/utils"
@@ -652,6 +651,27 @@ export default function OperatorPage() {
     }
   }
 
+  // Consume a prompt handed off from the unified Gravitre AI surface (/ai).
+  // Prefill immediately; auto-run once a task + context are available.
+  useEffect(() => {
+    if (handoffPromptRef.current === null) {
+      const handoff = consumeAiHandoff("execute")
+      handoffPromptRef.current = handoff?.prompt ?? ""
+      if (handoff?.prompt) {
+        setTaskInput(handoff.prompt)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const prompt = handoffPromptRef.current
+    if (!prompt || handoffRanRef.current) return
+    if (!activeTask || !activeContext) return
+    handoffRanRef.current = true
+    void handleGeneratePlan(prompt)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTask, activeContext])
+
   const handlePauseJob = async () => {
     try {
       await pauseJob()
@@ -944,7 +964,7 @@ export default function OperatorPage() {
                 Delegate tasks, run execution plans, and track async work — not a free-form chat.
               </p>
             </div>
-            <AiWorkSurfacesCallout current="command-center" compact className="mb-3 md:mb-4" />
+
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <AIPresence 

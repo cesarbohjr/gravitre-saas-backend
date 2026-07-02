@@ -15,7 +15,7 @@ import {
 import { LiveActivityRail } from "./_components/live-activity-rail"
 import {
   ArrowUp,
-  Sparkles,
+  Sparkle as Sparkles,
   RocketLaunch,
   ChatCircle,
   MagnifyingGlass,
@@ -43,8 +43,8 @@ const MODES: ModeMeta[] = [
     badge: "Routes intent",
     icon: Sparkles,
     blurb: "Describe what you need — Gravitre picks the right engine.",
-    accent: "text-violet-500",
-    ring: "border-violet-500/40 bg-violet-500/5 ring-violet-500/20",
+    accent: "text-foreground",
+    ring: "border-foreground/30 bg-foreground/5 ring-foreground/15",
   },
   {
     id: "execute",
@@ -164,14 +164,14 @@ export default function GravitreAiPage() {
           {/* Ambient background */}
           <div className="pointer-events-none absolute inset-0 z-0">
             <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/20" />
-            <div className="absolute -top-32 left-1/2 h-[420px] w-[560px] -translate-x-1/2 rounded-full bg-violet-500/[0.04] blur-3xl" />
+            <div className="absolute -top-32 left-1/2 h-[420px] w-[560px] -translate-x-1/2 rounded-full bg-primary/[0.04] blur-3xl" />
           </div>
 
           <div className="relative z-10 mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-10 md:px-6 md:py-16">
             {/* Hero */}
             <div className="text-center">
               <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
-                <Lightning className="h-3.5 w-3.5 text-violet-500" weight="fill" aria-hidden />
+                <Lightning className="h-3.5 w-3.5 text-emerald-500" weight="fill" aria-hidden />
                 One surface, three modes
               </div>
               <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
@@ -215,7 +215,7 @@ export default function GravitreAiPage() {
               <div
                 className={cn(
                   "rounded-2xl border bg-card p-2 shadow-sm transition-all focus-within:ring-2",
-                  activeMode.id === "auto" && "focus-within:border-violet-500/50 focus-within:ring-violet-500/20",
+                  activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
                   activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
                   activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
                   activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
@@ -273,7 +273,7 @@ export default function GravitreAiPage() {
                     exit={{ opacity: 0 }}
                     className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground"
                   >
-                    <Sparkles className="h-4 w-4 animate-pulse text-violet-500" weight="fill" aria-hidden />
+                    <Sparkles className="h-4 w-4 animate-pulse text-emerald-500" weight="fill" aria-hidden />
                     {routedMode ? (
                       <span>
                         Routing to <span className={cn("font-medium", routedMode.accent)}>{routedMode.badge}</span>…
