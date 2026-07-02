@@ -31,6 +31,13 @@ ENTITY_INVOICE = "invoice"
 ENTITY_PROJECT = "project"
 ENTITY_EMPLOYEE = "employee"
 ENTITY_VENDOR = "vendor"
+ENTITY_PROSPECT = "prospect"
+ENTITY_CONTACT = "contact"
+ENTITY_MEETING = "meeting"
+ENTITY_CONTRACT = "contract"
+ENTITY_TASK = "task"
+ENTITY_OBJECTIVE = "objective"
+ENTITY_KPI = "kpi"
 
 BUSINESS_ENTITY_TYPES = frozenset(
     {
@@ -43,6 +50,13 @@ BUSINESS_ENTITY_TYPES = frozenset(
         ENTITY_PROJECT,
         ENTITY_EMPLOYEE,
         ENTITY_VENDOR,
+        ENTITY_PROSPECT,
+        ENTITY_CONTACT,
+        ENTITY_MEETING,
+        ENTITY_CONTRACT,
+        ENTITY_TASK,
+        ENTITY_OBJECTIVE,
+        ENTITY_KPI,
     }
 )
 
@@ -50,6 +64,11 @@ REL_TRACKED_BY = "tracked-by"
 REL_OBSERVED_IN = "observed-in"
 REL_BELONGS_TO = "belongs-to"
 REL_INFLUENCED_BY = "influenced-by"
+REL_REPORTS_TO = "reports_to"
+REL_BLOCKED_BY = "blocked_by"
+REL_CONTRIBUTES_TO = "contributes_to"
+REL_IMPACTS = "impacts"
+REL_REFERENCES = "references"
 
 
 def _now_iso() -> str:

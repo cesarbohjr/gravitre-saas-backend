@@ -14,6 +14,7 @@ from app.operators.assistant_mode_config import resolve_assistant_tool_names
 from app.operators.react_engine import ReActResult, ReActStatus
 from app.operators.stream_events import AssistantStreamComplete
 from app.services.intelligence_engine_settings import IntelligenceEngineSettings
+from tests.conftest import patch_agent_streaming_dialogue_pipeline
 
 
 _ENGINE_SETTINGS = IntelligenceEngineSettings(validation_enabled=False)
@@ -191,16 +192,17 @@ async def test_policy_appears_for_assistant_streaming(intelligence: AgentIntelli
                                     )
                                 ),
                             ):
-                                events = []
-                                async for event in intelligence.execute_task_streaming(
-                                    org_id="org-1",
-                                    user_id="user-1",
-                                    query="What is happening externally?",
-                                    mode="standard",
-                                    requested_tools=None,
-                                    client=client,
-                                ):
-                                    events.append(event)
+                                with patch_agent_streaming_dialogue_pipeline():
+                                    events = []
+                                    async for event in intelligence.execute_task_streaming(
+                                        org_id="org-1",
+                                        user_id="user-1",
+                                        query="What is happening externally?",
+                                        mode="standard",
+                                        requested_tools=None,
+                                        client=client,
+                                    ):
+                                        events.append(event)
 
     assert captured["system_prompt"]
     assert "## Research Policy" in captured["system_prompt"]
@@ -265,16 +267,17 @@ async def test_policy_appears_for_agent_chat_ui(intelligence: AgentIntelligence)
                                             "app.services.agent_memory_service.format_retrieval_prompt_section",
                                             return_value="",
                                         ):
-                                            async for _ in intelligence.execute_task_streaming(
-                                                org_id="org-1",
-                                                user_id="user-1",
-                                                query="Pipeline risks",
-                                                mode="agent",
-                                                requested_tools=scoped_tools,
-                                                agent_id="agent-1",
-                                                client=client,
-                                            ):
-                                                pass
+                                            with patch_agent_streaming_dialogue_pipeline():
+                                                async for _ in intelligence.execute_task_streaming(
+                                                    org_id="org-1",
+                                                    user_id="user-1",
+                                                    query="Pipeline risks",
+                                                    mode="agent",
+                                                    requested_tools=scoped_tools,
+                                                    agent_id="agent-1",
+                                                    client=client,
+                                                ):
+                                                    pass
 
     assert "## Research Policy" in captured["system_prompt"]
     assert resolve_assistant_tool_names("agent", scoped_tools)

@@ -17,9 +17,12 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "KnowledgeGraphService",
         "module": "app.services.knowledge_graph_service",
         "backed_by": "org_entity_relationships (v6)",
+        "new_capability": (
+            "multi-hop max 3, per-hop confidence decay, graph recommendations, graph explanation"
+        ),
         "risk_level": "low",
         "approval_required": False,
-        "advisory_only": False,
+        "advisory_only": True,
     },
     "event_driven_intelligence": {
         "status": "live",
@@ -37,13 +40,36 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
         "risk_level": "low",
         "advisory_only": True,
     },
-    "process_mining": {
+    "business_digital_twin": {
         "status": "partial",
+        "service": "BusinessDigitalTwinEngine",
+        "module": "app.services.business_digital_twin_engine",
+        "scope_boundary": (
+            "PERMANENT — evidence-based domain scenarios only. "
+            "No general org simulation. V9 boundary preserved."
+        ),
+        "risk_level": "medium",
+        "advisory_only": True,
+        "approval_required": True,
+    },
+    "process_mining": {
+        "status": "live",
         "service": "ProcessMiningService",
         "module": "app.services.process_mining_service",
+        "new_capability": (
+            "health scores, efficiency scores, business impact, connector telemetry"
+        ),
         "note": "Pattern detection live. Conformance checking planned.",
         "risk_level": "low",
         "advisory_only": True,
+    },
+    "consensus_engine": {
+        "status": "live",
+        "service": "ConsensusEngine",
+        "module": "app.operators.consensus_engine",
+        "risk_level": "low",
+        "advisory_only": True,
+        "approval_required": True,
     },
     "multi_agent_swarms": {
         "status": "live",
@@ -101,16 +127,38 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "predictive_operations": {
         "status": "live",
+        "service": "PredictiveOperationsEngine",
+        "module": "app.services.predictive_operations_engine",
         "endpoint": "/api/admin/intelligence/predictive-ops",
-        "module": "app.services.ai_architecture_status_service",
         "risk_level": "low",
+        "advisory_only": True,
+    },
+    "organizational_memory": {
+        "status": "live",
+        "service": "AgentMemoryIntelligenceService",
+        "module": "app.services.agent_memory_service",
+        "new_capability": (
+            "memory lineage, freshness scoring, why-gravitre-knows-this query"
+        ),
+        "risk_level": "low",
+        "advisory_only": False,
+    },
+    "federated_learning": {
+        "status": "disabled",
+        "service": "FederatedLearningCoordinator",
+        "module": "app.ml.federated_learning",
+        "note": "UNCHANGED — prerequisites not met. Do not activate without legal review.",
+        "risk_level": "high",
         "advisory_only": True,
     },
     "world_models": {
         "status": "planned",
         "service": "WorldModelScaffold",
         "module": "app.ml.world_models",
-        "activation": "6+ months v8 outcome data + CausalImpactAnalyzer active",
+        "new_capability": (
+            "auto-checked activation checklist — becomes config change when prerequisites met"
+        ),
+        "activation": "500 outcome trajectories + causal_impact_analyzer trained + WORLD_MODEL_ENABLED",
         "risk_level": "high",
         "approval_required": True,
         "advisory_only": True,
@@ -141,6 +189,9 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
         "status": "live",
         "service": "AutonomousResearchService",
         "module": "app.services.research_service",
+        "new_capability": (
+            "continuous monitoring, trend detection, source credibility scoring, executive briefs"
+        ),
         "risk_level": "low",
         "advisory_only": True,
     },

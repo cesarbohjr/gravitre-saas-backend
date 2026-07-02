@@ -15,7 +15,8 @@ def test_temporal_worker_registers_all_workflows():
     assert "MarketplaceInstallWorkflow" in names
     assert "OutcomeMeasurementWorkflow" in names
     assert "MemoryPromotionWorkflow" in names
-    assert len(names) == 4
+    assert "MLModelTrainingWorkflow" in names
+    assert len(names) == 5
 
 
 def test_asyncio_fallback_when_temporal_not_configured(monkeypatch):

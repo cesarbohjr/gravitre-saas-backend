@@ -48,10 +48,10 @@ CONSOLIDATION_DISCREPANCIES: tuple[ConsolidationDiscrepancy, ...] = (
         key="execution_core_naming",
         display_name="ExecutionCore docs vs AgentIntelligence implementation",
         category="naming",
-        audit_state="partial",
+        audit_state="confirmed",
         related_issue="STA-284",
         severity="warning",
-        notes="Universal execution is AgentIntelligence; ExecutionCore class absent but string references linger in code.",
+        notes="Universal execution is AgentIntelligence; ExecutionCore class absent but many string references still linger in code.",
     ),
     ConsolidationDiscrepancy(
         key="audit_retention_purge",

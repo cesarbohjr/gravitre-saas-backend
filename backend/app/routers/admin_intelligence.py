@@ -289,3 +289,117 @@ async def get_performance_dashboard(
     period: str = Query(default="24h", pattern="^(1h|24h|7d)$"),
 ) -> dict[str, Any]:
     return await load_performance_dashboard(settings, org_id, period=period)
+
+
+@router.get("/knowledge-graph")
+async def get_knowledge_graph_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.knowledge_graph_service import get_knowledge_graph_service
+
+    return await get_knowledge_graph_service().get_admin_summary(org_id, settings=settings)
+
+
+@router.get("/process-mining")
+async def get_process_mining_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.process_mining_service import get_process_mining_service
+
+    return await get_process_mining_service(settings).get_process_intelligence_summary(org_id)
+
+
+@router.get("/world-model-status")
+async def get_world_model_status_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+) -> dict[str, Any]:
+    from app.ml.world_models import WorldModelScaffold
+
+    return await WorldModelScaffold().check_activation_status(org_id)
+
+
+@router.get("/research-monitors")
+async def get_research_monitors_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.research_service import get_research_service
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
+    try:
+        rows = (
+            client.table("research_monitors")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("enabled", True)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        rows = []
+    topics = [str(r.get("topic") or "") for r in rows]
+    trending = []
+    research = get_research_service(settings)
+    for topic in topics[:5]:
+        trending.extend(await research.detect_trends(org_id, topic))
+    return {
+        "active_monitors": len(rows),
+        "topics": topics,
+        "last_findings_summary": [
+            {"topic": r.get("topic"), "lastCheckedAt": r.get("last_checked_at")} for r in rows[:10]
+        ],
+        "trending_topics": trending[:10],
+        "advisory_only": True,
+    }
+
+
+@router.get("/consensus-history")
+async def get_consensus_history_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from datetime import datetime, timedelta, timezone
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
+    since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    try:
+        rows = (
+            client.table("intelligence_consensus_deliberations")
+            .select("*")
+            .eq("org_id", org_id)
+            .gte("created_at", since)
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        rows = []
+    recent = [
+        {
+            "recommendation_summary": r.get("recommendation_summary"),
+            "confidence": r.get("confidence"),
+            "vote_breakdown": r.get("vote_breakdown") or {},
+            "minority_opinions": r.get("minority_opinions") or [],
+            "timestamp": r.get("created_at"),
+        }
+        for r in rows
+    ]
+    confidences = [float(r.get("confidence") or 0) for r in rows if r.get("confidence") is not None]
+    return {
+        "recent_deliberations": recent,
+        "consensus_trigger_rate_7d": round(len(rows) / 7.0, 4),
+        "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else 0.0,
+        "advisory_only": True,
+    }

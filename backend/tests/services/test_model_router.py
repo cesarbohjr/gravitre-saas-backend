@@ -154,7 +154,7 @@ def test_model_router_returns_updated_model_per_tier():
 
 def test_existing_tier_routing_logic_unchanged_in_structure():
     """Config-only model IDs; tier dispatch and mode mapping architecture unchanged."""
-    assert set(MODEL_TIERS) == {"low", "medium", "high"}
+    assert set(MODEL_TIERS) == {"low", "medium", "high", "vision"}
     for tier in MODEL_TIERS:
         assert set(MODEL_TIERS[tier]) == {"openai", "anthropic", "gemini"}
 

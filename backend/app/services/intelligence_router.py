@@ -19,6 +19,7 @@ from app.services.decision_intelligence_service import get_decision_intelligence
 from app.services.dialogue_policy_engine import get_dialogue_policy_engine
 from app.services.explanation_generator import get_explanation_generator
 from app.services.knowledge_graph_service import get_knowledge_graph_service
+from app.services.model_router import get_model_router
 from app.services.model_selector import get_model_selector
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
 from app.services.outcome_tracker import get_outcome_tracker
@@ -174,17 +175,33 @@ class IntelligenceRouter:
 
         primary_answer = str(result.get("answer") or "")
         if primary_answer and policy["mode"] in {"guide", "recommend", "answer"}:
-            refined = await self._consensus.refine_if_warranted(
-                org_id,
-                request,
-                primary_answer,
-                classification,
-                float(result.get("confidence") or confidence),
-                policy["mode"],
-            )
-            if refined.get("consensus_used"):
-                result["answer"] = refined["response"]
+            router = get_model_router()
+            task_complexity = str(classification.get("complexity") or "medium")
+            if router.should_trigger_agent_debate(float(result.get("confidence") or confidence), task_complexity):
+                from app.operators.consensus_engine import get_consensus_engine
+
+                debate = await get_consensus_engine(self.settings).deliberate(
+                    org_id,
+                    primary_answer,
+                    {"request": request, "classification": classification},
+                    ["validator", "planner", "risk"],
+                )
+                result["answer"] = str(debate.get("consensus_recommendation") or primary_answer)
                 result["consensus_used"] = True
+                result["vote_breakdown"] = debate.get("vote_breakdown")
+                result["minority_opinions"] = debate.get("minority_opinions")
+            else:
+                refined = await self._consensus.refine_if_warranted(
+                    org_id,
+                    request,
+                    primary_answer,
+                    classification,
+                    float(result.get("confidence") or confidence),
+                    policy["mode"],
+                )
+                if refined.get("consensus_used"):
+                    result["answer"] = refined["response"]
+                    result["consensus_used"] = True
 
         suggestions = await self._guidance.get_suggestions(
             org_id,

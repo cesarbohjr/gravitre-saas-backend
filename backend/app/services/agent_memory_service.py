@@ -483,3 +483,165 @@ async def update_agent_memory_from_outcome(
 
     asyncio.create_task(_run())
 
+
+MEMORY_SCOPE_NOTE = (
+    "Organizational memory lineage reads agent_memory_promotion_audit only. "
+    "Freshness scoring is advisory for review/expire decisions."
+)
+
+
+class AgentMemoryIntelligenceService:
+    """Lineage, freshness, and explainability for agent memories (v4 audit preserved)."""
+
+    def __init__(self, settings: Settings | None = None) -> None:
+        from app.config import get_settings
+
+        self.settings = settings or get_settings()
+
+    def _client(self, client: Any | None) -> Any:
+        from app.workflows.repository import get_supabase_client
+
+        return client or get_supabase_client(self.settings)
+
+    async def get_memory_lineage(
+        self,
+        org_id: str,
+        memory_id: str,
+        *,
+        client: Any | None = None,
+    ) -> dict[str, Any]:
+        db = self._client(client)
+        memory_rows = (
+            db.table("agent_memories")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("id", memory_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not memory_rows:
+            return {
+                "memory_id": memory_id,
+                "current_status": "not_found",
+                "why_this_was_remembered": "Memory record not found.",
+                "scope_note": MEMORY_SCOPE_NOTE,
+            }
+        memory = memory_rows[0]
+        audit_rows = (
+            db.table("agent_memory_promotion_audit")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("memory_id", memory_id)
+            .order("created_at", desc=False)
+            .execute()
+            .data
+            or []
+        )
+        promotion_path = [
+            {
+                "action": row.get("action"),
+                "actor_id": row.get("actor_id"),
+                "created_at": row.get("created_at"),
+                "notes": row.get("notes"),
+            }
+            for row in audit_rows
+        ]
+        human_approved = next((r for r in audit_rows if r.get("action") == "approved"), None)
+        auto_promoted = any(r.get("action") == "auto_promoted" for r in audit_rows)
+        origin = promotion_path[0] if promotion_path else None
+        why = str(memory.get("provenance") or memory.get("content") or "Observed org activity")
+        if human_approved:
+            why = f"Approved by admin on {human_approved.get('created_at')}. {why}"
+        elif auto_promoted:
+            why = f"Auto-promoted from repeated org signals. {why}"
+        return {
+            "memory_id": memory_id,
+            "origin_event": origin,
+            "promotion_path": promotion_path,
+            "human_approved_by": human_approved.get("actor_id") if human_approved else None,
+            "auto_promoted": auto_promoted,
+            "current_status": "active",
+            "why_this_was_remembered": why[:500],
+            "scope_note": MEMORY_SCOPE_NOTE,
+        }
+
+    async def calculate_memory_freshness(
+        self,
+        org_id: str,
+        memory_id: str,
+        *,
+        client: Any | None = None,
+    ) -> dict[str, Any]:
+        db = self._client(client)
+        rows = (
+            db.table("agent_memories")
+            .select("last_retrieved_at, usage_count, updated_at")
+            .eq("org_id", org_id)
+            .eq("id", memory_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            return {
+                "freshness_score": 0.0,
+                "freshness_label": "stale",
+                "recommendation": "expire",
+                "scope_note": MEMORY_SCOPE_NOTE,
+            }
+        row = rows[0]
+        last = row.get("last_retrieved_at") or row.get("updated_at")
+        days_since = 999
+        if last:
+            try:
+                last_dt = datetime.fromisoformat(str(last).replace("Z", "+00:00"))
+                days_since = max(0, int((datetime.now(timezone.utc) - last_dt).total_seconds() // 86400))
+            except ValueError:
+                pass
+        usage = int(row.get("usage_count") or 0)
+        freshness_score = max(0.0, min(1.0, 1.0 - (days_since / 90.0) * 0.6 + min(usage, 20) * 0.02))
+        if freshness_score >= 0.7:
+            label = "fresh"
+            recommendation = "keep"
+        elif freshness_score >= 0.4:
+            label = "aging"
+            recommendation = "review"
+        else:
+            label = "stale"
+            recommendation = "expire"
+        return {
+            "freshness_score": round(freshness_score, 4),
+            "freshness_label": label,
+            "last_retrieved_at": last,
+            "days_since_retrieval": days_since,
+            "recommendation": recommendation,
+            "scope_note": MEMORY_SCOPE_NOTE,
+        }
+
+    async def explain_why_gravitre_knows_this(
+        self,
+        org_id: str,
+        memory_id: str,
+        *,
+        client: Any | None = None,
+    ) -> str:
+        lineage = await self.get_memory_lineage(org_id, memory_id, client=client)
+        freshness = await self.calculate_memory_freshness(org_id, memory_id, client=client)
+        return (
+            f"{lineage['why_this_was_remembered']} "
+            f"Status: {freshness['freshness_label']}."
+        )
+
+
+_memory_intel: AgentMemoryIntelligenceService | None = None
+
+
+def get_agent_memory_intelligence_service(settings: Settings | None = None) -> AgentMemoryIntelligenceService:
+    global _memory_intel
+    if _memory_intel is None or settings is not None:
+        _memory_intel = AgentMemoryIntelligenceService(settings)
+    return _memory_intel
+

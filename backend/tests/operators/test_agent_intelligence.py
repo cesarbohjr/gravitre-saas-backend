@@ -15,6 +15,7 @@ from app.operators.agent_intelligence import (
 from app.operators.agent_prompts import build_agent_system_prompt, normalize_agent_role
 from app.operators.react_engine import ReActResult, ReActStatus, ReActTraceStep
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+from tests.conftest import patch_agent_streaming_dialogue_pipeline
 
 
 @pytest.fixture
@@ -433,15 +434,16 @@ async def test_streaming_emits_text_events_when_react_returns_answer_only(intell
                     "app.operators.agent_intelligence.maybe_summarize_history",
                     AsyncMock(return_value=SimpleNamespace(messages=[], summary=None, summary_updated=False)),
                 ):
-                    async for event in intelligence.execute_task_streaming(
-                        org_id="org-1",
-                        user_id="user-1",
-                        query="Say smoke-ok in one word.",
-                        mode="standard",
-                        requested_tools=["agent_status"],
-                        client=client,
-                    ):
-                        events.append(event)
+                    with patch_agent_streaming_dialogue_pipeline():
+                        async for event in intelligence.execute_task_streaming(
+                            org_id="org-1",
+                            user_id="user-1",
+                            query="Say smoke-ok in one word.",
+                            mode="standard",
+                            requested_tools=["agent_status"],
+                            client=client,
+                        ):
+                            events.append(event)
 
     sse_types = [event.sse_type for event in events if isinstance(event, AssistantStreamEvent)]
     assert "text-start" in sse_types

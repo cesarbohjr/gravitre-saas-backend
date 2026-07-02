@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any, AsyncGenerator
-from unittest.mock import MagicMock
+from contextlib import ExitStack, contextmanager
+from typing import Any, AsyncGenerator, Iterator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -107,6 +108,44 @@ def mock_embedding_response() -> dict[str, Any]:
         "model": "text-embedding-3-small",
         "usage": {"prompt_tokens": 10, "total_tokens": 10},
     }
+
+
+_DEFAULT_DIALOGUE_SETTINGS = {
+    "clarification_threshold": 0.65,
+    "escalation_threshold": 0.40,
+    "proactive_suggestions_enabled": True,
+    "max_suggestions_per_response": 2,
+    "consensus_enabled": True,
+    "sentiment_detection_enabled": True,
+    "memory_retention_days": 90,
+    "default_persona": "friendly_assistant",
+}
+
+
+@contextmanager
+def patch_agent_streaming_dialogue_pipeline() -> Iterator[None]:
+    """Stub conversational pipeline deps added to execute_task_streaming()."""
+    mock_load = AsyncMock(return_value=_DEFAULT_DIALOGUE_SETTINGS)
+    patch_targets = (
+        "app.services.chat_dialogue_settings.load_chat_dialogue_settings",
+        "app.services.persona_service.load_chat_dialogue_settings",
+        "app.services.proactive_guidance_service.load_chat_dialogue_settings",
+        "app.services.conversational_consensus_service.load_chat_dialogue_settings",
+        "app.services.intelligence_router.load_chat_dialogue_settings",
+    )
+    import app.services.persona_service as persona_module
+
+    with ExitStack() as stack:
+        for target in patch_targets:
+            stack.enter_context(patch(target, mock_load))
+        stack.enter_context(
+            patch(
+                "app.services.persona_service.PersonaService._load_user_preference",
+                AsyncMock(return_value=None),
+            )
+        )
+        persona_module._persona_service = None
+        yield
 
 
 @pytest.fixture
