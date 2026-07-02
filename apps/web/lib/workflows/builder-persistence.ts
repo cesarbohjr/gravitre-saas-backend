@@ -135,6 +135,7 @@ export interface BuilderSaveResponse extends BuilderGraphResponse {
 export interface ExecuteResponse {
   run_id: string
   status: "pending" | "running" | "completed" | "failed"
+  errors?: string[]
   steps?: {
     node_id: string
     status: "pending" | "running" | "completed" | "failed"
@@ -185,26 +186,55 @@ function edgeTargets(edges: Array<Record<string, unknown>>, nodeId: string): str
     .map((e) => String(e.to_node_id ?? e.toNodeId))
 }
 
+function resolveNodePosition(node: Record<string, unknown>): { x: number; y: number } {
+  const rawPosition = node.position
+  const position =
+    rawPosition && typeof rawPosition === "object"
+      ? (rawPosition as { x?: number; y?: number })
+      : null
+  const xFromPosition =
+    position && typeof position.x === "number" && Number.isFinite(position.x) ? position.x : null
+  const yFromPosition =
+    position && typeof position.y === "number" && Number.isFinite(position.y) ? position.y : null
+  const xFromColumn = Number(node.position_x)
+  const yFromColumn = Number(node.position_y)
+  return {
+    x: xFromPosition ?? (Number.isFinite(xFromColumn) ? xFromColumn : 0),
+    y: yFromPosition ?? (Number.isFinite(yFromColumn) ? yFromColumn : 0),
+  }
+}
+
+function autoLayoutCanvasNodes(nodes: CanvasWorkflowNode[]): CanvasWorkflowNode[] {
+  if (nodes.length === 0) return nodes
+  const allAtOrigin = nodes.every((node) => node.position.x === 0 && node.position.y === 0)
+  if (!allAtOrigin) return nodes
+  return nodes.map((node, index) => ({
+    ...node,
+    position: {
+      x: 120 + (index % 3) * 280,
+      y: 120 + Math.floor(index / 3) * 200,
+    },
+  }))
+}
+
 export function apiGraphToCanvasNodes(
   apiNodes: Array<Record<string, unknown>>,
   apiEdges: Array<Record<string, unknown>>
 ): CanvasWorkflowNode[] {
-  return apiNodes.map((node) => {
+  const nodes = apiNodes.map((node) => {
     const id = String(node.id)
     const metadata = (node.metadata as Record<string, unknown>) || {}
     const config = (node.config as Record<string, unknown>) || {}
-    const position =
-      (node.position as { x?: number; y?: number }) ||
-      ({ x: Number(node.position_x ?? 0), y: Number(node.position_y ?? 0) })
+    const position = resolveNodePosition(node)
     return {
       id,
       type: normalizeCanvasNodeType(node.node_type ?? node.type),
       name: String(node.name ?? node.title ?? "Node"),
       description: (node.description as string) || (node.instruction as string),
       config,
-      position: { x: Number(position.x ?? 0), y: Number(position.y ?? 0) },
+      position,
       connections: edgeTargets(apiEdges, id),
-      state: "idle",
+      state: "idle" as const,
       vendor: (config.vendor as string) || (node.systemName as string),
       selectedAction: (config.selected_action as string) || (config.selectedAction as string),
       dataLabel: (config.data_label as string) || (config.dataLabel as string),
@@ -213,6 +243,7 @@ export function apiGraphToCanvasNodes(
       councilConfig: (metadata.councilConfig ?? config.councilConfig) as CouncilConfig | undefined,
     }
   })
+  return autoLayoutCanvasNodes(nodes)
 }
 
 export function canvasToSavePayload(nodes: CanvasWorkflowNode[]) {
@@ -295,6 +326,9 @@ export async function executeWorkflow(
   return {
     run_id: runId,
     status: response.status as ExecuteResponse["status"],
+    errors: Array.isArray(response.errors)
+      ? response.errors.map((item) => String(item))
+      : [],
     steps: (response.steps ?? []).map((step) => ({
       node_id: String(step.nodeId ?? step.node_id ?? step.step_id ?? step.stepId ?? ""),
       status: String(step.status ?? "pending") as "pending" | "running" | "completed" | "failed",

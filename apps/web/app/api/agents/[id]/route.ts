@@ -1,12 +1,125 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { proxyToFastApi } from "@/lib/backend-proxy"
+import {
+  inferAgentDepartment,
+  inferAgentPersonality,
+  mapOperatorStatusToUi,
+  normalizeAgentDepartment,
+} from "@/lib/agent-display"
+import { snakeToCamel } from "@/lib/supabase/transforms"
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+function mapAgentRow(input: Record<string, unknown>) {
+  const model = snakeToCamel<Record<string, unknown>>(input)
+  const personality =
+    model.personality && typeof model.personality === "object"
+      ? (model.personality as Record<string, unknown>)
+      : {}
+  const stats = model.stats && typeof model.stats === "object" ? (model.stats as Record<string, unknown>) : {}
+  const department = normalizeAgentDepartment(String(model.department ?? "Operations"))
+
+  return {
+    id: String(model.id),
+    name: String(model.name ?? "Agent"),
+    role: String(model.role ?? model.name ?? "AI Agent"),
+    department,
+    description: String(model.description ?? model.purpose ?? "AI teammate"),
+    status: mapOperatorStatusToUi(String(model.status ?? "idle")),
+    model: String(model.model ?? "auto"),
+    knowledgeDocCount: 0,
+    personality: {
+      color: String(personality.color ?? inferAgentPersonality(department).color),
+      gradient: String(personality.gradient ?? inferAgentPersonality(department).gradient),
+      glow: String(personality.glow ?? inferAgentPersonality(department).glow),
+    },
+    stats: {
+      tasksToday: Number(stats.tasksToday ?? stats.tasks_today ?? 0),
+      successRate: Number(stats.successRate ?? stats.success_rate ?? 100),
+      avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
+      workflowsUsing: Number(stats.workflowsUsing ?? stats.workflows_using ?? 0),
+      knowledgeDocCount: 0,
+    },
+    capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
+    permissions: Array.isArray(model.systems) ? model.systems : [],
+    lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
+    lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
+    recentTasks: [],
+    createdAt: String(model.createdAt ?? model.created_at ?? ""),
+  }
+}
+
+function mapOperatorRow(input: Record<string, unknown>) {
+  const name = String(input.name ?? "Agent")
+  const role = String(input.role ?? name)
+  const department = inferAgentDepartment(name, String(input.description ?? ""), role)
+  const personality = inferAgentPersonality(department)
+  const successRate = Number(input.success_rate ?? 100)
+  const totalRuns = Number(input.total_runs ?? 0)
+
+  return {
+    id: String(input.id),
+    name,
+    role,
+    department,
+    description: String(input.description ?? "AI teammate"),
+    status: mapOperatorStatusToUi(String(input.status ?? "draft")),
+    model: "auto",
+    knowledgeDocCount: 0,
+    personality,
+    stats: {
+      tasksToday: totalRuns,
+      successRate: Number.isFinite(successRate) ? successRate : 100,
+      avgResponseTime: "-",
+      workflowsUsing: 0,
+      knowledgeDocCount: 0,
+    },
+    capabilities: Array.isArray(input.capabilities) ? input.capabilities : [],
+    permissions: [],
+    lastAction: "No recent activity",
+    lastActionTime: "recently",
+    recentTasks: [],
+    createdAt: String(input.created_at ?? ""),
+  }
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
+  const supabase = createSupabaseRouteClient(request)
+  const orgId = await resolveOrgId(supabase, request)
+  if (!orgId) {
+    return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+  }
+
+  const { data: agentRow, error: agentError } = await supabase
+    .from("agents")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("id", id)
+    .maybeSingle()
+
+  if (agentError) {
+    return NextResponse.json({ error: agentError.message }, { status: 500 })
+  }
+
+  if (agentRow) {
+    return NextResponse.json({ agent: mapAgentRow(agentRow as Record<string, unknown>) })
+  }
+
+  const { data: operatorRow } = await supabase
+    .from("operators")
+    .select("id, org_id, name, description, status, role, capabilities, total_runs, success_rate, created_at")
+    .eq("org_id", orgId)
+    .eq("id", id)
+    .maybeSingle()
+
+  if (operatorRow) {
+    return NextResponse.json({ agent: mapOperatorRow(operatorRow as Record<string, unknown>) })
+  }
+
   return proxyToFastApi(request, `/api/agents/${id}`)
 }
 

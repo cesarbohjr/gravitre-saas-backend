@@ -5,7 +5,6 @@ import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
 import { TopBar } from "./top-bar"
-import { NotificationProvider } from "./notification-center"
 import { CommandPalette } from "./command-palette"
 import { GoalWorkflowWizard } from "./goal-workflow-wizard"
 import { usePathname, useRouter } from "next/navigation"
@@ -244,8 +243,7 @@ export function AppShell({ children, title }: AppShellProps) {
   }
 
   return (
-    <NotificationProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={() => setSidebarOpen(true)} />
@@ -354,7 +352,6 @@ export function AppShell({ children, title }: AppShellProps) {
             </footer>
           )}
         </div>
-      </div>
       
       {/* Command Palette - accessible via Cmd+K */}
       <CommandPalette onCreateFromGoal={() => setGoalWizardOpen(true)} />
@@ -373,6 +370,6 @@ export function AppShell({ children, title }: AppShellProps) {
         onOpenChange={setUpgradeModalOpen}
         subscriptionStatus={planRequired?.subscription_status ?? billingStatusData?.billingState}
       />
-    </NotificationProvider>
+    </div>
   )
 }

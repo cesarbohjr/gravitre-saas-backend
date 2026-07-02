@@ -150,6 +150,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
           <WorkSectionErrorCard
             title="Model unavailable"
             message={error instanceof Error ? error.message : "Unknown error"}
+            error={error}
             onRetry={() => mutate()}
           />
         ) : model ? (

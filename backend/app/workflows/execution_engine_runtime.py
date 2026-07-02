@@ -159,8 +159,40 @@ def _finalize_run(
     )
     if final_status == RUN_STATUS_FAILED:
         emit_execute_failed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, run_error_message)
+        try:
+            from app.services.notification_service import create_user_notification
+
+            create_user_notification(
+                ctx.client,
+                org_id=ctx.org_id,
+                user_id=ctx.user_id,
+                notification_type="run_failed",
+                title="Workflow run failed",
+                body=(run_error_message or "Review the run details for step-level errors.")[:2000],
+                url=f"/runs/{ctx.run_id}",
+                entity_type="workflow_run",
+                entity_id=ctx.run_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("run_failed notification skipped run_id=%s error=%s", ctx.run_id, exc)
     elif final_status == RUN_STATUS_COMPLETED:
         emit_execute_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, final_status)
+        try:
+            from app.services.notification_service import create_user_notification
+
+            create_user_notification(
+                ctx.client,
+                org_id=ctx.org_id,
+                user_id=ctx.user_id,
+                notification_type="run_completed",
+                title="Workflow run completed",
+                body=f"Run finished with status {final_status}.",
+                url=f"/runs/{ctx.run_id}",
+                entity_type="workflow_run",
+                entity_id=ctx.run_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("run_completed notification skipped run_id=%s error=%s", ctx.run_id, exc)
         try:
             from app.marketplace.adoption import maybe_record_workflow_adoption
 

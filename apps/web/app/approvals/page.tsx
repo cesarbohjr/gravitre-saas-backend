@@ -69,6 +69,26 @@ interface Approval {
   }
 }
 
+function formatRelativeTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const diffMs = Date.now() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMs / 3600000)
+  if (diffHours < 24) return `${diffHours}h ago`
+  return date.toLocaleDateString()
+}
+
+function formatRequestedBy(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed === "system") return "System"
+  if (/^[0-9a-f-]{36}$/i.test(trimmed)) return `Team member (${trimmed.slice(0, 8)}…)`
+  if (trimmed.includes("@")) return trimmed.split("@")[0].replace(/[._]/g, " ")
+  return trimmed
+}
+
 function normalizeApproval(input: Record<string, unknown>): Approval {
   const type = String(input.type ?? "config")
   const priority = String(input.priority ?? "medium")
@@ -99,8 +119,16 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
     description: String(input.description ?? ""),
     type: type === "workflow" || type === "connector" || type === "access" ? type : "config",
     environment: environment === "production" ? "production" : "staging",
-    requestedBy: String(input.requestedBy ?? input.requested_by ?? "system"),
-    requestedAt: String(input.requestedAt ?? input.requested_at ?? "recently"),
+    requestedBy: formatRequestedBy(
+      String(
+        input.requestedByName ??
+          input.requested_by_name ??
+          input.requestedBy ??
+          input.requested_by ??
+          "system",
+      ),
+    ),
+    requestedAt: formatRelativeTime(String(input.requestedAt ?? input.requested_at ?? "recently")),
     priority: priority === "high" || priority === "low" ? priority : "medium",
     status: status === "approved" || status === "rejected" ? status : "pending",
     aiRecommendation,
@@ -115,7 +143,11 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
     context:
       rawContext && typeof rawContext === "object"
         ? {
-            entity: String((rawContext as Record<string, unknown>).entity ?? "unknown"),
+            entity: String(
+              (rawContext as Record<string, unknown>).workflow_name ??
+                (rawContext as Record<string, unknown>).entity ??
+                "Workflow run",
+            ),
             action: String((rawContext as Record<string, unknown>).action ?? "Review request"),
             impact:
               (rawContext as Record<string, unknown>).impact !== undefined
@@ -163,16 +195,21 @@ function DecisionCard({
   isSelected,
   onSelect,
   onApprove, 
-  onReject 
+  onReject,
+  isSubmitting,
+  pendingActionId,
 }: { 
   approval: Approval
   isSelected: boolean
   onSelect: () => void
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  isSubmitting?: boolean
+  pendingActionId?: string | null
 }) {
   const TypeIcon = typeIcons[approval.type]
   const config = priorityConfig[approval.priority]
+  const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
 
   return (
     <motion.div
@@ -276,25 +313,27 @@ function DecisionCard({
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-8 gap-1.5 text-xs flex-1 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+            className="h-8 gap-1.5 text-xs flex-1 cursor-pointer hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+            disabled={actionBusy}
             onClick={(e) => {
               e.stopPropagation()
               onReject(approval.id)
             }}
           >
             <X className="h-3.5 w-3.5" />
-            Reject
+            {actionBusy ? "Rejecting…" : "Reject"}
           </Button>
           <Button 
             size="sm" 
-            className="h-8 gap-1.5 text-xs flex-1"
+            className="h-8 gap-1.5 text-xs flex-1 cursor-pointer"
+            disabled={actionBusy}
             onClick={(e) => {
               e.stopPropagation()
               onApprove(approval.id)
             }}
           >
             <Check className="h-3.5 w-3.5" />
-            Approve
+            {actionBusy ? "Approving…" : "Approve"}
           </Button>
         </div>
       </div>
@@ -303,11 +342,13 @@ function DecisionCard({
 }
 
 // Detail Panel Component
-function DetailPanel({ approval, onApprove, onReject, onBack }: { 
+function DetailPanel({ approval, onApprove, onReject, onBack, isSubmitting, pendingActionId }: { 
   approval: Approval | null
   onApprove: (id: string) => void
   onReject: (id: string) => void
   onBack?: () => void
+  isSubmitting?: boolean
+  pendingActionId?: string | null
 }) {
   if (!approval) {
     return (
@@ -322,6 +363,7 @@ function DetailPanel({ approval, onApprove, onReject, onBack }: {
 
   const TypeIcon = typeIcons[approval.type]
   const config = priorityConfig[approval.priority]
+  const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
 
   return (
     <motion.div
@@ -449,19 +491,21 @@ function DetailPanel({ approval, onApprove, onReject, onBack }: {
           <Button 
             variant="outline" 
             size="lg" 
-            className="flex-1 gap-2 h-11 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+            className="flex-1 gap-2 h-11 cursor-pointer hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+            disabled={actionBusy}
             onClick={() => onReject(approval.id)}
           >
             <XCircle className="h-4 w-4" />
-            Reject
+            {actionBusy ? "Rejecting…" : "Reject"}
           </Button>
           <Button 
             size="lg" 
-            className="flex-1 gap-2 h-11"
+            className="flex-1 gap-2 h-11 cursor-pointer"
+            disabled={actionBusy}
             onClick={() => onApprove(approval.id)}
           >
             <CheckCircle2 className="h-4 w-4" />
-            Approve
+            {actionBusy ? "Approving…" : "Approve"}
           </Button>
         </div>
       </div>
@@ -485,6 +529,7 @@ function ApprovalsContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   
   const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
     fallbackData: { approvals: [] as Approval[] },
@@ -509,27 +554,62 @@ function ApprovalsContent() {
   const aiRecommendedCount = pendingApprovals.filter(a => a.aiRecommendation?.action === "approve").length
 
   const handleApprove = async (runId: string, comment?: string) => {
+    if (isSubmitting) return
     setIsSubmitting(true)
+    setPendingActionId(runId)
     try {
-      await approvalsApi.approve(runId, { comment })
+      const result = await approvalsApi.approve(runId, { comment })
       await mutate()
       setSelectedId(null)
-      toast.success("Approved successfully")
+      const runStatus = String((result as { status?: string })?.status ?? "")
+      toast.success("Approved successfully", {
+        description:
+          runStatus === "pending_approval"
+            ? "Additional approver still required."
+            : "Execution started. Track progress in Runs.",
+        action: {
+          label: "View run",
+          onClick: () => {
+            window.location.href = `/runs/${runId}`
+          },
+        },
+      })
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to approve"
+      if (
+        message.includes("already started") ||
+        message.includes("already resolved") ||
+        message.includes("not pending approval")
+      ) {
+        await mutate()
+        toast.success("Approval already recorded", {
+          description: "This run is no longer waiting in the queue.",
+          action: {
+            label: "View run",
+            onClick: () => {
+              window.location.href = `/runs/${runId}`
+            },
+          },
+        })
+        return
+      }
       console.error("[approvals] Approve failed:", err)
-      toast.error(err instanceof Error ? err.message : "Failed to approve")
+      toast.error(message)
     } finally {
       setIsSubmitting(false)
+      setPendingActionId(null)
     }
   }
 
   const handleReject = async (runId: string, comment?: string) => {
+    if (isSubmitting) return
     const reason = (comment ?? "Rejected by reviewer").trim()
     if (!reason) {
       toast.error("Rejection reason is required")
       return
     }
     setIsSubmitting(true)
+    setPendingActionId(runId)
     try {
       await approvalsApi.reject(runId, { comment: reason })
       await mutate()
@@ -543,6 +623,7 @@ function ApprovalsContent() {
       toast.error(err instanceof Error ? err.message : "Failed to reject")
     } finally {
       setIsSubmitting(false)
+      setPendingActionId(null)
     }
   }
 
@@ -610,6 +691,8 @@ function ApprovalsContent() {
                   onSelect={() => setSelectedId(approval.id)}
                   onApprove={handleApprove}
                   onReject={handleRejectWithPrompt}
+                  isSubmitting={isSubmitting}
+                  pendingActionId={pendingActionId}
                 />
               ))}
             </AnimatePresence>
@@ -633,6 +716,8 @@ function ApprovalsContent() {
             onApprove={handleApprove}
             onReject={handleRejectWithPrompt}
             onBack={() => setSelectedId(null)}
+            isSubmitting={isSubmitting}
+            pendingActionId={pendingActionId}
           />
         </div>
       </div>

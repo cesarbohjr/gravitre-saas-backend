@@ -3462,10 +3462,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       if (status === "pending_approval") {
         setExecutionStatus("waiting")
         toast.message("Pending approval", {
-          description: `Execute run queued for approval · ${runId}`,
+          description: `This run is waiting in the Decision Queue · ${runId}`,
           action: {
-            label: "View Run",
-            onClick: () => router.push(`/runs/${runId}`),
+            label: "Open Approvals",
+            onClick: () => router.push(`/approvals?id=${runId}`),
           },
         })
         return
@@ -3493,10 +3493,21 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         status === "failed" ||
         snapshot.steps.some((step) => step.status.toLowerCase() === "failed")
       if (failed) {
+        const stepErrors = snapshot.steps
+          .filter((step) => step.errorMessage)
+          .map((step) => step.errorMessage as string)
+        const message =
+          snapshot.errorMessage ??
+          stepErrors[0] ??
+          "Workflow run failed. Open the run report for step-level details."
         setExecutionStatus("error")
-        setExecutionError(snapshot.errorMessage ?? "Workflow run failed")
+        setExecutionError(message)
         toast.error("Workflow run failed", {
-          description: snapshot.errorMessage ?? `Run ID: ${runId}`,
+          description: message,
+          action: {
+            label: "View run",
+            onClick: () => router.push(`/runs/${runId}`),
+          },
         })
         return
       }
@@ -3513,15 +3524,47 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     // For UUID workflows, save first then execute via API
     if (canPersist) {
     setIsRunning(true)
+    let saved = false
     try {
       await saveBuilderGraph(id, nodes, {
         name: settingsName || workflowMeta.name,
         description: settingsDescription || workflowMeta.description,
       })
+      saved = true
       setLastSavedAt(new Date())
 
       const response = await executeWorkflow(id)
       setLastRunId(response.run_id)
+
+      if (response.status === "pending_approval") {
+        setIsExecuting(false)
+        setIsRunning(false)
+        setExecutionStatus("waiting")
+        toast.message("Awaiting approval", {
+          description: "Your run was saved and queued for review.",
+          action: {
+            label: "Open Approvals",
+            onClick: () => router.push(`/approvals?id=${response.run_id}`),
+          },
+        })
+        return
+      }
+
+      const inlineErrors = (response.errors ?? []).filter(Boolean)
+      if (inlineErrors.length > 0 && response.status === "failed") {
+        setIsExecuting(false)
+        setIsRunning(false)
+        setExecutionStatus("error")
+        setExecutionError(inlineErrors.join(" · "))
+        toast.error("Workflow run failed", {
+          description: inlineErrors.join(" · "),
+          action: {
+            label: "View run",
+            onClick: () => router.push(`/runs/${response.run_id}`),
+          },
+        })
+        return
+      }
 
       setIsExecuting(true)
       setExecutionStatus("running")
@@ -3560,9 +3603,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       setIsExecuting(false)
       setIsRunning(false)
       setExecutionStatus("error")
-      setExecutionError(err instanceof Error ? err.message : "Execution failed")
-      toast.error("Execution failed", {
-        description: err instanceof Error ? err.message : "Could not execute workflow",
+      const message = err instanceof Error ? err.message : "Execution failed"
+      setExecutionError(message)
+      toast.error(saved ? "Execution failed" : "Save failed", {
+        description: message,
       })
     }
     return
@@ -5043,7 +5087,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   {executionError && (
                     <>
                       <div className="w-px h-6 bg-border" />
-                      <span className="text-xs text-red-400 max-w-[200px] truncate">{executionError}</span>
+                      <span className="text-xs text-red-400 max-w-[min(420px,40vw)] line-clamp-2" title={executionError}>
+                        {executionError}
+                      </span>
                       <Button
                         variant="ghost"
                         size="sm"

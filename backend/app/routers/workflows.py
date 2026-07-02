@@ -1788,6 +1788,22 @@ async def execute_workflow(
             parameters=parameters if isinstance(parameters, dict) else None,
             required_approvals=required_approvals,
         )
+        try:
+            from app.services.notification_service import create_user_notification
+
+            create_user_notification(
+                client,
+                org_id=org_id,
+                user_id=current_user["user_id"],
+                notification_type="approval_needed",
+                title="Workflow awaiting approval",
+                body=f"{str(wf_name or workflow_id)} is queued in the Decision Queue.",
+                url=f"/approvals?id={run_id}",
+                entity_type="workflow_run",
+                entity_id=run_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("approval_needed notification skipped run_id=%s error=%s", run_id, exc)
         latency_ms = int((time.perf_counter() - start) * 1000)
         logger.info(
             "workflow_execute_created request_id=%s org_id=%s workflow_id=%s run_id=%s latency_ms=%s status=pending_approval",
@@ -3061,6 +3077,31 @@ async def list_approvals_alias(
             .execute()
         )
         workflow_names = {str(w["id"]): w.get("name") or "" for w in (wf.data or [])}
+    user_ids = {
+        str(run.get("triggered_by"))
+        for run in runs
+        if run.get("triggered_by")
+    }
+    user_labels: dict[str, str] = {}
+    if user_ids:
+        users = (
+            client.table("users")
+            .select("id, email, full_name")
+            .in_("id", list(user_ids))
+            .execute()
+        )
+        for user in users.data or []:
+            uid = str(user.get("id") or "")
+            if not uid:
+                continue
+            full_name = str(user.get("full_name") or "").strip()
+            email = str(user.get("email") or "").strip()
+            if full_name:
+                user_labels[uid] = full_name
+            elif email:
+                user_labels[uid] = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+            else:
+                user_labels[uid] = f"Member ({uid[:8]}…)"
     approvals = []
     for run in runs:
         required = run.get("required_approvals") or 0
@@ -3070,20 +3111,30 @@ async def list_approvals_alias(
         if type and type != "workflow":
             continue
         sla = _sla_fields(run.get("created_at"), pri)
+        workflow_id = str(run.get("workflow_id")) if run.get("workflow_id") else None
+        workflow_name = workflow_names.get(str(run.get("workflow_id")), "Workflow approval")
+        triggered_by = str(run.get("triggered_by") or "")
         approvals.append(
             {
                 "id": str(run["id"]),
-                "title": workflow_names.get(str(run.get("workflow_id")), "Workflow approval"),
+                "title": workflow_name,
                 "description": "Workflow execution approval",
                 "type": "workflow",
                 "priority": pri,
                 "status": run.get("approval_status") or "pending",
                 "gate_type": "execute",
-                "requested_by": run.get("triggered_by"),
+                "requested_by": triggered_by,
+                "requested_by_name": user_labels.get(triggered_by, "System"),
                 "requested_at": run.get("created_at"),
                 "reviewed_by": None,
                 "reviewed_at": None,
-                "context": {"workflow_id": str(run.get("workflow_id")) if run.get("workflow_id") else None},
+                "context": {
+                    "workflow_id": workflow_id,
+                    "workflow_name": workflow_name,
+                    "entity": workflow_name,
+                    "action": "Execute workflow",
+                    "run_id": str(run["id"]),
+                },
                 "environment": environment_name,
                 "sla_deadline": sla["sla_deadline"],
                 "sla_minutes_remaining": sla["sla_minutes_remaining"],

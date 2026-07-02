@@ -358,6 +358,7 @@ export default function ModelsPage() {
           <WorkSectionErrorCard
             title="Could not load models"
             message={error instanceof Error ? error.message : "Unknown error"}
+            error={error}
             onRetry={() => mutate()}
           />
         ) : models.length === 0 ? (
@@ -383,6 +384,7 @@ export default function ModelsPage() {
           </div>
         )}
 
+        {!error ? (
         <div className="rounded-xl border border-border/50 bg-secondary/20 p-4 text-xs text-muted-foreground">
           <p className="font-medium text-foreground/90">How it fits together</p>
           <ol className="mt-2 list-decimal space-y-1 pl-4">
@@ -409,6 +411,7 @@ export default function ModelsPage() {
             </p>
           ) : null}
         </div>
+        ) : null}
       </div>
 
       <Dialog

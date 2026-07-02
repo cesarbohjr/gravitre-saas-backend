@@ -195,8 +195,14 @@ function extractErrorMessage(payload: unknown): string | null {
   if (typeof detail === "string" && detail.trim()) return detail
   if (detail && typeof detail === "object") {
     const detailObj = detail as Record<string, unknown>
+    const nestedDetail = detailObj.detail
+    if (typeof nestedDetail === "string" && nestedDetail.trim()) return nestedDetail
     const detailMessage = detailObj.message
     if (typeof detailMessage === "string" && detailMessage.trim()) return detailMessage
+    const activeRunId = detailObj.active_run_id
+    if (typeof activeRunId === "string" && activeRunId.trim()) {
+      return `Workflow already has an active run (${activeRunId.slice(0, 8)}…). Open Runs to monitor it.`
+    }
   }
   if (Array.isArray(detail)) {
     const first = detail[0]
@@ -206,8 +212,23 @@ function extractErrorMessage(payload: unknown): string | null {
     }
   }
 
+  const details = data.details
+  if (details && typeof details === "object") {
+    const detailsObj = details as Record<string, unknown>
+    const detailsMessage = detailsObj.message ?? detailsObj.reason
+    if (typeof detailsMessage === "string" && detailsMessage.trim()) return detailsMessage
+  }
+
   const error = data.error
   if (typeof error === "string" && error.trim()) return error
+  if (error && typeof error === "object") {
+    const errorObj = error as Record<string, unknown>
+    const nested = errorObj.message ?? errorObj.detail
+    if (typeof nested === "string" && nested.trim()) return nested
+  }
+
+  const message = data.message
+  if (typeof message === "string" && message.trim()) return message
   return null
 }
 

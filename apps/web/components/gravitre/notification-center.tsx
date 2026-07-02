@@ -105,7 +105,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { data, mutate } = useSWR(
     user ? ["notification-center", user.id] : null,
     () => notificationsApi.list({ limit: 50, offset: 0 }),
-    { refreshInterval: 30_000 }
+    { refreshInterval: 15_000 }
   )
 
   const notifications = useMemo(

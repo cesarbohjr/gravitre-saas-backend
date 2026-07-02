@@ -1,10 +1,8 @@
 // Handoff bridge for the unified "Gravitre AI" front door.
 //
-// The /ai surface routes a prompt to one of the three engines (Command Center,
-// Workspace Chat, Universal Search). Rather than thread a giant query string
-// through the URL, we stash the pending prompt in sessionStorage keyed by
-// destination, then navigate. Each engine calls `consumeAiHandoff()` on mount
-// to prefill its input and optionally auto-run.
+// `/ai` now runs execute, chat, and find inline. SessionStorage handoffs remain
+// for deep links into `/operator`, `/assistant`, and `/search` when those pages
+// are opened directly.
 
 export type AiEngine = "execute" | "chat" | "find"
 

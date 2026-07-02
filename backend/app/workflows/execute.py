@@ -357,6 +357,22 @@ def execute_workflow_steps(
     if run_failed:
         emit_execute_failed(client, org_id, user_id, run_id, run_error_message)
         try:
+            from app.services.notification_service import create_user_notification
+
+            create_user_notification(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                notification_type="run_failed",
+                title="Workflow run failed",
+                body=(run_error_message or "Review the run details for step-level errors.")[:2000],
+                url=f"/runs/{run_id}",
+                entity_type="workflow_run",
+                entity_id=run_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("run_failed notification skipped run_id=%s error=%s", run_id, exc)
+        try:
             from app.services.compensation_service import compensate_failed_autonomous_run
 
             compensate_failed_autonomous_run(
@@ -377,6 +393,22 @@ def execute_workflow_steps(
             )
     else:
         emit_execute_completed(client, org_id, user_id, run_id, final_status)
+        try:
+            from app.services.notification_service import create_user_notification
+
+            create_user_notification(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                notification_type="run_completed",
+                title="Workflow run completed",
+                body=f"Run finished with status {final_status}.",
+                url=f"/runs/{run_id}",
+                entity_type="workflow_run",
+                entity_id=run_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("run_completed notification skipped run_id=%s error=%s", run_id, exc)
     try:
         from app.marketplace.adoption import maybe_record_workflow_adoption
 
