@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -49,6 +49,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useAsyncJob, type AgentJob, type AgentJobResult } from "@/hooks/use-async-job"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { ensureSelectedOrg } from "@/lib/org-context"
+import { consumeAiHandoff } from "@/lib/ai-surface-handoff"
 import {
   buildFindingsFromJobResult,
   buildOperatorJobContext,
@@ -431,6 +432,9 @@ export default function OperatorPage() {
     suggestedActions: SuggestedActionData[]
   } | null>(null)
   const [pendingTaskText, setPendingTaskText] = useState<string>("")
+  // Auto-run bridge from the unified Gravitre AI surface (/ai).
+  const handoffPromptRef = useRef<string | null>(null)
+  const handoffRanRef = useRef(false)
 
   // Async job hook for durable job queue
   const {
