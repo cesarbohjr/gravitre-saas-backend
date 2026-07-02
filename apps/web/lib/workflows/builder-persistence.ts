@@ -134,7 +134,14 @@ export interface BuilderSaveResponse extends BuilderGraphResponse {
 
 export interface ExecuteResponse {
   run_id: string
-  status: "pending" | "running" | "completed" | "failed"
+  status:
+    | "pending"
+    | "running"
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "pending_approval"
+    | "awaiting_approval"
   errors?: string[]
   steps?: {
     node_id: string
