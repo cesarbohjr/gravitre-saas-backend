@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
+import asyncio
 
 import pytest
 
@@ -245,6 +246,65 @@ async def test_chat_omitted_tools_uses_mode_config_defaults(async_client, monkey
     assert captured.get("requested_tools") is None
     assert captured.get("mode") == "standard"
     assert "search_web" in resolve_assistant_tool_names("standard", captured.get("requested_tools"))
+
+
+async def test_stream_finishes_when_complete_payload_empty_but_text_streamed(async_client, monkeypatch):
+    _authenticate()
+    _mock_prepare_stream(monkeypatch)
+
+    async def stream_empty_complete(**kwargs):
+        yield AssistantStreamEvent(sse_type="text-start", payload={"id": "t1"})
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"id": "t1", "delta": "visible answer"})
+        yield AssistantStreamEvent(sse_type="text-end", payload={"id": "t1"})
+        yield AssistantStreamComplete(
+            full_content="",
+            tool_results=[],
+            react_result=None,
+            model="gpt-5.5",
+        )
+
+    intelligence = MagicMock()
+    intelligence.execute_task_streaming = stream_empty_complete
+    monkeypatch.setattr(assistant_module, "get_agent_intelligence", lambda: intelligence)
+
+    resp = await async_client.post(
+        "/api/assistant/chat",
+        headers={"Authorization": "Bearer token"},
+        json={"messages": [{"role": "user", "content": "hello"}], "org_id": "org-1"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.text
+    assert "visible answer" in body
+    assert '"type":"error"' not in body
+    assert "data: [DONE]" in body
+
+
+async def test_followup_suggestion_timeout_still_finishes_stream(async_client, monkeypatch):
+    _authenticate()
+    _mock_prepare_stream(monkeypatch)
+    intelligence = MagicMock()
+    intelligence.execute_task_streaming = _fake_stream
+    monkeypatch.setattr(assistant_module, "get_agent_intelligence", lambda: intelligence)
+
+    async def slow_suggestions(**kwargs):
+        await asyncio.sleep(assistant_module.FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS + 2)
+        return ["Never shown"]
+
+    monkeypatch.setattr(assistant_module, "_generate_followup_suggestions", slow_suggestions)
+
+    resp = await async_client.post(
+        "/api/assistant/chat",
+        headers={"Authorization": "Bearer token"},
+        json={"messages": [{"role": "user", "content": "hello"}], "org_id": "org-1"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.text
+    assert '"type":"finish"' in body
+    assert '"type":"error"' not in body
+    assert "Never shown" not in body
+    assert "data: [DONE]" in body
 
 
 async def test_chat_surfaces_still_function_with_new_models(async_client, monkeypatch):

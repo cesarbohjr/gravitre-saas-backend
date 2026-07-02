@@ -77,6 +77,9 @@ from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
+# Cap follow-up chip generation so the stream can finish before proxy timeouts.
+FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS = 8.0
+
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 
 # Reproduced exactly from the Post-Remediation Audit (hardened assistant prompt).
@@ -583,6 +586,7 @@ def _build_stream(
 
         intelligence = get_agent_intelligence()
         complete: AssistantStreamComplete | None = None
+        streamed_text_parts: list[str] = []
         try:
             async for event in intelligence.execute_task_streaming(
                 settings=settings,
@@ -601,35 +605,63 @@ def _build_stream(
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
                     continue
+                if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
+                    delta = event.payload.get("delta")
+                    if isinstance(delta, str) and delta:
+                        streamed_text_parts.append(delta)
                 yield assistant_event_to_sse_line(event)
         except Exception as exc:  # noqa: BLE001
             logger.error("assistant unified stream failed org_id=%s error=%s", org_id, str(exc))
+            if not streamed_text_parts:
+                yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
+                yield sse_done()
+                return
+            logger.warning(
+                "assistant stream failed after partial content org_id=%s streamed_chars=%s",
+                org_id,
+                len("".join(streamed_text_parts)),
+            )
+
+        assistant_text = (complete.full_content if complete else "").strip()
+        if not assistant_text:
+            assistant_text = "".join(streamed_text_parts).strip()
+
+        if not assistant_text:
             yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
             yield sse_done()
             return
 
-        if complete is None or not (complete.full_content or "").strip():
-            yield assistant_event_to_sse_line(sse_error("Assistant request failed"))
-            yield sse_done()
-            return
-
-        if complete.react_result is not None and getattr(complete.react_result, "error", None):
+        if complete is not None and complete.react_result is not None and getattr(complete.react_result, "error", None):
             err = str(complete.react_result.error or "")
-            if err and not complete.full_content.strip():
+            if err and not assistant_text:
                 yield assistant_event_to_sse_line(sse_error(err))
                 yield sse_done()
                 return
 
-        suggestions = await _generate_followup_suggestions(
-            user_question=user_text,
-            assistant_response=complete.full_content,
-            org_id=org_id,
-            settings=settings,
-        )
+        suggestions: list[str] = []
+        try:
+            suggestions = await asyncio.wait_for(
+                _generate_followup_suggestions(
+                    user_question=user_text,
+                    assistant_response=assistant_text,
+                    org_id=org_id,
+                    settings=settings,
+                ),
+                timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.info(
+                "assistant followup suggestions timed out org_id=%s after %.1fs",
+                org_id,
+                FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
+
         if suggestions:
             yield assistant_event_to_sse_line(sse_suggestions(suggestions))
             cache_key = _response_cache_key(org_id, user_text)
-            _RESPONSE_CACHE[cache_key] = (time.time(), complete.full_content, suggestions)
+            _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
 
         yield assistant_event_to_sse_line(sse_finish_step())
         yield assistant_event_to_sse_line(sse_finish())
@@ -637,9 +669,9 @@ def _build_stream(
 
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
         billing_result = _estimate_model_response(
-            content=complete.full_content,
+            content=assistant_text,
             user_text=user_text,
-            model=complete.model,
+            model=complete.model if complete else "stream",
             latency_ms=elapsed_ms,
         )
         asyncio.create_task(_record_assistant_billing(settings, org_id, billing_result))
@@ -650,14 +682,20 @@ def _build_stream(
                 user_id=user_id,
                 query=user_text,
                 category=classify_query(user_text),
-                model_used=complete.model,
+                model_used=complete.model if complete else "stream",
                 response_time_ms=elapsed_ms,
                 surface="assistant",
-                message_id=complete.message_id,
-                rag_quality_score=(complete.confidence or {}).get("rag_quality_score"),
+                message_id=complete.message_id if complete else None,
+                rag_quality_score=((complete.confidence or {}) if complete else {}).get("rag_quality_score"),
             )
         )
-        if complete.summary_updated and conversation_id and user_id and complete.summary:
+        if (
+            complete is not None
+            and complete.summary_updated
+            and conversation_id
+            and user_id
+            and complete.summary
+        ):
             persist_conversation_summary(
                 get_supabase_client(settings),
                 conversation_id=conversation_id,
@@ -671,9 +709,9 @@ def _build_stream(
             user_id=user_id,
             conversation_id=conversation_id,
             user_text=user_text,
-            assistant_text=complete.full_content,
-            tool_results=complete.tool_results,
-            assistant_message_id=complete.message_id,
+            assistant_text=assistant_text,
+            tool_results=complete.tool_results if complete else [],
+            assistant_message_id=complete.message_id if complete else None,
         )
 
     return generator()

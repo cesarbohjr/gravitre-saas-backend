@@ -5,7 +5,8 @@ import { NextRequest } from "next/server"
 // forwards the request (with the caller's JWT + org) and streams the backend's
 // AI SDK UI message stream back to the browser.
 
-export const maxDuration = 30
+// Assistant pipeline (retrieval + ReAct + follow-up chips) can exceed 30s on tool-heavy turns.
+export const maxDuration = 120
 
 function getBackendBaseUrl(): string | null {
   const value = process.env.FASTAPI_BASE_URL?.trim()
