@@ -26,6 +26,7 @@
     "smoke:tier5-manual": "python scripts/smoke-tier5-manual-epics.py --json docs/delivery/smoke-tier5-manual-latest.json",
     "smoke:post-tier5": "python scripts/smoke-post-tier5-platform.py",
     "smoke:ai-production": "python scripts/smoke-ai-production.py",
+    "smoke:workflow-builder": "python scripts/smoke-workflow-builder.py",
     "smoke:ai-production:report": "python scripts/smoke-ai-production.py --json docs/delivery/smoke-ai-production-latest.json",
     "smoke:sta271-dual-write": "python scripts/smoke-sta271-dual-write.py",
     "smoke:sta271-dual-write:report": "python scripts/smoke-sta271-dual-write.py --json docs/delivery/smoke-sta271-dual-write-latest.json",

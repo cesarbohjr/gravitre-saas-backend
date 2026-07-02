@@ -582,13 +582,6 @@ def create_workflow_node(
         "description": payload.get("description"),
         "instruction": payload.get("instruction"),
         "config": payload.get("config") or {},
-        "system_icon": payload.get("system_icon"),
-        "system_name": payload.get("system_name"),
-        "has_approval_gate": bool(payload.get("has_approval_gate") or payload.get("hasApprovalGate")),
-        "inputs": payload.get("inputs") or [],
-        "outputs": payload.get("outputs") or [],
-        "guardrails": payload.get("guardrails") or [],
-        "status": payload.get("status") or "needs_config",
         "operator_id": payload.get("operator_id"),
         "connector_id": payload.get("connector_id"),
         "source_id": payload.get("source_id"),
@@ -601,11 +594,25 @@ def create_workflow_node(
         "metadata": payload.get("metadata"),
         "created_by": created_by,
     }
+    optional_fields = (
+        "system_icon",
+        "system_name",
+        "has_approval_gate",
+        "inputs",
+        "outputs",
+        "guardrails",
+        "status",
+    )
+    for key in optional_fields:
+        if key in payload and payload[key] is not None:
+            row[key] = payload[key]
     if payload.get("id"):
         row["id"] = payload["id"]
     r = client.table("workflow_nodes").insert(row).execute()
     if not r.data or len(r.data) == 0:
-        raise RuntimeError("workflow_nodes insert returned no row")
+        detail = getattr(r, "error", None)
+        message = str(detail) if detail else "workflow_nodes insert returned no row"
+        raise ValueError(message)
     return dict(r.data[0])
 
 
@@ -679,7 +686,7 @@ def list_workflow_edges(
     environment_name: str = "default",
 ) -> list[dict]:
     r = (
-        client.table("workflow_connections")
+        client.table("workflow_edges")
         .select("*")
         .eq("org_id", org_id)
         .eq("workflow_id", workflow_id)
@@ -697,7 +704,7 @@ def get_workflow_edge(
     environment_name: str = "default",
 ) -> dict | None:
     r = (
-        client.table("workflow_connections")
+        client.table("workflow_edges")
         .select("*")
         .eq("id", edge_id)
         .eq("org_id", org_id)
@@ -724,19 +731,21 @@ def create_workflow_edge(
         "environment": environment_name,
         "from_node_id": payload["from_node_id"],
         "to_node_id": payload["to_node_id"],
-        "edge_type": payload.get("edge_type"),
+        "edge_type": payload.get("edge_type") or "sequence",
         "condition": payload.get("condition"),
         "created_by": created_by,
     }
-    r = client.table("workflow_connections").insert(row).execute()
+    r = client.table("workflow_edges").insert(row).execute()
     if not r.data or len(r.data) == 0:
-        raise RuntimeError("workflow_edges insert returned no row")
+        detail = getattr(r, "error", None)
+        message = str(detail) if detail else "workflow_edges insert returned no row"
+        raise ValueError(message)
     return dict(r.data[0])
 
 
 def delete_workflow_edge(client: Client, org_id: str, edge_id: str, environment_name: str) -> bool:
     r = (
-        client.table("workflow_connections")
+        client.table("workflow_edges")
         .delete()
         .eq("id", edge_id)
         .eq("org_id", org_id)

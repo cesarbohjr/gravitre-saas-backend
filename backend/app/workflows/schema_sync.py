@@ -104,12 +104,14 @@ def _graph_from_definition(definition: dict | None) -> tuple[list[dict[str, Any]
 
 
 def contract_nodes_from_builder(stored_nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    from app.workflows.builder_sync import restore_node_type
+
     nodes: list[dict[str, Any]] = []
     for node in stored_nodes:
         nodes.append(
             {
                 "id": str(node.get("id")),
-                "type": node.get("node_type") or node.get("type") or "task",
+                "type": restore_node_type(node),
                 "name": node.get("name") or node.get("title") or str(node.get("id")),
                 "title": node.get("title") or node.get("name"),
                 "config": node.get("config") or {},

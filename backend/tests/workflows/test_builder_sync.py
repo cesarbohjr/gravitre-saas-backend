@@ -109,6 +109,45 @@ def test_definition_round_trips_invoke_tool_connector_node():
     assert definition["steps"][0]["config"]["action"] == "jira.issues.create"
 
 
+def test_graph_council_node_compiles_to_council_step():
+    nodes = [
+        {
+            "id": "sales",
+            "node_type": "agent",
+            "title": "Sales qualify",
+            "metadata": {"agent_id": "sales-uuid", "task": "Qualify lead"},
+        },
+        {
+            "id": "council",
+            "node_type": "council",
+            "title": "Council",
+            "metadata": {
+                "councilConfig": {
+                    "objective": "Enroll or nurture?",
+                    "outputPaths": {"enroll": "enroll", "nurture": "nurture"},
+                    "agentIds": ["sales-uuid", "marketing-uuid"],
+                }
+            },
+        },
+    ]
+    edges = [{"from_node_id": "sales", "to_node_id": "council"}]
+    definition = graph_to_definition(nodes, edges)
+    assert len(definition["steps"]) == 2
+    assert definition["steps"][0]["type"] == "agent"
+    assert definition["steps"][1]["type"] == "council"
+    assert definition["steps"][1]["config"]["objective"] == "Enroll or nurture?"
+
+
+def test_persist_and_restore_builder_only_node_types():
+    from app.workflows.builder_sync import persist_node_type, restore_node_type
+
+    persisted, metadata = persist_node_type("council")
+    assert persisted == "task"
+    assert metadata["builder_node_type"] == "council"
+    restored = restore_node_type({"node_type": persisted, "metadata": metadata})
+    assert restored == "council"
+
+
 def test_prepare_builder_edge_assigns_id_for_definition_fallback_edges():
     _, edges = definition_to_builder_nodes(
         {

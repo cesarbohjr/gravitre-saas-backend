@@ -34,7 +34,7 @@ def test_resolve_executable_definition_compiles_db_graph():
             table.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value.data = (
                 nodes
             )
-        elif name == "workflow_connections":
+        elif name == "workflow_edges":
             table.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value.data = (
                 []
             )
@@ -61,7 +61,7 @@ def test_resolve_executable_definition_maps_legacy_node_types():
             table.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value.data = (
                 nodes
             )
-        elif name == "workflow_connections":
+        elif name == "workflow_edges":
             table.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value.data = (
                 []
             )

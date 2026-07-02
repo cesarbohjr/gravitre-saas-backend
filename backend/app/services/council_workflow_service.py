@@ -9,6 +9,12 @@ from app.config import Settings
 from app.services.council_service import AgentCouncilService, DecisionMethod, get_council_service
 from app.services.handoff_service import get_agent
 from app.workflows.constants import SCHEMA_VERSION
+from app.workflows.repository import (
+    create_workflow_version,
+    get_active_workflow_version,
+    get_next_workflow_version_number,
+    set_active_workflow_version,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -336,6 +342,27 @@ def ensure_uncertain_lead_council_workflow(
         },
         on_conflict="id",
     ).execute()
+
+    if not get_active_workflow_version(client, org_id, workflow_id, environment_name):
+        version_number = get_next_workflow_version_number(client, org_id, workflow_id, environment_name)
+        version_row = create_workflow_version(
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            environment_name=environment_name,
+            version=version_number,
+            definition=definition,
+            schema_version=SCHEMA_VERSION,
+            created_by=None,
+        )
+        set_active_workflow_version(
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            environment_name=environment_name,
+            version_id=str(version_row["id"]),
+            updated_by=None,
+        )
 
     org_row = client.table("organizations").select("settings").eq("id", org_id).limit(1).execute()
     settings_row = (org_row.data or [{}])[0].get("settings") or {}

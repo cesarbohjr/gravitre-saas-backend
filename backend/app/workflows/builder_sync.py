@@ -25,6 +25,33 @@ from app.workflows.schema_sync import (
 
 logger = logging.getLogger(__name__)
 
+PERSISTED_GRAPH_NODE_TYPES = frozenset(
+    {"agent", "task", "connector", "tool", "source", "approval", "council", "decision"}
+)
+BUILDER_ONLY_NODE_TYPES = frozenset({"council", "decision"})
+LEGACY_PERSISTED_NODE_TYPES = frozenset({"agent", "task", "connector", "tool", "source", "approval"})
+
+
+def persist_node_type(canvas_type: str) -> tuple[str, dict[str, Any]]:
+    """Map builder-only node types to DB-safe types while preserving canvas type in metadata."""
+    normalized = str(canvas_type or "task").strip().lower()
+    if normalized in BUILDER_ONLY_NODE_TYPES:
+        return "task", {"builder_node_type": normalized}
+    if normalized in LEGACY_PERSISTED_NODE_TYPES:
+        return normalized, {}
+    return "task", {}
+
+
+def restore_node_type(node: dict[str, Any]) -> str:
+    metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
+    builder_type = metadata.get("builder_node_type")
+    if isinstance(builder_type, str) and builder_type in PERSISTED_GRAPH_NODE_TYPES:
+        return builder_type
+    stored = str(node.get("node_type") or node.get("type") or "task").strip().lower()
+    if stored in PERSISTED_GRAPH_NODE_TYPES:
+        return stored
+    return "task"
+
 
 def _is_uuid(value: str) -> bool:
     try:
@@ -130,7 +157,7 @@ def _invoke_tool_step(
 
 
 def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: list[dict[str, Any]]) -> dict[str, Any] | None:
-    node_type = str(node.get("node_type") or node.get("type") or "").strip()
+    node_type = restore_node_type(node)
     step_id = str(node["id"])
     name = str(node.get("name") or node.get("title") or step_id)
     config = node.get("config") if isinstance(node.get("config"), dict) else {}
@@ -357,12 +384,18 @@ def delete_workflow_graph(
     workflow_id: str,
     environment_name: str,
 ) -> None:
-    client.table("workflow_connections").delete().eq("org_id", org_id).eq("workflow_id", workflow_id).eq(
-        "environment", environment_name
-    ).execute()
-    client.table("workflow_nodes").delete().eq("org_id", org_id).eq("workflow_id", workflow_id).eq(
-        "environment", environment_name
-    ).execute()
+    try:
+        client.table("workflow_edges").delete().eq("org_id", org_id).eq("workflow_id", workflow_id).eq(
+            "environment", environment_name
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("workflow_edges delete skipped for %s: %s", workflow_id, exc)
+    try:
+        client.table("workflow_nodes").delete().eq("org_id", org_id).eq("workflow_id", workflow_id).eq(
+            "environment", environment_name
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("workflow_nodes delete skipped for %s: %s", workflow_id, exc)
 
 
 def sync_builder_graph(
@@ -385,13 +418,18 @@ def sync_builder_graph(
         if not client_id:
             continue
         position = _node_position(raw)
-        node_type = str(raw.get("type") or raw.get("node_type") or "task")
+        canvas_type = str(raw.get("type") or raw.get("node_type") or "task")
+        node_type, type_metadata = persist_node_type(canvas_type)
         config = raw.get("config") if isinstance(raw.get("config"), dict) else {}
         metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+        if type_metadata:
+            metadata = {**metadata, **type_metadata}
         if not metadata:
             for key in ("decisionConfig", "councilConfig", "outputPaths"):
                 if key in raw:
                     metadata[key] = raw[key]
+        if canvas_type == "approval":
+            metadata = {**metadata, "has_approval_gate": True}
         payload = {
             "node_type": node_type,
             "title": str(raw.get("name") or raw.get("title") or "Node"),
@@ -406,7 +444,6 @@ def sync_builder_graph(
             "operator_id": raw.get("operator_id") or config.get("agent_id") or config.get("agentId"),
             "connector_id": raw.get("connector_id") or config.get("connector_id"),
             "source_id": raw.get("source_id"),
-            "has_approval_gate": node_type == "approval",
         }
         if _is_uuid(client_id):
             payload["id"] = client_id

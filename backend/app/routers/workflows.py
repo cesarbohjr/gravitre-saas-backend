@@ -109,6 +109,7 @@ from app.workflows.builder_sync import (
     definition_to_builder_nodes,
     prepare_builder_edge,
     resolve_builder_graph,
+    restore_node_type,
     sync_builder_graph,
 )
 from app.workflows.schema_sync import (
@@ -272,7 +273,10 @@ class BuilderSaveRequest(BaseModel):
 
 
 class WorkflowNodeCreateRequest(BaseModel):
-    node_type: str | None = Field(default=None, pattern="^(agent|task|connector|tool|source|approval)$")
+    node_type: str | None = Field(
+        default=None,
+        pattern="^(agent|task|connector|tool|source|approval|council|decision)$",
+    )
     type: str | None = Field(default=None, alias="type")
     title: str = Field(..., min_length=1)
     name: str | None = None
@@ -361,11 +365,12 @@ def _node_out(node: dict) -> dict:
     if position_y is None and isinstance(position, dict):
         position_y = position.get("y")
     node_id = node.get("id")
+    restored_type = restore_node_type(node)
     return {
         "id": str(node_id) if node_id is not None else "",
         "workflow_id": str(node.get("workflow_id") or ""),
-        "node_type": node.get("node_type") or "",
-        "type": node.get("node_type") or "",
+        "node_type": restored_type,
+        "type": restored_type,
         "title": node.get("title") or "",
         "name": node.get("name") or node.get("title") or "",
         "description": node.get("description") or node.get("instruction"),
@@ -648,6 +653,11 @@ async def save_workflow_builder(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
 
     write_audit_event(
         client,

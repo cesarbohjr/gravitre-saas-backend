@@ -25,7 +25,7 @@ def test_resolve_builder_graph_hydrates_contract_edges_without_ids():
     def table(name: str) -> MagicMock:
         if name == "workflow_nodes":
             return nodes_table
-        if name == "workflow_connections":
+        if name == "workflow_edges":
             return edges_table
         if name == "workflows":
             return workflows_table

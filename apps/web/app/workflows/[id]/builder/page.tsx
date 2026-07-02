@@ -3,6 +3,7 @@
 // Workflow Builder - Main canvas for creating and editing workflows
 // Includes: Agent, Task, Connector, Tool, Source, Approval, Decision, and Council node types
 import { useState, useCallback, useEffect, useRef, useMemo, use, startTransition } from "react"
+import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -33,7 +34,7 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import type { WorkflowDryRunResponse } from "@/types/api"
-import { mesonApi, runsApi, type MesonAlert, type MesonInsight, type MesonSuggestion } from "@/lib/api"
+import { mesonApi, runsApi, workflowsApi, type MesonAlert, type MesonInsight, type MesonSuggestion } from "@/lib/api"
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import {
   applyRunStepsToNodes,
@@ -2793,6 +2794,17 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   // Persistence state
   const canPersist = isPersistableWorkflowId(id)
+  const { data: workflowListData } = useSWR(
+    canPersist ? "workflow-builder-recent" : null,
+    () => workflowsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const recentWorkflows = useMemo(() => {
+    const rows = workflowListData?.workflows ?? []
+    return rows
+      .filter((workflow) => workflow.id && workflow.id !== id)
+      .slice(0, 5)
+  }, [workflowListData, id])
   const MESON_PANEL_KEY = "gravitre:mesonPanelOpen"
   const [mesonPanelOpen, setMesonPanelOpen] = useState(() => {
     if (typeof window === "undefined") return true
@@ -3849,27 +3861,26 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 <DropdownMenuContent align="start" className="w-64">
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent Workflows</div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/workflows/1/builder" className="flex items-center gap-2">
-                      <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="truncate">sync-customers</span>
-                      <EnvironmentBadge environment="production" className="ml-auto scale-90" />
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/workflows/2/builder" className="flex items-center gap-2">
-                      <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="truncate">etl-main-pipeline</span>
-                      <EnvironmentBadge environment="production" className="ml-auto scale-90" />
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/workflows/3/builder" className="flex items-center gap-2">
-                      <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="truncate">invoice-processing</span>
-                      <EnvironmentBadge environment="staging" className="ml-auto scale-90" />
-                    </Link>
-                  </DropdownMenuItem>
+                  {recentWorkflows.length === 0 ? (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      No other saved workflows yet.
+                    </div>
+                  ) : (
+                    recentWorkflows.map((workflow) => (
+                      <DropdownMenuItem key={workflow.id} asChild>
+                        <Link href={`/workflows/${workflow.id}/builder`} className="flex items-center gap-2">
+                          <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="truncate">{workflow.name}</span>
+                          <EnvironmentBadge
+                            environment={
+                              workflow.environment === "production" ? "production" : "staging"
+                            }
+                            className="ml-auto scale-90"
+                          />
+                        </Link>
+                      </DropdownMenuItem>
+                    ))
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/workflows" className="flex items-center gap-2 text-info">
