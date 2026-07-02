@@ -108,6 +108,7 @@ _RESPONSE_CACHE: dict[str, tuple[float, str, list[str]]] = {}
 class UserPreferencesUpdate(BaseModel):
     preferred_model: str | None = None
     preferred_mode: str | None = None
+    preferred_persona: str | None = None
 
 
 class AssistantChatRequest(BaseModel):
@@ -595,6 +596,7 @@ def _build_stream(
                 history_summary=existing_summary,
                 model_override=prepared_holder.get("model_override"),
                 assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
+                conversation_id=conversation_id,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -934,6 +936,7 @@ async def update_assistant_preferences(
         user_id=str(current_user.get("user_id") or ""),
         preferred_model=body.preferred_model,
         preferred_mode=body.preferred_mode,
+        preferred_persona=body.preferred_persona,
     )
 
 
@@ -968,3 +971,30 @@ async def submit_assistant_feedback(
     )
     asyncio.create_task(consolidate_evaluation(settings, org_id, message_id))
     return {"status": "ok"}
+
+
+@router.get("/conversation/{conversation_id}/state")
+async def get_conversation_task_state(
+    conversation_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.conversation_state_service import get_conversation_state_service
+
+    client = get_supabase_client(settings)
+    owned = (
+        client.table("conversations")
+        .select("id")
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", str(current_user.get("user_id") or ""))
+        .limit(1)
+        .execute()
+    )
+    if not owned.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+    state = await get_conversation_state_service(settings).get_task_state(conversation_id, org_id, client=client)
+    return {"task_state": state}

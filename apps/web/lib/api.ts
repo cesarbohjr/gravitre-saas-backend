@@ -1236,12 +1236,16 @@ export const assistantApi = {
       connectors: Array<{ id: string; name: string; type?: string }>
     }>(apiUrl("/api/assistant/org-context")),
   getPreferences: () =>
-    fetcher<{ preferred_model?: string | null; preferred_mode?: string }>(apiUrl("/api/assistant/preferences")),
-  updatePreferences: (data: { preferred_model?: string; preferred_mode?: string }) =>
-    patchJson<{ preferred_model?: string | null; preferred_mode?: string }>(
+    fetcher<{ preferred_model?: string | null; preferred_mode?: string; preferred_persona?: string | null }>(
+      apiUrl("/api/assistant/preferences"),
+    ),
+  updatePreferences: (data: { preferred_model?: string; preferred_mode?: string; preferred_persona?: string }) =>
+    patchJson<{ preferred_model?: string | null; preferred_mode?: string; preferred_persona?: string | null }>(
       apiUrl("/api/assistant/preferences"),
       data,
     ),
+  getConversationState: (conversationId: string) =>
+    fetcher<{ task_state: Record<string, unknown> }>(apiUrl(`/api/assistant/conversation/${conversationId}/state`)),
   submitFeedback: (data: {
     message_id: string
     helpful: boolean

@@ -52,6 +52,11 @@ def sse_intelligence_metadata(
     conflicts: list[dict[str, Any]] | None = None,
     refined_query: str | None = None,
     validation: dict[str, Any] | None = None,
+    dialogue_mode: str | None = None,
+    persona_key: str | None = None,
+    proactive_suggestions: list[str] | None = None,
+    task_state: dict[str, Any] | None = None,
+    simulation_summary: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -63,6 +68,11 @@ def sse_intelligence_metadata(
                 "conflicts": conflicts or [],
                 "refinedQuery": refined_query,
                 "validation": validation,
+                "dialogueMode": dialogue_mode,
+                "personaKey": persona_key,
+                "proactiveSuggestions": proactive_suggestions or [],
+                "taskState": task_state,
+                "simulationSummary": simulation_summary,
             },
         }
     )

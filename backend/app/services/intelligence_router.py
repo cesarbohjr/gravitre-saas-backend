@@ -9,15 +9,22 @@ from app.core.logging import get_logger
 from app.ml.causal_analysis import CausalImpactAnalyzer
 from app.services.agent_selector import get_agent_selector
 from app.services.ai_trust_layer import get_ai_trust_layer
+from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+from app.services.clarification_engine import get_clarification_engine
 from app.services.confidence_scorer import get_confidence_scorer
 from app.services.context_assembler import get_context_assembler
+from app.services.contextual_understanding_service import get_contextual_understanding_service
+from app.services.conversational_consensus_service import get_conversational_consensus_service
 from app.services.decision_intelligence_service import get_decision_intelligence_service
+from app.services.dialogue_policy_engine import get_dialogue_policy_engine
 from app.services.explanation_generator import get_explanation_generator
 from app.services.knowledge_graph_service import get_knowledge_graph_service
 from app.services.model_selector import get_model_selector
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
 from app.services.outcome_tracker import get_outcome_tracker
+from app.services.proactive_guidance_service import get_proactive_guidance_service
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
+from app.services.sentiment_friction_service import get_sentiment_friction_service
 from app.services.task_classifier import get_task_classifier
 from app.services.tool_connector_selector import get_tool_connector_selector
 
@@ -39,6 +46,11 @@ class IntelligenceRouter:
         self._tool_selector = get_tool_connector_selector(self.settings)
         self._risk_evaluator = get_risk_approval_evaluator(self.settings)
         self._outcome_tracker = get_outcome_tracker(self.settings)
+        self._understanding = get_contextual_understanding_service(self.settings)
+        self._clarification = get_clarification_engine(self.settings)
+        self._sentiment = get_sentiment_friction_service()
+        self._consensus = get_conversational_consensus_service(self.settings)
+        self._guidance = get_proactive_guidance_service(self.settings)
 
     async def route(
         self,
@@ -48,14 +60,93 @@ class IntelligenceRouter:
         surface: str = "api",
         mode: str = "standard",
         conversation_history: list[dict] | None = None,
+        conversation_id: str | None = None,
     ) -> dict[str, Any]:
-        classification = await self._task_classifier.classify(org_id, request, conversation_history)
+        dialogue_settings = await load_chat_dialogue_settings(org_id, self.settings)
+        sentiment = (
+            self._sentiment.analyze(request, conversation_history or [])
+            if dialogue_settings.get("sentiment_detection_enabled", True)
+            else {"recommended_adaptation": "none", "frustration_score": 0.0}
+        )
+
+        understanding = await self._understanding.understand(
+            request,
+            conversation_history,
+            org_id,
+        )
+        classification = await self._task_classifier.classify(
+            org_id,
+            request,
+            conversation_history,
+            understanding=understanding,
+        )
+        confidence = float(classification.get("classification_confidence") or 0.55)
+
+        clarification = await self._clarification.should_clarify(
+            classification,
+            {},
+            conversation_history,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            understanding=understanding,
+        )
+        if clarification["should_clarify"]:
+            wrapped = get_ai_trust_layer().wrap_response(
+                answer=clarification["question"] or "Could you clarify?",
+                sources=[],
+                confidence=confidence,
+                reasoning_summary=f"Clarification needed: {clarification['reason']}",
+                actions_taken=[],
+                actions_pending_approval=[],
+                advisory_only=True,
+            )
+            wrapped["dialogue_mode"] = "clarify"
+            return wrapped
+
         context = await self._context_assembler.assemble(org_id, user_id, request, classification)
+        context["connected_integrations"] = context.get("connected_integrations") or []
+
+        risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
+        if classification.get("requires_action"):
+            action = {"type": classification.get("intent"), "estimated_impact": "medium", "is_destructive": False}
+            risk_evaluation = await self._risk_evaluator.evaluate(
+                org_id,
+                user_id,
+                action,
+                classification,
+                {},
+            )
+
+        policy = get_dialogue_policy_engine(
+            clarification_threshold=float(dialogue_settings.get("clarification_threshold") or 0.65),
+            escalation_threshold=float(dialogue_settings.get("escalation_threshold") or 0.40),
+        ).select_mode(
+            classification,
+            clarification,
+            sentiment,
+            risk_evaluation,
+            confidence,
+            conversation_history,
+        )
+
+        if policy["mode"] == "clarify":
+            wrapped = get_ai_trust_layer().wrap_response(
+                answer=clarification.get("question") or policy["next_move"],
+                sources=[],
+                confidence=confidence,
+                reasoning_summary=policy["reason"],
+                actions_taken=[],
+                actions_pending_approval=[],
+                advisory_only=True,
+            )
+            wrapped["dialogue_mode"] = "clarify"
+            return wrapped
+
         model_selection = await self._model_selector.select(org_id, classification)
         enrichments = await self._run_enrichments(org_id, request, classification, context)
 
         if classification.get("requires_action"):
-            return await self._route_to_execution(
+            result = await self._route_to_execution(
                 org_id,
                 user_id,
                 request,
@@ -65,16 +156,47 @@ class IntelligenceRouter:
                 model_selection,
                 surface,
             )
-        return await self._route_to_knowledge_response(
+        else:
+            result = await self._route_to_knowledge_response(
+                org_id,
+                user_id,
+                request,
+                classification,
+                context,
+                enrichments,
+                model_selection,
+                surface,
+            )
+
+        result["dialogue_mode"] = policy["mode"]
+        result["sentiment"] = sentiment
+        result["understanding"] = understanding
+
+        primary_answer = str(result.get("answer") or "")
+        if primary_answer and policy["mode"] in {"guide", "recommend", "answer"}:
+            refined = await self._consensus.refine_if_warranted(
+                org_id,
+                request,
+                primary_answer,
+                classification,
+                float(result.get("confidence") or confidence),
+                policy["mode"],
+            )
+            if refined.get("consensus_used"):
+                result["answer"] = refined["response"]
+                result["consensus_used"] = True
+
+        suggestions = await self._guidance.get_suggestions(
             org_id,
             user_id,
-            request,
+            conversation_id,
             classification,
-            context,
-            enrichments,
-            model_selection,
-            surface,
+            policy["mode"],
+            str(result.get("answer") or ""),
+            connected_integrations=context.get("connected_integrations") or [],
         )
+        result["proactive_suggestions"] = suggestions
+        return result
 
     async def _run_enrichments(
         self,
@@ -136,6 +258,7 @@ class IntelligenceRouter:
         model_selection: dict[str, Any],
         surface: str,
     ) -> dict[str, Any]:
+        _ = user_id
         recommendations = await get_decision_intelligence_service(self.settings).recommend_next_action(
             org_id,
             request,

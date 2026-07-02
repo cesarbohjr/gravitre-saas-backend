@@ -24,6 +24,7 @@ from app.routers import (
     agent_memories,
     agent_tool_permissions,
     admin_intelligence,
+    admin_chat,
     mcp_admin,
     ai_system,
     agent_council,
@@ -464,6 +465,7 @@ app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
 app.include_router(admin_intelligence.router)
+app.include_router(admin_chat.router)
 app.include_router(mcp_admin.router)
 app.include_router(optimization_suggestions.router)
 app.include_router(feedback_mode.router)

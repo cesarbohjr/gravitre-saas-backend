@@ -69,6 +69,15 @@ TASK_TYPE_PIPELINE_MAP: dict[str, dict[str, Any]] = {
         "risk_level": "low",
         "latency_target": "tier_1",
     },
+    "workflow_planning": {
+        "requires_prediction": False,
+        "requires_causal": False,
+        "requires_graph": False,
+        "requires_action": False,
+        "requires_web_search": False,
+        "risk_level": "low",
+        "latency_target": "tier_2",
+    },
 }
 
 _CATEGORY_TO_INTENT = {
@@ -94,9 +103,20 @@ class TaskClassifier:
         org_id: str,
         request: str,
         conversation_history: list[dict] | None = None,
+        understanding: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         base = await self._classify_with_ml(org_id, request)
         intent = str(base.get("intent") or "question_answering")
+        if understanding:
+            dept = understanding.get("department_inference")
+            if dept and not base.get("department"):
+                base["department"] = dept
+            if understanding.get("expected_output_format") == "plan":
+                intent = "workflow_planning"
+            elif understanding.get("expected_output_format") == "action":
+                pipeline_action = TASK_TYPE_PIPELINE_MAP["workflow_execution"]
+                base.update(pipeline_action)
+                intent = "workflow_execution"
         pipeline_flags = dict(
             TASK_TYPE_PIPELINE_MAP.get(intent, TASK_TYPE_PIPELINE_MAP["general"])
         )
@@ -112,12 +132,15 @@ class TaskClassifier:
                 intent = "crm_lookup"
                 pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["crm_lookup"])
 
-        department = None
-        lowered = request.lower()
-        for dept in ("finance", "sales", "marketing", "hr", "engineering", "support"):
-            if dept in lowered:
-                department = dept
-                break
+        department = base.get("department")
+        if not department and understanding:
+            department = understanding.get("department_inference")
+        if not department:
+            lowered = request.lower()
+            for dept in ("finance", "sales", "marketing", "hr", "engineering", "support"):
+                if dept in lowered:
+                    department = dept
+                    break
 
         return {
             **base,
@@ -125,6 +148,7 @@ class TaskClassifier:
             "intent": intent,
             "department": department,
             "request": request,
+            "understanding": understanding or {},
         }
 
     async def _classify_with_ml(self, org_id: str, request: str) -> dict[str, Any]:

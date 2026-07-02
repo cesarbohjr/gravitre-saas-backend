@@ -559,6 +559,9 @@ class AgentIntelligence:
         assistant_base_prompt: str | None = None,
         conflicts: list[dict[str, Any]] | None = None,
         assembled_context: dict[str, Any] | None = None,
+        persona_modifier: str | None = None,
+        sentiment_adaptation: str | None = None,
+        task_state_section: str | None = None,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         org_dict = org_context if isinstance(org_context, dict) else None
@@ -582,12 +585,26 @@ class AgentIntelligence:
         sections = [
             persona_section.strip(),
             "",
+        ]
+        if persona_modifier and persona_modifier.strip():
+            sections.extend(["## Communication Style", persona_modifier.strip(), ""])
+        if sentiment_adaptation and sentiment_adaptation != "none":
+            adaptation_hint = {
+                "acknowledge_briefly": "The user may be frustrated — acknowledge briefly, then solve.",
+                "offer_options": "The user seems uncertain — offer 2-3 clear options.",
+                "reduce_verbosity": "The user needs a fast answer — be concise and action-first.",
+            }.get(sentiment_adaptation, "")
+            if adaptation_hint:
+                sections.extend(["## Tone Adaptation", adaptation_hint, ""])
+        if task_state_section and task_state_section.strip():
+            sections.extend(["## Conversation Task State", task_state_section.strip(), ""])
+        sections.extend([
             "## Your Internal Knowledge",
             rag_section.strip(),
             "",
             "## Current Business Context",
             org_text.strip(),
-        ]
+        ])
         if company_intelligence_section and company_intelligence_section.strip():
             sections.extend(
                 [
@@ -937,6 +954,7 @@ class AgentIntelligence:
         environment_name: str = "default",
         client: Any | None = None,
         assistant_base_prompt: str | None = None,
+        conversation_id: str | None = None,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1008,11 +1026,47 @@ class AgentIntelligence:
                 return
 
         from app.services.task_classifier import get_task_classifier
+        from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+        from app.services.contextual_understanding_service import get_contextual_understanding_service
+        from app.services.clarification_engine import get_clarification_engine
+        from app.services.sentiment_friction_service import get_sentiment_friction_service
+        from app.services.dialogue_policy_engine import get_dialogue_policy_engine
+        from app.services.persona_service import get_persona_service
+        from app.services.conversation_state_service import get_conversation_state_service
+        from app.services.conversational_consensus_service import get_conversational_consensus_service
+        from app.services.proactive_guidance_service import get_proactive_guidance_service
+        from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 
+        dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
+        sentiment = (
+            get_sentiment_friction_service().analyze(task_text, conversation_history)
+            if dialogue_settings.get("sentiment_detection_enabled", True)
+            else {"recommended_adaptation": "none"}
+        )
+        understanding = await get_contextual_understanding_service(active_settings).understand(
+            task_text,
+            conversation_history,
+            org_id,
+        )
         pipeline_classification = await get_task_classifier(active_settings).classify(
             org_id,
             task_text,
             conversation_history,
+            understanding=understanding,
+        )
+        classification_confidence = float(
+            pipeline_classification.get("classification_confidence") or 0.55
+        )
+        task_state = await get_conversation_state_service(active_settings).get_task_state(
+            conversation_id or "",
+            org_id,
+            client=client,
+        )
+        persona = await get_persona_service(active_settings).get_persona_for_request(
+            org_id,
+            user_id,
+            pipeline_classification.get("department"),
+            conversation_id,
         )
 
         refined_query = task_text
@@ -1056,6 +1110,71 @@ class AgentIntelligence:
         connected_list = list(connected)
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
+
+        clarification = await get_clarification_engine(active_settings).should_clarify(
+            pipeline_classification,
+            {"connected_integrations": connected_list},
+            conversation_history,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            understanding=understanding,
+        )
+        if clarification.get("should_clarify"):
+            question = str(clarification.get("question") or "Could you clarify?")
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, question)
+            yield sse_text_end(text_id)
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": True},
+                answer_explanation=f"Clarification needed: {clarification.get('reason')}",
+                conflicts=None,
+                refined_query=None,
+                validation=None,
+                dialogue_mode="clarify",
+                persona_key=persona.get("persona_key"),
+                proactive_suggestions=[],
+            )
+            yield AssistantStreamComplete(
+                full_content=question,
+                tool_results=[],
+                react_result=None,
+                model="clarification",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": True},
+                answer_explanation=str(clarification.get("reason") or ""),
+                dialogue_mode="clarify",
+                persona_key=str(persona.get("persona_key") or ""),
+            )
+            return
+
+        risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
+        if pipeline_classification.get("requires_action"):
+            risk_evaluation = await get_risk_approval_evaluator(active_settings).evaluate(
+                org_id,
+                user_id,
+                {
+                    "type": pipeline_classification.get("intent"),
+                    "estimated_impact": "medium",
+                    "is_destructive": False,
+                },
+                pipeline_classification,
+                {},
+            )
+        dialogue_policy = get_dialogue_policy_engine(
+            clarification_threshold=float(dialogue_settings.get("clarification_threshold") or 0.65),
+            escalation_threshold=float(dialogue_settings.get("escalation_threshold") or 0.40),
+        ).select_mode(
+            pipeline_classification,
+            clarification,
+            sentiment,
+            risk_evaluation,
+            classification_confidence,
+            conversation_history,
+        )
+        dialogue_mode = str(dialogue_policy.get("mode") or "answer")
+
         rag_sources, rag_conflicts = self._prepare_rag_sources(retrieval.rag_sources)
         rag_section = self._format_rag_context(
             rag_sources,
@@ -1116,6 +1235,16 @@ class AgentIntelligence:
         except Exception as exc:  # noqa: BLE001
             logger.debug("entity_context_skipped org_id=%s error=%s", org_id, exc)
 
+        task_state_section = ""
+        if task_state:
+            compact = {
+                key: task_state[key]
+                for key in ("clarified_params", "current_plan", "completed_steps", "pending_steps")
+                if task_state.get(key)
+            }
+            if compact:
+                task_state_section = json.dumps(compact, default=str)[:3000]
+
         system_prompt = self._build_system_prompt(
             surface,
             agent if agent_id else None,
@@ -1129,6 +1258,9 @@ class AgentIntelligence:
             entity_relationship_section=entity_block or None,
             assistant_base_prompt=assistant_base_prompt,
             conflicts=rag_conflicts,
+            persona_modifier=persona.get("system_prompt_modifier"),
+            sentiment_adaptation=str(sentiment.get("recommended_adaptation") or "none"),
+            task_state_section=task_state_section or None,
         )
 
         prepared_context = await maybe_summarize_history(
@@ -1335,11 +1467,33 @@ class AgentIntelligence:
         )
         full_content = finalized["content"]
         if finalized["confidence"].get("needs_clarification") and mode_key != "fast":
-            clarification = (
+            clarification_suffix = (
                 "\n\nI may be missing context — could you clarify or point me to a specific record or document?"
             )
-            if clarification.strip() not in full_content:
-                full_content = f"{full_content.rstrip()}{clarification}"
+            if clarification_suffix.strip() not in full_content:
+                full_content = f"{full_content.rstrip()}{clarification_suffix}"
+
+        consensus_result = await get_conversational_consensus_service(active_settings).refine_if_warranted(
+            org_id,
+            task_text,
+            full_content,
+            pipeline_classification,
+            float(finalized["confidence"].get("score") or classification_confidence),
+            dialogue_mode,
+        )
+        if consensus_result.get("consensus_used"):
+            full_content = str(consensus_result.get("response") or full_content)
+
+        proactive_suggestions = await get_proactive_guidance_service(active_settings).get_suggestions(
+            org_id,
+            user_id,
+            conversation_id,
+            pipeline_classification,
+            dialogue_mode,
+            full_content,
+            connected_integrations=connected_list,
+        )
+        suggestion_texts = [row.get("text") for row in proactive_suggestions if row.get("text")]
 
         # Some ReAct paths populate react_result.answer without emitting text_delta
         # events (e.g. empty delta chunks). The UI contract still requires text-start/
@@ -1365,6 +1519,11 @@ class AgentIntelligence:
             conflicts=rag_conflicts,
             refined_query=refined_query if refined_query != task_text else None,
             validation=finalized["validation"],
+            dialogue_mode=dialogue_mode,
+            persona_key=str(persona.get("persona_key") or ""),
+            proactive_suggestions=suggestion_texts,
+            task_state=task_state if dialogue_mode == "guide" else None,
+            simulation_summary=risk_evaluation.get("simulation_summary"),
         )
 
         yield AssistantStreamComplete(
@@ -1380,6 +1539,10 @@ class AgentIntelligence:
             validation=finalized["validation"],
             conflicts=rag_conflicts,
             refined_query=refined_query if refined_query != task_text else None,
+            dialogue_mode=dialogue_mode,
+            persona_key=str(persona.get("persona_key") or ""),
+            proactive_suggestions=suggestion_texts,
+            task_state=task_state if dialogue_mode == "guide" else None,
         )
 
         if tier0_enabled(engine_settings) and full_content.strip():

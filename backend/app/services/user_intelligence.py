@@ -261,7 +261,7 @@ class UserIntelligenceService:
             client = get_supabase_client(settings)
             rows = (
                 client.table("user_preferences")
-                .select("preferred_model, preferred_mode, personalized_suggestions, last_session_at")
+                .select("preferred_model, preferred_mode, preferred_persona, personalized_suggestions, last_session_at")
                 .eq("user_id", user_id)
                 .limit(1)
                 .execute()
@@ -282,6 +282,7 @@ class UserIntelligenceService:
         user_id: str,
         preferred_model: str | None = None,
         preferred_mode: str | None = None,
+        preferred_persona: str | None = None,
     ) -> dict[str, Any]:
         existing = await self.get_preferences(settings, user_id=user_id)
         now = datetime.now(timezone.utc).isoformat()
@@ -290,6 +291,7 @@ class UserIntelligenceService:
             "org_id": org_id,
             "preferred_model": preferred_model if preferred_model is not None else existing.get("preferred_model"),
             "preferred_mode": preferred_mode if preferred_mode is not None else existing.get("preferred_mode") or "standard",
+            "preferred_persona": preferred_persona if preferred_persona is not None else existing.get("preferred_persona"),
             "updated_at": now,
         }
         try:

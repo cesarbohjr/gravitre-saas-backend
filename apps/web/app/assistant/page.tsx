@@ -56,6 +56,14 @@ import {
   type ToolInvocation,
 } from "@/components/gravitre/assistant/tool-chip"
 import { FollowUpSuggestions } from "@/components/gravitre/assistant/follow-up-suggestions"
+import { ClarificationMessage } from "@/components/gravitre/assistant/clarification-message"
+import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
+import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
+import {
+  DialogueModeChip,
+  mapToolNameToModeLabel,
+} from "@/components/gravitre/assistant/dialogue-mode-chip"
+import { ApprovalSimulationPreview } from "@/components/gravitre/assistant/approval-simulation-preview"
 import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
 import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
 import {
@@ -212,6 +220,15 @@ type IntelligenceMeta = {
   }
   answerExplanation?: string
   conflicts?: Array<Record<string, unknown>>
+  dialogueMode?: string
+  personaKey?: string
+  proactiveSuggestions?: string[]
+  taskState?: {
+    current_plan?: { steps?: Array<{ step_id?: string; description?: string }> }
+    completed_steps?: Array<{ step_id?: string; description?: string }>
+    pending_steps?: Array<{ step_id?: string; description?: string }>
+  } | null
+  simulationSummary?: Record<string, unknown> | null
 }
 
 function confidenceBadgeClass(band?: string): string {
@@ -387,6 +404,7 @@ function ChatMessage({
   onToggleTool,
   intelligenceMeta,
   onFeedback,
+  onClarificationSelect,
 }: {
   message: UIMessage
   isUser: boolean
@@ -400,8 +418,10 @@ function ChatMessage({
   onToggleTool?: (id: string) => void
   intelligenceMeta?: IntelligenceMeta | null
   onFeedback?: (helpful: boolean) => void
+  onClarificationSelect?: (text: string) => void
 }) {
   const { text, tools, sources } = normalizeMessage(message)
+  const isClarification = intelligenceMeta?.dialogueMode === "clarify"
   const [copied, setCopied] = useState(false)
   const reduceMotion = useReducedMotion()
   const pendingConnectors = extractPendingAuthConnectors(tools)
@@ -432,7 +452,9 @@ function ChatMessage({
             "rounded-2xl px-4 py-3",
             isUser
               ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
-              : "bg-white text-zinc-900 border border-zinc-200 shadow-sm"
+              : isClarification
+                ? "bg-amber-50/80 text-zinc-900 border border-amber-200/80 shadow-sm dark:bg-amber-950/20 dark:border-amber-900/40"
+                : "bg-white text-zinc-900 border border-zinc-200 shadow-sm",
           )}
         >
           {/* Tool invocations */}
@@ -452,6 +474,12 @@ function ChatMessage({
           {/* Message content */}
           {isUser ? (
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{text}</p>
+          ) : isClarification ? (
+            <ClarificationMessage
+              text={text}
+              suggestions={intelligenceMeta?.proactiveSuggestions}
+              onSelectSuggestion={onClarificationSelect}
+            />
           ) : (
             <div
               aria-live={streaming ? "polite" : "off"}
@@ -495,6 +523,10 @@ function ChatMessage({
               )}
             </div>
           )}
+
+          {!isUser && intelligenceMeta?.simulationSummary && intelligenceMeta.dialogueMode === "confirm" ? (
+            <ApprovalSimulationPreview simulation={intelligenceMeta.simulationSummary} />
+          ) : null}
 
           {/* Source citations */}
           {!isUser && intelligenceMeta?.confidence?.score != null && !streaming && (
@@ -670,6 +702,9 @@ export default function AssistantPage() {
   const [streamError, setStreamError] = useState<string | null>(null)
   const [intelligenceByMessageId, setIntelligenceByMessageId] = useState<Record<string, IntelligenceMeta>>({})
   const pendingIntelligenceRef = useRef<IntelligenceMeta | null>(null)
+  const [preferredPersona, setPreferredPersona] = useState("friendly_assistant")
+  const [dialogueMode, setDialogueMode] = useState<string | null>(null)
+  const [taskState, setTaskState] = useState<IntelligenceMeta["taskState"]>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [conversationMessagesLoading, setConversationMessagesLoading] = useState(false)
   const [conversationMessagesError, setConversationMessagesError] = useState<string | null>(null)
@@ -817,8 +852,24 @@ export default function AssistantPage() {
         }
       }
       if (dataPart.type === "data-intelligence" && dataPart.data && typeof dataPart.data === "object") {
-        const payload = dataPart.data as IntelligenceMeta
-        pendingIntelligenceRef.current = payload
+        const payload = dataPart.data as IntelligenceMeta & {
+          dialogueMode?: string
+          personaKey?: string
+          proactiveSuggestions?: string[]
+          taskState?: IntelligenceMeta["taskState"]
+          simulationSummary?: Record<string, unknown> | null
+        }
+        pendingIntelligenceRef.current = {
+          ...payload,
+          dialogueMode: payload.dialogueMode,
+          personaKey: payload.personaKey,
+          proactiveSuggestions: payload.proactiveSuggestions,
+          taskState: payload.taskState,
+          simulationSummary: payload.simulationSummary,
+        }
+        if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
+        if (payload.personaKey) setPreferredPersona(payload.personaKey)
+        if (payload.taskState) setTaskState(payload.taskState)
       }
     },
   })
@@ -828,6 +879,26 @@ export default function AssistantPage() {
     () => assistantApi.dailyBriefing(),
     { revalidateOnFocus: false },
   )
+
+  useSWR(
+    user && activeConversationId ? `assistant-conversation-state-${activeConversationId}` : null,
+    () => assistantApi.getConversationState(activeConversationId!),
+    {
+      revalidateOnFocus: false,
+      onSuccess: (data) => {
+        if (data?.task_state) {
+          setTaskState(data.task_state as IntelligenceMeta["taskState"])
+        }
+      },
+    },
+  )
+
+  useSWR(user ? "assistant-preferences" : null, () => assistantApi.getPreferences(), {
+    revalidateOnFocus: false,
+    onSuccess: (prefs) => {
+      if (prefs?.preferred_persona) setPreferredPersona(prefs.preferred_persona)
+    },
+  })
 
   const welcomeGreeting = resolveWelcomeGreeting(dailyBriefing?.greeting, user)
   const briefingBullets = useMemo(
@@ -846,7 +917,28 @@ export default function AssistantPage() {
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
   const isBusy = isLoading || isSubmitting
+  const activeToolLabel = useMemo(() => {
+    if (!isBusy) return null
+    if (status === "submitted") return "Thinking"
+    const lastAssistant = [...messages].reverse().find((message) => message.role === "assistant")
+    if (lastAssistant) {
+      const { tools } = normalizeMessage(lastAssistant)
+      const running = tools.find((tool) => tool.state === "call")
+      if (running?.toolName) return mapToolNameToModeLabel(running.toolName)
+    }
+    return isStreaming ? "Analyzing" : null
+  }, [isBusy, isStreaming, messages, status])
   const hasSentMessage = messages.some((m) => m.role === "user")
+  const handlePersonaChange = useCallback(async (personaKey: string) => {
+    setPreferredPersona(personaKey)
+    try {
+      await assistantApi.updatePreferences({ preferred_persona: personaKey })
+      toast.success("Persona updated")
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Could not update persona")
+    }
+  }, [])
+
   const handleMessageFeedback = useCallback(async (messageId: string | undefined, helpful: boolean) => {
     const resolvedId = messageId ?? pendingIntelligenceRef.current?.messageId
     if (!resolvedId) {
@@ -1208,24 +1300,27 @@ export default function AssistantPage() {
                 <p className="text-[11px] text-zinc-500">Multi-turn chat with tools — not task delegation</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNewConversation}
-              className="gap-2 h-8 text-xs"
-            >
-              <MessageSquarePlus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">New</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <DialogueModeChip mode={dialogueMode} toolActivity={activeToolLabel} />
+              <PersonaSelector value={preferredPersona} onChange={handlePersonaChange} disabled={!user} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNewConversation}
+                className="gap-2 h-8 text-xs"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">New</span>
+              </Button>
+            </div>
           </div>
 
           <OrgContextPill enabled={Boolean(user)} />
+          {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
 
-          {user ? (
-            <div className="border-b border-zinc-200 bg-zinc-50/80 px-4 py-3 md:px-6">
-
-            </div>
-          ) : null}
+          {user ? null : (
+            <div className="border-b border-zinc-200 bg-zinc-50/80 px-4 py-3 md:px-6" />
+          )}
 
           {/* Messages area */}
           <div className="flex-1 overflow-auto">
@@ -1372,6 +1467,7 @@ export default function AssistantPage() {
                               )
                           : undefined
                       }
+                      onClarificationSelect={fillFollowUp}
                     />
                   ))}
                   </AnimatePresence>

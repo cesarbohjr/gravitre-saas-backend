@@ -40,3 +40,7 @@ class AssistantStreamComplete:
     validation: dict[str, Any] | None = None
     conflicts: list[dict[str, Any]] | None = None
     refined_query: str | None = None
+    dialogue_mode: str | None = None
+    persona_key: str | None = None
+    proactive_suggestions: list[str] | None = None
+    task_state: dict[str, Any] | None = None
