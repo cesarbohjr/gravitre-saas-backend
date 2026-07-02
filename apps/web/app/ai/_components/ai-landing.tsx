@@ -9,6 +9,7 @@ import {
   Sparkle as Sparkles,
 } from "@phosphor-icons/react"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
+import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 
 function ModeIconBadge({
@@ -67,6 +68,10 @@ export function AiLanding({
           Ask a question, delegate a task, or search your workspace. In Auto mode, Gravitre routes
           your intent to the right engine automatically.
         </p>
+      </div>
+
+      <div className="mt-6">
+        <AiWorkSurfacesCallout compact />
       </div>
 
       <div className="mt-8 flex flex-wrap justify-center gap-2">

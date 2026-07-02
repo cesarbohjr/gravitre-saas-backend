@@ -67,7 +67,7 @@ function LoginPageContent() {
           clearAuthTransition()
           window.sessionStorage.removeItem("gravitre_auth_login_redirect")
           await supabaseClient.auth.refreshSession()
-          const redirect = searchParams.get("redirect") || APP_ROUTES.commandCenter
+          const redirect = searchParams.get("redirect") || APP_ROUTES.home
           router.replace(redirect)
           return
         }
@@ -155,7 +155,7 @@ function LoginPageContent() {
           return
         }
 
-        const redirect = searchParams.get("redirect") || APP_ROUTES.commandCenter
+        const redirect = searchParams.get("redirect") || APP_ROUTES.home
         markAuthTransition()
         router.replace(redirect)
       } catch {
@@ -196,7 +196,7 @@ function LoginPageContent() {
       return
     }
 
-    const redirect = searchParams.get("redirect") || APP_ROUTES.commandCenter
+    const redirect = searchParams.get("redirect") || APP_ROUTES.home
     markAuthTransition()
     router.push(redirect)
   }
@@ -214,7 +214,7 @@ function LoginPageContent() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl(APP_ROUTES.commandCenter),
+          emailRedirectTo: getAuthRedirectUrl(APP_ROUTES.home),
         },
       })
       if (error) {
@@ -241,7 +241,7 @@ function LoginPageContent() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, APP_ROUTES.commandCenter)
+    const result = await beginOAuthSignIn(selectedProvider, APP_ROUTES.home)
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)

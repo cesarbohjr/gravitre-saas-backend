@@ -52,7 +52,7 @@ const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
     stepKey: "welcome",
     title: "Create your account",
     description: "You're signed in and ready to go",
-    href: APP_ROUTES.commandCenter,
+    href: APP_ROUTES.welcome,
     icon: UserCheck,
   },
   {
@@ -75,8 +75,8 @@ const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
     id: "run-first-task",
     stepKey: "task",
     title: "Run your first task",
-    description: "Assign work and see agent output",
-    href: APP_ROUTES.commandCenter,
+    description: "Ask Gravitre AI or delegate from Command Center",
+    href: APP_ROUTES.gravitreAi,
     icon: PlayCircle,
   },
   {

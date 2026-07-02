@@ -71,14 +71,14 @@ export default function GetStartedPage() {
         
         // canAccessApp means user can enter the app (trialing, active, free with access)
         if ((status as { canAccessApp?: boolean }).canAccessApp) {
-          router.replace(APP_ROUTES.commandCenter)
+          router.replace(APP_ROUTES.welcome)
         } else {
           // User exists but no access - send to billing
           router.replace("/settings/billing?reason=subscription_required")
         }
       } catch {
-        // On error, allow through to operator (fail open for new signups)
-        if (!cancelled) router.replace(APP_ROUTES.commandCenter)
+        // On error, allow through to welcome (fail open for new signups)
+        if (!cancelled) router.replace(APP_ROUTES.welcome)
       }
     }
     
@@ -102,7 +102,7 @@ export default function GetStartedPage() {
     setSuccessMessage(null)
     setLoadingProvider(provider)
 
-    const result = await beginOAuthSignIn(provider, APP_ROUTES.commandCenter, true)
+    const result = await beginOAuthSignIn(provider, APP_ROUTES.welcome, true)
     if (!result.ok) {
       setAuthError(humanizeAuthError(result.error))
       setLoadingProvider(null)
@@ -141,7 +141,7 @@ export default function GetStartedPage() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: getAuthRedirectUrl(APP_ROUTES.commandCenter, true),
+          emailRedirectTo: getAuthRedirectUrl(APP_ROUTES.welcome, true),
         },
       })
 
@@ -165,7 +165,7 @@ export default function GetStartedPage() {
         console.warn("Demo bootstrap failed, continuing to app")
       }
 
-      router.replace(APP_ROUTES.commandCenter)
+      router.replace(APP_ROUTES.welcome)
     } catch (err) {
       setAuthError(humanizeAuthError(err instanceof Error ? err.message : "Signup failed"))
       setIsLoading(false)

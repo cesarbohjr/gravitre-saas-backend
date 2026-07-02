@@ -14,9 +14,12 @@ import { clearAuthTransition } from "@/lib/auth-transition"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useGlobalWorkShortcuts } from "@/hooks/use-global-work-shortcuts"
 import { onboardingApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { AppBreadcrumbs } from "./app-breadcrumbs"
+import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
 import {
@@ -110,6 +113,16 @@ export function AppShell({ children, title }: AppShellProps) {
       revalidateOnReconnect: false,
       dedupingInterval: 60_000,
     }
+  )
+
+  const { data: onboardingProgress } = useSWR<OnboardingProgress>(
+    user ? "/api/onboarding" : null,
+    apiFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
+    },
   )
 
   const billingAccessDenied =
@@ -206,6 +219,23 @@ export function AppShell({ children, title }: AppShellProps) {
     if (pathname.startsWith("/settings/billing") || pathname.startsWith("/pricing")) return
     router.replace("/settings/billing?reason=subscription_required")
   }, [billingHardBlock, billingError, pathname, router])
+
+  // First-run welcome flow — redirect until welcome is completed or skipped
+  useEffect(() => {
+    if (!user || !onboardingProgress) return
+    const exemptPrefixes = [
+      "/welcome",
+      "/login",
+      "/get-started",
+      "/auth/",
+      "/settings/billing",
+      "/pricing",
+      "/onboarding",
+    ]
+    if (exemptPrefixes.some((prefix) => pathname.startsWith(prefix))) return
+    if (onboardingProgress.welcome_completed || onboardingProgress.skipped) return
+    router.replace(APP_ROUTES.welcome)
+  }, [user, onboardingProgress, pathname, router])
 
   const showTrialExpiredBanner =
     trialExpired ||
@@ -333,7 +363,12 @@ export function AppShell({ children, title }: AppShellProps) {
             </div>
           )}
 
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-4 pt-3 md:px-6">
+              <AppBreadcrumbs />
+            </div>
+            {children}
+          </main>
 
           {/* White-label footer - hidden when org sets hidePoweredBy */}
           {!effectiveHidePoweredBy && (
@@ -360,8 +395,7 @@ export function AppShell({ children, title }: AppShellProps) {
       <GoalWorkflowWizard
         open={goalWizardOpen}
         onOpenChange={setGoalWizardOpen}
-        onBuildWorkflow={(plan) => {
-          console.log("Goal plan:", plan)
+        onBuildWorkflow={() => {
           router.push("/workflows/new/builder")
         }}
       />

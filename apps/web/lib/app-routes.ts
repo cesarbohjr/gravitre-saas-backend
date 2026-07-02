@@ -1,5 +1,7 @@
 /** Canonical app routes — use these for navigation, auth redirects, and SEO. */
 export const APP_ROUTES = {
+  home: "/home",
+  welcome: "/welcome",
   commandCenter: "/command-center",
   multiAgentRun: "/multi-agent-run",
   gravitreAi: "/ai",
@@ -9,6 +11,17 @@ export const APP_ROUTES = {
   training: "/training",
   models: "/models",
   orgLearning: "/admin/intelligence",
+  revenueRisk: "/admin/intelligence#revenue-risk",
+  intelligence: "/intelligence",
+  intelligenceAgents: "/intelligence/agents",
+  intelligenceModels: "/intelligence/models",
+  intelligenceMemory: "/intelligence/memory",
+  intelligenceReports: "/intelligence/reports",
+  marketplace: "/marketplace",
+  connectors: "/connectors",
+  workflows: "/workflows",
+  approvals: "/approvals",
+  settings: "/settings",
 } as const
 
 /** Legacy paths retained only for redirects — do not link in UI. */

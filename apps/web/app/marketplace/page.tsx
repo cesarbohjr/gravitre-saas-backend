@@ -33,6 +33,8 @@ import {
 } from "lucide-react"
 import { departmentGradient } from "@/lib/department-gradient"
 import { fetcher } from "@/lib/fetcher"
+import { roleFromOnboardingStepData, WELCOME_ROLES } from "@/lib/welcome-flow"
+import type { OnboardingProgress } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
@@ -168,6 +170,12 @@ function MarketplaceHome() {
     () => marketplaceApi.getPublisherProfile(),
   )
 
+  const { data: onboardingProgress } = useSWR<OnboardingProgress>(
+    user ? "/api/onboarding" : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+
   const savedCount = savesData?.total ?? savesData?.saves?.length ?? 0
   const orgPendingCount = orgQueueData?.total ?? 0
   const platformPendingCount = platformQueueData?.total ?? 0
@@ -209,6 +217,25 @@ function MarketplaceHome() {
       })
       .slice(0, 6)
   }, [featuredData?.assets, packs])
+
+  const userRole = roleFromOnboardingStepData(onboardingProgress?.step_data)
+  const recommendedForYou = useMemo(() => {
+    if (packs.length === 0) return []
+    const roleConfig = WELCOME_ROLES.find((entry) => entry.id === userRole)
+    const roleMatches = roleConfig?.packSlug
+      ? packs.filter(
+          (pack) =>
+            pack.slug === roleConfig.packSlug ||
+            pack.department?.toLowerCase().includes(userRole ?? ""),
+        )
+      : []
+    const connectorReady = packs.filter((pack) => !pack.installed && pack.connectorsReady)
+    const merged = [...roleMatches]
+    for (const pack of connectorReady) {
+      if (!merged.some((entry) => entry.id === pack.id)) merged.push(pack)
+    }
+    return merged.filter((pack) => !pack.installed).slice(0, 6)
+  }, [packs, userRole])
 
   const exploreCards = useMemo(
     () =>
@@ -415,6 +442,44 @@ function MarketplaceHome() {
               </Button>
             )}
           </div>
+        ) : null}
+
+        {installedCount === 0 && !isLoading ? (
+          <div className="mb-10 rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-8 text-center">
+            <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/10">
+              <Package className="h-6 w-6 text-primary" aria-hidden />
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Start building your AI operations team</h2>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground text-pretty">
+              Install your first department pack to get pre-built agents, workflows, and AI capabilities configured for your team.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Button asChild>
+                <Link href="/marketplace/assets?type=department_pack">Browse department packs</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/marketplace/assets">Explore all templates</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {recommendedForYou.length > 0 ? (
+          <section className="mb-10">
+            <div className="mb-4 flex items-end justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Recommended for you</h2>
+                <p className="text-sm text-muted-foreground">
+                  Based on your role{userRole ? ` (${WELCOME_ROLES.find((r) => r.id === userRole)?.label ?? userRole})` : ""} and connected apps.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {recommendedForYou.map((asset, index) => (
+                <FeaturedPackCard key={asset.id} asset={asset} index={index} />
+              ))}
+            </div>
+          </section>
         ) : null}
 
         <section className="mb-10">

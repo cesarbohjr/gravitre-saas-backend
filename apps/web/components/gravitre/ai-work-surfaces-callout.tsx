@@ -19,7 +19,7 @@ export function AiWorkSurfacesCallout({
   className,
   compact = false,
 }: {
-  current: AiWorkSurfaceId
+  current?: AiWorkSurfaceId
   className?: string
   compact?: boolean
 }) {

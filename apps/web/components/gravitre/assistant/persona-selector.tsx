@@ -1,37 +1,42 @@
 "use client"
 
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import {
+  CHAT_PERSONA_OPTIONS,
+  resolveChatPersonaLabel,
+  type ChatPersonaOption,
+} from "@/lib/chat-personas"
 
-const PERSONA_OPTIONS = [
-  { key: "friendly_assistant", label: "Friendly Assistant" },
-  { key: "executive_strategist", label: "Executive Strategist" },
-  { key: "sales_advisor", label: "Sales Advisor" },
-  { key: "marketing_operator", label: "Marketing Operator" },
-  { key: "operations_analyst", label: "Operations Analyst" },
-  { key: "support_specialist", label: "Support Specialist" },
-  { key: "finance_analyst", label: "Finance Analyst" },
-  { key: "engineering_copilot", label: "Engineering Copilot" },
-  { key: "deep_research_analyst", label: "Deep Research Analyst" },
-] as const
+type PersonaSelectorProps = {
+  value: string
+  onChange: (personaKey: string) => void
+  disabled?: boolean
+  options?: ChatPersonaOption[]
+  surface?: "default" | "light"
+  showIcon?: boolean
+  label?: string
+}
 
 export function PersonaSelector({
   value,
   onChange,
   disabled,
-}: {
-  value: string
-  onChange: (personaKey: string) => void
-  disabled?: boolean
-}) {
-  const label = PERSONA_OPTIONS.find((option) => option.key === value)?.label ?? "Friendly Assistant"
+  options = CHAT_PERSONA_OPTIONS,
+  surface = "default",
+  showIcon = true,
+  label = "Response style",
+}: PersonaSelectorProps) {
+  const selectedLabel = resolveChatPersonaLabel(value, options)
 
   return (
     <DropdownMenu>
@@ -41,20 +46,40 @@ export function PersonaSelector({
           variant="outline"
           size="sm"
           disabled={disabled}
-          className="h-8 gap-1 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground"
+          aria-label={`${label}: ${selectedLabel}`}
+          className={cn(
+            "h-8 gap-1.5 rounded-full px-3 text-xs font-medium",
+            surface === "light"
+              ? "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+              : "border-border bg-background text-foreground",
+          )}
         >
-          {label}
-          <ChevronDown className="h-3 w-3 opacity-60" />
+          {showIcon ? <UserRound className="h-3.5 w-3.5 opacity-70" aria-hidden /> : null}
+          <span className="max-w-[9rem] truncate">{selectedLabel}</span>
+          <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        {PERSONA_OPTIONS.map((option) => (
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {options.map((option) => (
           <DropdownMenuItem
             key={option.key}
-            className={cn("text-xs", value === option.key && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}
+            className={cn(
+              "flex flex-col items-start gap-0.5 text-xs",
+              value === option.key && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+            )}
             onClick={() => onChange(option.key)}
           >
-            {option.label}
+            <span className="font-medium">{option.label}</span>
+            {(option.tone || option.verbosity || option.isOrgDefault) && (
+              <span className="text-[10px] text-muted-foreground">
+                {[option.tone, option.verbosity].filter(Boolean).join(" · ")}
+                {option.isOrgDefault ? " · org default" : ""}
+              </span>
+            )}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

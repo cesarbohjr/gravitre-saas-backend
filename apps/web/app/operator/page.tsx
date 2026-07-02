@@ -49,6 +49,7 @@ import { useAsyncJob, type AgentJob, type AgentJobResult } from "@/hooks/use-asy
 import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/agent-interrupts"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { consumeAiHandoff } from "@/lib/ai-surface-handoff"
+import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import {
   buildFindingsFromJobResult,
   buildOperatorJobContext,
@@ -963,6 +964,9 @@ export default function OperatorPage() {
               <p className="text-xs text-muted-foreground text-pretty">
                 Delegate tasks, run execution plans, and track async work — not a free-form chat.
               </p>
+              <div className="mt-3">
+                <AiWorkSurfacesCallout current="command-center" compact />
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">

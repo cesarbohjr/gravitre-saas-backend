@@ -11,6 +11,7 @@ import { parseChatError } from "@/lib/chat-errors"
 import { conversationMessageToUI } from "@/lib/chat-messages"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import {
   Loader2,
   Sparkles,
@@ -66,6 +67,7 @@ import {
 import { ApprovalSimulationPreview } from "@/components/gravitre/assistant/approval-simulation-preview"
 import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
 import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
+import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import {
   Tooltip,
   TooltipContent,
@@ -702,7 +704,10 @@ export default function AssistantPage() {
   const [streamError, setStreamError] = useState<string | null>(null)
   const [intelligenceByMessageId, setIntelligenceByMessageId] = useState<Record<string, IntelligenceMeta>>({})
   const pendingIntelligenceRef = useRef<IntelligenceMeta | null>(null)
-  const [preferredPersona, setPreferredPersona] = useState("friendly_assistant")
+  const { preferredPersona, preferredPersonaRef, handlePersonaChange, syncPersona } = usePreferredPersona({
+    enabled: Boolean(user),
+    successMessage: "Persona updated",
+  })
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
   const [taskState, setTaskState] = useState<IntelligenceMeta["taskState"]>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -802,9 +807,10 @@ export default function AssistantPage() {
           mode,
           model_override: modelOverride,
           conversation_id: activeConversationIdRef.current,
+          preferred_persona: preferredPersonaRef.current,
         }),
       }),
-    [mode, modelOverride],
+    [mode, modelOverride, preferredPersonaRef],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -868,7 +874,7 @@ export default function AssistantPage() {
           simulationSummary: payload.simulationSummary,
         }
         if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
-        if (payload.personaKey) setPreferredPersona(payload.personaKey)
+        if (payload.personaKey) syncPersona(payload.personaKey)
         if (payload.taskState) setTaskState(payload.taskState)
       }
     },
@@ -892,13 +898,6 @@ export default function AssistantPage() {
       },
     },
   )
-
-  useSWR(user ? "assistant-preferences" : null, () => assistantApi.getPreferences(), {
-    revalidateOnFocus: false,
-    onSuccess: (prefs) => {
-      if (prefs?.preferred_persona) setPreferredPersona(prefs.preferred_persona)
-    },
-  })
 
   const welcomeGreeting = resolveWelcomeGreeting(dailyBriefing?.greeting, user)
   const briefingBullets = useMemo(
@@ -929,15 +928,6 @@ export default function AssistantPage() {
     return isStreaming ? "Analyzing" : null
   }, [isBusy, isStreaming, messages, status])
   const hasSentMessage = messages.some((m) => m.role === "user")
-  const handlePersonaChange = useCallback(async (personaKey: string) => {
-    setPreferredPersona(personaKey)
-    try {
-      await assistantApi.updatePreferences({ preferred_persona: personaKey })
-      toast.success("Persona updated")
-    } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Could not update persona")
-    }
-  }, [])
 
   const handleMessageFeedback = useCallback(async (messageId: string | undefined, helpful: boolean) => {
     const resolvedId = messageId ?? pendingIntelligenceRef.current?.messageId
@@ -1302,7 +1292,12 @@ export default function AssistantPage() {
             </div>
             <div className="flex items-center gap-2">
               <DialogueModeChip mode={dialogueMode} toolActivity={activeToolLabel} />
-              <PersonaSelector value={preferredPersona} onChange={handlePersonaChange} disabled={!user} />
+              <PersonaSelector
+                value={preferredPersona}
+                onChange={handlePersonaChange}
+                disabled={!user}
+                surface="light"
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -1313,6 +1308,10 @@ export default function AssistantPage() {
                 <span className="hidden sm:inline">New</span>
               </Button>
             </div>
+          </div>
+
+          <div className="border-b border-zinc-200 bg-white px-4 py-2 md:px-6">
+            <AiWorkSurfacesCallout current="workspace-chat" compact />
           </div>
 
           <OrgContextPill enabled={Boolean(user)} />

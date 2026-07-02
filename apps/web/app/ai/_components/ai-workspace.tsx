@@ -32,7 +32,9 @@ import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
+import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
+import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
   buildOperatorJobPayload,
@@ -98,6 +100,9 @@ function normalizeChatText(message: UIMessage): string {
 
 export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWorkspaceProps) {
   const { user } = useAuth()
+  const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
+    enabled: Boolean(user),
+  })
   const [mode, setMode] = useState<ModeId>(initialMode)
   const [input, setInput] = useState("")
   const [routing, setRouting] = useState(false)
@@ -155,9 +160,10 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
           ...buildChatOrgPayload(),
           mode: chatMode,
           conversation_id: activeConversationIdRef.current,
+          preferred_persona: preferredPersonaRef.current,
         }),
       }),
-    [chatMode],
+    [chatMode, preferredPersonaRef],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -633,6 +639,13 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {user && (mode === "chat" || !showLanding) ? (
+              <PersonaSelector
+                value={preferredPersona}
+                onChange={handlePersonaChange}
+                disabled={!user}
+              />
+            ) : null}
             <AiLayoutPanelPicker
               enabledBlocks={layoutEnabledBlocks}
               onToggleBlock={handleToggleLayoutBlock}

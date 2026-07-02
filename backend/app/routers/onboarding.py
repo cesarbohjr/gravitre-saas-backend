@@ -98,6 +98,11 @@ class CompleteStepRequest(BaseModel):
     data: dict | None = None
 
 
+class WelcomeCompleteRequest(BaseModel):
+    role: str = Field(..., min_length=1)
+    skipped_optional: bool = False
+
+
 def _is_missing_table_error(error: Exception | None) -> bool:
     if error is None:
         return False
@@ -130,6 +135,12 @@ def _build_progress(onboarding_state: dict | None) -> dict:
         "steps": steps,
         "completed_at": completed_at,
         "skipped": skipped,
+        "step_data": state.get("step_data") or {},
+        "welcome_completed": bool(
+            state.get("welcome_completed")
+            or completed_at
+            or skipped
+        ),
     }
 
 
@@ -164,6 +175,64 @@ async def get_progress(
     onboarding_state = org_settings.get("onboarding")
     if onboarding_state is not None and not isinstance(onboarding_state, dict):
         onboarding_state = {}
+    return _build_progress(onboarding_state)
+
+
+@router.post("/welcome-complete")
+async def complete_welcome(
+    body: WelcomeCompleteRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Mark the streamlined /welcome flow complete and persist role selection."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    org_settings = _load_org_settings(client, org_id)
+    onboarding_state = org_settings.get("onboarding")
+    if not isinstance(onboarding_state, dict):
+        onboarding_state = {}
+
+    completed_steps = set(onboarding_state.get("completed_steps") or [])
+    completed_steps.update({"welcome", "role", "ready", "path"})
+    if not body.skipped_optional:
+        completed_steps.add("connect")
+    onboarding_state["completed_steps"] = [
+        step["key"] for step in STEP_DEFINITIONS if step["key"] in completed_steps
+    ]
+
+    step_data = onboarding_state.get("step_data")
+    if not isinstance(step_data, dict):
+        step_data = {}
+    step_data["role"] = {"selected_role": body.role.strip()}
+    onboarding_state["step_data"] = step_data
+    onboarding_state["welcome_completed"] = True
+    onboarding_state["skipped"] = False
+    if REQUIRED_STEP_KEYS.issubset(set(onboarding_state["completed_steps"])):
+        onboarding_state["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+    org_settings["onboarding"] = onboarding_state
+    _save_org_settings(client, org_id, org_settings)
+
+    user_id = user.get("id") or user.get("sub")
+    if user_id:
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            client.table("user_preferences").upsert(
+                {
+                    "user_id": user_id,
+                    "org_id": org_id,
+                    "user_role": body.role.strip(),
+                    "onboarding_step": "complete",
+                    "onboarding_completed_at": now,
+                    "updated_at": now,
+                }
+            ).execute()
+        except Exception:  # noqa: BLE001
+            pass
+
     return _build_progress(onboarding_state)
 
 

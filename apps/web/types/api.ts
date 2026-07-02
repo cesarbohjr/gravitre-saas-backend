@@ -662,6 +662,8 @@ export interface OnboardingProgress {
   steps: OnboardingStep[]
   completed_at?: string
   skipped: boolean
+  step_data?: Record<string, unknown>
+  welcome_completed?: boolean
 }
 
 // ============ Lite Mode ============

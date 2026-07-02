@@ -1,0 +1,147 @@
+export const AI_ROUTE_MODES = ["execute", "chat", "find"] as const
+
+export type AiRouteMode = (typeof AI_ROUTE_MODES)[number]
+
+export type AiRouteDecision = {
+  mode: AiRouteMode
+  confidence: number
+  reason: string
+}
+
+const EXECUTE_VERBS =
+  /\b(run|create|build|make|fix|deploy|sync|generate|schedule|kick off|start|execute|delegate|investigate|resolve|retry|set up|spin up|provision|add|update|delete|remove|enable|disable|approve|reject|send|publish|launch|draft|write|prepare|configure|install|trigger|queue|assign)\b/
+
+const EXECUTE_OBJECTS =
+  /\b(agent|workflow|connector|integration|task|job|run|campaign|report|plan|automation|sequence|approval|operator|playbook|pipeline)\b/
+
+const FIND_LOOKUP =
+  /\b(find|show me|show the|list|where is|where's|where are|which|open the|locate|pull up|look up|search for|get the|link to)\b/
+
+const FIND_ENTITY_LOOKUP =
+  /^(find|show|list|where|which|open|locate|get)\b.*\b(runs?|workflows?|agents?|connectors?|sources?|documents?)\b/
+
+const CHAT_QUESTION =
+  /^(what|why|how|when|who|can you explain|tell me about|summarize|describe|help me understand|is there|are there|should i|would you recommend)\b/
+
+function scoreExecute(text: string): number {
+  let score = 0
+  if (/^(run|create|build|make|fix|deploy|sync|generate|schedule|execute|delegate|set up|spin up|provision|add)\b/.test(text)) {
+    score += 3
+  }
+  if (EXECUTE_VERBS.test(text) && EXECUTE_OBJECTS.test(text)) {
+    score += 4
+  }
+  if (/\b(create|build|make|set up|spin up|provision|add|generate|draft|write)\b.*\b(for me|for us|on my behalf)\b/.test(text)) {
+    score += 3
+  }
+  if (/\b(for me|for us|on my behalf)\b.*\b(create|build|make|set up|generate|run|fix)\b/.test(text)) {
+    score += 3
+  }
+  if (/\b(task|job|execution plan|approval|async|operator session)\b/.test(text)) {
+    score += 2
+  }
+  if (/\b(fix|resolve|retry|re-run|rerun)\b.*\b(run|workflow|connector|issue|error|failure|alert)\b/.test(text)) {
+    score += 3
+  }
+  return score
+}
+
+function scoreFind(text: string): number {
+  let score = 0
+  if (/^(find|show|list|where|which|open|locate|get)\b/.test(text)) {
+    score += 2
+  }
+  if (FIND_LOOKUP.test(text)) {
+    score += 3
+  }
+  if (FIND_ENTITY_LOOKUP.test(text)) {
+    score += 3
+  }
+  if (/\b(named|called)\b/.test(text) && EXECUTE_OBJECTS.test(text)) {
+    score += 2
+  }
+  // Penalize creation/delegation phrasing — not a lookup.
+  if (/\b(create|build|make|set up|provision|generate|draft|write|run|fix|deploy|schedule)\b/.test(text)) {
+    score -= 4
+  }
+  return Math.max(0, score)
+}
+
+function scoreChat(text: string): number {
+  let score = 0
+  if (CHAT_QUESTION.test(text)) {
+    score += 3
+  }
+  if (/\?\s*$/.test(text)) {
+    score += 2
+  }
+  if (/\b(explain|brainstorm|compare|pros and cons|best practice|overview|walk me through)\b/.test(text)) {
+    score += 2
+  }
+  // Action phrasing should not default to chat.
+  if (scoreExecute(text) >= 3) {
+    score -= 2
+  }
+  return Math.max(0, score)
+}
+
+/** Fast, dependency-free routing used when the model call is unavailable. */
+export function heuristicRouteIntent(prompt: string): AiRouteDecision {
+  const text = prompt.toLowerCase().trim()
+  const executeScore = scoreExecute(text)
+  const findScore = scoreFind(text)
+  const chatScore = scoreChat(text)
+
+  const ranked = [
+    { mode: "execute" as const, score: executeScore, reason: "Looks like a request to perform tracked work." },
+    { mode: "find" as const, score: findScore, reason: "Looks like a lookup for an existing record." },
+    { mode: "chat" as const, score: chatScore, reason: "Looks like a conversational question or explanation." },
+  ].sort((a, b) => b.score - a.score)
+
+  const winner = ranked[0]
+  const runnerUp = ranked[1]
+  const margin = winner.score - runnerUp.score
+  const confidence = winner.score === 0 ? 0.4 : Math.min(0.92, 0.52 + winner.score * 0.08 + margin * 0.05)
+
+  if (winner.score === 0) {
+    return { mode: "chat", confidence: 0.4, reason: "Defaulting to a conversational answer." }
+  }
+
+  return { mode: winner.mode, confidence, reason: winner.reason }
+}
+
+/** Guardrail: model sometimes confuses create/delegate prompts with search lookups. */
+export function reconcileModelRouteIntent(
+  prompt: string,
+  model: AiRouteDecision,
+): AiRouteDecision {
+  const text = prompt.toLowerCase().trim()
+  const executeScore = scoreExecute(text)
+  const findScore = scoreFind(text)
+
+  if (model.mode === "find" && executeScore >= 4 && executeScore > findScore + 1) {
+    return {
+      mode: "execute",
+      confidence: Math.max(model.confidence, 0.78),
+      reason: "Creation or delegation request — routing to Execute instead of Search.",
+    }
+  }
+
+  if (model.mode === "chat" && executeScore >= 5 && executeScore > scoreChat(text) + 2) {
+    return {
+      mode: "execute",
+      confidence: Math.max(model.confidence, 0.75),
+      reason: "Action-oriented request — routing to Execute.",
+    }
+  }
+
+  if (model.mode === "execute" && findScore >= 5 && findScore > executeScore + 2 && FIND_LOOKUP.test(text)) {
+    return {
+      mode: "find",
+      confidence: Math.max(model.confidence, 0.72),
+      reason: "Explicit lookup phrasing — routing to Universal Search.",
+    }
+  }
+
+  return model
+}

@@ -4,11 +4,15 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Icon, type IconName } from "@/lib/icons"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { useViewMode } from "@/lib/view-mode-context"
+import useSWR from "swr"
+import { useOnboardingProgress } from "@/hooks/use-onboarding-progress"
 import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
+import { useAuth } from "@/lib/auth-context"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import {
   Tooltip,
   TooltipContent,
@@ -64,20 +68,29 @@ interface NavGroup {
   items: NavItem[]
 }
 
-// Admin navigation - full access
+// Admin navigation - full access (Think → Automate → Activity → Understand → Govern)
 const adminNavigation: NavGroup[] = [
   {
     group: "WORK",
     items: [
       {
+        name: "Getting Started",
+        href: APP_ROUTES.welcome,
+        icon: "rocket",
+        badge: "Setup",
+        emphasis: true,
+        hint: "Finish setup and see progress",
+      },
+      { name: "Home", href: APP_ROUTES.home, icon: "home" },
+      {
         name: "Gravitre AI",
-        href: "/ai",
+        href: APP_ROUTES.gravitreAi,
         icon: "ai",
         badge: "AI",
-        emphasis: true,
-        hint: "Execute, chat, and find — one bar routes to the right engine",
+        hint: "Auto-route execute, chat, and find",
       },
-      { name: "Agents", href: "/agents", icon: "team" },
+      { name: "Command Center", href: APP_ROUTES.commandCenter, icon: "terminal" },
+      { name: "Agents", href: APP_ROUTES.agents, icon: "team" },
       { name: "Multi-Agent Run", href: APP_ROUTES.multiAgentRun, icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
       { name: "Goals", href: "/goals", icon: "target" },
@@ -86,12 +99,12 @@ const adminNavigation: NavGroup[] = [
   {
     group: "BUILD",
     items: [
-      { name: "Marketplace", href: "/marketplace", icon: "package" },
-      { name: "Workflows", href: "/workflows", icon: "waypoints" },
+      { name: "Marketplace", href: APP_ROUTES.marketplace, icon: "package", emphasis: true },
+      { name: "Workflows", href: APP_ROUTES.workflows, icon: "waypoints" },
       { name: "Failure Alerts", href: "/workflows/failure-predictions", icon: "shieldAlert" },
-      { name: "Agent Training", href: "/training", icon: "brain" },
-      { name: "Model Registry", href: "/models", icon: "cpu" },
-      { name: "Connectors", href: "/connectors", icon: "blocks" },
+      { name: "Agent Training", href: APP_ROUTES.training, icon: "brain" },
+      { name: "Model Registry", href: APP_ROUTES.models, icon: "cpu" },
+      { name: "Connectors", href: APP_ROUTES.connectors, icon: "blocks" },
       { name: "Sources", href: "/sources", icon: "database" },
     ],
   },
@@ -100,7 +113,7 @@ const adminNavigation: NavGroup[] = [
     items: [
       { name: "Runs", href: "/runs", icon: "listTodo" },
       { name: "Schedules", href: "/schedules", icon: "calendar" },
-      { name: "Approvals", href: "/approvals", icon: "clipboardCheck" },
+      { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
     ],
   },
   {
@@ -108,13 +121,23 @@ const adminNavigation: NavGroup[] = [
     items: [
       { name: "Metrics", href: "/metrics", icon: "layoutDashboard" },
       {
-        name: "Intelligence",
-        href: "/intelligence",
+        name: "Intelligence Center",
+        href: APP_ROUTES.intelligence,
         icon: "sparkles",
         badge: "Explain",
-        hint: "See what Gravitre knows and why",
+        hint: "Trust, outcomes, and why Gravitre recommended this",
       },
-      { name: "Org Learning", href: "/admin/intelligence", icon: "atom" },
+      { name: "Agent Profiles", href: APP_ROUTES.intelligenceAgents, icon: "team" },
+      { name: "Model Intelligence", href: APP_ROUTES.intelligenceModels, icon: "cpu" },
+      { name: "Memory Explorer", href: APP_ROUTES.intelligenceMemory, icon: "database" },
+      { name: "Executive Reports", href: APP_ROUTES.intelligenceReports, icon: "chartLine" },
+      {
+        name: "Revenue Risk Radar",
+        href: APP_ROUTES.revenueRisk,
+        icon: "shieldAlert",
+        hint: "Pipeline and revenue signals needing review",
+      },
+      { name: "Org Learning", href: APP_ROUTES.orgLearning, icon: "atom", hint: "Admin telemetry and learning loop" },
       { name: "History", href: "/audit", icon: "history" },
     ],
   },
@@ -164,9 +187,36 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const { isLite } = useViewMode()
   const { effectiveLogoUrl } = useEnterpriseBranding()
-  
-  // Use the appropriate navigation based on mode
-  const navigation = isLite ? liteNavigation : adminNavigation
+  const { user } = useAuth()
+  const { progress, isComplete: onboardingComplete } = useOnboardingProgress()
+  const { data: approvalsData } = useSWR<{ approvals?: Array<{ status?: string }> }>(
+    user ? "/api/approvals" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30_000 },
+  )
+  const pendingApprovals =
+    approvalsData?.approvals?.filter((entry) => entry.status === "pending").length ?? 0
+
+  const navigation = useMemo(() => {
+    const base = isLite ? liteNavigation : adminNavigation
+    return base.map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) => {
+          if (item.name === "Getting Started" && onboardingComplete) return false
+          return true
+        })
+        .map((item) => {
+          if (item.name === "Getting Started" && !onboardingComplete) {
+            return { ...item, badge: `${progress}%` }
+          }
+          if (item.name === "Approvals" && pendingApprovals > 0) {
+            return { ...item, badge: String(pendingApprovals) }
+          }
+          return item
+        }),
+    }))
+  }, [isLite, onboardingComplete, progress, pendingApprovals])
 
   const toggleSection = (group: string) => {
     setCollapsedSections(prev =>

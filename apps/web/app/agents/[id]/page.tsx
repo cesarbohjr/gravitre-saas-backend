@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
+import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
@@ -516,6 +517,14 @@ export default function AgentProfilePage({
                 exit={{ opacity: 0, y: -20 }}
                 className="grid grid-cols-2 gap-6"
               >
+                <div className="rounded-xl border border-border bg-card/50 p-6 col-span-2">
+                  <AgentCapabilitiesCard
+                    capabilities={apiAgent.capabilities}
+                    permissions={apiAgent.permissions}
+                    systems={agent.systems.map((system) => system.name)}
+                  />
+                </div>
+
                 {/* About */}
                 <div className="rounded-xl border border-border bg-card/50 p-6">
                   <h3 className="font-semibold text-foreground mb-3">About</h3>

@@ -30,6 +30,8 @@ import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import type { Agent } from "@/types/api"
 import { agentsApi } from "@/lib/api"
+import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
+import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 
 // localStorage key for agent chat persistence
 const getStorageKey = (agentId: string) => `gravitre_agent_chat_${agentId}`
@@ -318,6 +320,9 @@ export default function AgentChatPage({
 }) {
   const { id: agentId } = use(params)
   const { user } = useAuth()
+  const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
+    enabled: Boolean(user),
+  })
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -371,9 +376,10 @@ export default function AgentChatPage({
           agent_id: agentId,
           mode: "agent",
           tools: ["knowledge_base", "agent_status", "connector_status", "workflow_runs", "search_web"],
+          preferred_persona: preferredPersonaRef.current,
         }),
       }),
-    [agentId]
+    [agentId, preferredPersonaRef],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -497,6 +503,13 @@ export default function AgentChatPage({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <PersonaSelector
+                value={preferredPersona}
+                onChange={handlePersonaChange}
+                disabled={!user}
+                surface="light"
+                label="Response style"
+              />
               <Link href={`/agents/${agentId}/knowledge`}>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Database className="h-4 w-4" />

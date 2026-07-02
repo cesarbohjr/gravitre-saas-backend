@@ -124,6 +124,7 @@ class AssistantChatRequest(BaseModel):
     agent_id: str | None = None
     mode: str | None = None
     model_override: str | None = None
+    preferred_persona: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -576,6 +577,7 @@ def _build_stream(
     history_messages: list[dict[str, Any]],
     existing_summary: str | None,
     mode: str | None,
+    preferred_persona: str | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -601,6 +603,7 @@ def _build_stream(
                 model_override=prepared_holder.get("model_override"),
                 assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
                 conversation_id=conversation_id,
+                explicit_persona=preferred_persona,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -828,6 +831,14 @@ async def assistant_chat(
 
     prepared_holder = {"model_override": model_override, "task_type": task_type}
 
+    preferred_persona = (body.preferred_persona or "").strip() or None
+    if not preferred_persona and user_id:
+        prefs = await get_user_intelligence_service().get_preferences(
+            settings,
+            user_id=user_id,
+        )
+        preferred_persona = (prefs.get("preferred_persona") or "").strip() or None
+
     router_ = get_model_router()
     try:
         await router_.prepare_stream(
@@ -868,6 +879,7 @@ async def assistant_chat(
             history_messages=history_messages,
             existing_summary=existing_summary,
             mode=body.mode,
+            preferred_persona=preferred_persona,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

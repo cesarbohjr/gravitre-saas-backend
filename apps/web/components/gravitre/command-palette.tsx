@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { APP_ROUTES } from "@/lib/app-routes"
 import {
   CommandDialog,
   CommandInput,
@@ -48,6 +49,8 @@ import {
   Activity,
   Brain,
   ShieldAlert,
+  Rocket,
+  Package,
 } from "lucide-react"
 
 interface CommandPaletteProps {
@@ -111,6 +114,35 @@ export function CommandPalette({
       <CommandInput placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
+
+        <CommandGroup heading="Quick actions">
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAi))}>
+            <Sparkles className="mr-2 h-4 w-4 text-emerald-400" />
+            <span>Start Gravitre AI</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.commandCenter))}>
+            <Zap className="mr-2 h-4 w-4 text-violet-400" />
+            <span>Open Command Center</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.assistant))}>
+            <Bot className="mr-2 h-4 w-4 text-teal-400" />
+            <span>Workspace Chat</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push("/agents/new"))}>
+            <Plus className="mr-2 h-4 w-4" />
+            <span>Create Agent</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push("/workflows"))}>
+            <Play className="mr-2 h-4 w-4" />
+            <span>Run Workflow</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.approvals))}>
+            <CheckCircle className="mr-2 h-4 w-4 text-amber-400" />
+            <span>View Approvals</span>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
 
         <CommandGroup heading="Search">
           <CommandItem onSelect={() => runCommand(openUniversalSearch)}>
@@ -268,11 +300,48 @@ export function CommandPalette({
         {/* Navigation */}
         <CommandGroup heading="Navigate">
           <CommandItem
-            onSelect={() => runCommand(() => router.push("/"))}
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.home))}
           >
             <Home className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
+            <span>Home</span>
           </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.welcome))}
+          >
+            <Rocket className="mr-2 h-4 w-4 text-emerald-400" />
+            <span>Getting Started</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAi))}
+          >
+            <Sparkles className="mr-2 h-4 w-4 text-emerald-400" />
+            <span>Gravitre AI</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.commandCenter))}
+          >
+            <Zap className="mr-2 h-4 w-4 text-violet-400" />
+            <span>Command Center</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.marketplace))}
+          >
+            <Package className="mr-2 h-4 w-4 text-blue-400" />
+            <span>Marketplace</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligence))}
+          >
+            <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
+            <span>Intelligence Center</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.revenueRisk))}
+          >
+            <ShieldAlert className="mr-2 h-4 w-4 text-red-400" />
+            <span>Revenue Risk Radar</span>
+          </CommandItem>
+
           <CommandItem
             onSelect={() => runCommand(() => router.push("/agents"))}
           >

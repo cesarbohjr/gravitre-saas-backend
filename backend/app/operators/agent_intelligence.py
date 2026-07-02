@@ -955,6 +955,7 @@ class AgentIntelligence:
         client: Any | None = None,
         assistant_base_prompt: str | None = None,
         conversation_id: str | None = None,
+        explicit_persona: str | None = None,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1067,6 +1068,7 @@ class AgentIntelligence:
             user_id,
             pipeline_classification.get("department"),
             conversation_id,
+            explicit_persona=explicit_persona,
         )
 
         refined_query = task_text

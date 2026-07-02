@@ -113,10 +113,12 @@ export function BusinessImpactCard() {
               <WarningCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" weight="duotone" aria-hidden />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Revenue Risk Radar</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
-                Pending business signals from optimization suggestions and outcome summaries.
-              </p>
+              <section id="revenue-risk" className="scroll-mt-24">
+                <h3 className="text-base font-semibold text-foreground">Revenue Risk Radar</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
+                  Pending business signals from optimization suggestions and outcome summaries.
+                </p>
+              </section>
             </div>
           </div>
 

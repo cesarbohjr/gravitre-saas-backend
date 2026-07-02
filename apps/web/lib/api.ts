@@ -1678,6 +1678,34 @@ export const intelligenceApi = {
   },
 }
 
+export const architectureAdminApi = {
+  aiOsStatus: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/ai-os/status")),
+  predictiveOps: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/predictive-ops")),
+  learningStatus: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/learning/status")),
+  optimizationSummary: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/optimization/summary")),
+}
+
+export type ChatAdminPersona = {
+  persona_key: string
+  label: string
+  tone?: string | null
+  verbosity?: string | null
+  formality?: string | null
+  is_org_default?: boolean
+}
+
+export const chatAdminApi = {
+  personas: () =>
+    fetcher<{ personas: ChatAdminPersona[]; org_default_persona: string }>(
+      apiUrl("/api/admin/chat/personas"),
+    ),
+  setDefaultPersona: (persona_key: string) =>
+    postJson<{ status: string; default_persona?: string; message?: string }>(
+      apiUrl("/api/admin/chat/personas/default"),
+      { persona_key },
+    ),
+}
+
 export type MlAdminOrgModelStatus = {
   model_name: string
   catalog_status: string
@@ -1973,6 +2001,11 @@ export const onboardingApi = {
     }),
   skip: () =>
     postJson<void>(apiUrl("/api/onboarding/skip"), {}),
+  welcomeComplete: (role: string, skippedOptional = false) =>
+    postJson<OnboardingProgress>(apiUrl("/api/onboarding/welcome-complete"), {
+      role,
+      skipped_optional: skippedOptional,
+    }),
   reset: () =>
     postJson<OnboardingProgress>(apiUrl("/api/onboarding/reset"), {}),
 }
@@ -2389,6 +2422,7 @@ export const api = {
   billing: billingApi,
   metrics: metricsApi,
   intelligence: intelligenceApi,
+  chatAdmin: chatAdminApi,
   mlAdmin: mlAdminApi,
   memoryPromotion: memoryPromotionApi,
   settings: settingsApi,

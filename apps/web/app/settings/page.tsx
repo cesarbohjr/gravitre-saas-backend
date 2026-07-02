@@ -1654,6 +1654,13 @@ function SettingsContent() {
               <span>{section.title}</span>
             </button>
           ))}
+          <Link
+            href="/settings/team/permissions"
+            className="mt-4 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <Shield className="h-4 w-4 shrink-0" />
+            <span>Role permissions</span>
+          </Link>
         </nav>
       </div>
 

@@ -20,7 +20,7 @@ import { APP_ROUTES } from "@/lib/app-routes"
 
 export async function beginOAuthSignIn(
   provider: Provider,
-  redirectPath: string = APP_ROUTES.commandCenter,
+  redirectPath: string = APP_ROUTES.home,
   isSignup: boolean = false,
 ): Promise<OAuthResult> {
   const redirectTo = getAuthRedirectUrl(redirectPath, isSignup)
