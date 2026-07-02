@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { consumeAiHandoff } from "@/lib/ai-surface-handoff"
 import { parseChatError } from "@/lib/chat-errors"
 import { conversationMessageToUI } from "@/lib/chat-messages"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -56,7 +57,6 @@ import {
 } from "@/components/gravitre/assistant/tool-chip"
 import { FollowUpSuggestions } from "@/components/gravitre/assistant/follow-up-suggestions"
 import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
-import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
 import {
   Tooltip,
@@ -1103,6 +1103,21 @@ export default function AssistantPage() {
     void submitText(input)
   }
 
+  // Consume a prompt handed off from the unified Gravitre AI surface (/ai).
+  // Prefill the composer; auto-send when the handoff requested it.
+  const handoffConsumedRef = useRef(false)
+  useEffect(() => {
+    if (handoffConsumedRef.current) return
+    handoffConsumedRef.current = true
+    const handoff = consumeAiHandoff("chat")
+    if (!handoff?.prompt) return
+    if (handoff.autoRun) {
+      void submitText(handoff.prompt)
+    } else {
+      setInput(handoff.prompt)
+    }
+  }, [submitText])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
@@ -1208,7 +1223,7 @@ export default function AssistantPage() {
 
           {user ? (
             <div className="border-b border-zinc-200 bg-zinc-50/80 px-4 py-3 md:px-6">
-              <AiWorkSurfacesCallout current="workspace-chat" compact />
+
             </div>
           ) : null}
 

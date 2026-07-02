@@ -27,11 +27,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { AnimatedCounter } from "@/components/gravitre/premium-effects"
-import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { searchApi, assistantApi } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
+import { consumeAiHandoff } from "@/lib/ai-surface-handoff"
 import {
   buildOrgSearchChips,
   buildFallbackSearchChips,
@@ -508,6 +508,26 @@ export default function ChatPage() {
     }
   }
 
+  // Consume a query handed off from the unified Gravitre AI surface (/ai).
+  // Prefill the search box; auto-run once the user session is available.
+  const handoffQueryRef = useRef<string | null>(null)
+  const handoffSearchedRef = useRef(false)
+  useEffect(() => {
+    if (handoffQueryRef.current === null) {
+      const handoff = consumeAiHandoff("find")
+      handoffQueryRef.current = handoff?.prompt ?? ""
+      if (handoff?.prompt) {
+        setQuery(handoff.prompt)
+      }
+    }
+    const pending = handoffQueryRef.current
+    if (pending && user && !handoffSearchedRef.current) {
+      handoffSearchedRef.current = true
+      void handleSearch(pending)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   const selectTypeaheadItem = (item: SearchTypeaheadItem) => {
     setTypeaheadOpen(false)
     setActiveTypeaheadIndex(-1)
@@ -703,7 +723,7 @@ export default function ChatPage() {
                 <AnimatedCounter value={results.length} duration={0.6} /> result{results.length === 1 ? "" : "s"}
               </div>
             </div>
-            <AiWorkSurfacesCallout current="universal-search" compact className="mt-3" />
+  
           </div>
 
           <div className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-sm md:px-6">
