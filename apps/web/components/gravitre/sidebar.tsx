@@ -106,6 +106,13 @@ const adminNavigation: NavGroup[] = [
     group: "INSIGHTS",
     items: [
       { name: "Metrics", href: "/metrics", icon: "layoutDashboard" },
+      {
+        name: "Intelligence",
+        href: "/intelligence",
+        icon: "sparkles",
+        badge: "Explain",
+        hint: "See what Gravitre knows and why",
+      },
       { name: "Org Learning", href: "/admin/intelligence", icon: "atom" },
       { name: "History", href: "/audit", icon: "history" },
     ],

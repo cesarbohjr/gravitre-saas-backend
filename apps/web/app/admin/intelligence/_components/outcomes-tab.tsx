@@ -13,7 +13,17 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
     { revalidateOnFocus: false },
   )
 
-  const summaries = data?.agentSummaries ?? []
+  const v8 = (data?.v8_outcome_attribution as Record<string, unknown> | undefined) ?? {}
+  const summaries = ((v8.agentSummaries ?? data?.agentSummaries) ?? []) as Array<{
+    agentId: string
+    agentName?: string
+    sampleSize: number
+    minSampleSize: number
+    sufficientData: boolean
+    confidenceNote: string
+    message?: string
+    winRate?: number | null
+  }>
   const sufficient = summaries.filter((item) => item.sufficientData)
   const insufficient = summaries.filter((item) => !item.sufficientData)
 
@@ -25,7 +35,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
         icon={<ChartLineUp className="h-5 w-5" weight="duotone" aria-hidden />}
       >
         <p className="text-xs text-muted-foreground text-pretty">
-          {data?.scopeNote ?? data?.confidenceNote}
+          {String(v8.scopeNote ?? data?.scopeNote ?? data?.confidenceNote ?? "")}
         </p>
 
         {summaries.length === 0 ? (

@@ -1555,7 +1555,30 @@ export const intelligenceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/relationships${suffix}`))
   },
-  outcomes: () => fetcher<IntelligenceOutcomesResponse>(apiUrl("/api/admin/intelligence/outcomes")),
+  outcomes: (params?: { periodDays?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<IntelligenceOutcomesResponse & Record<string, unknown>>(
+      apiUrl(`/api/admin/intelligence/outcomes${suffix}`),
+    )
+  },
+  intelligenceEvaluations: (params?: { periodDays?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/evaluations/intelligence${suffix}`))
+  },
+  trainingReadiness: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/training-readiness")),
+  routing: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/routing")),
+  simulations: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/simulations")),
+  trustSummary: (params?: { periodDays?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/trust-summary${suffix}`))
+  },
   businessImpact: () =>
     fetcher<{
       scopeNote: string
@@ -1771,6 +1794,20 @@ export const memoryPromotionApi = {
       apiUrl(`/api/admin/memory-promotion/recent-auto-promotions${suffix}`),
     )
   },
+  audit: (params?: { memoryId?: string; since?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.memoryId) query.set("memory_id", params.memoryId)
+    if (params?.since) query.set("since", params.since)
+    if (params?.limit != null) query.set("limit", String(params.limit))
+    if (params?.offset != null) query.set("offset", String(params.offset))
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/memory-promotion/audit${suffix}`))
+  },
+  rollback: (memoryId: string, reason: string) =>
+    postJson<{ status: string }>(
+      apiUrl(`/api/admin/memory-promotion/memories/${memoryId}/rollback`),
+      { reason },
+    ),
 }
 
 // ============ Settings ============

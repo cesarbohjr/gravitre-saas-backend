@@ -157,6 +157,10 @@ export function CommandPalette({
         <CommandSeparator />
 
         <CommandGroup heading="Learning & models">
+          <CommandItem onSelect={() => runCommand(() => router.push("/intelligence"))}>
+            <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
+            <span>Intelligence Center</span>
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/admin/intelligence"))}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
             <span>Org Learning</span>
