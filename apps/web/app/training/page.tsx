@@ -22,6 +22,9 @@ import type {
 } from "@/types/api"
 import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
+import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
+import { TrainingOverview } from "@/components/gravitre/training-overview"
+import { Brain, RefreshCw } from "lucide-react"
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
@@ -402,10 +405,31 @@ function TrainingPageContent() {
 
   return (
     <AppShell title="Agent Training">
-      <div className="relative p-6 space-y-6 overflow-hidden">
-        <LearningSurfacesCallout current="agent-training" className="relative z-10" />
-        <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <LearningSurfacesCallout current="agent-training" />
+
+        <PageHeader
+          title="Agent Training"
+          description="Fine-tune agents with datasets, training jobs, custom instructions, and model assignments."
+          icon={Brain}
+          iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
+          className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-6"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void mutateDatasets()
+                void mutateJobs()
+                void mutateInstructions()
+              }}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          }
+        />
+
         {loadError && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{loadError}</span>
@@ -446,11 +470,14 @@ function TrainingPageContent() {
         ) : null}
 
         {!loadError && orgReady && datasets.length === 0 && jobs.length === 0 && instructions.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>No training datasets, jobs, or instructions yet. Create a dataset below or load starter examples.</span>
+          <div className="rounded-xl border border-dashed border-emerald-500/25 bg-emerald-500/5 px-4 py-4 text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-muted-foreground">
+              No training datasets, jobs, or instructions yet. Create a dataset below or load starter examples.
+            </span>
             <Button
               size="sm"
               variant="outline"
+              className="border-emerald-500/30 hover:bg-emerald-500/10"
               disabled={isCreatingStarter}
               onClick={() => void handleCreateStarterDataset()}
             >
@@ -459,79 +486,40 @@ function TrainingPageContent() {
           </div>
         ) : null}
 
-        <div className="relative grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="col-span-2 md:col-span-6 flex justify-end">
-            <DataFreshness
-              updatedAt={datasetsData || jobsData ? Date.now() : null}
-              onRefresh={() => {
-                void mutateDatasets()
-                void mutateJobs()
-                void mutateInstructions()
-              }}
-            />
-          </div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-            className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-3 shadow-sm"
-          >
-            <p className="text-xs text-muted-foreground">Datasets</p>
-            <p className="text-xl font-semibold text-foreground">{stats.totalDatasets}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.04 }}
-            className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 shadow-sm"
-          >
-            <p className="text-xs text-muted-foreground">Ready</p>
-            <p className="text-xl font-semibold text-emerald-400">{stats.readyDatasets}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-3 shadow-sm"
-          >
-            <p className="text-xs text-muted-foreground">Jobs</p>
-            <p className="text-xl font-semibold text-foreground">{stats.totalJobs}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12 }}
-            className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 shadow-sm"
-          >
-            <p className="text-xs text-muted-foreground">Active Jobs</p>
-            <p className="text-xl font-semibold text-blue-400">{stats.activeJobs}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.16 }}
-            className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-3 shadow-sm"
-          >
-            <p className="text-xs text-muted-foreground">Instructions</p>
-            <p className="text-xl font-semibold text-foreground">{stats.totalInstructions}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 shadow-sm"
-          >
-            <p className="text-xs text-muted-foreground">Active</p>
-            <p className="text-xl font-semibold text-emerald-400">{stats.activeInstructions}</p>
-          </motion.div>
+        <TrainingOverview
+          totalDatasets={stats.totalDatasets}
+          readyDatasets={stats.readyDatasets}
+          totalJobs={stats.totalJobs}
+          activeJobs={stats.activeJobs}
+          totalInstructions={stats.totalInstructions}
+        />
+
+        <div className="flex items-center justify-end">
+          <DataFreshness
+            updatedAt={datasetsData || jobsData ? Date.now() : null}
+            onRefresh={() => {
+              void mutateDatasets()
+              void mutateJobs()
+              void mutateInstructions()
+            }}
+          />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <StatsGrid columns={3} className="md:grid-cols-6">
+          <StatCard label="Datasets" value={stats.totalDatasets} />
+          <StatCard label="Ready" value={stats.readyDatasets} variant="success" />
+          <StatCard label="Jobs" value={stats.totalJobs} />
+          <StatCard label="Active jobs" value={stats.activeJobs} variant="info" />
+          <StatCard label="Instructions" value={stats.totalInstructions} />
+          <StatCard label="Active" value={stats.activeInstructions} variant="success" />
+        </StatsGrid>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <motion.section
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm"
+            className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
           >
             <h2 className="text-lg font-semibold text-foreground">Training Datasets</h2>
             <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/50 bg-background/40 p-3">
@@ -682,7 +670,7 @@ function TrainingPageContent() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14 }}
-            className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm"
+            className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
           >
             <h2 className="text-lg font-semibold text-foreground">Training Jobs</h2>
             <div className="space-y-2">
@@ -748,7 +736,7 @@ function TrainingPageContent() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm"
+          className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
         >
           <h2 className="text-lg font-semibold text-foreground">Custom Instructions</h2>
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/50 bg-background/40 p-3">
@@ -852,7 +840,7 @@ function TrainingPageContent() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.24 }}
-          className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm p-5 space-y-4 shadow-sm"
+          className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
         >
           <h2 className="text-lg font-semibold text-foreground">Agent Fine-Tuned Models</h2>
           <p className="text-sm text-muted-foreground">

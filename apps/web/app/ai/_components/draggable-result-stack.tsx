@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils"
 
 export type ResultBlockId = "stats" | "analysis" | "results" | "prevention" | "actions" | "plan"
 
+export type LayoutColumn = "main" | "rail"
+
 export const RESULT_BLOCK_CATALOG: { id: ResultBlockId; label: string }[] = [
   { id: "stats", label: "Status" },
   { id: "analysis", label: "AI Analysis" },
@@ -30,6 +32,9 @@ type DraggableResultStackProps = {
   onReorder: (next: ResultBlockId[]) => void
   blocks: Record<ResultBlockId, ReactNode>
   className?: string
+  column?: LayoutColumn
+  onMoveBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
+  compact?: boolean
 }
 
 export function DraggableResultStack({
@@ -38,11 +43,17 @@ export function DraggableResultStack({
   onReorder,
   blocks,
   className,
+  column = "main",
+  onMoveBlockToColumn,
+  compact = false,
 }: DraggableResultStackProps) {
   const [draggingId, setDraggingId] = useState<ResultBlockId | null>(null)
   const [overId, setOverId] = useState<ResultBlockId | null>(null)
+  const [peerDropActive, setPeerDropActive] = useState(false)
   const enabledSet = new Set(enabledBlocks ?? order)
   const visibleOrder = order.filter((blockId) => enabledSet.has(blockId))
+  const peerColumn: LayoutColumn = column === "main" ? "rail" : "main"
+  const peerLabel = column === "main" ? "Move to right panel" : "Move to center page"
 
   const moveBlock = useCallback(
     (from: ResultBlockId, to: ResultBlockId) => {
@@ -60,9 +71,11 @@ export function DraggableResultStack({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Page layout · drag panels to reorder
-      </p>
+      {!compact ? (
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Page layout · drag panels to reorder
+        </p>
+      ) : null}
       {visibleOrder.map((blockId) => {
         const content = blocks[blockId]
         if (!content) return null
@@ -102,6 +115,30 @@ export function DraggableResultStack({
           </div>
         )
       })}
+      {draggingId && onMoveBlockToColumn ? (
+        <div
+          onDragOver={(event) => {
+            event.preventDefault()
+            setPeerDropActive(true)
+          }}
+          onDragLeave={() => setPeerDropActive(false)}
+          onDrop={(event) => {
+            event.preventDefault()
+            if (draggingId) onMoveBlockToColumn(draggingId, peerColumn)
+            setDraggingId(null)
+            setOverId(null)
+            setPeerDropActive(false)
+          }}
+          className={cn(
+            "rounded-xl border border-dashed px-3 py-4 text-center text-xs text-muted-foreground transition-colors",
+            peerDropActive
+              ? "border-primary bg-primary/5 text-primary"
+              : "border-border/80 bg-background/40",
+          )}
+        >
+          {peerLabel}
+        </div>
+      ) : null}
     </div>
   )
 }

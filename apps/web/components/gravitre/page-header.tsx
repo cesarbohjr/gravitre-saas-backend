@@ -24,7 +24,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("p-4 sm:p-6 border-b border-border", className)}>
+    <div className={cn("p-4 sm:p-6", !className?.includes("border") && "border-b border-border", className)}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-3">
           {Icon && (

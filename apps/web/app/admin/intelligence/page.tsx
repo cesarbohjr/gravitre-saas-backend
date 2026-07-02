@@ -19,6 +19,8 @@ import { OutcomesTab } from "./_components/outcomes-tab"
 import { EngineTab } from "./_components/engine-tab"
 import { PerformanceTab } from "./_components/performance-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
+import { PageHeader } from "@/components/gravitre/page-header"
+import { Brain } from "lucide-react"
 
 type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "engine" | "performance"
 
@@ -51,56 +53,74 @@ export default function AdminIntelligencePage() {
 
   return (
     <AppShell title="Org Learning">
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <LearningSurfacesCallout current="org-learning" />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground text-pretty">
-            Monitor automatic learning from usage — query patterns, memory promotion, search quality, and
-            outcome-linked signals. Train org learning models on the Engine tab.
-          </p>
-          <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
-            <ArrowsClockwise className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`} weight="bold" aria-hidden />
-            Refresh
-          </Button>
-        </div>
 
-        <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
-          <TabsList className="flex w-full flex-wrap justify-start">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="memory">Memory promotion</TabsTrigger>
-            <TabsTrigger value="relationships">Relationships</TabsTrigger>
-            <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-            <TabsTrigger value="outcomes">Outcomes</TabsTrigger>
-            <TabsTrigger value="engine">Engine</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
+        <PageHeader
+          title="Org Learning"
+          description="Monitor automatic learning from usage — query patterns, memory promotion, search quality, and outcome-linked signals."
+          icon={Brain}
+          iconColor="from-violet-500/20 to-emerald-500/20 ring-violet-500/20"
+          className="rounded-2xl border border-border/70 bg-card/40 p-0 sm:p-0"
+          actions={
+            <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+              <ArrowsClockwise className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`} weight="bold" aria-hidden />
+              Refresh
+            </Button>
+          }
+        />
+
+        <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border/70 bg-secondary/30 p-1">
+            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Memory promotion
+            </TabsTrigger>
+            <TabsTrigger value="relationships" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Relationships
+            </TabsTrigger>
+            <TabsTrigger value="evaluation" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Evaluation
+            </TabsTrigger>
+            <TabsTrigger value="outcomes" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Outcomes
+            </TabsTrigger>
+            <TabsTrigger value="engine" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Engine
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Performance
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-6 space-y-6">
+          <TabsContent value="overview" className="mt-0 space-y-6">
             <BusinessImpactCard />
             <OverviewTab data={data} isLoading={isLoading} />
           </TabsContent>
 
-          <TabsContent value="memory" className="mt-6">
+          <TabsContent value="memory" className="mt-0">
             <MemoryPromotionTab enabled={tab === "memory"} />
           </TabsContent>
 
-          <TabsContent value="relationships" className="mt-6">
+          <TabsContent value="relationships" className="mt-0">
             <RelationshipsTab data={data} isLoading={isLoading} enabled={tab === "relationships"} />
           </TabsContent>
 
-          <TabsContent value="evaluation" className="mt-6">
+          <TabsContent value="evaluation" className="mt-0">
             <EvaluationTab enabled={tab === "evaluation"} />
           </TabsContent>
 
-          <TabsContent value="outcomes" className="mt-6">
+          <TabsContent value="outcomes" className="mt-0">
             <OutcomesTab enabled={tab === "outcomes"} />
           </TabsContent>
 
-          <TabsContent value="engine" className="mt-6">
+          <TabsContent value="engine" className="mt-0">
             <EngineTab enabled={tab === "engine"} />
           </TabsContent>
 
-          <TabsContent value="performance" className="mt-6">
+          <TabsContent value="performance" className="mt-0">
             <PerformanceTab enabled={tab === "performance"} />
           </TabsContent>
         </Tabs>

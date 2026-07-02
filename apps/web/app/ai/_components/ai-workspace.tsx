@@ -55,8 +55,18 @@ import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
 import { AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import {
   DEFAULT_RESULT_BLOCK_ORDER,
+  type LayoutColumn,
   type ResultBlockId,
 } from "./draggable-result-stack"
+import {
+  loadLayoutColumns,
+  loadLayoutEnabled,
+  loadLayoutOrder,
+  persistLayoutColumns,
+  persistLayoutEnabled,
+  persistLayoutOrder,
+} from "./ai-layout-storage"
+import { LiveActivityRail } from "./live-activity-rail"
 
 const CONVERSATION_ID_KEY = "gravitre_ai_conversation_id"
 
@@ -96,6 +106,8 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   const [inlineTurns, setInlineTurns] = useState<InlineTurn[]>([])
   const [layoutBlockOrder, setLayoutBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
   const [layoutEnabledBlocks, setLayoutEnabledBlocks] = useState<ResultBlockId[]>([])
+  const [layoutBlockColumns, setLayoutBlockColumns] = useState<Partial<Record<ResultBlockId, LayoutColumn>>>({})
+  const [conversationLoading, setConversationLoading] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return localStorage.getItem(CONVERSATION_ID_KEY)
@@ -211,8 +223,14 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   }, [user])
 
   useEffect(() => {
+    setLayoutBlockOrder(loadLayoutOrder())
+    setLayoutEnabledBlocks(loadLayoutEnabled())
+    setLayoutBlockColumns(loadLayoutColumns())
+  }, [])
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, inlineTurns, status])
+  }, [messages, inlineTurns, status, conversationLoading])
 
   const classifyIntent = useCallback(async (prompt: string): Promise<AiEngine> => {
     const res = await fetch("/api/ai/route-intent", {
@@ -410,13 +428,21 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
+      setConversationLoading(true)
       setActiveConversationId(id)
       activeConversationIdRef.current = id
       localStorage.setItem(CONVERSATION_ID_KEY, id)
+      setInlineTurns([])
+      operatorSessionRef.current = null
+      resetExecuteJob()
+      submitLockRef.current = false
+      setSidebarOpen(false)
       try {
-        const { messages: stored } = await conversationsApi.getMessages(id)
+        const [{ messages: stored }, selected] = await Promise.all([
+          conversationsApi.getMessages(id),
+          Promise.resolve(conversations.find((c) => c.id === id)),
+        ])
         setMessages(stored.map(conversationMessageToUI))
-        const selected = conversations.find((c) => c.id === id)
         setConversationTitle(selected?.title || "Gravitre AI")
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
@@ -424,11 +450,15 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
           setActiveConversationId(null)
           activeConversationIdRef.current = null
           setMessages([])
+          setConversationTitle("Gravitre AI")
+        } else {
+          toast.error("Could not load conversation")
         }
-        toast.error("Could not load conversation")
+      } finally {
+        setConversationLoading(false)
       }
     },
-    [conversations, setMessages],
+    [conversations, resetExecuteJob, setMessages],
   )
 
   const handleNewConversation = useCallback(() => {
@@ -498,15 +528,45 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
 
   const handleToggleLayoutBlock = useCallback((blockId: ResultBlockId, enabled: boolean) => {
     setLayoutEnabledBlocks((current) => {
-      if (enabled) {
-        if (current.includes(blockId)) return current
-        return [...current, blockId]
-      }
-      return current.filter((id) => id !== blockId)
+      const next = enabled
+        ? current.includes(blockId)
+          ? current
+          : [...current, blockId]
+        : current.filter((id) => id !== blockId)
+      persistLayoutEnabled(next)
+      return next
     })
     if (enabled) {
-      setLayoutBlockOrder((current) => (current.includes(blockId) ? current : [...current, blockId]))
+      setLayoutBlockOrder((current) => {
+        const next = current.includes(blockId) ? current : [...current, blockId]
+        persistLayoutOrder(next)
+        return next
+      })
     }
+  }, [])
+
+  const handleReorderLayoutBlocks = useCallback((next: ResultBlockId[]) => {
+    setLayoutBlockOrder(next)
+    persistLayoutOrder(next)
+  }, [])
+
+  const handleMoveLayoutBlockToColumn = useCallback((blockId: ResultBlockId, target: LayoutColumn) => {
+    setLayoutBlockColumns((current) => {
+      const next = { ...current, [blockId]: target }
+      persistLayoutColumns(next)
+      return next
+    })
+    setLayoutEnabledBlocks((current) => {
+      if (current.includes(blockId)) return current
+      const next = [...current, blockId]
+      persistLayoutEnabled(next)
+      return next
+    })
+    setLayoutBlockOrder((current) => {
+      const next = current.includes(blockId) ? current : [...current, blockId]
+      persistLayoutOrder(next)
+      return next
+    })
   }, [])
 
   const latestExecuteTurn = useMemo(
@@ -515,14 +575,18 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   )
 
   const showLanding =
+    !activeConversationId &&
     messages.length === 0 &&
     inlineTurns.length === 0 &&
     !isChatBusy &&
     !routing &&
-    !initialPrompt.trim()
+    !initialPrompt.trim() &&
+    !conversationLoading
 
   const showPinnedLayout =
     layoutEnabledBlocks.length > 0 && latestExecuteTurn == null && inlineTurns.length === 0
+
+  const showComposer = !showLanding || Boolean(activeConversationId)
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return
@@ -607,7 +671,14 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
               />
             ) : null}
 
-            {!showLanding
+            {conversationLoading ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading conversation…
+              </div>
+            ) : null}
+
+            {!showLanding && !conversationLoading
               ? messages.map((message) => {
               const text = normalizeChatText(message)
               const isUser = message.role === "user"
@@ -644,7 +715,14 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
             })
               : null}
 
-            {!showLanding
+            {!showLanding && !conversationLoading && activeConversationId && messages.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">This conversation is empty</p>
+                <p className="mt-1 text-xs">Send a message below to continue this thread.</p>
+              </div>
+            ) : null}
+
+            {!showLanding && !conversationLoading
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
@@ -664,7 +742,10 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
                     error={turn.executeError ?? (turn.status === "running" ? executeHookError : null)}
                     blockOrder={layoutBlockOrder}
                     enabledBlocks={layoutEnabledBlocks}
-                    onReorderBlocks={setLayoutBlockOrder}
+                    onReorderBlocks={handleReorderLayoutBlocks}
+                    blockColumns={layoutBlockColumns}
+                    onMoveBlockToColumn={handleMoveLayoutBlockToColumn}
+                    column="main"
                   />
                 ) : null}
 
@@ -692,7 +773,10 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
                 error={null}
                 blockOrder={layoutBlockOrder}
                 enabledBlocks={layoutEnabledBlocks}
-                onReorderBlocks={setLayoutBlockOrder}
+                onReorderBlocks={handleReorderLayoutBlocks}
+                blockColumns={layoutBlockColumns}
+                onMoveBlockToColumn={handleMoveLayoutBlockToColumn}
+                column="main"
               />
             ) : null}
 
@@ -707,7 +791,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
           </div>
         </div>
 
-        {!showLanding ? (
+        {showComposer ? (
         <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur md:px-8">
           <div className="mx-auto max-w-3xl">
             <div
@@ -754,6 +838,18 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
         </div>
         ) : null}
       </div>
+
+      <LiveActivityRail
+        layoutPlan={latestExecuteTurn?.executePlan ?? null}
+        layoutJob={latestExecuteTurn?.executeJob ?? null}
+        layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}
+        layoutError={latestExecuteTurn?.executeError ?? null}
+        layoutBlockOrder={layoutBlockOrder}
+        layoutEnabledBlocks={layoutEnabledBlocks}
+        layoutBlockColumns={layoutBlockColumns}
+        onReorderLayoutBlocks={handleReorderLayoutBlocks}
+        onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
+      />
     </div>
   )
 }

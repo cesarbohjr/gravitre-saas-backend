@@ -12,8 +12,10 @@ import type { AgentJob } from "@/hooks/use-async-job"
 import {
   DEFAULT_RESULT_BLOCK_ORDER,
   DraggableResultStack,
+  type LayoutColumn,
   type ResultBlockId,
 } from "./draggable-result-stack"
+import { resolveBlockColumn } from "./ai-layout-storage"
 import {
   fallbackActionPlanSteps,
   fallbackSuggestedActionsList,
@@ -48,6 +50,10 @@ type AiExecuteResultsProps = {
   blockOrder?: ResultBlockId[]
   enabledBlocks?: ResultBlockId[]
   onReorderBlocks?: (next: ResultBlockId[]) => void
+  blockColumns?: Partial<Record<ResultBlockId, LayoutColumn>>
+  onMoveBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
+  column?: LayoutColumn
+  compact?: boolean
 }
 
 export function AiExecuteResults({
@@ -58,12 +64,19 @@ export function AiExecuteResults({
   blockOrder,
   enabledBlocks,
   onReorderBlocks,
+  blockColumns,
+  onMoveBlockToColumn,
+  column = "main",
+  compact = false,
 }: AiExecuteResultsProps) {
   const [internalBlockOrder, setInternalBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
   const order = blockOrder ?? internalBlockOrder
   const setBlockOrder = onReorderBlocks ?? setInternalBlockOrder
   const effectiveEnabledBlocks =
     enabledBlocks && enabledBlocks.length > 0 ? enabledBlocks : DEFAULT_RESULT_BLOCK_ORDER
+  const columnEnabledBlocks = effectiveEnabledBlocks.filter(
+    (blockId) => resolveBlockColumn(blockId, blockColumns ?? {}) === column,
+  )
   const [executingAction, setExecutingAction] = useState<string | null>(null)
 
   const findings = plan?.findings ?? []
@@ -78,7 +91,7 @@ export function AiExecuteResults({
   const toolCount = job?.result?.tool_call_count ?? job?.result?.toolCallCount ?? 0
   const toolsAvailable = job?.result?.tools_available ?? job?.result?.toolsAvailable ?? 0
 
-  if (error) {
+  if (error && column === "main") {
     return (
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
         {error}
@@ -86,13 +99,17 @@ export function AiExecuteResults({
     )
   }
 
-  if (isProcessing && !plan) {
+  if (isProcessing && !plan && column === "main") {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
         Analyzing and building an execution plan…
       </div>
     )
+  }
+
+  if (columnEnabledBlocks.length === 0) {
+    return null
   }
 
   const blocks: Record<ResultBlockId, React.ReactNode> = {
@@ -250,9 +267,12 @@ export function AiExecuteResults({
   return (
     <DraggableResultStack
       order={order}
-      enabledBlocks={effectiveEnabledBlocks}
+      enabledBlocks={columnEnabledBlocks}
       onReorder={setBlockOrder}
       blocks={blocks}
+      column={column}
+      onMoveBlockToColumn={onMoveBlockToColumn}
+      compact={compact}
     />
   )
 }

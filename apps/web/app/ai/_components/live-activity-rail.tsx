@@ -9,6 +9,10 @@ import { assistantApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import type { Run, RunStatus } from "@/types/api"
 import { Activity, CheckCircle2, Loader2, PlayCircle } from "lucide-react"
+import { AiExecuteResults } from "./ai-execute-results"
+import type { AgentJob } from "@/hooks/use-async-job"
+import type { InlineExecutePlan } from "@/lib/ai-inline-execute"
+import type { LayoutColumn, ResultBlockId } from "./draggable-result-stack"
 
 function relativeTime(value?: string): string {
   if (!value) return ""
@@ -39,7 +43,27 @@ function runName(run: Run): string {
 }
 
 /** Right-hand rail summarizing live org activity for the unified AI surface. */
-export function LiveActivityRail() {
+export function LiveActivityRail({
+  layoutPlan = null,
+  layoutJob = null,
+  layoutProcessing = false,
+  layoutError = null,
+  layoutBlockOrder = [],
+  layoutEnabledBlocks = [],
+  layoutBlockColumns = {},
+  onReorderLayoutBlocks,
+  onMoveLayoutBlockToColumn,
+}: {
+  layoutPlan?: InlineExecutePlan | null
+  layoutJob?: AgentJob | null
+  layoutProcessing?: boolean
+  layoutError?: string | null
+  layoutBlockOrder?: ResultBlockId[]
+  layoutEnabledBlocks?: ResultBlockId[]
+  layoutBlockColumns?: Partial<Record<ResultBlockId, LayoutColumn>>
+  onReorderLayoutBlocks?: (next: ResultBlockId[]) => void
+  onMoveLayoutBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
+} = {}) {
   const { user } = useAuth()
 
   const { data: runsData } = useSWR(
@@ -60,7 +84,7 @@ export function LiveActivityRail() {
   const systemsHealthy = (orgContext?.counts.connectors ?? 0) > 0
 
   return (
-    <aside className="hidden w-72 shrink-0 border-l border-border bg-card/30 xl:block">
+    <aside className="hidden w-72 shrink-0 border-l border-border bg-card/30 xl:block xl:max-h-full xl:overflow-y-auto">
       <div className="flex flex-col gap-6 p-5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
@@ -138,6 +162,27 @@ export function LiveActivityRail() {
                 </motion.li>
               ))}
             </ul>
+          </div>
+        ) : null}
+
+        {layoutEnabledBlocks.length > 0 ? (
+          <div className="border-t border-border/70 pt-4">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Workspace panels
+            </p>
+            <AiExecuteResults
+              plan={layoutPlan}
+              job={layoutJob}
+              isProcessing={layoutProcessing}
+              error={layoutError}
+              blockOrder={layoutBlockOrder}
+              enabledBlocks={layoutEnabledBlocks}
+              onReorderBlocks={onReorderLayoutBlocks}
+              blockColumns={layoutBlockColumns}
+              onMoveBlockToColumn={onMoveLayoutBlockToColumn}
+              column="rail"
+              compact
+            />
           </div>
         ) : null}
 
