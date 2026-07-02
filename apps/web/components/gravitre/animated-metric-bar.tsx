@@ -11,6 +11,9 @@ type AnimatedMetricBarProps = {
   index?: number
   barClassName?: string
   className?: string
+  highlighted?: boolean
+  onHighlight?: () => void
+  onUnhighlight?: () => void
 }
 
 export function AnimatedMetricBar({
@@ -20,12 +23,23 @@ export function AnimatedMetricBar({
   index = 0,
   barClassName,
   className,
+  highlighted = false,
+  onHighlight,
+  onUnhighlight,
 }: AnimatedMetricBarProps) {
   const pct = Math.max(0, Math.min(100, value))
   const fillClass = barClassName ?? progressBarClass(pct)
 
   return (
-    <li className={cn("-mx-1.5 flex items-center gap-3 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/50", className)}>
+    <li
+      className={cn(
+        "-mx-1.5 flex cursor-default items-center gap-3 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/50",
+        highlighted && "bg-emerald-500/10 ring-1 ring-emerald-500/25",
+        className,
+      )}
+      onMouseEnter={onHighlight}
+      onMouseLeave={onUnhighlight}
+    >
       <span className="min-w-0 flex-1 truncate text-xs text-foreground">{label}</span>
       <span className="relative h-2 w-28 shrink-0 overflow-hidden rounded-full bg-secondary/60 sm:w-36">
         <motion.span
