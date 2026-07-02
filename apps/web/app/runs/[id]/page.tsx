@@ -28,6 +28,7 @@ import { interruptRequestedDescription, interruptRequestedMessage } from "@/lib/
 import { useAuth } from "@/lib/auth-context"
 import { ExecutionTimeline, type ExecutionStepView } from "@/components/runs/execution-timeline"
 import { ApprovalBatchPanel } from "@/components/runs/approval-batch-panel"
+import { summarizeStepError, humanizeLogLine } from "@/lib/runs/step-summary"
 import type { ApprovalBatchView, RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
 type StepStatus = ExecutionStepView["status"]
@@ -86,7 +87,12 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
       const ms = new Date(completed).getTime() - new Date(started).getTime()
       duration = formatDurationMs(ms)
     }
-    const logs = step.errorMessage ? [`ERROR: ${step.errorMessage}`] : undefined
+    const logs = [
+      ...(step.logs ?? []).map((line) => humanizeLogLine(line)),
+      ...(step.errorMessage && !(step.logs ?? []).some((line) => line.includes(step.errorMessage!))
+        ? [humanizeLogLine(step.errorMessage)]
+        : []),
+    ].filter(Boolean)
     return {
       id: step.id,
       name: step.name || "Step",
@@ -94,7 +100,7 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
       status: normalizeStepStatus(step.status),
       duration,
       startedAt: formatTimestamp(started),
-      logs,
+      logs: logs.length > 0 ? logs : undefined,
       errorMessage: step.errorMessage,
       inputSnapshot: step.inputSnapshot ?? null,
       outputSnapshot: step.outputSnapshot ?? null,
@@ -203,6 +209,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     }
     return normalizeRunDetail(data, id)
   }, [data, id])
+
+  const runErrorSummary = useMemo(() => summarizeStepError(run.errorMessage), [run.errorMessage])
 
   const canInterrupt = run.status === "running" || run.status === "paused"
   const canPause = run.status === "running"
@@ -578,9 +586,12 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {run.errorMessage ? (
+        {runErrorSummary ? (
           <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {run.errorMessage}
+            <p className="font-medium">{runErrorSummary.title}</p>
+            {runErrorSummary.fix ? (
+              <p className="mt-2 text-xs text-destructive/90">{runErrorSummary.fix}</p>
+            ) : null}
           </div>
         ) : null}
 

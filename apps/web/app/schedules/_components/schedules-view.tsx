@@ -2,9 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Select,
   SelectContent,
@@ -36,7 +47,8 @@ import {
 import { CalendarView } from "./calendar-view"
 import { GanttView } from "./gantt-view"
 import { ListView } from "./list-view"
-import { ScheduleDetailSheet } from "./detail-sheet"
+import { ScheduleDetailSheet, moveScheduledItem } from "./detail-sheet"
+import { scheduleMoveDescription } from "@/lib/schedules/actions"
 
 type ViewMode = "calendar" | "gantt" | "list"
 
@@ -60,6 +72,7 @@ export interface SchedulesViewProps {
   workflowOptions?: { id: string; name: string }[]
   workflowId?: string
   onWorkflowChange?: (workflowId: string | undefined) => void
+  onRefresh?: () => void
 }
 
 export function SchedulesView({
@@ -70,12 +83,18 @@ export function SchedulesView({
   workflowOptions,
   workflowId,
   onWorkflowChange,
+  onRefresh,
 }: SchedulesViewProps) {
   const [view, setView] = useState<ViewMode>("calendar")
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [activeKinds, setActiveKinds] = useState<Set<ScheduleKind>>(new Set(ALL_KINDS))
   const [selected, setSelected] = useState<ScheduledItem | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [pendingMove, setPendingMove] = useState<{
+    occurrence: ScheduleOccurrence
+    targetDate: Date
+  } | null>(null)
+  const [isMoving, setIsMoving] = useState(false)
   const reduceMotion = useReducedMotion()
 
   const filteredItems = useMemo(
@@ -120,6 +139,21 @@ export function SchedulesView({
     const item = "item" in target ? target.item : target
     setSelected(item)
     setSheetOpen(true)
+  }
+
+  const confirmMove = async () => {
+    if (!pendingMove) return
+    setIsMoving(true)
+    try {
+      await moveScheduledItem(pendingMove.occurrence.item, pendingMove.targetDate)
+      toast.success("Schedule updated")
+      setPendingMove(null)
+      onRefresh?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not move schedule")
+    } finally {
+      setIsMoving(false)
+    }
   }
 
   const toggleKind = (kind: ScheduleKind) => {
@@ -272,6 +306,9 @@ export function SchedulesView({
                 selectedId={selected?.id}
                 onSelect={handleSelect}
                 onOpen={handleOpen}
+                onMoveRequest={(occurrence, targetDate) =>
+                  setPendingMove({ occurrence, targetDate })
+                }
               />
             )}
             {view === "gantt" && (
@@ -303,10 +340,40 @@ export function SchedulesView({
       )}
 
       <p className="px-1 text-xs text-muted-foreground">
-        Tip: click an item to highlight it, double-click to open full details.
+        Tip: drag an item to another day to reschedule, click to highlight, double-click for details.
       </p>
 
-      <ScheduleDetailSheet item={selected} open={sheetOpen} onOpenChange={setSheetOpen} />
+      <ScheduleDetailSheet
+        item={selected}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onUpdated={onRefresh}
+      />
+
+      <AlertDialog open={Boolean(pendingMove)} onOpenChange={(open) => !open && setPendingMove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reschedule item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMove
+                ? scheduleMoveDescription(pendingMove.occurrence.item, pendingMove.targetDate)
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isMoving}
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmMove()
+              }}
+            >
+              {isMoving ? "Moving…" : "Confirm move"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

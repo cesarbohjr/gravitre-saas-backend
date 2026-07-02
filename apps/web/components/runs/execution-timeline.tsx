@@ -25,6 +25,12 @@ import { cn } from "@/lib/utils"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { DataStream } from "@/components/gravitre/premium-effects"
 import { useMotionPrefs } from "@/lib/animations"
+import {
+  humanizeConnectorAction,
+  humanizeLogLine,
+  summarizeStepError,
+  summarizeStepPayload,
+} from "@/lib/runs/step-summary"
 
 type StepStatus =
   | "completed"
@@ -151,17 +157,49 @@ function parseInvokeTool(step: ExecutionStepView): InvokeToolMeta {
   }
 }
 
-function JsonBlock({ label, value }: { label: string; value: Record<string, unknown> | null | undefined }) {
+function PayloadSummary({
+  label,
+  value,
+}: {
+  label: string
+  value: Record<string, unknown> | null | undefined
+}) {
+  const [showRaw, setShowRaw] = useState(false)
+  const summary = useMemo(() => summarizeStepPayload(value), [value])
   if (!value || Object.keys(value).length === 0) return null
+
   return (
     <div className="rounded-md bg-muted/50 p-3">
-      <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
-        <TerminalSquare className="h-3 w-3" />
-        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+      <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <TerminalSquare className="h-3 w-3" />
+          <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowRaw((open) => !open)}
+          className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
+        >
+          {showRaw ? "Hide raw data" : "Raw data"}
+        </button>
       </div>
-      <pre className="max-h-48 overflow-auto font-mono text-[11px] text-muted-foreground whitespace-pre-wrap">
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      {summary ? (
+        <div className="space-y-1 text-sm text-foreground">
+          <p>{summary.summary}</p>
+          {summary.bullets.map((bullet) => (
+            <p key={bullet} className="text-xs text-muted-foreground">
+              {bullet}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No meaningful input was recorded for this step.</p>
+      )}
+      {showRaw ? (
+        <pre className="mt-2 max-h-48 overflow-auto font-mono text-[11px] text-muted-foreground whitespace-pre-wrap">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      ) : null}
     </div>
   )
 }
@@ -194,17 +232,18 @@ function BranchVisualization({ output }: { output?: Record<string, unknown> | nu
 function InvokeToolDetail({ meta }: { meta: InvokeToolMeta }) {
   const succeeded = meta.success === true
   const failed = meta.success === false
+  const actionLabel = humanizeConnectorAction(meta.action)
   return (
     <div className="rounded-md border border-border bg-muted/30 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
         <PlugZap className="h-3 w-3" />
-        <span className="text-[10px] font-medium uppercase tracking-wider">Connector tool result</span>
+        <span className="text-[10px] font-medium uppercase tracking-wider">Connector result</span>
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
-        {meta.action ? (
+        {actionLabel ? (
           <div className="col-span-2">
-            <dt className="text-muted-foreground">Action</dt>
-            <dd className="mt-0.5 font-mono text-foreground">{meta.action}</dd>
+            <dt className="text-muted-foreground">What ran</dt>
+            <dd className="mt-0.5 text-foreground">{actionLabel}</dd>
           </div>
         ) : null}
         <div>
@@ -225,8 +264,8 @@ function InvokeToolDetail({ meta }: { meta: InvokeToolMeta }) {
         </div>
         {meta.errorCode ? (
           <div>
-            <dt className="text-muted-foreground">Error code</dt>
-            <dd className="mt-0.5 font-mono text-destructive">{meta.errorCode}</dd>
+            <dt className="text-muted-foreground">Issue</dt>
+            <dd className="mt-0.5 text-destructive">{meta.errorCode.replace(/_/g, " ")}</dd>
           </div>
         ) : null}
         {typeof meta.retryCount === "number" ? (
@@ -238,13 +277,12 @@ function InvokeToolDetail({ meta }: { meta: InvokeToolMeta }) {
         {meta.connectorId ? (
           <div className="col-span-2">
             <dt className="text-muted-foreground">Connector</dt>
-            <dd className="mt-0.5 flex items-center gap-2">
-              <span className="font-mono text-foreground">{meta.connectorId}</span>
+            <dd className="mt-0.5">
               <Link
                 href={`/connectors/${meta.connectorId}`}
                 className="inline-flex items-center gap-1 text-info hover:underline"
               >
-                View connector
+                Open connector settings
                 <ExternalLink className="h-3 w-3" />
               </Link>
             </dd>
@@ -281,6 +319,8 @@ function ExecutionStepRow({
   const modelInfo = step.outputSnapshot?.modelInfo ?? step.outputSnapshot?.model_info
   const tokens = step.outputSnapshot?.tokens ?? step.outputSnapshot?.tokenCount
   const invokeMeta = useMemo(() => parseInvokeTool(step), [step])
+  const errorSummary = useMemo(() => summarizeStepError(step.errorMessage), [step.errorMessage])
+  const connectorActionLabel = humanizeConnectorAction(invokeMeta.action)
   const executionModeSource = useMemo(
     () => (step.stepType === "agent" ? step.outputSnapshot : null),
     [step.outputSnapshot, step.stepType],
@@ -363,11 +403,11 @@ function ExecutionStepRow({
                 <h3 className={cn("text-sm font-medium text-foreground", step.status === "skipped" && "line-through")}>
                   {step.name}
                 </h3>
-                {invokeMeta.isInvokeTool && invokeMeta.action ? (
-                  <p className="font-mono text-[11px] text-muted-foreground">{invokeMeta.action}</p>
+                {connectorActionLabel ? (
+                  <p className="text-[11px] text-muted-foreground">{connectorActionLabel}</p>
                 ) : step.stepType ? (
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {invokeMeta.isInvokeTool ? "invoke_tool" : step.stepType}
+                    {step.stepType === "invoke_tool" ? "Connector step" : titleCaseStepType(step.stepType)}
                   </p>
                 ) : null}
               </div>
@@ -406,30 +446,34 @@ function ExecutionStepRow({
           >
             <div className="ml-10 mt-3 space-y-3">
               {invokeMeta.isInvokeTool ? <InvokeToolDetail meta={invokeMeta} /> : null}
-              <JsonBlock label="Input" value={invokeMeta.isInvokeTool ? redactSecrets(step.inputSnapshot) : step.inputSnapshot} />
-              <JsonBlock label="Output" value={invokeMeta.isInvokeTool ? redactSecrets(step.outputSnapshot) : step.outputSnapshot} />
+              <PayloadSummary
+                label="Input"
+                value={invokeMeta.isInvokeTool ? redactSecrets(step.inputSnapshot) : step.inputSnapshot}
+              />
+              <PayloadSummary
+                label="Output"
+                value={invokeMeta.isInvokeTool ? redactSecrets(step.outputSnapshot) : step.outputSnapshot}
+              />
               {(step.stepType === "condition" || step.stepType === "decision") && (
                 <BranchVisualization output={step.outputSnapshot} />
               )}
               {modelInfo || tokens ? (
                 <p className="text-[11px] text-muted-foreground">
-                  {modelInfo ? `Model: ${JSON.stringify(modelInfo)}` : null}
+                  {modelInfo ? "An AI model handled this step." : null}
                   {modelInfo && tokens ? " · " : null}
-                  {tokens ? `Tokens: ${String(tokens)}` : null}
+                  {tokens ? `${String(tokens)} tokens used` : null}
                 </p>
               ) : null}
-              {step.errorMessage ? (
+              {errorSummary ? (
                 <motion.div
                   initial={isFailed && !reduced ? { x: 0 } : false}
                   animate={isFailed && !reduced ? { x: [0, -4, 4, -4, 4, 0] } : {}}
                   transition={{ duration: 0.4 }}
-                  className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+                  className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
                 >
-                  {step.errorMessage}
-                  {invokeMeta.isAuthError ? (
-                    <p className="mt-2 text-[11px] text-destructive/80">
-                      This looks like an authentication problem. Reconnect the connector, then retry the step.
-                    </p>
+                  <p className="font-medium">{errorSummary.title}</p>
+                  {errorSummary.fix ? (
+                    <p className="mt-2 text-xs text-destructive/90">{errorSummary.fix}</p>
                   ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {step.status === "failed" && onRetry ? (
@@ -459,12 +503,12 @@ function ExecutionStepRow({
                 <div className="rounded-md bg-muted/50 p-3">
                   <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
                     <TerminalSquare className="h-3 w-3" />
-                    <span className="text-[10px] font-medium uppercase tracking-wider">Logs</span>
+                    <span className="text-[10px] font-medium uppercase tracking-wider">Activity</span>
                   </div>
-                  <div className="space-y-1 font-mono text-xs">
+                  <div className="space-y-1 text-xs">
                     {step.logs.map((log, i) => (
                       <p key={i} className={log.startsWith("ERROR") ? "text-destructive" : "text-muted-foreground"}>
-                        {log}
+                        {humanizeLogLine(log)}
                       </p>
                     ))}
                   </div>
@@ -476,6 +520,14 @@ function ExecutionStepRow({
       </AnimatePresence>
     </motion.div>
   )
+}
+
+function titleCaseStepType(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
 }
 
 export function ExecutionTimeline({

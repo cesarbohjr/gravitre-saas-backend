@@ -50,7 +50,13 @@ import {
 } from "@/lib/operator-plan"
 import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
+import { AiLanding } from "./ai-landing"
+import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
 import { AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import {
+  DEFAULT_RESULT_BLOCK_ORDER,
+  type ResultBlockId,
+} from "./draggable-result-stack"
 
 const CONVERSATION_ID_KEY = "gravitre_ai_conversation_id"
 
@@ -68,9 +74,8 @@ type InlineTurn = {
 }
 
 type AiWorkspaceProps = {
-  initialMode: ModeId
-  initialPrompt: string
-  onNewSession: () => void
+  initialMode?: ModeId
+  initialPrompt?: string
 }
 
 function normalizeChatText(message: UIMessage): string {
@@ -81,13 +86,16 @@ function normalizeChatText(message: UIMessage): string {
     .join("")
 }
 
-export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWorkspaceProps) {
+export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWorkspaceProps) {
   const { user } = useAuth()
   const [mode, setMode] = useState<ModeId>(initialMode)
   const [input, setInput] = useState("")
   const [routing, setRouting] = useState(false)
+  const [routedTo, setRoutedTo] = useState<AiEngine | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [inlineTurns, setInlineTurns] = useState<InlineTurn[]>([])
+  const [layoutBlockOrder, setLayoutBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
+  const [layoutEnabledBlocks, setLayoutEnabledBlocks] = useState<ResultBlockId[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return localStorage.getItem(CONVERSATION_ID_KEY)
@@ -103,6 +111,7 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
   const operatorSessionRef = useRef<string | null>(null)
   const activeExecuteTurnRef = useRef<string | null>(null)
   const initialPromptSentRef = useRef(false)
+  const hydrationDoneRef = useRef(false)
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
@@ -220,12 +229,16 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
     async (prompt: string, selectedMode: ModeId): Promise<AiEngine> => {
       if (selectedMode !== "auto") return selectedMode
       setRouting(true)
+      setRoutedTo(null)
       try {
-        return await classifyIntent(prompt)
+        const engine = await classifyIntent(prompt)
+        setRoutedTo(engine)
+        return engine
       } catch {
         return "chat"
       } finally {
         setRouting(false)
+        setRoutedTo(null)
       }
     },
     [classifyIntent],
@@ -427,10 +440,10 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
     operatorSessionRef.current = null
     localStorage.removeItem(CONVERSATION_ID_KEY)
     resetExecuteJob()
-    onNewSession()
+    setConversationTitle("Gravitre AI")
     inputRef.current?.focus()
     void mutateConversations()
-  }, [mutateConversations, onNewSession, resetExecuteJob, setMessages])
+  }, [mutateConversations, resetExecuteJob, setMessages])
 
   const handleDeleteConversation = useCallback(
     async (id: string) => {
@@ -471,6 +484,45 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
   const isChatBusy = status === "submitted" || status === "streaming"
   const showConversationsSkeleton = Boolean(user) && conversationsLoading && !conversationsData
   const showConversationsError = Boolean(user) && Boolean(conversationsError) && !conversationsLoading
+
+  useEffect(() => {
+    if (!user || hydrationDoneRef.current || conversationsLoading) return
+    const storedId = localStorage.getItem(CONVERSATION_ID_KEY)
+    if (storedId) {
+      hydrationDoneRef.current = true
+      void handleSelectConversation(storedId)
+      return
+    }
+    hydrationDoneRef.current = true
+  }, [user, conversationsLoading, handleSelectConversation])
+
+  const handleToggleLayoutBlock = useCallback((blockId: ResultBlockId, enabled: boolean) => {
+    setLayoutEnabledBlocks((current) => {
+      if (enabled) {
+        if (current.includes(blockId)) return current
+        return [...current, blockId]
+      }
+      return current.filter((id) => id !== blockId)
+    })
+    if (enabled) {
+      setLayoutBlockOrder((current) => (current.includes(blockId) ? current : [...current, blockId]))
+    }
+  }, [])
+
+  const latestExecuteTurn = useMemo(
+    () => [...inlineTurns].reverse().find((turn) => turn.engine === "execute") ?? null,
+    [inlineTurns],
+  )
+
+  const showLanding =
+    messages.length === 0 &&
+    inlineTurns.length === 0 &&
+    !isChatBusy &&
+    !routing &&
+    !initialPrompt.trim()
+
+  const showPinnedLayout =
+    layoutEnabledBlocks.length > 0 && latestExecuteTurn == null && inlineTurns.length === 0
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return
@@ -516,7 +568,12 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
               </p>
             </div>
           </div>
-          <div className="hidden flex-wrap justify-end gap-1.5 sm:flex">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <AiLayoutPanelPicker
+              enabledBlocks={layoutEnabledBlocks}
+              onToggleBlock={handleToggleLayoutBlock}
+            />
+            <div className="hidden flex-wrap gap-1.5 sm:flex">
             {AI_MODES.map((m) => (
               <button
                 key={m.id}
@@ -532,12 +589,26 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
                 {m.label}
               </button>
             ))}
+            </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
           <div className="mx-auto max-w-3xl space-y-6">
-            {messages.map((message) => {
+            {showLanding ? (
+              <AiLanding
+                mode={mode}
+                onModeChange={setMode}
+                input={input}
+                onInputChange={setInput}
+                routing={routing}
+                routedTo={routedTo}
+                onSubmit={() => void submitPrompt(input)}
+              />
+            ) : null}
+
+            {!showLanding
+              ? messages.map((message) => {
               const text = normalizeChatText(message)
               const isUser = message.role === "user"
               return (
@@ -570,9 +641,11 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
                   </div>
                 </motion.div>
               )
-            })}
+            })
+              : null}
 
-            {inlineTurns.map((turn) => (
+            {!showLanding
+              ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground">
@@ -589,6 +662,9 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
                     job={turn.executeJob ?? null}
                     isProcessing={turn.status === "running" && executeWorking}
                     error={turn.executeError ?? (turn.status === "running" ? executeHookError : null)}
+                    blockOrder={layoutBlockOrder}
+                    enabledBlocks={layoutEnabledBlocks}
+                    onReorderBlocks={setLayoutBlockOrder}
                   />
                 ) : null}
 
@@ -605,7 +681,20 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
                   <p className="text-sm text-destructive">{turn.findError}</p>
                 ) : null}
               </div>
-            ))}
+            ))
+              : null}
+
+            {showPinnedLayout ? (
+              <AiExecuteResults
+                plan={null}
+                job={null}
+                isProcessing={false}
+                error={null}
+                blockOrder={layoutBlockOrder}
+                enabledBlocks={layoutEnabledBlocks}
+                onReorderBlocks={setLayoutBlockOrder}
+              />
+            ) : null}
 
             {routing ? (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -618,6 +707,7 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
           </div>
         </div>
 
+        {!showLanding ? (
         <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur md:px-8">
           <div className="mx-auto max-w-3xl">
             <div
@@ -662,6 +752,7 @@ export function AiWorkspace({ initialMode, initialPrompt, onNewSession }: AiWork
             </div>
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { KIND_STYLES, type ScheduleOccurrence } from "@/lib/schedules"
@@ -14,14 +14,18 @@ export function CalendarView({
   selectedId,
   onSelect,
   onOpen,
+  onMoveRequest,
 }: {
   month: Date
   occurrences: ScheduleOccurrence[]
   selectedId?: string
   onSelect: (occurrence: ScheduleOccurrence) => void
   onOpen: (occurrence: ScheduleOccurrence) => void
+  onMoveRequest?: (occurrence: ScheduleOccurrence, targetDate: Date) => void
 }) {
   const reduceMotion = useReducedMotion()
+  const [draggingKey, setDraggingKey] = useState<string | null>(null)
+  const [dropDayKey, setDropDayKey] = useState<string | null>(null)
   const gridStart = useMemo(() => startOfCalendarGrid(month), [month])
   const days = useMemo(
     () => Array.from({ length: 42 }, (_, i) => addDays(gridStart, i)),
@@ -49,10 +53,33 @@ export function CalendarView({
           return (
             <div
               key={idx}
+              onDragOver={(event) => {
+                if (!draggingKey || !onMoveRequest) return
+                event.preventDefault()
+                setDropDayKey(String(idx))
+              }}
+              onDragLeave={() => setDropDayKey((current) => (current === String(idx) ? null : current))}
+              onDrop={(event) => {
+                event.preventDefault()
+                if (!draggingKey || !onMoveRequest) return
+                const occurrence = occurrences.find((entry) => entry.key === draggingKey)
+                if (!occurrence) return
+                const nextDate = new Date(day)
+                nextDate.setHours(
+                  occurrence.date.getHours(),
+                  occurrence.date.getMinutes(),
+                  occurrence.date.getSeconds(),
+                  0,
+                )
+                onMoveRequest(occurrence, nextDate)
+                setDraggingKey(null)
+                setDropDayKey(null)
+              }}
               className={cn(
-                "min-h-[7rem] border-b border-r border-border p-1.5 last:border-r-0",
+                "min-h-[7rem] border-b border-r border-border p-1.5 last:border-r-0 transition-colors",
                 idx % 7 === 6 && "border-r-0",
                 !inMonth && "bg-muted/30",
+                dropDayKey === String(idx) && "bg-primary/5 ring-1 ring-inset ring-primary/20",
               )}
             >
               <div className="mb-1 flex items-center justify-between px-1">
@@ -82,9 +109,15 @@ export function CalendarView({
                     <motion.button
                       key={occurrence.key}
                       type="button"
+                      draggable={Boolean(onMoveRequest) && !occurrence.item.isSample}
+                      onDragStart={() => setDraggingKey(occurrence.key)}
+                      onDragEnd={() => {
+                        setDraggingKey(null)
+                        setDropDayKey(null)
+                      }}
                       onClick={() => onSelect(occurrence)}
                       onDoubleClick={() => onOpen(occurrence)}
-                      title={`${occurrence.item.title} · double-click for details`}
+                      title={`${occurrence.item.title} · drag to another day or double-click for details`}
                       initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
@@ -98,6 +131,8 @@ export function CalendarView({
                         "flex w-full items-center gap-1.5 rounded-md border-l-2 px-1.5 py-1 text-left text-xs",
                         style.softBg,
                         selected && "ring-2 ring-ring ring-offset-1 ring-offset-card",
+                        onMoveRequest && !occurrence.item.isSample && "cursor-grab active:cursor-grabbing",
+                        draggingKey === occurrence.key && "opacity-60",
                       )}
                       style={{ borderLeftColor: style.color }}
                     >

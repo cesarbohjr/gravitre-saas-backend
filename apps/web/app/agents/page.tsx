@@ -18,6 +18,13 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import {
   Tooltip,
@@ -742,155 +749,120 @@ function AgentDetailPanel({
   )
 }
 
-function AgentQuickPanel({
+function AgentPreviewSheet({
   agent,
-  activeCount,
-  totalTasks,
-  teamHealth,
-  onClose,
+  open,
+  onOpenChange,
   onOpenProfile,
 }: {
   agent: Agent
-  activeCount: number
-  totalTasks: number
-  teamHealth: number
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onOpenProfile: () => void
 }) {
   const recentTasks = getAgentRecentTasks(agent)
   const status = statusConfig[agent.status]
 
   return (
-    <motion.div
-      role="dialog"
-      aria-label={`${agent.name} quick view`}
-      initial={{ y: "100%", opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: "100%", opacity: 0 }}
-      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-      className="fixed bottom-0 left-0 right-0 z-[60] border-t border-success/20 bg-card/95 shadow-2xl backdrop-blur-xl"
-    >
-      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
-      <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:px-6 sm:py-4">
-        <div className="flex items-start justify-between gap-3">
-          <button
-            type="button"
-            onClick={onOpenProfile}
-            className="min-w-0 flex-1 rounded-lg text-left transition-colors hover:bg-secondary/40"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
-                  departmentGradient(agent.department).gradient,
-                )}
-              >
-                {createElement(getAgentIcon(agent), { className: "h-5 w-5 text-white", strokeWidth: 2 })}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">{agent.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{agent.role}</p>
-              </div>
-              <span
-                className={cn(
-                  "ml-auto hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider sm:inline-flex",
-                  agent.status === "error"
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : agent.status === "processing"
-                      ? "border-info/30 bg-info/10 text-info"
-                      : agent.status === "active"
-                        ? "border-success/30 bg-success/10 text-success"
-                        : "border-border bg-secondary text-muted-foreground",
-                )}
-              >
-                {status.label}
-              </span>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm">
+        <SheetHeader className="space-y-3 border-b border-border px-5 py-5 text-left">
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-sm",
+                departmentGradient(agent.department).gradient,
+              )}
+            >
+              {createElement(getAgentIcon(agent), { className: "h-5 w-5 text-white", strokeWidth: 2 })}
             </div>
-          </button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            aria-label="Close agent panel"
-            onClick={(event) => {
-              event.stopPropagation()
-              onClose()
-            }}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+            <div className="min-w-0 flex-1">
+              <SheetTitle className="truncate text-base">{agent.name}</SheetTitle>
+              <SheetDescription className="truncate">{agent.role}</SheetDescription>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                agent.status === "error"
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : agent.status === "processing"
+                    ? "border-info/30 bg-info/10 text-info"
+                    : agent.status === "active"
+                      ? "border-success/30 bg-success/10 text-success"
+                      : "border-border bg-secondary text-muted-foreground",
+              )}
+            >
+              {status.label}
+            </span>
+            {agent.model ? (
+              <AgentModelBadge
+                model={agent.model}
+                variant="panel"
+                className="max-w-[140px] truncate rounded-md border border-border px-2 py-0.5 text-[10px] text-muted-foreground"
+              />
+            ) : null}
+          </div>
+        </SheetHeader>
 
-        <button
-          type="button"
-          onClick={onOpenProfile}
-          className="w-full cursor-pointer rounded-xl border border-border/60 bg-secondary/20 p-3 text-left transition-colors hover:border-border hover:bg-secondary/40 sm:p-4"
-        >
-          <div className="grid grid-cols-3 gap-3 sm:gap-6">
-            <div className="text-center">
-              <div className="text-lg font-semibold text-success sm:text-xl">
-                <AnimatedCounter value={activeCount} duration={0.8} />
-              </div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Active</div>
+        <div className="space-y-4 px-5 py-4">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
+              <div className="text-lg font-semibold text-foreground">{agent.stats.tasksToday}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tasks</div>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-semibold text-info sm:text-xl">
-                <AnimatedCounter value={totalTasks} duration={1} />
+            <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
+              <div className="text-lg font-semibold text-foreground">
+                {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : "—"}
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tasks Today</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Success</div>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-semibold text-success sm:text-xl">
-                {shouldShowSuccessRate(agent) ? `${agent.stats.successRate}%` : `${teamHealth}%`}
-              </div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Health</div>
+            <div className="rounded-lg border border-border bg-card/60 px-2 py-3 text-center">
+              <div className="text-lg font-semibold text-foreground">{agent.stats.workflowsUsing}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Flows</div>
             </div>
           </div>
 
-          {recentTasks.length > 0 ? (
-            <ul className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
-              {recentTasks.map((task) => (
-                <li
-                  key={task.id}
-                  className="flex items-center gap-2 text-xs text-muted-foreground"
-                >
-                  <Zap className="h-3 w-3 shrink-0 text-info/80" />
-                  <span className="min-w-0 flex-1 truncate text-foreground">{task.title}</span>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase",
-                      taskStatusBadgeClass(task.status),
-                    )}
-                  >
-                    {task.status}
-                  </span>
-                  <span className="hidden shrink-0 sm:inline">{formatTaskTime(task.time)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-              No recent tasks for this agent yet.
-            </p>
-          )}
-        </button>
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent activity</p>
+            {recentTasks.length > 0 ? (
+              <ul className="mt-2 space-y-2">
+                {recentTasks.slice(0, 3).map((task) => (
+                  <li key={task.id} className="flex items-center gap-2 text-xs">
+                    <Zap className="h-3 w-3 shrink-0 text-info/80" />
+                    <span className="min-w-0 flex-1 truncate text-foreground">{task.title}</span>
+                    <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase", taskStatusBadgeClass(task.status))}>
+                      {task.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">No recent tasks for this agent yet.</p>
+            )}
+          </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1 gap-1.5" asChild>
-            <a href={`/agents/${agent.id}/chat`} onClick={(event) => event.stopPropagation()}>
-              <MessageSquare className="h-3.5 w-3.5" />
-              Chat
-            </a>
-          </Button>
-          <Button size="sm" className="flex-1 gap-1.5 bg-zinc-900 text-white hover:bg-zinc-800" asChild>
-            <a href={`/lite/assign?agent=${agent.id}`} onClick={(event) => event.stopPropagation()}>
-              <Play className="h-3.5 w-3.5" />
-              Assign Task
-            </a>
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" className="w-full gap-1.5" asChild>
+              <a href={`/agents/${agent.id}/chat`}>
+                <MessageSquare className="h-3.5 w-3.5" />
+                Chat
+              </a>
+            </Button>
+            <Button className="w-full gap-1.5" asChild>
+              <a href={`/lite/assign?agent=${agent.id}`}>
+                <Play className="h-3.5 w-3.5" />
+                Assign Task
+              </a>
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={onOpenProfile}>
+              View full profile
+            </Button>
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -1005,9 +977,9 @@ export default function AgentsPage() {
   
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
-  const [quickPanelDismissed, setQuickPanelDismissed] = useState(false)
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase()
 
@@ -1063,7 +1035,7 @@ export default function AgentsPage() {
     if (selectedAgent && filteredAgents.some((agent) => agent.id === selectedAgent.id)) {
       return selectedAgent
     }
-    return filteredAgents[0] ?? null
+    return null
   }, [selectedAgent, filteredAgents])
 
   const activeCount = agents.filter((a) => a.status === "active" || a.status === "processing").length
@@ -1078,7 +1050,6 @@ export default function AgentsPage() {
           ) / agents.length,
         )
       : 100
-  const showQuickPanel = Boolean(visibleSelectedAgent) && !quickPanelDismissed
 
   const prevActiveCountRef = useRef(activeCount)
   const [activeStatPulse, setActiveStatPulse] = useState(false)
@@ -1297,7 +1268,7 @@ export default function AgentsPage() {
                         isSelected={visibleSelectedAgent?.id === agent.id}
                         onClick={() => {
                           setSelectedAgent(agent)
-                          setQuickPanelDismissed(false)
+                          setPreviewOpen(true)
                         }}
                       />
                     ))}
@@ -1307,8 +1278,7 @@ export default function AgentsPage() {
               </TooltipProvider>
             </div>
             
-            {/* Team stats bar — hidden when agent quick panel is open */}
-            {!showQuickPanel ? (
+            {/* Team stats bar */}
             <motion.div 
               className="sticky bottom-0 left-0 right-0 z-50 flex justify-center py-4 bg-gradient-to-t from-background via-background to-transparent"
               initial={{ opacity: 0, y: 20 }}
@@ -1360,23 +1330,17 @@ export default function AgentsPage() {
                 </div>
               </div>
             </motion.div>
-            ) : null}
           </div>
         </div>
 
-        <AnimatePresence>
-          {showQuickPanel && visibleSelectedAgent ? (
-            <AgentQuickPanel
-              key={visibleSelectedAgent.id}
-              agent={visibleSelectedAgent}
-              activeCount={activeCount}
-              totalTasks={totalTasks}
-              teamHealth={teamHealth}
-              onClose={() => setQuickPanelDismissed(true)}
-              onOpenProfile={() => router.push(`/agents/${visibleSelectedAgent.id}`)}
-            />
-          ) : null}
-        </AnimatePresence>
+        {visibleSelectedAgent ? (
+          <AgentPreviewSheet
+            agent={visibleSelectedAgent}
+            open={previewOpen}
+            onOpenChange={setPreviewOpen}
+            onOpenProfile={() => router.push(`/agents/${visibleSelectedAgent.id}`)}
+          />
+        ) : null}
 
 {/* Right - Agent Detail Panel - Premium glassmorphism */}
         <AnimatePresence initial={false}>

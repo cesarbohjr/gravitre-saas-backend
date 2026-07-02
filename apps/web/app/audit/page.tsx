@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -20,31 +20,35 @@ import { auditApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AuditLog } from "@/types/api"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import {
   Search,
   AlertCircle,
   RefreshCw,
   Calendar,
+  ChevronDown,
+  ChevronUp,
   FileJson,
   FileText,
   User,
   Clock,
   FileText as EntityIcon,
 } from "lucide-react"
+import {
+  categorizeAuditEvent,
+} from "@/lib/audit-category"
+import {
+  formatAuditActionLabel,
+  formatAuditEntityLabel,
+  summarizeAuditLog,
+} from "@/lib/audit-summary"
+
 function getRangeStart(range: string): string | undefined {
   const now = Date.now()
   if (range === "24h") return new Date(now - 24 * 60 * 60 * 1000).toISOString()
   if (range === "7d") return new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
   if (range === "30d") return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
   return undefined
-}
-
-function formatAction(action: string): string {
-  return action
-    .replaceAll("_", " ")
-    .split(" ")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
 }
 
 function formatTime(value: string): string {
@@ -217,7 +221,7 @@ export default function AuditPage() {
                 <SelectItem value="all">All actions</SelectItem>
                 {actions.map((action) => (
                   <SelectItem key={action} value={action}>
-                    {formatAction(action)}
+                    {formatAuditActionLabel(action)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -318,50 +322,7 @@ export default function AuditPage() {
           ) : (
             <div className="space-y-3">
               {filteredLogs.map((log, index) => (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index * 0.03, 0.25) }}
-                  className="rounded-lg border border-border bg-card/60 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-foreground">{formatAction(log.action)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {log.user_name || log.user_email || "System"} · {formatTime(log.created_at)}
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
-                      {log.entity_type}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
-                      <EntityIcon className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-foreground">{log.entity_name || log.entity_id}</span>
-                    </span>
-                    {log.user_email && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-foreground">{log.user_email}</span>
-                      </span>
-                    )}
-                    {log.ip_address && (
-                      <span className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-foreground">
-                        {log.ip_address}
-                      </span>
-                    )}
-                  </div>
-                  {log.details && Object.keys(log.details).length > 0 && (
-                    <div className="mt-3 rounded-md border border-border/60 bg-background/50 p-2">
-                      <p className="text-[10px] uppercase text-muted-foreground mb-1">Details</p>
-                      <pre className="text-[11px] text-muted-foreground overflow-x-auto whitespace-pre-wrap">
-                        {JSON.stringify(log.details, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </motion.div>
+                <AuditLogCard key={log.id} log={log} index={index} />
               ))}
             </div>
           )}
@@ -396,5 +357,97 @@ export default function AuditPage() {
         )}
       </div>
     </AppShell>
+  )
+}
+
+function AuditLogCard({ log, index }: { log: AuditLog; index: number }) {
+  const [showTechnical, setShowTechnical] = useState(false)
+  const category = categorizeAuditEvent({
+    action: log.action,
+    entityType: log.entity_type,
+    category: typeof log.details?.category === "string" ? log.details.category : null,
+  })
+  const CategoryIcon = category.icon
+  const summary = summarizeAuditLog(log)
+  const entityLabel = formatAuditEntityLabel(log)
+  const hasTechnicalDetails = Boolean(log.details && Object.keys(log.details).length > 0)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.03, 0.25) }}
+      className={cn(
+        "rounded-lg border border-border bg-card/60 p-4 border-l-4",
+        category.edge,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className={cn("inline-flex h-7 w-7 items-center justify-center rounded-md", category.soft)}>
+              <CategoryIcon className={cn("h-3.5 w-3.5", category.text)} />
+            </span>
+            <p className="text-sm font-semibold text-foreground">{formatAuditActionLabel(log.action)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {log.user_name || log.user_email || "System"} · {formatTime(log.created_at)}
+          </p>
+        </div>
+        <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+          {summary.categoryLabel}
+        </span>
+      </div>
+
+      <p className="mt-3 text-sm leading-relaxed text-foreground">{summary.summary}</p>
+
+      {summary.outcome ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Outcome: <span className="font-medium text-foreground">{summary.outcome}</span>
+        </p>
+      ) : null}
+
+      {summary.bullets.length > 0 ? (
+        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+          {summary.bullets.map((bullet) => (
+            <li key={bullet} className="flex gap-2">
+              <span className="text-muted-foreground/60">•</span>
+              <span>{bullet}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
+          <EntityIcon className="h-3 w-3 text-muted-foreground" />
+          <span className="text-foreground">{entityLabel}</span>
+        </span>
+        {log.user_email ? (
+          <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
+            <User className="h-3 w-3 text-muted-foreground" />
+            <span className="text-foreground">{log.user_email}</span>
+          </span>
+        ) : null}
+      </div>
+
+      {hasTechnicalDetails ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowTechnical((open) => !open)}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            {showTechnical ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showTechnical ? "Hide technical details" : "Show technical details"}
+          </button>
+          {showTechnical ? (
+            <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-border/60 bg-background/50 p-2 text-[11px] text-muted-foreground whitespace-pre-wrap">
+              {JSON.stringify(log.details, null, 2)}
+            </pre>
+          ) : null}
+        </div>
+      ) : null}
+    </motion.div>
   )
 }

@@ -24,11 +24,30 @@ import {
 } from "@/lib/ai-inline-execute"
 import { toast } from "sonner"
 
+function EmptyPanel({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-5 text-sm text-muted-foreground">
+      <p className="font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-xs">{body}</p>
+    </div>
+  )
+}
+
+function filterSections<T extends { type?: string; id?: string }>(
+  sections: T[],
+  types: string[],
+): T[] {
+  return sections.filter((section) => types.includes(String(section.type ?? section.id ?? "")))
+}
+
 type AiExecuteResultsProps = {
   plan: InlineExecutePlan | null
   job: AgentJob | null
   isProcessing: boolean
   error: string | null
+  blockOrder?: ResultBlockId[]
+  enabledBlocks?: ResultBlockId[]
+  onReorderBlocks?: (next: ResultBlockId[]) => void
 }
 
 export function AiExecuteResults({
@@ -36,11 +55,21 @@ export function AiExecuteResults({
   job,
   isProcessing,
   error,
+  blockOrder,
+  enabledBlocks,
+  onReorderBlocks,
 }: AiExecuteResultsProps) {
-  const [blockOrder, setBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
+  const [internalBlockOrder, setInternalBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
+  const order = blockOrder ?? internalBlockOrder
+  const setBlockOrder = onReorderBlocks ?? setInternalBlockOrder
+  const effectiveEnabledBlocks =
+    enabledBlocks && enabledBlocks.length > 0 ? enabledBlocks : DEFAULT_RESULT_BLOCK_ORDER
   const [executingAction, setExecutingAction] = useState<string | null>(null)
 
   const findings = plan?.findings ?? []
+  const analysisSections = filterSections(findings, ["summary", "root-cause", "reasoning", "evidence"])
+  const resultSections = filterSections(findings, ["actions", "evidence"])
+  const preventionSections = filterSections(findings, ["prevention"])
   const steps = plan?.steps ?? fallbackActionPlanSteps
   const suggestedActions = plan?.suggestedActions ?? fallbackSuggestedActionsList
   const confidence = useMemo(() => resolveAnalysisConfidence(plan, job), [plan, job])
@@ -88,19 +117,54 @@ export function AiExecuteResults({
         </Link>
       </div>
     ),
-    analysis: (
+    analysis: analysisSections.length > 0 ? (
       <MesonInsightsPanel
         confidence={confidence}
         confidenceDataPoints={dataPoints}
         severity="high"
         lastUpdated="Just now"
-        sections={findings as Parameters<typeof MesonInsightsPanel>[0]["sections"]}
+        sections={analysisSections as Parameters<typeof MesonInsightsPanel>[0]["sections"]}
         isGenerating={isProcessing}
         onTryAutoFix={() => toast.info("Auto-fix staged for review")}
         onViewDocumentation={() => window.open("https://docs.gravitre.app", "_blank", "noopener,noreferrer")}
         onContactSupport={() =>
           window.open("mailto:support@gravitre.app?subject=Gravitre%20AI%20help", "_self")
         }
+      />
+    ) : (
+      <EmptyPanel
+        title="AI Analysis"
+        body="Run a task in Execute mode to populate analysis for what happened and why."
+      />
+    ),
+    results: resultSections.length > 0 ? (
+      <MesonInsightsPanel
+        confidence={confidence}
+        confidenceDataPoints={dataPoints}
+        severity="medium"
+        lastUpdated="Just now"
+        sections={resultSections as Parameters<typeof MesonInsightsPanel>[0]["sections"]}
+        isGenerating={isProcessing}
+      />
+    ) : (
+      <EmptyPanel
+        title="Results"
+        body="Concise outcomes and evidence will appear here after Gravitre finishes the task."
+      />
+    ),
+    prevention: preventionSections.length > 0 ? (
+      <MesonInsightsPanel
+        confidence={confidence}
+        confidenceDataPoints={dataPoints}
+        severity="low"
+        lastUpdated="Just now"
+        sections={preventionSections as Parameters<typeof MesonInsightsPanel>[0]["sections"]}
+        isGenerating={isProcessing}
+      />
+    ) : (
+      <EmptyPanel
+        title="Prevention"
+        body="Future prevention guidance appears here once analysis completes."
       />
     ),
     actions: (
@@ -184,6 +248,11 @@ export function AiExecuteResults({
   }
 
   return (
-    <DraggableResultStack order={blockOrder} onReorder={setBlockOrder} blocks={blocks} />
+    <DraggableResultStack
+      order={order}
+      enabledBlocks={effectiveEnabledBlocks}
+      onReorder={setBlockOrder}
+      blocks={blocks}
+    />
   )
 }

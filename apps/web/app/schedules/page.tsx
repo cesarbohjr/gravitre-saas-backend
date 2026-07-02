@@ -100,6 +100,7 @@ export default function SchedulesPage() {
             workflowOptions={workflowOptions}
             workflowId={workflowId}
             onWorkflowChange={setWorkflowId}
+            onRefresh={refresh}
           />
         )}
       </div>
