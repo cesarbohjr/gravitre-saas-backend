@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi, settingsApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import type { OnboardingProgress } from "@/types/api"
 
 // Types
@@ -51,7 +52,7 @@ const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
     stepKey: "welcome",
     title: "Create your account",
     description: "You're signed in and ready to go",
-    href: "/operator",
+    href: APP_ROUTES.commandCenter,
     icon: UserCheck,
   },
   {
@@ -75,7 +76,7 @@ const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
     stepKey: "task",
     title: "Run your first task",
     description: "Assign work and see agent output",
-    href: "/operator",
+    href: APP_ROUTES.commandCenter,
     icon: PlayCircle,
   },
   {
@@ -126,7 +127,7 @@ function buildItemsFromProgress(
 const ROUTE_STEP_MAP: Array<{ prefix: string; stepKey: string }> = [
   { prefix: "/connectors", stepKey: "connect" },
   { prefix: "/agents/new", stepKey: "operator" },
-  { prefix: "/operator", stepKey: "task" },
+  { prefix: APP_ROUTES.commandCenter, stepKey: "task" },
   { prefix: "/workflows", stepKey: "path" },
   { prefix: "/settings/organizations", stepKey: "next" },
 ]

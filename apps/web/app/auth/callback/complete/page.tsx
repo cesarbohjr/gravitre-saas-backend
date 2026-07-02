@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
+import { APP_ROUTES } from "@/lib/app-routes"
 import { markAuthTransition } from "@/lib/auth-transition"
 import { supabaseClient } from "@/lib/supabaseClient"
 
@@ -20,7 +21,7 @@ function AuthCallbackCompleteContent() {
 
   const callbackContext = useMemo(() => {
     const type = searchParams.get("type")
-    const defaultDestination = "/operator"
+    const defaultDestination = APP_ROUTES.commandCenter
     const fallbackDestination = type === "signup" ? "/get-started" : "/login"
     const nextPath = normalizeNextPath(searchParams.get("next"), defaultDestination)
     return { type, fallbackDestination, nextPath }

@@ -7,6 +7,7 @@ import { MesonInsightsPanel } from "@/components/gravitre/ai-insights-panel"
 import { SuggestedActions } from "@/components/gravitre/suggested-actions"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Button } from "@/components/ui/button"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import type { AgentJob } from "@/hooks/use-async-job"
 import {
@@ -127,7 +128,7 @@ export function AiExecuteResults({
           <span className="text-[10px] text-muted-foreground">{toolsAvailable} available</span>
         ) : null}
         <Link
-          href="/operator"
+          href={APP_ROUTES.commandCenter}
           className="ml-auto text-[10px] font-medium text-primary hover:underline"
         >
           Open Command Center
@@ -249,7 +250,7 @@ export function AiExecuteResults({
           ))}
           <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
             <Button variant="outline" size="sm" className="h-9" asChild>
-              <Link href="/operator">
+              <Link href={APP_ROUTES.commandCenter}>
                 <Eye className="mr-2 h-3.5 w-3.5" />
                 Review in Command Center
               </Link>

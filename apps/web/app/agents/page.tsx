@@ -26,6 +26,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { APP_ROUTES } from "@/lib/app-routes"
 import {
   Tooltip,
   TooltipContent,
@@ -1098,7 +1099,7 @@ export default function AgentsPage() {
                   onClick={() => setMesonWizardOpen(true)}
                   isOpen={mesonWizardOpen}
                 />
-                <Button variant="outline" onClick={() => router.push("/agents/swarm")} className="gap-2">
+                <Button variant="outline" onClick={() => router.push(APP_ROUTES.multiAgentRun)} className="gap-2">
                   <Users className="h-4 w-4" />
                   Multi-Agent Run
                 </Button>

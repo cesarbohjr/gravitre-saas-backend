@@ -1,13 +1,15 @@
 import { publicAppUrl } from "@/lib/public-urls"
 
+import { APP_ROUTES } from "@/lib/app-routes"
+
 /**
  * Generates the OAuth redirect URL that points to the auth callback route.
  * The callback route will handle token exchange and then redirect to the final destination.
  *
- * @param finalDestination - Where to redirect after successful auth (default: /operator)
+ * @param finalDestination - Where to redirect after successful auth (default: Command Center)
  * @param isSignup - Whether this is a signup flow (affects error fallback destination)
  */
-export function getAuthRedirectUrl(finalDestination: string = "/operator", isSignup: boolean = false): string | undefined {
+export function getAuthRedirectUrl(finalDestination: string = APP_ROUTES.commandCenter, isSignup: boolean = false): string | undefined {
   const normalizedDest = finalDestination.startsWith("/") ? finalDestination : `/${finalDestination}`
   const configuredBase = publicAppUrl()
 

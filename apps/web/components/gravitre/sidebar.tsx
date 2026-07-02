@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Icon, type IconName } from "@/lib/icons"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"
 import {
@@ -77,7 +78,7 @@ const adminNavigation: NavGroup[] = [
         hint: "Execute, chat, and find — one bar routes to the right engine",
       },
       { name: "Agents", href: "/agents", icon: "team" },
-      { name: "Multi-Agent Run", href: "/agents/swarm", icon: "network" },
+      { name: "Multi-Agent Run", href: APP_ROUTES.multiAgentRun, icon: "network" },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
       { name: "Goals", href: "/goals", icon: "target" },
     ],

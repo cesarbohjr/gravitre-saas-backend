@@ -1,11 +1,14 @@
 export const WORK_SHORTCUT_EVENT = "gravitre:work-shortcut"
 export const FOCUS_SEARCH_AFTER_NAV_KEY = "gravitre:focus-search-on-load"
 
+import { APP_ROUTES } from "@/lib/app-routes"
+
 export const WORK_SECTION_PATH_PREFIXES = [
-  "/search",
-  "/operator",
-  "/assistant",
-  "/agents",
+  APP_ROUTES.search,
+  APP_ROUTES.commandCenter,
+  APP_ROUTES.assistant,
+  APP_ROUTES.agents,
+  APP_ROUTES.multiAgentRun,
   "/assignments",
 ] as const
 

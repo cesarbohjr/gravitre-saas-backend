@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2, Github, Check } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
 import { onboardingApi, billingApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabaseClient } from "@/lib/supabaseClient"
 
@@ -70,14 +71,14 @@ export default function GetStartedPage() {
         
         // canAccessApp means user can enter the app (trialing, active, free with access)
         if ((status as { canAccessApp?: boolean }).canAccessApp) {
-          router.replace("/operator")
+          router.replace(APP_ROUTES.commandCenter)
         } else {
           // User exists but no access - send to billing
           router.replace("/settings/billing?reason=subscription_required")
         }
       } catch {
         // On error, allow through to operator (fail open for new signups)
-        if (!cancelled) router.replace("/operator")
+        if (!cancelled) router.replace(APP_ROUTES.commandCenter)
       }
     }
     
@@ -95,13 +96,13 @@ export default function GetStartedPage() {
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [])
 
-  // OAuth signup - redirects to /operator
+  // OAuth signup - redirects to Command Center
   const handleOAuth = async (provider: "google" | "github" | "azure") => {
     setAuthError(null)
     setSuccessMessage(null)
     setLoadingProvider(provider)
 
-    const result = await beginOAuthSignIn(provider, "/operator", true)
+    const result = await beginOAuthSignIn(provider, APP_ROUTES.commandCenter, true)
     if (!result.ok) {
       setAuthError(humanizeAuthError(result.error))
       setLoadingProvider(null)
@@ -140,7 +141,7 @@ export default function GetStartedPage() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: getAuthRedirectUrl("/operator", true),
+          emailRedirectTo: getAuthRedirectUrl(APP_ROUTES.commandCenter, true),
         },
       })
 
@@ -164,7 +165,7 @@ export default function GetStartedPage() {
         console.warn("Demo bootstrap failed, continuing to app")
       }
 
-      router.replace("/operator")
+      router.replace(APP_ROUTES.commandCenter)
     } catch (err) {
       setAuthError(humanizeAuthError(err instanceof Error ? err.message : "Signup failed"))
       setIsLoading(false)

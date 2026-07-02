@@ -9,6 +9,7 @@ import { supabaseClient } from "@/lib/supabaseClient"
 import { useAuth } from "@/lib/auth-context"
 import { beginOAuthSignIn } from "@/lib/oauth"
 import { clearAuthTransition, markAuthTransition } from "@/lib/auth-transition"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 
 const features = [
@@ -66,7 +67,7 @@ function LoginPageContent() {
           clearAuthTransition()
           window.sessionStorage.removeItem("gravitre_auth_login_redirect")
           await supabaseClient.auth.refreshSession()
-          const redirect = searchParams.get("redirect") || "/operator"
+          const redirect = searchParams.get("redirect") || APP_ROUTES.commandCenter
           router.replace(redirect)
           return
         }
@@ -154,7 +155,7 @@ function LoginPageContent() {
           return
         }
 
-        const redirect = searchParams.get("redirect") || "/operator"
+        const redirect = searchParams.get("redirect") || APP_ROUTES.commandCenter
         markAuthTransition()
         router.replace(redirect)
       } catch {
@@ -195,7 +196,7 @@ function LoginPageContent() {
       return
     }
 
-    const redirect = searchParams.get("redirect") || "/operator"
+    const redirect = searchParams.get("redirect") || APP_ROUTES.commandCenter
     markAuthTransition()
     router.push(redirect)
   }
@@ -213,7 +214,7 @@ function LoginPageContent() {
         type: "signup",
         email: email.trim(),
         options: {
-          emailRedirectTo: getAuthRedirectUrl("/operator"),
+          emailRedirectTo: getAuthRedirectUrl(APP_ROUTES.commandCenter),
         },
       })
       if (error) {
@@ -240,7 +241,7 @@ function LoginPageContent() {
       setAuthError("Sign-in timed out. Please try again.")
     }, 20000)
 
-    const result = await beginOAuthSignIn(selectedProvider, "/operator")
+    const result = await beginOAuthSignIn(selectedProvider, APP_ROUTES.commandCenter)
     if (!result.ok) {
       clearTimeout(resetTimer)
       setAuthError(result.error)

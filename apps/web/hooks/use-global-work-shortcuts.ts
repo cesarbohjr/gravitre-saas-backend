@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { APP_ROUTES } from "@/lib/app-routes"
 import {
   dispatchWorkShortcut,
   isEditableTarget,
@@ -26,7 +27,7 @@ export function useGlobalWorkShortcuts() {
         if (
           pathname.startsWith("/assignments") ||
           pathname.startsWith("/assistant") ||
-          pathname.startsWith("/operator")
+          pathname.startsWith(APP_ROUTES.commandCenter)
         ) {
           dispatchWorkShortcut("new")
         }

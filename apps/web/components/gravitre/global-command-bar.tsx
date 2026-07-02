@@ -10,6 +10,7 @@ import {
   StatusBeacon,
   DataStream
 } from "@/components/gravitre/premium-effects"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 
 interface CommandItem {
@@ -30,7 +31,7 @@ const navigationItems: CommandItem[] = [
     title: "Command Center",
     subtitle: "Delegate tasks and track execution",
     icon: "ai",
-    href: "/operator",
+    href: APP_ROUTES.commandCenter,
     keywords: ["operator", "execute", "task", "delegate"],
   },
   {
@@ -72,7 +73,7 @@ const aiCommands: CommandItem[] = [
 ]
 
 const recentItems: CommandItem[] = [
-  { id: "recent-1", type: "recent", title: "Investigating failed customer sync", subtitle: "2 minutes ago", icon: "pending", href: "/operator" },
+  { id: "recent-1", type: "recent", title: "Investigating failed customer sync", subtitle: "2 minutes ago", icon: "pending", href: APP_ROUTES.commandCenter },
   { id: "recent-2", type: "recent", title: "sync-customers-1234", subtitle: "Workflow run", icon: "run", href: "/runs/sync-customers-1234" },
 ]
 
@@ -137,7 +138,7 @@ export function GlobalCommandBar() {
       item.action()
     } else if (item.type === "ai") {
       // Navigate to operator with the query
-      router.push(`/operator?prompt=${encodeURIComponent(item.title)}`)
+      router.push(`${APP_ROUTES.commandCenter}?prompt=${encodeURIComponent(item.title)}`)
     }
     setIsOpen(false)
     setQuery("")

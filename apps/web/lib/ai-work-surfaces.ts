@@ -10,11 +10,13 @@ export type AiWorkSurface = {
   notThis: string
 }
 
+import { APP_ROUTES } from "@/lib/app-routes"
+
 /** Shared copy for Command Center, Workspace Chat, and Universal Search. */
 export const AI_WORK_SURFACES: AiWorkSurface[] = [
   {
     id: "command-center",
-    href: "/operator",
+    href: APP_ROUTES.commandCenter,
     title: "Command Center",
     badge: "Execute",
     summary: "Delegate work — create tasks, generate execution plans, run async jobs, and track approvals.",

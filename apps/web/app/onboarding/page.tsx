@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { DotLottieAnimation } from "@/components/gravitre/lottie-animation"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { onboardingApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
@@ -200,7 +201,7 @@ export default function OnboardingPage() {
     try {
       setIsSubmitting(true)
       await onboardingApi.skip()
-      router.push("/operator")
+      router.push(APP_ROUTES.commandCenter)
     } catch (error) {
       console.error("Failed to skip onboarding", error)
       toast.error(error instanceof Error ? error.message : "Failed to skip onboarding")
@@ -214,7 +215,7 @@ export default function OnboardingPage() {
     try {
       setIsSubmitting(true)
       await onboardingApi.completeStep("next", {})
-      router.push("/operator")
+      router.push(APP_ROUTES.commandCenter)
     } catch (error) {
       console.error("Failed to finish onboarding", error)
       toast.error(error instanceof Error ? error.message : "Failed to finish onboarding")

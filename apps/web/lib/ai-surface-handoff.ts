@@ -1,7 +1,9 @@
 // Handoff bridge for the unified "Gravitre AI" front door.
 //
 // `/ai` now runs execute, chat, and find inline. SessionStorage handoffs remain
-// for deep links into `/operator`, `/assistant`, and `/search` when those pages
+import { APP_ROUTES } from "@/lib/app-routes"
+
+// for deep links into Command Center, Workspace Chat, and Universal Search when those pages
 // are opened directly.
 
 export type AiEngine = "execute" | "chat" | "find"
@@ -20,7 +22,7 @@ const STORAGE_PREFIX = "gravitre-ai-handoff:"
 const MAX_AGE_MS = 60_000
 
 export const AI_ENGINE_ROUTES: Record<AiEngine, string> = {
-  execute: "/operator",
+  execute: APP_ROUTES.commandCenter,
   chat: "/assistant",
   find: "/search",
 }
