@@ -2,18 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { motion } from "framer-motion"
+import {
+  AlertTriangle,
+  Clock,
+  Coins,
+  Gauge,
+  Sparkles,
+  Timer,
+  Zap,
+} from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { ErrorState } from "@/components/gravitre/empty-state"
+import { AnimatedMetricBar } from "@/components/gravitre/animated-metric-bar"
+import { CHART_EMERALD, CHART_TEAL, cacheHitBarClass } from "@/components/gravitre/chart-brand"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { Gauge } from "@phosphor-icons/react"
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -41,8 +52,37 @@ const MODE_OPTIONS: { value: PerformanceMode; label: string; hint: string }[] = 
   },
 ]
 
+const PERIODS = ["1h", "24h", "7d"] as const
+
+function StageTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ value?: number; payload?: { p95Ms?: number } }>
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  const avg = readNumber(payload[0]?.value)
+  const p95 = readNumber(payload[0]?.payload?.p95Ms)
+  return (
+    <div className="rounded-lg border border-border/70 bg-card px-3 py-2 text-xs shadow-lg">
+      <p className="font-medium capitalize text-foreground">{label}</p>
+      <p className="mt-1 text-muted-foreground">
+        Avg <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{avg} ms</span>
+      </p>
+      {p95 > 0 ? (
+        <p className="text-muted-foreground">
+          P95 <span className="font-semibold tabular-nums text-foreground">{p95} ms</span>
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 export function PerformanceTab({ enabled }: { enabled: boolean }) {
-  const [period, setPeriod] = useState<"1h" | "24h" | "7d">("24h")
+  const [period, setPeriod] = useState<(typeof PERIODS)[number]>("24h")
   const [mode, setMode] = useState<PerformanceMode>("balanced")
   const [savingMode, setSavingMode] = useState(false)
 
@@ -76,6 +116,20 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
     }))
   }, [dashboard?.byStage])
 
+  const cacheEntries = useMemo(() => {
+    return Object.entries(dashboard?.cacheHitRate ?? {}).map(([key, rate]) => ({
+      key,
+      label: key.replace(/_/g, " "),
+      rate: readNumber(rate),
+      pct: Math.round(readNumber(rate) * 100),
+    }))
+  }, [dashboard?.cacheHitRate])
+
+  const maxStageMs = useMemo(
+    () => Math.max(...stageChart.map((row) => row.avgMs), 1),
+    [stageChart],
+  )
+
   if (error) {
     const message = error instanceof ApiError ? error.message : "Failed to load performance metrics."
     return <ErrorState title="Unable to load performance" description={message} onRetry={() => mutate()} />
@@ -97,99 +151,196 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-violet-500" weight="duotone" aria-hidden />
-            <CardTitle>Latency vs accuracy</CardTitle>
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-violet-500/[0.05] p-5 shadow-sm"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-violet-500/10 blur-2xl" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-violet-500/20">
+              <Gauge className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            </span>
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Latency vs accuracy</h3>
+              <p className="mt-0.5 max-w-xl text-xs text-muted-foreground text-pretty">
+                Controls Tier 0 instant answers and how often post-answer validation runs across org learning pipelines.
+              </p>
+            </div>
           </div>
-          <CardDescription>
-            Controls Tier 0 instant answers and how often post-answer validation runs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
-          {MODE_OPTIONS.map((option) => (
-            <button
+        </div>
+        <div className="relative mt-4 grid gap-3 sm:grid-cols-3">
+          {MODE_OPTIONS.map((option, index) => (
+            <motion.button
               key={option.value}
               type="button"
               disabled={savingMode}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
               onClick={() => void saveMode(option.value)}
-              className={`rounded-lg border p-4 text-left transition-colors ${
+              className={cn(
+                "rounded-xl border p-4 text-left transition-all",
                 mode === option.value
-                  ? "border-violet-500 bg-violet-500/5"
-                  : "border-border hover:border-violet-500/40"
-              }`}
+                  ? "border-violet-500/40 bg-violet-500/10 shadow-sm ring-1 ring-violet-500/20"
+                  : "border-border/70 bg-background/50 hover:border-violet-500/25 hover:bg-background/80",
+              )}
             >
-              <p className="text-sm font-medium">{option.label}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{option.hint}</p>
-            </button>
+              <p className="text-sm font-medium text-foreground">{option.label}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{option.hint}</p>
+            </motion.button>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </motion.section>
 
       <div className="flex flex-wrap items-center gap-2">
         <Label className="sr-only">Period</Label>
-        {(["1h", "24h", "7d"] as const).map((value) => (
-          <Button
-            key={value}
-            size="sm"
-            variant={period === value ? "default" : "outline"}
-            onClick={() => setPeriod(value)}
-          >
-            {value}
-          </Button>
-        ))}
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/70 bg-secondary/30 p-1">
+          {PERIODS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPeriod(value)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                period === value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading || !dashboard ? (
-        <p className="text-sm text-muted-foreground">Loading performance metrics…</p>
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/70 bg-card/40 px-4 py-8 text-sm text-muted-foreground">
+          <Sparkles className="h-4 w-4 animate-pulse text-emerald-500" />
+          Loading performance metrics…
+        </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard label="Avg response" value={`${readNumber(dashboard.avgTotalResponseMs)} ms`} />
-            <MetricCard label="P95 response" value={`${readNumber(dashboard.p95TotalResponseMs)} ms`} />
-            <MetricCard
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiTile
+              icon={Clock}
+              tone="emerald"
+              label="Avg response"
+              value={`${readNumber(dashboard.avgTotalResponseMs)} ms`}
+              delay={0}
+            />
+            <KpiTile
+              icon={Timer}
+              tone="violet"
+              label="P95 response"
+              value={`${readNumber(dashboard.p95TotalResponseMs)} ms`}
+              delay={0.05}
+            />
+            <KpiTile
+              icon={Coins}
+              tone="teal"
               label="Avg cost / answer"
               value={`$${readNumber(dashboard.avgCostPerAnswerUsd).toFixed(4)}`}
+              delay={0.1}
             />
-            <MetricCard label="Timeout rate" value={formatPercent(readNumber(dashboard.timeoutRate))} />
+            <KpiTile
+              icon={AlertTriangle}
+              tone="amber"
+              label="Timeout rate"
+              value={formatPercent(readNumber(dashboard.timeoutRate))}
+              delay={0.15}
+            />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Stage latency (avg ms)</CardTitle>
-              </CardHeader>
-              <CardContent className="h-64">
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="rounded-xl border border-border/60 bg-background/40 p-4 ring-1 ring-border/40"
+            >
+              <p className="mb-1 text-sm font-medium text-foreground">Stage latency (avg ms)</p>
+              <p className="mb-3 text-xs text-muted-foreground">Pipeline stages for the selected period</p>
+              <div className="h-64">
                 {stageChart.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No pipeline samples in this period.</p>
+                  <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    No pipeline samples in this period.
+                  </p>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stageChart}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip />
-                      <Bar dataKey="avgMs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <BarChart data={stageChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="stageBarGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={CHART_EMERALD} stopOpacity={0.95} />
+                          <stop offset="100%" stopColor={CHART_TEAL} stopOpacity={0.65} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis
+                        dataKey="stage"
+                        tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<StageTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.15 }} />
+                      <Bar
+                        dataKey="avgMs"
+                        fill="url(#stageBarGradient)"
+                        radius={[6, 6, 0, 0]}
+                        isAnimationActive
+                        animationDuration={800}
+                        animationEasing="ease-out"
+                      >
+                        {stageChart.map((entry) => (
+                          <Cell
+                            key={entry.stage}
+                            fillOpacity={0.55 + (entry.avgMs / maxStageMs) * 0.45}
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </motion.div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Cache hit rates</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {Object.entries(dashboard.cacheHitRate ?? {}).map(([key, rate]) => (
-                  <div key={key} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
-                    <span className="font-medium tabular-nums">{formatPercent(readNumber(rate))}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 }}
+              className="rounded-xl border border-border/60 bg-background/40 p-4 ring-1 ring-border/40"
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Cache hit rates</p>
+                  <p className="text-xs text-muted-foreground">Tier 0 through source summary</p>
+                </div>
+              </div>
+              {cacheEntries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No cache telemetry in this period.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {cacheEntries.map((entry, index) => (
+                    <AnimatedMetricBar
+                      key={entry.key}
+                      label={entry.label}
+                      value={entry.pct}
+                      displayValue={formatPercent(entry.rate)}
+                      index={index}
+                      barClassName={cacheHitBarClass(entry.rate)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </motion.div>
           </div>
         </>
       )}
@@ -197,13 +348,44 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
   )
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function KpiTile({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  delay,
+}: {
+  icon: typeof Clock
+  tone: "emerald" | "violet" | "teal" | "amber"
+  label: string
+  value: string
+  delay: number
+}) {
+  const toneStyles = {
+    emerald: "border-emerald-500/20 bg-emerald-500/5",
+    violet: "border-violet-500/20 bg-violet-500/5",
+    teal: "border-teal-500/20 bg-teal-500/5",
+    amber: "border-amber-500/20 bg-amber-500/5",
+  }
+  const iconStyles = {
+    emerald: "text-emerald-600 dark:text-emerald-400",
+    violet: "text-violet-600 dark:text-violet-400",
+    teal: "text-teal-600 dark:text-teal-400",
+    amber: "text-amber-600 dark:text-amber-400",
+  }
+
   return (
-    <Card>
-      <CardContent className="pt-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay }}
+      className={cn("rounded-xl border p-4 shadow-sm", toneStyles[tone])}
+    >
+      <div className="flex items-center gap-2">
+        <Icon className={cn("h-4 w-4", iconStyles[tone])} />
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      </CardContent>
-    </Card>
+      </div>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+    </motion.div>
   )
 }

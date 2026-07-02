@@ -41,7 +41,7 @@ export function PersonaSelector({
           variant="outline"
           size="sm"
           disabled={disabled}
-          className="h-8 gap-1 rounded-full border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700"
+          className="h-8 gap-1 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground"
         >
           {label}
           <ChevronDown className="h-3 w-3 opacity-60" />
@@ -51,7 +51,7 @@ export function PersonaSelector({
         {PERSONA_OPTIONS.map((option) => (
           <DropdownMenuItem
             key={option.key}
-            className={cn("text-xs", value === option.key && "bg-emerald-50 text-emerald-700")}
+            className={cn("text-xs", value === option.key && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}
             onClick={() => onChange(option.key)}
           >
             {option.label}

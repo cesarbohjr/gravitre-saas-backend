@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import {
   Activity,
@@ -21,31 +21,48 @@ import {
   RadarChart,
   ResponsiveContainer,
 } from "recharts"
+import { AnimatedMetricBar } from "@/components/gravitre/animated-metric-bar"
+import { CHART_EMERALD, CHART_TEAL, easeOutCubic } from "@/components/gravitre/chart-brand"
 import { mockModelHealthMetrics } from "@/lib/model-registry/mockData"
 import { cn } from "@/lib/utils"
 
 type RangeKey = 30 | 60 | 90
 
 const RANGES: RangeKey[] = [30, 60, 90]
-
-/** Matches models page statusStyles: emerald >= 75, amber 50–74, orange < 50. */
-function progressBarClass(value: number): string {
-  if (value >= 75) return "bg-emerald-500"
-  if (value >= 50) return "bg-amber-500"
-  return "bg-orange-500"
-}
-
-// Recharts SVG attributes need literal colors; values align with Tailwind brand tokens.
-const CHART_EMERALD = "#10b981" // emerald-500 — brand primary
-const CHART_TEAL = "#14b8a6" // teal-500 — brand secondary
+const RADAR_GROW_MS = 1400
 
 export function MlKnowledgePanel() {
   const [range, setRange] = useState<RangeKey>(30)
+  const [radarReady, setRadarReady] = useState(false)
+  const [animatedScores, setAnimatedScores] = useState<number[]>(() =>
+    mockModelHealthMetrics.dimensions.map(() => 0),
+  )
 
   const dims = mockModelHealthMetrics.dimensions
+
+  useEffect(() => {
+    setRadarReady(false)
+    setAnimatedScores(dims.map(() => 0))
+    const start = performance.now()
+    let raf = 0
+
+    const tick = (now: number) => {
+      const t = easeOutCubic((now - start) / RADAR_GROW_MS)
+      setAnimatedScores(dims.map((d) => Math.round(d.value * t)))
+      if (t < 1) {
+        raf = requestAnimationFrame(tick)
+      } else {
+        setRadarReady(true)
+      }
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [dims])
+
   const radarData = useMemo(
-    () => dims.map((d) => ({ label: d.label, value: d.value })),
-    [dims],
+    () => dims.map((d, i) => ({ label: d.label, value: animatedScores[i] ?? 0, baseline: Math.round(d.value * 0.35) })),
+    [dims, animatedScores],
   )
 
   const { top, weakest } = useMemo(() => {
@@ -84,6 +101,11 @@ export function MlKnowledgePanel() {
           </div>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
+          <motion.span
+            animate={{ scale: [1, 1.25, 1], opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"
+          />
           <Sparkles className="h-3 w-3" />
           Sample data
         </span>
@@ -93,7 +115,19 @@ export function MlKnowledgePanel() {
         <div className="rounded-xl border border-border/60 bg-background/40 p-4">
           <p className="mb-1 text-sm font-medium text-foreground">Model Strengths Overview</p>
           <p className="mb-2 text-xs text-muted-foreground">Higher is better · 0–100 weighted score</p>
-          <div className="h-[200px] w-full sm:h-[240px]">
+
+          <motion.div
+            className="relative h-[200px] w-full sm:h-[240px]"
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-2xl"
+              animate={{ scale: [0.92, 1.06, 0.92], opacity: [0.35, 0.65, 0.35] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+            />
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData} outerRadius="72%">
                 <defs>
@@ -102,11 +136,25 @@ export function MlKnowledgePanel() {
                     <stop offset="60%" stopColor={CHART_TEAL} stopOpacity={0.3} />
                     <stop offset="100%" stopColor={CHART_EMERALD} stopOpacity={0.12} />
                   </radialGradient>
+                  <radialGradient id="mlRadarBaseline" cx="50%" cy="50%" r="65%">
+                    <stop offset="0%" stopColor={CHART_TEAL} stopOpacity={0.08} />
+                    <stop offset="100%" stopColor={CHART_EMERALD} stopOpacity={0.02} />
+                  </radialGradient>
                 </defs>
-                <PolarGrid stroke="var(--border)" />
+                <PolarGrid stroke="var(--border)" strokeOpacity={0.8} />
                 <PolarAngleAxis
                   dataKey="label"
                   tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+                />
+                <Radar
+                  dataKey="baseline"
+                  stroke={CHART_TEAL}
+                  strokeOpacity={0.25}
+                  fill="url(#mlRadarBaseline)"
+                  fillOpacity={1}
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                  isAnimationActive={false}
                 />
                 <Radar
                   dataKey="value"
@@ -115,34 +163,33 @@ export function MlKnowledgePanel() {
                   fillOpacity={1}
                   strokeWidth={2}
                   dot={{ r: 3, fill: CHART_EMERALD, strokeWidth: 0 }}
-                  activeDot={{ r: 4 }}
+                  activeDot={{ r: 5, stroke: CHART_EMERALD, strokeWidth: 2, fill: "#fff" }}
                   isAnimationActive
-                  animationDuration={800}
+                  animationDuration={600}
+                  animationEasing="ease-out"
                 />
               </RadarChart>
             </ResponsiveContainer>
-          </div>
-
-          <ul className="mt-3 space-y-2">
-            {dims.map((d, i) => (
-              <li
-                key={d.key}
-                className="-mx-1.5 flex items-center gap-3 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50"
+            {!radarReady ? (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="pointer-events-none absolute bottom-1 left-0 right-0 text-center text-[10px] font-medium uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80"
               >
-                <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
-                <span className="w-24 shrink-0 truncate text-xs text-foreground sm:w-40">{d.label}</span>
-                <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-secondary/60">
-                  <motion.span
-                    className={cn("absolute inset-y-0 left-0 rounded-full", progressBarClass(d.value))}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${d.value}%` }}
-                    transition={{ duration: 0.7, delay: 0.1 + i * 0.05, ease: "easeOut" }}
-                  />
-                </span>
-                <span className="w-9 shrink-0 text-right text-xs font-medium tabular-nums text-foreground">
-                  {d.value}%
-                </span>
-              </li>
+                Calibrating strengths…
+              </motion.p>
+            ) : null}
+          </motion.div>
+
+          <ul className="mt-3 space-y-1">
+            {dims.map((d, i) => (
+              <AnimatedMetricBar
+                key={d.key}
+                label={d.label}
+                value={animatedScores[i] ?? 0}
+                displayValue={`${animatedScores[i] ?? 0}%`}
+                index={i}
+              />
             ))}
           </ul>
         </div>
@@ -171,7 +218,7 @@ export function MlKnowledgePanel() {
             </div>
             <div className="h-[88px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                <AreaChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }} key={range}>
                   <defs>
                     <linearGradient id="mlTendencyFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={CHART_EMERALD} stopOpacity={0.35} />
@@ -185,7 +232,8 @@ export function MlKnowledgePanel() {
                     strokeWidth={2}
                     fill="url(#mlTendencyFill)"
                     isAnimationActive
-                    animationDuration={600}
+                    animationDuration={700}
+                    animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -251,13 +299,18 @@ function StatTile({
     amber: "border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-400",
   }
   return (
-    <div className={cn("rounded-lg border px-2.5 py-1.5", toneStyles[tone])}>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.15 }}
+      className={cn("rounded-lg border px-2.5 py-1.5", toneStyles[tone])}
+    >
       <div className="flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5" />
         <span className="text-[10px] font-medium uppercase tracking-wider opacity-90">{label}</span>
       </div>
       <p className="mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
       <p className="text-[10px] text-muted-foreground">{hint}</p>
-    </div>
+    </motion.div>
   )
 }

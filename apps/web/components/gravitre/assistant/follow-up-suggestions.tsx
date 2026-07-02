@@ -25,12 +25,11 @@ export function FollowUpSuggestions({
           transition={{ delay: i * 0.1, duration: 0.3 }}
           onClick={() => onSelect(text)}
           className={cn(
-            "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs",
-            "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:border-emerald-300 transition-colors",
+            "inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground transition-colors hover:border-emerald-500/40 hover:bg-muted/50",
           )}
         >
           <span className="truncate max-w-[240px]">{text.length > 40 ? `${text.slice(0, 40)}…` : text}</span>
-          <ArrowRight className="h-3 w-3 shrink-0 text-zinc-400" />
+          <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
         </motion.button>
       ))}
     </div>

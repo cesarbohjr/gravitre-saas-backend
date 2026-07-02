@@ -273,30 +273,30 @@ export function ConversationSidebar({
 
       <aside
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-40 w-72 flex flex-col bg-zinc-50/80 border-r border-zinc-200 transition-all duration-300",
+          "fixed md:static inset-y-0 left-0 z-40 w-72 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-0 md:overflow-hidden",
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between h-14 px-3 border-b border-zinc-200 bg-white gap-2">
+        <div className="flex h-14 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3">
           {selectionMode ? (
             <TooltipProvider delayDuration={300}>
               <div className="flex items-center gap-1 flex-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={exitSelection}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={exitSelection}>
                       <X className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Cancel</TooltipContent>
                 </Tooltip>
-                <span className="text-sm font-medium text-zinc-900 tabular-nums">
+                <span className="pl-1 text-sm font-medium tabular-nums text-sidebar-foreground">
                   {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select items"}
                 </span>
                 <div className="ml-auto flex items-center gap-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={toggleSelectAll}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={toggleSelectAll}>
                         {allSelected ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <ListChecks className="h-4 w-4" />}
                       </Button>
                     </TooltipTrigger>
@@ -307,7 +307,7 @@ export function ConversationSidebar({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-zinc-500 disabled:opacity-40"
+                        className="h-8 w-8 text-muted-foreground disabled:opacity-40"
                         disabled={selectedIds.size === 0}
                         onClick={archiveSelected}
                       >
@@ -321,7 +321,7 @@ export function ConversationSidebar({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
+                        className="h-8 w-8 text-red-500 hover:bg-destructive/10 hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
                         disabled={selectedIds.size === 0}
                         onClick={() => setBulkDeleteOpen(true)}
                       >
@@ -335,11 +335,11 @@ export function ConversationSidebar({
             </TooltipProvider>
           ) : (
             <TooltipProvider delayDuration={300}>
-              <span className="text-sm font-semibold text-zinc-900 pl-1">History</span>
+              <span className="pl-1 text-sm font-semibold text-sidebar-foreground">History</span>
               <div className="flex items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={() => setSearchOpen((v) => !v)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setSearchOpen((v) => !v)}>
                       <Search className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -354,7 +354,7 @@ export function ConversationSidebar({
                           size="icon"
                           className={cn(
                             "h-8 w-8",
-                            dateFilter === "all" ? "text-zinc-500" : "text-emerald-600 bg-emerald-50",
+                            dateFilter === "all" ? "text-muted-foreground" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                           )}
                           aria-label="Filter conversations by date"
                         >
@@ -384,7 +384,7 @@ export function ConversationSidebar({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-zinc-500 disabled:opacity-40"
+                      className="h-8 w-8 text-muted-foreground disabled:opacity-40"
                       disabled={conversations.length === 0}
                       onClick={enterSelection}
                     >
@@ -395,7 +395,7 @@ export function ConversationSidebar({
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500" onClick={onNew}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onNew}>
                       <MessageSquarePlus className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -405,7 +405,7 @@ export function ConversationSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-zinc-500 md:hidden"
+                  className="h-8 w-8 text-muted-foreground md:hidden"
                   onClick={onToggle}
                   aria-label="Close conversation history"
                 >
@@ -418,9 +418,9 @@ export function ConversationSidebar({
 
         {/* Search */}
         {searchOpen && !selectionMode && (
-          <div className="px-3 py-2 border-b border-zinc-200 bg-white">
+          <div className="border-b border-sidebar-border bg-sidebar px-3 py-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -435,7 +435,7 @@ export function ConversationSidebar({
                 }}
               />
               <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setSearchQuery("")
                   setSearchOpen(false)
@@ -449,13 +449,13 @@ export function ConversationSidebar({
         )}
 
         {dateFilter !== "all" && !selectionMode && (
-          <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-3 py-2">
-            <span className="text-[11px] font-medium text-zinc-600">
+          <div className="flex items-center justify-between border-b border-sidebar-border bg-sidebar px-3 py-2">
+            <span className="text-[11px] font-medium text-muted-foreground">
               {DATE_FILTER_OPTIONS.find((option) => option.value === dateFilter)?.label}
             </span>
             <button
               type="button"
-              className="text-[11px] text-zinc-400 transition-colors hover:text-zinc-700"
+              className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => setDateFilter("all")}
             >
               Clear
@@ -473,18 +473,18 @@ export function ConversationSidebar({
               message="We couldn't fetch your conversations. Check your connection and try again."
               error={loadError}
               onRetry={onRetry}
-              className="mx-3 my-6 border-zinc-200 bg-red-50/90"
+              className="mx-3 my-6 border-destructive/30 bg-destructive/10"
             />
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <div className="h-12 w-12 rounded-full bg-zinc-200/70 flex items-center justify-center mb-4">
-                <MessageCircle className="h-5 w-5 text-zinc-400" />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <MessageCircle className="h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-sm font-medium text-zinc-600 mb-1">
+              <p className="mb-1 text-sm font-medium text-foreground">
                 {emptyHistoryMessage(dateFilter, searchQuery)}
               </p>
               {!searchQuery && dateFilter === "all" && (
-                <p className="text-xs text-zinc-400">Start a new chat to begin</p>
+                <p className="text-xs text-muted-foreground">Start a new chat to begin</p>
               )}
             </div>
           ) : (
@@ -492,7 +492,7 @@ export function ConversationSidebar({
               {grouped.map((group) => (
                 <div key={group.label} className="mb-2">
                   <div className="px-4 pb-1 pt-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {group.label}
                     </span>
                   </div>
@@ -513,10 +513,10 @@ export function ConversationSidebar({
                             className={cn(
                               "relative group flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors",
                               isActive && !selectionMode
-                                ? "bg-emerald-50 text-emerald-900"
+                                ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
                                 : isSelected
-                                  ? "bg-emerald-50/70"
-                                  : "hover:bg-zinc-100",
+                                  ? "bg-emerald-500/10"
+                                  : "hover:bg-sidebar-accent",
                             )}
                             onClick={() => handleRowClick(conv.id)}
                             onContextMenu={(e) => e.preventDefault()}
@@ -534,7 +534,7 @@ export function ConversationSidebar({
                               <span
                                 className={cn(
                                   "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                                  isSelected ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-300 bg-white",
+                                  isSelected ? "border-emerald-600 bg-emerald-600 text-white" : "border-border bg-background",
                                 )}
                                 aria-hidden
                               >
@@ -544,7 +544,7 @@ export function ConversationSidebar({
                               <MessageCircle
                                 className={cn(
                                   "h-4 w-4 shrink-0",
-                                  isActive ? "text-emerald-500" : "text-zinc-400",
+                                  isActive ? "text-emerald-500" : "text-muted-foreground",
                                 )}
                               />
                             )}
@@ -574,12 +574,12 @@ export function ConversationSidebar({
                                   <p
                                     className={cn(
                                       "text-sm truncate leading-tight",
-                                      isActive && !selectionMode ? "text-emerald-700 font-medium" : "text-zinc-700",
+                                      isActive && !selectionMode ? "font-medium text-emerald-700 dark:text-emerald-300" : "text-sidebar-foreground",
                                     )}
                                   >
                                     {conv.title || "New conversation"}
                                   </p>
-                                  <p className="text-[10px] text-zinc-400 mt-0.5">{formatRelativeTime(conv.updated_at)}</p>
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground">{formatRelativeTime(conv.updated_at)}</p>
                                 </>
                               )}
                             </div>
@@ -590,7 +590,7 @@ export function ConversationSidebar({
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     onClick={(e) => e.stopPropagation()}
-                                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100 p-1.5 rounded-md hover:bg-zinc-200 text-zinc-400 hover:text-zinc-600 transition-colors shrink-0"
+                                    className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-colors hover:bg-sidebar-accent hover:text-foreground focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                                     aria-label="Conversation options"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
@@ -613,7 +613,7 @@ export function ConversationSidebar({
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                    className="text-red-600 focus:bg-destructive/10 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
                                     onClick={() => {
                                       setConversationToDelete(conv.id)
                                       setDeleteDialogOpen(true)

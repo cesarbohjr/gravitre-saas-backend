@@ -50,7 +50,7 @@ const modes: {
     description: "Quick questions",
     icon: Zap,
     color: "text-amber-500",
-    activeBg: "bg-amber-50 border-amber-200",
+    activeBg: "bg-amber-500/10 border-amber-500/30",
     placeholder: "Ask a quick question...",
   },
   {
@@ -59,7 +59,7 @@ const modes: {
     description: "Balanced default",
     icon: Gauge,
     color: "text-emerald-500",
-    activeBg: "bg-emerald-50 border-emerald-200",
+    activeBg: "bg-emerald-500/10 border-emerald-500/30",
     placeholder: "Ask anything about your AI team...",
   },
   {
@@ -68,7 +68,7 @@ const modes: {
     description: "Complex analysis",
     icon: Brain,
     color: "text-violet-500",
-    activeBg: "bg-violet-50 border-violet-200",
+    activeBg: "bg-violet-500/10 border-violet-500/30",
     placeholder: "Describe a complex problem to analyze...",
   },
   {
@@ -77,7 +77,7 @@ const modes: {
     description: "Execute tasks",
     icon: Bot,
     color: "text-sky-500",
-    activeBg: "bg-sky-50 border-sky-200",
+    activeBg: "bg-sky-500/10 border-sky-500/30",
     placeholder: "Describe a task for the agent to execute...",
   },
 ]
@@ -129,16 +129,16 @@ export function AssistantModelSelector({
             className={cn(
               "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors",
               current.activeBg,
-              "text-zinc-800 hover:opacity-90",
+              "text-foreground hover:opacity-90",
             )}
           >
             <Icon className={cn("h-3.5 w-3.5", current.color)} />
             <span>{current.label}</span>
-            <ChevronDown className="h-3 w-3 text-zinc-400" />
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
-          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-zinc-400">
+          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Intelligence mode
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -149,16 +149,16 @@ export function AssistantModelSelector({
               <DropdownMenuItem
                 key={m.id}
                 onClick={() => onModeChange(m.id)}
-                className={cn("flex flex-col items-stretch gap-0.5 py-2.5", selected && "bg-emerald-50")}
+                className={cn("flex flex-col items-stretch gap-0.5 py-2.5", selected && "bg-emerald-500/10")}
               >
                 <div className="flex items-center gap-2">
                   <ModeIcon className={cn("h-4 w-4 shrink-0", m.color)} />
-                  <span className={cn("flex-1 text-sm", selected && "font-semibold text-emerald-800")}>
+                  <span className={cn("flex-1 text-sm", selected && "font-semibold text-emerald-700 dark:text-emerald-300")}>
                     {m.label}
                   </span>
                   {selected && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                 </div>
-                <span className="pl-6 text-[11px] leading-snug text-zinc-500">{m.description}</span>
+                <span className="pl-6 text-[11px] leading-snug text-muted-foreground">{m.description}</span>
               </DropdownMenuItem>
             )
           })}
@@ -169,7 +169,7 @@ export function AssistantModelSelector({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-500 transition-colors hover:bg-zinc-50"
+            className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-muted/50"
             aria-label="Choose model"
             title="Choose model"
           >
@@ -185,7 +185,7 @@ export function AssistantModelSelector({
             return (
               <div key={key}>
                 {label && (
-                  <DropdownMenuLabel className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                  <DropdownMenuLabel className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                     {label}
                   </DropdownMenuLabel>
                 )}
@@ -206,7 +206,7 @@ export function AssistantModelSelector({
                         {selected && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                       </div>
                       {"description" in model && model.description ? (
-                        <span className="text-[10px] text-zinc-500">{model.description}</span>
+                        <span className="text-[10px] text-muted-foreground">{model.description}</span>
                       ) : null}
                     </DropdownMenuItem>
                   )
@@ -218,7 +218,7 @@ export function AssistantModelSelector({
       </DropdownMenu>
 
       <span
-        className="hidden rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-medium text-zinc-500 sm:inline"
+        className="hidden rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
         title={`Model: ${activeModel?.label ?? "Auto"}`}
       >
         {modelBadgeLabel}
