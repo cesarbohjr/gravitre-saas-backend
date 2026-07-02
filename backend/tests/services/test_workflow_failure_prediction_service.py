@@ -67,6 +67,21 @@ def test_extract_step_requirements_invoke_tool():
     assert reqs[0]["agentId"] == "agent-1"
 
 
+def test_extract_step_requirements_skips_platform_council_step():
+    definition = {
+        "schema_version": "v1",
+        "steps": [
+            {
+                "id": "council",
+                "name": "Council",
+                "type": "council",
+                "config": {"objective": "Enroll or nurture"},
+            }
+        ],
+    }
+    assert extract_step_requirements(definition) == []
+
+
 def test_list_failure_alerts_serializes_rows():
     alerts_table = _table(
         [

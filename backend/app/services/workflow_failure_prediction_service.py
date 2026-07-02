@@ -22,6 +22,11 @@ from app.workflows.repository import get_active_workflow_version, get_workflow_d
 
 logger = logging.getLogger(__name__)
 
+# Platform workflow steps — not OAuth connectors; must not trigger "Missing X connector" alerts.
+PLATFORM_STEP_TYPES = frozenset(
+    {"agent", "agent_task", "rag_query", "delay", "condition", "council", "decision", "approval"}
+)
+
 AUDIT_FAILURE_PREDICTION_SCANNED = "workflow.failure_prediction.scanned"
 RESOURCE_TYPE_WORKFLOW_FAILURE_ALERT = "workflow_failure_alert"
 
@@ -121,7 +126,7 @@ def extract_step_requirements(definition: dict[str, Any]) -> list[dict[str, Any]
         connector_type = None
         if action and "." in action:
             connector_type = action.split(".", 1)[0]
-        elif step_type and step_type not in {"agent", "agent_task", "rag_query", "delay", "condition"}:
+        elif step_type and step_type not in PLATFORM_STEP_TYPES:
             connector_type = step_type.split("_", 1)[0]
         connector_id = config.get("connector_id") or config.get("connectorId")
         agent_id = metadata.get("agent_id") or metadata.get("agentId") or config.get("agent_id")
