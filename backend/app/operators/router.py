@@ -159,6 +159,57 @@ def _env_allowed(operator: dict, environment: str) -> bool:
     return environment in allowed
 
 
+def _legacy_agent_status_to_operator(status: str | None) -> str:
+    normalized = str(status or "active").lower()
+    if normalized in {"active", "processing"}:
+        return "active"
+    if normalized in {"draft", "idle"}:
+        return "draft"
+    return "inactive"
+
+
+def _get_legacy_agent(client, org_id: str, agent_id: str) -> dict | None:
+    response = (
+        client.table("agents")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("id", agent_id)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return rows[0] if rows else None
+
+
+def _legacy_agent_as_operator(agent: dict) -> dict:
+    stats = agent.get("stats") if isinstance(agent.get("stats"), dict) else {}
+    return {
+        "id": str(agent["id"]),
+        "name": agent.get("name") or "Agent",
+        "description": agent.get("description") or agent.get("purpose"),
+        "status": _legacy_agent_status_to_operator(agent.get("status")),
+        "role": agent.get("role") or agent.get("name") or "Agent",
+        "capabilities": list(agent.get("capabilities") or []),
+        "config": agent.get("config") or {},
+        "total_runs": int(stats.get("tasksToday") or stats.get("tasks_today") or 0),
+        "success_rate": float(stats.get("successRate") or stats.get("success_rate") or 100),
+        "created_at": agent.get("created_at"),
+        "updated_at": agent.get("updated_at"),
+        "allowed_environments": [],
+    }
+
+
+def _list_legacy_agents(client, org_id: str) -> list[dict]:
+    response = (
+        client.table("agents")
+        .select("*")
+        .eq("org_id", org_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data or []
+
+
 VALID_AGENT_ICONS = {
     "megaphone",
     "trending-up",
@@ -1272,6 +1323,7 @@ async def list_agents_route(
     if include_inactive and role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
     agents = []
+    seen_ids: set[str] = set()
     for op in operators:
         if not _env_allowed(op, environment):
             continue
@@ -1294,6 +1346,22 @@ async def list_agents_route(
         summary["connectedSystems"] = _connected_systems(connected)
         summary["workflowCount"] = workflow_counts.get(op_id, 0)
         agents.append(summary)
+        seen_ids.add(op_id)
+
+    for legacy in _list_legacy_agents(client, org_id):
+        legacy_id = str(legacy.get("id") or "")
+        if not legacy_id or legacy_id in seen_ids:
+            continue
+        legacy_op = _legacy_agent_as_operator(legacy)
+        if not include_inactive and legacy_op.get("status") != "active":
+            continue
+        summary = _operator_summary(legacy_op)
+        summary["environment"] = environment
+        summary["connectedSystems"] = []
+        summary["workflowCount"] = 0
+        agents.append(summary)
+        seen_ids.add(legacy_id)
+
     return {"agents": agents}
 
 
@@ -1323,6 +1391,10 @@ async def get_agent_detail_route(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     operator = get_operator(client, org_id, str(agent_id))
+    if not operator:
+        legacy = _get_legacy_agent(client, org_id, str(agent_id))
+        if legacy:
+            operator = _legacy_agent_as_operator(legacy)
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     if not _env_allowed(operator, environment):

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi, intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
+import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { HealthTab } from "./_components/health-tab"
 import { PerformanceTab } from "./_components/performance-tab"
 import { LearningTab } from "./_components/learning-tab"
@@ -22,20 +23,22 @@ export default function AgentProfilePage() {
   const { user } = useAuth()
   const [tab, setTab] = useState<TabKey>("health")
 
+  const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
+
   const { data: agent, error: agentError, isLoading: agentLoading } = useSWR(
-    user && id ? ["agent", id] : null,
+    user && id && orgId ? ["agent", orgId, id] : null,
     () => agentsApi.get(id),
     { revalidateOnFocus: false },
   )
 
   const { data: evaluationsData, isLoading: evaluationsLoading } = useSWR(
-    user && id ? ["intelligence", "evaluations", 30] : null,
+    user && id && orgId ? ["intelligence", "evaluations", orgId, 30] : null,
     () => intelligenceApi.intelligenceEvaluations({ periodDays: 30 }),
     { revalidateOnFocus: false },
   )
 
   const { data: outcomesData, isLoading: outcomesLoading } = useSWR(
-    user && id ? ["intelligence", "outcomes", 30] : null,
+    user && id && orgId ? ["intelligence", "outcomes", orgId, 30] : null,
     () => intelligenceApi.outcomes({ periodDays: 30 }),
     { revalidateOnFocus: false },
   )

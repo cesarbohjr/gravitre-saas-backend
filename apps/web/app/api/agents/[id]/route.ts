@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { createSupabaseRouteClient, createSupabaseServiceRoleClient, resolveOrgId } from "@/lib/supabase/server"
 import { proxyToFastApi } from "@/lib/backend-proxy"
 import {
   inferAgentDepartment,
@@ -118,6 +118,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (operatorRow) {
     return NextResponse.json({ agent: mapOperatorRow(operatorRow as Record<string, unknown>) })
+  }
+
+  const serviceClient = createSupabaseServiceRoleClient()
+  if (serviceClient) {
+    const { data: serviceAgentRow } = await serviceClient
+      .from("agents")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle()
+    if (serviceAgentRow) {
+      return NextResponse.json({ agent: mapAgentRow(serviceAgentRow as Record<string, unknown>) })
+    }
+
+    const { data: serviceOperatorRow } = await serviceClient
+      .from("operators")
+      .select("id, org_id, name, description, status, role, capabilities, total_runs, success_rate, created_at")
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle()
+    if (serviceOperatorRow) {
+      return NextResponse.json({ agent: mapOperatorRow(serviceOperatorRow as Record<string, unknown>) })
+    }
   }
 
   return proxyToFastApi(request, `/api/agents/${id}`)

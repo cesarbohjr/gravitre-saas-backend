@@ -239,6 +239,31 @@ def _seed_demo_agent_tool_permissions(
             )
 
 
+def _mirror_agents_to_operators(client: Client, org_id: str, agents: list[dict[str, Any]]) -> None:
+    """Keep operators table in sync with demo/legacy agents rows for API parity."""
+    rows: list[dict[str, Any]] = []
+    for agent in agents:
+        agent_id = str(agent.get("id") or "")
+        if not agent_id:
+            continue
+        status = str(agent.get("status") or "active").lower()
+        operator_status = "active" if status in {"active", "processing"} else "draft"
+        rows.append(
+            {
+                "id": agent_id,
+                "org_id": org_id,
+                "name": agent.get("name") or "Agent",
+                "description": agent.get("description") or agent.get("purpose"),
+                "role": agent.get("role") or agent.get("name") or "Agent",
+                "status": operator_status,
+                "capabilities": list(agent.get("capabilities") or []),
+                "config": agent.get("config") if isinstance(agent.get("config"), dict) else {},
+            }
+        )
+    if rows:
+        client.table("operators").upsert(rows, on_conflict="id").execute()
+
+
 def seed_org_if_needed(client: Client, org_id: str) -> dict[str, Any]:
     """Seed demo agents, workflows, and runs for an org once.
 
@@ -263,6 +288,7 @@ def seed_org_if_needed(client: Client, org_id: str) -> dict[str, Any]:
     payload = build_seed_payload(org_id)
 
     client.table("agents").upsert(payload["agents"], on_conflict="id").execute()
+    _mirror_agents_to_operators(client, org_id, payload["agents"])
     _seed_demo_agent_tool_permissions(client, org_id, payload["agents"])
     client.table("workflows").upsert(payload["workflows"], on_conflict="id").execute()
     if payload.get("workflow_defs"):

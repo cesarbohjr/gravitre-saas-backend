@@ -105,7 +105,7 @@ def test_seed_org_if_needed_inserts_demo_rows_once(_mock_tool_perms, _mock_counc
     assert result["workflows_created"] == 1
     assert result["runs_created"] == 3
     assert settings_holder["settings"]["onboarding"]["seeded"] is True
-    assert upsert_calls == ["agents", "workflows", "workflow_defs", "runs", "connected_systems"]
+    assert upsert_calls == ["agents", "operators", "workflows", "workflow_defs", "runs", "connected_systems"]
 
 
 def test_seed_org_if_needed_raises_when_org_missing():

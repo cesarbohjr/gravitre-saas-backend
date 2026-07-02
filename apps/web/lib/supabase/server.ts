@@ -50,6 +50,17 @@ export function createSupabaseRouteClient(request: NextRequest): SupabaseClient 
   })
 }
 
+export function createSupabaseServiceRoleClient(): SupabaseClient | null {
+  const serviceRoleKey = getSupabaseServiceRoleKey()
+  if (!serviceRoleKey) return null
+  return createClient(getSupabaseUrl(), serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  })
+}
+
 export async function resolveOrgId(
   supabase: SupabaseClient,
   request: NextRequest

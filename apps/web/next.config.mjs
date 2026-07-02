@@ -4,18 +4,21 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Proxy /api/* requests to the FastAPI backend
+  // Proxy unmatched /api/* to FastAPI. Use `fallback` so App Router route handlers
+  // (e.g. /api/agents, /api/agents/[id]) run first with Supabase BFF logic.
   async rewrites() {
     const backendUrl = (process.env.FASTAPI_BASE_URL || "http://localhost:8000")
       .trim()
       .replace(/[\r\n]+/g, "")
       .replace(/\/+$/, "")
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ]
+    return {
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+    }
   },
   async redirects() {
     return [

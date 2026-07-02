@@ -6,14 +6,16 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { agentsApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
+import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { Robot } from "@phosphor-icons/react"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 
 export default function IntelligenceAgentsPage() {
   const { user } = useAuth()
+  const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
   const { data, error, isLoading, mutate } = useSWR(
-    user ? "intelligence/agents" : null,
+    user && orgId ? ["intelligence/agents", orgId] : null,
     () => agentsApi.list(),
     { revalidateOnFocus: false }
   )
