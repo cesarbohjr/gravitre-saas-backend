@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
@@ -36,6 +36,7 @@ import { fetcher } from "@/lib/fetcher"
 import { roleFromOnboardingStepData, WELCOME_ROLES } from "@/lib/welcome-flow"
 import type { OnboardingProgress } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
+import { PackPreviewSheet } from "@/components/marketplace/pack-preview-sheet"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
 function ReadinessPill({ asset }: { asset: MarketplaceAssetSummary }) {
@@ -69,23 +70,32 @@ function ReadinessPill({ asset }: { asset: MarketplaceAssetSummary }) {
 // readiness pill, and a single CTA — the same card revealing more of itself
 // (no flip, no front/back swap). The orb is the catalog's CategoryIconChip so
 // the icon/color/shape match the browse grid exactly.
-function FeaturedPackCard({ asset, index }: { asset: MarketplaceAssetSummary; index: number }) {
+function FeaturedPackCard({
+  asset,
+  index,
+  onPreview,
+}: {
+  asset: MarketplaceAssetSummary
+  index: number
+  onPreview?: (asset: MarketplaceAssetSummary) => void
+}) {
   const reduced = useReducedMotion()
   const { border } = departmentGradient(asset.department)
   const departmentLabel = asset.department ? asset.department.replace(/[-_]/g, " ") : "Department pack"
+  const detailHref = `/marketplace/assets/${encodeURIComponent(asset.slug)}`
 
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: reduced ? 0 : index * 0.05 }}
+      className="h-full"
     >
-      <Link
-        href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
+      <div
         className={cn(
           "group/pack relative flex h-full flex-col rounded-2xl border border-border bg-card/60 p-5 text-left",
           "transition-[transform,box-shadow,background-color] duration-200 ease-out",
-          "hover:-translate-y-1 hover:bg-card hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "hover:-translate-y-1 hover:bg-card hover:shadow-xl focus-within:ring-2 focus-within:ring-ring",
         )}
       >
         {/* Department-hued border overlay — fades in on hover/focus so a card
@@ -119,23 +129,36 @@ function FeaturedPackCard({ asset, index }: { asset: MarketplaceAssetSummary; in
             <div className="mt-4 flex flex-col items-center gap-3 text-center">
               <p className="line-clamp-2 text-sm text-muted-foreground text-pretty">{asset.description}</p>
               <ReadinessPill asset={asset} />
-              <span
-                className="mt-1 inline-flex items-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-                aria-hidden
-              >
-                {asset.installed ? "Manage pack" : "View pack"}
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </span>
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                <Link
+                  href={detailHref}
+                  className="inline-flex items-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+                >
+                  {asset.installed ? "Manage pack" : "View pack"}
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+                {onPreview ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPreview(asset)}
+                  >
+                    Preview
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     </motion.div>
   )
 }
 
 function MarketplaceHome() {
   const { user } = useAuth()
+  const [previewAsset, setPreviewAsset] = useState<MarketplaceAssetSummary | null>(null)
   const role = user?.role
   const isAdmin = role === "admin" || role === "owner"
   const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
@@ -476,7 +499,7 @@ function MarketplaceHome() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {recommendedForYou.map((asset, index) => (
-                <FeaturedPackCard key={asset.id} asset={asset} index={index} />
+                <FeaturedPackCard key={asset.id} asset={asset} index={index} onPreview={setPreviewAsset} />
               ))}
             </div>
           </section>
@@ -518,7 +541,7 @@ function MarketplaceHome() {
           ) : (
             <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {featured.map((asset, index) => (
-                <FeaturedPackCard key={asset.id} asset={asset} index={index} />
+                <FeaturedPackCard key={asset.id} asset={asset} index={index} onPreview={setPreviewAsset} />
               ))}
             </div>
           )}
@@ -556,6 +579,14 @@ function MarketplaceHome() {
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
           Every published connector passes an automated security review.
         </div>
+
+        <PackPreviewSheet
+          asset={previewAsset}
+          open={Boolean(previewAsset)}
+          onOpenChange={(open) => {
+            if (!open) setPreviewAsset(null)
+          }}
+        />
       </div>
     </AppShell>
   )

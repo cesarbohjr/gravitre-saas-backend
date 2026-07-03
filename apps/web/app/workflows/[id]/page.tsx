@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowPreRunPanel } from "@/components/workflows/workflow-pre-run-panel"
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
-import { workflowsApi } from "@/lib/api"
+import { workflowsApi, runsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import {
   ArrowLeft,
@@ -34,6 +34,11 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
   )
 
   const { data: builder } = useSWR(user ? ["workflow-builder", id] : null, () => workflowsApi.getBuilder(id))
+
+  const { data: latestRuns } = useSWR(user ? ["workflow-latest-run", id] : null, () =>
+    runsApi.list({ workflow_id: id, limit: 1 }),
+  )
+  const latestRun = latestRuns?.runs?.[0]
 
   const intelligenceNodes: IntelligenceDrawerNode[] = (builder?.nodes ?? []).map((node) => ({
     id: String(node.id),
@@ -110,6 +115,33 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
         ) : (
           <>
             <WorkflowPreRunPanel workflowId={id} nodes={intelligenceNodes} />
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Latest run</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!latestRun ? (
+                  <p className="text-sm text-muted-foreground">No runs yet. Execute this workflow from the builder or schedules.</p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {latestRun.status ? <AutoStatusBadge status={latestRun.status} /> : null}
+                      {latestRun.id ? (
+                        <Button variant="link" className="h-auto p-0" asChild>
+                          <Link href={`/runs/${latestRun.id}`}>View run {String(latestRun.id).slice(0, 8)}…</Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                    {latestRun.status === "failed" ? (
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/runs/${latestRun.id}`}>Run again</Link>
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="pb-2">

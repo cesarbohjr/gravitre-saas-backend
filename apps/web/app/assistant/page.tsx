@@ -66,6 +66,7 @@ import {
 } from "@/components/gravitre/assistant/dialogue-mode-chip"
 import { ApprovalSimulationPreview } from "@/components/gravitre/assistant/approval-simulation-preview"
 import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
+import { ContextSourcesIndicator } from "@/components/chat/context-sources-indicator"
 import { ConnectorActionCard } from "@/components/gravitre/assistant/connector-action-card"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import {
@@ -916,6 +917,21 @@ export default function AssistantPage() {
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
   const isBusy = isLoading || isSubmitting
+
+  const lastResponseSources = useMemo(() => {
+    const lastAssistant = [...messages].reverse().find((message) => message.role === "assistant")
+    if (!lastAssistant) return null
+    const { sources, tools } = normalizeMessage(lastAssistant)
+    const connectorNames = tools
+      .map((tool) => tool.toolName?.replace(/([A-Z])/g, " $1").trim())
+      .filter(Boolean)
+      .slice(0, 3)
+    return {
+      connectors: connectorNames,
+      docCount: sources.length,
+      memoryCount: 0,
+    }
+  }, [messages])
   const activeToolLabel = useMemo(() => {
     if (!isBusy) return null
     if (status === "submitted") return "Thinking"
@@ -1581,6 +1597,12 @@ export default function AssistantPage() {
                   </Button>
                 )}
               </div>
+              {!isStreaming && !isLoading ? (
+                <ContextSourcesIndicator
+                  sources={lastResponseSources}
+                  className="mt-2 px-1"
+                />
+              ) : null}
               <p className="text-[10px] text-zinc-400 text-center mt-2">
                 Gravitre Assistant may produce inaccurate information. Verify important details.
               </p>

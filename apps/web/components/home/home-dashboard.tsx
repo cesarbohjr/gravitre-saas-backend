@@ -33,10 +33,13 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { cardVariants, entranceContainer, useMotionPrefs } from "@/lib/animations"
 import { cn } from "@/lib/utils"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
+import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
 type HomeDashboardProps = {
+  roleId: WelcomeRoleId
   roleLabel: string
   pendingApprovals: number
+  pendingApprovalItems?: Array<{ id: string; title?: string }>
   avgConfidence: number | null
   queryRows: number
   queryRowsNeeded: number
@@ -45,9 +48,12 @@ type HomeDashboardProps = {
   hasLearningSnapshot: boolean
   mlActive: number | null
   memoriesCount: number | null
+  aiSystemsOnline?: number | null
+  lastLearningCycle?: string | null
   revenueRisks: Array<{ id: string; title: string; summary: string }>
   predictiveSummary: string | null
   showGettingStarted: boolean
+  showRoleQuickActions?: boolean
 }
 
 function buildConfidenceSeries(avg: number | null) {
@@ -59,8 +65,10 @@ function buildConfidenceSeries(avg: number | null) {
 }
 
 export function HomeDashboard({
+  roleId,
   roleLabel,
   pendingApprovals,
+  pendingApprovalItems = [],
   avgConfidence,
   queryRows,
   queryRowsNeeded,
@@ -69,12 +77,16 @@ export function HomeDashboard({
   hasLearningSnapshot,
   mlActive,
   memoriesCount,
+  aiSystemsOnline,
+  lastLearningCycle,
   revenueRisks,
   predictiveSummary,
   showGettingStarted,
+  showRoleQuickActions = false,
 }: HomeDashboardProps) {
   const { reduced, container } = useMotionPrefs()
   const confidenceSeries = buildConfidenceSeries(avgConfidence)
+  const quickActions = ROLE_QUICK_ACTIONS[roleId] ?? ROLE_QUICK_ACTIONS.ops
   const learningBars = [
     {
       name: "Queries",
@@ -126,6 +138,37 @@ export function HomeDashboard({
           />
         </motion.section>
 
+        {(showRoleQuickActions || showGettingStarted) && quickActions.length > 0 ? (
+          <motion.section variants={cardVariants} className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
+            <h3 className="text-sm font-semibold text-foreground">Quick actions for your role</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickActions.map((action) => (
+                <Button key={action.href} asChild size="sm" variant="outline">
+                  <Link href={action.href}>{action.label}</Link>
+                </Button>
+              ))}
+            </div>
+          </motion.section>
+        ) : null}
+
+        {pendingApprovals > 0 ? (
+          <motion.section variants={cardVariants} className="rounded-2xl border border-warning/30 bg-warning/5 p-5 backdrop-blur-sm">
+            <PanelHeader icon={ClipboardText} title="Awaiting your approval" href={APP_ROUTES.approvals} linkLabel="Review all" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              {pendingApprovals} item{pendingApprovals === 1 ? "" : "s"} need your decision before agents can proceed.
+            </p>
+            {pendingApprovalItems.length > 0 ? (
+              <ul className="mt-3 space-y-2">
+                {pendingApprovalItems.slice(0, 2).map((item) => (
+                  <li key={item.id} className="rounded-lg border border-border/60 px-3 py-2 text-sm text-foreground">
+                    {item.title ?? `Approval ${item.id.slice(0, 8)}`}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </motion.section>
+        ) : null}
+
         <motion.div variants={cardVariants}>
           <StatsGrid columns={4}>
             <StatCard
@@ -154,6 +197,35 @@ export function HomeDashboard({
         </motion.div>
 
         <div className="grid gap-4 lg:grid-cols-2">
+          <motion.section
+            variants={cardVariants}
+            className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm lg:col-span-2"
+          >
+            <PanelHeader icon={Brain} title="Intelligence status" href={APP_ROUTES.intelligence} linkLabel="View Intelligence Center" />
+            {hasLearningSnapshot || mlActive != null || memoriesCount != null ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+                <div className="rounded-lg border border-border/60 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">AI systems online</p>
+                  <p className="mt-1 font-semibold text-foreground">{aiSystemsOnline ?? mlActive ?? "—"}</p>
+                </div>
+                <div className="rounded-lg border border-border/60 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">ML models active</p>
+                  <p className="mt-1 font-semibold text-foreground">{mlActive ?? "—"}</p>
+                </div>
+                <div className="rounded-lg border border-border/60 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Last learning cycle</p>
+                  <p className="mt-1 font-semibold text-foreground">{lastLearningCycle ?? "—"}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
+                <Brain className="mx-auto h-8 w-8 text-primary" weight="duotone" />
+                <p className="mt-2 text-sm font-medium text-foreground">Intelligence is warming up</p>
+                <p className="mt-1 text-xs text-muted-foreground">Run workflows and connect tools to begin learning.</p>
+              </div>
+            )}
+          </motion.section>
+
           <motion.section
             variants={cardVariants}
             className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm"
@@ -230,7 +302,7 @@ export function HomeDashboard({
             variants={cardVariants}
             className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm"
           >
-            <PanelHeader icon={WarningCircle} title="Revenue risk radar" href={APP_ROUTES.orgLearning} linkLabel="View signals" />
+            <PanelHeader icon={WarningCircle} title="Revenue risk radar" href={APP_ROUTES.revenueRisk} linkLabel="View all signals" />
             {revenueRisks.length === 0 ? (
               <div className="mt-6 rounded-xl border border-dashed border-emerald-500/30 bg-emerald-500/5 px-4 py-8 text-center">
                 <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">All clear this week</p>
