@@ -49,6 +49,16 @@ export default function HomePage() {
     () => architectureAdminApi.predictiveOps(),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
+  const { data: learningLive } = useSWR(
+    user ? "home/learning-live" : null,
+    () => intelligenceApi.learningLiveDashboard(),
+    { revalidateOnFocus: false, shouldRetryOnError: false, refreshInterval: 30_000 },
+  )
+  const { data: learningStatus } = useSWR(
+    user ? "home/learning-status" : null,
+    () => architectureAdminApi.learningStatus(),
+    { revalidateOnFocus: false, shouldRetryOnError: false, refreshInterval: 30_000 },
+  )
   const { data: approvalsData } = useSWR(
     user ? "home/approvals" : null,
     () => approvalsApi.list(),
@@ -111,6 +121,16 @@ export default function HomePage() {
         revenueRisks={revenueRisks}
         predictiveSummary={
           typeof predictive?.summary === "string" ? predictive.summary : null
+        }
+        readyModelCount={
+          typeof learningLive?.ready_model_count === "number"
+            ? learningLive.ready_model_count
+            : null
+        }
+        learningVelocity={
+          typeof learningStatus?.learning_velocity === "string"
+            ? learningStatus.learning_velocity
+            : null
         }
         showGettingStarted={showGettingStarted}
         showRoleQuickActions={showRoleQuickActions}

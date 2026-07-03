@@ -51,6 +51,17 @@ class IntelligenceOutcomeCoordinator:
         response: dict[str, Any],
         classification: dict[str, Any],
     ) -> None:
+        from app.services.platform_intelligence_dedup import build_intelligence_dedup_key, should_skip_duplicate_event
+
+        dedup_key = build_intelligence_dedup_key(
+            org_id,
+            "assistant_response",
+            "message",
+            str(message_id or response.get("id") or "unknown"),
+            str(classification.get("intent") or "response"),
+        )
+        if should_skip_duplicate_event(dedup_key):
+            return
         try:
             if action_taken and action_taken.get("metric_before") is not None:
                 from app.services.outcome_attribution_service import get_outcome_attribution_service

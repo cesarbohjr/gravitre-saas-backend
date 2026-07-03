@@ -103,21 +103,21 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
         "advisory_only": True,
     },
     "sla_breach_predictor": {
-        "status": ModelStatus.PLANNED,
+        "status": ModelStatus.TRAINED,
         "use_cases": ["support_sla_breach_risk"],
         "activation": "60+ support tickets with SLA resolution timestamps",
         "fallback": "support_backlog correlational detector",
         "advisory_only": True,
     },
     "deal_loss_scorer": {
-        "status": ModelStatus.PLANNED,
+        "status": ModelStatus.TRAINED,
         "use_cases": ["deal_loss_probability"],
         "activation": "25+ measured CRM deal win/loss outcomes",
         "fallback": "stalled_deal correlational detector",
         "advisory_only": True,
     },
     "capacity_forecaster": {
-        "status": ModelStatus.PLANNED,
+        "status": ModelStatus.TRAINED,
         "use_cases": ["support_capacity_forecasting"],
         "activation": "21+ daily ticket volume observations",
         "fallback": "business_digital_twin support_capacity domain",
@@ -345,6 +345,31 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
     }:
         payload.update(_count_org_data_points(org_id, model_name, active))
     return payload
+
+
+async def load_org_trained_catalog_model(
+    org_id: str,
+    model_name: str,
+    *,
+    settings: Settings | None = None,
+) -> Any:
+    """Return catalog instance with org artifact loaded when deployed."""
+    from app.ml.intelligence_training import CATALOG_MODEL_NAMES
+    from app.ml.registry import get_model_registry
+
+    active = settings or get_settings()
+    instance = get_model_instance(model_name)
+    registry_name = CATALOG_MODEL_NAMES.get(model_name, model_name)
+    try:
+        registry = get_model_registry()
+        models = await registry.list_models(org_id=org_id)
+        match = next((m for m in models if m.name == registry_name and m.deployed_version), None)
+        if match:
+            artifact = await registry.load_model_artifact(match.id, match.deployed_version)
+            instance.load(artifact)
+    except Exception:  # noqa: BLE001
+        pass
+    return instance
 
 
 async def train_ml_model_for_org(org_id: str, model_name: str, *, settings: Settings | None = None) -> dict[str, Any]:

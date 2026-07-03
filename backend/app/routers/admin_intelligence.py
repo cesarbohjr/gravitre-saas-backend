@@ -207,11 +207,43 @@ async def get_bandit_status(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Tabular bandit v2 status — empirical ledger, not neural RL."""
+    from app.services.rl_policy_gate import get_rl_policy_status
+
     ledger = get_strategy_performance_ledger(settings)
     return {
-        "bandit_version": "v2",
-        "scope_note": "Empirical win-rate + UCB exploration over strategy_performance_records — not reinforcement learning.",
+        **get_rl_policy_status(),
         "summary": await ledger.load_admin_summary(org_id),
+    }
+
+
+@router.get("/learning/live-dashboard")
+async def get_learning_live_dashboard(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Combined live learning metrics for command center surfaces."""
+    from app.services.rl_policy_gate import get_rl_policy_status
+    from app.services.training_signal_service import get_training_signal_service
+
+    training = get_training_signal_service(settings)
+    readiness = await training.get_training_readiness(org_id)
+    ledger = get_strategy_performance_ledger(settings)
+    bandit_summary = await ledger.load_admin_summary(org_id)
+    ready_models = [
+        name
+        for name, info in readiness.get("by_model", {}).items()
+        if info.get("status") == "ready"
+    ]
+    return {
+        "training_readiness": readiness,
+        "ready_model_count": len(ready_models),
+        "ready_models": ready_models,
+        "bandit": {
+            **get_rl_policy_status(),
+            "summary": bandit_summary,
+        },
+        "scope_note": "Live dashboard aggregates readiness + tabular bandit v2 — not neural RL.",
     }
 
 

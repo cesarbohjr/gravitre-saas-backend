@@ -49,8 +49,12 @@ async def test_research_includes_web_when_external_topic():
                 "app.services.web_research.search_web",
                 AsyncMock(return_value={"results": [{"url": "https://a.test", "snippet": "Trend", "title": "T"}]}),
             ):
-                with patch.object(service, "score_source_credibility", AsyncMock(return_value=0.6)):
-                    result = await service.research("org-1", "What is quantum computing?", depth="standard")
+                with patch(
+                    "app.services.external_knowledge_service.gather_external_knowledge",
+                    AsyncMock(return_value=[]),
+                ):
+                    with patch.object(service, "score_source_credibility", AsyncMock(return_value=0.6)):
+                        result = await service.research("org-1", "What is quantum computing?", depth="standard")
     assert any(f.get("type") == "web" for f in result.get("findings") or [])
 
 

@@ -13,6 +13,7 @@ MAX_FILE_BYTES = MAX_TEXT_BYTES
 _TEXT_EXTENSIONS = {".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".html", ".htm", ".log"}
 _PDF_EXTENSIONS = {".pdf"}
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".webm", ".ogg"}
 _DOCX_EXTENSIONS = {".docx"}
 
 
@@ -91,7 +92,7 @@ def _extract_docx_text(data: bytes) -> str:
 
 
 def supported_upload_extensions() -> set[str]:
-    return _TEXT_EXTENSIONS | _PDF_EXTENSIONS | _DOCX_EXTENSIONS | _IMAGE_EXTENSIONS
+    return _TEXT_EXTENSIONS | _PDF_EXTENSIONS | _DOCX_EXTENSIONS | _IMAGE_EXTENSIONS | _AUDIO_EXTENSIONS
 
 
 async def extract_image_text_via_vision(
@@ -156,6 +157,39 @@ async def extract_image_text_via_vision(
     return text
 
 
+async def extract_audio_text_via_transcription(
+    data: bytes,
+    filename: str,
+    *,
+    org_id: str | None = None,
+    settings: Any | None = None,
+) -> str:
+    """Transcribe audio uploads via OpenAI Whisper when configured."""
+    from app.config import get_settings
+
+    active = settings or get_settings()
+    api_key = (getattr(active, "openai_api_key", None) or "").strip()
+    if not api_key:
+        raise UnsupportedFileTypeError(
+            "Audio transcription requires a configured OpenAI API key."
+        )
+    import httpx
+
+    ext = _extension(filename or "") or ".mp3"
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(
+            "https://api.openai.com/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            files={"file": (f"upload{ext}", data)},
+            data={"model": "whisper-1", "response_format": "text"},
+        )
+        resp.raise_for_status()
+        text = resp.text.strip()
+    if not text:
+        raise ValueError("Audio produced no transcript text")
+    return text
+
+
 def extract_text_from_bytes(data: bytes, filename: str, *, content_type: str | None = None) -> str:
     """Return UTF-8 text extracted from file bytes for RAG chunking."""
     if not data:
@@ -186,6 +220,10 @@ def extract_text_from_bytes(data: bytes, filename: str, *, content_type: str | N
     elif ext in _IMAGE_EXTENSIONS:
         raise UnsupportedFileTypeError(
             "Image uploads require async vision extraction — call extract_image_text_via_vision()"
+        )
+    elif ext in _AUDIO_EXTENSIONS:
+        raise UnsupportedFileTypeError(
+            "Audio uploads require async transcription — call extract_audio_text_via_transcription()"
         )
     elif ext in {".csv", ".tsv"}:
         text = _extract_csv_text(_decode_text(data))

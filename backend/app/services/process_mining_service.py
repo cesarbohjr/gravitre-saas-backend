@@ -10,7 +10,7 @@ from app.config import Settings, get_settings
 from app.ml.feature_extraction import collect_workflow_run_features
 from app.workflows.repository import get_supabase_client
 
-CONFORMANCE_NOTE = "Conformance checking against declared processes is PLANNED."
+CONFORMANCE_NOTE = "Conformance compares observed workflow sequences to declared process inventory."
 SCOPE_NOTE = (
     "Process mining derives health and efficiency scores from observed workflow_runs "
     "and workflow_steps only. Business impact hours are estimated from timing data; "
@@ -417,6 +417,75 @@ class ProcessMiningService:
                 }
             )
         return signals
+
+    async def check_process_conformance(
+        self,
+        org_id: str,
+        *,
+        since_days: int = 30,
+    ) -> dict[str, Any]:
+        """Compare observed workflow sequences against declared organization_process_inventory."""
+        client = self._client()
+        observed = await self.discover_workflow_patterns(org_id, since_days=since_days)
+        declared = (
+            client.table("organization_process_inventory")
+            .select("process_name, workflow_id, declared_steps, department")
+            .eq("org_id", org_id)
+            .limit(100)
+            .execute()
+            .data
+            or []
+        )
+        observed_patterns = {
+            str(row.get("sequence") or ""): int(row.get("occurrences") or 0)
+            for row in observed.get("patterns") or []
+        }
+        results: list[dict[str, Any]] = []
+        for process in declared:
+            steps = process.get("declared_steps") or []
+            if isinstance(steps, list):
+                declared_seq = " → ".join(str(step) for step in steps[:6])
+            else:
+                declared_seq = str(steps)
+            if not declared_seq:
+                continue
+            best_match = max(
+                (
+                    (seq, count, self._sequence_alignment(declared_seq, seq))
+                    for seq, count in observed_patterns.items()
+                ),
+                key=lambda item: item[2],
+                default=(None, 0, 0.0),
+            )
+            seq, count, alignment = best_match
+            results.append(
+                {
+                    "process_name": process.get("process_name"),
+                    "workflow_id": process.get("workflow_id"),
+                    "declared_sequence": declared_seq,
+                    "best_observed_sequence": seq,
+                    "observed_occurrences": count,
+                    "alignment_score": round(alignment, 4),
+                    "conformance_status": "aligned" if alignment >= 0.75 else "deviation",
+                    "advisory_only": True,
+                }
+            )
+        return {
+            "status": "ok",
+            "advisory_only": True,
+            "sinceDays": since_days,
+            "declared_process_count": len(declared),
+            "conformance_results": results,
+            "conformanceNote": CONFORMANCE_NOTE,
+        }
+
+    @staticmethod
+    def _sequence_alignment(declared: str, observed: str) -> float:
+        from difflib import SequenceMatcher
+
+        if not declared or not observed:
+            return 0.0
+        return SequenceMatcher(None, declared.lower(), observed.lower()).ratio()
 
 
 _process_mining_service: ProcessMiningService | None = None

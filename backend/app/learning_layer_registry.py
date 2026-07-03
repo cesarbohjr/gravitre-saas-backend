@@ -67,4 +67,19 @@ LEARNING_LAYER_REGISTRY: dict[str, dict[str, str]] = {
         "status": "active",
         "extends": "company_intelligence_scheduler research_monitors tick",
     },
+    "external_knowledge_service": {
+        "module": "app.services.external_knowledge_service",
+        "status": "active",
+        "extends": "AutonomousResearchService Wikipedia + contradiction detection",
+    },
+    "platform_intelligence_dedup": {
+        "module": "app.services.platform_intelligence_dedup",
+        "status": "active",
+        "extends": "IntelligenceOutcomeCoordinator cross-surface deduplication",
+    },
+    "rl_policy_gate": {
+        "module": "app.services.rl_policy_gate",
+        "status": "active",
+        "extends": "Neural RL disabled unless GRAVITRE_NEURAL_RL_SIGNOFF set",
+    },
 }

@@ -14,6 +14,7 @@ export const APP_ROUTES = {
   intelligence: "/intelligence",
   intelligenceAgents: "/intelligence/agents",
   intelligenceModels: "/intelligence/models",
+  intelligencePredictive: "/intelligence/predictive",
   intelligenceMemory: "/intelligence/memory",
   intelligenceReports: "/intelligence/reports",
   marketplace: "/marketplace",

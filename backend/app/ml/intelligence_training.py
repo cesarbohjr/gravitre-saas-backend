@@ -50,6 +50,9 @@ CATALOG_MODEL_NAMES = {
     "workflow_success_predictor": "catalog-workflow-success",
     "revenue_forecaster": "catalog-revenue-forecast",
     "churn_risk_scorer": "catalog-churn-risk",
+    "sla_breach_predictor": "catalog-sla-breach",
+    "deal_loss_scorer": "catalog-deal-loss",
+    "capacity_forecaster": "catalog-capacity-forecast",
 }
 
 MIN_QUERY_ROWS = 50
@@ -488,6 +491,159 @@ async def train_churn_risk_scorer(
     return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
 
 
+def _payload_features(row: dict[str, Any], keys: tuple[str, ...]) -> dict[str, float]:
+    payload = row.get("outcome_payload") or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    return {key: float(payload.get(key) or row.get(key) or 0.0) for key in keys}
+
+
+async def train_sla_breach_predictor(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    from app.ml.predictive_ops_models import SLA_FEATURE_KEYS, SlaBreachPredictor
+
+    active = settings or get_settings()
+    db = client or get_supabase_client(active)
+    rows = (
+        db.table("agent_action_outcomes")
+        .select("outcome_payload, outcome_success, after_value")
+        .eq("org_id", org_id)
+        .eq("metric_name", "ticket_volume")
+        .execute()
+        .data
+        or []
+    )
+    features: list[dict[str, float]] = []
+    labels: list[int] = []
+    for row in rows:
+        feature_row = _payload_features(row, SLA_FEATURE_KEYS)
+        if not any(feature_row.values()) and row.get("after_value") is not None:
+            feature_row["open_tickets"] = float(row.get("after_value") or 0)
+        if not any(feature_row.values()):
+            continue
+        payload = row.get("outcome_payload") or {}
+        breached = payload.get("sla_breached") if isinstance(payload, dict) else None
+        label = bool(breached) if breached is not None else not bool(row.get("outcome_success", True))
+        features.append(feature_row)
+        labels.append(1 if label else 0)
+    predictor = SlaBreachPredictor()
+    if len(features) < predictor.MIN_TRAINING_EXAMPLES:
+        return {
+            "trained": False,
+            "reason": "insufficient_data",
+            "training_examples": len(features),
+            "required": predictor.MIN_TRAINING_EXAMPLES,
+        }
+    metrics = await predictor.train(features, labels)
+    model_id = await register_trained_artifact(
+        org_id,
+        name=CATALOG_MODEL_NAMES["sla_breach_predictor"],
+        model_type=ModelType.CLASSIFIER,
+        base_model="sla_breach_predictor",
+        artifact=predictor.save(),
+        metrics=metrics,
+    )
+    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
+
+
+async def train_deal_loss_scorer(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    from app.ml.predictive_ops_models import DEAL_FEATURE_KEYS, DealLossScorer
+
+    active = settings or get_settings()
+    db = client or get_supabase_client(active)
+    rows = (
+        db.table("agent_action_outcomes")
+        .select("outcome_payload, outcome_success")
+        .eq("org_id", org_id)
+        .eq("target_entity_type", "deal")
+        .not_.is_("measured_at", "null")
+        .execute()
+        .data
+        or []
+    )
+    features: list[dict[str, float]] = []
+    labels: list[int] = []
+    for row in rows:
+        feature_row = _payload_features(row, DEAL_FEATURE_KEYS)
+        if not any(feature_row.values()):
+            continue
+        lost = not bool(row.get("outcome_success"))
+        features.append(feature_row)
+        labels.append(1 if lost else 0)
+    scorer = DealLossScorer()
+    if len(features) < scorer.MIN_TRAINING_EXAMPLES:
+        return {
+            "trained": False,
+            "reason": "insufficient_data",
+            "training_examples": len(features),
+            "required": scorer.MIN_TRAINING_EXAMPLES,
+        }
+    metrics = await scorer.train(features, labels)
+    model_id = await register_trained_artifact(
+        org_id,
+        name=CATALOG_MODEL_NAMES["deal_loss_scorer"],
+        model_type=ModelType.CLASSIFIER,
+        base_model="deal_loss_scorer",
+        artifact=scorer.save(),
+        metrics=metrics,
+    )
+    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
+
+
+async def train_capacity_forecaster(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    from app.ml.predictive_ops_models import CapacityForecaster
+
+    active = settings or get_settings()
+    db = client or get_supabase_client(active)
+    rows = (
+        db.table("agent_action_outcomes")
+        .select("after_value, measured_at")
+        .eq("org_id", org_id)
+        .eq("metric_name", "ticket_volume")
+        .order("measured_at")
+        .execute()
+        .data
+        or []
+    )
+    series = [
+        {"value": float(row.get("after_value") or 0)}
+        for row in rows
+        if row.get("after_value") is not None
+    ]
+    forecaster = CapacityForecaster()
+    if len(series) < forecaster.MIN_TRAINING_EXAMPLES:
+        return {
+            "trained": False,
+            "reason": "insufficient_data",
+            "training_examples": len(series),
+            "required": forecaster.MIN_TRAINING_EXAMPLES,
+        }
+    metrics = await forecaster.train([], time_series=series)
+    model_id = await register_trained_artifact(
+        org_id,
+        name=CATALOG_MODEL_NAMES["capacity_forecaster"],
+        model_type=ModelType.REGRESSOR,
+        base_model="capacity_forecaster",
+        artifact=forecaster.save(),
+        metrics=metrics,
+    )
+    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(series)}
+
+
 TRAINING_DISPATCH: dict[str, Any] = {
     "intent_classifier": train_v2_intent_classifier,
     "query_clusterer": train_v3_query_clusterer,
@@ -499,6 +655,9 @@ TRAINING_DISPATCH: dict[str, Any] = {
     "workflow_success_predictor": train_workflow_success_predictor,
     "revenue_forecaster": train_revenue_forecaster,
     "churn_risk_scorer": train_churn_risk_scorer,
+    "sla_breach_predictor": train_sla_breach_predictor,
+    "deal_loss_scorer": train_deal_loss_scorer,
+    "capacity_forecaster": train_capacity_forecaster,
 }
 
 

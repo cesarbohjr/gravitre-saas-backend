@@ -69,6 +69,53 @@ class AutonomousResearchService:
             else:
                 gaps.append("External topic detected but TAVILY_API_KEY is not configured.")
 
+        from app.services.external_knowledge_service import (
+            detect_source_contradictions,
+            gather_external_knowledge,
+        )
+
+        if is_external_or_general_question(topic):
+            external_rows = await gather_external_knowledge(topic, settings=self.settings)
+            for row in external_rows:
+                findings.append(
+                    {
+                        "type": row.get("type") or "external",
+                        "summary": str(row.get("summary") or "")[:400],
+                        "source": row.get("source"),
+                        "trust_score": row.get("trust_score"),
+                        "freshness_score": row.get("freshness_score"),
+                    }
+                )
+                sources.append({"type": row.get("type") or "external", "url": row.get("source")})
+
+        if depth == "deep":
+            try:
+                from app.services.org_context_service import get_org_context_service
+                from app.workflows.repository import get_supabase_client
+
+                snapshot = get_org_context_service().get_snapshot(
+                    get_supabase_client(self.settings),
+                    org_id,
+                    depth="standard",
+                )
+                integrations = snapshot.get("integrations") or []
+                if integrations:
+                    types = sorted({str(c.get("type") or "") for c in integrations if c.get("type")})
+                    findings.append(
+                        {
+                            "type": "connector",
+                            "summary": f"Connected integrations available for enrichment: {', '.join(types[:8])}.",
+                            "source": "connected_integrations",
+                        }
+                    )
+                    sources.append({"type": "connector", "count": len(integrations)})
+            except Exception:  # noqa: BLE001
+                pass
+
+        contradictions = detect_source_contradictions(findings)
+        if contradictions:
+            gaps.append(f"{len(contradictions)} external source contradiction(s) require review.")
+
         if not findings:
             gaps.append("No org knowledge matched this topic yet.")
 

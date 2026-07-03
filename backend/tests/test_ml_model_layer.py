@@ -41,9 +41,9 @@ def test_all_14_model_types_in_catalog():
 @pytest.mark.asyncio
 async def test_planned_models_return_structured_response():
     analyzer = CausalImpactAnalyzer()
-    result = await analyzer.predict_structured()
+    result = await analyzer.predict_structured(org_id="org-1", metric_name="deal_amount")
     assert result["status"] == "not_available"
-    assert "PLANNED" in result["reason"]
+    assert "observations" in result["reason"].lower() or "pre" in result["reason"].lower()
 
 
 @pytest.mark.asyncio

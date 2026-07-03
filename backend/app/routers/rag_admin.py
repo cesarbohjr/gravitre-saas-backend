@@ -288,7 +288,10 @@ async def ingest_file_route(
     if settings.disable_ingestion:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion is disabled")
 
-    from app.rag.file_extract import extract_image_text_via_vision
+    from app.rag.file_extract import (
+        extract_audio_text_via_transcription,
+        extract_image_text_via_vision,
+    )
 
     filename = (file.filename or "upload.txt").strip() or "upload.txt"
     raw = await file.read()
@@ -297,8 +300,17 @@ async def ingest_file_route(
     except UnsupportedFileTypeError:
         try:
             text = await extract_image_text_via_vision(raw, filename, org_id=org_id, settings=settings)
-        except (UnsupportedFileTypeError, ValueError) as exc:
-            raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
+        except UnsupportedFileTypeError:
+            try:
+                text = await extract_audio_text_via_transcription(
+                    raw, filename, org_id=org_id, settings=settings
+                )
+            except (UnsupportedFileTypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)
+                ) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

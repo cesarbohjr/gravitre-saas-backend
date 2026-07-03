@@ -19,8 +19,8 @@ from app.services.simulation_service import SimulationService
 from app.services.training_signal_service import TrainingSignalService
 
 
-def test_learning_layer_registry_has_thirteen_components():
-    assert len(LEARNING_LAYER_REGISTRY) == 13
+def test_learning_layer_registry_has_sixteen_components():
+    assert len(LEARNING_LAYER_REGISTRY) == 16
 
 
 @pytest.mark.asyncio
@@ -344,7 +344,11 @@ async def test_training_readiness_insufficient_data_below_threshold():
                         "get_training_signal_candidates",
                         AsyncMock(return_value=[]),
                     ):
-                        readiness = await svc.get_training_readiness("org-1")
+                        with patch(
+                            "app.ml.model_catalog._count_org_data_points",
+                            return_value={"data_counts": {}},
+                        ):
+                            readiness = await svc.get_training_readiness("org-1")
     assert readiness["by_model"]["workflow_anomaly_detector"]["status"] == "insufficient_data"
 
 

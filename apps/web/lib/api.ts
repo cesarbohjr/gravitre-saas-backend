@@ -1596,6 +1596,14 @@ export const intelligenceApi = {
   },
   trainingReadiness: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/training-readiness")),
+  banditStatus: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/bandit-status")),
+  learningLiveDashboard: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/live-dashboard")),
+  predictiveOpsDomain: (domain: string) =>
+    fetcher<Record<string, unknown>>(
+      apiUrl(`/api/admin/intelligence/predictive-ops/domain/${encodeURIComponent(domain)}`),
+    ),
   routing: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/routing")),
   simulations: () => fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/simulations")),
   trustSummary: (params?: { periodDays?: number }) => {

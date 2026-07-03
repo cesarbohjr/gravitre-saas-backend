@@ -157,10 +157,32 @@ class TrainingSignalService:
         return recommended
 
     async def export_training_signals(self, org_id: str, model_name: str) -> dict[str, Any]:
-        candidates = await self._outcomes.get_training_signal_candidates(org_id)
-        model_signals = [c for c in candidates if c.get("model_name") == model_name]
         threshold = self.MODEL_MIN_THRESHOLDS.get(model_name, {})
         min_val = min(threshold.values()) if threshold else 10
+        predictive_ops_models = {
+            "sla_breach_predictor",
+            "deal_loss_scorer",
+            "capacity_forecaster",
+        }
+        if model_name in predictive_ops_models or "min_ticket_volume_rows" in threshold:
+            readiness = await self.get_training_readiness(org_id)
+            info = readiness.get("by_model", {}).get(model_name, {})
+            signals_available = int(info.get("signals_available") or 0)
+            if signals_available < min_val:
+                return {
+                    "status": "insufficient_data",
+                    "model": model_name,
+                    "signals_available": signals_available,
+                    "min_required": threshold,
+                }
+            return {
+                "status": "ready",
+                "model": model_name,
+                "signals_available": signals_available,
+                "signals": [{"model_name": model_name, "count": signals_available}],
+            }
+        candidates = await self._outcomes.get_training_signal_candidates(org_id)
+        model_signals = [c for c in candidates if c.get("model_name") == model_name]
         if len(model_signals) < min_val:
             return {
                 "status": "insufficient_data",

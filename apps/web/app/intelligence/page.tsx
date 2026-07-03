@@ -36,6 +36,12 @@ const LINKS = [
     icon: Cpu,
   },
   {
+    href: "/intelligence/predictive",
+    title: "Predictive operations",
+    summary: "Domain packs for SLA, deal-loss, capacity, and workflow risk.",
+    icon: ChartLineUp,
+  },
+  {
     href: "/intelligence/memory",
     title: "Organizational memory",
     summary: "Promoted memories, auto-promotions, and knowledge graph lens.",

@@ -94,6 +94,15 @@ class LearningSignalAggregator:
                     segment_key=str(department or "default"),
                     metadata=metadata,
                 )
+                from app.services.org_learning_profile_service import get_org_learning_profile_service
+
+                delta = 0.05 if polarity == "positive" else -0.05
+                await get_org_learning_profile_service(self.settings).update_segment_weight(
+                    org_id,
+                    str(department or "default"),
+                    strategy_key=strategy_key,
+                    weight_delta=delta,
+                )
         except Exception as exc:  # noqa: BLE001
             logger.debug("learning_signal_insert_skipped org=%s type=%s error=%s", org_id, signal_type, exc)
 

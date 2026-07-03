@@ -12,6 +12,7 @@ import { intelligenceApi } from "@/lib/api"
 import type { IconProps } from "@phosphor-icons/react"
 import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots, Brain } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { BanditStatusCard } from "./bandit-status-card"
 import { formatTime, readNumber } from "./shared"
 
 type Row = Record<string, unknown>
@@ -286,6 +287,8 @@ export function OverviewTab({
           )}
         </CardContent>
       </Card>
+
+      <BanditStatusCard enabled />
 
       <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
         <ChartBar className="mt-0.5 h-4 w-4 shrink-0" weight="duotone" aria-hidden />

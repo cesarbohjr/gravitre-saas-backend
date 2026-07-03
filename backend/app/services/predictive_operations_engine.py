@@ -83,7 +83,9 @@ class PredictiveOperationsEngine:
         if payload.get("catalog_status") != ModelStatus.TRAINED.value:
             raise ModelNotTrainedError(model_name)
 
-        instance = get_model_instance(model_name)
+        from app.ml.model_catalog import load_org_trained_catalog_model
+
+        instance = await load_org_trained_catalog_model(org_id, model_name, settings=self.settings)
         try:
             structured = await instance.predict_structured(org_id=org_id, settings=self.settings)
         except TypeError:

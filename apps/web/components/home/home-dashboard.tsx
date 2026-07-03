@@ -52,6 +52,8 @@ type HomeDashboardProps = {
   lastLearningCycle?: string | null
   revenueRisks: Array<{ id: string; title: string; summary: string }>
   predictiveSummary: string | null
+  readyModelCount?: number | null
+  learningVelocity?: string | null
   showGettingStarted: boolean
   showRoleQuickActions?: boolean
 }
@@ -81,6 +83,8 @@ export function HomeDashboard({
   lastLearningCycle,
   revenueRisks,
   predictiveSummary,
+  readyModelCount,
+  learningVelocity,
   showGettingStarted,
   showRoleQuickActions = false,
 }: HomeDashboardProps) {
@@ -295,6 +299,12 @@ export function HomeDashboard({
               {hasLearningSnapshot
                 ? "Gravitre is capturing query patterns, workflow outcomes, and memory promotion candidates."
                 : "Connect tools and run your first workflow — learning accelerates as soon as data flows in."}
+              {readyModelCount != null ? (
+                <span className="mt-1 block text-foreground">
+                  {readyModelCount} model{readyModelCount === 1 ? "" : "s"} ready for training.
+                  {learningVelocity ? ` Velocity: ${learningVelocity}.` : ""}
+                </span>
+              ) : null}
             </p>
           </motion.section>
 
