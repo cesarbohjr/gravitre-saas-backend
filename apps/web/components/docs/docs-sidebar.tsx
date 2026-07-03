@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { createElement, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronRight } from "lucide-react"
@@ -38,8 +38,7 @@ export function orderSections(sections: DocsNavSection[]): DocsNavSection[] {
 }
 
 function CategoryIcon({ category, className }: { category: string; className?: string }) {
-  const Icon = categoryIcon(category)
-  return <Icon className={className} />
+  return createElement(categoryIcon(category), { className })
 }
 
 function SidebarSection({
