@@ -1682,6 +1682,9 @@ class AgentIntelligence:
             business_signals=turn_ctx.business_signals,
             strategic_plan=turn_ctx.strategic_plan,
             knowledge_assignments=turn_ctx.knowledge_assignments,
+            advisor_brief=turn_ctx.advisor_brief,
+            explainability=turn_ctx.explainability,
+            execution_gate=turn_ctx.execution_gate,
         )
 
         yield AssistantStreamComplete(

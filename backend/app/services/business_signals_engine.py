@@ -161,6 +161,30 @@ class BusinessSignalsEngine:
         except Exception as exc:  # noqa: BLE001
             logger.debug("business_signals_workflow_skipped org_id=%s error=%s", org_id, exc)
 
+        if query:
+            try:
+                from app.services.decision_intelligence_service import get_decision_intelligence_service
+
+                decision_payload = await get_decision_intelligence_service(self.settings).recommend_next_action(
+                    org_id,
+                    query,
+                )
+                for row in decision_payload.get("recommendations") or []:
+                    signals.append(
+                        self._normalize_signal(
+                            {
+                                "title": row.get("action") or row.get("title"),
+                                "summary": row.get("reasoning") or row.get("reason"),
+                                "confidence": row.get("confidence"),
+                                "estimated_impact": row.get("estimated_impact"),
+                            },
+                            source="decision_intelligence",
+                            signal_type="opportunity",
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("business_signals_decision_skipped org_id=%s error=%s", org_id, exc)
+
         ranked = await self._quality.rank_recommendations(
             signals,
             org_id=org_id,

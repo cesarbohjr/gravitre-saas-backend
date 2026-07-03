@@ -24,7 +24,8 @@ from app.services.execution_confidence_engine import (
     ExecutionConfidenceEngine,
     get_execution_confidence_engine,
 )
-from app.services.explanation_generator import get_explanation_generator
+from app.services.advisor_mode_engine import AdvisorModeEngine, get_advisor_mode_engine
+from app.services.explainability_engine import ExplainabilityEngine, get_explainability_engine
 from app.services.agent_knowledge_assignment_service import (
     AgentKnowledgeAssignmentService,
     get_agent_knowledge_assignment_service,
@@ -68,6 +69,9 @@ class AssistantTurnContext:
     knowledge_section: str = ""
     specialist_modifier: str = ""
     pre_execution_confidence: dict[str, Any] = field(default_factory=dict)
+    execution_gate: dict[str, Any] = field(default_factory=dict)
+    advisor_brief: dict[str, Any] | None = None
+    explainability: dict[str, Any] = field(default_factory=dict)
 
 
 class IntelligenceOrchestrator:
@@ -87,6 +91,8 @@ class IntelligenceOrchestrator:
         self._quality: RecommendationQualityEngine = get_recommendation_quality_engine(self.settings)
         self._knowledge: AgentKnowledgeAssignmentService = get_agent_knowledge_assignment_service(self.settings)
         self._specialist: SpecialistReasoningEngine = get_specialist_reasoning_engine(self.settings)
+        self._advisor: AdvisorModeEngine = get_advisor_mode_engine(self.settings)
+        self._explainability: ExplainabilityEngine = get_explainability_engine()
         self._registry = get_tool_registry()
 
     async def prepare_assistant_turn(
@@ -127,6 +133,7 @@ class IntelligenceOrchestrator:
             agent.setdefault("id", "assistant")
 
         classification = self._specialist.enrich_classification(classification, agent)
+        suppression_keys = list(memory_ctx.get("suppressed_suggestion_keys") or [])
         resolved_agent_id = str(agent.get("id") or agent_id or "")
         if resolved_agent_id and resolved_agent_id not in {"assistant"}:
             try:
@@ -187,6 +194,15 @@ class IntelligenceOrchestrator:
             client=client,
         )
         business_signals = list(signals_payload.get("signals") or [])
+        business_signals = [
+            row
+            for row in business_signals
+            if not self._quality.should_suppress(
+                suppression_keys,
+                str(row.get("id") or ""),
+                action_text=str(row.get("title") or row.get("summary") or ""),
+            )
+        ]
         specialist_modifier = self._specialist.build_modifier(
             agent,
             classification,
@@ -210,24 +226,47 @@ class IntelligenceOrchestrator:
             department=str(classification.get("department") or ""),
         )
         explanation = self._context_engine.explain_context_used(profile)
+        sections = profile.prompt_sections
+        pre_confidence = self._confidence_engine.assess_pre_execution(
+            classification=classification,
+            context_profile=profile.to_explanation_dict(),
+        )
         mapped_sources = [
             {"title": row.get("label"), "kind": row.get("type"), "source": row.get("label")}
             for row in profile.to_explanation_dict().get("sourcesUsed") or []
             if isinstance(row, dict)
         ]
-        generated = await get_explanation_generator().explain(
-            "answer",
-            org_id,
-            mapped_sources,
-            {"reasoning_trace": []},
-            classification,
-        )
-        context_explanation = generated or explanation
-
-        sections = profile.prompt_sections
-        pre_confidence = self._confidence_engine.assess_pre_execution(
+        generated = await self._explainability.explain_turn(
+            response_type="answer",
+            org_id=org_id,
+            sources=mapped_sources,
+            model_output={"reasoning_trace": []},
             classification=classification,
             context_profile=profile.to_explanation_dict(),
+            confidence={"score": pre_confidence.get("confidence"), "missing_context": pre_confidence.get("missing_context")},
+        )
+        context_explanation = generated.get("summary") or explanation
+        explainability = generated
+
+        advisor_brief = None
+        if classification.get("requires_graph") or classification.get("requires_action") or await self._planning.should_plan(
+            classification,
+            query,
+        ):
+            try:
+                advisor_brief = await self._advisor.generate_brief(
+                    org_id,
+                    user_id,
+                    department=str(classification.get("department") or ""),
+                    query=query,
+                    client=client,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("orchestrator advisor brief skipped org_id=%s error=%s", org_id, exc)
+
+        execution_gate = self._confidence_engine.assess_execution_gate(
+            pre_confidence=pre_confidence,
+            risk_evaluation={"requires_approval": bool(classification.get("requires_action"))},
         )
 
         strategic_plan = None
@@ -269,6 +308,9 @@ class IntelligenceOrchestrator:
             knowledge_section=knowledge_section,
             specialist_modifier=specialist_modifier,
             pre_execution_confidence=pre_confidence,
+            execution_gate=execution_gate,
+            advisor_brief=advisor_brief,
+            explainability=explainability,
         )
 
     def finalize_confidence(

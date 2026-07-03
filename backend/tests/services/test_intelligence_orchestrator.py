@@ -106,3 +106,5 @@ async def test_intelligence_orchestrator_prepare_turn():
     assert turn.retrieval is mock_retrieval
     assert turn.context_profile.get("sourcesUsed")
     assert turn.context_explanation
+    assert isinstance(turn.explainability, dict)
+    assert isinstance(turn.execution_gate, dict)

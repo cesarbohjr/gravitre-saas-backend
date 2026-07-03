@@ -93,6 +93,60 @@ class ExecutionConfidenceEngine:
         live["trust_signals"] = {"score": weighted}
         return live
 
+    def assess_connector_readiness(
+        self,
+        *,
+        connector: str,
+        action: str | None = None,
+        connected: bool = False,
+        chat_executable: bool | None = None,
+    ) -> dict[str, Any]:
+        if not connected:
+            return {
+                "connector": connector,
+                "ready": False,
+                "reason": f"{connector} is not connected for this org.",
+                "confidence_penalty": 0.15,
+            }
+        if chat_executable is False:
+            return {
+                "connector": connector,
+                "ready": False,
+                "reason": f"{connector} action {action or ''} is catalogued but not chat-executable yet.",
+                "confidence_penalty": 0.08,
+            }
+        return {
+            "connector": connector,
+            "ready": True,
+            "reason": f"{connector} is connected and available for governed execution.",
+            "confidence_penalty": 0.0,
+        }
+
+    def assess_execution_gate(
+        self,
+        *,
+        pre_confidence: dict[str, Any] | None,
+        risk_evaluation: dict[str, Any] | None = None,
+        connector_readiness: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        score = float((pre_confidence or {}).get("confidence") or 0.55)
+        penalty = float((connector_readiness or {}).get("confidence_penalty") or 0.0)
+        adjusted = round(max(0.0, min(1.0, score - penalty)), 4)
+        requires_approval = bool((risk_evaluation or {}).get("requires_approval"))
+        can_proceed = adjusted >= 0.35 and not (requires_approval and adjusted < 0.55)
+        reason_parts = [f"Execution confidence {int(adjusted * 100)}%."]
+        if connector_readiness and not connector_readiness.get("ready"):
+            reason_parts.append(str(connector_readiness.get("reason") or "Connector not ready."))
+        if requires_approval:
+            reason_parts.append("Human approval required before write actions.")
+        return {
+            "confidence": adjusted,
+            "can_proceed": can_proceed,
+            "requires_approval": requires_approval,
+            "reason": " ".join(reason_parts),
+            "connector_readiness": connector_readiness,
+        }
+
     @staticmethod
     def _context_confidence(context_profile: dict[str, Any] | None) -> float:
         if not context_profile:

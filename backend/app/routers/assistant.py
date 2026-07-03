@@ -1070,6 +1070,48 @@ async def assistant_recommendation_feedback(
     return {"status": "ok"}
 
 
+@router.get("/advisor-brief")
+async def assistant_advisor_brief(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    department: str | None = None,
+    query: str | None = None,
+) -> dict[str, Any]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.advisor_mode_engine import get_advisor_mode_engine
+
+    user_id = str(current_user.get("user_id") or "")
+    client = get_supabase_client(settings)
+    return await get_advisor_mode_engine(settings).generate_brief(
+        org_id,
+        user_id,
+        department=department,
+        query=query,
+        client=client,
+    )
+
+
+@router.get("/advisor-brief/executive")
+async def assistant_executive_advisor_brief(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.advisor_mode_engine import get_advisor_mode_engine
+
+    user_id = str(current_user.get("user_id") or "")
+    client = get_supabase_client(settings)
+    return await get_advisor_mode_engine(settings).generate_executive_brief(
+        org_id,
+        user_id,
+        client=client,
+    )
+
+
 @router.get("/conversation/{conversation_id}/state")
 async def get_conversation_task_state(
     conversation_id: str,

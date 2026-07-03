@@ -124,4 +124,16 @@ ORCHESTRATION_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "AgentKnowledgeAssignmentService",
         "note": "CRUD knowledge source bindings per agent with sync freshness.",
     },
+    "advisor_mode_engine": {
+        "status": "live",
+        "module": "app.services.advisor_mode_engine",
+        "service": "AdvisorModeEngine",
+        "note": "Proactive advisor briefs — what changed, why, what to do, impact, evidence.",
+    },
+    "explainability_engine": {
+        "status": "live",
+        "module": "app.services.explainability_engine",
+        "service": "ExplainabilityEngine",
+        "note": "Structured explanation envelope without chain-of-thought leakage.",
+    },
 }

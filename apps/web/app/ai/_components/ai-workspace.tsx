@@ -74,6 +74,13 @@ import {
 } from "./ai-layout-storage"
 import { LiveActivityRail } from "./live-activity-rail"
 import {
+  BusinessSignalsBanner,
+  type BusinessSignal,
+} from "@/components/gravitre/assistant/business-signals-banner"
+import { AdvisorBriefPanel, type AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
+import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
+import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
+import {
   clearCachedConversationMessages,
   readCachedConversationMessages,
   readCachedInlineTurns,
@@ -139,6 +146,31 @@ export function AiWorkspace({
   const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
   const [executionResult, setExecutionResult] = useState<ChatExecutionResult | null>(null)
   const [confirmExecuting, setConfirmExecuting] = useState(false)
+  const [activeBusinessSignals, setActiveBusinessSignals] = useState<BusinessSignal[]>([])
+  const [advisorBrief, setAdvisorBrief] = useState<AdvisorBrief | null>(null)
+  const [strategicPlan, setStrategicPlan] = useState<{
+    goal?: string
+    confidence?: number
+    risks?: Array<{ title?: string; summary?: string; severity?: string }>
+  } | null>(null)
+  const [taskState, setTaskState] = useState<{
+    current_plan?: { steps?: Array<{ step_id?: string; description?: string }> }
+    completed_steps?: Array<{ step_id?: string; description?: string }>
+    pending_steps?: Array<{ step_id?: string; description?: string }>
+  } | null>(null)
+  const [explainability, setExplainability] = useState<{
+    summary?: string
+    evidence?: Array<{ label?: string; kind?: string; relevance?: number }>
+    confidence_note?: string
+    missing_context?: string[]
+  } | null>(null)
+  const [contextExplanation, setContextExplanation] = useState<string | null>(null)
+  const [executionGate, setExecutionGate] = useState<{
+    confidence?: number
+    can_proceed?: boolean
+    requires_approval?: boolean
+    reason?: string
+  } | null>(null)
   const notifications = useNotifications()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -206,9 +238,25 @@ export function AiWorkspace({
         dialogueMode?: string
         executionResult?: ChatExecutionResult
         pendingTask?: ChatPendingTask
+        businessSignals?: BusinessSignal[]
+        strategicPlan?: typeof strategicPlan
+        advisorBrief?: AdvisorBrief
+        explainability?: typeof explainability
+        executionGate?: typeof executionGate
+        contextExplanation?: string
+        taskState?: typeof taskState
       }
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
+      if (payload.taskState) setTaskState(payload.taskState)
+      if (payload.strategicPlan) setStrategicPlan(payload.strategicPlan)
+      if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
+      if (payload.explainability) setExplainability(payload.explainability)
+      if (payload.contextExplanation) setContextExplanation(payload.contextExplanation)
+      if (payload.executionGate) setExecutionGate(payload.executionGate)
+      if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
+        setActiveBusinessSignals(payload.businessSignals)
+      }
       if (payload.executionResult) {
         setExecutionResult(payload.executionResult)
         if (payload.executionResult.success && notifications) {
@@ -222,6 +270,44 @@ export function AiWorkspace({
       }
     },
   })
+
+  const { data: businessSignalsPayload } = useSWR(
+    user ? "ai-business-signals" : null,
+    () => assistantApi.businessSignals(),
+    { revalidateOnFocus: false },
+  )
+
+  const { data: advisorBriefPayload } = useSWR(
+    user ? "ai-advisor-brief" : null,
+    () => assistantApi.advisorBrief(),
+    { revalidateOnFocus: false },
+  )
+
+  useEffect(() => {
+    const fetched = businessSignalsPayload?.signals
+    if (Array.isArray(fetched) && fetched.length > 0 && activeBusinessSignals.length === 0) {
+      setActiveBusinessSignals(fetched as BusinessSignal[])
+    }
+  }, [businessSignalsPayload, activeBusinessSignals.length])
+
+  useEffect(() => {
+    if (advisorBriefPayload && !advisorBrief) {
+      setAdvisorBrief(advisorBriefPayload as AdvisorBrief)
+    }
+  }, [advisorBriefPayload, advisorBrief])
+
+  useSWR(
+    user && activeConversationId ? `ai-conversation-state-${activeConversationId}` : null,
+    () => assistantApi.getConversationState(activeConversationId!),
+    {
+      revalidateOnFocus: false,
+      onSuccess: (data) => {
+        if (data?.task_state) {
+          setTaskState(data.task_state as typeof taskState)
+        }
+      },
+    },
+  )
 
   const handleConfirmExecution = useCallback(async () => {
     const conversationId = activeConversationIdRef.current
@@ -834,6 +920,19 @@ export function AiWorkspace({
           </div>
         </div>
 
+        <BusinessSignalsBanner signals={activeBusinessSignals} />
+        {advisorBrief ? (
+          <div className="border-b border-border px-4 py-2 md:px-6">
+            <AdvisorBriefPanel brief={advisorBrief} />
+          </div>
+        ) : null}
+        {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
+        {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
+          <div className="border-b border-amber-200/60 bg-amber-50/50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200 md:px-6">
+            {executionGate.reason ?? "Execution requires review before proceeding."}
+          </div>
+        ) : null}
+
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
           <div className="mx-auto max-w-3xl space-y-6">
             {showLanding ? (
@@ -886,13 +985,19 @@ export function AiWorkspace({
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || "…"}</ReactMarkdown>
                         {!isUser && message.id === lastAssistantId ? (
-                          <ChatExecutionPanel
-                            dialogueMode={dialogueMode}
-                            executionResult={executionResult}
-                            pendingTask={pendingTask}
-                            confirming={confirmExecuting}
-                            onConfirm={() => void handleConfirmExecution()}
-                          />
+                          <>
+                            <ChatExecutionPanel
+                              dialogueMode={dialogueMode}
+                              executionResult={executionResult}
+                              pendingTask={pendingTask}
+                              confirming={confirmExecuting}
+                              onConfirm={() => void handleConfirmExecution()}
+                            />
+                            <ExplainabilityPanel
+                              explanation={explainability}
+                              contextExplanation={contextExplanation}
+                            />
+                          </>
                         ) : null}
                       </div>
                     )}

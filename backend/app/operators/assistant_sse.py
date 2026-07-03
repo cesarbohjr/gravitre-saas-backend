@@ -64,6 +64,9 @@ def sse_intelligence_metadata(
     business_signals: list[dict[str, Any]] | None = None,
     strategic_plan: dict[str, Any] | None = None,
     knowledge_assignments: list[dict[str, Any]] | None = None,
+    advisor_brief: dict[str, Any] | None = None,
+    explainability: dict[str, Any] | None = None,
+    execution_gate: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -87,6 +90,9 @@ def sse_intelligence_metadata(
                 "businessSignals": business_signals or [],
                 "strategicPlan": strategic_plan,
                 "knowledgeAssignments": knowledge_assignments or [],
+                "advisorBrief": advisor_brief,
+                "explainability": explainability or {},
+                "executionGate": execution_gate or {},
             },
         }
     )

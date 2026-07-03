@@ -265,6 +265,21 @@ Steps 1–4 are **2A**. Step 8 only after 2A stable.
 
 ---
 
+---
+
+## Intelligence waves 4–9 (shipped 2026-07-03)
+
+| Wave | Scope | Backend | Frontend (`/ai`) |
+|------|-------|---------|------------------|
+| **4** | Quality + signals polish — decision intel → signals, event → advisor pipeline | `BusinessSignalsEngine` merges `DecisionIntelligenceService`; `EventIntelligenceService` records advisor signals | `BusinessSignalsBanner` + SSE `businessSignals` |
+| **5** | Advisor mode — proactive briefs | `AdvisorModeEngine`, `GET /api/assistant/advisor-brief`, executive variant | `AdvisorBriefPanel`, SWR `assistantApi.advisorBrief()` |
+| **6** | Tests + docs | Service tests for advisor, explainability, execution gate, quality filters; registry count 22 | Typecheck + `/ai` intelligence parity with `/assistant` |
+| **7** | ExecutionConfidenceEngine full | `assess_connector_readiness`, `assess_execution_gate` wired in orchestrator | Execution gate banner when approval blocked |
+| **8** | RecommendationQualityEngine full | `filter_advisor_actions`, `rank_specialist_candidates`, `should_suppress` + memory suppression | Advisor action ranking surfaces in brief panel |
+| **9** | ExplainabilityEngine | Structured envelope (`summary`, `evidence`, `confidence_note`, `missing_context`) via SSE | `ExplainabilityPanel` (“Why this answer?”) on last assistant turn |
+
+SSE metadata keys: `businessSignals`, `strategicPlan`, `advisorBrief`, `explainability`, `executionGate`.
+
 ## References
 
 - Phase 1: `docs/delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md`

@@ -103,6 +103,7 @@ class EventIntelligenceService:
             await get_optimization_suggestion_service(self.settings).detect_suggestions_for_org(org_id)
         except Exception as exc:  # noqa: BLE001
             logger.debug("event_intelligence_deal_stage_skipped error=%s", exc)
+        await self._record_advisor_signal(org_id, "hubspot", "deal.stage_changed", entity_id, payload)
 
     async def _handle_subscription_update(
         self,
@@ -115,6 +116,7 @@ class EventIntelligenceService:
             org_id,
             entity_id,
         )
+        await self._record_advisor_signal(org_id, "stripe", "subscription.updated", entity_id, payload)
 
     async def _handle_support_ticket_created(
         self,
@@ -134,6 +136,28 @@ class EventIntelligenceService:
             await service.detect_suggestions_for_org(org_id)
         except Exception as exc:  # noqa: BLE001
             logger.debug("event_intelligence_ticket_suggestion_skipped error=%s", exc)
+        await self._record_advisor_signal(org_id, "zendesk", "ticket.created", entity_id, payload)
+
+    async def _record_advisor_signal(
+        self,
+        org_id: str,
+        connector: str,
+        event_type: str,
+        entity_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        try:
+            from app.services.business_signals_engine import get_business_signals_engine
+
+            await get_business_signals_engine(self.settings).record_connector_signal(
+                org_id,
+                connector,
+                event_type,
+                entity_id,
+                payload,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("event_intelligence_advisor_signal_skipped error=%s", exc)
 
 
 _event_intelligence_service: EventIntelligenceService | None = None

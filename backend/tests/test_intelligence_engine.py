@@ -20,8 +20,8 @@ from app.services.task_classifier import TaskClassifier
 from app.services.tool_connector_selector import ToolConnectorSelector
 
 
-def test_orchestration_registry_has_11_components():
-    assert len(ORCHESTRATION_REGISTRY) == 11
+def test_orchestration_registry_has_22_components():
+    assert len(ORCHESTRATION_REGISTRY) == 22
 
 
 @pytest.mark.asyncio

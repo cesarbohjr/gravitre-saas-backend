@@ -1272,6 +1272,17 @@ export const assistantApi = {
     fetcher<{ signals: Array<Record<string, unknown>>; collected_at?: string }>(
       apiUrl(`/api/assistant/business-signals${department ? `?department=${encodeURIComponent(department)}` : ""}`),
     ),
+  advisorBrief: (params?: { department?: string; query?: string }) => {
+    const search = new URLSearchParams()
+    if (params?.department) search.set("department", params.department)
+    if (params?.query) search.set("query", params.query)
+    const qs = search.toString()
+    return fetcher<Record<string, unknown>>(
+      apiUrl(`/api/assistant/advisor-brief${qs ? `?${qs}` : ""}`),
+    )
+  },
+  executiveAdvisorBrief: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/assistant/advisor-brief/executive")),
   recommendationFeedback: (data: { recommendation_id: string; accepted: boolean; department?: string }) =>
     postJson<{ status: string }>(apiUrl("/api/assistant/recommendation-feedback"), data),
 }

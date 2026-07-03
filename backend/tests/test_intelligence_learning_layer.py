@@ -397,7 +397,7 @@ def test_existing_ai_architecture_layer_intact():
 
 
 def test_existing_orchestration_layer_intact():
-    assert len(ORCHESTRATION_REGISTRY) == 11
+    assert len(ORCHESTRATION_REGISTRY) == 22
 
 
 def test_no_new_parallel_systems_created():

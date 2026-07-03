@@ -123,6 +123,85 @@ class RecommendationQualityEngine:
             )
         return await self.rank_recommendations(enriched, org_id=org_id, department=department)
 
+    async def filter_advisor_actions(
+        self,
+        org_id: str,
+        actions: list[dict[str, Any]],
+        *,
+        department: str | None = None,
+    ) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        for row in actions:
+            action = str(row.get("action") or row.get("title") or "")
+            if not action.strip():
+                continue
+            rec_id = str(row.get("id") or self.stable_recommendation_id(org_id, action, str(row.get("source") or "advisor")))
+            payload = dict(row)
+            payload["id"] = rec_id
+            payload["action"] = action
+            normalized.append(payload)
+        ranked = await self.rank_recommendations(normalized, org_id=org_id, department=department)
+        return [
+            {
+                **row,
+                "action": row.get("action") or row.get("title"),
+                "reason": row.get("reason") or row.get("summary"),
+                "impact": row.get("estimated_impact") or row.get("impact"),
+                "confidence": row.get("quality_score") or row.get("confidence"),
+            }
+            for row in ranked
+        ]
+
+    async def rank_specialist_candidates(
+        self,
+        org_id: str,
+        candidates: list[dict[str, Any]],
+        *,
+        department: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Rank department/persona candidates using historical outcome quality."""
+        scored: list[tuple[float, dict[str, Any]]] = []
+        dept_summary = (
+            await self._outcomes.get_department_outcome_summary(org_id, department)
+            if department
+            else {"status": "insufficient_data"}
+        )
+        dept_score = float(dept_summary.get("score") or 0.0) if dept_summary.get("status") == "ok" else 0.5
+        for row in candidates:
+            persona_key = str(row.get("persona_key") or row.get("department") or "")
+            historical = 0.5
+            if persona_key:
+                result = await self._outcomes.calculate_outcome_score(
+                    org_id,
+                    "persona",
+                    persona_key,
+                    since_days=90,
+                )
+                if result.get("status") == "ok":
+                    historical = float(result.get("score") or 0.5)
+            base = float(row.get("score") or row.get("confidence") or 0.55)
+            quality = round(min(1.0, 0.5 * base + 0.3 * historical + 0.2 * dept_score), 4)
+            enriched = dict(row)
+            enriched["quality_score"] = quality
+            enriched["historical_success_rate"] = historical
+            scored.append((quality, enriched))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [row for _, row in scored]
+
+    def should_suppress(
+        self,
+        suppression_keys: list[str],
+        recommendation_id: str,
+        *,
+        action_text: str | None = None,
+    ) -> bool:
+        if recommendation_id and f"rejected_{hashlib.sha256(recommendation_id.encode()).hexdigest()[:16]}" in suppression_keys:
+            return True
+        if action_text:
+            fingerprint = hashlib.sha256(action_text.strip().lower().encode()).hexdigest()[:16]
+            return f"rejected_{fingerprint}" in suppression_keys
+        return False
+
     async def _historical_success_rate(
         self,
         org_id: str,
