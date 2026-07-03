@@ -60,6 +60,7 @@ class ProactiveGuidanceService:
         response_content: str,
         *,
         connected_integrations: list[str] | None = None,
+        business_signals: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         if dialogue_mode in ("clarify", "execute", "confirm", "escalate"):
             return []
@@ -98,8 +99,35 @@ class ProactiveGuidanceService:
                     "type": suggestion_type,
                     "text": text,
                     "suppression_key": key,
+                    "confidence": 0.55,
                 }
             )
+
+        for signal in (business_signals or [])[:3]:
+            title = str(signal.get("title") or "")
+            if not title:
+                continue
+            key = f"signal_{hashlib.sha256(title.lower().encode()).hexdigest()[:16]}"
+            if key in suppressed:
+                continue
+            candidates.append(
+                {
+                    "type": "business_signal",
+                    "text": f"Signal: {title} — want me to dig in?",
+                    "suppression_key": key,
+                    "confidence": float(signal.get("quality_score") or signal.get("confidence") or 0.6),
+                }
+            )
+
+        if candidates:
+            from app.services.recommendation_quality_engine import get_recommendation_quality_engine
+
+            ranked = await get_recommendation_quality_engine(self.settings).rank_recommendations(
+                candidates,
+                org_id=org_id,
+                department=str(classification.get("department") or ""),
+            )
+            return ranked[:max_items]
 
         return candidates[:max_items]
 
@@ -114,6 +142,12 @@ class ProactiveGuidanceService:
             state = await self._state.get_task_state(conversation_id, org_id)
             for key in state.get("suppressed_suggestions") or []:
                 suppressed.add(str(key))
+            memory = state.get("conversation_memory")
+            if isinstance(memory, dict):
+                for row in memory.get("rejected_recommendations") or []:
+                    text = str(row.get("text") or "")
+                    if text:
+                        suppressed.add(f"rejected_{hashlib.sha256(text.strip().lower().encode()).hexdigest()[:16]}")
         try:
             rows = (
                 get_supabase_client(self.settings)

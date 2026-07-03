@@ -145,6 +145,44 @@ def patch_agent_streaming_dialogue_pipeline() -> Iterator[None]:
             )
         )
         persona_module._persona_service = None
+        mock_retrieval = MagicMock()
+        mock_retrieval.rag_sources = []
+        mock_retrieval.rag_section = ""
+        mock_retrieval.memory_section = ""
+        mock_retrieval.org_context = {"connectedIntegrations": ["hubspot"]}
+        mock_turn = MagicMock()
+        mock_turn.agent = {"id": "assistant", "name": "Assistant"}
+        mock_turn.retrieval = mock_retrieval
+        mock_turn.connected_integrations = ["hubspot"]
+        mock_turn.org_context_block = ""
+        mock_turn.memory_block = ""
+        mock_turn.company_block = ""
+        mock_turn.entity_block = ""
+        mock_turn.task_state_section = ""
+        mock_turn.context_explanation = "Org and knowledge context were considered."
+        mock_turn.context_profile = {"sourcesUsed": []}
+        mock_turn.pre_execution_confidence = {"risk_level": "low"}
+        mock_turn.business_signals = []
+        mock_turn.strategic_plan = None
+        mock_turn.knowledge_assignments = []
+        mock_turn.specialist_modifier = ""
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.prepare_assistant_turn = AsyncMock(return_value=mock_turn)
+        mock_orchestrator.finalize_confidence = MagicMock(
+            return_value={"score": 0.82, "band": "high", "needs_clarification": False}
+        )
+        stack.enter_context(
+            patch(
+                "app.services.intelligence_orchestrator.get_intelligence_orchestrator",
+                return_value=mock_orchestrator,
+            )
+        )
+        stack.enter_context(
+            patch(
+                "app.operators.agent_intelligence.validate_grounded_answer",
+                AsyncMock(return_value={"is_valid": True, "confidence": 0.9}),
+            )
+        )
         yield
 
 

@@ -22,6 +22,7 @@ from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
     agent_memories,
+    agent_knowledge_assignments,
     agent_tool_permissions,
     admin_intelligence,
     admin_chat,
@@ -464,6 +465,7 @@ app.include_router(operator_router.router)
 app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
+app.include_router(agent_knowledge_assignments.router)
 app.include_router(admin_intelligence.router)
 app.include_router(admin_chat.router)
 app.include_router(mcp_admin.router)

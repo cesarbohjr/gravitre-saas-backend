@@ -1,0 +1,416 @@
+"""Unified intelligence orchestrator — single assistant entry facade (Wave 0)."""
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from typing import Any
+
+from app.config import Settings, get_settings
+from app.core.logging import get_logger
+from app.operators.agent_intelligence import resolve_agent_record
+from app.operators.agent_prompts import build_synthetic_agent_for_task
+from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
+from app.services.context_prioritization_engine import (
+    ContextPrioritizationEngine,
+    ContextSource,
+    get_context_prioritization_engine,
+)
+from app.services.conversation_memory_engine import (
+    ConversationMemoryEngine,
+    get_conversation_memory_engine,
+)
+from app.services.entity_relationship_service import build_entity_context_section
+from app.services.execution_confidence_engine import (
+    ExecutionConfidenceEngine,
+    get_execution_confidence_engine,
+)
+from app.services.explanation_generator import get_explanation_generator
+from app.services.agent_knowledge_assignment_service import (
+    AgentKnowledgeAssignmentService,
+    get_agent_knowledge_assignment_service,
+)
+from app.services.business_signals_engine import BusinessSignalsEngine, get_business_signals_engine
+from app.services.conversational_planning_engine import (
+    ConversationalPlanningEngine,
+    get_conversational_planning_engine,
+)
+from app.services.recommendation_quality_engine import (
+    RecommendationQualityEngine,
+    get_recommendation_quality_engine,
+)
+from app.services.specialist_reasoning_engine import (
+    SpecialistReasoningEngine,
+    get_specialist_reasoning_engine,
+)
+from app.services.org_context_service import get_org_context_service
+from app.services.unified_retrieval_service import UnifiedRetrievalBundle, UnifiedRetrievalService, get_unified_retrieval_service
+from app.services.tool_registry import get_tool_registry
+
+logger = get_logger(__name__)
+
+
+@dataclass
+class AssistantTurnContext:
+    retrieval: UnifiedRetrievalBundle
+    agent: dict[str, Any] = field(default_factory=dict)
+    org_context_block: str = ""
+    memory_block: str = ""
+    company_block: str = ""
+    entity_block: str = ""
+    task_state_section: str = ""
+    connected_integrations: list[str] = field(default_factory=list)
+    context_profile: dict[str, Any] = field(default_factory=dict)
+    context_explanation: str = ""
+    conversation_memory: dict[str, Any] = field(default_factory=dict)
+    business_signals: list[dict[str, Any]] = field(default_factory=list)
+    strategic_plan: dict[str, Any] | None = None
+    knowledge_assignments: list[dict[str, Any]] = field(default_factory=list)
+    knowledge_section: str = ""
+    specialist_modifier: str = ""
+    pre_execution_confidence: dict[str, Any] = field(default_factory=dict)
+
+
+class IntelligenceOrchestrator:
+    """
+    Facade coordinating context prioritization, memory, confidence, and existing execution core.
+    Assistant chat routes through this layer before AgentIntelligence generation.
+    """
+
+    def __init__(self, settings: Settings | None = None) -> None:
+        self.settings = settings or get_settings()
+        self._context_engine: ContextPrioritizationEngine = get_context_prioritization_engine()
+        self._memory_engine: ConversationMemoryEngine = get_conversation_memory_engine(self.settings)
+        self._confidence_engine: ExecutionConfidenceEngine = get_execution_confidence_engine()
+        self._retrieval: UnifiedRetrievalService = get_unified_retrieval_service()
+        self._planning: ConversationalPlanningEngine = get_conversational_planning_engine(self.settings)
+        self._signals: BusinessSignalsEngine = get_business_signals_engine(self.settings)
+        self._quality: RecommendationQualityEngine = get_recommendation_quality_engine(self.settings)
+        self._knowledge: AgentKnowledgeAssignmentService = get_agent_knowledge_assignment_service(self.settings)
+        self._specialist: SpecialistReasoningEngine = get_specialist_reasoning_engine(self.settings)
+        self._registry = get_tool_registry()
+
+    async def prepare_assistant_turn(
+        self,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        query: str,
+        classification: dict[str, Any],
+        client: Any,
+        agent_id: str | None,
+        environment_name: str,
+        engine_settings: Any,
+        task_state: dict[str, Any],
+        persona: dict[str, Any],
+        conversation_history: list[dict[str, Any]] | None = None,
+    ) -> AssistantTurnContext:
+        _ = conversation_history, persona
+        connected = self._registry.list_connected_integrations(client, org_id, environment_name=environment_name)
+        connected_labels = ", ".join(sorted(connected)) if connected else "none connected"
+
+        memory_ctx = await self._memory_engine.build_context_profile(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            query=query,
+            client=client,
+        )
+
+        if agent_id:
+            agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)
+            if not agent:
+                agent = build_synthetic_agent_for_task(query, context={"agent_id": agent_id})
+                agent["id"] = agent_id
+        else:
+            agent = build_synthetic_agent_for_task(query, context={"surface": "assistant"})
+            agent.setdefault("id", "assistant")
+
+        classification = self._specialist.enrich_classification(classification, agent)
+        resolved_agent_id = str(agent.get("id") or agent_id or "")
+        if resolved_agent_id and resolved_agent_id not in {"assistant"}:
+            try:
+                knowledge_assignments = self._knowledge.list_assignments(client, org_id, resolved_agent_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("orchestrator knowledge assignments skipped agent_id=%s error=%s", resolved_agent_id, exc)
+                knowledge_assignments = self._knowledge.resolve_assignments(agent)
+        else:
+            knowledge_assignments = self._knowledge.resolve_assignments(agent)
+        knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
+
+        retrieval = await self._retrieval.retrieve(
+            org_id=org_id,
+            query=query,
+            client=client,
+            agent=agent,
+            parameters={
+                "surface": "assistant",
+                "include_task_history": False,
+                "rag_top_k": getattr(engine_settings, "max_chunks", 8),
+            },
+            environment_name=environment_name,
+            user_id=user_id,
+        )
+
+        org_context_block = ""
+        try:
+            _, org_context_block = get_org_context_service().get_context_bundle(
+                client,
+                org_id,
+                user_id=user_id,
+                depth="standard",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestrator org context skipped org_id=%s error=%s", org_id, exc)
+
+        company_block = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
+        entity_block = ""
+        try:
+            entity_block = await build_entity_context_section(org_id, query, settings=self.settings, client=client)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestrator entity context skipped org_id=%s error=%s", org_id, exc)
+
+        task_state_section = ""
+        if task_state:
+            compact = {
+                key: task_state[key]
+                for key in ("clarified_params", "current_plan", "completed_steps", "pending_steps")
+                if task_state.get(key)
+            }
+            if compact:
+                task_state_section = json.dumps(compact, default=str)[:3000]
+
+        signals_payload = await self._signals.collect_signals(
+            org_id,
+            department=str(classification.get("department") or ""),
+            query=query if classification.get("requires_graph") else None,
+            client=client,
+        )
+        business_signals = list(signals_payload.get("signals") or [])
+        specialist_modifier = self._specialist.build_modifier(
+            agent,
+            classification,
+            business_signals=business_signals,
+        )
+
+        raw_sources = self._build_raw_sources(
+            org_context_block=org_context_block,
+            retrieval=retrieval,
+            memory_section=memory_ctx.get("prompt_section") or retrieval.memory_section,
+            company_block=company_block,
+            entity_block=entity_block,
+            connector_context=f"Connected integrations: {connected_labels}",
+            task_state_section=task_state_section,
+            business_signals=business_signals,
+            knowledge_section=knowledge_section,
+        )
+        profile = self._context_engine.build_context_profile(
+            raw_sources=raw_sources,
+            classification=classification,
+            department=str(classification.get("department") or ""),
+        )
+        explanation = self._context_engine.explain_context_used(profile)
+        mapped_sources = [
+            {"title": row.get("label"), "kind": row.get("type"), "source": row.get("label")}
+            for row in profile.to_explanation_dict().get("sourcesUsed") or []
+            if isinstance(row, dict)
+        ]
+        generated = await get_explanation_generator().explain(
+            "answer",
+            org_id,
+            mapped_sources,
+            {"reasoning_trace": []},
+            classification,
+        )
+        context_explanation = generated or explanation
+
+        sections = profile.prompt_sections
+        pre_confidence = self._confidence_engine.assess_pre_execution(
+            classification=classification,
+            context_profile=profile.to_explanation_dict(),
+        )
+
+        strategic_plan = None
+        if await self._planning.should_plan(classification, query):
+            try:
+                strategic_plan = await self._planning.create_plan(
+                    org_id,
+                    user_id,
+                    conversation_id,
+                    query,
+                    {
+                        "classification": classification,
+                        "connected_integrations": connected,
+                        "business_signals": business_signals,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("orchestrator strategic plan skipped org_id=%s error=%s", org_id, exc)
+
+        return AssistantTurnContext(
+            retrieval=retrieval,
+            agent=agent,
+            org_context_block=sections.get("org_context") or org_context_block,
+            memory_block=sections.get("conversation_memory") or sections.get("agent_memory") or memory_ctx.get("prompt_section") or retrieval.memory_section,
+            company_block=sections.get("company_intelligence") or company_block,
+            entity_block=sections.get("entity_graph") or entity_block,
+            task_state_section=sections.get("task_state") or task_state_section,
+            connected_integrations=connected,
+            context_profile=profile.to_explanation_dict(),
+            context_explanation=context_explanation,
+            conversation_memory=memory_ctx,
+            business_signals=await self._quality.rank_recommendations(
+                business_signals,
+                org_id=org_id,
+                department=str(classification.get("department") or ""),
+            ),
+            strategic_plan=strategic_plan,
+            knowledge_assignments=knowledge_assignments,
+            knowledge_section=knowledge_section,
+            specialist_modifier=specialist_modifier,
+            pre_execution_confidence=pre_confidence,
+        )
+
+    def finalize_confidence(
+        self,
+        *,
+        query: str,
+        answer: str,
+        rag_sources: list[dict[str, Any]] | None,
+        validation_confidence: float | None,
+        conflict_count: int,
+        turn_context: AssistantTurnContext | None,
+        risk_level: str | None = None,
+    ) -> dict[str, Any]:
+        return self._confidence_engine.assess_response(
+            query=query,
+            answer=answer,
+            rag_sources=rag_sources,
+            validation_confidence=validation_confidence,
+            conflict_count=conflict_count,
+            context_profile=turn_context.context_profile if turn_context else None,
+            risk_level=risk_level,
+        )
+
+    @staticmethod
+    def _build_raw_sources(
+        *,
+        org_context_block: str,
+        retrieval: UnifiedRetrievalBundle,
+        memory_section: str,
+        company_block: str,
+        entity_block: str,
+        connector_context: str,
+        task_state_section: str,
+        business_signals: list[dict[str, Any]],
+        knowledge_section: str = "",
+    ) -> list[ContextSource]:
+        sources: list[ContextSource] = []
+        if org_context_block.strip():
+            sources.append(
+                ContextSource(
+                    source_id="org_context",
+                    source_type="org_context",
+                    label="Organization snapshot",
+                    score=0.0,
+                    content=org_context_block,
+                )
+            )
+        if retrieval.rag_section.strip():
+            sources.append(
+                ContextSource(
+                    source_id="rag",
+                    source_type="rag",
+                    label="Knowledge base",
+                    score=0.0,
+                    content=retrieval.rag_section,
+                    metadata={"source_count": len(retrieval.rag_sources)},
+                )
+            )
+        if memory_section.strip():
+            sources.append(
+                ContextSource(
+                    source_id="conversation_memory",
+                    source_type="conversation_memory",
+                    label="Conversation memory",
+                    score=0.0,
+                    content=memory_section,
+                )
+            )
+        if company_block.strip():
+            sources.append(
+                ContextSource(
+                    source_id="company_intelligence",
+                    source_type="company_intelligence",
+                    label="Company intelligence",
+                    score=0.0,
+                    content=company_block,
+                )
+            )
+        if entity_block.strip():
+            sources.append(
+                ContextSource(
+                    source_id="entity_graph",
+                    source_type="entity_graph",
+                    label="Entity relationships",
+                    score=0.0,
+                    content=entity_block,
+                )
+            )
+        if connector_context.strip():
+            sources.append(
+                ContextSource(
+                    source_id="connector_context",
+                    source_type="connector_context",
+                    label="Connected systems",
+                    score=0.0,
+                    content=connector_context,
+                )
+            )
+        if task_state_section.strip():
+            sources.append(
+                ContextSource(
+                    source_id="task_state",
+                    source_type="task_state",
+                    label="Active task state",
+                    score=0.0,
+                    content=f"<task_state>\n{task_state_section}\n</task_state>",
+                )
+            )
+        if business_signals:
+            signal_lines = [
+                f"- {row.get('title') or row.get('summary') or 'Signal'}"
+                for row in business_signals[:5]
+                if isinstance(row, dict)
+            ]
+            if signal_lines:
+                sources.append(
+                    ContextSource(
+                        source_id="graph",
+                        source_type="graph",
+                        label="Business signals",
+                        score=0.0,
+                        content="<business_signals>\n" + "\n".join(signal_lines) + "\n</business_signals>",
+                    )
+                )
+        if knowledge_section.strip():
+            sources.append(
+                ContextSource(
+                    source_id="knowledge_assignments",
+                    source_type="knowledge_assignments",
+                    label="Agent knowledge sources",
+                    score=0.0,
+                    content=f"<knowledge_assignments>\n{knowledge_section}\n</knowledge_assignments>",
+                )
+            )
+        return sources
+
+
+_orchestrator: IntelligenceOrchestrator | None = None
+
+
+def get_intelligence_orchestrator(settings: Settings | None = None) -> IntelligenceOrchestrator:
+    global _orchestrator
+    if _orchestrator is None or settings is not None:
+        _orchestrator = IntelligenceOrchestrator(settings)
+    return _orchestrator

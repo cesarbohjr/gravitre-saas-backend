@@ -61,6 +61,10 @@ import { ClarificationMessage } from "@/components/gravitre/assistant/clarificat
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
 import {
+  BusinessSignalsBanner,
+  type BusinessSignal,
+} from "@/components/gravitre/assistant/business-signals-banner"
+import {
   ChatExecutionPanel,
   type ChatExecutionResult,
   type ChatPendingTask,
@@ -226,8 +230,17 @@ type IntelligenceMeta = {
     score?: number
     band?: "high" | "medium" | "low"
     needsClarification?: boolean
+    contextConfidence?: number
+    missingContext?: string[]
+    reason?: string
   }
   answerExplanation?: string
+  contextExplanation?: string
+  contextProfile?: {
+    sourcesUsed?: Array<{ id?: string; type?: string; label?: string; score?: number }>
+    tokenBudget?: number
+    tokensUsed?: number
+  }
   conflicts?: Array<Record<string, unknown>>
   dialogueMode?: string
   personaKey?: string
@@ -240,6 +253,12 @@ type IntelligenceMeta = {
   simulationSummary?: Record<string, unknown> | null
   executionResult?: ChatExecutionResult | null
   pendingTask?: ChatPendingTask | null
+  businessSignals?: BusinessSignal[]
+  strategicPlan?: {
+    goal?: string
+    confidence?: number
+    risks?: Array<{ title?: string; summary?: string; severity?: string }>
+  } | null
 }
 
 function confidenceBadgeClass(band?: string): string {
@@ -248,9 +267,18 @@ function confidenceBadgeClass(band?: string): string {
   return "bg-zinc-100 text-zinc-600 border-zinc-200"
 }
 
-function WhyThisAnswerPanel({ explanation }: { explanation: string }) {
+function WhyThisAnswerPanel({
+  explanation,
+  contextExplanation,
+  contextProfile,
+}: {
+  explanation: string
+  contextExplanation?: string
+  contextProfile?: IntelligenceMeta["contextProfile"]
+}) {
   const [expanded, setExpanded] = useState(false)
-  if (!explanation.trim()) return null
+  if (!explanation.trim() && !contextExplanation?.trim()) return null
+  const sources = contextProfile?.sourcesUsed ?? []
   return (
     <div className="mt-3 pt-3 border-t border-zinc-200">
       <button
@@ -263,7 +291,20 @@ function WhyThisAnswerPanel({ explanation }: { explanation: string }) {
         <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
       </button>
       {expanded ? (
-        <p className="mt-2 text-xs leading-relaxed text-zinc-600">{explanation}</p>
+        <div className="mt-2 space-y-2 text-xs leading-relaxed text-zinc-600">
+          {explanation.trim() ? <p>{explanation}</p> : null}
+          {contextExplanation?.trim() ? <p>{contextExplanation}</p> : null}
+          {sources.length ? (
+            <ul className="list-disc pl-4 text-zinc-500">
+              {sources.slice(0, 6).map((source) => (
+                <li key={`${source.id}-${source.label}`}>
+                  {source.label || source.type}
+                  {typeof source.score === "number" ? ` (${Math.round(source.score * 100)}%)` : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )
@@ -567,8 +608,12 @@ function ChatMessage({
             </div>
           )}
           {!isUser && sources.length > 0 && <SourceCitations sources={sources} />}
-          {!isUser && intelligenceMeta?.answerExplanation && !streaming && (
-            <WhyThisAnswerPanel explanation={intelligenceMeta.answerExplanation} />
+          {!isUser && (intelligenceMeta?.answerExplanation || intelligenceMeta?.contextExplanation) && !streaming && (
+            <WhyThisAnswerPanel
+              explanation={intelligenceMeta.answerExplanation || ""}
+              contextExplanation={intelligenceMeta.contextExplanation}
+              contextProfile={intelligenceMeta.contextProfile}
+            />
           )}
           {!isUser && pendingConnectors.length > 0 && <ConnectorActionCard connectors={pendingConnectors} />}
         </div>
@@ -726,6 +771,7 @@ export default function AssistantPage() {
   // G2: inline stream-health error (empty completion or transport failure) with retry.
   const [streamError, setStreamError] = useState<string | null>(null)
   const [intelligenceByMessageId, setIntelligenceByMessageId] = useState<Record<string, IntelligenceMeta>>({})
+  const [activeBusinessSignals, setActiveBusinessSignals] = useState<BusinessSignal[]>([])
   const pendingIntelligenceRef = useRef<IntelligenceMeta | null>(null)
   const { preferredPersona, preferredPersonaRef, handlePersonaChange, syncPersona } = usePreferredPersona({
     enabled: Boolean(user),
@@ -891,6 +937,10 @@ export default function AssistantPage() {
           simulationSummary?: Record<string, unknown> | null
           executionResult?: ChatExecutionResult
           pendingTask?: ChatPendingTask
+          contextProfile?: IntelligenceMeta["contextProfile"]
+          contextExplanation?: string
+          businessSignals?: BusinessSignal[]
+          strategicPlan?: IntelligenceMeta["strategicPlan"]
         }
         pendingIntelligenceRef.current = {
           ...payload,
@@ -899,8 +949,15 @@ export default function AssistantPage() {
           proactiveSuggestions: payload.proactiveSuggestions,
           taskState: payload.taskState,
           simulationSummary: payload.simulationSummary,
+          contextProfile: payload.contextProfile,
+          contextExplanation: payload.contextExplanation,
+          businessSignals: payload.businessSignals,
+          strategicPlan: payload.strategicPlan,
           executionResult: payload.executionResult,
           pendingTask: payload.pendingTask,
+        }
+        if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
+          setActiveBusinessSignals(payload.businessSignals)
         }
         if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
         if (payload.personaKey) syncPersona(payload.personaKey)
@@ -922,6 +979,19 @@ export default function AssistantPage() {
     () => assistantApi.dailyBriefing(),
     { revalidateOnFocus: false },
   )
+
+  const { data: businessSignalsPayload } = useSWR(
+    user ? "assistant-business-signals" : null,
+    () => assistantApi.businessSignals(),
+    { revalidateOnFocus: false },
+  )
+
+  useEffect(() => {
+    const fetched = businessSignalsPayload?.signals
+    if (Array.isArray(fetched) && fetched.length > 0 && activeBusinessSignals.length === 0) {
+      setActiveBusinessSignals(fetched as BusinessSignal[])
+    }
+  }, [businessSignalsPayload, activeBusinessSignals.length])
 
   useSWR(
     user && activeConversationId ? `assistant-conversation-state-${activeConversationId}` : null,
@@ -1405,6 +1475,7 @@ export default function AssistantPage() {
           </div>
 
           <OrgContextPill enabled={Boolean(user)} />
+          <BusinessSignalsBanner signals={activeBusinessSignals} />
           {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
 
           {user ? null : (

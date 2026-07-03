@@ -70,4 +70,58 @@ ORCHESTRATION_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "LearningFeedbackLoop",
         "note": "Routes OutcomeTracker feedback to MemoryPromotion and retrieval learning.",
     },
+    "intelligence_orchestrator": {
+        "status": "live",
+        "module": "app.services.intelligence_orchestrator",
+        "service": "IntelligenceOrchestrator",
+        "note": "Unified assistant facade — context prioritization, memory, confidence, execution core.",
+    },
+    "context_prioritization_engine": {
+        "status": "live",
+        "module": "app.services.context_prioritization_engine",
+        "service": "ContextPrioritizationEngine",
+        "note": "Scores and ranks org/RAG/memory/graph sources under token budget.",
+    },
+    "conversation_memory_engine": {
+        "status": "live",
+        "module": "app.services.conversation_memory_engine",
+        "service": "ConversationMemoryEngine",
+        "note": "Preferences, rejections, and action outcomes across chat turns.",
+    },
+    "execution_confidence_engine": {
+        "status": "live",
+        "module": "app.services.execution_confidence_engine",
+        "service": "ExecutionConfidenceEngine",
+        "note": "Unified pre/post execution confidence for assistant and intelligence API.",
+    },
+    "conversational_planning_engine": {
+        "status": "live",
+        "module": "app.services.conversational_planning_engine",
+        "service": "ConversationalPlanningEngine",
+        "note": "Strategic plans with risks, dependencies, approvals, and confidence.",
+    },
+    "specialist_reasoning_engine": {
+        "status": "live",
+        "module": "app.services.specialist_reasoning_engine",
+        "service": "SpecialistReasoningEngine",
+        "note": "Department persona modifiers and KPI-focused reasoning.",
+    },
+    "recommendation_quality_engine": {
+        "status": "live",
+        "module": "app.services.recommendation_quality_engine",
+        "service": "RecommendationQualityEngine",
+        "note": "Outcome-informed recommendation ranking and feedback loop.",
+    },
+    "business_signals_engine": {
+        "status": "live",
+        "module": "app.services.business_signals_engine",
+        "service": "BusinessSignalsEngine",
+        "note": "Proactive alerts, risks, and opportunities for assistant — not admin-only.",
+    },
+    "agent_knowledge_assignment_service": {
+        "status": "live",
+        "module": "app.services.agent_knowledge_assignment_service",
+        "service": "AgentKnowledgeAssignmentService",
+        "note": "CRUD knowledge source bindings per agent with sync freshness.",
+    },
 }

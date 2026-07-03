@@ -59,6 +59,11 @@ def sse_intelligence_metadata(
     simulation_summary: dict[str, Any] | None = None,
     execution_result: dict[str, Any] | None = None,
     pending_task: dict[str, Any] | None = None,
+    context_profile: dict[str, Any] | None = None,
+    context_explanation: str | None = None,
+    business_signals: list[dict[str, Any]] | None = None,
+    strategic_plan: dict[str, Any] | None = None,
+    knowledge_assignments: list[dict[str, Any]] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -77,6 +82,11 @@ def sse_intelligence_metadata(
                 "simulationSummary": simulation_summary,
                 "executionResult": execution_result,
                 "pendingTask": pending_task,
+                "contextProfile": context_profile,
+                "contextExplanation": context_explanation,
+                "businessSignals": business_signals or [],
+                "strategicPlan": strategic_plan,
+                "knowledgeAssignments": knowledge_assignments or [],
             },
         }
     )

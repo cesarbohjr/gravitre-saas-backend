@@ -490,6 +490,23 @@ async def list_connector_action_catalog(
     return list_full_catalog()
 
 
+@connectors_router.get("/catalog/execution-matrix")
+async def list_connector_execution_matrix(
+    _user: Annotated[dict, Depends(get_current_user)],
+    vendor: str | None = None,
+) -> dict:
+    """Inspectable connector action execution matrix for chat and invoke_tool coverage."""
+    from app.services.connector_execution_matrix import (
+        get_execution_matrix,
+        matrix_summary,
+    )
+
+    entries = get_execution_matrix()
+    if vendor:
+        entries = [row for row in entries if row.get("connectorId") == vendor.lower().strip()]
+    return {"summary": matrix_summary(), "entries": entries}
+
+
 @connectors_router.get("/catalog/actions/{vendor}")
 async def get_connector_action_catalog_vendor(
     vendor: str,

@@ -608,8 +608,20 @@ class ToolRegistry:
     """
 
     def __init__(self) -> None:
-        self._specs = _build_agent_tool_specs()
+        from app.services.chat_tool_bridge import build_dynamic_chat_tool_specs
+
+        dynamic = build_dynamic_chat_tool_specs()
+        static = _build_agent_tool_specs()
+        self._static_specs = static
+        self._specs = {**dynamic, **static}
         self._registered = set(list_registered_actions())
+
+    def preferred_static_tool_name(self, invoke_action: str, integration: str) -> str | None:
+        """Return curated static tool name for an invoke_tool action when one exists."""
+        for name, spec in self._static_specs.items():
+            if spec.invoke_action == invoke_action and spec.integration == integration:
+                return name
+        return None
 
     def list_tool_names(self) -> list[str]:
         """All agent tool names defined in this registry."""

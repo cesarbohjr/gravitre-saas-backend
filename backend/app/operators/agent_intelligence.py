@@ -706,6 +706,7 @@ class AgentIntelligence:
         client: Any,
         conflicts: list[dict[str, Any]] | None,
         refined_query: str | None,
+        turn_context: Any | None = None,
     ) -> dict[str, Any]:
         validation: dict[str, Any] | None = None
         content = answer
@@ -763,12 +764,16 @@ class AgentIntelligence:
         trace = []
         if react_result is not None:
             trace = react_result.to_dict().get("trace") or []
-        confidence = compute_sync_confidence(
+        from app.services.intelligence_orchestrator import get_intelligence_orchestrator
+
+        confidence = get_intelligence_orchestrator(settings).finalize_confidence(
             query=query,
             answer=content,
-            chunks=rag_sources,
+            rag_sources=rag_sources,
             validation_confidence=(validation or {}).get("confidence"),
             conflict_count=len(conflicts or []),
+            turn_context=turn_context,
+            risk_level=str((turn_context.pre_execution_confidence or {}).get("risk_level") if turn_context else "low"),
         )
         explanation = await generate_answer_explanation_cached(
             settings,
@@ -778,11 +783,15 @@ class AgentIntelligence:
             conflicts=conflicts,
             refined_query=refined_query if refined_query and refined_query != query else None,
         )
+        if turn_context and turn_context.context_explanation:
+            explanation = f"{explanation}\n\n{turn_context.context_explanation}".strip()
         return {
             "content": content,
             "validation": validation,
             "confidence": confidence,
             "explanation": explanation,
+            "context_profile": turn_context.context_profile if turn_context else None,
+            "context_explanation": turn_context.context_explanation if turn_context else None,
         }
 
     async def execute_task(
@@ -1142,6 +1151,111 @@ class AgentIntelligence:
             )
             return
 
+        connected_early = self.tool_registry.list_connected_integrations(
+            client, org_id, environment_name=environment_name
+        )
+        from app.services.chat_orchestration_service import get_chat_orchestration_service
+
+        orchestration_turn = await get_chat_orchestration_service(active_settings).process_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id or "",
+            message=task_text,
+            classification=pipeline_classification,
+            task_state=task_state,
+            connected_integrations=connected_early,
+            client=client,
+        )
+        if orchestration_turn and orchestration_turn.get("stop_pipeline"):
+            task_state = orchestration_turn.get("task_state") or task_state
+            response_text = str(orchestration_turn.get("message") or "")
+            dialogue_mode = str(orchestration_turn.get("dialogue_mode") or "answer")
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, response_text)
+            yield sse_text_end(text_id)
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Multi-step connector orchestration",
+                conflicts=None,
+                refined_query=None,
+                validation=None,
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=orchestration_turn.get("execution_result"),
+                pending_task=orchestration_turn.get("pending_task"),
+            )
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=[],
+                react_result=None,
+                model="chat_orchestration",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Multi-step connector orchestration",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=orchestration_turn.get("execution_result"),
+                pending_task=orchestration_turn.get("pending_task"),
+            )
+            return
+
+        from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+
+        connector_turn = await get_chat_connector_execution_service(active_settings).process_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id or "",
+            message=task_text,
+            classification=pipeline_classification,
+            task_state=task_state,
+            connected_integrations=connected_early,
+            client=client,
+        )
+        if connector_turn and connector_turn.get("stop_pipeline"):
+            task_state = connector_turn.get("task_state") or task_state
+            response_text = str(connector_turn.get("message") or "")
+            dialogue_mode = str(connector_turn.get("dialogue_mode") or "answer")
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, response_text)
+            yield sse_text_end(text_id)
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Governed connector execution",
+                conflicts=None,
+                refined_query=None,
+                validation=None,
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=connector_turn.get("execution_result"),
+                pending_task=connector_turn.get("pending_task"),
+            )
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=[],
+                react_result=None,
+                model="chat_connector",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Governed connector execution",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=connector_turn.get("execution_result"),
+                pending_task=connector_turn.get("pending_task"),
+            )
+            return
+
         refined_query = task_text
         if mode_key != "fast":
             rewrite = await rewrite_for_retrieval(
@@ -1152,35 +1266,26 @@ class AgentIntelligence:
             )
             refined_query = rewrite.get("refined_query") or task_text
 
-        if agent_id:
-            agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)
-            if not agent:
-                agent = build_synthetic_agent_for_task(task_text, context={"agent_id": agent_id})
-                agent["id"] = agent_id
-        else:
-            agent = build_synthetic_agent_for_task(task_text, context={"surface": "assistant"})
-            agent.setdefault("id", "assistant")
+        from app.services.intelligence_orchestrator import get_intelligence_orchestrator
 
-        retrieval = await self.unified_retrieval.retrieve(
+        turn_ctx = await get_intelligence_orchestrator(active_settings).prepare_assistant_turn(
             org_id=org_id,
-            query=refined_query,
-            client=client,
-            agent=agent,
-            parameters={
-                "surface": "assistant",
-                "include_task_history": False,
-                "rag_top_k": engine_settings.max_chunks,
-            },
-            environment_name=environment_name,
             user_id=user_id,
-            message_id=message_id,
-            reranking_enabled=engine_settings.reranking_enabled,
+            conversation_id=conversation_id or "",
+            query=refined_query,
+            classification=pipeline_classification,
+            client=client,
+            agent_id=agent_id,
+            environment_name=environment_name,
+            engine_settings=engine_settings,
+            task_state=task_state,
+            persona=persona,
+            conversation_history=conversation_history,
         )
+        agent = turn_ctx.agent
+        retrieval = turn_ctx.retrieval
         org_context = retrieval.org_context
-        connected = org_context.get("connectedIntegrations") or self.tool_registry.list_connected_integrations(
-            client, org_id, environment_name=environment_name
-        )
-        connected_list = list(connected)
+        connected_list = list(turn_ctx.connected_integrations)
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
 
@@ -1255,68 +1360,24 @@ class AgentIntelligence:
             connected_integrations=connected_list,
         )
         memory_section = retrieval.memory_section
+        org_context_block = turn_ctx.org_context_block
+        memory_block = turn_ctx.memory_block or memory_section or ""
+        company_block = turn_ctx.company_block
+        entity_block = turn_ctx.entity_block
+        task_state_section = turn_ctx.task_state_section
+        context_explanation = turn_ctx.context_explanation
+        if turn_ctx.strategic_plan:
+            from app.services.conversational_planning_engine import get_conversational_planning_engine
 
-        org_context_block = ""
-        memory_block = memory_section or ""
+            plan_section = get_conversational_planning_engine(active_settings).format_plan_section(turn_ctx.strategic_plan)
+            if plan_section:
+                task_state_section = f"{task_state_section}\n\n<strategic_plan>\n{plan_section}\n</strategic_plan>".strip()
+            task_state = dict(task_state or {})
+            task_state["current_plan"] = turn_ctx.strategic_plan
+        specialist_modifier = turn_ctx.specialist_modifier
+        persona_modifier_parts = [part for part in (persona.get("system_prompt_modifier"), specialist_modifier) if part]
+        combined_persona_modifier = "\n\n".join(persona_modifier_parts) if persona_modifier_parts else None
         surface = "agent_chat" if agent_id else "assistant"
-        if surface == "assistant" or agent_id:
-            try:
-                _, org_context_block = get_org_context_service().get_context_bundle(
-                    client,
-                    org_id,
-                    user_id=user_id,
-                    depth="standard",
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.debug(
-                    "assistant org context bundle skipped org_id=%s error=%s",
-                    org_id,
-                    str(exc),
-                )
-        if agent_id and task_text:
-            try:
-                from app.services.agent_memory_service import (
-                    build_task_retrieval_context,
-                    format_retrieval_prompt_section,
-                )
-
-                memory_context = build_task_retrieval_context(
-                    active_settings,
-                    client,
-                    org_id=org_id,
-                    agent=agent,
-                    task=task_text,
-                    parameters={},
-                )
-                agent_memory_block = format_retrieval_prompt_section(memory_context)
-                if agent_memory_block.strip():
-                    memory_block = agent_memory_block
-            except Exception as exc:  # noqa: BLE001
-                logger.debug(
-                    "assistant agent memory preload skipped org_id=%s agent_id=%s error=%s",
-                    org_id,
-                    agent_id,
-                    str(exc),
-                )
-
-        company_block = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
-        entity_block = ""
-        try:
-            entity_block = await build_entity_context_section(
-                org_id, task_text, settings=active_settings, client=client
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("entity_context_skipped org_id=%s error=%s", org_id, exc)
-
-        task_state_section = ""
-        if task_state:
-            compact = {
-                key: task_state[key]
-                for key in ("clarified_params", "current_plan", "completed_steps", "pending_steps")
-                if task_state.get(key)
-            }
-            if compact:
-                task_state_section = json.dumps(compact, default=str)[:3000]
 
         system_prompt = self._build_system_prompt(
             surface,
@@ -1331,7 +1392,7 @@ class AgentIntelligence:
             entity_relationship_section=entity_block or None,
             assistant_base_prompt=assistant_base_prompt,
             conflicts=rag_conflicts,
-            persona_modifier=persona.get("system_prompt_modifier"),
+            persona_modifier=combined_persona_modifier,
             sentiment_adaptation=str(sentiment.get("recommended_adaptation") or "none"),
             task_state_section=task_state_section or None,
         )
@@ -1537,6 +1598,7 @@ class AgentIntelligence:
             client=client,
             conflicts=rag_conflicts,
             refined_query=refined_query,
+            turn_context=turn_ctx,
         )
         full_content = finalized["content"]
         if finalized["confidence"].get("needs_clarification") and mode_key != "fast":
@@ -1565,8 +1627,26 @@ class AgentIntelligence:
             dialogue_mode,
             full_content,
             connected_integrations=connected_list,
+            business_signals=turn_ctx.business_signals,
         )
         suggestion_texts = [row.get("text") for row in proactive_suggestions if row.get("text")]
+
+        from app.services.recommendation_quality_engine import get_recommendation_quality_engine
+
+        quality_engine = get_recommendation_quality_engine(active_settings)
+        for row in proactive_suggestions[:3]:
+            rec_id = quality_engine.stable_recommendation_id(
+                org_id,
+                str(row.get("type") or "suggestion"),
+                str(row.get("text") or "")[:80],
+            )
+            await quality_engine.record_recommendation_created(
+                org_id=org_id,
+                recommendation_id=rec_id,
+                department=str(pipeline_classification.get("department") or ""),
+                confidence_score=float(row.get("confidence") or 0.55),
+                strategy_key=str(row.get("type") or ""),
+            )
 
         # Some ReAct paths populate react_result.answer without emitting text_delta
         # events (e.g. empty delta chunks). The UI contract still requires text-start/
@@ -1597,6 +1677,11 @@ class AgentIntelligence:
             proactive_suggestions=suggestion_texts,
             task_state=task_state if dialogue_mode == "guide" else None,
             simulation_summary=risk_evaluation.get("simulation_summary"),
+            context_profile=finalized.get("context_profile"),
+            context_explanation=finalized.get("context_explanation"),
+            business_signals=turn_ctx.business_signals,
+            strategic_plan=turn_ctx.strategic_plan,
+            knowledge_assignments=turn_ctx.knowledge_assignments,
         )
 
         yield AssistantStreamComplete(

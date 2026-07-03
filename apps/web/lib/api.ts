@@ -1268,6 +1268,12 @@ export const assistantApi = {
     reason?: string
     corrected_answer?: string
   }) => postJson<{ status: string }>(apiUrl("/api/assistant/feedback"), data),
+  businessSignals: (department?: string) =>
+    fetcher<{ signals: Array<Record<string, unknown>>; collected_at?: string }>(
+      apiUrl(`/api/assistant/business-signals${department ? `?department=${encodeURIComponent(department)}` : ""}`),
+    ),
+  recommendationFeedback: (data: { recommendation_id: string; accepted: boolean; department?: string }) =>
+    postJson<{ status: string }>(apiUrl("/api/assistant/recommendation-feedback"), data),
 }
 
 // ============ Training ============

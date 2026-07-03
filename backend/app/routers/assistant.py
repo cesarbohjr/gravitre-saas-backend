@@ -1,7 +1,7 @@
 """Conversational AI assistant — governed streaming endpoint.
 
-Every completion flows through AgentIntelligence.execute_task_streaming() and
-ReActEngine.run_streaming(), with ModelRouter.prepare_stream() guardrails
+Every completion flows through IntelligenceOrchestrator.prepare_assistant_turn() and
+AgentIntelligence.execute_task_streaming() / ReActEngine.run_streaming(), with ModelRouter.prepare_stream() guardrails
 (killswitch, rate limit, budget gate, moderation) before streaming starts.
 
 Tool results are org-scoped and fenced inside the ReAct loop before model
@@ -1023,6 +1023,53 @@ async def submit_assistant_feedback(
     return {"status": "ok"}
 
 
+class RecommendationFeedbackRequest(BaseModel):
+    recommendation_id: str
+    accepted: bool
+    department: str | None = None
+
+
+@router.get("/business-signals")
+async def assistant_business_signals(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    department: str | None = None,
+) -> dict[str, Any]:
+    _ = current_user
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.business_signals_engine import get_business_signals_engine
+
+    client = get_supabase_client(settings)
+    return await get_business_signals_engine(settings).collect_signals(
+        org_id,
+        department=department,
+        client=client,
+    )
+
+
+@router.post("/recommendation-feedback")
+async def assistant_recommendation_feedback(
+    body: RecommendationFeedbackRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str]:
+    _ = current_user
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.recommendation_quality_engine import get_recommendation_quality_engine
+
+    await get_recommendation_quality_engine(settings).record_recommendation_feedback(
+        org_id=org_id,
+        recommendation_id=body.recommendation_id.strip(),
+        accepted=body.accepted,
+        department=body.department,
+    )
+    return {"status": "ok"}
+
+
 @router.get("/conversation/{conversation_id}/state")
 async def get_conversation_task_state(
     conversation_id: str,
@@ -1068,6 +1115,8 @@ async def execute_conversation_task(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation required")
 
     from app.services.conversational_execution_service import get_conversational_execution_service
+    from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+    from app.services.chat_orchestration_service import get_chat_orchestration_service
     from app.services.conversation_state_service import get_conversation_state_service
 
     client = get_supabase_client(settings)
@@ -1084,15 +1133,31 @@ async def execute_conversation_task(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
     user_id = str(current_user.get("user_id") or "")
-    execution = await get_conversational_execution_service(settings).execute_confirmed_task(
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        client=client,
-    )
-    task_state = await get_conversation_state_service(settings).get_task_state(
-        conversation_id, org_id, client=client
-    )
+    state_service = get_conversation_state_service(settings)
+    task_state = await state_service.get_task_state(conversation_id, org_id, client=client)
+    pending_type = str((task_state.get("pending_task") or {}).get("type") or "")
+    if pending_type == "connector_orchestration":
+        execution = await get_chat_orchestration_service(settings).execute_confirmed_task(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            client=client,
+        )
+    elif pending_type == "connector_action":
+        execution = await get_chat_connector_execution_service(settings).execute_confirmed_task(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            client=client,
+        )
+    else:
+        execution = await get_conversational_execution_service(settings).execute_confirmed_task(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            client=client,
+        )
+    task_state = await state_service.get_task_state(conversation_id, org_id, client=client)
     return {
         "success": execution.success,
         "execution_result": execution.__dict__,

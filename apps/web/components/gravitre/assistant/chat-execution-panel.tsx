@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
+import { ArrowRight, CheckCircle2, Loader2, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -16,9 +16,28 @@ export type ChatExecutionResult = {
   task_label?: string
 }
 
+export type OrchestrationStepPreview = {
+  step_id?: string
+  label?: string
+  kind?: string
+  supported?: boolean
+  requires_approval?: boolean
+  skip_reason?: string
+}
+
 export type ChatPendingTask = {
   type?: string
-  params?: Record<string, string>
+  status?: string
+  params?: {
+    goal?: string
+    total_steps?: number
+    current_step_index?: number
+    steps?: OrchestrationStepPreview[]
+    label?: string
+    invoke_action?: string
+    kind?: string
+  }
+  current_step?: OrchestrationStepPreview
 }
 
 type ChatExecutionPanelProps = {
@@ -28,6 +47,102 @@ type ChatExecutionPanelProps = {
   confirming?: boolean
   onConfirm?: () => void
   className?: string
+}
+
+function pendingLabel(pendingTask: ChatPendingTask): string {
+  const params = pendingTask.params
+  if (pendingTask.type === "connector_orchestration") {
+    if (pendingTask.status === "awaiting_step_confirm" && pendingTask.current_step?.label) {
+      return pendingTask.current_step.label
+    }
+    if (params?.goal) return params.goal.slice(0, 120)
+    return "Multi-step orchestration"
+  }
+  if (!params || typeof params !== "object") return "this action"
+  if (typeof params.label === "string" && params.label.trim()) return params.label
+  if (typeof params.invoke_action === "string") return params.invoke_action
+  return "this action"
+}
+
+function pendingDescription(pendingTask: ChatPendingTask): string {
+  if (pendingTask.type === "connector_orchestration") {
+    const params = pendingTask.params
+    const total = params?.total_steps ?? params?.steps?.length ?? 0
+    if (pendingTask.status === "awaiting_step_confirm") {
+      const index = (params?.current_step_index ?? 0) + 1
+      const action = pendingTask.current_step?.label || pendingLabel(pendingTask)
+      return `Step ${index} of ${total}: approve **${action}** before Gravitre runs it in your connected apps.`
+    }
+    return (
+      `Gravitre will run ${total} steps across your connected apps. ` +
+      "Read steps run automatically; each write step will ask for approval."
+    )
+  }
+  if (pendingTask.type === "connector_action") {
+    const params = pendingTask.params
+    const action =
+      params && typeof params.invoke_action === "string" ? params.invoke_action : "connector action"
+    const kind = params && typeof params.kind === "string" ? params.kind : "write"
+    return `Gravitre will run ${action} (${kind} action) through your connected integration after you approve.`
+  }
+  if (pendingTask.type === "create_agent") {
+    return "Gravitre will create your agent and notify you when it is ready."
+  }
+  return "Gravitre will create a draft workflow you can open in the builder."
+}
+
+function confirmButtonLabel(pendingTask: ChatPendingTask, confirming: boolean): string {
+  if (confirming) {
+    if (pendingTask.type === "connector_orchestration") {
+      return pendingTask.status === "awaiting_step_confirm" ? "Running step…" : "Starting…"
+    }
+    return pendingTask.type === "connector_action" ? "Running…" : "Creating…"
+  }
+  if (pendingTask.type === "connector_orchestration") {
+    return pendingTask.status === "awaiting_step_confirm" ? "Approve step" : "Approve plan"
+  }
+  if (pendingTask.type === "connector_action") return "Approve and run"
+  return "Confirm and create"
+}
+
+function StepBadge({ label, tone }: { label: string; tone: "read" | "write" | "skipped" | "warning" }) {
+  const styles = {
+    read: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    write: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    skipped: "border-muted-foreground/20 bg-muted/40 text-muted-foreground",
+    warning: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  }[tone]
+  return (
+    <span className={cn("ml-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide", styles)}>
+      {label}
+    </span>
+  )
+}
+
+function OrchestrationStepList({ steps }: { steps: OrchestrationStepPreview[] }) {
+  if (!steps.length) return null
+  return (
+    <ol className="mt-2 space-y-2 text-xs text-muted-foreground">
+      {steps.map((step, index) => (
+        <li key={step.step_id || index} className="flex gap-2">
+          <span className="font-medium text-foreground/80">{index + 1}.</span>
+          <span className="min-w-0 flex-1">
+            <span className="text-foreground/90">{step.label || "Step"}</span>
+            {step.supported === false ? (
+              <StepBadge label="skipped" tone="skipped" />
+            ) : step.kind === "read" ? (
+              <StepBadge label="read auto" tone="read" />
+            ) : (
+              <StepBadge label="needs approval" tone="write" />
+            )}
+            {step.skip_reason ? (
+              <p className="mt-0.5 text-[11px] text-orange-700 dark:text-orange-400">{step.skip_reason}</p>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
 }
 
 export function ChatExecutionPanel({
@@ -53,7 +168,7 @@ export function ChatExecutionPanel({
               {executionResult.task_label || executionResult.title || "Task completed"}
             </p>
             {executionResult.body ? (
-              <p className="mt-1 text-xs text-muted-foreground">{executionResult.body}</p>
+              <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <Button asChild size="sm" className="h-8">
@@ -65,7 +180,7 @@ export function ChatExecutionPanel({
               {executionResult.external_url ? (
                 <Button asChild size="sm" variant="outline" className="h-8">
                   <a href={executionResult.external_url} target="_blank" rel="noopener noreferrer">
-                    External result
+                    Open external result
                   </a>
                 </Button>
               ) : null}
@@ -77,34 +192,68 @@ export function ChatExecutionPanel({
   }
 
   if (dialogueMode === "confirm" && pendingTask?.type && onConfirm) {
+    const isConnector = pendingTask.type === "connector_action"
+    const isOrchestration = pendingTask.type === "connector_orchestration"
+    const needsApproval = isConnector || isOrchestration
     return (
       <div
         className={cn(
-          "mt-3 rounded-xl border border-info/20 bg-info/5 px-4 py-3 text-sm",
+          "mt-3 rounded-xl border px-4 py-3 text-sm",
+          needsApproval ? "border-amber-500/25 bg-amber-500/5" : "border-info/20 bg-info/5",
           className,
         )}
       >
-        <p className="text-xs font-medium uppercase tracking-wide text-info">Ready to execute</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {pendingTask.type === "create_agent"
-            ? "Gravitre will create your agent and notify you when it is ready."
-            : "Gravitre will create a draft workflow you can open in the builder."}
-        </p>
-        <Button
-          size="sm"
-          className="mt-3 h-8"
-          disabled={confirming}
-          onClick={onConfirm}
-        >
-          {confirming ? (
-            <>
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              Creating…
-            </>
-          ) : (
-            "Confirm and create"
-          )}
-        </Button>
+        <div className="flex items-start gap-2">
+          {needsApproval ? (
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <p
+              className={cn(
+                "text-xs font-medium uppercase tracking-wide",
+                needsApproval ? "text-amber-700 dark:text-amber-400" : "text-info",
+              )}
+            >
+              {isOrchestration
+                ? pendingTask.status === "awaiting_step_confirm"
+                  ? "Step approval required"
+                  : "Orchestration plan"
+                : isConnector
+                  ? "Approval required"
+                  : "Ready to execute"}
+            </p>
+            {(isConnector || pendingTask.status === "awaiting_step_confirm") && (
+              <p className="mt-1 text-sm font-medium text-foreground">{pendingLabel(pendingTask)}</p>
+            )}
+            {isConnector && pendingTask.params?.kind ? (
+              <div className="mt-1">
+                <StepBadge
+                  label={pendingTask.params.kind === "read" ? "read auto" : "needs approval"}
+                  tone={pendingTask.params.kind === "read" ? "read" : "write"}
+                />
+              </div>
+            ) : null}
+            <p className="mt-1 text-xs text-muted-foreground">{pendingDescription(pendingTask)}</p>
+            {isOrchestration && pendingTask.status === "awaiting_plan_confirm" ? (
+              <OrchestrationStepList steps={pendingTask.params?.steps ?? []} />
+            ) : null}
+            <Button
+              size="sm"
+              className="mt-3 h-8"
+              disabled={confirming}
+              onClick={onConfirm}
+            >
+              {confirming ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  {confirmButtonLabel(pendingTask, true)}
+                </>
+              ) : (
+                confirmButtonLabel(pendingTask, false)
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }
