@@ -16,7 +16,7 @@ export function TrialExpiredBanner({
 }: TrialExpiredBannerProps) {
   return (
     <div
-      className="border-b border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950"
+      className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-foreground"
       role="alert"
       aria-live="polite"
       data-testid="trial-expired-banner"

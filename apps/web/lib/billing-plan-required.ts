@@ -7,10 +7,20 @@ export type PlanRequiredDetail = {
   upgrade_url?: string
 }
 
-export function emitPlanRequired(detail: PlanRequiredDetail) {
+export function persistPlanRequired(detail: PlanRequiredDetail) {
   if (typeof window === "undefined") return
-  window.dispatchEvent(new CustomEvent(PLAN_REQUIRED_EVENT, { detail }))
   window.sessionStorage.setItem("gravitre-plan-required", JSON.stringify(detail))
+}
+
+export function emitPlanRequired(
+  detail: PlanRequiredDetail,
+  options?: { dispatchEvent?: boolean },
+) {
+  if (typeof window === "undefined") return
+  persistPlanRequired(detail)
+  if (options?.dispatchEvent !== false) {
+    window.dispatchEvent(new CustomEvent(PLAN_REQUIRED_EVENT, { detail }))
+  }
 }
 
 export function readStoredPlanRequired(): PlanRequiredDetail | null {

@@ -4,17 +4,22 @@ import { createSupabaseServerClient } from "@/lib/supabase-server"
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as const
 
-function fallbackBillingStatus() {
+/** Do not grant access when backend billing is unavailable — client uses session 402 state. */
+function degradedBillingStatus(reason: string) {
   return {
-    billingStatus: "trialing",
+    billingStatus: "unknown",
     planCode: "node",
-    canAccessApp: true,
+    canAccessApp: null,
     requiresUpgrade: false,
     upgradeReason: null,
     trialEndsAt: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
+    trialExpired: false,
+    billingState: "unknown",
+    billingKnown: false,
     _auth_degraded: true,
+    _degraded_reason: reason,
   }
 }
 
@@ -42,7 +47,7 @@ export async function GET(request: NextRequest) {
     authHeader?.startsWith("Bearer ") ? authHeader : accessToken ? `Bearer ${accessToken}` : null
 
   if (!bearer) {
-    return NextResponse.json(fallbackBillingStatus(), {
+    return NextResponse.json(degradedBillingStatus("missing_bearer"), {
       status: 200,
       headers: JSON_HEADERS,
     })
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest) {
       user.email ?? user.id,
       proxied.status,
     )
-    return NextResponse.json(fallbackBillingStatus(), {
+    return NextResponse.json(degradedBillingStatus(`backend_${proxied.status}`), {
       status: 200,
       headers: JSON_HEADERS,
     })

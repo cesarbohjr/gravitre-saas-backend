@@ -67,6 +67,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { billingApi, ApiRequestError } from "@/lib/api"
+import { ensureSelectedOrg } from "@/lib/org-context"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
 
@@ -289,9 +290,14 @@ function BillingPageInner() {
   }, [router, searchParams])
 
   // Handler functions
-  const handleUpgrade = (planCode: string) => {
+  const handleUpgrade = async (planCode: string) => {
     if (!user) {
       toast.error("Sign in required")
+      return
+    }
+    const orgId = await ensureSelectedOrg(true)
+    if (!orgId) {
+      toast.error("Could not resolve your organization. Refresh the page and try again.")
       return
     }
     setSelectedPlan(planCode)

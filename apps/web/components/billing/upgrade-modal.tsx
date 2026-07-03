@@ -3,9 +3,11 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
+import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { SELECTABLE_PLANS, formatPlanPrice } from "@/lib/plans"
+import { ensureSelectedOrg } from "@/lib/org-context"
 import { cn } from "@/lib/utils"
 
 interface UpgradeModalProps {
@@ -26,7 +28,12 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
         ? "Payment required"
         : "Choose a plan"
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    const orgId = await ensureSelectedOrg(true)
+    if (!orgId) {
+      toast.error("Could not resolve your organization. Refresh the page and try again.")
+      return
+    }
     onOpenChange(false)
     router.push(`/settings/billing/checkout?plan=${selectedPlan}&interval=monthly`)
   }

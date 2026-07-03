@@ -26,25 +26,25 @@ import {
   PLAN_REQUIRED_EVENT,
   readStoredPlanRequired,
   clearStoredPlanRequired,
+  emitPlanRequired,
   type PlanRequiredDetail,
 } from "@/lib/billing-plan-required"
+import {
+  isBillingStatusDegraded,
+  isTrialExpiredState,
+  resolveCanAccessApp,
+  trialExpiredBannerMessage,
+  type BillingStatusSnapshot,
+} from "@/lib/billing-trial-state"
 
 interface AppShellProps {
   children: React.ReactNode
   title?: string
 }
 
-interface BillingStatus {
-  billingStatus?: string
-  planCode?: string
-  canAccessApp?: boolean
-  requiresUpgrade?: boolean
-  upgradeReason?: string | null
-  trialEndsAt?: string | null
+interface BillingStatus extends BillingStatusSnapshot {
   currentPeriodEnd?: string | null
   cancelAtPeriodEnd?: boolean
-  trialExpired?: boolean
-  billingState?: string
 }
 
 interface MeData {
@@ -57,7 +57,7 @@ interface MeData {
   billing?: {
     status?: string
     plan_code?: string
-    can_access_app?: boolean
+    can_access_app?: boolean | null
     trial_ends_at?: string | null
   }
 }
@@ -93,14 +93,14 @@ export function AppShell({ children, title }: AppShellProps) {
 
   useGlobalWorkShortcuts()
 
-  // Fetch billing status (no polling — avoids periodic shell revalidation)
+  // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
   const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
     user ? "/api/billing/status" : null,
     apiFetcher,
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60_000,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 30_000,
     }
   )
 
@@ -130,17 +130,14 @@ export function AppShell({ children, title }: AppShellProps) {
   const billingStatus = String(billingStatusData?.billingStatus ?? "inactive").toLowerCase()
   const trialEndsAt = billingStatusData?.trialEndsAt
   const requiresUpgrade = billingStatusData?.requiresUpgrade ?? false
-  const trialExpired =
-    billingStatusData?.trialExpired === true ||
-    billingStatusData?.billingState === "trial_expired" ||
-    billingStatusData?.upgradeReason === "trial_expired" ||
-    planRequired?.subscription_status === "trial_expired"
+  const trialExpired = isTrialExpiredState(billingStatusData, planRequired)
   const billingHardBlock =
     billingAccessDenied && !trialExpired
-  const canAccessApp =
-    billingStatusData?.canAccessApp ??
-    meData?.billing?.can_access_app ??
-    !billingAccessDenied
+  const canAccessApp = resolveCanAccessApp(
+    billingStatusData,
+    meData?.billing?.can_access_app,
+    planRequired,
+  )
 
   useEffect(() => {
     setPlanRequired(readStoredPlanRequired())
@@ -154,11 +151,26 @@ export function AppShell({ children, title }: AppShellProps) {
   }, [])
 
   useEffect(() => {
-    if (canAccessApp && billingStatusData?.canAccessApp !== false) {
-      clearStoredPlanRequired()
-      setPlanRequired(null)
-    }
-  }, [canAccessApp, billingStatusData?.canAccessApp])
+    if (isBillingStatusDegraded(billingStatusData) || trialExpired) return
+    if (billingStatusData?.canAccessApp !== true) return
+    clearStoredPlanRequired()
+    setPlanRequired(null)
+  }, [billingStatusData, trialExpired])
+
+  useEffect(() => {
+    if (isBillingStatusDegraded(billingStatusData)) return
+    if (!isTrialExpiredState(billingStatusData, null)) return
+    emitPlanRequired(
+      {
+        error: "plan_required",
+        subscription_status: "trial_expired",
+        message: "Your 7-day trial has ended. Upgrade to continue using Gravitre.",
+        upgrade_url: "/settings/billing",
+      },
+      { dispatchEvent: false },
+    )
+    setPlanRequired(readStoredPlanRequired())
+  }, [billingStatusData])
 
   // Auto-bootstrap for OAuth users who skip /get-started
   useEffect(() => {
@@ -238,9 +250,7 @@ export function AppShell({ children, title }: AppShellProps) {
     router.replace(APP_ROUTES.welcome)
   }, [user, onboardingProgress, pathname, router, canAccessApp])
 
-  const showTrialExpiredBanner =
-    trialExpired ||
-    planRequired?.subscription_status === "trial_expired"
+  const showTrialExpiredBanner = trialExpired
 
   // Show loading only on the first auth/billing bootstrap — not on background revalidation.
   const awaitingInitialBilling = Boolean(user) && billingLoading && billingStatusData === undefined
@@ -281,7 +291,7 @@ export function AppShell({ children, title }: AppShellProps) {
 
           {showTrialExpiredBanner && (
             <TrialExpiredBanner
-              message={planRequired?.message}
+              message={trialExpiredBannerMessage(planRequired)}
               upgradeUrl={planRequired?.upgrade_url ?? "/settings/billing"}
               onUpgradeClick={() => setUpgradeModalOpen(true)}
             />

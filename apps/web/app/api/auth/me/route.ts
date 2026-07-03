@@ -32,9 +32,9 @@ async function fallbackMeFromSupabase(user: {
     current_org: orgContext.current_org,
     onboarding: { seeded: false, completed_at: null, checklist_dismissed: false },
     billing: {
-      status: "trialing",
+      status: "unknown",
       plan_code: "node",
-      can_access_app: true,
+      can_access_app: null,
     },
     _auth_degraded: true,
   }

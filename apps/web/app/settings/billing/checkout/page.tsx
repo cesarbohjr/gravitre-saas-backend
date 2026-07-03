@@ -9,7 +9,8 @@ import { ArrowLeft, Loader2, RefreshCw, Shield } from "lucide-react"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { billingApi, ApiRequestError } from "@/lib/api"
+import { ApiRequestError } from "@/lib/api"
+import { startPlanCheckout } from "@/lib/billing-checkout"
 import {
   getPlan,
   formatPlanPrice,
@@ -161,10 +162,15 @@ function BillingCheckoutPageInner() {
     let cancelled = false
     void (async () => {
       try {
-        const response = await billingApi.createSubscriptionForPlan(planCode, billingInterval)
-        if (!cancelled) {
-          setClientSecret(response.client_secret)
+        const result = await startPlanCheckout(planCode, billingInterval)
+        if (cancelled) return
+
+        if (result.mode === "redirect") {
+          window.location.assign(result.url)
+          return
         }
+
+        setClientSecret(result.clientSecret)
       } catch (error) {
         if (!cancelled) {
           const message =
