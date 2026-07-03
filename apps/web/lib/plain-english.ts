@@ -67,7 +67,7 @@ export function humanizePlainEnglish(value: unknown, fallback = ""): string {
     return fallback || "Details are available in Gravitre — ask if you want help with next steps."
   }
 
-  let text = stripCodeFence(String(value).trim())
+  const text = stripCodeFence(String(value).trim())
   if (!text) return fallback
 
   if (text.startsWith("{") || text.startsWith("[")) {

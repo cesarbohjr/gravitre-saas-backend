@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { AlertCircle, Loader2 } from "lucide-react"
 
 type LoadState = "loading" | "ready" | "unavailable"
@@ -71,9 +72,9 @@ export function SwaggerExplorer({ specUrl }: { specUrl: string }) {
               raw spec
             </a>{" "}
             or read the{" "}
-            <a className="font-medium text-emerald-700 hover:underline" href="/docs/api/quickstart">
+            <Link className="font-medium text-emerald-700 hover:underline" href="/docs/api/quickstart">
               API quickstart
-            </a>
+            </Link>
             .
           </p>
         </div>
