@@ -173,7 +173,8 @@ jobs:
   billing-e2e:
     name: Billing E2E (Playwright)
     runs-on: ubuntu-latest
-    if: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+    # Secrets cannot be referenced in job-level if: — use branch/event gating instead.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [web, backend]
     steps:
       - uses: actions/checkout@v4
