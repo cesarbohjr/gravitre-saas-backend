@@ -9,6 +9,7 @@ import { agentsApi, memoryPromotionApi } from "@/lib/api"
 import type { Agent, AgentMemory } from "@/types/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 
 type PromotionRow = Record<string, unknown>
 
@@ -45,6 +46,13 @@ export function LearningTab({ agent, enabled }: { agent: Agent; enabled: boolean
 
   return (
     <div className="space-y-6">
+      <AgentReferenceFoldersPanel
+        folders={agent.referenceFolders ?? []}
+        title="External reference folders"
+        description="Cloud folders this agent reads for department knowledge. Files stay in your drive — Gravitre only references paths."
+        editHref={`/agents/${agent.id}/knowledge`}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">

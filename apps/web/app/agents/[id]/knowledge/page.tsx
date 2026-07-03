@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, use, useMemo } from "react"
+import { useState, use, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
@@ -12,7 +12,9 @@ import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi, trainingApi } from "@/lib/api"
-import type { Agent, TrainingDataset, CustomInstruction } from "@/types/api"
+import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
+import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
+import type { Agent, AgentReferenceFolder, TrainingDataset, CustomInstruction } from "@/types/api"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,18 +55,24 @@ export default function AgentKnowledgePage({
 }) {
   const { id: agentId } = use(params)
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<"datasets" | "instructions">("datasets")
+  const [activeTab, setActiveTab] = useState<"datasets" | "instructions" | "folders">("datasets")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<{ type: "dataset" | "instruction"; id: string; name: string } | null>(null)
   const [mutatingId, setMutatingId] = useState<string | null>(null)
+  const [folderDraft, setFolderDraft] = useState<AgentReferenceFolder[]>([])
+  const [savingFolders, setSavingFolders] = useState(false)
 
   // Fetch agent data
-  const { data: agentData, isLoading: agentLoading } = useSWR(
+  const { data: agentData, isLoading: agentLoading, mutate: mutateAgent } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId),
     { revalidateOnFocus: false },
   )
   const agent = agentData
+
+  useEffect(() => {
+    setFolderDraft(agent?.referenceFolders ?? [])
+  }, [agent?.referenceFolders])
 
   // Fetch datasets
   const { data: datasetsData, mutate: mutateDatasets } = useSWR(
@@ -91,6 +99,21 @@ export default function AgentKnowledgePage({
     totalInstructions: instructions.length,
     activeInstructions: instructions.filter((i) => i.is_active).length,
   }), [datasets, instructions])
+
+  const handleSaveFolders = async () => {
+    if (!agent) return
+    try {
+      setSavingFolders(true)
+      await agentsApi.update(agent.id, { referenceFolders: folderDraft } as Partial<Agent>)
+      toast.success("Reference folders updated")
+      await mutateAgent()
+    } catch (error) {
+      console.error("[knowledge] Save folders failed:", error)
+      toast.error("Failed to save reference folders")
+    } finally {
+      setSavingFolders(false)
+    }
+  }
 
   // Handle delete
   const handleDeleteClick = (type: "dataset" | "instruction", id: string, name: string) => {
@@ -256,6 +279,7 @@ export default function AgentKnowledgePage({
             {[
               { id: "datasets", label: "Training Datasets", icon: "database" },
               { id: "instructions", label: "Custom Instructions", icon: "file" },
+              { id: "folders", label: "Reference Folders", icon: "folder" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -426,6 +450,32 @@ export default function AgentKnowledgePage({
                     ))}
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {activeTab === "folders" && (
+              <motion.div
+                key="folders"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <AgentReferenceFoldersEditor value={folderDraft} onChange={setFolderDraft} />
+                {(agent.referenceFolders ?? []).length > 0 ? (
+                  <AgentReferenceFoldersPanel
+                    folders={agent.referenceFolders ?? []}
+                    title="Currently linked"
+                    description="These folder paths are active for this agent."
+                    compact
+                  />
+                ) : null}
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveFolders} disabled={savingFolders} className="gap-2">
+                    {savingFolders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Save folder references
+                  </Button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

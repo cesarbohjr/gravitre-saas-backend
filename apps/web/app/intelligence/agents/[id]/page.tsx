@@ -14,6 +14,7 @@ import { HealthTab } from "./_components/health-tab"
 import { PerformanceTab } from "./_components/performance-tab"
 import { LearningTab } from "./_components/learning-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
+import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 import { Robot } from "@phosphor-icons/react"
 
 type TabKey = "health" | "performance" | "learning" | "outcomes"
@@ -96,6 +97,12 @@ export default function AgentProfilePage() {
             {agent.role} · {agent.department}
           </p>
         </div>
+
+        <AgentReferenceFoldersPanel
+          folders={agent.referenceFolders ?? []}
+          compact={(agent.referenceFolders ?? []).length > 0}
+          editHref={`/agents/${agent.id}/knowledge`}
+        />
 
         {!hasMeasuredData ? (
           <EmptyState

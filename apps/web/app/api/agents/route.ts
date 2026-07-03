@@ -9,6 +9,7 @@ import {
   mapOperatorStatusToUi,
   normalizeAgentDepartment,
 } from "@/lib/agent-display"
+import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
 
 function mapAgentRow(
   input: Record<string, unknown>,
@@ -46,6 +47,7 @@ function mapAgentRow(
     },
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
+    referenceFolders: readReferenceFoldersFromRecord(model),
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
     recentTasks,
@@ -365,6 +367,16 @@ export async function POST(request: NextRequest) {
       (snake.department as string | undefined) ??
       inferAgentDepartment(name, purpose, role)
 
+    const referenceFolders = Array.isArray(body.referenceFolders)
+      ? body.referenceFolders
+      : Array.isArray(snake.reference_folders)
+        ? snake.reference_folders
+        : []
+    const existingConfig =
+      snake.config && typeof snake.config === "object"
+        ? (snake.config as Record<string, unknown>)
+        : {}
+
     const insertPayload = {
       org_id: orgId,
       name,
@@ -389,6 +401,10 @@ export async function POST(request: NextRequest) {
       capabilities: Array.isArray(snake.capabilities) ? snake.capabilities : [],
       systems: permissions,
       guardrails: Array.isArray(snake.guardrails) ? snake.guardrails : [],
+      config: {
+        ...existingConfig,
+        reference_folders: referenceFolders,
+      },
       status: String(snake.status ?? "active"),
       last_action:
         (snake.last_action as string | undefined) ??

@@ -146,10 +146,32 @@ export interface Agent {
   stats: AgentStats
   capabilities: string[]
   permissions: string[]
+  referenceFolders?: AgentReferenceFolder[]
   lastAction: string
   lastActionTime: string
   created_at?: string
   updated_at?: string
+}
+
+export type AgentReferenceFolderTag =
+  | "marketing"
+  | "hr"
+  | "operations"
+  | "engineering"
+  | "finance"
+  | "legal"
+  | "sales"
+  | "general"
+
+export interface AgentReferenceFolder {
+  id: string
+  connectorId: string
+  connectorVendor: string
+  connectorName: string
+  folderPath: string
+  folderName: string
+  label?: string
+  tags: AgentReferenceFolderTag[]
 }
 
 // ============ Workflows ============
@@ -1061,6 +1083,7 @@ export interface CreateAgentRequest {
   permissions?: string[]
   systems?: string[]
   guardrails?: string[]
+  referenceFolders?: AgentReferenceFolder[]
   status?: string
 }
 

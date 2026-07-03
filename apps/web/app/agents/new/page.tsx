@@ -28,6 +28,9 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
+import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
+import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
+import type { AgentReferenceFolder } from "@/types/api"
 import { agentsApi } from "@/lib/api"
 import { inferAgentDepartment } from "@/lib/agent-display"
 import { mutate as globalMutate } from "swr"
@@ -98,6 +101,7 @@ export default function NewAgentPage() {
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [selectedGuardrails, setSelectedGuardrails] = useState<string[]>(["approval-changes", "admin-delete"])
+  const [referenceFolders, setReferenceFolders] = useState<AgentReferenceFolder[]>([])
 
   const toggleCapability = (id: string) => {
     setSelectedCapabilities(prev =>
@@ -156,6 +160,7 @@ export default function NewAgentPage() {
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
+        referenceFolders,
         status: "active",
       })
 
@@ -340,9 +345,9 @@ export default function NewAgentPage() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">Connect systems</h2>
+                  <h2 className="text-xl font-semibold text-foreground">Connect systems & reference folders</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Select which systems this agent can access
+                    Select connected apps and link cloud folders this agent should read for department knowledge
                   </p>
                 </div>
 
@@ -391,6 +396,11 @@ export default function NewAgentPage() {
                   Manage connected systems
                   <ArrowRight className="h-3 w-3" />
                 </Link>
+
+                <AgentReferenceFoldersEditor
+                  value={referenceFolders}
+                  onChange={setReferenceFolders}
+                />
               </div>
             )}
 
@@ -518,6 +528,25 @@ export default function NewAgentPage() {
                         ) : null
                       })}
                     </div>
+                  </div>
+
+                  {/* Reference Folders */}
+                  <div className="p-5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Reference Folders</p>
+                    {referenceFolders.length > 0 ? (
+                      <ul className="mt-2 space-y-2">
+                        {referenceFolders.map((folder) => (
+                          <li key={folder.id} className="rounded-md bg-secondary/50 px-3 py-2">
+                            <p className="text-sm font-medium text-foreground">{folder.label || folder.folderName}</p>
+                            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                              {formatReferenceFolderBreadcrumb(folder)}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">No cloud folders linked yet.</p>
+                    )}
                   </div>
 
                   {/* Safety Rules */}

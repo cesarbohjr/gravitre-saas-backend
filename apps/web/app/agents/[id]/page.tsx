@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
 import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
+import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
@@ -522,6 +523,13 @@ export default function AgentProfilePage({
                     capabilities={apiAgent.capabilities}
                     permissions={apiAgent.permissions}
                     systems={agent.systems.map((system) => system.name)}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <AgentReferenceFoldersPanel
+                    folders={apiAgent.referenceFolders ?? []}
+                    editHref={`/agents/${agent.id}/knowledge`}
                   />
                 </div>
 

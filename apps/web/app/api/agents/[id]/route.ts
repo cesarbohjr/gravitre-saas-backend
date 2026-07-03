@@ -7,7 +7,8 @@ import {
   mapOperatorStatusToUi,
   normalizeAgentDepartment,
 } from "@/lib/agent-display"
-import { snakeToCamel } from "@/lib/supabase/transforms"
+import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
+import { snakeToCamel, camelToSnake } from "@/lib/supabase/transforms"
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -45,6 +46,7 @@ function mapAgentRow(input: Record<string, unknown>) {
     },
     capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
     permissions: Array.isArray(model.systems) ? model.systems : [],
+    referenceFolders: readReferenceFoldersFromRecord(model),
     lastAction: String(model.lastAction ?? model.last_action ?? "No recent activity"),
     lastActionTime: String(model.lastActionTime ?? model.last_action_time ?? "recently"),
     recentTasks: [],
@@ -148,6 +150,98 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
+  const supabase = createSupabaseRouteClient(request)
+  const orgId = await resolveOrgId(supabase, request)
+  if (!orgId) {
+    return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+  }
+
+  const body = await request.json().catch(() => ({}))
+  const referenceFolders = (body as Record<string, unknown>).referenceFolders
+
+  if (Array.isArray(referenceFolders)) {
+    const { data: existing, error: loadError } = await supabase
+      .from("agents")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle()
+
+    if (loadError) {
+      return NextResponse.json({ error: loadError.message }, { status: 500 })
+    }
+    if (!existing) {
+      return proxyToFastApi(request, `/api/agents/${id}`)
+    }
+
+    const currentConfig =
+      existing.config && typeof existing.config === "object"
+        ? (existing.config as Record<string, unknown>)
+        : {}
+
+    const { data, error } = await supabase
+      .from("agents")
+      .update({
+        config: {
+          ...currentConfig,
+          reference_folders: referenceFolders,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .select("*")
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
+  }
+
+  const snakeBody = camelToSnake(body as Record<string, unknown>)
+  if (Array.isArray(snakeBody.reference_folders)) {
+    const { data: existing, error: loadError } = await supabase
+      .from("agents")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle()
+
+    if (loadError) {
+      return NextResponse.json({ error: loadError.message }, { status: 500 })
+    }
+    if (!existing) {
+      return proxyToFastApi(request, `/api/agents/${id}`)
+    }
+
+    const currentConfig =
+      existing.config && typeof existing.config === "object"
+        ? (existing.config as Record<string, unknown>)
+        : {}
+
+    const { data, error } = await supabase
+      .from("agents")
+      .update({
+        config: {
+          ...currentConfig,
+          reference_folders: snakeBody.reference_folders,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .select("*")
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ agent: mapAgentRow(data as Record<string, unknown>) })
+  }
+
   return proxyToFastApi(request, `/api/agents/${id}`)
 }
 
