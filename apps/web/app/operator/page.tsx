@@ -618,6 +618,75 @@ export default function OperatorPage() {
   // Combined working state (sync or async)
   const isProcessing = isGenerating || isAsyncWorking
 
+  const runGeneratePlanSync = async (textOverride?: string) => {
+    const text = (textOverride ?? taskInput).trim()
+    if (!activeTask || !activeContext || !text) return
+    setIsGenerating(true)
+    setCurrentFlowStep("analysis")
+    if (textOverride) {
+      setPendingTaskText(text)
+    }
+
+    try {
+      const response = await apiFetch(`/api/operators/sessions/${activeTask}/task`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task: text,
+          context: { entityType: activeContext.split("-")[0], entityId: activeContext },
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.aiStatus === "degraded") {
+          toast.warning("AI is temporarily degraded", {
+            description: "Showing a basic plan. Try regenerating in a moment.",
+          })
+        }
+        if (data.plan) {
+          setGeneratedPlan({
+            findings: data.plan.reasoning ?? fallbackInsightSections,
+            steps: data.plan.steps ?? fallbackActionPlanSteps,
+            suggestedActions: data.plan.proposals ?? fallbackSuggestedActions,
+          })
+          setCurrentFlowStep("plan")
+        } else {
+          setGeneratedPlan({
+            findings: fallbackInsightSections,
+            steps: fallbackActionPlanSteps,
+            suggestedActions: fallbackSuggestedActions,
+          })
+          setCurrentFlowStep("plan")
+        }
+      } else {
+        const payload = await response.json().catch(() => ({}))
+        const message =
+          (payload && typeof payload === "object" && "detail" in payload
+            ? String((payload as { detail?: unknown }).detail ?? "")
+            : "") || "The operator service returned an error. Please try again."
+        toast.error("Couldn't generate a plan", { description: message })
+        setCurrentFlowStep("task")
+        setPendingTaskText("")
+        throw new Error(message)
+      }
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Couldn't generate"))) {
+        toast.error("Analysis failed", {
+          description: describeOperatorJobError(err),
+        })
+      }
+      setCurrentFlowStep("task")
+      setPendingTaskText("")
+      throw err
+    } finally {
+      setIsGenerating(false)
+      if (!textOverride) {
+        setTaskInput("")
+      }
+    }
+  }
+
   const handleGeneratePlan = async (promptOverride?: string) => {
     const text = (promptOverride ?? taskInput).trim()
     if (!activeTask || !activeContext || !text) return
@@ -699,75 +768,6 @@ export default function OperatorPage() {
       setCurrentFlowStep("analysis")
     } catch {
       // Error toast is shown by the hook
-    }
-  }
-
-  const runGeneratePlanSync = async (textOverride?: string) => {
-    const text = (textOverride ?? taskInput).trim()
-    if (!activeTask || !activeContext || !text) return
-    setIsGenerating(true)
-    setCurrentFlowStep("analysis")
-    if (textOverride) {
-      setPendingTaskText(text)
-    }
-
-    try {
-      const response = await apiFetch(`/api/operators/sessions/${activeTask}/task`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task: text,
-          context: { entityType: activeContext.split("-")[0], entityId: activeContext },
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.aiStatus === "degraded") {
-          toast.warning("AI is temporarily degraded", {
-            description: "Showing a basic plan. Try regenerating in a moment.",
-          })
-        }
-        if (data.plan) {
-          setGeneratedPlan({
-            findings: data.plan.reasoning ?? fallbackInsightSections,
-            steps: data.plan.steps ?? fallbackActionPlanSteps,
-            suggestedActions: data.plan.proposals ?? fallbackSuggestedActions,
-          })
-          setCurrentFlowStep("plan")
-        } else {
-          setGeneratedPlan({
-            findings: fallbackInsightSections,
-            steps: fallbackActionPlanSteps,
-            suggestedActions: fallbackSuggestedActions,
-          })
-          setCurrentFlowStep("plan")
-        }
-      } else {
-        const payload = await response.json().catch(() => ({}))
-        const message =
-          (payload && typeof payload === "object" && "detail" in payload
-            ? String((payload as { detail?: unknown }).detail ?? "")
-            : "") || "The operator service returned an error. Please try again."
-        toast.error("Couldn't generate a plan", { description: message })
-        setCurrentFlowStep("task")
-        setPendingTaskText("")
-        throw new Error(message)
-      }
-    } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Couldn't generate"))) {
-        toast.error("Analysis failed", {
-          description: describeOperatorJobError(err),
-        })
-      }
-      setCurrentFlowStep("task")
-      setPendingTaskText("")
-      throw err
-    } finally {
-      setIsGenerating(false)
-      if (!textOverride) {
-        setTaskInput("")
-      }
     }
   }
 

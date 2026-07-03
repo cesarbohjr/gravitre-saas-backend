@@ -320,7 +320,7 @@ export default function AgentChatPage({
 }) {
   const { id: agentId } = use(params)
   const { user } = useAuth()
-  const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
+  const { preferredPersona, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
   })
   const [input, setInput] = useState("")
@@ -376,10 +376,10 @@ export default function AgentChatPage({
           agent_id: agentId,
           mode: "agent",
           tools: ["knowledge_base", "agent_status", "connector_status", "workflow_runs", "search_web"],
-          preferred_persona: preferredPersonaRef.current,
+          preferred_persona: preferredPersona,
         }),
       }),
-    [agentId, preferredPersonaRef],
+    [agentId, preferredPersona],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({

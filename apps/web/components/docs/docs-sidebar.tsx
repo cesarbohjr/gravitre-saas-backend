@@ -37,6 +37,11 @@ export function orderSections(sections: DocsNavSection[]): DocsNavSection[] {
   })
 }
 
+function CategoryIcon({ category, className }: { category: string; className?: string }) {
+  const Icon = categoryIcon(category)
+  return <Icon className={className} />
+}
+
 function SidebarSection({
   section,
   activeHref,
@@ -46,7 +51,6 @@ function SidebarSection({
 }) {
   const containsActive = section.items.some((item) => item.href === activeHref)
   const [open, setOpen] = useState(containsActive)
-  const Icon = categoryIcon(section.title)
 
   return (
     <div className="mb-1">
@@ -57,7 +61,7 @@ function SidebarSection({
         className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 transition-colors hover:text-zinc-900"
       >
         <span className="flex items-center gap-2">
-          <Icon className="h-3.5 w-3.5 text-zinc-400" />
+          <CategoryIcon category={section.title} className="h-3.5 w-3.5 text-zinc-400" />
           {section.title}
         </span>
         <ChevronRight
