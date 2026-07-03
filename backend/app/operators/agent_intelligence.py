@@ -399,11 +399,17 @@ def _recommended_actions_from_tools(tool_calls: list[dict[str, Any]], answer: st
         tool = str(call.get("tool") or "")
         result = call.get("result") or {}
         if result.get("success"):
-            actions.append(f"Executed {tool}")
+            actions.append(f"Executed {tool.replace('_', ' ')}")
         elif tool:
-            actions.append(f"Review failed action: {tool}")
+            actions.append(f"Review failed action: {tool.replace('_', ' ')}")
     if not actions and answer.strip():
-        actions.append(answer.strip()[:240])
+        plain = format_plain_english(answer, fallback=answer).strip()
+        if plain and not plain.startswith("{"):
+            first_line = plain.split("\n", 1)[0].strip()
+            first_sentence = first_line.split(". ", 1)[0].strip()
+            snippet = first_sentence or first_line
+            if snippet:
+                actions.append(snippet[:200])
     return actions[:8]
 
 
@@ -785,6 +791,9 @@ class AgentIntelligence:
         )
         if turn_context and turn_context.context_explanation:
             explanation = f"{explanation}\n\n{turn_context.context_explanation}".strip()
+        plain_content = format_plain_english(content, fallback=content).strip()
+        if plain_content and not plain_content.startswith("{"):
+            content = plain_content
         return {
             "content": content,
             "validation": validation,
@@ -1682,6 +1691,10 @@ class AgentIntelligence:
             business_signals=turn_ctx.business_signals,
             strategic_plan=turn_ctx.strategic_plan,
             knowledge_assignments=turn_ctx.knowledge_assignments,
+            assigned_sources_used=turn_ctx.assigned_sources_used,
+            knowledge_gap_message=turn_ctx.knowledge_gap_message,
+            missing_assignment_labels=turn_ctx.missing_assignment_labels,
+            memory_conflicts=turn_ctx.memory_conflicts,
             advisor_brief=turn_ctx.advisor_brief,
             explainability=turn_ctx.explainability,
             execution_gate=turn_ctx.execution_gate,

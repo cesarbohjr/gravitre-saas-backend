@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.agent_memory_service import ensure_agent_in_org
+from app.services.knowledge_source_types import build_sync_rules, normalize_source_type, validate_source_type, validate_sync_frequency
 
 logger = get_logger(__name__)
 
@@ -103,16 +104,34 @@ class AgentKnowledgeAssignmentService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         ensure_agent_in_org(client, org_id, agent_id)
+        rules = build_sync_rules(payload)
+        source_type = validate_source_type(payload["source_type"])
+        sync_frequency = validate_sync_frequency(rules.get("sync_frequency"))
         row = {
             "org_id": org_id,
             "agent_id": agent_id,
-            "source_type": payload["source_type"],
+            "source_type": source_type,
             "source_id": payload["source_id"],
             "label": payload["label"],
-            "include_rules": payload.get("include_rules") or [],
-            "exclude_rules": payload.get("exclude_rules") or [],
-            "sync_schedule": payload.get("sync_schedule"),
+            "include_rules": rules["include_rules"],
+            "exclude_rules": rules["exclude_rules"],
+            "sync_schedule": payload.get("sync_schedule") or sync_frequency,
+            "sync_frequency": sync_frequency,
+            "sync_enabled": payload.get("sync_enabled", payload.get("syncEnabled", True)),
+            "connector_id": payload.get("connector_id"),
+            "workspace_id": payload.get("workspace_id"),
+            "external_source_url": payload.get("external_source_url"),
+            "owning_department": payload.get("owning_department"),
+            "read_scope": payload.get("read_scope") or ["read"],
+            "write_scope": payload.get("write_scope") or [],
+            "learn_scope": payload.get("learn_scope") or ["read", "summarize"],
+            "tags_required": rules["tags_required"],
+            "tags_excluded": rules["tags_excluded"],
+            "freshness_policy": rules["freshness_policy"],
+            "permission_policy": rules["permission_policy"],
+            "provenance_required": payload.get("provenance_required", True),
             "owner_user_id": payload.get("owner_user_id"),
+            "created_by": payload.get("created_by"),
             "confidence_score": payload.get("confidence_score", 0.75),
             "freshness_status": payload.get("freshness_status") or "unknown",
             "enabled": payload.get("enabled", True),
@@ -141,8 +160,11 @@ class AgentKnowledgeAssignmentService:
     ) -> dict[str, Any]:
         ensure_agent_in_org(client, org_id, agent_id)
         updates = {key: payload[key] for key in payload if key in {
-            "label", "include_rules", "exclude_rules", "sync_schedule", "owner_user_id",
-            "confidence_score", "freshness_status", "enabled", "metadata", "last_synced_at",
+            "label", "include_rules", "exclude_rules", "sync_schedule", "sync_frequency", "sync_enabled",
+            "owner_user_id", "confidence_score", "freshness_status", "enabled", "metadata", "last_synced_at",
+            "connector_id", "external_source_url", "owning_department", "read_scope", "write_scope", "learn_scope",
+            "tags_required", "tags_excluded", "freshness_policy", "permission_policy", "provenance_required",
+            "last_verified_at",
         }}
         updates["updated_at"] = datetime.now(timezone.utc).isoformat()
         try:
@@ -216,6 +238,90 @@ class AgentKnowledgeAssignmentService:
             source_type = row.get("sourceType") or row.get("source_type") or "source"
             lines.append(f"- [{source_type}] {label} (freshness: {freshness})")
         return "\n".join(lines)
+
+    def build_retrieval_filters(self, assignments: list[dict[str, Any]]) -> dict[str, Any]:
+        enabled = [row for row in assignments if row.get("enabled", True)]
+        return {
+            "assignment_source_ids": [str(row.get("sourceId") or row.get("source_id") or "") for row in enabled],
+            "assignment_source_types": [str(row.get("sourceType") or row.get("source_type") or "") for row in enabled],
+            "assignment_ids": [str(row.get("id")) for row in enabled if row.get("id")],
+            "require_assigned_only": bool(enabled),
+        }
+
+    def filter_rag_sources(
+        self,
+        rag_sources: list[dict[str, Any]],
+        assignments: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        """Keep only RAG rows matching assigned sources when assignments exist."""
+        enabled = [row for row in assignments if row.get("enabled", True)]
+        if not enabled:
+            return rag_sources, []
+        allowed_ids = {str(row.get("sourceId") or row.get("source_id") or "").lower() for row in enabled}
+        allowed_labels = {str(row.get("label") or "").lower() for row in enabled}
+        filtered: list[dict[str, Any]] = []
+        missing: list[str] = []
+        for source in rag_sources:
+            title = str(source.get("title") or source.get("source") or "").lower()
+            doc_id = str(source.get("document_id") or source.get("id") or "").lower()
+            meta = source.get("metadata") if isinstance(source.get("metadata"), dict) else {}
+            assignment_id = str(meta.get("assignment_id") or meta.get("assignmentId") or "").lower()
+            if assignment_id and assignment_id in {str(row.get("id") or "").lower() for row in enabled}:
+                filtered.append(source)
+                continue
+            if any(label and label in title for label in allowed_labels if label):
+                filtered.append(source)
+                continue
+            if doc_id and doc_id in allowed_ids:
+                filtered.append(source)
+        if not filtered:
+            missing = [row.get("label") or row.get("sourceType") or "source" for row in enabled[:5]]
+        return filtered, missing
+
+    def assigned_knowledge_gap_message(self, assignments: list[dict[str, Any]], query: str) -> str | None:
+        enabled = [row for row in assignments if row.get("enabled", True)]
+        if enabled:
+            return None
+        q = (query or "").lower()
+        if any(token in q for token in ("brand", "folder", "drive", "hubspot", "slack", "approved", "guideline")):
+            return (
+                "I do not have an approved knowledge source assigned yet. "
+                "Connect or assign a Google Drive folder, SharePoint site, or knowledge pack first."
+            )
+        return None
+
+    async def test_retrieval(
+        self,
+        client: Any,
+        org_id: str,
+        agent_id: str,
+        query: str,
+        *,
+        environment_name: str = "default",
+    ) -> dict[str, Any]:
+        from app.services.unified_retrieval_service import get_unified_retrieval_service
+        from app.operators.agent_intelligence import resolve_agent_record
+
+        agent = resolve_agent_record(client, org_id, agent_id, environment_name=environment_name)
+        if not agent:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+        assignments = self.list_assignments(client, org_id, agent_id)
+        bundle = await get_unified_retrieval_service().retrieve(
+            org_id=org_id,
+            query=query,
+            client=client,
+            agent=agent,
+            parameters={"rag_top_k": 6, "knowledge_assignments": assignments},
+            environment_name=environment_name,
+        )
+        filtered, missing = self.filter_rag_sources(bundle.rag_sources, assignments)
+        return {
+            "query": query,
+            "matchCount": len(filtered),
+            "sources": filtered[:10],
+            "missingAssignments": missing,
+            "usedAssignedOnly": bool(assignments),
+        }
 
     def _load_db_assignments(self, client: Any, org_id: str, agent_id: str) -> list[dict[str, Any]]:
         try:
@@ -308,9 +414,25 @@ class AgentKnowledgeAssignmentService:
             "includeRules": row.get("include_rules") or [],
             "excludeRules": row.get("exclude_rules") or [],
             "syncSchedule": row.get("sync_schedule"),
+            "syncFrequency": row.get("sync_frequency") or row.get("sync_schedule") or "daily",
+            "syncEnabled": bool(row.get("sync_enabled", True)),
+            "connectorId": row.get("connector_id"),
+            "workspaceId": row.get("workspace_id"),
+            "externalSourceUrl": row.get("external_source_url"),
+            "owningDepartment": row.get("owning_department"),
+            "readScope": row.get("read_scope") or ["read"],
+            "writeScope": row.get("write_scope") or [],
+            "learnScope": row.get("learn_scope") or ["read", "summarize"],
+            "tagsRequired": row.get("tags_required") or [],
+            "tagsExcluded": row.get("tags_excluded") or [],
+            "freshnessPolicy": row.get("freshness_policy") or {},
+            "permissionPolicy": row.get("permission_policy") or {},
+            "provenanceRequired": bool(row.get("provenance_required", True)),
             "ownerUserId": row.get("owner_user_id"),
+            "createdBy": row.get("created_by"),
             "confidenceScore": float(row.get("confidence_score") or 0.75),
             "lastSyncedAt": row.get("last_synced_at"),
+            "lastVerifiedAt": row.get("last_verified_at"),
             "freshnessStatus": row.get("freshness_status") or "unknown",
             "enabled": bool(row.get("enabled", True)),
             "metadata": row.get("metadata") or {},

@@ -124,6 +124,24 @@ ORCHESTRATION_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "AgentKnowledgeAssignmentService",
         "note": "CRUD knowledge source bindings per agent with sync freshness.",
     },
+    "agent_knowledge_provenance_service": {
+        "status": "live",
+        "module": "app.services.agent_knowledge_provenance_service",
+        "service": "AgentKnowledgeProvenanceService",
+        "note": "Reference-first provenance and memory lineage for assigned knowledge.",
+    },
+    "agent_knowledge_sync_service": {
+        "status": "live",
+        "module": "app.services.agent_knowledge_sync_service",
+        "service": "AgentKnowledgeSyncService",
+        "note": "Per-assignment sync with include/exclude rules.",
+    },
+    "agent_capability_profile_service": {
+        "status": "live",
+        "module": "app.services.agent_capability_profile_service",
+        "service": "AgentCapabilityProfileService",
+        "note": "Aggregated read/write/learn capability profile per agent.",
+    },
     "advisor_mode_engine": {
         "status": "live",
         "module": "app.services.advisor_mode_engine",

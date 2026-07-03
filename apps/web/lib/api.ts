@@ -411,6 +411,66 @@ export const agentsApi = {
     postJson<AgentMemory[]>(apiUrl(`/api/agents/${agentId}/memories/search`), data),
 }
 
+export interface AgentKnowledgeAssignment {
+  id?: string
+  agentId?: string
+  sourceType: string
+  sourceId: string
+  label: string
+  includeRules?: string[]
+  excludeRules?: string[]
+  syncFrequency?: string
+  syncEnabled?: boolean
+  freshnessStatus?: string
+  lastSyncedAt?: string | null
+  enabled?: boolean
+  fromConfig?: boolean
+}
+
+export interface AgentCapabilityProfile {
+  agentId: string
+  connectedKnowledgeSources: Array<{ label?: string; sourceType?: string; freshnessStatus?: string }>
+  availableReadActions: string[]
+  availableWriteActions: string[]
+  approvalRequiredActions: string[]
+  learningSources: string[]
+  memoryCount: number
+  freshnessStatus: string
+  confidenceScore: number
+}
+
+export const agentKnowledgeApi = {
+  listAssignments: (agentId: string) =>
+    fetcher<{ assignments: AgentKnowledgeAssignment[] }>(
+      apiUrl(`/api/agents/${agentId}/knowledge-assignments`)
+    ),
+  createAssignment: (agentId: string, data: Partial<AgentKnowledgeAssignment> & { sourceType: string; sourceId: string; label: string }) =>
+    postJson<AgentKnowledgeAssignment>(apiUrl(`/api/agents/${agentId}/knowledge-assignments`), data),
+  updateAssignment: (agentId: string, assignmentId: string, data: Partial<AgentKnowledgeAssignment>) =>
+    patchJson<AgentKnowledgeAssignment>(
+      apiUrl(`/api/agents/${agentId}/knowledge-assignments/${assignmentId}`),
+      data
+    ),
+  deleteAssignment: (agentId: string, assignmentId: string) =>
+    deleteRequest(apiUrl(`/api/agents/${agentId}/knowledge-assignments/${assignmentId}`)),
+  syncAssignment: (agentId: string, assignmentId: string) =>
+    postJson<{ success: boolean; message?: string }>(
+      apiUrl(`/api/agents/${agentId}/knowledge-assignments/${assignmentId}/sync`),
+      {}
+    ),
+  getCapabilities: (agentId: string) =>
+    fetcher<AgentCapabilityProfile>(apiUrl(`/api/agents/${agentId}/capabilities`)),
+  getMemoryLineage: (agentId: string) =>
+    fetcher<{ lineage: Array<Record<string, unknown>> }>(apiUrl(`/api/agents/${agentId}/memory-lineage`)),
+  testRetrieval: (agentId: string, query: string) =>
+    postJson<{ matchCount: number; sources: Array<Record<string, unknown>> }>(
+      apiUrl(`/api/agents/${agentId}/knowledge-assignments/test-retrieval`),
+      { query }
+    ),
+  listDemoWorkflows: () =>
+    fetcher<{ workflows: Array<Record<string, unknown>> }>(apiUrl("/api/agents/demo-knowledge-workflows")),
+}
+
 // ============ Meson ============
 export interface MesonInterpretResponse {
   intent: string
@@ -1631,6 +1691,8 @@ export const intelligenceApi = {
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/training-readiness")),
   banditStatus: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/bandit-status")),
+  memoryConflicts: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/memory-conflicts")),
   learningLiveDashboard: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/live-dashboard")),
   predictiveOpsDomain: (domain: string) =>

@@ -41,6 +41,65 @@ def detect_agent_memory_conflicts(memories: list[dict[str, Any]]) -> list[dict[s
     return conflicts
 
 
+def list_org_memory_conflicts(
+    client: Any,
+    org_id: str,
+    *,
+    memory_limit: int = 500,
+    result_limit: int = 50,
+) -> dict[str, Any]:
+    """Scan org agent memories and surface opposing pairs requiring review."""
+    try:
+        rows = (
+            client.table("agent_memories")
+            .select("id, agent_id, content, category, created_at")
+            .eq("org_id", org_id)
+            .order("created_at", desc=True)
+            .limit(memory_limit)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        rows = []
+
+    by_agent: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        agent_id = str(row.get("agent_id") or "")
+        by_agent.setdefault(agent_id, []).append(row)
+
+    conflicts: list[dict[str, Any]] = []
+    agents_with_conflicts: set[str] = set()
+    for agent_id, memories in by_agent.items():
+        for conflict in detect_agent_memory_conflicts(memories):
+            conflicts.append(
+                {
+                    **conflict,
+                    "agentId": agent_id,
+                    "memory_a_preview": _memory_preview(memories, conflict.get("memory_a_id")),
+                    "memory_b_preview": _memory_preview(memories, conflict.get("memory_b_id")),
+                }
+            )
+            agents_with_conflicts.add(agent_id)
+
+    conflicts.sort(key=lambda row: str(row.get("agentId") or ""))
+    return {
+        "scanned_memories": len(rows),
+        "agent_count": len(by_agent),
+        "conflict_count": len(conflicts),
+        "agents_with_conflicts": sorted(agents_with_conflicts),
+        "conflicts": conflicts[:result_limit],
+        "status": "live",
+    }
+
+
+def _memory_preview(memories: list[dict[str, Any]], memory_id: Any) -> str:
+    for row in memories:
+        if str(row.get("id")) == str(memory_id):
+            return str(row.get("content") or "")[:160]
+    return ""
+
+
 def _normalize_category(value: str | None) -> str:
     category = (value or "fact").strip().lower()
     if category not in VALID_CATEGORIES:

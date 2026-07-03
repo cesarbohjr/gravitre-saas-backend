@@ -25,3 +25,10 @@ def test_format_plain_english_strips_code_fence():
     fenced = f"```json\n{SAMPLE_JSON}\n```"
     text = format_plain_english(fenced)
     assert "{" not in text
+
+
+def test_format_plain_english_extracts_truncated_json_summary():
+    truncated = '{"summary": "The organization currently has 2 active agents", "decision": {"action": "review'
+    text = format_plain_english(truncated)
+    assert "2 active agents" in text
+    assert "{" not in text

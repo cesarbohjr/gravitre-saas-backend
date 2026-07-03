@@ -90,6 +90,100 @@ def distinct_normalized_count(queries: list[dict[str, Any]]) -> int:
     return len(seen)
 
 
+MAX_CLUSTER_MATCH_DISTANCE = 1.25
+
+
+def _representative_query_texts(row: dict[str, Any]) -> list[str]:
+    reps = row.get("representative_queries") or []
+    if isinstance(reps, str):
+        return [reps] if reps else []
+    return [str(q) for q in reps if q]
+
+
+async def resolve_query_cluster_for_bandit(
+    settings: Settings,
+    org_id: str,
+    query_text: str,
+    *,
+    client: Any | None = None,
+    max_clusters: int = 50,
+) -> dict[str, Any] | None:
+    """Map a live query to the nearest org_query_clusters row for bandit v3 segments."""
+    import numpy as np
+
+    normalized = normalize_query(query_text)
+    if not normalized:
+        return None
+    db = client or get_supabase_client(settings)
+    try:
+        rows = (
+            db.table("org_query_clusters")
+            .select("id, cluster_label, representative_queries")
+            .eq("org_id", org_id)
+            .order("computed_at", desc=True)
+            .limit(max_clusters)
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("query_cluster_resolve_skipped org_id=%s error=%s", org_id, exc)
+        return None
+    if not rows:
+        return None
+
+    for row in rows:
+        norm_reps = [normalize_query(text) for text in _representative_query_texts(row)]
+        if normalized in norm_reps:
+            return {
+                "query_cluster_id": str(row["id"]),
+                "query_cluster_label": str(row.get("cluster_label") or ""),
+                "cluster_match_method": "exact",
+            }
+
+    query_emb = np.array(get_embedding(normalized, settings, org_id=org_id), dtype=float)
+    best_id: str | None = None
+    best_label = ""
+    best_dist = float("inf")
+    for row in rows:
+        norm_reps = [normalize_query(text) for text in _representative_query_texts(row) if text]
+        if not norm_reps:
+            continue
+        sample = norm_reps[0]
+        rep_emb = np.array(get_embedding(sample, settings, org_id=org_id), dtype=float)
+        dist = float(np.linalg.norm(query_emb - rep_emb))
+        if dist < best_dist:
+            best_dist = dist
+            best_id = str(row["id"])
+            best_label = str(row.get("cluster_label") or "")
+
+    if best_id is None or best_dist > MAX_CLUSTER_MATCH_DISTANCE:
+        return None
+    return {
+        "query_cluster_id": best_id,
+        "query_cluster_label": best_label,
+        "cluster_match_method": "embedding",
+        "cluster_match_distance": round(best_dist, 4),
+    }
+
+
+async def enrich_classification_with_query_cluster(
+    classification: dict[str, Any],
+    org_id: str,
+    query_text: str,
+    settings: Settings | None = None,
+    *,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    if classification.get("query_cluster_id"):
+        return classification
+    active = settings or get_settings()
+    match = await resolve_query_cluster_for_bandit(active, org_id, query_text, client=client)
+    if not match:
+        return classification
+    return {**classification, **match}
+
+
 def _embed_queries(settings: Settings, org_id: str, texts: list[str]) -> list[list[float]]:
     return [get_embedding(text, settings, org_id=org_id) for text in texts]
 

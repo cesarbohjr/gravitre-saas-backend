@@ -83,6 +83,14 @@ class IntelligenceRouter:
             conversation_history,
             understanding=understanding,
         )
+        from app.services.knowledge_intelligence_service import enrich_classification_with_query_cluster
+
+        classification = await enrich_classification_with_query_cluster(
+            classification,
+            org_id,
+            request,
+            self.settings,
+        )
         confidence = float(classification.get("classification_confidence") or 0.55)
 
         clarification = await self._clarification.should_clarify(

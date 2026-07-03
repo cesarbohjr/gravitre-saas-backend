@@ -10,7 +10,11 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.ml.model_catalog import GRAVITRE_ML_CATALOG
 from app.ml.base import ModelStatus
-from app.services.learning_strategy_keys import build_model_strategy_key
+from app.services.learning_strategy_keys import (
+    is_cluster_segment,
+    parse_base_segment_key_from_segment,
+    parse_cluster_id_from_segment,
+)
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -168,9 +172,53 @@ class StrategyPerformanceLedger:
         candidate_keys: list[str],
         *,
         segment_key: str = "default",
+        fallback_segment_key: str | None = None,
     ) -> dict[str, Any]:
         """
-        Contextual bandit v2: empirical win-rate (v1) with UCB exploration fallback.
+        Contextual bandit v3: cluster-segment UCB when segment_key is cluster:*.
+        Falls back to bandit v2 (base dept:task segment) when cluster pool is under-gated.
+        """
+        if is_cluster_segment(segment_key):
+            base_segment = fallback_segment_key or parse_base_segment_key_from_segment(segment_key)
+            v3_result = await self._choose_for_segment(
+                org_id,
+                default_key,
+                candidate_keys,
+                segment_key,
+                bandit_version="v3",
+            )
+            if v3_result["reason"] != "default_insufficient_evidence":
+                v3_result["segment_key_used"] = segment_key
+                return v3_result
+            v2_result = await self._choose_for_segment(
+                org_id,
+                default_key,
+                candidate_keys,
+                base_segment,
+                bandit_version="v2",
+            )
+            v2_result["fallback_from_segment"] = segment_key
+            return v2_result
+
+        return await self._choose_for_segment(
+            org_id,
+            default_key,
+            candidate_keys,
+            segment_key,
+            bandit_version="v2",
+        )
+
+    async def _choose_for_segment(
+        self,
+        org_id: str,
+        default_key: str,
+        candidate_keys: list[str],
+        segment_key: str,
+        *,
+        bandit_version: str = "v2",
+    ) -> dict[str, Any]:
+        """
+        Tabular UCB1 for one segment pool — v2 base segment or v3 cluster segment.
         Not neural RL — tabular ledger only.
         """
         from app.services.org_learning_profile_service import get_org_learning_profile_service
@@ -197,9 +245,10 @@ class StrategyPerformanceLedger:
                     return {
                         "selected_key": item["strategy_key"],
                         "reason": "ledger_win_rate",
-                        "bandit_version": "v2",
+                        "bandit_version": bandit_version,
                         "stats": item,
                         "default_stats": default_stats,
+                        "segment_key": segment_key,
                     }
         ucb_candidates = [
             item
@@ -212,18 +261,21 @@ class StrategyPerformanceLedger:
             if best_ucb["strategy_key"] != default_key and float(best_ucb.get("weighted_ucb_score") or 0) > float(
                 (default_stats or {}).get("weighted_ucb_score") or (default_stats or {}).get("ucb_score") or 0
             ):
+                ucb_reason = "ledger_ucb_v3" if bandit_version == "v3" else "ledger_ucb_v2"
                 return {
                     "selected_key": best_ucb["strategy_key"],
-                    "reason": "ledger_ucb_v2",
-                    "bandit_version": "v2",
+                    "reason": ucb_reason,
+                    "bandit_version": bandit_version,
                     "stats": best_ucb,
                     "default_stats": default_stats,
+                    "segment_key": segment_key,
                 }
         return {
             "selected_key": default_key,
             "reason": "default_insufficient_evidence",
-            "bandit_version": "v2",
+            "bandit_version": bandit_version,
             "stats": default_stats,
+            "segment_key": segment_key,
         }
 
     async def load_model_outcome_scores(self, org_id: str) -> dict[str, float | None]:
@@ -254,24 +306,74 @@ class StrategyPerformanceLedger:
         except Exception:  # noqa: BLE001
             rows = []
         by_key: dict[str, dict[str, int]] = {}
+        by_cluster_segment: dict[str, dict[str, dict[str, int]]] = {}
         for row in rows:
             key = str(row.get("strategy_key") or "unknown")
+            seg = str(row.get("segment_key") or "default")
             bucket = by_key.setdefault(key, {"win": 0, "loss": 0, "neutral": 0})
             pol = str(row.get("outcome_polarity") or "neutral")
             bucket[pol] = bucket.get(pol, 0) + 1
+            if is_cluster_segment(seg):
+                cluster_id = parse_cluster_id_from_segment(seg) or "unknown"
+                cluster_bucket = by_cluster_segment.setdefault(cluster_id, {})
+                seg_bucket = cluster_bucket.setdefault(key, {"win": 0, "loss": 0, "neutral": 0})
+                seg_bucket[pol] = seg_bucket.get(pol, 0) + 1
         top = sorted(
             (
                 {
                     "strategy_key": key,
                     **counts,
                     "win_rate": round(counts["win"] / max(counts["win"] + counts["loss"], 1), 4),
+                    "ucb_score": round(
+                        _ucb_score(counts["win"], counts["loss"], len(rows)),
+                        4,
+                    )
+                    if counts["win"] + counts["loss"] > 0
+                    else None,
                 }
                 for key, counts in by_key.items()
             ),
-            key=lambda item: item["win"] + item["loss"],
+            key=lambda item: (
+                item.get("ucb_score") is not None,
+                item.get("ucb_score") or 0.0,
+                item["win"] + item["loss"],
+            ),
             reverse=True,
         )[:15]
-        return {"record_count": len(rows), "top_strategies": top}
+        cluster_segments: list[dict[str, Any]] = []
+        for cluster_id, strategies in by_cluster_segment.items():
+            decided_total = sum(
+                counts["win"] + counts["loss"]
+                for counts in strategies.values()
+            )
+            if decided_total <= 0:
+                continue
+            top_arm = max(
+                strategies.items(),
+                key=lambda item: _ucb_score(item[1]["win"], item[1]["loss"], decided_total),
+            )
+            arm_key, arm_counts = top_arm
+            cluster_segments.append(
+                {
+                    "cluster_id": cluster_id,
+                    "segment_prefix": f"cluster:{cluster_id}",
+                    "decided_samples": arm_counts["win"] + arm_counts["loss"],
+                    "top_strategy_key": arm_key,
+                    "ucb_score": round(
+                        _ucb_score(arm_counts["win"], arm_counts["loss"], decided_total),
+                        4,
+                    ),
+                }
+            )
+        cluster_segments.sort(key=lambda item: item.get("ucb_score") or 0.0, reverse=True)
+        return {
+            "record_count": len(rows),
+            "top_strategies": top,
+            "cluster_segments": cluster_segments[:10],
+            "bandit_version": "v3",
+            "bandit_v2_fallback": True,
+            "policy_type": "tabular_ucb_cluster_segment",
+        }
 
 
 _ledger: StrategyPerformanceLedger | None = None

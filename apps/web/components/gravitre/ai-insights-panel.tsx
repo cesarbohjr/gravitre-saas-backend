@@ -517,7 +517,7 @@ function InsightSectionCard({
                             )} 
                           />
                         </div>
-                        <span className="text-sm text-foreground">{action.label}</span>
+                        <span className="text-sm text-foreground">{displayInsightContent(action.label)}</span>
                       </div>
                       <span
                         className={cn(
@@ -802,7 +802,7 @@ export function MesonInsightsPanel({
                       {section.actions.map((action) => (
                         <div key={action.id} className="flex items-center gap-2 text-sm">
                           <Check className="h-4 w-4 text-emerald-400" />
-                          <span>{action.label}</span>
+                          <span>{displayInsightContent(action.label)}</span>
                           <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded-full",
                             action.priority === "high" ? "bg-red-500/10 text-red-400" :

@@ -98,7 +98,9 @@ def format_plain_english(value: Any, *, fallback: str = "") -> str:
             if converted:
                 return converted
         except json.JSONDecodeError:
-            pass
+            partial = re.search(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+            if partial:
+                return partial.group(1).replace('\\"', '"').strip()
 
     if text.startswith('"') and text.endswith('"'):
         try:

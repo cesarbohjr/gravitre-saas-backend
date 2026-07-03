@@ -285,3 +285,6 @@ SSE metadata keys: `businessSignals`, `strategicPlan`, `advisorBrief`, `explaina
 - Phase 1: `docs/delivery/GRAVITRE_AI_INTELLIGENCE_UPGRADE.md`
 - Phase 2 maturity: conversation transcript / audit notes
 - Linear backlog: `docs/ai/LINEAR_AI_INTELLIGENCE_BACKLOG.md`
+- **Intelligence Engine v3–v6 tables:** [`INTELLIGENCE_ENGINE_V3_V6_TABLES.md`](INTELLIGENCE_ENGINE_V3_V6_TABLES.md)
+- **Strategy Bandit v3–v6 tables (UCB):** [`BANDIT_V3_V6_TABLES.md`](BANDIT_V3_V6_TABLES.md)
+- **Phase E long-horizon (bandit v2, memory conflicts):** [`PHASE_E_LONG_HORIZON_SPEC.md`](PHASE_E_LONG_HORIZON_SPEC.md)

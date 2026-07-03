@@ -206,14 +206,30 @@ async def get_bandit_status(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Tabular bandit v2 status — empirical ledger, not neural RL."""
+    """Tabular bandit v3 status — cluster-segment UCB with v2 fallback, not neural RL."""
+    from app.services.long_horizon_policy_service import get_long_horizon_status
     from app.services.rl_policy_gate import get_rl_policy_status
 
     ledger = get_strategy_performance_ledger(settings)
+    long_horizon = await get_long_horizon_status(org_id=org_id)
     return {
         **get_rl_policy_status(),
         "summary": await ledger.load_admin_summary(org_id),
+        "long_horizon": long_horizon,
     }
+
+
+@router.get("/learning/memory-conflicts")
+async def get_memory_conflicts(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.agent_memory_service import list_org_memory_conflicts
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
+    return list_org_memory_conflicts(client, org_id)
 
 
 @router.get("/learning/live-dashboard")
@@ -223,13 +239,20 @@ async def get_learning_live_dashboard(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Combined live learning metrics for command center surfaces."""
+    from app.services.agent_memory_service import list_org_memory_conflicts
+    from app.services.long_horizon_policy_service import get_long_horizon_status
     from app.services.rl_policy_gate import get_rl_policy_status
     from app.services.training_signal_service import get_training_signal_service
+    from app.workflows.repository import get_supabase_client
+
+    client = get_supabase_client(settings)
 
     training = get_training_signal_service(settings)
     readiness = await training.get_training_readiness(org_id)
     ledger = get_strategy_performance_ledger(settings)
     bandit_summary = await ledger.load_admin_summary(org_id)
+    memory_conflicts = list_org_memory_conflicts(client, org_id)
+    long_horizon = await get_long_horizon_status(org_id=org_id)
     ready_models = [
         name
         for name, info in readiness.get("by_model", {}).items()
@@ -243,7 +266,9 @@ async def get_learning_live_dashboard(
             **get_rl_policy_status(),
             "summary": bandit_summary,
         },
-        "scope_note": "Live dashboard aggregates readiness + tabular bandit v2 — not neural RL.",
+        "memory_conflicts": memory_conflicts,
+        "long_horizon": long_horizon,
+        "scope_note": "Live dashboard: tabular bandit v3 (cluster-segment UCB + v2 fallback) + memory conflict surfacing are complete. Neural RL, world models, and federated learning remain gated.",
     }
 
 

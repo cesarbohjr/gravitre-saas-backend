@@ -102,7 +102,7 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
       content: humanizeOperatorContent(result.action_description) || "Recommended remediation steps from the analysis:",
       actions: recommended.map((label, index) => ({
         id: `action-${index + 1}`,
-        label: String(label),
+        label: humanizeOperatorContent(String(label)) || `Recommended step ${index + 1}`,
         priority: index === 0 ? "high" : index === 1 ? "medium" : "low",
       })),
     })

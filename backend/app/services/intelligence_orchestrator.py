@@ -67,6 +67,10 @@ class AssistantTurnContext:
     strategic_plan: dict[str, Any] | None = None
     knowledge_assignments: list[dict[str, Any]] = field(default_factory=list)
     knowledge_section: str = ""
+    knowledge_gap_message: str | None = None
+    assigned_sources_used: list[dict[str, Any]] = field(default_factory=list)
+    missing_assignment_labels: list[str] = field(default_factory=list)
+    memory_conflicts: list[dict[str, Any]] = field(default_factory=list)
     specialist_modifier: str = ""
     pre_execution_confidence: dict[str, Any] = field(default_factory=dict)
     execution_gate: dict[str, Any] = field(default_factory=dict)
@@ -144,6 +148,7 @@ class IntelligenceOrchestrator:
         else:
             knowledge_assignments = self._knowledge.resolve_assignments(agent)
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
+        knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
         retrieval = await self._retrieval.retrieve(
             org_id=org_id,
@@ -154,10 +159,29 @@ class IntelligenceOrchestrator:
                 "surface": "assistant",
                 "include_task_history": False,
                 "rag_top_k": getattr(engine_settings, "max_chunks", 8),
+                "knowledge_assignments": knowledge_assignments,
             },
             environment_name=environment_name,
             user_id=user_id,
         )
+        assigned_sources_used = [
+            {
+                "title": source.get("title") or source.get("source"),
+                "score": source.get("score"),
+                "documentId": source.get("document_id"),
+            }
+            for source in retrieval.rag_sources
+        ]
+        _, missing_assignment_labels = self._knowledge.filter_rag_sources(
+            retrieval.rag_sources,
+            knowledge_assignments,
+        )
+        memory_conflicts = list(retrieval.memory_context.get("memory_conflicts") or [])
+        if knowledge_assignments and not assigned_sources_used and not knowledge_gap_message:
+            knowledge_gap_message = (
+                "I could not find content in your assigned knowledge sources for this question. "
+                "Try syncing the source or adjusting include rules."
+            )
 
         org_context_block = ""
         try:
@@ -219,6 +243,8 @@ class IntelligenceOrchestrator:
             task_state_section=task_state_section,
             business_signals=business_signals,
             knowledge_section=knowledge_section,
+            knowledge_gap_message=knowledge_gap_message,
+            memory_conflicts=memory_conflicts,
         )
         profile = self._context_engine.build_context_profile(
             raw_sources=raw_sources,
@@ -306,6 +332,10 @@ class IntelligenceOrchestrator:
             strategic_plan=strategic_plan,
             knowledge_assignments=knowledge_assignments,
             knowledge_section=knowledge_section,
+            knowledge_gap_message=knowledge_gap_message,
+            assigned_sources_used=assigned_sources_used,
+            missing_assignment_labels=missing_assignment_labels,
+            memory_conflicts=memory_conflicts,
             specialist_modifier=specialist_modifier,
             pre_execution_confidence=pre_confidence,
             execution_gate=execution_gate,
@@ -346,6 +376,8 @@ class IntelligenceOrchestrator:
         task_state_section: str,
         business_signals: list[dict[str, Any]],
         knowledge_section: str = "",
+        knowledge_gap_message: str | None = None,
+        memory_conflicts: list[dict[str, Any]] | None = None,
     ) -> list[ContextSource]:
         sources: list[ContextSource] = []
         if org_context_block.strip():
@@ -445,6 +477,33 @@ class IntelligenceOrchestrator:
                     content=f"<knowledge_assignments>\n{knowledge_section}\n</knowledge_assignments>",
                 )
             )
+        if knowledge_gap_message:
+            sources.append(
+                ContextSource(
+                    source_id="knowledge_gap",
+                    source_type="knowledge_gap",
+                    label="Knowledge assignment gap",
+                    score=0.0,
+                    content=f"<knowledge_gap>\n{knowledge_gap_message}\n</knowledge_gap>",
+                )
+            )
+        if memory_conflicts:
+            lines = [
+                f"- Memory {row.get('memory_a_id')} conflicts with {row.get('memory_b_id')} (human review required)"
+                for row in memory_conflicts[:5]
+                if isinstance(row, dict)
+            ]
+            if lines:
+                sources.append(
+                    ContextSource(
+                        source_id="memory_conflicts",
+                        source_type="memory_conflicts",
+                        label="Agent memory conflicts",
+                        score=0.0,
+                        content="<memory_conflicts>\n" + "\n".join(lines) + "\n</memory_conflicts>",
+                        metadata={"count": len(memory_conflicts)},
+                    )
+                )
         return sources
 
 

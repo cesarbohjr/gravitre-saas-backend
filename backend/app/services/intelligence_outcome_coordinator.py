@@ -6,7 +6,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
-from app.services.learning_strategy_keys import build_route_strategy_key
+from app.services.learning_strategy_keys import build_route_strategy_key, parse_segment_key
 
 logger = get_logger(__name__)
 
@@ -82,7 +82,7 @@ class IntelligenceOutcomeCoordinator:
                 classification,
                 response.get("enrichments"),
             )
-            segment_key = response.get("segment_key") or classification.get("department") or "default"
+            segment_key = response.get("segment_key") or parse_segment_key(classification)
 
             if message_id:
                 from app.services.response_evaluation_service import consolidate_recent

@@ -30,7 +30,7 @@ LEARNING_LAYER_REGISTRY: dict[str, dict[str, str]] = {
     "strategy_performance_ledger": {
         "module": "app.services.strategy_performance_ledger",
         "status": "active",
-        "extends": "meta-learning v1 contextual bandit — empirical win-rate, not neural RL",
+        "extends": "Tabular bandit v3 — cluster-segment UCB with v2 dept:task fallback (live)",
     },
     "confidence_calibrator": {
         "module": "app.services.confidence_calibrator",
@@ -80,6 +80,16 @@ LEARNING_LAYER_REGISTRY: dict[str, dict[str, str]] = {
     "rl_policy_gate": {
         "module": "app.services.rl_policy_gate",
         "status": "active",
-        "extends": "Neural RL disabled unless GRAVITRE_NEURAL_RL_SIGNOFF set",
+        "extends": "Phase E complete — tabular v2 live; neural RL gated by GRAVITRE_NEURAL_RL_SIGNOFF",
+    },
+    "long_horizon_policy_service": {
+        "module": "app.services.long_horizon_policy_service",
+        "status": "active",
+        "extends": "Phase E manifest — world models PLANNED, federated DISABLED",
+    },
+    "agent_memory_conflict_detection": {
+        "module": "app.services.agent_memory_service",
+        "status": "active",
+        "extends": "Opposing memory surfacing at retrieval + admin org scan",
     },
 }

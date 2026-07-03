@@ -73,3 +73,32 @@ def test_agent_memory_conflict_detection():
     conflicts = detect_agent_memory_conflicts(memories)
     assert len(conflicts) >= 1
     assert conflicts[0]["requires_human_review"] is True
+
+
+def test_list_org_memory_conflicts_groups_by_agent():
+    from unittest.mock import MagicMock
+
+    from app.services.agent_memory_service import list_org_memory_conflicts
+
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
+        {"id": "1", "agent_id": "a1", "content": "Launch approved", "category": "fact"},
+        {"id": "2", "agent_id": "a1", "content": "Launch rejected", "category": "fact"},
+    ]
+    result = list_org_memory_conflicts(client, "org-1")
+    assert result["status"] == "live"
+    assert result["conflict_count"] >= 1
+    assert result["conflicts"][0]["agentId"] == "a1"
+
+
+@pytest.mark.asyncio
+async def test_long_horizon_status_marks_phase_complete():
+    from app.services.long_horizon_policy_service import get_long_horizon_status
+
+    status = await get_long_horizon_status(org_id="org-1")
+    assert status["phase_status"] == "complete"
+    assert status["components"]["tabular_ledger_v2"]["status"] == "live"
+    assert status["components"]["memory_conflicts"]["status"] == "live"
+    assert status["components"]["world_models"]["status"] == "planned"
+    assert status["components"]["neural_rl"]["status"] == "planned"
+    assert status["components"]["federated_learning"]["status"] == "disabled"

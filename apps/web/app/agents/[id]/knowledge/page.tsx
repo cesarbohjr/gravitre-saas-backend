@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi, trainingApi } from "@/lib/api"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
+import { AgentKnowledgeAssignmentsPanel } from "@/components/agents/agent-knowledge-assignments-panel"
 import type { Agent, AgentReferenceFolder, TrainingDataset, CustomInstruction } from "@/types/api"
 import {
   AlertDialog,
@@ -55,7 +56,7 @@ export default function AgentKnowledgePage({
 }) {
   const { id: agentId } = use(params)
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<"datasets" | "instructions" | "folders">("datasets")
+  const [activeTab, setActiveTab] = useState<"datasets" | "instructions" | "folders" | "sources">("sources")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<{ type: "dataset" | "instruction"; id: string; name: string } | null>(null)
   const [mutatingId, setMutatingId] = useState<string | null>(null)
@@ -277,6 +278,7 @@ export default function AgentKnowledgePage({
           {/* Tabs */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary/50 w-fit mb-6">
             {[
+              { id: "sources", label: "Assigned Sources", icon: "database" },
               { id: "datasets", label: "Training Datasets", icon: "database" },
               { id: "instructions", label: "Custom Instructions", icon: "file" },
               { id: "folders", label: "Reference Folders", icon: "folder" },
@@ -298,6 +300,17 @@ export default function AgentKnowledgePage({
           </div>
 
           <AnimatePresence mode="wait">
+            {activeTab === "sources" && (
+              <motion.div
+                key="sources"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AgentKnowledgeAssignmentsPanel agentId={agentId} />
+              </motion.div>
+            )}
+
             {activeTab === "datasets" && (
               <motion.div
                 key="datasets"

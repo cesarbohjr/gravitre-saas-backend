@@ -138,10 +138,29 @@ AI_ARCHITECTURE_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "AgentMemoryIntelligenceService",
         "module": "app.services.agent_memory_service",
         "new_capability": (
-            "memory lineage, freshness scoring, why-gravitre-knows-this query"
+            "memory lineage, freshness scoring, why-gravitre-knows-this query, "
+            "conflict detection with human-review flag"
         ),
         "risk_level": "low",
         "advisory_only": False,
+    },
+    "tabular_bandit_v2": {
+        "status": "live",
+        "service": "StrategyPerformanceLedger",
+        "module": "app.services.strategy_performance_ledger",
+        "new_capability": "UCB exploration over strategy_performance_records (v2 base segment fallback)",
+        "note": "Superseded as primary policy by tabular_bandit_v3 — still used for fallback",
+        "risk_level": "low",
+        "advisory_only": True,
+    },
+    "tabular_bandit_v3": {
+        "status": "live",
+        "service": "StrategyPerformanceLedger",
+        "module": "app.services.strategy_performance_ledger",
+        "new_capability": "Cluster-segment UCB via org_query_clusters with v2 fallback",
+        "note": "Default policy layer — not neural RL",
+        "risk_level": "low",
+        "advisory_only": True,
     },
     "federated_learning": {
         "status": "disabled",

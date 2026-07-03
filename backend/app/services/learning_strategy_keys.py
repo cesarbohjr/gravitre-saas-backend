@@ -28,8 +28,44 @@ def build_model_strategy_key(model_name: str) -> str:
     return f"model:{model_name}"
 
 
-def parse_segment_key(classification: dict[str, Any] | None, department: str | None = None) -> str:
+def parse_base_segment_key(classification: dict[str, Any] | None, department: str | None = None) -> str:
     cls = classification or {}
     dept = department or cls.get("department") or cls.get("entity_type") or "default"
     task = cls.get("intent") or cls.get("task_type") or "general"
     return f"{dept}:{task}"
+
+
+def build_cluster_segment_key(
+    query_cluster_id: str,
+    classification: dict[str, Any] | None = None,
+    department: str | None = None,
+) -> str:
+    base = parse_base_segment_key(classification, department)
+    return f"cluster:{query_cluster_id}:{base}"
+
+
+def is_cluster_segment(segment_key: str) -> bool:
+    return str(segment_key or "").startswith("cluster:")
+
+
+def parse_cluster_id_from_segment(segment_key: str) -> str | None:
+    if not is_cluster_segment(segment_key):
+        return None
+    parts = str(segment_key).split(":", 2)
+    return parts[1] if len(parts) >= 2 and parts[1] else None
+
+
+def parse_base_segment_key_from_segment(segment_key: str) -> str:
+    if is_cluster_segment(segment_key):
+        parts = str(segment_key).split(":", 2)
+        if len(parts) >= 3 and parts[2]:
+            return parts[2]
+    return str(segment_key or "default")
+
+
+def parse_segment_key(classification: dict[str, Any] | None, department: str | None = None) -> str:
+    cls = classification or {}
+    cluster_id = cls.get("query_cluster_id")
+    if cluster_id:
+        return build_cluster_segment_key(str(cluster_id), cls, department)
+    return parse_base_segment_key(cls, department)

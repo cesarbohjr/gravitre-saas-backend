@@ -460,6 +460,11 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             "provider": agent_result.provider,
             "model": agent_result.model,
         }
+        result["recommended_actions"] = [
+            format_plain_english(item, fallback=str(item)).strip()[:500]
+            for item in (result.get("recommended_actions") or [])
+            if item
+        ]
     else:
         result = {
             "task": {"description": summary, "status": "planned"},

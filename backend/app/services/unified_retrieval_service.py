@@ -110,10 +110,24 @@ class UnifiedRetrievalService:
                         "score": float(row.get("score") or 0.0),
                         "source": str(row.get("title") or row.get("source_title") or row.get("source") or ""),
                         "title": row.get("title") or row.get("source_title"),
+                        "metadata": row.get("metadata") if isinstance(row.get("metadata"), dict) else {},
                     }
                     for row in rows
                 ]
-                if rows:
+                assignments = params.get("knowledge_assignments") or []
+                if assignments:
+                    from app.services.agent_knowledge_assignment_service import (
+                        get_agent_knowledge_assignment_service,
+                    )
+
+                    assignment_svc = get_agent_knowledge_assignment_service()
+                    rag_sources, missing = assignment_svc.filter_rag_sources(rag_sources, assignments)
+                    metrics = dict(metrics or {})
+                    metrics["assignment_scoped"] = True
+                    metrics["assignment_match_count"] = len(rag_sources)
+                    if missing:
+                        metrics["missing_assignments"] = missing
+                if rag_sources:
                     rag_section = (
                         "<knowledge_base>\n"
                         + json.dumps(

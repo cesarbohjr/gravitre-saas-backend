@@ -11,10 +11,17 @@ from app.services.platform_intelligence_dedup import (
 from app.services.rl_policy_gate import get_rl_policy_status, neural_rl_signoff_granted
 
 
-def test_rl_policy_gate_defaults_to_tabular_v2():
+def test_rl_policy_gate_defaults_to_tabular_v3():
     status = get_rl_policy_status()
-    assert status["active_bandit_version"] == "v2"
+    assert status["active_bandit_version"] == "v3"
+    assert status["tabular_ledger_v2"] == "live"
+    assert status["tabular_ledger_v3"] == "live"
+    assert status["bandit_v2_fallback"] is True
+    assert status["memory_conflicts"] == "live"
+    assert status["phase_e_status"] == "complete"
     assert status["neural_rl_enabled"] is False
+    assert status["neural_rl_status"] == "planned"
+    assert status["world_models_status"] == "planned"
     assert status["federated_learning"] == "disabled"
 
 

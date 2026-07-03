@@ -1,5 +1,7 @@
 /** Convert structured/JSON strings into user-facing plain English. */
 
+const PARTIAL_JSON_SUMMARY = /"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/i
+
 function stripCodeFence(text: string): string {
   const trimmed = text.trim()
   const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```$/i)
@@ -76,9 +78,25 @@ export function humanizePlainEnglish(value: unknown, fallback = ""): string {
       const converted = humanizePlainEnglish(parsed, fallback)
       if (converted) return converted
     } catch {
-      // keep raw text below
+      const partial = text.match(PARTIAL_JSON_SUMMARY)?.[1]?.replace(/\\"/g, '"').trim()
+      if (partial) return partial
     }
   }
 
   return text
+}
+
+/** Polish assistant/operator copy for chat and insight panels. */
+export function polishAssistantText(text: string): string {
+  const normalized = humanizePlainEnglish(text, text).trim()
+  if (!normalized) return text.trim()
+
+  return normalized
+    .replace(/\*\(Source:\s*[^)]+\)\*/gi, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\bat\s+\/([a-z][a-z0-9-]*)\b/gi, (_, path: string) =>
+      ` on the ${path.replace(/-/g, " ")} page`,
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
 }

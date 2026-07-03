@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { polishAssistantText } from "@/lib/plain-english"
 import { conversationMessageToUI } from "@/lib/chat-messages"
 import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -136,6 +137,7 @@ export function AiWorkspace({
   const [layoutEnabledBlocks, setLayoutEnabledBlocks] = useState<ResultBlockId[]>([])
   const [layoutBlockColumns, setLayoutBlockColumns] = useState<Partial<Record<ResultBlockId, LayoutColumn>>>({})
   const [conversationLoading, setConversationLoading] = useState(false)
+  const [sessionBusy, setSessionBusy] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
@@ -181,7 +183,6 @@ export function AiWorkspace({
   const operatorSessionRef = useRef<string | null>(null)
   const activeExecuteTurnRef = useRef<string | null>(null)
   const initialPromptSentRef = useRef(false)
-  const hydrationDoneRef = useRef(false)
   const initialConversationHandledRef = useRef(false)
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
@@ -224,10 +225,12 @@ export function AiWorkspace({
     transport,
     onError: (error) => {
       submitLockRef.current = false
+      setSessionBusy(false)
       toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
     },
     onFinish: () => {
       submitLockRef.current = false
+      setSessionBusy(false)
       void mutateConversations()
     },
     onData: (dataPart) => {
@@ -263,7 +266,9 @@ export function AiWorkspace({
           notifications.addNotification({
             type: "task_complete",
             title: payload.executionResult.task_label || payload.executionResult.title || "Task completed",
-            message: payload.executionResult.body || "Your request was executed in Gravitre.",
+            message:
+              polishAssistantText(payload.executionResult.body || "") ||
+              "Your request was executed in Gravitre.",
             link: payload.executionResult.url,
           })
         }
@@ -340,30 +345,54 @@ export function AiWorkspace({
     }
   }, [confirmExecuting, notifications])
 
+  const notifyInlineTaskComplete = useCallback(
+    (title: string, message: string) => {
+      if (!notifications) return
+      notifications.addNotification({
+        type: "task_complete",
+        title,
+        message: polishAssistantText(message) || message,
+      })
+    },
+    [notifications],
+  )
+
   const {
     isWorking: executeWorking,
     error: executeHookError,
     submitJob,
     reset: resetExecuteJob,
   } = useAsyncJob({
-    onCompleted: useCallback((job: AgentJob) => {
-      const turnId = activeExecuteTurnRef.current
-      if (!turnId) return
-      setInlineTurns((prev) =>
-        prev.map((turn) =>
-          turn.id === turnId
-            ? {
-                ...turn,
-                status: "completed",
-                executeJob: job,
-                executePlan: planFromJobResult(job),
-                executeError: null,
-              }
-            : turn,
-        ),
-      )
-      activeExecuteTurnRef.current = null
-    }, []),
+    onCompleted: useCallback(
+      (job: AgentJob) => {
+        const turnId = activeExecuteTurnRef.current
+        if (!turnId) return
+        setInlineTurns((prev) =>
+          prev.map((turn) =>
+            turn.id === turnId
+              ? {
+                  ...turn,
+                  status: "completed",
+                  executeJob: job,
+                  executePlan: planFromJobResult(job),
+                  executeError: null,
+                }
+              : turn,
+          ),
+        )
+        activeExecuteTurnRef.current = null
+        setSessionBusy(false)
+        const summary =
+          (job.result?.analysis_summary as string | undefined) ||
+          (job.result?.summary as string | undefined) ||
+          "Analysis finished — review the results below."
+        notifyInlineTaskComplete(
+          (job.result?.action_title as string | undefined) || "Task complete",
+          summary,
+        )
+      },
+      [notifyInlineTaskComplete],
+    ),
     onFailed: useCallback((job: AgentJob) => {
       const turnId = activeExecuteTurnRef.current
       if (!turnId) return
@@ -379,6 +408,7 @@ export function AiWorkspace({
         ),
       )
       activeExecuteTurnRef.current = null
+      setSessionBusy(false)
     }, []),
   })
 
@@ -458,9 +488,20 @@ export function AiWorkspace({
   )
 
   const loadConversationMessages = useCallback(
-    async (id: string, options?: { preferApi?: boolean }) => {
-      setConversationLoading(true)
-      setInlineTurns([])
+    async (id: string, options?: { preferApi?: boolean; silent?: boolean }) => {
+      const cached = readCachedConversationMessages(id)
+      const showBlockingLoader = !options?.silent && !cached?.length
+
+      if (showBlockingLoader) {
+        setConversationLoading(true)
+      }
+      if (!options?.silent && !cached?.length) {
+        setInlineTurns([])
+      }
+      if (cached?.length && !options?.silent) {
+        setMessages(cached)
+      }
+
       try {
         const { messages: stored } = await conversationsApi.getMessages(id)
         if (stored.length > 0) {
@@ -468,12 +509,10 @@ export function AiWorkspace({
           setMessages(uiMessages)
           writeCachedConversationMessages(id, uiMessages)
         } else if (!options?.preferApi) {
-          const cached = readCachedConversationMessages(id)
           if (cached?.length) setMessages(cached)
           else setMessages([])
-        } else {
-          const cached = readCachedConversationMessages(id)
-          if (cached?.length) setMessages(cached)
+        } else if (!cached?.length) {
+          setMessages([])
         }
 
         const selected = conversations.find((conversation) => conversation.id === id)
@@ -482,7 +521,6 @@ export function AiWorkspace({
         const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
         if (cachedTurns?.length) setInlineTurns(cachedTurns)
       } catch (error) {
-        const cached = readCachedConversationMessages(id)
         if (cached?.length) {
           setMessages(cached)
         } else if (error instanceof ApiError && error.status === 404) {
@@ -491,11 +529,13 @@ export function AiWorkspace({
           activeConversationIdRef.current = null
           setMessages([])
           setConversationTitle("Gravitre AI")
-        } else {
+        } else if (!cached?.length) {
           toast.error("Could not load conversation")
         }
       } finally {
-        setConversationLoading(false)
+        if (showBlockingLoader) {
+          setConversationLoading(false)
+        }
       }
     },
     [conversations, setMessages],
@@ -504,6 +544,7 @@ export function AiWorkspace({
   const runChat = useCallback(
     async (prompt: string) => {
       submitLockRef.current = true
+      setSessionBusy(true)
       await ensureConversation(prompt)
       sendMessage({ text: prompt })
     },
@@ -535,6 +576,11 @@ export function AiWorkspace({
               ),
             )
             activeExecuteTurnRef.current = null
+            setSessionBusy(false)
+            notifyInlineTaskComplete(
+              "Task complete",
+              plan.findings?.[0]?.content || "Analysis finished — review the results below.",
+            )
             return
           } catch (fallbackErr) {
             setInlineTurns((prev) =>
@@ -550,6 +596,7 @@ export function AiWorkspace({
               ),
             )
             activeExecuteTurnRef.current = null
+            setSessionBusy(false)
             return
           }
         }
@@ -561,9 +608,10 @@ export function AiWorkspace({
           ),
         )
         activeExecuteTurnRef.current = null
+        setSessionBusy(false)
       }
     },
-    [resetExecuteJob, submitJob],
+    [notifyInlineTaskComplete, resetExecuteJob, submitJob],
   )
 
   const runFind = useCallback(async (prompt: string, turnId: string) => {
@@ -582,6 +630,13 @@ export function AiWorkspace({
             : turn,
         ),
       )
+      setSessionBusy(false)
+      notifyInlineTaskComplete(
+        "Search complete",
+        response.results?.length
+          ? `Found ${response.results.length} result${response.results.length === 1 ? "" : "s"} for your query.`
+          : "Search finished — review the results below.",
+      )
     } catch {
       setInlineTurns((prev) =>
         prev.map((turn) =>
@@ -590,8 +645,9 @@ export function AiWorkspace({
             : turn,
         ),
       )
+      setSessionBusy(false)
     }
-  }, [])
+  }, [notifyInlineTaskComplete])
 
   const submitPrompt = useCallback(
     async (rawPrompt: string) => {
@@ -602,6 +658,7 @@ export function AiWorkspace({
         return
       }
 
+      setSessionBusy(true)
       await ensureSelectedOrg()
       await ensureConversation(prompt)
       const engine = await resolveEngine(prompt, mode)
@@ -640,17 +697,42 @@ export function AiWorkspace({
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
-      setConversationLoading(true)
+      if (id === activeConversationIdRef.current && messages.length > 0) {
+        setSidebarOpen(false)
+        return
+      }
+
+      setSessionBusy(false)
+      submitLockRef.current = false
+      setSidebarOpen(false)
+      stop()
+
       setActiveConversationId(id)
       activeConversationIdRef.current = id
       writeStoredConversationId(id)
       operatorSessionRef.current = null
       resetExecuteJob()
-      submitLockRef.current = false
-      setSidebarOpen(false)
-      await loadConversationMessages(id)
+
+      const cached = readCachedConversationMessages(id)
+      if (cached?.length) {
+        setMessages(cached)
+      } else {
+        setMessages([])
+      }
+      setInlineTurns(readCachedInlineTurns<InlineTurn>(id) ?? [])
+
+      const selected = conversations.find((conversation) => conversation.id === id)
+      if (selected?.title) setConversationTitle(selected.title)
+
+      try {
+        await loadConversationMessages(id)
+      } catch {
+        toast.error("Could not load conversation")
+      } finally {
+        setConversationLoading(false)
+      }
     },
-    [loadConversationMessages, resetExecuteJob],
+    [conversations, loadConversationMessages, messages.length, resetExecuteJob, setMessages, stop],
   )
 
   const handleNewConversation = useCallback(() => {
@@ -664,6 +746,9 @@ export function AiWorkspace({
     writeStoredConversationId(null)
     resetExecuteJob()
     setConversationTitle("Gravitre AI")
+    setConversationLoading(false)
+    setSessionBusy(false)
+    submitLockRef.current = false
     inputRef.current?.focus()
     void mutateConversations()
   }, [activeConversationId, mutateConversations, resetExecuteJob, setMessages])
@@ -717,35 +802,21 @@ export function AiWorkspace({
   useEffect(() => {
     if (!initialConversationId || initialConversationHandledRef.current || !user) return
     initialConversationHandledRef.current = true
-    hydrationDoneRef.current = true
     void handleSelectConversation(initialConversationId)
   }, [initialConversationId, user, handleSelectConversation])
 
   useEffect(() => {
-    if (!user || hydrationDoneRef.current || conversationsLoading || initialConversationId) return
-    const storedId = readStoredConversationId()
-    if (storedId) {
-      hydrationDoneRef.current = true
-      void handleSelectConversation(storedId)
+    if (!user || !activeConversationId || messages.length > 0 || sessionBusy || isChatBusy || conversationLoading) {
       return
     }
-    hydrationDoneRef.current = true
-  }, [user, conversationsLoading, handleSelectConversation, initialConversationId])
-
-  useEffect(() => {
-    if (!user || !activeConversationId || messages.length > 0 || conversationLoading || isChatBusy) {
-      return
-    }
-    const timer = window.setTimeout(() => {
-      void loadConversationMessages(activeConversationId, { preferApi: true })
-    }, 0)
-    return () => window.clearTimeout(timer)
+    void loadConversationMessages(activeConversationId)
   }, [
     user,
     activeConversationId,
     messages.length,
-    conversationLoading,
+    sessionBusy,
     isChatBusy,
+    conversationLoading,
     loadConversationMessages,
   ])
 
@@ -758,19 +829,6 @@ export function AiWorkspace({
     if (!activeConversationId) return
     writeCachedInlineTurns(activeConversationId, inlineTurns)
   }, [activeConversationId, inlineTurns])
-
-  const prevChatStatusRef = useRef(status)
-  useEffect(() => {
-    const previous = prevChatStatusRef.current
-    prevChatStatusRef.current = status
-    if (
-      (previous === "streaming" || previous === "submitted") &&
-      status === "ready" &&
-      activeConversationIdRef.current
-    ) {
-      void loadConversationMessages(activeConversationIdRef.current, { preferApi: true })
-    }
-  }, [status, loadConversationMessages])
 
   const handleToggleLayoutBlock = useCallback((blockId: ResultBlockId, enabled: boolean) => {
     setLayoutEnabledBlocks((current) => {
@@ -839,8 +897,16 @@ export function AiWorkspace({
     messages.length === 0 &&
     inlineTurns.length === 0 &&
     !isChatBusy &&
+    !sessionBusy &&
     !routing &&
     !activeConversationHasStoredMessages
+
+  const showWaitingForReply =
+    !showLanding &&
+    !conversationLoading &&
+    (sessionBusy || isChatBusy) &&
+    messages.length === 0 &&
+    inlineTurns.length === 0
 
   const showComposer = !showLanding || Boolean(activeConversationId)
 
@@ -870,44 +936,49 @@ export function AiWorkspace({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-14 items-center justify-between border-b border-border bg-card/40 px-4 md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen((open) => !open)}
-              className="h-8 w-8 text-muted-foreground"
-              aria-label={sidebarOpen ? "Hide history" : "Show history"}
-            >
-              {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-            </Button>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {activeMode.badge} · results stay on this page
-              </p>
+        <div className="border-b border-border bg-card/40">
+          <div className="flex min-h-14 items-center justify-between gap-3 px-4 md:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen((open) => !open)}
+                className="h-8 w-8 shrink-0 text-muted-foreground"
+                aria-label={sidebarOpen ? "Hide history" : "Show history"}
+              >
+                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+              </Button>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {activeMode.badge} · results stay on this page
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {user && (mode === "chat" || !showLanding) ? (
+                <PersonaSelector
+                  value={preferredPersona}
+                  onChange={handlePersonaChange}
+                  disabled={!user}
+                />
+              ) : null}
+              {!showLanding ? (
+                <AiLayoutPanelPicker
+                  enabledBlocks={layoutEnabledBlocks}
+                  onToggleBlock={handleToggleLayoutBlock}
+                />
+              ) : null}
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            {user && (mode === "chat" || !showLanding) ? (
-              <PersonaSelector
-                value={preferredPersona}
-                onChange={handlePersonaChange}
-                disabled={!user}
-              />
-            ) : null}
-            <AiLayoutPanelPicker
-              enabledBlocks={layoutEnabledBlocks}
-              onToggleBlock={handleToggleLayoutBlock}
-            />
-            <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 overflow-x-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-2 md:px-6">
             {AI_MODES.map((m) => (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => setMode(m.id)}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors",
+                  "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors",
                   mode === m.id
                     ? cn("ring-1", m.ring, "text-foreground")
                     : "border-border text-muted-foreground hover:text-foreground",
@@ -916,7 +987,6 @@ export function AiWorkspace({
                 {m.label}
               </button>
             ))}
-            </div>
           </div>
         </div>
 
@@ -947,17 +1017,18 @@ export function AiWorkspace({
               />
             ) : null}
 
-            {conversationLoading ? (
+            {conversationLoading && !sessionBusy && !isChatBusy ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading conversation…
               </div>
             ) : null}
 
-            {!showLanding && !conversationLoading
+            {!showLanding && (!conversationLoading || sessionBusy || isChatBusy)
               ? messages.map((message) => {
               const text = normalizeChatText(message)
               const isUser = message.role === "user"
+              const displayText = isUser ? text : polishAssistantText(text)
               const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
               return (
                 <motion.div
@@ -983,7 +1054,7 @@ export function AiWorkspace({
                       <p className="whitespace-pre-wrap">{text}</p>
                     ) : (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || "…"}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText || "…"}</ReactMarkdown>
                         {!isUser && message.id === lastAssistantId ? (
                           <>
                             <ChatExecutionPanel
@@ -1011,6 +1082,13 @@ export function AiWorkspace({
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Restoring conversation…
+              </div>
+            ) : null}
+
+            {!showLanding && !conversationLoading && showWaitingForReply ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                Gravitre is thinking…
               </div>
             ) : null}
 

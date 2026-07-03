@@ -123,6 +123,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       timestamp: new Date(),
       read: false,
     }
+    if (notification.type === "task_complete") {
+      toast.success(notification.title, {
+        description: notification.message,
+        ...(notification.link ? { action: { label: "View", onClick: () => window.open(notification.link, "_self") } } : {}),
+      })
+    }
     void mutate(
       (prev) => ({
         notifications: [

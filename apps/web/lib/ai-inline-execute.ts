@@ -187,8 +187,9 @@ export function planFromJobResult(job: AgentJob): InlineExecutePlan {
       ? [
           {
             id: `action-${job.jobId}`,
-            title: result.action_title,
-            description: result.action_description || "Apply the suggested fix",
+            title: humanizeOperatorContent(result.action_title) || result.action_title,
+            description:
+              humanizeOperatorContent(result.action_description) || "Apply the suggested fix",
             type: result.requires_approval ? "requires-approval" : "immediate",
             priority: "high",
             estimatedImpact: "Based on agent analysis",

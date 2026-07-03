@@ -165,6 +165,10 @@ def patch_agent_streaming_dialogue_pipeline() -> Iterator[None]:
         mock_turn.business_signals = []
         mock_turn.strategic_plan = None
         mock_turn.knowledge_assignments = []
+        mock_turn.assigned_sources_used = []
+        mock_turn.knowledge_gap_message = None
+        mock_turn.missing_assignment_labels = []
+        mock_turn.memory_conflicts = []
         mock_turn.specialist_modifier = ""
         mock_orchestrator = MagicMock()
         mock_orchestrator.prepare_assistant_turn = AsyncMock(return_value=mock_turn)
