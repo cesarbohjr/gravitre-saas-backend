@@ -261,7 +261,7 @@ export function ConversationSidebar({
   }
 
   const shareLink = (id: string) => {
-    const url = `${window.location.origin}/assistant?c=${id}`
+    const url = `${window.location.origin}/ai?c=${id}`
     void navigator.clipboard.writeText(url)
   }
 

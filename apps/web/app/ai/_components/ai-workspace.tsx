@@ -73,8 +73,15 @@ import {
   persistLayoutOrder,
 } from "./ai-layout-storage"
 import { LiveActivityRail } from "./live-activity-rail"
-
-const CONVERSATION_ID_KEY = "gravitre_ai_conversation_id"
+import {
+  clearCachedConversationMessages,
+  readCachedConversationMessages,
+  readCachedInlineTurns,
+  readStoredConversationId,
+  writeCachedConversationMessages,
+  writeCachedInlineTurns,
+  writeStoredConversationId,
+} from "@/lib/ai-conversation-storage"
 
 type InlineTurn = {
   id: string
@@ -92,6 +99,7 @@ type InlineTurn = {
 type AiWorkspaceProps = {
   initialMode?: ModeId
   initialPrompt?: string
+  initialConversationId?: string | null
 }
 
 function normalizeChatText(message: UIMessage): string {
@@ -102,7 +110,11 @@ function normalizeChatText(message: UIMessage): string {
     .join("")
 }
 
-export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWorkspaceProps) {
+export function AiWorkspace({
+  initialMode = "auto",
+  initialPrompt = "",
+  initialConversationId = null,
+}: AiWorkspaceProps) {
   const { user } = useAuth()
   const { preferredPersona, preferredPersonaRef, handlePersonaChange } = usePreferredPersona({
     enabled: Boolean(user),
@@ -119,7 +131,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   const [conversationLoading, setConversationLoading] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
-    return localStorage.getItem(CONVERSATION_ID_KEY)
+    return initialConversationId || readStoredConversationId()
   })
   const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
   const [chatMode] = useState<"standard" | "deep">("standard")
@@ -138,6 +150,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   const activeExecuteTurnRef = useRef<string | null>(null)
   const initialPromptSentRef = useRef(false)
   const hydrationDoneRef = useRef(false)
+  const initialConversationHandledRef = useRef(false)
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
@@ -344,7 +357,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
             activeConversationIdRef.current = created.id
             setActiveConversationId(created.id)
             setConversationTitle(created.title || title.slice(0, 80))
-            localStorage.setItem(CONVERSATION_ID_KEY, created.id)
+            writeStoredConversationId(created.id)
             void mutateConversations()
             return created.id
           })
@@ -356,6 +369,50 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
       return pendingConversationRef.current
     },
     [mutateConversations],
+  )
+
+  const loadConversationMessages = useCallback(
+    async (id: string, options?: { preferApi?: boolean }) => {
+      setConversationLoading(true)
+      setInlineTurns([])
+      try {
+        const { messages: stored } = await conversationsApi.getMessages(id)
+        if (stored.length > 0) {
+          const uiMessages = stored.map(conversationMessageToUI)
+          setMessages(uiMessages)
+          writeCachedConversationMessages(id, uiMessages)
+        } else if (!options?.preferApi) {
+          const cached = readCachedConversationMessages(id)
+          if (cached?.length) setMessages(cached)
+          else setMessages([])
+        } else {
+          const cached = readCachedConversationMessages(id)
+          if (cached?.length) setMessages(cached)
+        }
+
+        const selected = conversations.find((conversation) => conversation.id === id)
+        if (selected?.title) setConversationTitle(selected.title)
+
+        const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
+        if (cachedTurns?.length) setInlineTurns(cachedTurns)
+      } catch (error) {
+        const cached = readCachedConversationMessages(id)
+        if (cached?.length) {
+          setMessages(cached)
+        } else if (error instanceof ApiError && error.status === 404) {
+          writeStoredConversationId(null)
+          setActiveConversationId(null)
+          activeConversationIdRef.current = null
+          setMessages([])
+          setConversationTitle("Gravitre AI")
+        } else {
+          toast.error("Could not load conversation")
+        }
+      } finally {
+        setConversationLoading(false)
+      }
+    },
+    [conversations, setMessages],
   )
 
   const runChat = useCallback(
@@ -460,6 +517,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
       }
 
       await ensureSelectedOrg()
+      await ensureConversation(prompt)
       const engine = await resolveEngine(prompt, mode)
       setInput("")
 
@@ -485,7 +543,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
         await runFind(prompt, turnId)
       }
     },
-    [mode, resolveEngine, routing, runChat, runExecute, runFind, user],
+    [mode, resolveEngine, routing, runChat, runExecute, runFind, user, ensureConversation],
   )
 
   useEffect(() => {
@@ -499,52 +557,34 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
       setConversationLoading(true)
       setActiveConversationId(id)
       activeConversationIdRef.current = id
-      localStorage.setItem(CONVERSATION_ID_KEY, id)
-      setInlineTurns([])
+      writeStoredConversationId(id)
       operatorSessionRef.current = null
       resetExecuteJob()
       submitLockRef.current = false
       setSidebarOpen(false)
-      try {
-        const [{ messages: stored }, selected] = await Promise.all([
-          conversationsApi.getMessages(id),
-          Promise.resolve(conversations.find((c) => c.id === id)),
-        ])
-        setMessages(stored.map(conversationMessageToUI))
-        setConversationTitle(selected?.title || "Gravitre AI")
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          localStorage.removeItem(CONVERSATION_ID_KEY)
-          setActiveConversationId(null)
-          activeConversationIdRef.current = null
-          setMessages([])
-          setConversationTitle("Gravitre AI")
-        } else {
-          toast.error("Could not load conversation")
-        }
-      } finally {
-        setConversationLoading(false)
-      }
+      await loadConversationMessages(id)
     },
-    [conversations, resetExecuteJob, setMessages],
+    [loadConversationMessages, resetExecuteJob],
   )
 
   const handleNewConversation = useCallback(() => {
+    if (activeConversationId) clearCachedConversationMessages(activeConversationId)
     setMessages([])
     setInlineTurns([])
     setActiveConversationId(null)
     activeConversationIdRef.current = null
     pendingConversationRef.current = null
     operatorSessionRef.current = null
-    localStorage.removeItem(CONVERSATION_ID_KEY)
+    writeStoredConversationId(null)
     resetExecuteJob()
     setConversationTitle("Gravitre AI")
     inputRef.current?.focus()
     void mutateConversations()
-  }, [mutateConversations, resetExecuteJob, setMessages])
+  }, [activeConversationId, mutateConversations, resetExecuteJob, setMessages])
 
   const handleDeleteConversation = useCallback(
     async (id: string) => {
+      clearCachedConversationMessages(id)
       await conversationsApi.delete(id)
       if (activeConversationId === id) handleNewConversation()
       void mutateConversations()
@@ -582,17 +622,69 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   const isChatBusy = status === "submitted" || status === "streaming"
   const showConversationsSkeleton = Boolean(user) && conversationsLoading && !conversationsData
   const showConversationsError = Boolean(user) && Boolean(conversationsError) && !conversationsLoading
+  const activeConversation = useMemo(
+    () => conversations.find((conversation) => conversation.id === activeConversationId) ?? null,
+    [conversations, activeConversationId],
+  )
+  const activeConversationHasStoredMessages = (activeConversation?.message_count ?? 0) > 0
 
   useEffect(() => {
-    if (!user || hydrationDoneRef.current || conversationsLoading) return
-    const storedId = localStorage.getItem(CONVERSATION_ID_KEY)
+    if (!initialConversationId || initialConversationHandledRef.current || !user) return
+    initialConversationHandledRef.current = true
+    hydrationDoneRef.current = true
+    void handleSelectConversation(initialConversationId)
+  }, [initialConversationId, user, handleSelectConversation])
+
+  useEffect(() => {
+    if (!user || hydrationDoneRef.current || conversationsLoading || initialConversationId) return
+    const storedId = readStoredConversationId()
     if (storedId) {
       hydrationDoneRef.current = true
       void handleSelectConversation(storedId)
       return
     }
     hydrationDoneRef.current = true
-  }, [user, conversationsLoading, handleSelectConversation])
+  }, [user, conversationsLoading, handleSelectConversation, initialConversationId])
+
+  useEffect(() => {
+    if (!user || !activeConversationId || messages.length > 0 || conversationLoading || isChatBusy) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void loadConversationMessages(activeConversationId, { preferApi: true })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [
+    user,
+    activeConversationId,
+    messages.length,
+    conversationLoading,
+    isChatBusy,
+    loadConversationMessages,
+  ])
+
+  useEffect(() => {
+    if (!activeConversationId || messages.length === 0) return
+    writeCachedConversationMessages(activeConversationId, messages)
+  }, [activeConversationId, messages])
+
+  useEffect(() => {
+    if (!activeConversationId) return
+    writeCachedInlineTurns(activeConversationId, inlineTurns)
+  }, [activeConversationId, inlineTurns])
+
+  const prevChatStatusRef = useRef(status)
+  useEffect(() => {
+    const previous = prevChatStatusRef.current
+    prevChatStatusRef.current = status
+    if (
+      (previous === "streaming" || previous === "submitted") &&
+      status === "ready" &&
+      activeConversationIdRef.current
+    ) {
+      void loadConversationMessages(activeConversationIdRef.current, { preferApi: true })
+    }
+  }, [status, loadConversationMessages])
 
   const handleToggleLayoutBlock = useCallback((blockId: ResultBlockId, enabled: boolean) => {
     setLayoutEnabledBlocks((current) => {
@@ -654,6 +746,16 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   const showPinnedLayout =
     layoutEnabledBlocks.length > 0 && latestExecuteTurn == null && inlineTurns.length === 0
 
+  const showEmptyThreadHint =
+    !showLanding &&
+    !conversationLoading &&
+    activeConversationId &&
+    messages.length === 0 &&
+    inlineTurns.length === 0 &&
+    !isChatBusy &&
+    !routing &&
+    !activeConversationHasStoredMessages
+
   const showComposer = !showLanding || Boolean(activeConversationId)
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -712,7 +814,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
               enabledBlocks={layoutEnabledBlocks}
               onToggleBlock={handleToggleLayoutBlock}
             />
-            <div className="hidden flex-wrap gap-1.5 sm:flex">
+            <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5 overflow-x-auto">
             {AI_MODES.map((m) => (
               <button
                 key={m.id}
@@ -800,7 +902,14 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
             })
               : null}
 
-            {!showLanding && !conversationLoading && activeConversationId && messages.length === 0 ? (
+            {!showLanding && !conversationLoading && activeConversationHasStoredMessages && messages.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Restoring conversation…
+              </div>
+            ) : null}
+
+            {!showLanding && !conversationLoading && showEmptyThreadHint ? (
               <div className="rounded-xl border border-dashed border-border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">This conversation is empty</p>
                 <p className="mt-1 text-xs">Send a message below to continue this thread.</p>
@@ -879,28 +988,38 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
         {showComposer ? (
         <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur md:px-8">
           <div className="mx-auto max-w-3xl">
-            <div
-              className={cn(
-                "rounded-2xl border bg-card p-2 shadow-sm focus-within:ring-2",
-                activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
-                activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
-                activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
-                activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
-              )}
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submitPrompt(input)
+              }}
             >
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
-                rows={2}
-                disabled={routing}
-                placeholder="Ask, delegate, or search — results appear here…"
-                className="w-full resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70"
-              />
-              <div className="flex items-center justify-between px-2 pb-1">
-                <p className="text-xs text-muted-foreground">{activeMode.blurb}</p>
-                <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-sm focus-within:ring-2",
+                  activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
+                  activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
+                  activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
+                  activeMode.id === "auto" && "focus-within:border-foreground/30 focus-within:ring-foreground/15",
+                )}
+              >
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  rows={1}
+                  disabled={routing}
+                  placeholder="Ask, delegate, or search — results appear here…"
+                  className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70"
+                  style={{ height: "24px" }}
+                  onInput={(event) => {
+                    const target = event.target as HTMLTextAreaElement
+                    target.style.height = "24px"
+                    target.style.height = `${Math.min(target.scrollHeight, 200)}px`
+                  }}
+                />
+                <div className="flex shrink-0 items-center gap-2 pb-0.5">
                   {isChatBusy ? (
                     <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
                       <Square className="mr-1 h-3 w-3" />
@@ -908,8 +1027,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
                     </Button>
                   ) : null}
                   <button
-                    type="button"
-                    onClick={() => void submitPrompt(input)}
+                    type="submit"
                     disabled={!input.trim() || routing || isChatBusy}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
                     aria-label="Send"
@@ -918,7 +1036,8 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
                   </button>
                 </div>
               </div>
-            </div>
+              <p className="mt-2 px-1 text-xs text-muted-foreground">{activeMode.blurb}</p>
+            </form>
           </div>
         </div>
         ) : null}

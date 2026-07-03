@@ -41,6 +41,7 @@ const nextConfig = {
       { source: "/chat", destination: "/search", permanent: true },
       { source: "/operator", destination: "/ai", permanent: true },
       { source: "/command-center", destination: "/ai", permanent: true },
+      { source: "/assistant", destination: "/ai", permanent: true },
       { source: "/agents/swarm", destination: "/multi-agent-run", permanent: true },
     ]
   },

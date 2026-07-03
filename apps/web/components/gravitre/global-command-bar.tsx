@@ -40,7 +40,7 @@ const navigationItems: CommandItem[] = [
     title: "Workspace Chat",
     subtitle: "Multi-turn chat with tools",
     icon: "chat",
-    href: "/assistant",
+    href: `${APP_ROUTES.gravitreAi}?mode=chat`,
     keywords: ["assistant", "chat", "conversation", "help"],
   },
   {

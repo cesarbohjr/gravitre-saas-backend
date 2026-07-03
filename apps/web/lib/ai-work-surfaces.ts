@@ -25,7 +25,7 @@ export const AI_WORK_SURFACES: AiWorkSurface[] = [
   },
   {
     id: "workspace-chat",
-    href: "/assistant",
+    href: `${APP_ROUTES.gravitreAi}?mode=chat`,
     title: "Workspace Chat",
     badge: "Chat",
     summary: "Multi-turn conversation with tools, daily briefings, and platform help.",
