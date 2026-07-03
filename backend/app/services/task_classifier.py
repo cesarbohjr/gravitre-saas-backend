@@ -132,6 +132,11 @@ class TaskClassifier:
                 intent = "crm_lookup"
                 pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["crm_lookup"])
 
+        from app.services.assistant_availability import is_external_or_general_question, is_web_search_configured
+
+        if is_external_or_general_question(request) and is_web_search_configured(self.settings):
+            pipeline_flags["requires_web_search"] = True
+
         department = base.get("department")
         if not department and understanding:
             department = understanding.get("department_inference")

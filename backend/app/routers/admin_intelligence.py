@@ -188,6 +188,33 @@ async def get_strategy_performance(
     }
 
 
+@router.get("/predictive-ops/domain/{domain}")
+async def get_predictive_ops_domain(
+    domain: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.predictive_operations_engine import get_predictive_operations_engine
+
+    return await get_predictive_operations_engine(settings).run_domain_predictions(org_id, domain)
+
+
+@router.get("/learning/bandit-status")
+async def get_bandit_status(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Tabular bandit v2 status — empirical ledger, not neural RL."""
+    ledger = get_strategy_performance_ledger(settings)
+    return {
+        "bandit_version": "v2",
+        "scope_note": "Empirical win-rate + UCB exploration over strategy_performance_records — not reinforcement learning.",
+        "summary": await ledger.load_admin_summary(org_id),
+    }
+
+
 @router.get("/simulations")
 async def get_simulations_summary(
     org_id: Annotated[str, Depends(get_org_context)],

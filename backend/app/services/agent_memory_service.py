@@ -15,6 +15,32 @@ from app.rag.retrieval import search_chunks
 VALID_CATEGORIES = frozenset({"fact", "preference", "pattern", "rule"})
 
 
+def detect_agent_memory_conflicts(memories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Surface opposing statements across retrieved agent memories."""
+    from app.services.context_conflict_detection import _has_opposing_sentiment
+
+    conflicts: list[dict[str, Any]] = []
+    for index, left in enumerate(memories):
+        left_text = str(left.get("content") or left.get("memory_text") or "")
+        if not left_text.strip():
+            continue
+        for right in memories[index + 1 :]:
+            right_text = str(right.get("content") or right.get("memory_text") or "")
+            if not right_text.strip():
+                continue
+            if _has_opposing_sentiment(left_text, right_text):
+                conflicts.append(
+                    {
+                        "memory_a_id": left.get("id"),
+                        "memory_b_id": right.get("id"),
+                        "category_a": left.get("category"),
+                        "category_b": right.get("category"),
+                        "requires_human_review": True,
+                    }
+                )
+    return conflicts
+
+
 def _normalize_category(value: str | None) -> str:
     category = (value or "fact").strip().lower()
     if category not in VALID_CATEGORIES:
@@ -288,6 +314,7 @@ def build_task_retrieval_context(
             )
         except Exception:  # noqa: BLE001
             context["memories"] = []
+        context["memory_conflicts"] = detect_agent_memory_conflicts(context["memories"])
 
     if _department_rag_enabled(agent, parameters):
         try:

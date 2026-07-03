@@ -1,6 +1,7 @@
 """Empirical strategy performance ledger (meta-learning v1 / contextual bandit v1)."""
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
@@ -16,6 +17,16 @@ logger = get_logger(__name__)
 
 MIN_SAMPLES_FOR_PREFERENCE = 20
 MIN_WIN_RATE_DELTA = 0.05
+MIN_SAMPLES_FOR_UCB = 5
+
+
+def _ucb_score(wins: int, losses: int, total_trials: int) -> float:
+    decided = wins + losses
+    if decided <= 0:
+        return 0.0
+    exploitation = wins / decided
+    exploration = math.sqrt(2 * math.log(max(total_trials, 1)) / decided)
+    return exploitation + exploration
 
 
 class StrategyPerformanceLedger:
@@ -117,6 +128,7 @@ class StrategyPerformanceLedger:
         losses = sum(1 for r in rows if r.get("outcome_polarity") == "loss")
         decided = wins + losses
         latencies = [int(r["latency_ms"]) for r in rows if r.get("latency_ms") is not None]
+        ucb = _ucb_score(wins, losses, max(len(rows), 1))
         return {
             "strategy_key": strategy_key,
             "sample_size": len(rows),
@@ -124,6 +136,7 @@ class StrategyPerformanceLedger:
             "wins": wins,
             "losses": losses,
             "win_rate": round(wins / decided, 4) if decided else None,
+            "ucb_score": round(ucb, 4) if decided else None,
             "avg_latency_ms": round(sum(latencies) / len(latencies), 2) if latencies else None,
         }
 
@@ -156,11 +169,24 @@ class StrategyPerformanceLedger:
         *,
         segment_key: str = "default",
     ) -> dict[str, Any]:
-        """Contextual bandit v1: pick highest win-rate candidate with enough samples."""
+        """
+        Contextual bandit v2: empirical win-rate (v1) with UCB exploration fallback.
+        Not neural RL — tabular ledger only.
+        """
+        from app.services.org_learning_profile_service import get_org_learning_profile_service
+
         keys = list(dict.fromkeys([default_key, *candidate_keys]))
         ranked = await self.rank_strategies(org_id, keys, segment_key=segment_key)
+        profile = await get_org_learning_profile_service(self.settings).load_profile(org_id)
+        segment_weights = (
+            (profile.get("segments") or {}).get(segment_key, {}).get("strategy_weights") or {}
+        )
         default_stats = next((item for item in ranked if item["strategy_key"] == default_key), None)
         default_rate = (default_stats or {}).get("win_rate") or 0.0
+        for item in ranked:
+            weight = float(segment_weights.get(item["strategy_key"]) or 1.0)
+            if item.get("ucb_score") is not None:
+                item["weighted_ucb_score"] = round(float(item["ucb_score"]) * weight, 4)
         for item in ranked:
             if item["strategy_key"] == default_key:
                 continue
@@ -171,12 +197,32 @@ class StrategyPerformanceLedger:
                     return {
                         "selected_key": item["strategy_key"],
                         "reason": "ledger_win_rate",
+                        "bandit_version": "v2",
                         "stats": item,
                         "default_stats": default_stats,
                     }
+        ucb_candidates = [
+            item
+            for item in ranked
+            if int(item.get("decided_samples") or 0) >= MIN_SAMPLES_FOR_UCB
+            and item.get("weighted_ucb_score") is not None
+        ]
+        if ucb_candidates:
+            best_ucb = max(ucb_candidates, key=lambda row: float(row.get("weighted_ucb_score") or 0))
+            if best_ucb["strategy_key"] != default_key and float(best_ucb.get("weighted_ucb_score") or 0) > float(
+                (default_stats or {}).get("weighted_ucb_score") or (default_stats or {}).get("ucb_score") or 0
+            ):
+                return {
+                    "selected_key": best_ucb["strategy_key"],
+                    "reason": "ledger_ucb_v2",
+                    "bandit_version": "v2",
+                    "stats": best_ucb,
+                    "default_stats": default_stats,
+                }
         return {
             "selected_key": default_key,
             "reason": "default_insufficient_evidence",
+            "bandit_version": "v2",
             "stats": default_stats,
         }
 

@@ -54,8 +54,13 @@ class WorldModelScaffold(BaseMLModel):
             and causal_status == ModelStatus.TRAINED.value
             and env_enabled
         )
+        progress = round(
+            min(1.0, trajectory_count / max(self.WORLD_MODEL_MIN_TRAJECTORIES, 1)),
+            4,
+        )
         return {
             "activation_status": "active" if all_met else "planned",
+            "trajectory_progress": progress,
             "prerequisites": {
                 "outcome_trajectories": {
                     "current": trajectory_count,

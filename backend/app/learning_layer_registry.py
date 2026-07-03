@@ -57,4 +57,14 @@ LEARNING_LAYER_REGISTRY: dict[str, dict[str, str]] = {
         "status": "active",
         "extends": "rag_chunk_outcomes live scores for router/research/decision intel",
     },
+    "predictive_operations_engine": {
+        "module": "app.services.predictive_operations_engine",
+        "status": "active",
+        "extends": "GRAVITRE_ML_CATALOG domain packs with honest PLANNED/TRAINED gates",
+    },
+    "research_monitor_scheduler": {
+        "module": "app.services.research_monitor_scheduler",
+        "status": "active",
+        "extends": "company_intelligence_scheduler research_monitors tick",
+    },
 }

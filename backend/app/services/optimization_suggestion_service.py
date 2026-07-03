@@ -85,6 +85,37 @@ class OptimizationSuggestionService:
         suggestions.extend(await self._detect_stalled_deals(org_id))
         suggestions.extend(await self._detect_overdue_invoices(org_id))
         suggestions.extend(await self._detect_support_backlog_growth(org_id))
+        suggestions.extend(await self._detect_process_mining_bottlenecks(org_id))
+        return suggestions
+
+    async def _detect_process_mining_bottlenecks(self, org_id: str) -> list[dict[str, Any]]:
+        from app.services.process_mining_service import get_process_mining_service
+
+        mining = get_process_mining_service(self.settings)
+        bottlenecks = await mining.detect_process_bottlenecks(org_id)
+        suggestions: list[dict[str, Any]] = []
+        for row in bottlenecks.get("bottlenecks") or []:
+            step_name = str(row.get("stepName") or row.get("step_name") or "unknown_step")
+            evidence = {
+                "source": "process_mining_service.detect_process_bottlenecks",
+                "step_name": step_name,
+                "avg_duration_ms": row.get("avgDurationMs") or row.get("avg_duration_ms"),
+                "occurrences": row.get("sampleSize") or row.get("occurrences") or row.get("count"),
+            }
+            suggestions.append(
+                await self._insert_suggestion(
+                    org_id,
+                    target_entity_type="workflow_node",
+                    target_entity_id=step_name,
+                    suggestion_type="process_bottleneck",
+                    evidence=evidence,
+                    suggested_action=(
+                        f'Process mining flagged "{step_name}" as a recurring bottleneck. '
+                        "Review workflow design before automating further."
+                    ),
+                    estimated_impact=str(row.get("estimated_impact") or "Reduce end-to-end workflow latency"),
+                )
+            )
         return suggestions
 
     async def _detect_slow_steps(self, org_id: str) -> list[dict[str, Any]]:

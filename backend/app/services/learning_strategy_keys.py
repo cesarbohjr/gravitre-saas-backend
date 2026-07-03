@@ -20,7 +20,8 @@ def build_route_strategy_key(
     graph = "graph" if enrich.get("graph") else "no_graph"
     prediction = "pred" if enrich.get("prediction") else "no_pred"
     causal = "causal" if enrich.get("causal") else "no_causal"
-    return f"route:{intent}:{model_part}:{graph}:{prediction}:{causal}"
+    web = "web" if enrich.get("web") else "no_web"
+    return f"route:{intent}:{model_part}:{graph}:{prediction}:{causal}:{web}"
 
 
 def build_model_strategy_key(model_name: str) -> str:

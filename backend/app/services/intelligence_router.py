@@ -147,6 +147,8 @@ class IntelligenceRouter:
 
         model_selection = await self._model_selector.select(org_id, classification)
         enrichments = await self._run_enrichments(org_id, request, classification, context)
+        if (context.get("external_context") or {}).get("findings"):
+            enrichments = {**enrichments, "web": context["external_context"]}
         strategy_key = build_route_strategy_key(model_selection, classification, enrichments)
         segment_key = parse_segment_key(classification)
 
@@ -300,6 +302,18 @@ class IntelligenceRouter:
         sources = list(context.get("rag_context") or [])
         if context.get("graph_context"):
             sources.append({"type": "knowledge_graph", "context": context["graph_context"]})
+        external = context.get("external_context") or {}
+        for finding in external.get("findings") or []:
+            if not isinstance(finding, dict):
+                continue
+            sources.append(
+                {
+                    "type": "web",
+                    "content": finding.get("summary"),
+                    "url": finding.get("source"),
+                    "source_credibility": finding.get("source_credibility"),
+                }
+            )
         if enrichments.get("prediction"):
             sources.append({"type": "prediction", "data": enrichments["prediction"]})
 
@@ -330,6 +344,10 @@ class IntelligenceRouter:
         elif enrichments.get("causal", {}).get("status") == "correlational_fallback":
             note = enrichments["causal"].get("confidence_note") or "Correlational only — not causal proof."
             explanation = f"{explanation} {note}"
+        if external.get("findings"):
+            explanation = (
+                f"{explanation} External web sources were included where org knowledge was insufficient."
+            )
 
         answer = str(primary.get("action") or self._summarize_context(context, request))
         wrapped = get_ai_trust_layer().wrap_response(

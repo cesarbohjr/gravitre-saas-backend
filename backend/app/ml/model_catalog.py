@@ -25,6 +25,7 @@ from app.ml.meta_learning import MetaLearningAdaptor
 from app.ml.multimodal_models import MultimodalRouter
 from app.ml.neuro_symbolic import NeuroSymbolicReasoningEngine
 from app.ml.planning_models import AgentPlanningModel
+from app.ml.predictive_ops_models import CapacityForecaster, DealLossScorer, SlaBreachPredictor
 from app.ml.retrieval_learning import RetrievalMemoryLearner
 from app.ml.revenue_forecasting import RevenueForecaster
 from app.ml.self_supervised import SelfSupervisedEmbeddingLearner
@@ -99,6 +100,27 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
         "use_cases": ["customer_risk_scoring"],
         "activation": "30+ customer engagement data points",
         "fallback": "rule_based_risk_signals",
+        "advisory_only": True,
+    },
+    "sla_breach_predictor": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["support_sla_breach_risk"],
+        "activation": "60+ support tickets with SLA resolution timestamps",
+        "fallback": "support_backlog correlational detector",
+        "advisory_only": True,
+    },
+    "deal_loss_scorer": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["deal_loss_probability"],
+        "activation": "25+ measured CRM deal win/loss outcomes",
+        "fallback": "stalled_deal correlational detector",
+        "advisory_only": True,
+    },
+    "capacity_forecaster": {
+        "status": ModelStatus.PLANNED,
+        "use_cases": ["support_capacity_forecasting"],
+        "activation": "21+ daily ticket volume observations",
+        "fallback": "business_digital_twin support_capacity domain",
         "advisory_only": True,
     },
     "causal_impact_analyzer": {
@@ -180,6 +202,9 @@ _MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
     "retrieval_memory_learner": RetrievalMemoryLearner,
     "revenue_forecaster": RevenueForecaster,
     "churn_risk_scorer": ChurnRiskScorer,
+    "sla_breach_predictor": SlaBreachPredictor,
+    "deal_loss_scorer": DealLossScorer,
+    "capacity_forecaster": CapacityForecaster,
     "causal_impact_analyzer": CausalImpactAnalyzer,
     "graph_neural_network": GraphNeuralNetworkScorer,
     "multimodal_router": MultimodalRouter,
@@ -257,6 +282,34 @@ def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> 
     elif model_name == "churn_risk_scorer":
         rows = client.table("agent_action_outcomes").select("id", count="exact").eq("org_id", org_id).execute()
         counts["outcome_rows"] = int(rows.count or 0)
+    elif model_name == "sla_breach_predictor":
+        rows = (
+            client.table("agent_action_outcomes")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .eq("metric_name", "ticket_volume")
+            .execute()
+        )
+        counts["ticket_volume_rows"] = int(rows.count or 0)
+    elif model_name == "deal_loss_scorer":
+        rows = (
+            client.table("agent_action_outcomes")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .eq("target_entity_type", "deal")
+            .not_.is_("measured_at", "null")
+            .execute()
+        )
+        counts["measured_deal_outcomes"] = int(rows.count or 0)
+    elif model_name == "capacity_forecaster":
+        rows = (
+            client.table("agent_action_outcomes")
+            .select("id", count="exact")
+            .eq("org_id", org_id)
+            .eq("metric_name", "ticket_volume")
+            .execute()
+        )
+        counts["capacity_observations"] = int(rows.count or 0)
     elif model_name == "graph_neural_network":
         rows = (
             client.table("org_entity_relationships")
@@ -284,6 +337,12 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
         "fallback": meta.get("fallback"),
     }
     if status == ModelStatus.TRAINED:
+        payload.update(_count_org_data_points(org_id, model_name, active))
+    elif status == ModelStatus.PLANNED and model_name in {
+        "sla_breach_predictor",
+        "deal_loss_scorer",
+        "capacity_forecaster",
+    }:
         payload.update(_count_org_data_points(org_id, model_name, active))
     return payload
 

@@ -12,6 +12,7 @@ MAX_FILE_BYTES = MAX_TEXT_BYTES
 
 _TEXT_EXTENSIONS = {".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".html", ".htm", ".log"}
 _PDF_EXTENSIONS = {".pdf"}
+_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 _DOCX_EXTENSIONS = {".docx"}
 
 
@@ -90,7 +91,69 @@ def _extract_docx_text(data: bytes) -> str:
 
 
 def supported_upload_extensions() -> set[str]:
-    return _TEXT_EXTENSIONS | _PDF_EXTENSIONS | _DOCX_EXTENSIONS
+    return _TEXT_EXTENSIONS | _PDF_EXTENSIONS | _DOCX_EXTENSIONS | _IMAGE_EXTENSIONS
+
+
+async def extract_image_text_via_vision(
+    data: bytes,
+    filename: str,
+    *,
+    org_id: str | None = None,
+    settings: Any | None = None,
+) -> str:
+    """
+    Best-effort OCR for image uploads using the configured vision model tier.
+    Requires provider vision support — returns honest error when unavailable.
+    """
+    from app.config import get_settings
+
+    active = settings or get_settings()
+    api_key = (getattr(active, "openai_api_key", None) or "").strip()
+    if not api_key:
+        raise UnsupportedFileTypeError(
+            "Image OCR requires a configured vision provider (OpenAI API key)."
+        )
+    import base64
+
+    import httpx
+
+    encoded = base64.b64encode(data).decode("ascii")
+    ext = _extension(filename or "")
+    mime = "image/png"
+    if ext in {".jpg", ".jpeg"}:
+        mime = "image/jpeg"
+    elif ext == ".webp":
+        mime = "image/webp"
+    model = "gpt-4o"
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Extract all readable text from this image for knowledge retrieval. Plain text only.",
+                    },
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{encoded}"}},
+                ],
+            }
+        ],
+        "max_tokens": 1200,
+        "temperature": 0,
+    }
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        resp = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=payload,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+    text = str(((body.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+    if not text:
+        raise ValueError("Image contains no extractable text")
+    return text
 
 
 def extract_text_from_bytes(data: bytes, filename: str, *, content_type: str | None = None) -> str:
@@ -120,6 +183,10 @@ def extract_text_from_bytes(data: bytes, filename: str, *, content_type: str | N
         text = _extract_pdf_text(data)
     elif ext in _DOCX_EXTENSIONS:
         text = _extract_docx_text(data)
+    elif ext in _IMAGE_EXTENSIONS:
+        raise UnsupportedFileTypeError(
+            "Image uploads require async vision extraction — call extract_image_text_via_vision()"
+        )
     elif ext in {".csv", ".tsv"}:
         text = _extract_csv_text(_decode_text(data))
     elif ext == ".json":

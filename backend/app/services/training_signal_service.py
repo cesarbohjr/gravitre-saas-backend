@@ -29,6 +29,11 @@ class TrainingSignalService:
         "retrieval_ranker": {"min_evaluation_examples": 100},
         "revenue_forecaster": {"min_history_points": 14},
         "churn_risk_scorer": {"min_customer_signals": 30},
+        "sla_breach_predictor": {"min_ticket_volume_rows": 60},
+        "deal_loss_scorer": {"min_measured_deal_outcomes": 25},
+        "capacity_forecaster": {"min_capacity_observations": 21},
+        "workflow_duration_forecaster": {"min_workflow_runs": 30},
+        "workflow_success_predictor": {"min_workflow_runs": 30},
     }
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -92,6 +97,28 @@ class TrainingSignalService:
                 candidates = await self._outcomes.get_training_signal_candidates(org_id)
                 signals_available = len(candidates)
                 min_required = thresholds.get("min_history_points") or thresholds.get("min_customer_signals") or 10
+            elif "min_ticket_volume_rows" in thresholds or "min_capacity_observations" in thresholds:
+                try:
+                    from app.ml.model_catalog import _count_org_data_points
+
+                    counts = _count_org_data_points(org_id, model_name, self.settings).get("data_counts") or {}
+                    if "min_ticket_volume_rows" in thresholds:
+                        signals_available = int(counts.get("ticket_volume_rows") or 0)
+                        min_required = thresholds["min_ticket_volume_rows"]
+                    else:
+                        signals_available = int(counts.get("capacity_observations") or 0)
+                        min_required = thresholds["min_capacity_observations"]
+                except Exception:  # noqa: BLE001
+                    signals_available = 0
+            elif "min_measured_deal_outcomes" in thresholds:
+                try:
+                    from app.ml.model_catalog import _count_org_data_points
+
+                    counts = _count_org_data_points(org_id, model_name, self.settings).get("data_counts") or {}
+                    signals_available = int(counts.get("measured_deal_outcomes") or 0)
+                    min_required = thresholds["min_measured_deal_outcomes"]
+                except Exception:  # noqa: BLE001
+                    signals_available = 0
             last_trained = await self._last_trained_at(org_id, model_name)
             if signals_available >= min_required:
                 if last_trained:

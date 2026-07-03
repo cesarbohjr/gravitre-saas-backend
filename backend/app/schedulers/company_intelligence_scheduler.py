@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.company_intelligence_collectors import get_active_org_ids
 from app.services.company_intelligence_orchestrator import run_company_intelligence_for_org_sync
+from app.services.research_monitor_scheduler import run_due_research_monitors
 
 logger = get_logger(__name__)
 
@@ -37,6 +38,15 @@ async def _run_once(settings: Settings) -> None:
         except Exception as exc:  # noqa: BLE001
             logger.warning("company_intelligence_org_failed org_id=%s error=%s", org_id, exc)
     logger.info("company_intelligence_tick processed=%s due=%s", processed, len(org_ids))
+    try:
+        monitor_summary = await run_due_research_monitors(settings)
+        logger.info(
+            "research_monitor_tick checked=%s trends=%s",
+            monitor_summary.get("checked"),
+            monitor_summary.get("trends"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("research_monitor_tick_failed error=%s", exc)
 
 
 async def _loop(interval: int, settings: Settings) -> None:

@@ -46,6 +46,29 @@ class AutonomousResearchService:
                 findings.append({"type": "graph_context", "summary": str(graph.get("explanation"))[:500]})
                 sources.append({"type": "knowledge_graph"})
 
+        from app.services.assistant_availability import is_external_or_general_question, is_web_search_configured
+
+        if (depth == "deep" or not findings) and is_external_or_general_question(topic):
+            if is_web_search_configured(self.settings):
+                from app.services.web_research import TavilyNotConfiguredError, search_web
+
+                try:
+                    web = await search_web(topic, settings=self.settings, max_results=5)
+                    for row in web.get("results") or []:
+                        url = str(row.get("url") or "")
+                        findings.append(
+                            {
+                                "type": "web",
+                                "summary": str(row.get("snippet") or row.get("content") or "")[:400],
+                                "source": url,
+                            }
+                        )
+                        sources.append({"type": "web", "url": url, "title": row.get("title")})
+                except TavilyNotConfiguredError:
+                    gaps.append("Web search not configured (TAVILY_API_KEY).")
+            else:
+                gaps.append("External topic detected but TAVILY_API_KEY is not configured.")
+
         if not findings:
             gaps.append("No org knowledge matched this topic yet.")
 

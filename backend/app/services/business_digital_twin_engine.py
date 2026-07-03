@@ -40,7 +40,20 @@ class BusinessDigitalTwinEngine:
         "support_capacity": {
             "data_source": "agent_action_outcomes WHERE metric_name='ticket_volume'",
             "min_data_points": 14,
-            "model": "workflow_anomaly_detector",
+            "model": "capacity_forecaster",
+            "catalog_status": "PLANNED",
+        },
+        "sla_risk": {
+            "data_source": "support tickets + agent_action_outcomes ticket_volume",
+            "min_data_points": 60,
+            "model": "sla_breach_predictor",
+            "catalog_status": "PLANNED",
+        },
+        "deal_pipeline": {
+            "data_source": "agent_action_outcomes deal win/loss measurements",
+            "min_data_points": 25,
+            "model": "deal_loss_scorer",
+            "catalog_status": "PLANNED",
         },
     }
 
