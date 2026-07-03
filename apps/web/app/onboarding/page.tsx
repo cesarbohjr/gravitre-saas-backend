@@ -201,7 +201,7 @@ export default function OnboardingPage() {
     try {
       setIsSubmitting(true)
       await onboardingApi.skip()
-      router.push(APP_ROUTES.commandCenter)
+      router.push(APP_ROUTES.home)
     } catch (error) {
       console.error("Failed to skip onboarding", error)
       toast.error(error instanceof Error ? error.message : "Failed to skip onboarding")
@@ -215,7 +215,7 @@ export default function OnboardingPage() {
     try {
       setIsSubmitting(true)
       await onboardingApi.completeStep("next", {})
-      router.push(APP_ROUTES.commandCenter)
+      router.push(APP_ROUTES.home)
     } catch (error) {
       console.error("Failed to finish onboarding", error)
       toast.error(error instanceof Error ? error.message : "Failed to finish onboarding")

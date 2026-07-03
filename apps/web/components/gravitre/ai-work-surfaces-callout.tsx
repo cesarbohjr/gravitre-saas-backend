@@ -2,14 +2,14 @@
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { ArrowRight, ChatCircle, MagnifyingGlass, RocketLaunch } from "@phosphor-icons/react"
+import { ArrowRight, ChatCircle, MagnifyingGlass, Sparkle } from "@phosphor-icons/react"
 import {
   AI_WORK_SURFACES,
   type AiWorkSurfaceId,
 } from "@/lib/ai-work-surfaces"
 
 const SURFACE_ICONS = {
-  "command-center": RocketLaunch,
+  "gravitre-ai": Sparkle,
   "workspace-chat": ChatCircle,
   "universal-search": MagnifyingGlass,
 } as const
@@ -32,11 +32,11 @@ export function AiWorkSurfacesCallout({
       )}
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Three AI surfaces — not one master chat
+        Gravitre AI — one front door
       </p>
       {!compact ? (
         <p className="mt-1 text-xs text-muted-foreground text-pretty">
-          Each page has a different job. Pick the surface that matches what you need right now.
+          Execute, chat, and find from a single intelligent workspace — with dedicated surfaces when you need them.
         </p>
       ) : null}
       <div className={cn("grid gap-3", compact ? "mt-2 md:grid-cols-3" : "mt-3 md:grid-cols-3")}>
@@ -68,9 +68,6 @@ export function AiWorkSurfacesCallout({
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground text-pretty">
                 {surface.summary}
-              </p>
-              <p className="mt-1 text-[11px] italic text-muted-foreground/80 text-pretty">
-                {surface.notThis}
               </p>
               {!isCurrent ? (
                 <Link

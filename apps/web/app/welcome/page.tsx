@@ -29,6 +29,8 @@ import {
   type WelcomeRoleId,
 } from "@/lib/welcome-flow"
 import { cn } from "@/lib/utils"
+import { GlowOrb, GridPattern, ParticleField } from "@/components/gravitre/premium-effects"
+import { cardVariants, useMotionPrefs } from "@/lib/animations"
 
 const STEPS = [
   { id: "role", title: "Your role" },
@@ -49,6 +51,8 @@ export default function WelcomePage() {
   const [skippedConnect, setSkippedConnect] = useState(false)
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const { reduced } = useMotionPrefs()
 
   useEffect(() => {
     const draft = readWelcomeDraft()
@@ -135,24 +139,43 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background via-background to-emerald-500/5 px-4 py-10">
-      <div className="mb-8 flex w-full max-w-2xl items-center gap-2">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-background via-background to-emerald-500/5 px-4 py-10">
+      <GridPattern color="emerald" className="opacity-[0.25]" />
+      <ParticleField count={28} color="emerald" className="opacity-50" />
+      <GlowOrb color="emerald" size={280} className="-left-20 top-10 opacity-30" />
+      <GlowOrb color="violet" size={200} className="-right-10 bottom-20 opacity-25" />
+
+      <motion.div
+        initial={reduced ? false : { opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 mb-8 flex w-full max-w-2xl items-center gap-2"
+      >
         {STEPS.map((step, index) => (
           <div key={step.id} className="flex flex-1 flex-col gap-1">
-            <div
+            <motion.div
               className={cn(
-                "h-1 rounded-full transition-colors",
+                "h-1 rounded-full",
                 index <= stepIndex ? "bg-emerald-500" : "bg-muted",
               )}
+              initial={false}
+              animate={
+                index === stepIndex && !reduced
+                  ? { scaleX: [0.85, 1], opacity: [0.7, 1] }
+                  : { scaleX: 1, opacity: 1 }
+              }
+              transition={{ duration: 0.4 }}
             />
             <span className="hidden text-[10px] text-muted-foreground sm:block">{step.title}</span>
           </div>
         ))}
-      </div>
+      </motion.div>
 
       <motion.div
         layout
-        className="w-full max-w-2xl rounded-2xl border border-border/70 bg-card/80 p-6 shadow-xl backdrop-blur sm:p-8"
+        variants={cardVariants}
+        initial="initial"
+        animate="animate"
+        className="relative z-10 w-full max-w-2xl rounded-2xl border border-border/70 bg-card/80 p-6 shadow-xl shadow-emerald-500/5 backdrop-blur sm:p-8"
       >
         <AnimatePresence mode="wait">
           {stepIndex === 0 && (
@@ -276,7 +299,7 @@ export default function WelcomePage() {
               title="Start your first AI conversation"
               description="Gravitre routes your request to the right engine — execute tracked work, chat, or search records."
             >
-              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-violet-500/5 p-4 text-sm text-muted-foreground">
                 Suggested prompt:{" "}
                 <span className="font-medium text-foreground">
                   {selectedRole?.suggestedPrompt ?? "What should Gravitre help me with first?"}
@@ -371,7 +394,7 @@ function StepShell({
       className="space-y-4"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-violet-500/10 ring-1 ring-emerald-500/20">
           <Icon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
         </div>
         <div>

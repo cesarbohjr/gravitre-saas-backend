@@ -1,4 +1,4 @@
-export type AiWorkSurfaceId = "command-center" | "workspace-chat" | "universal-search"
+export type AiWorkSurfaceId = "gravitre-ai" | "workspace-chat" | "universal-search"
 
 export type AiWorkSurface = {
   id: AiWorkSurfaceId
@@ -12,16 +12,16 @@ export type AiWorkSurface = {
 
 import { APP_ROUTES } from "@/lib/app-routes"
 
-/** Shared copy for Command Center, Workspace Chat, and Universal Search. */
+/** Shared copy for Gravitre AI, Workspace Chat, and Universal Search. */
 export const AI_WORK_SURFACES: AiWorkSurface[] = [
   {
-    id: "command-center",
-    href: APP_ROUTES.commandCenter,
-    title: "Command Center",
-    badge: "Execute",
-    summary: "Delegate work — create tasks, generate execution plans, run async jobs, and track approvals.",
-    whenToUse: "When you want Gravitre to do something and follow it through to completion.",
-    notThis: "Not a free-form chat thread.",
+    id: "gravitre-ai",
+    href: APP_ROUTES.gravitreAi,
+    title: "Gravitre AI",
+    badge: "Unified",
+    summary: "One intelligent front door — execute tracked work, chat with tools, or find records across your org.",
+    whenToUse: "When you want Gravitre to route your intent to the right engine automatically.",
+    notThis: "Not three separate products — one unified AI workspace.",
   },
   {
     id: "workspace-chat",

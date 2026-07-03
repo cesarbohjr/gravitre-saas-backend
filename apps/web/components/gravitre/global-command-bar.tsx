@@ -26,13 +26,13 @@ interface CommandItem {
 
 const navigationItems: CommandItem[] = [
   {
-    id: "nav-operator",
+    id: "nav-ai",
     type: "navigation",
-    title: "Command Center",
-    subtitle: "Delegate tasks and track execution",
+    title: "Gravitre AI",
+    subtitle: "Unified execute, chat, and find",
     icon: "ai",
-    href: APP_ROUTES.commandCenter,
-    keywords: ["operator", "execute", "task", "delegate"],
+    href: APP_ROUTES.gravitreAi,
+    keywords: ["ai", "execute", "task", "delegate", "chat", "find"],
   },
   {
     id: "nav-assistant",
@@ -73,7 +73,7 @@ const aiCommands: CommandItem[] = [
 ]
 
 const recentItems: CommandItem[] = [
-  { id: "recent-1", type: "recent", title: "Investigating failed customer sync", subtitle: "2 minutes ago", icon: "pending", href: APP_ROUTES.commandCenter },
+  { id: "recent-1", type: "recent", title: "Investigating failed customer sync", subtitle: "2 minutes ago", icon: "pending", href: APP_ROUTES.gravitreAi },
   { id: "recent-2", type: "recent", title: "sync-customers-1234", subtitle: "Workflow run", icon: "run", href: "/runs/sync-customers-1234" },
 ]
 
@@ -138,7 +138,7 @@ export function GlobalCommandBar() {
       item.action()
     } else if (item.type === "ai") {
       // Navigate to operator with the query
-      router.push(`${APP_ROUTES.commandCenter}?prompt=${encodeURIComponent(item.title)}`)
+      router.push(`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(item.title)}`)
     }
     setIsOpen(false)
     setQuery("")

@@ -21,7 +21,7 @@ function AuthCallbackCompleteContent() {
 
   const callbackContext = useMemo(() => {
     const type = searchParams.get("type")
-    const defaultDestination = APP_ROUTES.commandCenter
+    const defaultDestination = APP_ROUTES.welcome
     const fallbackDestination = type === "signup" ? "/get-started" : "/login"
     const nextPath = normalizeNextPath(searchParams.get("next"), defaultDestination)
     return { type, fallbackDestination, nextPath }

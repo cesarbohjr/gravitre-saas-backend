@@ -1394,7 +1394,7 @@ export default function AssistantPage() {
                     </div>
                   ) : null}
                   <p className="text-sm text-zinc-500 mb-10 max-w-md">
-                    Ask questions, troubleshoot workflows, and explore ideas in a saved thread. Need to delegate tracked work? Use Command Center instead.
+                    Ask questions, troubleshoot workflows, and explore ideas in a saved thread. Need to delegate tracked work? Use Gravitre AI instead.
                   </p>
 
                   {!hasSentMessage && (

@@ -5,7 +5,7 @@ import { APP_ROUTES } from "@/lib/app-routes"
 
 export const WORK_SECTION_PATH_PREFIXES = [
   APP_ROUTES.search,
-  APP_ROUTES.commandCenter,
+  APP_ROUTES.gravitreAi,
   APP_ROUTES.assistant,
   APP_ROUTES.agents,
   APP_ROUTES.multiAgentRun,

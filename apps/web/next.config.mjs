@@ -39,7 +39,8 @@ const nextConfig = {
       { source: "/docs/security", destination: "/docs/concepts/security", permanent: true },
       { source: "/docs/api/reference", destination: "/docs/api/swagger", permanent: true },
       { source: "/chat", destination: "/search", permanent: true },
-      { source: "/operator", destination: "/command-center", permanent: true },
+      { source: "/operator", destination: "/ai", permanent: true },
+      { source: "/command-center", destination: "/ai", permanent: true },
       { source: "/agents/swarm", destination: "/multi-agent-run", permanent: true },
     ]
   },

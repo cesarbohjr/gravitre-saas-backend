@@ -27,7 +27,7 @@ export function useGlobalWorkShortcuts() {
         if (
           pathname.startsWith("/assignments") ||
           pathname.startsWith("/assistant") ||
-          pathname.startsWith(APP_ROUTES.commandCenter)
+          pathname.startsWith(APP_ROUTES.gravitreAi)
         ) {
           dispatchWorkShortcut("new")
         }

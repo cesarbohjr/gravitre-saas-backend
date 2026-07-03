@@ -4,7 +4,7 @@ import { authenticatedMetadata } from "@/lib/authenticated-metadata"
 export const metadata: Metadata = authenticatedMetadata(
   "Command Center | Gravitre",
   "Delegate tracked work to Gravitre — action plans, async jobs, context from runs and connectors, and explicit verification.",
-  { canonical: "/command-center" },
+  { canonical: "/ai" },
 )
 
 export default function CommandCenterLayout({ children }: { children: React.ReactNode }) {

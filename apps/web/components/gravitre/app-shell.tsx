@@ -220,9 +220,10 @@ export function AppShell({ children, title }: AppShellProps) {
     router.replace("/settings/billing?reason=subscription_required")
   }, [billingHardBlock, billingError, pathname, router])
 
-  // First-run welcome flow — redirect until welcome is completed or skipped
+  // First-run welcome flow — redirect paid/trial users until welcome is completed or skipped
   useEffect(() => {
     if (!user || !onboardingProgress) return
+    if (!canAccessApp) return
     const exemptPrefixes = [
       "/welcome",
       "/login",
@@ -235,7 +236,7 @@ export function AppShell({ children, title }: AppShellProps) {
     if (exemptPrefixes.some((prefix) => pathname.startsWith(prefix))) return
     if (onboardingProgress.welcome_completed || onboardingProgress.skipped) return
     router.replace(APP_ROUTES.welcome)
-  }, [user, onboardingProgress, pathname, router])
+  }, [user, onboardingProgress, pathname, router, canAccessApp])
 
   const showTrialExpiredBanner =
     trialExpired ||

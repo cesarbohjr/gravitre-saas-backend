@@ -2,7 +2,6 @@
 export const APP_ROUTES = {
   home: "/home",
   welcome: "/welcome",
-  commandCenter: "/command-center",
   multiAgentRun: "/multi-agent-run",
   gravitreAi: "/ai",
   assistant: "/assistant",
@@ -27,6 +26,7 @@ export const APP_ROUTES = {
 /** Legacy paths retained only for redirects — do not link in UI. */
 export const LEGACY_APP_ROUTES = {
   operator: "/operator",
+  commandCenter: "/command-center",
   agentSwarm: "/agents/swarm",
 } as const
 

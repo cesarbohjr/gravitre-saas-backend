@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code")
   const tokenHash = requestUrl.searchParams.get("token_hash")
   const type = requestUrl.searchParams.get("type")
-  const next = requestUrl.searchParams.get("next") ?? APP_ROUTES.commandCenter
+  const next = requestUrl.searchParams.get("next") ?? APP_ROUTES.welcome
   const error = requestUrl.searchParams.get("error")
   const errorDescription = requestUrl.searchParams.get("error_description")
 

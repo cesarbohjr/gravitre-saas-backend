@@ -965,7 +965,7 @@ export default function OperatorPage() {
                 Delegate tasks, run execution plans, and track async work — not a free-form chat.
               </p>
               <div className="mt-3">
-                <AiWorkSurfacesCallout current="command-center" compact />
+                <AiWorkSurfacesCallout current="gravitre-ai" compact />
               </div>
             </div>
 

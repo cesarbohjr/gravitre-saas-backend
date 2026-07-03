@@ -342,7 +342,7 @@ function ProductPreview() {
               <div className="h-3 w-3 rounded-full bg-green-400" />
             </div>
             <div className="flex-1 text-center">
-              <span className="text-xs text-zinc-400 font-mono">gravitre.app/command-center</span>
+              <span className="text-xs text-zinc-400 font-mono">gravitre.app/ai</span>
             </div>
           </div>
           {/* App content */}

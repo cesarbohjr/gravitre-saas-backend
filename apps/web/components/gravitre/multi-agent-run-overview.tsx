@@ -56,10 +56,10 @@ export function MultiAgentRunOverview({
             </Link>
             ; delegate tracked execution from{" "}
             <Link
-              href={APP_ROUTES.commandCenter}
+              href={APP_ROUTES.gravitreAi}
               className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300"
             >
-              Command Center
+              Gravitre AI
             </Link>
             .
           </p>

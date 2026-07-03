@@ -22,7 +22,7 @@ const STORAGE_PREFIX = "gravitre-ai-handoff:"
 const MAX_AGE_MS = 60_000
 
 export const AI_ENGINE_ROUTES: Record<AiEngine, string> = {
-  execute: APP_ROUTES.commandCenter,
+  execute: APP_ROUTES.gravitreAi,
   chat: "/assistant",
   find: "/search",
 }

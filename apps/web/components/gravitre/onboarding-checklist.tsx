@@ -75,7 +75,7 @@ const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
     id: "run-first-task",
     stepKey: "task",
     title: "Run your first task",
-    description: "Ask Gravitre AI or delegate from Command Center",
+    description: "Ask Gravitre AI to execute tracked work or explore in chat",
     href: APP_ROUTES.gravitreAi,
     icon: PlayCircle,
   },
@@ -127,7 +127,7 @@ function buildItemsFromProgress(
 const ROUTE_STEP_MAP: Array<{ prefix: string; stepKey: string }> = [
   { prefix: "/connectors", stepKey: "connect" },
   { prefix: "/agents/new", stepKey: "operator" },
-  { prefix: APP_ROUTES.commandCenter, stepKey: "task" },
+  { prefix: APP_ROUTES.gravitreAi, stepKey: "task" },
   { prefix: "/workflows", stepKey: "path" },
   { prefix: "/settings/organizations", stepKey: "next" },
 ]
