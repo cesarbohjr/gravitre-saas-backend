@@ -648,6 +648,9 @@ export type NotificationType =
   | "mention"
   | "team_invite"
   | "system"
+  | "agent_created"
+  | "workflow_created"
+  | "task_completed"
 
 export interface Notification {
   id: string

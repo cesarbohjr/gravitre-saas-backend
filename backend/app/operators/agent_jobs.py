@@ -376,6 +376,7 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
     """Execute an operator_task job via AgentIntelligence + ReAct personas (STA-174)."""
     from app.operators.agent_intelligence import get_agent_intelligence, resolve_agent_record
     from app.operators.agent_prompts import build_synthetic_agent_for_task
+    from app.services.plain_english_formatter import format_plain_english
 
     payload = job.get("payload") or {}
     org_id = job["org_id"]
@@ -430,11 +431,15 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
 
     if agent_result and not agent_result.error:
         handoff = agent_result.to_handoff_dict()
-        finding = _trace_finding_description(agent_result.react_trace) or plan_defaults["finding_description"]
-        action_description = (
+        finding = format_plain_english(
+            _trace_finding_description(agent_result.react_trace) or plan_defaults["finding_description"],
+            fallback=plan_defaults["finding_description"],
+        )
+        action_description = format_plain_english(
             agent_result.recommended_actions[0]
             if agent_result.recommended_actions
-            else plan_defaults["action_description"]
+            else plan_defaults["action_description"],
+            fallback=plan_defaults["action_description"],
         )
         ai_status = "ok"
         if agent_result.react_status == "error":
@@ -443,8 +448,11 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             **handoff,
             "task": {"description": summary, "status": "planned"},
             "aiStatus": ai_status,
-            "analysis_summary": (agent_result.summary or plan_defaults["analysis_summary"]).strip()[:2000],
-            "finding_description": finding.strip()[:2000],
+            "analysis_summary": format_plain_english(
+                agent_result.summary or plan_defaults["analysis_summary"],
+                fallback=plan_defaults["analysis_summary"],
+            ).strip()[:2000],
+            "finding_description": str(finding).strip()[:2000],
             "action_title": plan_defaults["action_title"],
             "action_description": str(action_description).strip()[:2000],
             "confidence": int(agent_result.confidence or plan_defaults["confidence"]),
@@ -583,6 +591,41 @@ async def _notify_swarm_job_finished(settings: Settings, client: Any, job: dict[
         logger.warning("swarm job notify failed job_id=%s error=%s", job.get("id"), str(exc))
 
 
+async def _notify_operator_job_finished(
+    settings: Settings,
+    client: Any,
+    job: dict[str, Any],
+    result: dict[str, Any],
+) -> None:
+    user_id = str(job.get("created_by") or "").strip()
+    org_id = str(job.get("org_id") or "").strip()
+    if not user_id or not org_id:
+        return
+    from app.services.entity_link_service import build_entity_url
+    from app.services.notification_service import create_user_notification
+
+    payload = job.get("payload") or {}
+    session_id = str(payload.get("session_id") or payload.get("sessionId") or "").strip()
+    url = (
+        build_entity_url("approval", str(job["id"]))
+        if result.get("requires_approval")
+        else (f"/ai?session={session_id}" if session_id else "/ai")
+    )
+    task = str(payload.get("task") or job.get("kind") or "operator task").strip()
+    notification_type = "task_completed" if job.get("status") == "completed" else "run_failed"
+    create_user_notification(
+        client,
+        org_id=org_id,
+        user_id=user_id,
+        notification_type=notification_type,
+        title="Operator task completed" if notification_type == "task_completed" else "Operator task failed",
+        body=f"Finished: {task[:160]}. Open Gravitre to review the result.",
+        url=url,
+        entity_type="agent_job",
+        entity_id=str(job.get("id") or ""),
+    )
+
+
 from app.services.swarm_coordinator_service import run_swarm_subtask_job
 
 _HANDLERS = {
@@ -616,7 +659,9 @@ async def _process_job_id(settings: Settings, job_id: str) -> bool:
         from app.services.approval_record_service import maybe_create_agent_job_approval
 
         await asyncio.to_thread(maybe_create_agent_job_approval, client, job, result)
-        await _notify_swarm_job_finished(settings, client, job)
+        refreshed = get_job(client, job["org_id"], str(job["id"])) or job
+        await _notify_swarm_job_finished(settings, client, refreshed)
+        await _notify_operator_job_finished(settings, client, refreshed, result if isinstance(result, dict) else {})
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
     except AgentExecutionInterrupted as exc:
         if exc.signal == "pause":
@@ -657,7 +702,9 @@ async def _process_one(settings: Settings) -> bool:
         from app.services.approval_record_service import maybe_create_agent_job_approval
 
         await asyncio.to_thread(maybe_create_agent_job_approval, client, job, result)
-        await _notify_swarm_job_finished(settings, client, job)
+        refreshed = get_job(client, job["org_id"], str(job["id"])) or job
+        await _notify_swarm_job_finished(settings, client, refreshed)
+        await _notify_operator_job_finished(settings, client, refreshed, result if isinstance(result, dict) else {})
         logger.info("agent_job_completed id=%s kind=%s", job["id"], job.get("kind"))
     except AgentExecutionInterrupted as exc:
         if exc.signal == "pause":

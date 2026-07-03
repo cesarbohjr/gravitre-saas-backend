@@ -1048,3 +1048,56 @@ async def get_conversation_task_state(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
     state = await get_conversation_state_service(settings).get_task_state(conversation_id, org_id, client=client)
     return {"task_state": state}
+
+
+class ConversationExecuteRequest(BaseModel):
+    confirm: bool = True
+
+
+@router.post("/conversation/{conversation_id}/execute")
+async def execute_conversation_task(
+    conversation_id: str,
+    body: ConversationExecuteRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    if not body.confirm:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation required")
+
+    from app.services.conversational_execution_service import get_conversational_execution_service
+    from app.services.conversation_state_service import get_conversation_state_service
+
+    client = get_supabase_client(settings)
+    owned = (
+        client.table("conversations")
+        .select("id")
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", str(current_user.get("user_id") or ""))
+        .limit(1)
+        .execute()
+    )
+    if not owned.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    user_id = str(current_user.get("user_id") or "")
+    execution = await get_conversational_execution_service(settings).execute_confirmed_task(
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        client=client,
+    )
+    task_state = await get_conversation_state_service(settings).get_task_state(
+        conversation_id, org_id, client=client
+    )
+    return {
+        "success": execution.success,
+        "execution_result": execution.__dict__,
+        "task_state": task_state,
+        "message": execution.body if not execution.success else (
+            f"Created {execution.title}. Open {execution.url} to review."
+        ),
+    }

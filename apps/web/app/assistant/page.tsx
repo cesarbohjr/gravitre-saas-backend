@@ -61,6 +61,12 @@ import { ClarificationMessage } from "@/components/gravitre/assistant/clarificat
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
 import {
+  ChatExecutionPanel,
+  type ChatExecutionResult,
+  type ChatPendingTask,
+} from "@/components/gravitre/assistant/chat-execution-panel"
+import { useNotifications } from "@/components/gravitre/notification-center"
+import {
   DialogueModeChip,
   mapToolNameToModeLabel,
 } from "@/components/gravitre/assistant/dialogue-mode-chip"
@@ -232,6 +238,8 @@ type IntelligenceMeta = {
     pending_steps?: Array<{ step_id?: string; description?: string }>
   } | null
   simulationSummary?: Record<string, unknown> | null
+  executionResult?: ChatExecutionResult | null
+  pendingTask?: ChatPendingTask | null
 }
 
 function confidenceBadgeClass(band?: string): string {
@@ -408,6 +416,8 @@ function ChatMessage({
   intelligenceMeta,
   onFeedback,
   onClarificationSelect,
+  onConfirmExecution,
+  confirmExecuting,
 }: {
   message: UIMessage
   isUser: boolean
@@ -422,6 +432,8 @@ function ChatMessage({
   intelligenceMeta?: IntelligenceMeta | null
   onFeedback?: (helpful: boolean) => void
   onClarificationSelect?: (text: string) => void
+  onConfirmExecution?: () => void
+  confirmExecuting?: boolean
 }) {
   const { text, tools, sources } = normalizeMessage(message)
   const isClarification = intelligenceMeta?.dialogueMode === "clarify"
@@ -529,6 +541,16 @@ function ChatMessage({
 
           {!isUser && intelligenceMeta?.simulationSummary && intelligenceMeta.dialogueMode === "confirm" ? (
             <ApprovalSimulationPreview simulation={intelligenceMeta.simulationSummary} />
+          ) : null}
+
+          {!isUser && isLast && !streaming ? (
+            <ChatExecutionPanel
+              dialogueMode={intelligenceMeta?.dialogueMode}
+              executionResult={intelligenceMeta?.executionResult}
+              pendingTask={intelligenceMeta?.pendingTask}
+              confirming={confirmExecuting}
+              onConfirm={onConfirmExecution}
+            />
           ) : null}
 
           {/* Source citations */}
@@ -711,6 +733,8 @@ export default function AssistantPage() {
   })
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
   const [taskState, setTaskState] = useState<IntelligenceMeta["taskState"]>(null)
+  const [confirmExecuting, setConfirmExecuting] = useState(false)
+  const notifications = useNotifications()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [conversationMessagesLoading, setConversationMessagesLoading] = useState(false)
   const [conversationMessagesError, setConversationMessagesError] = useState<string | null>(null)
@@ -822,7 +846,7 @@ export default function AssistantPage() {
       submitLockRef.current = false
       setIsSubmitting(false)
       setStreamError(parseChatError(error))
-      toast.error(parseChatError(error))
+      toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
     },
     onFinish: ({ message, isAbort, isDisconnect }) => {
       submitLockRef.current = false
@@ -865,6 +889,8 @@ export default function AssistantPage() {
           proactiveSuggestions?: string[]
           taskState?: IntelligenceMeta["taskState"]
           simulationSummary?: Record<string, unknown> | null
+          executionResult?: ChatExecutionResult
+          pendingTask?: ChatPendingTask
         }
         pendingIntelligenceRef.current = {
           ...payload,
@@ -873,10 +899,20 @@ export default function AssistantPage() {
           proactiveSuggestions: payload.proactiveSuggestions,
           taskState: payload.taskState,
           simulationSummary: payload.simulationSummary,
+          executionResult: payload.executionResult,
+          pendingTask: payload.pendingTask,
         }
         if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
         if (payload.personaKey) syncPersona(payload.personaKey)
         if (payload.taskState) setTaskState(payload.taskState)
+        if (payload.executionResult?.success && notifications) {
+          notifications.addNotification({
+            type: "task_complete",
+            title: payload.executionResult.task_label || payload.executionResult.title || "Task completed",
+            message: payload.executionResult.body || "Your request was executed in Gravitre.",
+            link: payload.executionResult.url,
+          })
+        }
       }
     },
   })
@@ -995,6 +1031,44 @@ export default function AssistantPage() {
     },
     [setMessages, mutateConversations],
   )
+
+  const handleConfirmExecution = useCallback(async () => {
+    const conversationId = activeConversationIdRef.current
+    if (!conversationId || confirmExecuting) return
+    setConfirmExecuting(true)
+    try {
+      const result = await assistantApi.executeConversationTask(conversationId)
+      if (result.execution_result) {
+        setIntelligenceByMessageId((prev) => {
+          const lastAssistant = [...messages].reverse().find((row) => row.role === "assistant")
+          if (!lastAssistant) return prev
+          return {
+            ...prev,
+            [lastAssistant.id]: {
+              ...(prev[lastAssistant.id] ?? {}),
+              dialogueMode: "answer",
+              executionResult: result.execution_result,
+              pendingTask: null,
+            },
+          }
+        })
+        if (result.execution_result.success && notifications) {
+          notifications.addNotification({
+            type: "task_complete",
+            title: result.execution_result.task_label || result.execution_result.title || "Task completed",
+            message: result.execution_result.body || result.message,
+            link: result.execution_result.url,
+          })
+        }
+      }
+      if (result.success) toast.success(result.message)
+      else toast.error(result.message)
+    } catch (error) {
+      toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+    } finally {
+      setConfirmExecuting(false)
+    }
+  }, [confirmExecuting, messages, notifications])
 
   useEffect(() => {
     if (!user || !activeConversationId || messages.length > 0) return
@@ -1483,6 +1557,8 @@ export default function AssistantPage() {
                           : undefined
                       }
                       onClarificationSelect={fillFollowUp}
+                      onConfirmExecution={() => void handleConfirmExecution()}
+                      confirmExecuting={confirmExecuting}
                     />
                   ))}
                   </AnimatePresence>

@@ -74,6 +74,24 @@ const typeConfig = {
     bg: "bg-secondary",
     label: "System",
   },
+  agent_created: {
+    icon: CheckCircle2,
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    label: "Agent Created",
+  },
+  workflow_created: {
+    icon: CheckCircle2,
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    label: "Workflow Created",
+  },
+  task_completed: {
+    icon: CheckCircle2,
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+    label: "Task Complete",
+  },
 }
 
 function formatRelativeTime(timestamp: string): string {

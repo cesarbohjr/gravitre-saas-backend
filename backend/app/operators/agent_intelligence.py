@@ -50,6 +50,7 @@ from app.services.context_conflict_detection import (
     detect_chunk_conflicts,
     format_conflicts_for_prompt,
 )
+from app.services.plain_english_formatter import format_plain_english
 from app.services.conversation_context_service import format_summary_block, maybe_summarize_history
 from app.services.agent_finetune_service import resolve_agent_inference_model
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
@@ -134,7 +135,8 @@ RULES_SECTION = """
 ## Rules
 - Cite sources when drawing from specific internal documents
 - Ask for clarification if the task is genuinely ambiguous
-- Structure your output for the next agent if this is a handoff task
+- Never show raw JSON, code blocks, or internal schema fields to the user — write plain English
+- Structure structured handoffs internally, but user-facing text must read like a helpful colleague
 - Never take irreversible actions without confirmation
 - Your responses must be actionable and specific
 """
@@ -154,7 +156,7 @@ ASSISTANT_SURFACE_SYSTEM_PROMPT = (
     "OUTPUT: Be concise. Use bullet points for lists. Cite the tool/source when "
     "you state a fact from a tool result. If you cannot find something, say so "
     "and suggest where to look. Do not invent agent names, connector states, or "
-    "metrics."
+    "metrics. Never reply with raw JSON — always use plain English sentences."
 )
 
 
@@ -365,10 +367,15 @@ def load_agent_task_history(
 
 def _normalize_react_trace_step(step: dict[str, Any]) -> dict[str, Any]:
     """UI-friendly trace step with action alias for toolName (STA-174)."""
+    from app.services.plain_english_formatter import format_plain_english
+
     out = dict(step)
     tool_name = out.get("toolName") or out.get("tool_name")
     if tool_name and not out.get("action"):
         out["action"] = tool_name
+    for key in ("observation", "thought"):
+        if out.get(key):
+            out[key] = format_plain_english(out.get(key), fallback=str(out.get(key)))
     return out
 
 
@@ -634,6 +641,19 @@ class AgentIntelligence:
                 )
         if not (company_intelligence_section and company_intelligence_section.strip()):
             sections.extend(["", NEW_ORG_FRAMING.strip()])
+        if surface in {"assistant", "agent_chat"}:
+            sections.extend(
+                [
+                    "",
+                    "## Conversational Operator (v1-v8 intelligence)",
+                    (
+                        "Use layered intelligence while chatting: v1 strategy selection, v2 query observability, "
+                        "v3 knowledge gaps, v4 memory promotion, v5/v7 retrieval reliability, v6 entity graph context, "
+                        "v8 outcome-linked learning. For create/build requests: collect missing details, confirm once, "
+                        "execute through platform APIs, then return the Gravitre link (and external connector link when relevant)."
+                    ),
+                ]
+            )
         sections.extend(["", RESEARCH_POLICY.strip(), "", RULES_SECTION.strip()])
         return "\n".join(section for section in sections if section is not None)
 
@@ -1070,6 +1090,57 @@ class AgentIntelligence:
             conversation_id,
             explicit_persona=explicit_persona,
         )
+
+        from app.services.conversational_execution_service import get_conversational_execution_service
+
+        conv_turn = await get_conversational_execution_service(active_settings).process_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id or "",
+            message=task_text,
+            understanding=understanding,
+            classification=pipeline_classification,
+            task_state=task_state,
+            client=client,
+        )
+        if conv_turn and conv_turn.get("stop_pipeline"):
+            task_state = conv_turn.get("task_state") or task_state
+            response_text = str(conv_turn.get("message") or "")
+            dialogue_mode = str(conv_turn.get("dialogue_mode") or "answer")
+            text_id, start_event = sse_text_start()
+            yield start_event
+            yield sse_text_delta(text_id, response_text)
+            yield sse_text_end(text_id)
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Conversational operator execution",
+                conflicts=None,
+                refined_query=None,
+                validation=None,
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=conv_turn.get("execution_result"),
+                pending_task=conv_turn.get("pending_task"),
+            )
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=[],
+                react_result=None,
+                model="conversational_operator",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Conversational operator execution",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=[],
+                task_state=task_state,
+                execution_result=conv_turn.get("execution_result"),
+                pending_task=conv_turn.get("pending_task"),
+            )
+            return
 
         refined_query = task_text
         if mode_key != "fast":
@@ -1614,11 +1685,12 @@ class AgentIntelligence:
     ) -> AgentResult:
         status = react_result.status
         answer = react_result.answer or ""
+        plain_answer = format_plain_english(answer, fallback=answer)
         tool_calls = react_result.tool_calls or []
         trace = react_result.to_dict().get("trace") or []
         normalized_trace = [_normalize_react_trace_step(step) for step in trace]
         confidence = _confidence_from_react(status, tool_calls)
-        recommended = _recommended_actions_from_tools(tool_calls, answer)
+        recommended = _recommended_actions_from_tools(tool_calls, plain_answer)
         needs_human = status == ReActStatus.NEEDS_HUMAN_INPUT
         overall_status = status.value if hasattr(status, "value") else str(status)
         execution_mode = resolve_execution_mode(
@@ -1634,7 +1706,7 @@ class AgentIntelligence:
         decision: dict[str, Any] | None = None
         if status == ReActStatus.COMPLETED:
             decision = {
-                "summary": answer[:2000],
+                "summary": plain_answer[:2000],
                 "confidence": confidence,
                 "toolsUsed": [call.get("tool") for call in tool_calls if call.get("tool")],
             }
@@ -1649,15 +1721,15 @@ class AgentIntelligence:
                 ]
 
         return AgentResult(
-            summary=answer[:4000],
-            answer=answer,
+            summary=plain_answer[:4000],
+            answer=plain_answer,
             status=overall_status,
             react_status=overall_status,
             decision=decision,
             recommended_actions=recommended,
             confidence=confidence,
             needs_human_input=needs_human,
-            human_input_prompt=answer if needs_human else None,
+            human_input_prompt=plain_answer if needs_human else None,
             rag_sources=rag_sources,
             react_trace=normalized_trace,
             tool_calls=tool_calls,

@@ -1,4 +1,5 @@
 import type { AgentJobResult } from "@/hooks/use-async-job"
+import { humanizePlainEnglish } from "@/lib/plain-english"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -47,23 +48,7 @@ export function describeOperatorJobError(err: unknown): string {
 }
 
 export function humanizeOperatorContent(raw: string | undefined | null): string {
-  const trimmed = String(raw || "").trim()
-  if (!trimmed) return ""
-  if (!trimmed.startsWith("{")) return trimmed
-  try {
-    const parsed = JSON.parse(trimmed) as Record<string, unknown>
-    if (typeof parsed.summary === "string" && parsed.summary.trim()) return parsed.summary.trim()
-    if (typeof parsed.answer === "string" && parsed.answer.trim()) return parsed.answer.trim()
-    const decision = parsed.decision
-    if (typeof decision === "string" && decision.trim()) return decision.trim()
-    if (decision && typeof decision === "object") {
-      const action = (decision as Record<string, unknown>).action
-      if (typeof action === "string" && action.trim()) return action.trim()
-    }
-  } catch {
-    return trimmed
-  }
-  return trimmed
+  return humanizePlainEnglish(raw, "")
 }
 
 export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsightSection[] {
@@ -75,7 +60,7 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
     if (!step || typeof step !== "object") continue
     const record = step as Record<string, unknown>
     const tool = String(record.toolName || record.action || "").trim()
-    const content = String(record.observation || record.thought || "").trim()
+    const content = humanizeOperatorContent(String(record.observation || record.thought || ""))
     if (!content) continue
     traceSections.push({
       id: `trace-${index}`,
@@ -114,7 +99,7 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
       id: "actions",
       type: "actions",
       title: "How to Fix It",
-      content: result.action_description || "Recommended remediation steps from the analysis:",
+      content: humanizeOperatorContent(result.action_description) || "Recommended remediation steps from the analysis:",
       actions: recommended.map((label, index) => ({
         id: `action-${index + 1}`,
         label: String(label),
@@ -137,7 +122,7 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
       id: "persona",
       type: "analysis",
       title: "Agent persona",
-      content: String(result.persona),
+      content: humanizeOperatorContent(String(result.persona)),
     })
   }
 

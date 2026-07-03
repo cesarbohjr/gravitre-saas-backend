@@ -2074,12 +2074,21 @@ async def submit_session_task(
         )
         # response_format guarantees a validated dict in `parsed`.
         parsed: dict = ai_result.parsed or {}
-        ai_summary = str(parsed.get("analysis_summary") or ai_summary).strip() or ai_summary
-        findings_description = (
-            str(parsed.get("finding_description") or findings_description).strip() or findings_description
+        from app.services.plain_english_formatter import format_plain_english
+
+        ai_summary = format_plain_english(
+            str(parsed.get("analysis_summary") or ai_summary).strip() or ai_summary,
+            fallback=ai_summary,
+        )
+        findings_description = format_plain_english(
+            str(parsed.get("finding_description") or findings_description).strip() or findings_description,
+            fallback=findings_description,
         )
         action_title = str(parsed.get("action_title") or action_title).strip() or action_title
-        action_description = str(parsed.get("action_description") or action_description).strip() or action_description
+        action_description = format_plain_english(
+            str(parsed.get("action_description") or action_description).strip() or action_description,
+            fallback=action_description,
+        )
         confidence = int(parsed.get("confidence") or confidence)
         token_count = int(parsed.get("token_count") or token_count)
         requires_approval = bool(parsed.get("requires_approval") or False)

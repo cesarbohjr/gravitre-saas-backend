@@ -18,10 +18,18 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
   )
   if (!enabled) return null
   if (isLoading) {
-    return <SectionCard title="Strategy bandit v2" description="Loading ledger stats…" />
+    return (
+      <SectionCard title="Strategy bandit v2" description="Loading ledger stats…">
+        <p className="text-sm text-muted-foreground">Fetching strategy performance records…</p>
+      </SectionCard>
+    )
   }
   if (error) {
-    return <SectionCard title="Strategy bandit v2" description="Unable to load bandit status." />
+    return (
+      <SectionCard title="Strategy bandit v2" description="Unable to load bandit status.">
+        <p className="text-sm text-muted-foreground">Try refreshing the page.</p>
+      </SectionCard>
+    )
   }
   const summary = (data?.summary as Record<string, unknown>) || {}
   const recordCount = Number(summary.record_count ?? summary.recordCount ?? 0)
@@ -38,7 +46,7 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
       }
     >
       {recordCount === 0 ? (
-        <NotYetPopulated message="No strategy performance records yet. Outcomes will populate the ledger." />
+        <NotYetPopulated>No strategy performance records yet. Outcomes will populate the ledger.</NotYetPopulated>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">{scopeNote}</p>

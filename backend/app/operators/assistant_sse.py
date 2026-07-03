@@ -57,6 +57,8 @@ def sse_intelligence_metadata(
     proactive_suggestions: list[str] | None = None,
     task_state: dict[str, Any] | None = None,
     simulation_summary: dict[str, Any] | None = None,
+    execution_result: dict[str, Any] | None = None,
+    pending_task: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -73,6 +75,8 @@ def sse_intelligence_metadata(
                 "proactiveSuggestions": proactive_suggestions or [],
                 "taskState": task_state,
                 "simulationSummary": simulation_summary,
+                "executionResult": execution_result,
+                "pendingTask": pending_task,
             },
         }
     )

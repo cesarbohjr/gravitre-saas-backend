@@ -56,6 +56,9 @@ function mapApiType(type: NotificationType): Notification["type"] {
       return "error"
     case "run_completed":
     case "assignment_created":
+    case "agent_created":
+    case "workflow_created":
+    case "task_completed":
       return "task_complete"
     default:
       return "external_action"

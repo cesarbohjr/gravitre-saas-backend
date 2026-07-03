@@ -27,6 +27,7 @@ TOOL_DISPLAY_NAMES: dict[str, str] = {
     "generate_document": "generateDocument",
     "run_agent_task": "runAgentTask",
     "create_workflow": "createWorkflow",
+    "create_agent": "createAgent",
     "dependency_impact": "estimateDependencyImpact",
 }
 
@@ -417,6 +418,46 @@ def _draft_workflow_name(query: str) -> str:
     return first_line
 
 
+def tool_create_agent(
+    org_id: str,
+    query: str,
+    settings: Settings,
+    *,
+    user_id: str | None = None,
+    name: str | None = None,
+    purpose: str | None = None,
+) -> dict[str, Any]:
+    from app.operators.repository import create_operator
+    from app.services.entity_link_service import build_entity_url
+
+    agent_name = (name or _draft_workflow_name(query)).strip()[:120]
+    agent_purpose = (purpose or query or "").strip()[:500] or None
+    try:
+        client = get_supabase_client(settings)
+        operator = create_operator(
+            client,
+            org_id,
+            {
+                "name": agent_name,
+                "description": agent_purpose,
+                "role": "assistant",
+                "status": "inactive",
+                "capabilities": [],
+            },
+            user_id,
+        )
+        agent_id = str(operator["id"])
+        return {
+            "id": agent_id,
+            "name": agent_name,
+            "url": build_entity_url("agent", agent_id),
+            "message": f"Agent “{agent_name}” created — open the agent page to configure it",
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("assistant create_agent tool failed org_id=%s error=%s", org_id, str(exc))
+        return {"error": "agent create failed"}
+
+
 def tool_create_workflow(
     org_id: str,
     query: str,
@@ -532,6 +573,9 @@ async def run_assistant_tools(
                 tool_input["agentId"] = agent_id
         elif name == "create_workflow":
             output = tool_create_workflow(org_id, query, settings, user_id=user_id)
+            tool_input = {"name": _draft_workflow_name(query)}
+        elif name == "create_agent":
+            output = tool_create_agent(org_id, query, settings, user_id=user_id)
             tool_input = {"name": _draft_workflow_name(query)}
         else:
             continue

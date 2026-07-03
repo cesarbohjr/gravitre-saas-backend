@@ -27,7 +27,7 @@ import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { conversationMessageToUI } from "@/lib/chat-messages"
-import { conversationsApi, searchApi } from "@/lib/api"
+import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
@@ -53,6 +53,12 @@ import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
 import { AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import {
+  ChatExecutionPanel,
+  type ChatExecutionResult,
+  type ChatPendingTask,
+} from "@/components/gravitre/assistant/chat-execution-panel"
+import { useNotifications } from "@/components/gravitre/notification-center"
 import {
   DEFAULT_RESULT_BLOCK_ORDER,
   type LayoutColumn,
@@ -117,6 +123,11 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
   })
   const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
   const [chatMode] = useState<"standard" | "deep">("standard")
+  const [dialogueMode, setDialogueMode] = useState<string | null>(null)
+  const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
+  const [executionResult, setExecutionResult] = useState<ChatExecutionResult | null>(null)
+  const [confirmExecuting, setConfirmExecuting] = useState(false)
+  const notifications = useNotifications()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -168,13 +179,67 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
     transport,
     onError: (error) => {
       submitLockRef.current = false
-      toast.error(parseChatError(error))
+      toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
     },
     onFinish: () => {
       submitLockRef.current = false
       void mutateConversations()
     },
+    onData: (dataPart) => {
+      if (dataPart.type !== "data-intelligence" || !dataPart.data || typeof dataPart.data !== "object") {
+        return
+      }
+      const payload = dataPart.data as {
+        dialogueMode?: string
+        executionResult?: ChatExecutionResult
+        pendingTask?: ChatPendingTask
+      }
+      if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
+      if (payload.pendingTask) setPendingTask(payload.pendingTask)
+      if (payload.executionResult) {
+        setExecutionResult(payload.executionResult)
+        if (payload.executionResult.success && notifications) {
+          notifications.addNotification({
+            type: "task_complete",
+            title: payload.executionResult.task_label || payload.executionResult.title || "Task completed",
+            message: payload.executionResult.body || "Your request was executed in Gravitre.",
+            link: payload.executionResult.url,
+          })
+        }
+      }
+    },
   })
+
+  const handleConfirmExecution = useCallback(async () => {
+    const conversationId = activeConversationIdRef.current
+    if (!conversationId || confirmExecuting) return
+    setConfirmExecuting(true)
+    try {
+      const result = await assistantApi.executeConversationTask(conversationId)
+      if (result.execution_result) {
+        setExecutionResult(result.execution_result)
+        setDialogueMode("answer")
+        setPendingTask(null)
+        if (result.execution_result.success && notifications) {
+          notifications.addNotification({
+            type: "task_complete",
+            title: result.execution_result.task_label || result.execution_result.title || "Task completed",
+            message: result.execution_result.body || result.message,
+            link: result.execution_result.url,
+          })
+        }
+      }
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+    } finally {
+      setConfirmExecuting(false)
+    }
+  }, [confirmExecuting, notifications])
 
   const {
     isWorking: executeWorking,
@@ -692,6 +757,7 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
               ? messages.map((message) => {
               const text = normalizeChatText(message)
               const isUser = message.role === "user"
+              const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
               return (
                 <motion.div
                   key={message.id}
@@ -717,6 +783,15 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
                     ) : (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{text || "…"}</ReactMarkdown>
+                        {!isUser && message.id === lastAssistantId ? (
+                          <ChatExecutionPanel
+                            dialogueMode={dialogueMode}
+                            executionResult={executionResult}
+                            pendingTask={pendingTask}
+                            confirming={confirmExecuting}
+                            onConfirm={() => void handleConfirmExecution()}
+                          />
+                        ) : null}
                       </div>
                     )}
                   </div>

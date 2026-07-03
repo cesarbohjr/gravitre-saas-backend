@@ -44,3 +44,5 @@ class AssistantStreamComplete:
     persona_key: str | None = None
     proactive_suggestions: list[str] | None = None
     task_state: dict[str, Any] | None = None
+    execution_result: dict[str, Any] | None = None
+    pending_task: dict[str, Any] | None = None

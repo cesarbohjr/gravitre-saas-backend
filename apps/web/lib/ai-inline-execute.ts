@@ -3,6 +3,7 @@ import type { AgentJob, AgentJobResult } from "@/hooks/use-async-job"
 import {
   buildFindingsFromJobResult,
   buildOperatorJobContext,
+  humanizeOperatorContent,
   type OperatorInsightSection,
 } from "@/lib/operator-plan"
 
@@ -170,8 +171,9 @@ export function planFromJobResult(job: AgentJob): InlineExecutePlan {
       },
       {
         step: 2,
-        title: result.action_title || "Suggested Action",
-        description: result.action_description || "Execute recommended action",
+        title: humanizeOperatorContent(result.action_title) || "Suggested Action",
+        description:
+          humanizeOperatorContent(result.action_description) || "Execute recommended action",
         status: "current",
       },
       {

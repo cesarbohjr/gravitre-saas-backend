@@ -21,6 +21,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { humanizePlainEnglish } from "@/lib/plain-english"
+
+function displayInsightContent(content: string): string {
+  return humanizePlainEnglish(content, content)
+}
 
 interface ReasoningStep {
   id: string
@@ -368,7 +373,7 @@ function InsightSectionCard({
             </div>
             {!isExpanded && (
               <p className="mt-1 text-xs text-muted-foreground/80 line-clamp-1 max-w-lg">
-                {section.content}
+                {displayInsightContent(section.content)}
               </p>
             )}
           </div>
@@ -403,7 +408,7 @@ function InsightSectionCard({
           >
             <div className="border-t border-border/50 px-5 pb-5 pt-4">
               <p className="text-sm leading-relaxed text-foreground/80">
-                {section.content}
+                {displayInsightContent(section.content)}
               </p>
 
               {/* Supporting Evidence */}
@@ -581,7 +586,7 @@ export function MesonInsightsPanel({
     setTimeout(() => {
       // Create a text export of the analysis
       const analysisText = sections.map(s => 
-        `## ${s.title}\n${s.content}\n`
+        `## ${s.title}\n${displayInsightContent(s.content)}\n`
       ).join("\n")
       const blob = new Blob([analysisText], { type: "text/plain" })
       const url = URL.createObjectURL(blob)
@@ -789,7 +794,7 @@ export function MesonInsightsPanel({
                     <h4 className="font-semibold text-foreground">{section.title}</h4>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed pl-10">
-                    {section.content}
+                    {displayInsightContent(section.content)}
                   </p>
                   {section.actions && (
                     <div className="pl-10 space-y-2 mt-3">

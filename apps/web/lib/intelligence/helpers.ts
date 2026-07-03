@@ -1,5 +1,7 @@
 /** Shared formatters for Intelligence Visibility Layer — no secrets, no chain-of-thought. */
 
+import { humanizePlainEnglish } from "@/lib/plain-english"
+
 export type ConfidenceBand = "high" | "medium" | "low" | "insufficient"
 
 export function confidenceBand(score: number | null | undefined): ConfidenceBand {
@@ -62,33 +64,10 @@ export function readString(value: unknown, fallback = ""): string {
 
 /** Plain-English sentence from promotion audit decision_reasoning — never raw JSON. */
 export function plainDecisionReasoning(value: unknown): string {
-  if (value == null) return "No reasoning recorded for this memory yet."
-  if (typeof value === "string") {
-    const trimmed = value.trim()
-    if (!trimmed) return "No reasoning recorded for this memory yet."
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-      try {
-        return plainDecisionReasoning(JSON.parse(trimmed))
-      } catch {
-        return trimmed
-      }
-    }
-    return trimmed
-  }
-  if (typeof value === "object") {
-    const obj = value as Record<string, unknown>
-    const parts: string[] = []
-    for (const key of ["summary", "reason", "explanation", "message", "decision_reasoning"]) {
-      const part = obj[key]
-      if (typeof part === "string" && part.trim()) {
-        parts.push(part.trim())
-      }
-    }
-    if (parts.length) return parts.join(" ")
-    const values = Object.values(obj).filter((v) => typeof v === "string" && v.trim()) as string[]
-    if (values.length) return values.join(" · ")
-  }
-  return "Memory was promoted based on recurring org signals."
+  return humanizePlainEnglish(
+    value,
+    "No reasoning recorded for this memory yet.",
+  )
 }
 
 export function modelStatusChipClass(status: string): string {
