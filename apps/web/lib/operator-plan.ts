@@ -46,6 +46,26 @@ export function describeOperatorJobError(err: unknown): string {
   return "Unknown error"
 }
 
+export function humanizeOperatorContent(raw: string | undefined | null): string {
+  const trimmed = String(raw || "").trim()
+  if (!trimmed) return ""
+  if (!trimmed.startsWith("{")) return trimmed
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>
+    if (typeof parsed.summary === "string" && parsed.summary.trim()) return parsed.summary.trim()
+    if (typeof parsed.answer === "string" && parsed.answer.trim()) return parsed.answer.trim()
+    const decision = parsed.decision
+    if (typeof decision === "string" && decision.trim()) return decision.trim()
+    if (decision && typeof decision === "object") {
+      const action = (decision as Record<string, unknown>).action
+      if (typeof action === "string" && action.trim()) return action.trim()
+    }
+  } catch {
+    return trimmed
+  }
+  return trimmed
+}
+
 export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsightSection[] {
   const trace = Array.isArray(result.react_trace) ? result.react_trace : []
   const traceSections: OperatorInsightSection[] = []
@@ -71,16 +91,16 @@ export function buildFindingsFromJobResult(result: AgentJobResult): OperatorInsi
       type: "summary",
       title: "What Happened",
       content:
-        result.analysis_summary ||
-        result.summary ||
-        result.answer ||
+        humanizeOperatorContent(result.analysis_summary) ||
+        humanizeOperatorContent(result.summary) ||
+        humanizeOperatorContent(result.answer) ||
         "Analysis complete.",
     },
     {
       id: "finding",
       type: "root-cause",
       title: "Why It Happened",
-      content: result.finding_description || "No specific findings.",
+      content: humanizeOperatorContent(result.finding_description) || "No specific findings.",
     },
     ...traceSections,
   ]

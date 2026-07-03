@@ -23,6 +23,24 @@ const FIND_ENTITY_LOOKUP =
 const CHAT_QUESTION =
   /^(what|why|how|when|who|can you explain|tell me about|summarize|describe|help me understand|is there|are there|should i|would you recommend)\b/
 
+const OPERATIONAL_EXECUTE =
+  /\b(fix|debug|investigate|resolve|retry|re-run|rerun|failed|failure|error|alert|incident|outage|sync failed|timed out)\b/
+
+const CONVERSATIONAL_CREATE =
+  /\b(create|build|make|set up|spin up|provision|add|generate|draft)\b.*\b(agent|workflow|automation|playbook|operator)\b/
+
+/** Creation requests that should use Manus-like chat dialogue, not the execute dashboard. */
+export function isConversationalOperatorPrompt(prompt: string): boolean {
+  const text = prompt.toLowerCase().trim()
+  if (!CONVERSATIONAL_CREATE.test(text)) return false
+  if (OPERATIONAL_EXECUTE.test(text)) return false
+  return true
+}
+
+function scoreConversationalOperator(text: string): number {
+  return isConversationalOperatorPrompt(text) ? 7 : 0
+}
+
 function scoreExecute(text: string): number {
   let score = 0
   if (/^(run|create|build|make|fix|deploy|sync|generate|schedule|execute|delegate|set up|spin up|provision|add)\b/.test(text)) {
@@ -40,8 +58,11 @@ function scoreExecute(text: string): number {
   if (/\b(task|job|execution plan|approval|async|operator session)\b/.test(text)) {
     score += 2
   }
-  if (/\b(fix|resolve|retry|re-run|rerun)\b.*\b(run|workflow|connector|issue|error|failure|alert)\b/.test(text)) {
+  if (/\b(fix|resolve|retry|re-run|rerun)\b.*\b(run|workflow|connector|issue|error|failure|alert|sync)\b/.test(text)) {
     score += 3
+  }
+  if (OPERATIONAL_EXECUTE.test(text)) {
+    score += 4
   }
   return score
 }
@@ -88,9 +109,18 @@ function scoreChat(text: string): number {
 /** Fast, dependency-free routing used when the model call is unavailable. */
 export function heuristicRouteIntent(prompt: string): AiRouteDecision {
   const text = prompt.toLowerCase().trim()
+  const conversationalScore = scoreConversationalOperator(text)
   const executeScore = scoreExecute(text)
   const findScore = scoreFind(text)
   const chatScore = scoreChat(text)
+
+  if (conversationalScore >= 6) {
+    return {
+      mode: "chat",
+      confidence: 0.88,
+      reason: "Conversational operator flow — confirm details, then create via dialogue.",
+    }
+  }
 
   const ranked = [
     { mode: "execute" as const, score: executeScore, reason: "Looks like a request to perform tracked work." },
@@ -116,8 +146,17 @@ export function reconcileModelRouteIntent(
   model: AiRouteDecision,
 ): AiRouteDecision {
   const text = prompt.toLowerCase().trim()
+  const conversationalScore = scoreConversationalOperator(text)
   const executeScore = scoreExecute(text)
   const findScore = scoreFind(text)
+
+  if (conversationalScore >= 6) {
+    return {
+      mode: "chat",
+      confidence: Math.max(model.confidence, 0.85),
+      reason: "Agent/workflow creation uses conversational operator mode, not the analysis dashboard.",
+    }
+  }
 
   if (model.mode === "find" && executeScore >= 4 && executeScore > findScore + 1) {
     return {
@@ -128,6 +167,13 @@ export function reconcileModelRouteIntent(
   }
 
   if (model.mode === "chat" && executeScore >= 5 && executeScore > scoreChat(text) + 2) {
+    if (conversationalScore >= 4) {
+      return {
+        mode: "chat",
+        confidence: Math.max(model.confidence, 0.8),
+        reason: "Creation request stays in conversational operator mode.",
+      }
+    }
     return {
       mode: "execute",
       confidence: Math.max(model.confidence, 0.75),

@@ -134,14 +134,15 @@ function normalizeConfidenceScore(value: number | undefined | null): number | nu
 export function resolveAnalysisConfidence(
   plan: InlineExecutePlan | null,
   job: AgentJob | null,
-): number {
+): number | null {
   if (job?.status === "completed" && job.result?.confidence != null) {
     const fromJob = normalizeConfidenceScore(job.result.confidence)
     if (fromJob != null) return fromJob
   }
   const traceCount = Array.isArray(job?.result?.react_trace) ? job.result.react_trace.length : 0
   if (traceCount > 0) return Math.min(95, 70 + traceCount * 5)
-  return 87
+  if ((plan?.findings?.length ?? 0) > 0) return null
+  return null
 }
 
 export function resolveConfidenceDataPoints(
@@ -191,9 +192,8 @@ export function planFromJobResult(job: AgentJob): InlineExecutePlan {
             estimatedImpact: "Based on agent analysis",
             icon: "refresh",
           },
-          ...fallbackSuggestedActionsList.slice(1),
         ]
-      : fallbackSuggestedActionsList,
+      : [],
   }
 }
 
@@ -205,9 +205,9 @@ export function planFromSyncResponse(data: {
   }
 }): InlineExecutePlan {
   return {
-    findings: data.plan?.reasoning ?? fallbackInsightSections,
-    steps: data.plan?.steps ?? fallbackActionPlanSteps,
-    suggestedActions: data.plan?.proposals ?? fallbackSuggestedActionsList,
+    findings: data.plan?.reasoning ?? [],
+    steps: data.plan?.steps ?? [],
+    suggestedActions: data.plan?.proposals ?? [],
   }
 }
 

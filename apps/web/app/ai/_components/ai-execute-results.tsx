@@ -16,8 +16,6 @@ import {
 } from "./draggable-result-stack"
 import { resolveBlockColumn } from "./ai-layout-storage"
 import {
-  fallbackActionPlanSteps,
-  fallbackSuggestedActionsList,
   resolveAnalysisConfidence,
   resolveConfidenceDataPoints,
   type ActionPlanStep,
@@ -82,9 +80,10 @@ export function AiExecuteResults({
   const analysisSections = filterSections(findings, ["summary", "root-cause", "reasoning", "evidence"])
   const resultSections = filterSections(findings, ["actions", "evidence"])
   const preventionSections = filterSections(findings, ["prevention"])
-  const steps = plan?.steps ?? fallbackActionPlanSteps
-  const suggestedActions = plan?.suggestedActions ?? fallbackSuggestedActionsList
+  const steps = plan?.steps ?? []
+  const suggestedActions = plan?.suggestedActions ?? []
   const confidence = useMemo(() => resolveAnalysisConfidence(plan, job), [plan, job])
+  const displayConfidence = confidence ?? 0
   const dataPoints = useMemo(() => resolveConfidenceDataPoints(job, findings), [job, findings])
 
   const toolCount = job?.result?.tool_call_count ?? job?.result?.toolCallCount ?? 0
@@ -129,7 +128,7 @@ export function AiExecuteResults({
     ),
     analysis: analysisSections.length > 0 ? (
       <MesonInsightsPanel
-        confidence={confidence}
+        confidence={displayConfidence}
         confidenceDataPoints={dataPoints}
         severity="high"
         lastUpdated="Just now"
@@ -149,7 +148,7 @@ export function AiExecuteResults({
     ),
     results: resultSections.length > 0 ? (
       <MesonInsightsPanel
-        confidence={confidence}
+        confidence={displayConfidence}
         confidenceDataPoints={dataPoints}
         severity="medium"
         lastUpdated="Just now"
@@ -164,7 +163,7 @@ export function AiExecuteResults({
     ),
     prevention: preventionSections.length > 0 ? (
       <MesonInsightsPanel
-        confidence={confidence}
+        confidence={displayConfidence}
         confidenceDataPoints={dataPoints}
         severity="low"
         lastUpdated="Just now"
@@ -177,20 +176,27 @@ export function AiExecuteResults({
         body="Future prevention guidance appears here once analysis completes."
       />
     ),
-    actions: (
-      <SuggestedActions
-        actions={suggestedActions}
-        isExecuting={executingAction}
-        onExecute={(actionId) => {
-          setExecutingAction(actionId)
-          toast.success("Action submitted for review")
-          window.setTimeout(() => setExecutingAction(null), 1200)
-        }}
-        onSchedule={() => toast.info("Action scheduled for review")}
-        onDismiss={() => toast.success("Action dismissed")}
-      />
-    ),
-    plan: (
+    actions:
+      suggestedActions.length > 0 ? (
+        <SuggestedActions
+          actions={suggestedActions}
+          isExecuting={executingAction}
+          onExecute={(actionId) => {
+            setExecutingAction(actionId)
+            toast.success("Action submitted for review")
+            window.setTimeout(() => setExecutingAction(null), 1200)
+          }}
+          onSchedule={() => toast.info("Action scheduled for review")}
+          onDismiss={() => toast.success("Action dismissed")}
+        />
+      ) : (
+        <EmptyPanel
+          title="Suggested Actions"
+          body="Action recommendations appear here when Gravitre identifies concrete next steps."
+        />
+      ),
+    plan:
+      steps.length > 0 ? (
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 shadow-sm">
         <div className="border-b border-border bg-secondary/30 px-5 py-3">
           <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -248,7 +254,12 @@ export function AiExecuteResults({
           </div>
         </div>
       </div>
-    ),
+      ) : (
+        <EmptyPanel
+          title="Execution Plan"
+          body="Step-by-step execution plans appear here for operational fixes and delegated tasks."
+        />
+      ),
   }
 
   return (

@@ -111,7 +111,9 @@ class TaskClassifier:
             dept = understanding.get("department_inference")
             if dept and not base.get("department"):
                 base["department"] = dept
-            if understanding.get("expected_output_format") == "plan":
+            if understanding.get("conversational_create"):
+                intent = "workflow_planning"
+            elif understanding.get("expected_output_format") == "plan":
                 intent = "workflow_planning"
             elif understanding.get("expected_output_format") == "action":
                 pipeline_action = TASK_TYPE_PIPELINE_MAP["workflow_execution"]
@@ -120,12 +122,16 @@ class TaskClassifier:
         pipeline_flags = dict(
             TASK_TYPE_PIPELINE_MAP.get(intent, TASK_TYPE_PIPELINE_MAP["general"])
         )
-        if REVENUE_PATTERN.search(request):
+        if understanding and understanding.get("conversational_create"):
+            pipeline_flags = dict(TASK_TYPE_PIPELINE_MAP["workflow_planning"])
+            intent = "workflow_planning"
+        elif REVENUE_PATTERN.search(request):
             pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["data_analysis"])
             intent = "data_analysis"
         elif WORKFLOW_PATTERN.search(request) and "what should" not in request.lower():
-            pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["workflow_execution"])
-            intent = "workflow_execution"
+            if not (understanding and understanding.get("conversational_create")):
+                pipeline_flags.update(TASK_TYPE_PIPELINE_MAP["workflow_execution"])
+                intent = "workflow_execution"
         elif CRM_PATTERN.search(request):
             pipeline_flags.setdefault("requires_graph", True)
             if intent == "question_answering":

@@ -27,8 +27,13 @@ OUTPUT_FORMAT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("plan", re.compile(r"\b(plan|roadmap|step.by.step)\b", re.I)),
     ("summary", re.compile(r"\b(summary|summarize|recap)\b", re.I)),
     ("data", re.compile(r"\b(table|csv|spreadsheet|metrics|numbers)\b", re.I)),
-    ("action", re.compile(r"\b(run|execute|trigger|send|create|update|delete)\b", re.I)),
+    ("action", re.compile(r"\b(run|execute|trigger|send|update|delete)\b", re.I)),
 ]
+
+CONVERSATIONAL_CREATE_PATTERN = re.compile(
+    r"\b(create|build|make|set up|spin up|provision|add|generate|draft)\b.*\b(agent|workflow|automation|playbook|operator)\b",
+    re.I,
+)
 
 DEPARTMENT_KEYWORDS: dict[str, tuple[str, ...]] = {
     "finance": ("revenue", "budget", "invoice", "mrr", "arr", "forecast"),
@@ -56,12 +61,13 @@ class ContextualUnderstandingService:
         _ = org_id
         entities = self._extract_entities_rule_based(message)
         temporal = self._extract_temporal(message)
-        format_hint = self._detect_output_format(message)
+        format_hint = self._detect_output_format(message, self._is_conversational_create(message))
         connectors = self._detect_connector_refs(message)
         known = self._extract_from_history(message, conversation_history or [])
 
         goal = self._infer_goal_from_rules(message)
         constraints: list[str] = []
+        conversational_create = self._is_conversational_create(message)
         if not goal and len(message.split()) > 8:
             extracted = await self._model_extract(message, entities, temporal)
             goal = extracted.get("goal")
@@ -72,7 +78,8 @@ class ContextualUnderstandingService:
             "goal": goal,
             "constraints": constraints,
             "temporal_references": temporal,
-            "expected_output_format": format_hint,
+            "expected_output_format": self._detect_output_format(message, conversational_create),
+            "conversational_create": conversational_create,
             "department_inference": self._infer_department(entities, message),
             "connector_dependencies": connectors,
             "already_known_from_history": known,
@@ -109,7 +116,13 @@ class ContextualUnderstandingService:
         return refs[:5]
 
     @staticmethod
-    def _detect_output_format(message: str) -> str | None:
+    def _is_conversational_create(message: str) -> bool:
+        return bool(CONVERSATIONAL_CREATE_PATTERN.search(message))
+
+    @staticmethod
+    def _detect_output_format(message: str, conversational_create: bool = False) -> str | None:
+        if conversational_create:
+            return "plan"
         for label, pattern in OUTPUT_FORMAT_PATTERNS:
             if pattern.search(message):
                 return label

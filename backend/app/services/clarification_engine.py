@@ -49,6 +49,16 @@ class ClarificationEngine:
         re.I,
     )
 
+    AGENT_CREATE_PATTERN = re.compile(
+        r"\b(create|build|make|set up|spin up|provision|add|generate|draft)\b.*\bagent\b",
+        re.I,
+    )
+
+    WORKFLOW_CREATE_PATTERN = re.compile(
+        r"\b(create|build|make|set up|spin up|provision|add|generate|draft)\b.*\b(workflow|automation|playbook)\b",
+        re.I,
+    )
+
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self._state = get_conversation_state_service(self.settings)
@@ -131,6 +141,34 @@ class ClarificationEngine:
     ) -> dict[str, Any] | None:
         request = str(classification.get("request") or "")
         lowered = request.lower()
+
+        if understanding.get("conversational_create") or self.AGENT_CREATE_PATTERN.search(request):
+            if not clarified.get("agent_name") and not clarified.get("agent_purpose"):
+                return {
+                    "trigger_type": "under_specified_action",
+                    "reason": "Agent creation needs a name and purpose before proceeding.",
+                    "template_vars": {
+                        "action": "create your agent",
+                        "specific_question": (
+                            "What should we call it, and what should it help with "
+                            "(for example sales outreach, support triage, or marketing research)?"
+                        ),
+                    },
+                }
+
+        if understanding.get("conversational_create") and self.WORKFLOW_CREATE_PATTERN.search(request):
+            if not clarified.get("workflow_goal"):
+                return {
+                    "trigger_type": "under_specified_action",
+                    "reason": "Workflow creation needs a goal and trigger before proceeding.",
+                    "template_vars": {
+                        "action": "build your workflow",
+                        "specific_question": (
+                            "What should trigger it, and what outcome do you want "
+                            "(for example sync HubSpot deals daily or notify Slack on failures)?"
+                        ),
+                    },
+                }
 
         if classification.get("requires_action") and classification.get("risk_level") in {
             "high",

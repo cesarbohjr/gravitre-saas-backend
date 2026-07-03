@@ -39,13 +39,11 @@ import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
   buildOperatorJobPayload,
   createOperatorSession,
-  fallbackActionPlanSteps,
-  fallbackInsightSections,
-  fallbackSuggestedActionsList,
   planFromJobResult,
   runSyncOperatorTask,
   type InlineExecutePlan,
 } from "@/lib/ai-inline-execute"
+import { isConversationalOperatorPrompt } from "@/lib/ai-route-intent"
 import {
   describeOperatorJobError,
   isBackendUnavailableError,
@@ -251,6 +249,9 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
 
   const resolveEngine = useCallback(
     async (prompt: string, selectedMode: ModeId): Promise<AiEngine> => {
+      if (isConversationalOperatorPrompt(prompt)) {
+        return "chat"
+      }
       if (selectedMode !== "auto") return selectedMode
       setRouting(true)
       setRoutedTo(null)
@@ -333,12 +334,8 @@ export function AiWorkspace({ initialMode = "auto", initialPrompt = "" }: AiWork
                 turn.id === turnId
                   ? {
                       ...turn,
-                      status: "completed",
-                      executePlan: {
-                        findings: fallbackInsightSections,
-                        steps: fallbackActionPlanSteps,
-                        suggestedActions: fallbackSuggestedActionsList,
-                      },
+                      status: "failed",
+                      executePlan: null,
                       executeError: describeOperatorJobError(fallbackErr),
                     }
                   : turn,
