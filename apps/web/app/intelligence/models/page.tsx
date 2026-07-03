@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ChartLineUp } from "@phosphor-icons/react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/lib/auth-context"
@@ -78,7 +79,7 @@ export default function IntelligenceModelsPage() {
         ) : names.length === 0 ? (
           <EmptyState title="No models in catalog" description="The ML catalog has not been configured for this org yet." />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-border/70">
+          <AdaptiveDataView className="rounded-2xl border-border/70">
             <table className="min-w-full text-sm">
               <thead className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -137,7 +138,7 @@ export default function IntelligenceModelsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </AdaptiveDataView>
         )}
       </div>
     </AppShell>

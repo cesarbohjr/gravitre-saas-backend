@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { sourceTypeVendorKey } from "@/lib/brand-vendor"
@@ -273,7 +274,7 @@ export default function SourceDetailPage() {
                 <h2 className="text-sm font-semibold text-foreground">Schema Preview</h2>
                 <span className="text-xs text-muted-foreground">{schemaTables.length} tables</span>
               </div>
-              <div className="overflow-x-auto">
+              <AdaptiveDataView className="border-0">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border">
@@ -300,7 +301,7 @@ export default function SourceDetailPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AdaptiveDataView>
             </div>
 
             <div className="rounded-lg border border-border bg-card p-5">

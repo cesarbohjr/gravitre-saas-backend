@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 
 interface Column<T> {
   key: string
@@ -23,8 +24,8 @@ export function DataTable<T extends { id: string | number }>({
   className,
 }: DataTableProps<T>) {
   return (
-    <div className={cn("overflow-hidden rounded-lg border border-border", className)}>
-      <table className="w-full">
+    <AdaptiveDataView className={cn("overflow-hidden", className)}>
+      <table className="w-full min-w-[640px]">
         <thead>
           <tr className="border-b border-border bg-muted/50">
             {columns.map((column) => (
@@ -67,6 +68,6 @@ export function DataTable<T extends { id: string | number }>({
           ))}
         </tbody>
       </table>
-    </div>
+    </AdaptiveDataView>
   )
 }

@@ -937,7 +937,7 @@ export default function AssignmentDetailPage({
             deliverable={selectedItem || null}
             isApproved={selectedItem ? approvedItems.includes(selectedItem.id) : false}
             onApprove={() => selectedItem && handleApprove(selectedItem.id)}
-            onPush={() => console.log("Push to destination")}
+            onPush={() => toast.info("Push to destination is not configured for this assignment yet.")}
             jobError={jobError}
           />
         </div>

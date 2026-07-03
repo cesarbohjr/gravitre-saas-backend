@@ -44,6 +44,8 @@ export { UpgradePrompt } from "./upgrade-prompt"
 
 // Data Display Components
 export { DataTable } from "./data-table"
+export { AdaptiveDataView } from "./adaptive-data-view"
+export { RouteLoading } from "./route-loading"
 export { ContextPack } from "./context-pack"
 export { GuardrailsBox } from "./guardrails-box"
 export { ActionProposal } from "./action-proposal"

@@ -9,7 +9,6 @@ import {
   Sparkle as Sparkles,
 } from "@phosphor-icons/react"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
-import { AiWorkSurfacesCallout } from "@/components/gravitre/ai-work-surfaces-callout"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 
 function ModeIconBadge({
@@ -70,37 +69,7 @@ export function AiLanding({
         </p>
       </div>
 
-      <div className="mt-6">
-        <AiWorkSurfacesCallout compact />
-      </div>
-
-      <div className="mt-8 flex flex-wrap justify-center gap-2">
-        {AI_MODES.map((m) => {
-          const isActive = m.id === mode
-          return (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => onModeChange(m.id)}
-              aria-pressed={isActive}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-all",
-                isActive
-                  ? cn("ring-1", m.ring, "text-foreground")
-                  : "border-border bg-card/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground",
-              )}
-            >
-              <ModeIconBadge modeId={m.id} />
-              {m.label}
-              <span className="hidden rounded bg-muted/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground sm:inline">
-                {m.badge}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="mt-4">
+      <div className="mt-8">
         <div
           className={cn(
             "rounded-2xl border bg-card p-2 shadow-sm transition-all focus-within:ring-2",
@@ -174,6 +143,29 @@ export function AiLanding({
         </AnimatePresence>
       </div>
 
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        {AI_MODES.map((m) => {
+          const isActive = m.id === mode
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onModeChange(m.id)}
+              aria-pressed={isActive}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-all",
+                isActive
+                  ? cn("ring-1", m.ring, "text-foreground")
+                  : "border-border bg-card/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground",
+              )}
+            >
+              <ModeIconBadge modeId={m.id} />
+              {m.label}
+            </button>
+          )
+        })}
+      </div>
+
       {!routing ? (
         <div className="mt-6">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -197,20 +189,6 @@ export function AiLanding({
           </div>
         </div>
       ) : null}
-
-      <div className="mt-auto pt-10">
-        <div className="grid gap-3 md:grid-cols-3">
-          {AI_MODES.filter((m) => m.id !== "auto").map((m) => (
-            <div key={m.id} className="rounded-xl border border-border bg-card/40 p-3.5">
-              <div className="flex items-center gap-2">
-                <ModeIconBadge modeId={m.id} />
-                <span className="text-sm font-medium text-foreground">{m.badge}</span>
-              </div>
-              <p className="mt-1.5 text-pretty text-xs leading-relaxed text-muted-foreground">{m.blurb}</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

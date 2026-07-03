@@ -167,9 +167,6 @@ export function AiFindResults({
           </motion.div>
         ))}
       </div>
-      <Link href="/search" className="inline-block text-xs font-medium text-primary hover:underline">
-        Open Universal Search
-      </Link>
     </div>
   )
 }

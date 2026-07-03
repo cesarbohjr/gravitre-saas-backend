@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { Graph, ArrowRight } from "@phosphor-icons/react"
 import { readNumber } from "./shared"
 
@@ -115,7 +116,7 @@ export function RelationshipsTab({
               </div>
             ) : null}
 
-            <div className="overflow-x-auto">
+            <AdaptiveDataView className="border-0">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
@@ -156,7 +157,7 @@ export function RelationshipsTab({
                   })}
                 </tbody>
               </table>
-            </div>
+            </AdaptiveDataView>
           </>
         )}
       </CardContent>

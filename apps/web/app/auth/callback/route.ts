@@ -83,7 +83,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (data.session) {
-      console.log("Session established for:", data.user?.email)
       return response
     }
   }

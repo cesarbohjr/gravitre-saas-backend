@@ -43,6 +43,14 @@
   --schedule-workflow: oklch(0.55 0.21 300);
   --schedule-task: oklch(0.55 0.2 250);
   --schedule-job: oklch(0.55 0.16 158);
+  /* Workflow builder connection lines (theme-stable; no inline hex in UI) */
+  --workflow-line: var(--info);
+  --workflow-line-mid: var(--schedule-task);
+  --workflow-line-active: var(--success);
+  --workflow-line-active-mid: oklch(0.62 0.17 158);
+  --workflow-decision: var(--chart-4);
+  --workflow-decision-mid: var(--primary);
+  --workflow-line-dim: var(--muted-foreground);
   --radius: 0.5rem;
   /* Sidebar: subtle cool surface with brand-purple accents */
   --sidebar: oklch(0.97 0.008 160);
@@ -92,6 +100,13 @@
   --schedule-workflow: oklch(0.7 0.19 300);
   --schedule-task: oklch(0.68 0.19 250);
   --schedule-job: oklch(0.72 0.16 158);
+  --workflow-line: var(--info);
+  --workflow-line-mid: var(--schedule-task);
+  --workflow-line-active: var(--success);
+  --workflow-line-active-mid: oklch(0.78 0.16 145);
+  --workflow-decision: var(--chart-4);
+  --workflow-decision-mid: var(--primary);
+  --workflow-line-dim: var(--muted-foreground);
   /* Sidebar: Even deeper */
   --sidebar: oklch(0.06 0.01 250);
   --sidebar-foreground: oklch(0.95 0 0);

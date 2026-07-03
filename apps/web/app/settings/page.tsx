@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -833,8 +834,8 @@ function TeamSettings({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border overflow-hidden">
-        <table className="w-full">
+      <AdaptiveDataView className="rounded-lg border border-border overflow-hidden">
+        <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-border bg-secondary/30">
               <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Member</th>
@@ -883,7 +884,7 @@ function TeamSettings({
             ))}
           </tbody>
         </table>
-      </div>
+      </AdaptiveDataView>
       <Button size="sm" className="gap-2" onClick={() => setInviteDialog(true)} disabled={!isAdmin}>
         <Users className="h-3.5 w-3.5" />
         Invite Member

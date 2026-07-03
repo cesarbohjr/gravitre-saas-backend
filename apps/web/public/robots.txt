@@ -1,0 +1,24 @@
+# https://gravitre.com robots
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /home
+Disallow: /welcome
+Disallow: /ai
+Disallow: /assistant
+Disallow: /command-center
+Disallow: /operator
+Disallow: /agents
+Disallow: /workflows
+Disallow: /approvals
+Disallow: /settings
+Disallow: /admin
+Disallow: /intelligence
+Disallow: /marketplace
+Disallow: /audit
+Disallow: /connectors
+Disallow: /runs
+Disallow: /onboarding
+
+Sitemap: https://gravitre.com/sitemap.xml

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -132,8 +133,8 @@ function TopAssetsTable({ title, rows }: { title: string; rows: MarketplaceTopEa
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <h2 className="mb-3 text-sm font-semibold text-foreground">{title}</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[620px] text-sm">
+      <AdaptiveDataView className="border-0">
+        <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground">
             <tr>
               <th className="pb-2 text-left font-medium">Asset</th>
@@ -166,7 +167,7 @@ function TopAssetsTable({ title, rows }: { title: string; rows: MarketplaceTopEa
             ))}
           </tbody>
         </table>
-      </div>
+      </AdaptiveDataView>
     </div>
   )
 }

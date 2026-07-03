@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { Button } from "@/components/ui/button"
 import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
@@ -174,8 +175,8 @@ export default function MarketplaceSandboxPage() {
                 {demoResult.auditTrail.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Audit trail</p>
-                    <div className="rounded border border-border overflow-x-auto">
-                      <table className="w-full text-xs min-w-[460px]">
+                    <AdaptiveDataView className="rounded border border-border">
+                      <table className="w-full text-xs">
                         <thead className="bg-muted/50">
                           <tr>
                             <th className="text-left px-3 py-2 font-medium">Action</th>
@@ -193,7 +194,7 @@ export default function MarketplaceSandboxPage() {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    </AdaptiveDataView>
                   </div>
                 )}
               </div>

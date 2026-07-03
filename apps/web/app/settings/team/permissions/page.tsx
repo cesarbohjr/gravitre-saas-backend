@@ -4,6 +4,7 @@ import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { Shield, Check, X } from "lucide-react"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 
 const PERMISSION_ROWS = [
   { capability: "View dashboards & intelligence", admin: true, member: true, viewer: true },
@@ -39,8 +40,8 @@ export default function PermissionsMatrixPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[640px] text-sm">
+        <AdaptiveDataView className="rounded-xl border-0">
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 <th className="px-4 py-3 font-medium text-foreground">Capability</th>
@@ -60,7 +61,7 @@ export default function PermissionsMatrixPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </AdaptiveDataView>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Button variant="outline" asChild>

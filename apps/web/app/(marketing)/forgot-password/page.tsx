@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowLeft, ArrowRight, Loader2, Mail, CheckCircle2 } from "lucide-react"
+import { GravitreMarketingLogoWhite } from "@/components/marketing/gravitre-marketing-logo"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -27,9 +28,9 @@ export default function ForgotPasswordPage() {
         className="w-full max-w-sm"
       >
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block mb-8">
-            <img src="/logo-white.svg" alt="Gravitre" className="h-8 w-auto" />
-          </Link>
+          <div className="mb-8 flex justify-center">
+            <GravitreMarketingLogoWhite height={32} className="h-8" />
+          </div>
 
           {!isSubmitted ? (
             <>

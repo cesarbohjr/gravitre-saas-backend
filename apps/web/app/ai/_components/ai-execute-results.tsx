@@ -1,13 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
-import { ArrowRight, CheckCircle, Eye, Loader2, Play } from "lucide-react"
+import { ArrowRight, CheckCircle, Loader2, Play } from "lucide-react"
 import { MesonInsightsPanel } from "@/components/gravitre/ai-insights-panel"
 import { SuggestedActions } from "@/components/gravitre/suggested-actions"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Button } from "@/components/ui/button"
-import { APP_ROUTES } from "@/lib/app-routes"
 import { cn } from "@/lib/utils"
 import type { AgentJob } from "@/hooks/use-async-job"
 import {
@@ -125,14 +123,8 @@ export function AiExecuteResults({
               : "Analysis ready"}
         </span>
         {toolsAvailable > 0 ? (
-          <span className="text-[10px] text-muted-foreground">{toolsAvailable} available</span>
+          <span className="ml-auto text-[10px] text-muted-foreground">{toolsAvailable} available</span>
         ) : null}
-        <Link
-          href={APP_ROUTES.commandCenter}
-          className="ml-auto text-[10px] font-medium text-primary hover:underline"
-        >
-          Open Command Center
-        </Link>
       </div>
     ),
     analysis: analysisSections.length > 0 ? (
@@ -248,13 +240,7 @@ export function AiExecuteResults({
               </div>
             </div>
           ))}
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
-            <Button variant="outline" size="sm" className="h-9" asChild>
-              <Link href={APP_ROUTES.commandCenter}>
-                <Eye className="mr-2 h-3.5 w-3.5" />
-                Review in Command Center
-              </Link>
-            </Button>
+          <div className="flex items-center justify-end border-t border-border pt-4">
             <Button size="sm" className="h-9" onClick={() => toast.info("Execution requires approval")}>
               <Play className="mr-2 h-3.5 w-3.5" />
               Approve & Execute

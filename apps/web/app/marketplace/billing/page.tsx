@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { GridPattern } from "@/components/gravitre/premium-effects"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -437,8 +438,8 @@ export default function MarketplaceBillingPage() {
                 {lastSyncResult ? <LastSyncResult result={lastSyncResult} /> : null}
 
                 {recentAssetPayouts.length > 0 ? (
-                  <div className="overflow-x-auto rounded border border-border">
-                    <table className="w-full min-w-[560px] text-xs">
+                  <AdaptiveDataView className="rounded border border-border">
+                    <table className="w-full text-xs">
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="px-3 py-2 text-left font-medium">Asset</th>
@@ -475,7 +476,7 @@ export default function MarketplaceBillingPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </AdaptiveDataView>
                 ) : null}
               </div>
 
@@ -500,8 +501,8 @@ export default function MarketplaceBillingPage() {
               {data?.recentUsage && data.recentUsage.length > 0 ? (
                 <div className="space-y-2">
                   <h2 className="text-sm font-medium">Recent connector usage</h2>
-                  <div className="overflow-x-auto rounded border border-border">
-                    <table className="w-full min-w-[460px] text-xs">
+                  <AdaptiveDataView className="rounded border border-border">
+                    <table className="w-full text-xs">
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="px-3 py-2 text-left font-medium">Action</th>
@@ -525,7 +526,7 @@ export default function MarketplaceBillingPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </AdaptiveDataView>
                 </div>
               ) : null}
             </>

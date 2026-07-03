@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { enterpriseApi } from "@/lib/api"
 import type {
   AgentAutonomousRunBudgetStatus,
@@ -293,8 +294,8 @@ export function BudgetsTab({ isAdmin }: { isAdmin: boolean }) {
               No agents are in auto-execute mode yet. Enable auto-execute on an agent to enforce daily budgets.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left">
+            <AdaptiveDataView className="border-0">
+              <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Agent</th>
@@ -315,7 +316,7 @@ export function BudgetsTab({ isAdmin }: { isAdmin: boolean }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </AdaptiveDataView>
           )}
           <Separator className="my-4" />
           <p className={cn("text-xs text-muted-foreground")}>

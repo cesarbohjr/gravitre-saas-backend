@@ -4502,30 +4502,30 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               {/* SVG Definitions for gradients and filters */}
               <defs>
                 <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
-                  <stop offset="50%" stopColor="#06b6d4" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.5" />
+                  <stop offset="0%" stopColor="var(--workflow-line)" stopOpacity="0.5" />
+                  <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
+                  <stop offset="100%" stopColor="var(--workflow-line)" stopOpacity="0.5" />
                 </linearGradient>
                 <linearGradient id="connectionGradientActive" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.7" />
-                  <stop offset="50%" stopColor="#06b6d4" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.7" />
+                  <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
+                  <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
+                  <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
                 </linearGradient>
                 {/* Decision node gradients - violet themed */}
                 <linearGradient id="decisionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.6" />
-                  <stop offset="50%" stopColor="#a78bfa" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.6" />
+                  <stop offset="0%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
+                  <stop offset="50%" stopColor="var(--workflow-decision-mid)" stopOpacity="1" />
+                  <stop offset="100%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
                 </linearGradient>
                 <linearGradient id="decisionGradientActive" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-                  <stop offset="50%" stopColor="#22c55e" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
+                  <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="0.8" />
+                  <stop offset="50%" stopColor="var(--workflow-line-active-mid)" stopOpacity="1" />
+                  <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.8" />
                 </linearGradient>
                 <linearGradient id="decisionGradientDimmed" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#6b7280" stopOpacity="0.2" />
-                  <stop offset="50%" stopColor="#6b7280" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#6b7280" stopOpacity="0.2" />
+                  <stop offset="0%" stopColor="var(--workflow-line-dim)" stopOpacity="0.2" />
+                  <stop offset="50%" stopColor="var(--workflow-line-dim)" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="var(--workflow-line-dim)" stopOpacity="0.2" />
                 </linearGradient>
                 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -4590,13 +4590,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 let dotColor: string
                 if (isDimmedPath) {
                   strokeColor = "url(#decisionGradientDimmed)"
-                  dotColor = "#6b7280"
+                  dotColor = "var(--muted-foreground)"
                 } else if (isDecisionSource) {
                   strokeColor = isChosenPath ? "url(#decisionGradientActive)" : "url(#decisionGradient)"
-                  dotColor = isChosenPath ? "#10b981" : "#8b5cf6"
+                  dotColor = isChosenPath ? "var(--workflow-line-active)" : "var(--primary)"
                 } else {
                   strokeColor = isActive ? "url(#connectionGradientActive)" : "url(#connectionGradient)"
-                  dotColor = isActive ? "#10b981" : "#3b82f6"
+                  dotColor = isActive ? "var(--workflow-line-active)" : "var(--workflow-line-mid)"
                 }
                 const animationDuration = isActive ? "1.5s" : "3s"
                 
@@ -4822,7 +4822,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   height={20}
   rx="6"
   fill="#1a1a2e"
-  stroke={isDecisionSource ? "#8b5cf6" : "#3b82f6"}
+  stroke={isDecisionSource ? "var(--primary)" : "var(--workflow-line-mid)"}
   strokeWidth="1"
   opacity="0.95"
   />
@@ -4914,8 +4914,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       >
         <defs>
           <linearGradient id="dragLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="1" />
-            <stop offset="100%" stopColor="#34d399" stopOpacity="0.5" />
+            <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="1" />
+            <stop offset="100%" stopColor="var(--workflow-line-active-mid)" stopOpacity="0.5" />
           </linearGradient>
         </defs>
         {/* Glow effect */}
@@ -4924,7 +4924,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           y1={startY}
           x2={dragMousePosition.x}
           y2={dragMousePosition.y}
-          stroke="#10b981"
+          stroke="var(--workflow-line-active)"
           strokeWidth="6"
           opacity="0.3"
           strokeLinecap="round"
@@ -4949,11 +4949,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           />
         </line>
         {/* Start point */}
-        <circle cx={startX} cy={startY} r="6" fill="#10b981" />
+        <circle cx={startX} cy={startY} r="6" fill="var(--workflow-line-active)" />
         <circle cx={startX} cy={startY} r="3" fill="white" opacity="0.6" />
         {/* End point (cursor) */}
-        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="8" fill="#10b981" opacity="0.3" />
-        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="4" fill="#10b981" />
+        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="8" fill="var(--workflow-line-active)" opacity="0.3" />
+        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="4" fill="var(--workflow-line-active)" />
       </svg>
     )
   })()}

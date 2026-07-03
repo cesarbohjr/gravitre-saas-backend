@@ -68,9 +68,9 @@ function NeuralLines() {
     <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
-          <stop offset="50%" stopColor="#10b981" stopOpacity="1" />
-          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--success)" stopOpacity="0" />
+          <stop offset="50%" stopColor="var(--success)" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--success)" stopOpacity="0" />
         </linearGradient>
       </defs>
       {Array.from({ length: 8 }).map((_, i) => (

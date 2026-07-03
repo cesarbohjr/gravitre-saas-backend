@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       source: reconciled.mode === experimental_output.mode ? "model" : "model+guardrail",
     })
   } catch (error) {
-    console.log("[v0] route-intent model classification failed, using heuristic:", error)
+    console.warn("[route-intent] model classification failed, using heuristic:", error)
     const fallback = heuristicRouteIntent(prompt)
     return Response.json({ ...fallback, source: "heuristic" })
   }

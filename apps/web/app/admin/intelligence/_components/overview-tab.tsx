@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/gravitre/empty-state"
+import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import type { IntelligenceSnapshot } from "@/lib/api"
 import { intelligenceApi } from "@/lib/api"
 import type { IconProps } from "@phosphor-icons/react"
@@ -224,7 +225,7 @@ export function OverviewTab({
           ) : glossary.length === 0 ? (
             <p className="text-sm text-muted-foreground">No glossary candidates extracted yet.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <AdaptiveDataView className="border-0">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
@@ -251,7 +252,7 @@ export function OverviewTab({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </AdaptiveDataView>
           )}
         </CardContent>
       </Card>
