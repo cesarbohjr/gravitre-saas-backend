@@ -3,9 +3,12 @@ import { authenticatedMetadata } from "@/lib/authenticated-metadata"
 
 export const metadata: Metadata = authenticatedMetadata(
   "Home | Gravitre",
-  "Your role-aware Gravitre home — quick actions, intelligence health, and pending approvals.",
+  "Your intelligence command surface — learning trends, approvals, and Gravitre AI in one place.",
   { canonical: "/home" },
 )
+
+/** Authenticated dashboard — always render fresh (no stale shell with removed callouts). */
+export const dynamic = "force-dynamic"
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
   return children
