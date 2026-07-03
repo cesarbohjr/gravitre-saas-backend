@@ -713,6 +713,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         <div className="rounded-lg border border-border bg-card">
           <div className="border-b border-border p-4">
             <h2 className="text-sm font-semibold text-foreground">Execution Timeline</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Full step trace with payloads, logs, and connector details. Expand steps for raw data.
+            </p>
           </div>
           <ExecutionTimeline steps={steps} onRetryStep={handleRetryStep} isRetrying={isRetryingStep} />
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -213,7 +213,7 @@ function BranchVisualization({ output }: { output?: Record<string, unknown> | nu
     <div className="mt-3 flex items-center gap-2">
       <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
       <div className="flex items-center gap-2">
-        <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-600">
+        <span className="rounded-md border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success">
           {branch}
         </span>
         {labels.map((label) => (
@@ -301,6 +301,9 @@ function ExecutionStepRow({
   onRetry,
   isRetrying,
   reduced,
+  expanded,
+  onToggleExpanded,
+  isHighlighted,
 }: {
   step: ExecutionStepView
   index: number
@@ -309,8 +312,10 @@ function ExecutionStepRow({
   onRetry?: (stepId: string) => void
   isRetrying?: boolean
   reduced: boolean
+  expanded: boolean
+  onToggleExpanded: () => void
+  isHighlighted?: boolean
 }) {
-  const [expanded, setExpanded] = useState(step.status === "failed")
   const StatusIcon = stepStatusIcons[step.status]
   const isRunning = step.status === "running"
   const isAwaiting = step.status === "awaiting_approval"
@@ -332,7 +337,11 @@ function ExecutionStepRow({
 
   return (
     <motion.div
-      className={cn("p-4", parallelWithNext && "border-r border-border last:border-r-0")}
+      className={cn(
+        "p-4",
+        parallelWithNext && "border-r border-border last:border-r-0",
+        isHighlighted && "bg-info/5 ring-1 ring-inset ring-info/20",
+      )}
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
       transition={
@@ -344,7 +353,7 @@ function ExecutionStepRow({
       <button
         type="button"
         className="flex w-full items-start gap-4 text-left"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={onToggleExpanded}
         aria-expanded={expanded}
       >
         {/* spine column */}
@@ -540,6 +549,45 @@ export function ExecutionTimeline({
   isRetrying?: boolean
 }) {
   const { reduced } = useMotionPrefs()
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      for (const step of steps) {
+        if (
+          step.status === "running" ||
+          step.status === "failed" ||
+          step.status === "awaiting_approval"
+        ) {
+          next.add(step.id)
+        }
+      }
+      return next
+    })
+  }, [steps])
+
+  const toggleStep = (stepId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(stepId)) next.delete(stepId)
+      else next.add(stepId)
+      return next
+    })
+  }
+
+  const expandAll = () => setExpandedIds(new Set(steps.map((step) => step.id)))
+  const collapseAll = () => setExpandedIds(new Set())
+
+  const activeStepId = useMemo(() => {
+    const running = steps.find((step) => step.status === "running")
+    if (running) return running.id
+    const awaiting = steps.find((step) => step.status === "awaiting_approval")
+    if (awaiting) return awaiting.id
+    const failed = steps.find((step) => step.status === "failed")
+    return failed?.id
+  }, [steps])
+
   const parallelGroups = useMemo(() => {
     const groups: ExecutionStepView[][] = []
     let i = 0
@@ -569,7 +617,18 @@ export function ExecutionTimeline({
   let renderedIndex = 0
 
   return (
-    <div className="divide-y divide-border">
+    <div>
+      {steps.length > 0 ? (
+        <div className="flex items-center justify-end gap-2 border-b border-border px-4 py-2">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={expandAll}>
+            Expand all
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={collapseAll}>
+            Collapse all
+          </Button>
+        </div>
+      ) : null}
+      <div className="divide-y divide-border">
       {parallelGroups.map((group, groupIndex) => {
         const isParallel = group.length > 1
         const isLastGroup = groupIndex === parallelGroups.length - 1
@@ -600,6 +659,9 @@ export function ExecutionTimeline({
                         onRetry={onRetryStep}
                         isRetrying={isRetrying}
                         reduced={reduced}
+                        expanded={expandedIds.has(step.id)}
+                        onToggleExpanded={() => toggleStep(step.id)}
+                        isHighlighted={step.id === activeStepId}
                       />
                     </motion.div>
                   )
@@ -614,6 +676,9 @@ export function ExecutionTimeline({
                     onRetry={onRetryStep}
                     isRetrying={isRetrying}
                     reduced={reduced}
+                    expanded={expandedIds.has(step.id)}
+                    onToggleExpanded={() => toggleStep(step.id)}
+                    isHighlighted={step.id === activeStepId}
                   />
                 )
               })}
@@ -621,6 +686,7 @@ export function ExecutionTimeline({
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

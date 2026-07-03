@@ -18,74 +18,50 @@ STEP_DEFINITIONS = [
     {
         "id": "welcome",
         "key": "welcome",
-        "title": "Welcome",
-        "description": "Set your organization name.",
+        "title": "Welcome setup",
+        "description": "Finish the /welcome flow and choose your role.",
         "is_required": True,
         "order": 0,
     },
     {
-        "id": "role",
-        "key": "role",
-        "title": "Your Role",
-        "description": "Choose your role and goals.",
-        "is_required": True,
-        "order": 1,
-    },
-    {
-        "id": "ready",
-        "key": "ready",
-        "title": "Ready",
-        "description": "Confirm workspace readiness.",
-        "is_required": True,
-        "order": 2,
-    },
-    {
-        "id": "path",
-        "key": "path",
-        "title": "First Step",
-        "description": "Pick how to start.",
-        "is_required": True,
-        "order": 3,
-    },
-    {
         "id": "connect",
         "key": "connect",
-        "title": "Connect",
-        "description": "Optionally connect a tool.",
+        "title": "Connect a tool",
+        "description": "Link Slack, HubSpot, or another integration.",
         "is_required": False,
-        "order": 4,
+        "order": 1,
     },
     {
         "id": "operator",
         "key": "operator",
-        "title": "Operator",
-        "description": "Choose your first assistant.",
-        "is_required": True,
-        "order": 5,
+        "title": "Create an agent",
+        "description": "Set up your first AI agent.",
+        "is_required": False,
+        "order": 2,
     },
     {
         "id": "task",
         "key": "task",
-        "title": "First Task",
-        "description": "Run your first task.",
-        "is_required": True,
-        "order": 6,
+        "title": "Run a task",
+        "description": "Execute work through Gravitre AI.",
+        "is_required": False,
+        "order": 3,
     },
     {
-        "id": "success",
-        "key": "success",
-        "title": "Success",
-        "description": "Review your first result.",
-        "is_required": True,
-        "order": 7,
+        "id": "path",
+        "key": "path",
+        "title": "Build a workflow",
+        "description": "Create and run an automation.",
+        "is_required": False,
+        "order": 4,
     },
     {
         "id": "next",
         "key": "next",
-        "title": "Next Steps",
-        "description": "See recommended next actions.",
-        "is_required": True,
-        "order": 8,
+        "title": "Invite a teammate",
+        "description": "Collaborate with your organization.",
+        "is_required": False,
+        "order": 5,
     },
 ]
 
@@ -112,6 +88,8 @@ def _is_missing_table_error(error: Exception | None) -> bool:
 def _build_progress(onboarding_state: dict | None) -> dict:
     state = onboarding_state or {}
     completed_keys = set(state.get("completed_steps") or [])
+    if {"role", "ready", "success"}.intersection(completed_keys):
+        completed_keys.add("welcome")
     skipped = bool(state.get("skipped") or False)
     completed_at = state.get("completed_at")
 
@@ -196,6 +174,9 @@ async def complete_welcome(
         onboarding_state = {}
 
     completed_steps = set(onboarding_state.get("completed_steps") or [])
+    legacy_welcome_keys = {"role", "ready", "success"}
+    if legacy_welcome_keys.intersection(completed_steps):
+        completed_steps.add("welcome")
     completed_steps.update({"welcome", "role", "ready", "path"})
     if not body.skipped_optional:
         completed_steps.add("connect")

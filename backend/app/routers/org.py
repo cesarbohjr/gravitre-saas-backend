@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 
 from app.auth.dependencies import get_current_user, require_admin
+from app.auth.org_role_permissions import get_org_role_permissions_matrix
 from app.config import Settings, get_settings
 from app.workflows.audit import write_audit_event
 
@@ -150,6 +151,14 @@ async def list_members(
         metadata={"count": len(members)},
     )
     return {"members": members}
+
+
+@router.get("/role-permissions")
+async def get_role_permissions(
+    _user: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    """Return org role capability matrix for Settings → Permissions."""
+    return get_org_role_permissions_matrix()
 
 
 @router.post("/members/invite")

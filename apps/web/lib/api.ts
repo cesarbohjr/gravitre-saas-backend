@@ -1957,6 +1957,19 @@ export const organizationsApi = {
     postJson<void>(apiUrl(`/api/organizations/${orgId}/transfer`), { new_owner_id: newOwnerId }),
 }
 
+export type OrgRolePermissionsMatrix = {
+  roles: string[]
+  capabilities: Array<{
+    key: string
+    capability: string
+    access: Record<string, boolean>
+  }>
+}
+
+export const orgApi = {
+  getRolePermissions: () => fetcher<OrgRolePermissionsMatrix>(apiUrl("/api/org/role-permissions")),
+}
+
 // ============ Notifications ============
 export const notificationsApi = {
   list: (filters?: { unread_only?: boolean; limit?: number; offset?: number }) => {

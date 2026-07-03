@@ -27,6 +27,11 @@ import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { onboardingApi, settingsApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
+import {
+  ONBOARDING_CHECKLIST_STEPS,
+  ONBOARDING_ROUTE_STEP_MAP,
+  type OnboardingChecklistStepKey,
+} from "@/lib/onboarding-checklist-steps"
 import type { OnboardingProgress } from "@/types/api"
 
 // Types
@@ -46,57 +51,6 @@ interface OrgSettings {
   }
 }
 
-const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = [
-  {
-    id: "create-account",
-    stepKey: "welcome",
-    title: "Create your account",
-    description: "You're signed in and ready to go",
-    href: APP_ROUTES.welcome,
-    icon: UserCheck,
-  },
-  {
-    id: "connect-tool",
-    stepKey: "connect",
-    title: "Connect your first tool",
-    description: "Link Slack, HubSpot, or another integration",
-    href: "/connectors",
-    icon: Plug,
-  },
-  {
-    id: "create-agent",
-    stepKey: "operator",
-    title: "Create your first agent",
-    description: "Set up an AI agent to handle tasks",
-    href: "/agents/new",
-    icon: Bot,
-  },
-  {
-    id: "run-first-task",
-    stepKey: "task",
-    title: "Run your first task",
-    description: "Ask Gravitre AI to execute tracked work or explore in chat",
-    href: APP_ROUTES.gravitreAi,
-    icon: PlayCircle,
-  },
-  {
-    id: "setup-workflow",
-    stepKey: "path",
-    title: "Set up your first workflow",
-    description: "Create and execute an automation",
-    href: "/workflows",
-    icon: Zap,
-  },
-  {
-    id: "invite-team",
-    stepKey: "next",
-    title: "Invite a teammate",
-    description: "Collaborate with your team",
-    href: "/settings/organizations",
-    icon: Users,
-  },
-]
-
 const itemIconMap: Record<string, React.ElementType> = {
   "create-account": UserCheck,
   "connect-tool": Plug,
@@ -106,31 +60,43 @@ const itemIconMap: Record<string, React.ElementType> = {
   "invite-team": Users,
 }
 
+const CHECKLIST_DEFS: Omit<ChecklistItem, "completed">[] = ONBOARDING_CHECKLIST_STEPS.map((step) => ({
+  id: step.id,
+  stepKey: step.stepKey,
+  title: step.title,
+  description: step.description,
+  href: step.stepKey === "welcome" ? APP_ROUTES.welcome : step.href,
+  icon: itemIconMap[step.id] ?? Rocket,
+}))
+
+const LEGACY_WELCOME_KEYS = new Set(["role", "ready", "success"])
+
 function buildItemsFromProgress(
   progress: OnboardingProgress | undefined,
   accountComplete: boolean,
 ): ChecklistItem[] {
-  const completedKeys = new Set(
-    (progress?.steps ?? []).filter((step) => step.is_completed).map((step) => step.key),
+  const completedKeys = new Set<OnboardingChecklistStepKey>(
+    (progress?.steps ?? [])
+      .filter((step) => step.is_completed)
+      .map((step) => step.key as OnboardingChecklistStepKey),
   )
-  if (accountComplete) {
+  for (const legacyKey of LEGACY_WELCOME_KEYS) {
+    if ((progress?.steps ?? []).some((step) => step.key === legacyKey && step.is_completed)) {
+      completedKeys.add("welcome")
+    }
+  }
+  if (accountComplete || progress?.welcome_completed) {
     completedKeys.add("welcome")
   }
 
   return CHECKLIST_DEFS.map((def) => ({
     ...def,
     icon: itemIconMap[def.id] ?? def.icon,
-    completed: completedKeys.has(def.stepKey),
+    completed: completedKeys.has(def.stepKey as OnboardingChecklistStepKey),
   }))
 }
 
-const ROUTE_STEP_MAP: Array<{ prefix: string; stepKey: string }> = [
-  { prefix: "/connectors", stepKey: "connect" },
-  { prefix: "/agents/new", stepKey: "operator" },
-  { prefix: APP_ROUTES.gravitreAi, stepKey: "task" },
-  { prefix: "/workflows", stepKey: "path" },
-  { prefix: "/settings/organizations", stepKey: "next" },
-]
+const ROUTE_STEP_MAP = ONBOARDING_ROUTE_STEP_MAP
 
 async function persistChecklistDismissed() {
   const payload = await settingsApi.get()
@@ -339,7 +305,7 @@ export function OnboardingChecklist() {
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute inset-0 -m-4 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 blur-xl"
+            className="absolute inset-0 -m-4 rounded-3xl bg-gradient-to-br from-success/20 to-info/20 blur-xl"
           />
         )}
 
@@ -354,14 +320,14 @@ export function OnboardingChecklist() {
                 className={cn(
                   "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
                   isComplete
-                    ? "bg-emerald-500"
-                    : "bg-gradient-to-br from-emerald-500/20 to-blue-500/20"
+                    ? "bg-success"
+                    : "bg-gradient-to-br from-success/20 to-info/20"
                 )}
               >
                 {isComplete ? (
                   <Gift className="h-5 w-5 text-white" />
                 ) : (
-                  <Rocket className="h-5 w-5 text-emerald-500" />
+                  <Rocket className="h-5 w-5 text-success" />
                 )}
               </div>
               {/* Progress ring */}
@@ -387,7 +353,7 @@ export function OnboardingChecklist() {
                     stroke="currentColor"
                     strokeWidth="3"
                     strokeDasharray={`${progress * 1.13} 113`}
-                    className="text-emerald-500 transition-all duration-500"
+                    className="text-success transition-all duration-500"
                     strokeLinecap="round"
                   />
                 </svg>
@@ -424,7 +390,7 @@ export function OnboardingChecklist() {
                   <div className="px-4 pt-3 pb-2">
                     <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-blue-500"
+                        className="h-full bg-gradient-to-r from-success to-info"
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
                         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -457,12 +423,12 @@ export function OnboardingChecklist() {
                               className={cn(
                                 "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
                                 item.completed
-                                  ? "bg-emerald-500/10"
+                                  ? "bg-success/10"
                                   : "bg-secondary"
                               )}
                             >
                               {item.completed ? (
-                                <Check className="h-4 w-4 text-emerald-500" />
+                                <Check className="h-4 w-4 text-success" />
                               ) : (
                                 <Icon className="h-4 w-4 text-muted-foreground" />
                               )}
@@ -496,7 +462,7 @@ export function OnboardingChecklist() {
                     {isComplete ? (
                       <Button
                         onClick={dismiss}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600"
+                        className="w-full bg-success hover:bg-success/90"
                       >
                         <Sparkles className="h-4 w-4 mr-2" />
                         Dismiss checklist
@@ -541,13 +507,13 @@ export function OnboardingProgressCard({ className }: { className?: string }) {
       )}
     >
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5" />
+      <div className="absolute inset-0 bg-gradient-to-br from-success/5 via-transparent to-info/5" />
 
       <div className="relative">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
-              <Rocket className="h-5 w-5 text-emerald-500" />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
+              <Rocket className="h-5 w-5 text-success" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Getting started</h3>
@@ -567,7 +533,7 @@ export function OnboardingProgressCard({ className }: { className?: string }) {
         {/* Progress bar */}
         <div className="h-2 rounded-full bg-secondary overflow-hidden mb-4">
           <motion.div
-            className="h-full bg-gradient-to-r from-emerald-500 to-blue-500"
+            className="h-full bg-gradient-to-r from-success to-info"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -580,8 +546,8 @@ export function OnboardingProgressCard({ className }: { className?: string }) {
             href={nextItem.href}
             className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors group"
           >
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <nextItem.icon className="h-4 w-4 text-emerald-500" />
+            <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
+              <nextItem.icon className="h-4 w-4 text-success" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">
