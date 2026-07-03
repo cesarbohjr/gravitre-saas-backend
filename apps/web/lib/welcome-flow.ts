@@ -83,6 +83,45 @@ export const WELCOME_CONNECTORS = [
 ] as const
 
 export const WELCOME_STORAGE_KEY = "gravitre-welcome-completed"
+export const WELCOME_DRAFT_STORAGE_KEY = "gravitre-welcome-draft"
+
+export type WelcomeDraft = {
+  stepIndex: number
+  role: WelcomeRoleId | null
+  skippedConnect: boolean
+  selectedConnector: string | null
+}
+
+export function readWelcomeDraft(): WelcomeDraft | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = sessionStorage.getItem(WELCOME_DRAFT_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as WelcomeDraft
+    if (typeof parsed.stepIndex !== "number") return null
+    return {
+      stepIndex: Math.min(Math.max(parsed.stepIndex, 0), 4),
+      role: WELCOME_ROLES.some((entry) => entry.id === parsed.role) ? parsed.role : null,
+      skippedConnect: Boolean(parsed.skippedConnect),
+      selectedConnector:
+        WELCOME_CONNECTORS.some((entry) => entry.type === parsed.selectedConnector)
+          ? parsed.selectedConnector
+          : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function writeWelcomeDraft(draft: WelcomeDraft): void {
+  if (typeof window === "undefined") return
+  sessionStorage.setItem(WELCOME_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+}
+
+export function clearWelcomeDraft(): void {
+  if (typeof window === "undefined") return
+  sessionStorage.removeItem(WELCOME_DRAFT_STORAGE_KEY)
+}
 
 export function readWelcomeCompletedLocal(): boolean {
   if (typeof window === "undefined") return false

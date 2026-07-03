@@ -292,6 +292,7 @@ async def skip_onboarding(
     if not isinstance(onboarding_state, dict):
         onboarding_state = {}
     onboarding_state["skipped"] = True
+    onboarding_state["welcome_completed"] = True
     onboarding_state["completed_at"] = datetime.now(timezone.utc).isoformat()
     org_settings["onboarding"] = onboarding_state
     _save_org_settings(client, org_id, org_settings)

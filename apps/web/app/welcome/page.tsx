@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Bot,
   CheckCircle2,
+  ExternalLink,
   Plug,
   Sparkles,
   Store,
@@ -19,9 +20,12 @@ import { useAuth } from "@/lib/auth-context"
 import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
+  clearWelcomeDraft,
   markWelcomeCompletedLocal,
+  readWelcomeDraft,
   WELCOME_CONNECTORS,
   WELCOME_ROLES,
+  writeWelcomeDraft,
   type WelcomeRoleId,
 } from "@/lib/welcome-flow"
 import { cn } from "@/lib/utils"
@@ -34,37 +38,76 @@ const STEPS = [
   { id: "done", title: "All set" },
 ] as const
 
+const DEFAULT_SKIP_ROLE: WelcomeRoleId = "ops"
+
 export default function WelcomePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [hydrated, setHydrated] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
   const [role, setRole] = useState<WelcomeRoleId | null>(null)
   const [skippedConnect, setSkippedConnect] = useState(false)
+  const [selectedConnector, setSelectedConnector] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const draft = readWelcomeDraft()
+    if (draft) {
+      setStepIndex(draft.stepIndex)
+      setRole(draft.role)
+      setSkippedConnect(draft.skippedConnect)
+      setSelectedConnector(draft.selectedConnector)
+    }
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    writeWelcomeDraft({
+      stepIndex,
+      role,
+      skippedConnect,
+      selectedConnector,
+    })
+  }, [hydrated, stepIndex, role, skippedConnect, selectedConnector])
+
+  useEffect(() => {
+    if (loading || user) return
+    router.replace("/login?intent=login")
+  }, [loading, user, router])
 
   const selectedRole = useMemo(
     () => WELCOME_ROLES.find((entry) => entry.id === role) ?? null,
     [role],
   )
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    )
-  }
+  const selectedConnectorMeta = useMemo(
+    () => WELCOME_CONNECTORS.find((entry) => entry.type === selectedConnector) ?? null,
+    [selectedConnector],
+  )
 
-  if (!user) {
-    router.replace("/login?intent=login")
-    return null
+  async function skipEntireWelcome() {
+    setSubmitting(true)
+    try {
+      const roleToSave = role ?? DEFAULT_SKIP_ROLE
+      await onboardingApi.welcomeComplete(roleToSave, true)
+      clearWelcomeDraft()
+      markWelcomeCompletedLocal()
+      toast.success("Setup skipped — you can finish anytime from Getting Started.")
+      router.replace(APP_ROUTES.home)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not skip setup")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function finishWelcome(skippedOptional: boolean) {
-    if (!role) return
+    const roleToSave = role ?? DEFAULT_SKIP_ROLE
     setSubmitting(true)
     try {
-      await onboardingApi.welcomeComplete(role, skippedOptional)
+      await onboardingApi.welcomeComplete(roleToSave, skippedOptional)
+      clearWelcomeDraft()
       markWelcomeCompletedLocal()
       toast.success("Welcome aboard — your workspace is ready.")
       router.replace(APP_ROUTES.home)
@@ -73,6 +116,22 @@ export default function WelcomePage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (loading || !hydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Redirecting to sign in…</p>
+      </div>
+    )
   }
 
   return (
@@ -129,25 +188,54 @@ export default function WelcomePage() {
               key="connect"
               icon={Plug}
               title="Connect your stack"
-              description="Gravitre reads and acts in the tools you already use. Start with one — you can add more anytime."
+              description="Gravitre reads and acts in the tools you already use. Pick one to connect — you stay in setup and can add more later."
             >
               <div className="grid gap-2 sm:grid-cols-2">
                 {WELCOME_CONNECTORS.map((connector) => (
-                  <Link
+                  <button
                     key={connector.type}
-                    href={connector.href}
-                    className="rounded-lg border border-border bg-background/60 px-3 py-2.5 text-sm font-medium hover:bg-muted/40"
+                    type="button"
+                    onClick={() => {
+                      setSelectedConnector(connector.type)
+                      setSkippedConnect(false)
+                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                      selectedConnector === connector.type
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-foreground"
+                        : "border-border bg-background/60 text-foreground hover:bg-muted/40",
+                    )}
                   >
                     {connector.label}
-                  </Link>
+                  </button>
                 ))}
               </div>
+              {selectedConnectorMeta ? (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      window.open(selectedConnectorMeta.href, "_blank", "noopener,noreferrer")
+                    }}
+                  >
+                    Connect {selectedConnectorMeta.label}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Opens in a new tab — this setup screen stays right here.
+                  </p>
+                </div>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"
                 className="mt-3 text-muted-foreground"
                 onClick={() => {
                   setSkippedConnect(true)
+                  setSelectedConnector(null)
                   setStepIndex(2)
                 }}
               >
@@ -165,7 +253,7 @@ export default function WelcomePage() {
             >
               {selectedRole?.packSlug ? (
                 <Link
-                  href={`/marketplace/assets/${encodeURIComponent(selectedRole.packSlug)}`}
+                  href={`/marketplace/assets/${encodeURIComponent(selectedRole.packSlug)}?returnTo=${encodeURIComponent(APP_ROUTES.welcome)}`}
                   className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300"
                 >
                   Preview recommended pack
@@ -173,7 +261,7 @@ export default function WelcomePage() {
                 </Link>
               ) : null}
               <Link
-                href={APP_ROUTES.marketplace}
+                href={`${APP_ROUTES.marketplace}?returnTo=${encodeURIComponent(APP_ROUTES.welcome)}`}
                 className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
               >
                 Browse all marketplace templates
@@ -235,7 +323,7 @@ export default function WelcomePage() {
               variant="ghost"
               size="sm"
               disabled={submitting}
-              onClick={() => void finishWelcome(true)}
+              onClick={() => void skipEntireWelcome()}
             >
               Skip setup
             </Button>
@@ -249,7 +337,11 @@ export default function WelcomePage() {
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
-              <Button size="sm" disabled={!role || submitting} onClick={() => void finishWelcome(skippedConnect)}>
+              <Button
+                size="sm"
+                disabled={submitting}
+                onClick={() => void finishWelcome(skippedConnect)}
+              >
                 Go to home
               </Button>
             )}
