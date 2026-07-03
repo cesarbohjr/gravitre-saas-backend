@@ -6,6 +6,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.services.knowledge_graph_service import get_knowledge_graph_service
 from app.services.rag_service import get_rag_service
+from app.services.source_reliability_resolver import resolve_source_credibility
 
 
 class AutonomousResearchService:
@@ -48,7 +49,18 @@ class AutonomousResearchService:
         if not findings:
             gaps.append("No org knowledge matched this topic yet.")
 
-        confidence = min(0.9, 0.35 + 0.08 * len(findings))
+        credibilities: list[float] = []
+        for finding in findings:
+            credibility = await self.score_source_credibility(
+                str(finding.get("source") or "org_knowledge"),
+                str(finding.get("type") or "org_knowledge"),
+                org_id=org_id,
+            )
+            finding["source_credibility"] = credibility
+            credibilities.append(credibility)
+        avg_credibility = sum(credibilities) / len(credibilities) if credibilities else 0.5
+        coverage_factor = min(1.0, len(findings) / 5.0)
+        confidence = min(0.9, avg_credibility * (0.55 + 0.35 * coverage_factor))
         return {
             "findings": findings,
             "sources": sources,
@@ -127,6 +139,7 @@ class AutonomousResearchService:
                 credibility = await self.score_source_credibility(
                     str(finding.get("source") or "org_knowledge"),
                     str(finding.get("type") or "org_knowledge"),
+                    org_id=org_id,
                 )
                 trends.append(
                     {
@@ -152,14 +165,18 @@ class AutonomousResearchService:
         _ = prior_cutoff
         return trends
 
-    async def score_source_credibility(self, source_url: str, source_type: str) -> float:
-        from app.ml.source_reliability import compute_source_reliability
-
+    async def score_source_credibility(
+        self,
+        source_url: str,
+        source_type: str,
+        *,
+        org_id: str | None = None,
+    ) -> float:
+        if org_id:
+            return await resolve_source_credibility(org_id, source_url, source_type, self.settings)
         if source_type in {"rag", "org_knowledge", "knowledge_graph"}:
-            return 0.85
-        if source_url.startswith("http"):
-            return 0.65
-        return float(compute_source_reliability(7, 10) or 0.5)
+            return 0.75 if source_type == "knowledge_graph" else 0.55
+        return 0.55
 
     async def generate_executive_brief(
         self,
@@ -171,10 +188,12 @@ class AutonomousResearchService:
 
         key_findings: list[str] = []
         sources: list[dict] = []
+        finding_credibilities: list[float] = []
         for topic in topics[:5]:
             research = await self.research(org_id, topic, depth="deep")
             for finding in research.get("findings") or []:
                 key_findings.append(str(finding.get("summary") or "")[:200])
+                finding_credibilities.append(float(finding.get("source_credibility") or 0.5))
             sources.extend(research.get("sources") or [])
         decision = await get_decision_intelligence_service(self.settings).recommend_next_action(
             org_id,
@@ -189,6 +208,10 @@ class AutonomousResearchService:
             }
             for rec in (decision.get("recommendations") or [])[:5]
         ]
+        finding_credibilities = finding_credibilities or [
+            float(decision.get("source_reliability") or 0.5)
+        ]
+        avg_credibility = sum(finding_credibilities) / len(finding_credibilities)
         return {
             "brief_period": period,
             "topics_covered": topics,
@@ -197,7 +220,7 @@ class AutonomousResearchService:
             "emerging_opportunities": [],
             "strategic_recommendations": recommendations,
             "sources": sources[:20],
-            "confidence": round(min(0.9, 0.4 + 0.05 * len(key_findings)), 4),
+            "confidence": round(min(0.9, avg_credibility * (0.65 + 0.05 * min(len(key_findings), 6))), 4),
             "advisory_only": True,
             "scope_note": "Strategic recommendations route through DecisionIntelligenceService.",
         }

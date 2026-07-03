@@ -65,6 +65,7 @@ export default function IntelligenceModelsPage() {
 
   const catalog = data?.catalog ?? {}
   const orgStatus = data?.orgTrainingStatus ?? {}
+  const outcomeScores = data?.outcomeScores ?? {}
   const names = Object.keys(catalog).sort()
 
   return (
@@ -129,7 +130,9 @@ export default function IntelligenceModelsPage() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{formatScore(null)}</td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatScore(outcomeScores[name] ?? null)}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {readString((readiness?.by_model as Record<string, Record<string, unknown>> | undefined)?.[name]?.last_trained_at, "—")}
                       </td>

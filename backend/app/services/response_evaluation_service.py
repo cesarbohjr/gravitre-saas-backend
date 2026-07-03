@@ -162,6 +162,13 @@ async def consolidate_evaluation(
     except Exception as exc:  # noqa: BLE001
         logger.debug("response_evaluations upsert skipped message_id=%s error=%s", message_id, exc)
         return None
+    from app.services.learning_signal_aggregator import get_learning_signal_aggregator
+
+    await get_learning_signal_aggregator(settings).ingest_feedback(
+        org_id,
+        "response_quality",
+        {"helpful": user_feedback == "helpful", "message_id": message_id, "surface": surface},
+    )
     return row
 
 

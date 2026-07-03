@@ -6,7 +6,8 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
-from app.ml.causal_analysis import CausalImpactAnalyzer
+from app.services.correlational_causal_context import load_causal_enrichment_context
+from app.services.source_reliability_resolver import resolve_average_source_reliability
 from app.services.agent_selector import get_agent_selector
 from app.services.ai_trust_layer import get_ai_trust_layer
 from app.services.chat_dialogue_settings import load_chat_dialogue_settings
@@ -19,6 +20,7 @@ from app.services.decision_intelligence_service import get_decision_intelligence
 from app.services.dialogue_policy_engine import get_dialogue_policy_engine
 from app.services.explanation_generator import get_explanation_generator
 from app.services.knowledge_graph_service import get_knowledge_graph_service
+from app.services.learning_strategy_keys import build_route_strategy_key, parse_segment_key
 from app.services.model_router import get_model_router
 from app.services.model_selector import get_model_selector
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
@@ -145,6 +147,8 @@ class IntelligenceRouter:
 
         model_selection = await self._model_selector.select(org_id, classification)
         enrichments = await self._run_enrichments(org_id, request, classification, context)
+        strategy_key = build_route_strategy_key(model_selection, classification, enrichments)
+        segment_key = parse_segment_key(classification)
 
         if classification.get("requires_action"):
             result = await self._route_to_execution(
@@ -156,6 +160,8 @@ class IntelligenceRouter:
                 enrichments,
                 model_selection,
                 surface,
+                strategy_key=strategy_key,
+                segment_key=segment_key,
             )
         else:
             result = await self._route_to_knowledge_response(
@@ -167,7 +173,12 @@ class IntelligenceRouter:
                 enrichments,
                 model_selection,
                 surface,
+                strategy_key=strategy_key,
+                segment_key=segment_key,
             )
+
+        result["strategy_key"] = strategy_key
+        result["segment_key"] = segment_key
 
         result["dialogue_mode"] = policy["mode"]
         result["sentiment"] = sentiment
@@ -179,15 +190,17 @@ class IntelligenceRouter:
             task_complexity = str(classification.get("complexity") or "medium")
             if router.should_trigger_agent_debate(float(result.get("confidence") or confidence), task_complexity):
                 from app.operators.consensus_engine import get_consensus_engine
+                from app.services.consensus_personas import HIGH_STAKES_DEBATE_PERSONAS
 
                 debate = await get_consensus_engine(self.settings).deliberate(
                     org_id,
                     primary_answer,
                     {"request": request, "classification": classification},
-                    ["validator", "planner", "risk"],
+                    list(HIGH_STAKES_DEBATE_PERSONAS),
                 )
                 result["answer"] = str(debate.get("consensus_recommendation") or primary_answer)
                 result["consensus_used"] = True
+                result["consensus_mode"] = "high_stakes_debate"
                 result["vote_breakdown"] = debate.get("vote_breakdown")
                 result["minority_opinions"] = debate.get("minority_opinions")
             else:
@@ -202,6 +215,8 @@ class IntelligenceRouter:
                 if refined.get("consensus_used"):
                     result["answer"] = refined["response"]
                     result["consensus_used"] = True
+                    result["consensus_mode"] = "chat_refinement"
+                    result["minority_opinions"] = refined.get("minority_opinions") or []
 
         suggestions = await self._guidance.get_suggestions(
             org_id,
@@ -260,9 +275,7 @@ class IntelligenceRouter:
         }
 
     async def _get_causal_analysis(self, org_id: str, request: str) -> dict[str, Any]:
-        _ = org_id, request
-        analyzer = CausalImpactAnalyzer()
-        return await analyzer.predict_structured()
+        return await load_causal_enrichment_context(org_id, request, self.settings)
 
     async def _route_to_knowledge_response(
         self,
@@ -274,6 +287,9 @@ class IntelligenceRouter:
         enrichments: dict[str, Any],
         model_selection: dict[str, Any],
         surface: str,
+        *,
+        strategy_key: str | None = None,
+        segment_key: str = "default",
     ) -> dict[str, Any]:
         _ = user_id
         recommendations = await get_decision_intelligence_service(self.settings).recommend_next_action(
@@ -293,9 +309,12 @@ class IntelligenceRouter:
             if isinstance(row.get("score"), (int, float))
         ]
         rag_quality = sum(rag_scores) / len(rag_scores) if rag_scores else None
-        confidence = get_confidence_scorer().compute(
+        source_reliability = await resolve_average_source_reliability(org_id, sources, self.settings)
+        confidence = get_confidence_scorer().compute_with_calibration(
+            org_id,
+            surface=surface,
             rag_quality=rag_quality,
-            source_reliability=0.6 if sources else None,
+            source_reliability=source_reliability,
             ml_confidence=0.7 if model_selection.get("primary_model") == "ml_internal" else None,
             classification_confidence=classification.get("classification_confidence"),
         )
@@ -308,6 +327,9 @@ class IntelligenceRouter:
         )
         if enrichments.get("causal", {}).get("status") == "not_available":
             explanation = f"{explanation} Causal analysis is PLANNED — correlational signals only."
+        elif enrichments.get("causal", {}).get("status") == "correlational_fallback":
+            note = enrichments["causal"].get("confidence_note") or "Correlational only — not causal proof."
+            explanation = f"{explanation} {note}"
 
         answer = str(primary.get("action") or self._summarize_context(context, request))
         wrapped = get_ai_trust_layer().wrap_response(
@@ -323,6 +345,7 @@ class IntelligenceRouter:
         wrapped["model_selection"] = model_selection
         wrapped["enrichments"] = enrichments
         wrapped["surface"] = surface
+        wrapped["strategy_key"] = strategy_key
         self._outcome_tracker.track(
             org_id,
             None,
@@ -343,6 +366,9 @@ class IntelligenceRouter:
         enrichments: dict[str, Any],
         model_selection: dict[str, Any],
         surface: str,
+        *,
+        strategy_key: str | None = None,
+        segment_key: str = "default",
     ) -> dict[str, Any]:
         agent_selection = await self._agent_selector.select(org_id, classification)
         tool_selection = await self._tool_selector.select_for_task(
@@ -380,7 +406,9 @@ class IntelligenceRouter:
             {"plan": request, "risk": risk},
             classification,
         )
-        confidence = get_confidence_scorer().compute(
+        confidence = get_confidence_scorer().compute_with_calibration(
+            org_id,
+            surface=surface,
             rag_quality=None,
             source_reliability=None,
             ml_confidence=None,
@@ -407,6 +435,7 @@ class IntelligenceRouter:
         wrapped["enrichments"] = enrichments
         wrapped["requires_approval"] = True
         wrapped["surface"] = surface
+        wrapped["strategy_key"] = strategy_key
         return wrapped
 
     @staticmethod
@@ -445,7 +474,9 @@ class IntelligenceRouter:
                 "confidence_note": confidence_note,
             },
         )
-        confidence = get_confidence_scorer().compute(
+        confidence = get_confidence_scorer().compute_with_calibration(
+            org_id,
+            surface="forecast",
             rag_quality=None,
             source_reliability=0.5,
             ml_confidence=0.65 if selection.get("primary_model") == "ml_internal" else 0.45,

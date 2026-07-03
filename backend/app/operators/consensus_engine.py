@@ -7,6 +7,11 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.consensus_personas import (
+    HIGH_STAKES_DEBATE_PERSONAS,
+    build_agent_defs,
+    persona_vote_weights,
+)
 from app.services.conversational_consensus_service import get_conversational_consensus_service
 from app.workflows.repository import get_supabase_client
 
@@ -117,6 +122,8 @@ class ConsensusEngine:
                     "minority_opinions": payload.get("minority_opinions") or [],
                     "metadata": {
                         "risk_analysis": payload.get("risk_analysis"),
+                        "source": "consensus_engine",
+                        "personas": payload.get("personas") or [],
                         "advisory_only": True,
                     },
                 }
@@ -131,12 +138,12 @@ class ConsensusEngine:
         context: dict,
         agents: list[str],
     ) -> dict[str, Any]:
-        personas = agents[:5] or ["validator", "planner"]
+        personas = agents[:5] or list(HIGH_STAKES_DEBATE_PERSONAS)
         stances = [
             await self._get_agent_stance(org_id, persona, recommendation, context)
             for persona in personas
         ]
-        aggregated = self._aggregate_votes(stances)
+        aggregated = self._aggregate_votes(stances, persona_vote_weights(personas))
         council = await self._chat_consensus.deliberate(
             org_id,
             recommendation,
@@ -157,6 +164,7 @@ class ConsensusEngine:
             "advisory_only": True,
             "approval_required": True,
             "scope_note": SCOPE_NOTE,
+            "personas": personas,
         }
         await self._persist_deliberation(org_id, result)
         return result

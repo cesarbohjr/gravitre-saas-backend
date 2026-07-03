@@ -49,47 +49,16 @@ class OutcomeTracker:
         classification: dict[str, Any],
     ) -> None:
         try:
-            if action_taken and action_taken.get("metric_before") is not None:
-                from app.services.outcome_attribution_service import get_outcome_attribution_service
+            from app.services.intelligence_outcome_coordinator import get_intelligence_outcome_coordinator
 
-                await get_outcome_attribution_service(self.settings).record_action_baseline(
-                    org_id=org_id,
-                    agent_id=agent_id,
-                    workflow_run_id=action_taken.get("workflow_run_id"),
-                    action_type=str(action_taken.get("type") or action_taken.get("action_type") or "unknown"),
-                    target_entity_type=str(action_taken.get("entity_type") or "unknown"),
-                    target_entity_id=str(action_taken.get("entity_id") or "unknown"),
-                    metric_name=str(action_taken.get("metric_name") or "custom_metric"),
-                    metric_value_before=action_taken.get("metric_before"),
-                )
-            if message_id:
-                from app.services.response_evaluation_service import consolidate_recent
-
-                await consolidate_recent(self.settings, org_id, since_days=1)
-            from app.services.learning_feedback_loop import get_learning_feedback_loop
-
-            await get_learning_feedback_loop(self.settings).process_feedback(
+            await get_intelligence_outcome_coordinator(self.settings).record_response(
                 org_id,
-                "response_quality" if message_id else "action_outcome",
-                {
-                    "message_id": message_id,
-                    "response": response,
-                    "classification": classification,
-                    "action_taken": action_taken,
-                    "agent_id": agent_id,
-                },
+                agent_id=agent_id,
+                message_id=message_id,
+                action_taken=action_taken,
+                response=response,
+                classification=classification,
             )
-            from app.services.outcome_learning_service import get_outcome_learning_service
-
-            learning = get_outcome_learning_service(self.settings)
-            if message_id:
-                learning.record_recommendation_outcome_async(
-                    org_id=org_id,
-                    recommendation_id=message_id,
-                    outcome_event="recommendation_created",
-                    task_type=classification.get("intent"),
-                    confidence_score=response.get("confidence"),
-                )
             asyncio.create_task(self._write_clickhouse(org_id, classification, message_id))
         except Exception as exc:  # noqa: BLE001
             logger.debug("outcome_tracker_skipped org_id=%s error=%s", org_id, exc)

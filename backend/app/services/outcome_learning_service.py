@@ -77,6 +77,9 @@ class OutcomeLearningService:
         try:
             self._client().table(self.TABLE).insert(payload).execute()
             self._mirror_clickhouse(payload)
+            from app.services.learning_signal_aggregator import get_learning_signal_aggregator
+
+            await get_learning_signal_aggregator(self.settings).ingest_outcome_event(payload)
         except Exception as exc:  # noqa: BLE001
             logger.debug("outcome_learning_insert_skipped error=%s", exc)
 
@@ -112,8 +115,12 @@ class OutcomeLearningService:
         before_value: float | None = None,
         after_value: float | None = None,
         measured_at: str | None = None,
+        strategy_key: str | None = None,
     ) -> None:
         self._validate_event(outcome_event)
+        metadata: dict[str, Any] = {}
+        if strategy_key:
+            metadata["strategy_key"] = strategy_key
         payload = {
             "id": str(uuid4()),
             "org_id": org_id,
@@ -129,6 +136,7 @@ class OutcomeLearningService:
             "after_value": after_value,
             "measured_at": measured_at,
             "measurement_status": "recorded" if measured_at else "pending",
+            "metadata": metadata,
             "created_at": self._now_iso(),
         }
         await self._insert_event(payload)

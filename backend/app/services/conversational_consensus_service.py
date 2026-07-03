@@ -7,8 +7,10 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.consensus_personas import CHAT_CONSENSUS_PERSONAS, build_agent_defs
 from app.services.council_service import AgentCouncilService, DecisionMethod
 from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
@@ -64,7 +66,7 @@ class ConversationalConsensusService:
                     org_id=org_id,
                     recommendation=primary_response,
                     context={"request": request, "classification": classification},
-                    agents=["validator", "planner"],
+                    agents=list(CHAT_CONSENSUS_PERSONAS),
                 ),
                 timeout=self.CONSENSUS_TIMEOUT_SECONDS,
             )
@@ -96,10 +98,7 @@ class ConversationalConsensusService:
         context: dict[str, Any],
         agents: list[str],
     ) -> dict[str, Any]:
-        agent_defs = [
-            {"name": name.title(), "role": name, "weight": 1.0}
-            for name in agents[:2]
-        ] or [{"name": "Validator", "role": "validator", "weight": 1.0}]
+        agent_defs = build_agent_defs(agents)
         options = [recommendation[:2000], "Revise with more caution and explicit uncertainty"]
         session = await self._council.start_council(
             org_id=org_id,
@@ -115,12 +114,13 @@ class ConversationalConsensusService:
         minority = [
             {
                 "agent": op.get("agent_name"),
+                "persona": op.get("agent_role") or op.get("role"),
                 "position": op.get("position"),
                 "concerns": op.get("concerns") or [],
             }
             for op in session.dissenting_opinions
         ]
-        return {
+        result = {
             "consensus_recommendation": session.final_recommendation,
             "confidence": session.final_confidence,
             "minority_opinions": minority,
@@ -128,6 +128,31 @@ class ConversationalConsensusService:
                 f"Independent review reached {session.final_confidence:.0%} confidence."
             ),
         }
+        await self._persist_deliberation(org_id, recommendation, result)
+        return result
+
+    async def _persist_deliberation(
+        self,
+        org_id: str,
+        recommendation: str,
+        payload: dict[str, Any],
+    ) -> None:
+        try:
+            get_supabase_client(self.settings).table("intelligence_consensus_deliberations").insert(
+                {
+                    "org_id": org_id,
+                    "recommendation_summary": str(payload.get("consensus_recommendation") or recommendation)[:2000],
+                    "confidence": payload.get("confidence"),
+                    "vote_breakdown": {},
+                    "minority_opinions": payload.get("minority_opinions") or [],
+                    "metadata": {
+                        "source": "conversational_consensus_service",
+                        "advisory_only": True,
+                    },
+                }
+            ).execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("chat consensus persist skipped org_id=%s error=%s", org_id, exc)
 
 
 _conversational_consensus_service: ConversationalConsensusService | None = None

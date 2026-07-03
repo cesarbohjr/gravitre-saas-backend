@@ -24,6 +24,13 @@ class LearningFeedbackLoop:
         feedback_type: str,
         feedback_data: dict[str, Any],
     ) -> None:
+        from app.services.learning_signal_aggregator import get_learning_signal_aggregator
+
+        await get_learning_signal_aggregator(self.settings).ingest_feedback(
+            org_id,
+            feedback_type,
+            feedback_data,
+        )
         try:
             if feedback_type == "response_quality":
                 await self._update_retrieval_signals(org_id, feedback_data)

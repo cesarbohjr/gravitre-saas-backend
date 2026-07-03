@@ -28,6 +28,8 @@ from app.services.intelligence_evaluation_service import get_intelligence_evalua
 from app.services.simulation_service import get_simulation_service
 from app.services.training_signal_service import get_training_signal_service
 from app.services.ai_trust_layer import get_ai_trust_layer
+from app.services.learning_signal_aggregator import get_learning_signal_aggregator
+from app.services.strategy_performance_ledger import get_strategy_performance_ledger
 
 router = APIRouter(prefix="/api/admin/intelligence", tags=["intelligence-admin"])
 
@@ -156,6 +158,33 @@ async def get_routing_summary(
         "model_distribution": model_distribution,
         "confidence_band_distribution": confidence_bands,
         "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else None,
+        "strategy_performance": await get_strategy_performance_ledger(settings).load_admin_summary(org_id),
+        "learning_signals": await get_learning_signal_aggregator(settings).load_summary(org_id),
+    }
+
+
+@router.get("/learning/signals/summary")
+async def get_learning_signals_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+    since_days: int = Query(default=30, ge=1, le=365, alias="sinceDays"),
+) -> dict[str, Any]:
+    from app.services.learning_signal_aggregator import get_learning_signal_aggregator
+
+    return await get_learning_signal_aggregator(settings).load_summary(org_id, since_days=since_days)
+
+
+@router.get("/strategy-performance")
+async def get_strategy_performance(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    ledger = get_strategy_performance_ledger(settings)
+    return {
+        "summary": await ledger.load_admin_summary(org_id),
+        "model_outcome_scores": await ledger.load_model_outcome_scores(org_id),
     }
 
 

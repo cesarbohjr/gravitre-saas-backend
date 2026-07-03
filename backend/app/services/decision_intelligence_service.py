@@ -9,7 +9,19 @@ from app.services.answer_explanation import generate_suggestion_explanation
 from app.services.knowledge_graph_service import get_knowledge_graph_service
 from app.services.optimization_suggestion_service import get_optimization_suggestion_service
 from app.services.outcome_attribution_service import get_outcome_attribution_service
+from app.services.source_reliability_resolver import resolve_average_source_reliability
 from app.workflows.repository import get_supabase_client
+
+
+def _graph_recommendation_confidence(graph: dict[str, Any]) -> float:
+    explanation = graph.get("explanation") if isinstance(graph.get("explanation"), dict) else {}
+    related = explanation.get("relatedEntities") or []
+    signals = explanation.get("businessSignals") or []
+    if signals:
+        return min(0.72, 0.5 + 0.04 * len(signals))
+    if related:
+        return min(0.65, 0.45 + 0.03 * len(related))
+    return 0.45
 
 
 class DecisionIntelligenceService:
@@ -25,7 +37,7 @@ class DecisionIntelligenceService:
         return get_supabase_client(self.settings)
 
     async def recommend_next_action(self, org_id: str, context: str) -> dict[str, Any]:
-        client = self._client()
+        graph = await get_knowledge_graph_service().answer_business_question(org_id, context)
         suggestions = await get_optimization_suggestion_service(self.settings).list_suggestions(
             org_id,
             status="pending_review",
@@ -33,35 +45,87 @@ class DecisionIntelligenceService:
         )
         recommendations: list[dict[str, Any]] = []
         for row in suggestions.get("suggestions") or []:
+            evidence = ["optimization_suggestions", row.get("suggestionType")]
+            if graph.get("status") == "ok":
+                entity = graph.get("identifiedEntity") or {}
+                evidence.append(f"knowledge_graph:{entity.get('entityType')}:{entity.get('entityId')}")
             recommendations.append(
                 {
                     "id": row.get("id"),
                     "action": row.get("title") or row.get("suggestionType"),
                     "reasoning": row.get("description") or row.get("rationale"),
-                    "evidence_sources": ["optimization_suggestions", row.get("suggestionType")],
+                    "evidence_sources": evidence,
                     "confidence": float(row.get("confidence") or 0.55),
                     "requires_approval": True,
                     "estimated_impact": row.get("estimatedImpact"),
                 }
             )
-        if not recommendations:
-            graph = await get_knowledge_graph_service().answer_business_question(org_id, context)
-            if graph.get("status") == "ok":
+
+        if graph.get("status") == "ok":
+            explanation = graph.get("explanation") if isinstance(graph.get("explanation"), dict) else {}
+            entity = graph.get("identifiedEntity") or {}
+            related = explanation.get("relatedEntities") or []
+            signals = explanation.get("businessSignals") or []
+            graph_confidence = _graph_recommendation_confidence(graph)
+            if signals:
+                for signal in signals[:3]:
+                    recommendations.append(
+                        {
+                            "id": str(uuid4()),
+                            "action": str(signal.get("title") or "Review graph-linked optimization signal"),
+                            "reasoning": (
+                                f"Knowledge graph linked pending signal for "
+                                f"{entity.get('entityType')}:{entity.get('entityId')}."
+                            ),
+                            "evidence_sources": [
+                                "knowledge_graph",
+                                "optimization_suggestions",
+                                signal.get("suggestion_type") or signal.get("suggestionType"),
+                            ],
+                            "confidence": graph_confidence,
+                            "requires_approval": True,
+                            "estimated_impact": signal.get("estimated_impact") or signal.get("estimatedImpact"),
+                        }
+                    )
+            elif related:
                 recommendations.append(
                     {
                         "id": str(uuid4()),
-                        "action": "Review related entities and pending knowledge gaps",
-                        "reasoning": "No optimization suggestions yet; graph context is available.",
-                        "evidence_sources": ["org_entity_relationships"],
-                        "confidence": 0.45,
+                        "action": f"Review {len(related)} related entities before acting on: {context[:120]}",
+                        "reasoning": str(explanation.get("scopeNote") or graph.get("scopeNote") or ""),
+                        "evidence_sources": [
+                            "knowledge_graph",
+                            f"{entity.get('entityType')}:{entity.get('entityId')}",
+                        ],
+                        "confidence": graph_confidence,
+                        "requires_approval": True,
+                        "estimated_impact": "Investigate related entities before acting",
+                    }
+                )
+            elif not recommendations:
+                recommendations.append(
+                    {
+                        "id": str(uuid4()),
+                        "action": "Review identified entity context from knowledge graph",
+                        "reasoning": "Graph entity resolved but no optimization suggestions yet.",
+                        "evidence_sources": [
+                            "knowledge_graph",
+                            f"{entity.get('entityType')}:{entity.get('entityId')}",
+                        ],
+                        "confidence": graph_confidence,
                         "requires_approval": True,
                         "estimated_impact": "Investigate before acting",
                     }
                 )
+
+        source_rows = [{"type": "knowledge_graph"}] if graph.get("status") == "ok" else []
+        source_reliability = await resolve_average_source_reliability(org_id, source_rows, self.settings)
         return {
             "recommendations": recommendations[:5],
             "advisory_only": True,
             "context": context,
+            "graph_context": graph if graph.get("status") == "ok" else None,
+            "source_reliability": source_reliability,
         }
 
     async def explain_recommendation(

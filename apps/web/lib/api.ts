@@ -1719,6 +1719,7 @@ export type MlAdminOrgModelStatus = {
 export type MlAdminCatalogResponse = {
   catalog: Record<string, Record<string, unknown>>
   orgTrainingStatus: Record<string, MlAdminOrgModelStatus>
+  outcomeScores?: Record<string, number | null>
 }
 
 export type MlAdminTrainResult = {

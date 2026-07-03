@@ -19,8 +19,8 @@ from app.services.simulation_service import SimulationService
 from app.services.training_signal_service import TrainingSignalService
 
 
-def test_learning_layer_registry_has_four_components():
-    assert len(LEARNING_LAYER_REGISTRY) == 4
+def test_learning_layer_registry_has_eleven_components():
+    assert len(LEARNING_LAYER_REGISTRY) == 11
 
 
 @pytest.mark.asyncio
