@@ -2646,19 +2646,6 @@ async def reject_run(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required",
         )
-    existing = (
-        client.table("run_approvals")
-        .select("status")
-        .eq("run_id", run_id_str)
-        .eq("approver_id", current_user["user_id"])
-        .limit(1)
-        .execute()
-    )
-    if existing.data and len(existing.data) > 0 and existing.data[0].get("status") == "approved":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot reject; you have already approved this run",
-        )
     insert_run_approval(
         client=client,
         run_id=run_id_str,
@@ -3063,8 +3050,10 @@ async def list_approvals_alias(
     )
     if status:
         q = q.eq("approval_status", status)
+        if status == RUN_STATUS_PENDING_APPROVAL:
+            q = q.eq("status", RUN_STATUS_PENDING_APPROVAL)
     else:
-        q = q.eq("approval_status", RUN_STATUS_PENDING_APPROVAL)
+        q = q.eq("approval_status", RUN_STATUS_PENDING_APPROVAL).eq("status", RUN_STATUS_PENDING_APPROVAL)
     runs = list(q.execute().data or [])
     workflow_ids = [str(run["workflow_id"]) for run in runs if run.get("workflow_id")]
     workflow_names: dict[str, str] = {}

@@ -403,7 +403,19 @@ def insert_run_approval(
         .execute()
     )
     if r.data and len(r.data) > 0:
-        return dict(r.data[0])
+        existing = dict(r.data[0])
+        if str(existing.get("status") or "") == status:
+            return existing
+        updated = (
+            client.table("run_approvals")
+            .update({"status": status, "comment": comment})
+            .eq("run_id", run_id)
+            .eq("approver_id", approver_id)
+            .execute()
+        )
+        if updated.data and len(updated.data) > 0:
+            return dict(updated.data[0])
+        return existing
     ins = client.table("run_approvals").insert({
         "run_id": run_id,
         "org_id": org_id,

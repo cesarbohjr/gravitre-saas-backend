@@ -131,7 +131,10 @@ def _task_run_items(
     )
     if workflow_id:
         q = q.eq("workflow_id", workflow_id)
-    response = q.execute()
+    try:
+        response = q.execute()
+    except Exception:  # noqa: BLE001
+        return []
     runs = list(response.data or [])
     items: list[dict[str, Any]] = []
     for run in runs:

@@ -71,7 +71,7 @@ export function LiveActivityRail({
     () => runsApi.list({ limit: 8 }),
     { revalidateOnFocus: false, refreshInterval: 20_000 },
   )
-  const { data: orgContext } = useSWR(
+  const { data: orgContext, error: orgContextError } = useSWR(
     user ? "ai-rail-org-context" : null,
     () => assistantApi.orgContext(),
     { revalidateOnFocus: false },
@@ -81,7 +81,10 @@ export function LiveActivityRail({
   const active = runs.filter((r) => isRunning(r.status))
   const inProgress = active.slice(0, 2)
   const recent = runs.filter((r) => !isRunning(r.status)).slice(0, 4)
-  const systemsHealthy = (orgContext?.counts.connectors ?? 0) > 0
+  const connectorCount = orgContext?.counts.connectors ?? 0
+  const systemsHealthy = connectorCount > 0
+  const systemsDisplay = orgContextError ? "—" : systemsHealthy ? String(connectorCount) : "0"
+  const systemsCaption = orgContextError ? "Status unavailable" : "Systems healthy"
 
   return (
     <aside className="hidden w-72 shrink-0 border-l border-border bg-card/30 xl:block xl:max-h-full xl:overflow-y-auto">
@@ -98,9 +101,9 @@ export function LiveActivityRail({
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-border/70 bg-background p-3">
             <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {systemsHealthy ? orgContext?.counts.connectors ?? 0 : 0}
+              {systemsDisplay}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Systems healthy</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{systemsCaption}</p>
           </div>
           <div className="rounded-xl border border-border/70 bg-background p-3">
             <p className="text-2xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">{active.length}</p>

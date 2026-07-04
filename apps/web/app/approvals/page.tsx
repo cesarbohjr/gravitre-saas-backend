@@ -619,8 +619,23 @@ function ApprovalsContent() {
         description: "The workflow run has been stopped at this step.",
       })
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to reject"
+      if (
+        message.includes("already started") ||
+        message.includes("already resolved") ||
+        message.includes("not pending approval") ||
+        message.includes("already approved")
+      ) {
+        await mutate()
+        setSelectedId(null)
+        setRejectTargetId(null)
+        toast.success("Rejection already recorded", {
+          description: "This run is no longer waiting in the queue.",
+        })
+        return
+      }
       console.error("[approvals] Reject failed:", err)
-      toast.error(err instanceof Error ? err.message : "Failed to reject")
+      toast.error(message)
     } finally {
       setIsSubmitting(false)
       setPendingActionId(null)

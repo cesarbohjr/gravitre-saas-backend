@@ -138,6 +138,7 @@ export function AiWorkspace({
   const [layoutBlockColumns, setLayoutBlockColumns] = useState<Partial<Record<ResultBlockId, LayoutColumn>>>({})
   const [conversationLoading, setConversationLoading] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
+  const [orgReady, setOrgReady] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
@@ -193,7 +194,7 @@ export function AiWorkspace({
     isLoading: conversationsLoading,
     mutate: mutateConversations,
   } = useSWR(
-    user ? "ai-conversations" : null,
+    user && orgReady ? "ai-conversations" : null,
     () => conversationsApi.list({ limit: 100, includeArchived: true }),
     { revalidateOnFocus: false },
   )
@@ -417,8 +418,22 @@ export function AiWorkspace({
   }, [activeConversationId])
 
   useEffect(() => {
-    if (user) void ensureSelectedOrg(true)
+    if (!user) {
+      setOrgReady(false)
+      return
+    }
+    void ensureSelectedOrg(true).then((orgId) => setOrgReady(Boolean(orgId)))
   }, [user])
+
+  useEffect(() => {
+    if (!orgReady || !activeConversationId || conversationsLoading) return
+    if (conversations.some((conversation) => conversation.id === activeConversationId)) return
+    writeStoredConversationId(null)
+    setActiveConversationId(null)
+    activeConversationIdRef.current = null
+    setMessages([])
+    setConversationTitle("Gravitre AI")
+  }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
 
   useEffect(() => {
     setLayoutBlockOrder(loadLayoutOrder())
@@ -530,7 +545,13 @@ export function AiWorkspace({
           setMessages([])
           setConversationTitle("Gravitre AI")
         } else if (!cached?.length) {
-          toast.error("Could not load conversation")
+          if (error instanceof ApiError && (error.status === 502 || error.status === 503)) {
+            toast.error("Gravitre AI is reconnecting", {
+              description: "The backend is unavailable. Try again in a moment or start a new conversation.",
+            })
+          } else {
+            toast.error("Could not load conversation")
+          }
         }
       } finally {
         if (showBlockingLoader) {
@@ -806,11 +827,12 @@ export function AiWorkspace({
   }, [initialConversationId, user, handleSelectConversation])
 
   useEffect(() => {
-    if (!user || !activeConversationId || messages.length > 0 || sessionBusy || isChatBusy || conversationLoading) {
+    if (!orgReady || !user || !activeConversationId || messages.length > 0 || sessionBusy || isChatBusy || conversationLoading) {
       return
     }
     void loadConversationMessages(activeConversationId)
   }, [
+    orgReady,
     user,
     activeConversationId,
     messages.length,
