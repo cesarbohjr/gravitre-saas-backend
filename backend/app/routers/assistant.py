@@ -674,6 +674,19 @@ def _build_stream(
 
         yield assistant_event_to_sse_line(sse_finish_step())
         yield assistant_event_to_sse_line(sse_finish())
+        asyncio.create_task(
+            asyncio.to_thread(
+                _persist_conversation_turn,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                user_text=user_text,
+                assistant_text=assistant_text,
+                tool_results=complete.tool_results if complete else [],
+                assistant_message_id=complete.message_id if complete else None,
+            )
+        )
         yield sse_done()
 
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
@@ -712,16 +725,6 @@ def _build_stream(
                 user_id=user_id,
                 summary=complete.summary,
             )
-        _persist_conversation_turn(
-            settings,
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            user_text=user_text,
-            assistant_text=assistant_text,
-            tool_results=complete.tool_results if complete else [],
-            assistant_message_id=complete.message_id if complete else None,
-        )
 
     return generator()
 

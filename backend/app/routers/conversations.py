@@ -65,6 +65,16 @@ class BulkDeleteRequest(BaseModel):
     ids: list[str] = Field(default_factory=list, min_length=1)
 
 
+class ConversationMessageAppend(BaseModel):
+    role: str = Field(min_length=1, max_length=32)
+    content: str = Field(default="", max_length=200_000)
+    tool_calls: list[dict[str, Any]] | None = None
+
+
+class AppendMessagesRequest(BaseModel):
+    messages: list[ConversationMessageAppend] = Field(min_length=1, max_length=20)
+
+
 def _require_org(org_id: str | None) -> str:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
@@ -471,3 +481,58 @@ async def list_conversation_messages(
     if response_error(response):
         raise HTTPException(status_code=500, detail=str(response_error(response)))
     return {"messages": [_normalize_message(row) for row in (response.data or [])]}
+
+
+@router.post("/{conversation_id}/messages", status_code=status.HTTP_201_CREATED)
+async def append_conversation_messages(
+    conversation_id: str,
+    body: AppendMessagesRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    org_id = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    owned = _get_owned_conversation(
+        client,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        user_id=user["user_id"],
+    )
+    now = _now_iso()
+    rows: list[dict[str, Any]] = []
+    preview = owned.get("preview")
+    for message in body.messages:
+        role = (message.role or "").strip().lower()
+        if role not in {"user", "assistant"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid message role")
+        content = message.content or ""
+        if role == "assistant" and content.strip():
+            preview = content[:200]
+        rows.append(
+            {
+                "conversation_id": conversation_id,
+                "role": role,
+                "content": content,
+                "tool_calls": message.tool_calls,
+                "created_at": now,
+            }
+        )
+    response = client.table("conversation_messages").insert(rows).execute()
+    if _is_missing_table_error(response_error(response)):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Conversation messages storage is not available",
+        )
+    if response_error(response):
+        raise HTTPException(status_code=500, detail=str(response_error(response)))
+    inserted = response.data or []
+    current_count = int(owned.get("message_count") or 0)
+    client.table("conversations").update(
+        {
+            "preview": preview,
+            "message_count": current_count + len(inserted),
+            "updated_at": now,
+        }
+    ).eq("id", conversation_id).eq("org_id", org_id).eq("user_id", user["user_id"]).execute()
+    return {"messages": [_normalize_message(row) for row in inserted]}

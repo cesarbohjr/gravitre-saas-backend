@@ -1306,6 +1306,8 @@ export const conversationsApi = {
   delete: (id: string) => deleteRequest(apiUrl(`/api/conversations/${id}`)),
   bulkDelete: (ids: string[]) => postNoContent(apiUrl("/api/conversations/bulk-delete"), { ids }),
   getMessages: (id: string) => fetcher<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`)),
+  appendMessages: (id: string, messages: Array<{ role: "user" | "assistant"; content: string; tool_calls?: unknown[] }>) =>
+    postJson<{ messages: ConversationMessage[] }>(apiUrl(`/api/conversations/${id}/messages`), { messages }),
 }
 
 export const assistantApi = {

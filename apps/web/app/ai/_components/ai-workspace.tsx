@@ -37,6 +37,11 @@ import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { polishAssistantText } from "@/lib/plain-english"
 import { conversationMessageToUI } from "@/lib/chat-messages"
+import {
+  serializeInlineTurn,
+  splitConversationMessages,
+  type PersistedInlineTurn,
+} from "@/lib/ai-inline-turn-persistence"
 import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
@@ -199,6 +204,10 @@ export function AiWorkspace({
   const activeExecuteTurnRef = useRef<string | null>(null)
   const initialPromptSentRef = useRef(false)
   const initialConversationHandledRef = useRef(false)
+  const crossDepartmentRef = useRef(false)
+  const loadingMessagesForRef = useRef<string | null>(null)
+  const messagesLoadResolvedRef = useRef<{ conversationId: string; resolved: boolean } | null>(null)
+  const persistedTurnIdsRef = useRef<Set<string>>(new Set())
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
@@ -234,10 +243,10 @@ export function AiWorkspace({
           conversation_id: activeConversationIdRef.current,
           preferred_persona: preferredPersonaRef.current,
           department: selectedDepartment === "all" ? undefined : selectedDepartment,
-          cross_department: isCrossDepartmentPrompt(input),
+          cross_department: crossDepartmentRef.current,
         }),
       }),
-    [chatMode, preferredPersonaRef, selectedDepartment, input],
+    [chatMode, selectedDepartment],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -521,8 +530,48 @@ export function AiWorkspace({
     [mutateConversations],
   )
 
+  const persistInlineTurn = useCallback(
+    async (turn: InlineTurn) => {
+      if (turn.status !== "completed" && turn.status !== "failed") return
+      if (persistedTurnIdsRef.current.has(turn.id)) return
+      const conversationId = activeConversationIdRef.current
+      if (!conversationId) return
+
+      const payload: PersistedInlineTurn = {
+        id: turn.id,
+        prompt: turn.prompt,
+        engine: turn.engine,
+        status: turn.status,
+        executePlan: turn.executePlan ?? null,
+        executeError: turn.executeError ?? null,
+        findResults: turn.findResults,
+        findSuggestions: turn.findSuggestions,
+        findError: turn.findError ?? null,
+      }
+
+      try {
+        const rows = serializeInlineTurn(payload)
+        await conversationsApi.appendMessages(
+          conversationId,
+          rows.map((row) => ({
+            role: row.role,
+            content: row.content,
+            tool_calls: row.tool_calls as unknown[] | undefined,
+          })),
+        )
+        persistedTurnIdsRef.current.add(turn.id)
+        void mutateConversations()
+      } catch {
+        // Best-effort persistence — session cache still holds the turn.
+      }
+    },
+    [mutateConversations],
+  )
+
   const loadConversationMessages = useCallback(
-    async (id: string, options?: { preferApi?: boolean; silent?: boolean }) => {
+    async (id: string, options?: { preferApi?: boolean; silent?: boolean; force?: boolean }) => {
+      if (loadingMessagesForRef.current === id && !options?.force) return
+
       const orgId = await ensureSelectedOrg(true)
       if (!orgId) {
         if (!options?.silent) {
@@ -534,56 +583,73 @@ export function AiWorkspace({
       }
 
       const cached = readCachedConversationMessages(id)
-      const showBlockingLoader = !options?.silent && !cached?.length
+      const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
+      const showBlockingLoader = !options?.silent && !cached?.length && !cachedTurns?.length
       let fetchedCount = cached?.length ?? 0
 
+      loadingMessagesForRef.current = id
       if (showBlockingLoader) {
         setConversationLoading(true)
         setThreadRestoreStale(false)
       }
-      if (!options?.silent && !cached?.length) {
+      if (!options?.silent && !cached?.length && !cachedTurns?.length) {
         setInlineTurns([])
       }
-      if (cached?.length && !options?.silent) {
-        setMessages(cached)
+      if ((cached?.length || cachedTurns?.length) && !options?.silent) {
+        if (cached?.length) setMessages(cached)
+        if (cachedTurns?.length) setInlineTurns(cachedTurns)
       }
 
       try {
         const { messages: stored } = await conversationsApi.getMessages(id)
         fetchedCount = stored.length
+        const { chatMessages, inlineTurns: restoredTurns } = splitConversationMessages(stored)
+
         if (stored.length > 0) {
-          const uiMessages = stored.map(conversationMessageToUI)
+          const uiMessages = chatMessages.map(conversationMessageToUI)
           setMessages(uiMessages)
+          if (restoredTurns.length > 0) {
+            setInlineTurns(restoredTurns as InlineTurn[])
+            writeCachedInlineTurns(id, restoredTurns)
+          } else if (cachedTurns?.length) {
+            setInlineTurns(cachedTurns)
+          }
           writeCachedConversationMessages(id, uiMessages)
           setThreadRestoreStale(false)
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         } else if (!options?.preferApi) {
-          if (cached?.length) {
-            setMessages(cached)
+          if (cached?.length || cachedTurns?.length) {
+            if (cached?.length) setMessages(cached)
+            if (cachedTurns?.length) setInlineTurns(cachedTurns)
             setThreadRestoreStale(false)
+            messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
           } else {
             setMessages([])
+            setInlineTurns([])
           }
-        } else if (!cached?.length) {
+        } else if (!cached?.length && !cachedTurns?.length) {
           setMessages([])
+          setInlineTurns([])
         }
 
         const selected = conversations.find((conversation) => conversation.id === id)
         if (selected?.title) setConversationTitle(selected.title)
-
-        const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
-        if (cachedTurns?.length) setInlineTurns(cachedTurns)
       } catch (error) {
-        if (cached?.length) {
-          setMessages(cached)
+        if (cached?.length || cachedTurns?.length) {
+          if (cached?.length) setMessages(cached)
+          if (cachedTurns?.length) setInlineTurns(cachedTurns)
           setThreadRestoreStale(false)
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         } else if (error instanceof ApiError && error.status === 404) {
           writeStoredConversationId(null)
           setActiveConversationId(null)
           activeConversationIdRef.current = null
           setMessages([])
+          setInlineTurns([])
           setConversationTitle("Gravitre AI")
           setThreadRestoreStale(false)
-        } else if (!cached?.length) {
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
+        } else if (!cached?.length && !cachedTurns?.length) {
           if (error instanceof ApiError && (error.status === 502 || error.status === 503)) {
             toast.error("Gravitre AI is reconnecting", {
               description: "The backend is unavailable. Try again in a moment or start a new conversation.",
@@ -597,12 +663,22 @@ export function AiWorkspace({
           }
         }
       } finally {
+        if (loadingMessagesForRef.current === id) {
+          loadingMessagesForRef.current = null
+        }
         if (showBlockingLoader) {
           setConversationLoading(false)
         }
-        if (fetchedCount === 0 && !cached?.length) {
+        if (
+          fetchedCount === 0 &&
+          !cached?.length &&
+          !cachedTurns?.length &&
+          !messagesLoadResolvedRef.current?.resolved
+        ) {
           const selected = conversations.find((conversation) => conversation.id === id)
-          setThreadRestoreStale((selected?.message_count ?? 0) > 0)
+          const stale = (selected?.message_count ?? 0) > 0
+          setThreadRestoreStale(stale)
+          messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         }
       }
     },
@@ -745,6 +821,7 @@ export function AiWorkspace({
 
       setSessionBusy(true)
       await ensureSelectedOrg()
+      crossDepartmentRef.current = isCrossDepartmentPrompt(prompt)
       await ensureConversation(prompt)
       const engine = await resolveEngine(prompt, mode)
       setInput("")
@@ -782,7 +859,7 @@ export function AiWorkspace({
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
-      if (id === activeConversationIdRef.current && messages.length > 0) {
+      if (id === activeConversationIdRef.current && (messages.length > 0 || inlineTurns.length > 0)) {
         setSidebarOpen(false)
         return
       }
@@ -801,6 +878,8 @@ export function AiWorkspace({
       setSidebarOpen(false)
       stop()
       setThreadRestoreStale(false)
+      messagesLoadResolvedRef.current = null
+      persistedTurnIdsRef.current = new Set()
 
       setActiveConversationId(id)
       activeConversationIdRef.current = id
@@ -809,19 +888,20 @@ export function AiWorkspace({
       resetExecuteJob()
 
       const cached = readCachedConversationMessages(id)
+      const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
       if (cached?.length) {
         setMessages(cached)
       } else {
         setMessages([])
       }
-      setInlineTurns(readCachedInlineTurns<InlineTurn>(id) ?? [])
+      setInlineTurns(cachedTurns ?? [])
 
       const selected = conversations.find((conversation) => conversation.id === id)
       if (selected?.title) setConversationTitle(selected.title)
 
-      await loadConversationMessages(id)
+      await loadConversationMessages(id, { force: true })
     },
-    [conversations, loadConversationMessages, messages.length, resetExecuteJob, setMessages, stop],
+    [conversations, inlineTurns.length, loadConversationMessages, messages.length, resetExecuteJob, setMessages, stop],
   )
 
   const handleNewConversation = useCallback(() => {
@@ -832,6 +912,9 @@ export function AiWorkspace({
     activeConversationIdRef.current = null
     pendingConversationRef.current = null
     operatorSessionRef.current = null
+    messagesLoadResolvedRef.current = null
+    loadingMessagesForRef.current = null
+    persistedTurnIdsRef.current = new Set()
     writeStoredConversationId(null)
     resetExecuteJob()
     setConversationTitle("Gravitre AI")
@@ -902,7 +985,14 @@ export function AiWorkspace({
   }, [initialConversationId, user, orgReady, conversations, handleSelectConversation])
 
   useEffect(() => {
-    if (!orgReady || !user || !activeConversationId || messages.length > 0 || sessionBusy || isChatBusy || conversationLoading) {
+    if (!orgReady || !user || !activeConversationId || sessionBusy || isChatBusy || conversationLoading) {
+      return
+    }
+    if (messages.length > 0 || inlineTurns.length > 0) return
+    if (
+      messagesLoadResolvedRef.current?.conversationId === activeConversationId &&
+      messagesLoadResolvedRef.current.resolved
+    ) {
       return
     }
     void loadConversationMessages(activeConversationId)
@@ -911,11 +1001,20 @@ export function AiWorkspace({
     user,
     activeConversationId,
     messages.length,
+    inlineTurns.length,
     sessionBusy,
     isChatBusy,
     conversationLoading,
     loadConversationMessages,
   ])
+
+  useEffect(() => {
+    for (const turn of inlineTurns) {
+      if (turn.status === "completed" || turn.status === "failed") {
+        void persistInlineTurn(turn)
+      }
+    }
+  }, [inlineTurns, persistInlineTurn])
 
   useEffect(() => {
     if (!activeConversationId || messages.length === 0) return
