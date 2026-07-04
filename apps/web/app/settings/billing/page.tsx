@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useMemo, Suspense } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -70,6 +70,7 @@ import { billingApi, ApiRequestError } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { SELECTABLE_PLANS, getPlan, formatPlanPrice, planDirection, type PlanCode } from "@/lib/plans"
 import { toast } from "sonner"
+import { buildUsageForecast } from "@/lib/billing-usage-forecast"
 
 const invoices = [
   { id: "INV-2024-003", date: "Apr 1, 2024", amount: "$499.00", status: "Paid" },
@@ -86,45 +87,26 @@ function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
   }).format(cents / 100)
 }
 
-const usageMetrics = [
-  { 
-    name: "Workflow Runs", 
-    used: 12450, 
-    limit: 50000, 
+const emptyUsageMetrics = [
+  {
+    name: "Workflow Runs",
+    used: 0,
+    limit: 0,
     icon: Zap,
     color: "blue",
-    trend: "+12%",
-    trendUp: true
+    trend: "",
+    trendUp: true,
   },
-  { 
-    name: "Team Members", 
-    used: 8, 
-    limit: 25, 
-    icon: Users,
-    color: "emerald",
-    trend: "+2",
-    trendUp: true
-  },
-  { 
-    name: "Storage", 
-    used: 4.2, 
-    limit: 50, 
-    unit: "GB", 
-    icon: HardDrive,
+  {
+    name: "AI Credits",
+    used: 0,
+    limit: 0,
+    icon: Sparkles,
     color: "purple",
-    trend: "+0.8 GB",
-    trendUp: true
+    trend: "",
+    trendUp: true,
   },
-  { 
-    name: "API Calls", 
-    used: 125000, 
-    limit: 500000, 
-    icon: Clock,
-    color: "amber",
-    trend: "-5%",
-    trendUp: false
-  },
-]
+] as const
 
 const colorClasses = {
   blue: {
@@ -156,61 +138,6 @@ const colorClasses = {
     gradient: "from-amber-500/20 to-amber-500/5"
   }
 }
-
-// Weekly workflow-run volume so far this billing period.
-const weeklyData = [
-  { week: "Week 1", value: 2800 },
-  { week: "Week 2", value: 3200 },
-  { week: "Week 3", value: 3100 },
-  { week: "Week 4", value: 3350 },
-]
-
-// --- Usage forecast (derived entirely from existing usage data; no backend) ---
-// Answers the one question a usage chart should answer: "will I run out before
-// the period resets?" We project the primary consumption metric (workflow runs)
-// from its recent weekly pace against the plan allowance.
-const WORKFLOW_LIMIT = 50000
-const WEEKS_IN_PERIOD = 4.345 // average weeks per monthly billing period
-const PERIOD_END_LABEL = "Apr 30"
-
-const workflowCumulative = (() => {
-  let acc = 0
-  return weeklyData.map((w) => {
-    acc += w.value
-    return acc
-  })
-})()
-const workflowUsed = workflowCumulative[workflowCumulative.length - 1]
-const weeksElapsed = weeklyData.length
-const recentRate =
-  weeklyData.slice(-2).reduce((sum, w) => sum + w.value, 0) / Math.min(2, weeklyData.length)
-const projectedTotal = Math.round(workflowUsed + recentRate * Math.max(0, WEEKS_IN_PERIOD - weeksElapsed))
-const projectedPct = Math.round((projectedTotal / WORKFLOW_LIMIT) * 100)
-const willExceed = projectedTotal > WORKFLOW_LIMIT
-
-// "Safe burn" baseline: the linear cumulative pace that lands exactly on the
-// plan limit at period end. Plotting actual against it shows at a glance whether
-// you're spending ahead of (above the line) or behind (below) a sustainable pace.
-const safeBurnAt = (elapsedWeeks: number) =>
-  Math.round(WORKFLOW_LIMIT * (Math.min(elapsedWeeks, WEEKS_IN_PERIOD) / WEEKS_IN_PERIOD))
-
-// Chart series: solid actual cumulative line for elapsed weeks, then a dashed
-// projected continuation to period end. The shared last point bridges them.
-// `safe` carries the linear allowance pace across the full period.
-type ForecastPoint = { label: string; actual: number | null; projected: number | null; safe: number }
-const forecastSeries: ForecastPoint[] = workflowCumulative.map((v, i) => ({
-  label: `W${i + 1}`,
-  actual: v,
-  projected: i === workflowCumulative.length - 1 ? v : null,
-  safe: safeBurnAt(i + 1),
-}))
-forecastSeries.push({ label: PERIOD_END_LABEL, actual: null, projected: projectedTotal, safe: WORKFLOW_LIMIT })
-
-const forecastStatus = willExceed
-  ? { label: "Will exceed limit", accent: "text-destructive", soft: "bg-destructive/10", dot: "bg-destructive" }
-  : projectedPct >= 75
-    ? { label: "Approaching limit", accent: "text-warning", soft: "bg-warning/10", dot: "bg-warning" }
-    : { label: "On track", accent: "text-success", soft: "bg-success/10", dot: "bg-success" }
 
 export default function BillingPage() {
   return (
@@ -261,12 +188,47 @@ function BillingPageInner() {
     })) ?? []
   const invoiceRows = liveInvoices.length > 0 ? liveInvoices : []
   const usageFromApi = overview?.usage
+  const usageForecast = useMemo(
+    () =>
+      buildUsageForecast({
+        overview,
+        workflowLimit:
+          usageFromApi?.workflow_runs_included ??
+          usageFromApi?.included_outputs ??
+          undefined,
+        periodEndLabel: subscription?.current_period_end
+          ? new Date(subscription.current_period_end).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })
+          : undefined,
+      }),
+    [overview, subscription?.current_period_end, usageFromApi?.workflow_runs_included, usageFromApi?.included_outputs],
+  )
+  const {
+    workflowUsed,
+    workflowLimit: WORKFLOW_LIMIT,
+    projectedTotal,
+    projectedPct,
+    willExceed,
+    forecastSeries,
+    forecastStatus,
+    weeksInPeriod: WEEKS_IN_PERIOD,
+  } = usageForecast
+  const weeksElapsed = usageForecast.weeklyData.length
+  const PERIOD_END_LABEL = forecastSeries.at(-1)?.label ?? "Period end"
+  const safeBurnAt = (elapsedWeeks: number) =>
+    Math.round(WORKFLOW_LIMIT * (Math.min(elapsedWeeks, WEEKS_IN_PERIOD) / WEEKS_IN_PERIOD))
+
   const resolvedUsageMetrics = usageFromApi
     ? [
         {
           name: "Workflow Runs",
           used: usageFromApi.totals.workflow_runs ?? 0,
-          limit: usageFromApi.included_outputs ?? 50000,
+          limit:
+            usageFromApi.workflow_runs_included ??
+            usageFromApi.included_outputs ??
+            WORKFLOW_LIMIT,
           icon: Zap,
           color: "blue" as const,
           trend: "",
@@ -276,7 +238,7 @@ function BillingPageInner() {
         {
           name: "AI Credits",
           used: usageFromApi.totals.ai_tokens ?? 0,
-          limit: 2000,
+          limit: usageFromApi.ai_credits_included ?? 2000,
           icon: Sparkles,
           color: "purple" as const,
           trend: "",
@@ -284,7 +246,7 @@ function BillingPageInner() {
           unit: undefined as string | undefined,
         },
       ]
-    : usageMetrics
+    : [...emptyUsageMetrics]
 
   const statusDisplay: Record<string, { label: string; classes: string; beacon: "active" | "warning" | "error" | "idle" }> = {
     active: { label: "Active", classes: "bg-success/10 text-success border-success/20", beacon: "active" },
@@ -736,7 +698,7 @@ function BillingPageInner() {
                 <div className="relative rounded-2xl border border-border bg-card/50 backdrop-blur-sm p-6 overflow-hidden lg:col-span-2">
                   <h3 className="text-xs font-medium text-muted-foreground mb-4">Closest to limit</h3>
                   <div className="space-y-4">
-                    {[...usageMetrics]
+                    {[...resolvedUsageMetrics]
                       .map((m) => ({ ...m, pct: Math.round((m.used / m.limit) * 100) }))
                       .sort((a, b) => b.pct - a.pct)
                       .map((m, i) => {

@@ -1248,6 +1248,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   const departments = ((data as { departments?: LiteSeatDepartment[] } | undefined)?.departments ?? []) as LiteSeatDepartment[]
   const [newDeptName, setNewDeptName] = useState("")
   const [newDeptSeats, setNewDeptSeats] = useState(0)
+  const [memberEmailByDept, setMemberEmailByDept] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
 
   const handleAddDepartment = async () => {
@@ -1302,6 +1303,25 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
     }
   }
 
+  const handleInviteMember = async (departmentId: string) => {
+    const email = (memberEmailByDept[departmentId] || "").trim()
+    if (!email) {
+      toast.error("Enter a member email")
+      return
+    }
+    setIsSaving(true)
+    try {
+      await settingsApi.addDepartmentMember({ department_id: departmentId, user_email: email })
+      toast.success("Lite seat assigned")
+      setMemberEmailByDept((prev) => ({ ...prev, [departmentId]: "" }))
+      await mutate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to assign member")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-border bg-secondary/30 p-4">
@@ -1348,6 +1368,27 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={memberEmailByDept[department.id] ?? ""}
+                onChange={(event) =>
+                  setMemberEmailByDept((prev) => ({
+                    ...prev,
+                    [department.id]: event.target.value,
+                  }))
+                }
+                placeholder="Assign Lite user by email"
+                disabled={!isAdmin || isSaving}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!isAdmin || isSaving}
+                onClick={() => handleInviteMember(department.id)}
+              >
+                Assign seat
+              </Button>
             </div>
           </div>
         ))}

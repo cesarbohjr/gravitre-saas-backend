@@ -26,6 +26,14 @@ import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
+import {
+  DEPARTMENT_OPTIONS,
+  getDepartmentHeader,
+  getQuickDepartment,
+  isCrossDepartmentPrompt,
+  setSelectedDepartmentInStorage,
+} from "@/lib/department-context"
+import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { polishAssistantText } from "@/lib/plain-english"
 import { conversationMessageToUI } from "@/lib/chat-messages"
@@ -146,7 +154,11 @@ export function AiWorkspace({
     return initialConversationId || readStoredConversationId()
   })
   const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
-  const [chatMode] = useState<"standard" | "deep">("standard")
+  const [chatMode, setChatMode] = useState<"standard" | "deep">("standard")
+  const [selectedDepartment, setSelectedDepartment] = useState(() =>
+    typeof window === "undefined" ? "all" : getQuickDepartment(),
+  )
+  const operatorContextRef = useRef<string | null>(null)
   const [dialogueMode, setDialogueMode] = useState<string | null>(null)
   const [pendingTask, setPendingTask] = useState<ChatPendingTask | null>(null)
   const [executionResult, setExecutionResult] = useState<ChatExecutionResult | null>(null)
@@ -213,6 +225,7 @@ export function AiWorkspace({
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(orgId ? { "x-org-id": orgId } : {}),
             "x-environment": getEnvironmentHeader(),
+            ...(getDepartmentHeader() ? { "x-department": getDepartmentHeader()! } : {}),
           }
         },
         body: () => ({
@@ -220,9 +233,11 @@ export function AiWorkspace({
           mode: chatMode,
           conversation_id: activeConversationIdRef.current,
           preferred_persona: preferredPersonaRef.current,
+          department: selectedDepartment === "all" ? undefined : selectedDepartment,
+          cross_department: isCrossDepartmentPrompt(input),
         }),
       }),
-    [chatMode, preferredPersonaRef],
+    [chatMode, preferredPersonaRef, selectedDepartment, input],
   )
 
   const { messages, sendMessage, status, setMessages, stop } = useChat({
@@ -613,14 +628,31 @@ export function AiWorkspace({
 
       try {
         resetExecuteJob()
-        await submitJob(prompt, buildOperatorJobPayload(operatorSessionRef.current, prompt))
+        if (!operatorContextRef.current) {
+          operatorContextRef.current = await resolveOperatorActiveContext()
+        }
+        await submitJob(
+          prompt,
+          buildOperatorJobPayload(
+            operatorSessionRef.current,
+            prompt,
+            operatorContextRef.current,
+          ),
+        )
       } catch (err) {
         if (isBackendUnavailableError(err)) {
           try {
             const sessionId = operatorSessionRef.current ?? (await createOperatorSession(prompt))
             if (sessionId) operatorSessionRef.current = sessionId
             if (!sessionId) throw new Error("Could not create operator session")
-            const plan = await runSyncOperatorTask(sessionId, prompt)
+            if (!operatorContextRef.current) {
+              operatorContextRef.current = await resolveOperatorActiveContext()
+            }
+            const plan = await runSyncOperatorTask(
+              sessionId,
+              prompt,
+              operatorContextRef.current ?? undefined,
+            )
             setInlineTurns((prev) =>
               prev.map((turn) =>
                 turn.id === turnId
@@ -1022,6 +1054,34 @@ export function AiWorkspace({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <select
+                value={selectedDepartment}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setSelectedDepartment(value)
+                  setSelectedDepartmentInStorage(value)
+                }}
+                className="h-8 max-w-[140px] rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                aria-label="Department context"
+              >
+                {DEPARTMENT_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
+                className={cn(
+                  "h-8 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
+                  chatMode === "deep"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                {chatMode === "deep" ? "Deep" : "Standard"}
+              </button>
               {user && (mode === "chat" || !showLanding) ? (
                 <PersonaSelector
                   value={preferredPersona}
@@ -1183,6 +1243,7 @@ export function AiWorkspace({
                     job={turn.executeJob ?? null}
                     isProcessing={turn.status === "running" && executeWorking}
                     error={turn.executeError ?? (turn.status === "running" ? executeHookError : null)}
+                    sourcePrompt={turn.prompt}
                     blockOrder={layoutBlockOrder}
                     enabledBlocks={layoutEnabledBlocks}
                     onReorderBlocks={handleReorderLayoutBlocks}

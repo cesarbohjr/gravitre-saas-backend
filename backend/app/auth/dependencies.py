@@ -276,6 +276,16 @@ async def get_environment_context(
     return normalize_environment_name(x_environment)
 
 
+async def get_department_context(
+    x_department: Annotated[str | None, Header()] = None,
+) -> str | None:
+    """Optional department scope for cowork desk / Lite filtering."""
+    raw = (x_department or "").strip()
+    if not raw or raw.lower() in {"all", "any", "*"}:
+        return None
+    return raw[:120]
+
+
 def set_request_auth_context(user_id: str | None, org_id: str | None) -> None:
     """Set auth context for logging (middleware)."""
     if user_id:

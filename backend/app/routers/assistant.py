@@ -125,6 +125,8 @@ class AssistantChatRequest(BaseModel):
     mode: str | None = None
     model_override: str | None = None
     preferred_persona: str | None = None
+    department: str | None = None
+    cross_department: bool | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -784,6 +786,15 @@ async def assistant_chat(
             break
     if not last_user.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user message found")
+
+    department_scope = (body.department or "").strip() or None
+    if body.cross_department:
+        last_user = (
+            f"[Cross-department cowork — coordinate handoffs across teams. "
+            f"Primary department: {department_scope or 'all'}]\n{last_user}"
+        )
+    elif department_scope:
+        last_user = f"[Department context: {department_scope}]\n{last_user}"
 
     explicit_tools = body.tools
     resolved_tools = resolve_assistant_tool_names(body.mode, explicit_tools)

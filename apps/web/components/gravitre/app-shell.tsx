@@ -356,8 +356,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
                 <div>
                   <p className="font-medium">Welcome to Gravitre!</p>
                   <p className="text-muted-foreground">
-                    We&apos;ve set up a sample AI team to show you what&apos;s possible.
-                    These are demo agents — connect your real tools to activate them.
+                    We&apos;ve set up a starter AI team from your role pack. Connect your tools to activate live execution.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

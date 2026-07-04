@@ -28,6 +28,9 @@ export interface DemoAssignment {
   qualityChecks?: Array<{ label: string; status: "pass" | "warn" }>
 }
 
+/** Production assignment shape (legacy name retained for compatibility). */
+export type AssignmentRecord = DemoAssignment
+
 const runtimeDemoAssignments = new Map<string, DemoAssignment>()
 
 export function registerDemoAssignment(assignment: DemoAssignment): void {

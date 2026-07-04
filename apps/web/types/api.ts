@@ -923,6 +923,9 @@ export interface BillingUsageResponse {
     ai_tokens: number
   }
   included_outputs: number | null
+  workflow_runs_included?: number | null
+  ai_credits_included?: number | null
+  weekly_totals?: number[]
   overage_outputs: number
   overage_cost_usd: number
 }

@@ -2048,6 +2048,24 @@ export const settingsApi = {
       throw new Error(error.detail || `Request failed: ${response.status}`)
     }
   },
+  addDepartmentMember: (data: { department_id: string; user_email: string; role?: string }) =>
+    postJson<{ member: Record<string, unknown> }>(apiUrl("/api/settings/lite-seats/members"), data),
+  removeDepartmentMember: async (departmentId: string, userId: string) => {
+    const response = await apiFetch(
+      apiUrl(
+        `/api/settings/lite-seats/members?departmentId=${encodeURIComponent(departmentId)}&userId=${encodeURIComponent(userId)}`,
+      ),
+      { method: "DELETE" },
+    )
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || `Request failed: ${response.status}`)
+    }
+  },
+  getLiteMembership: () =>
+    fetcher<{ is_lite: boolean; is_admin: boolean; department: { id: string; name: string } | null }>(
+      apiUrl("/api/settings/lite-membership"),
+    ),
 
   // Meson addons
   getMesonAddons: () => fetcher<MesonAddonsResponse>(apiUrl("/api/settings/meson-addons")),

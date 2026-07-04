@@ -171,10 +171,34 @@ def _normalize_subscription(row: dict | None, org_id: str) -> dict:
     }
 
 
-def _map_usage_for_billing_status(usage_payload: dict) -> dict:
+def _weekly_workflow_totals(client, org_id: str, period_start_iso: str) -> list[int]:
+    usage_rows = (
+        client.table("usage_records")
+        .select("metric_type, quantity, recorded_at")
+        .eq("org_id", org_id)
+        .gte("recorded_at", period_start_iso)
+        .execute()
+    )
+    buckets: dict[int, int] = {0: 0, 1: 0, 2: 0, 3: 0}
+    start = datetime.fromisoformat(period_start_iso.replace("Z", "+00:00"))
+    for row in usage_rows.data or []:
+        if str(row.get("metric_type") or "") != "workflow_runs":
+            continue
+        recorded = str(row.get("recorded_at") or period_start_iso)
+        try:
+            ts = datetime.fromisoformat(recorded.replace("Z", "+00:00"))
+        except ValueError:
+            ts = start
+        week_index = min(3, max(0, int((ts - start).days // 7)))
+        buckets[week_index] = buckets.get(week_index, 0) + int(row.get("quantity") or 0)
+    return [buckets[i] for i in range(4)]
+
+
+def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[int] | None = None) -> dict:
     period_start = str(usage_payload.get("period_start") or datetime.now(timezone.utc).isoformat())
     tier = usage_payload.get("tier")
     totals = usage_payload.get("totals") or {}
+    plan = usage_payload.get("plan") or {}
     return {
         "period_start": period_start,
         "tier": tier,
@@ -185,6 +209,9 @@ def _map_usage_for_billing_status(usage_payload: dict) -> dict:
             "ai_tokens": int(totals.get("ai_tokens") or 0),
         },
         "included_outputs": usage_payload.get("included_outputs"),
+        "workflow_runs_included": int(plan.get("workflow_runs_included") or usage_payload.get("included_outputs") or 0),
+        "ai_credits_included": int(plan.get("ai_credits_included") or 0),
+        "weekly_totals": weekly_totals or [],
         "overage_outputs": int(usage_payload.get("overage_outputs") or 0),
         "overage_cost_usd": float(usage_payload.get("overage_cost_usd") or 0),
     }
@@ -338,13 +365,17 @@ async def billing_overview(
         subscription_row = (insert_resp.data or [None])[0]
     subscription = _normalize_subscription(subscription_row, org_id)
     usage = _usage_from_records(client, org_id, subscription.get("tier"))
+    plan = get_plan_for_org(client, org_id)
+    usage["plan"] = plan
+    period_start = str(usage.get("period_start") or datetime.now(timezone.utc).isoformat())
+    weekly_totals = _weekly_workflow_totals(client, org_id, period_start)
     invoices, payment_methods = _fetch_invoices_and_payment_methods(
         settings=settings,
         customer_id=(subscription_row or {}).get("stripe_customer_id"),
     )
     return {
         "subscription": subscription,
-        "usage": _map_usage_for_billing_status(usage),
+        "usage": _map_usage_for_billing_status(usage, weekly_totals=weekly_totals),
         "invoices": invoices,
         "payment_methods": payment_methods,
     }
