@@ -27,8 +27,9 @@ from app.services.meson_service import (
 router = APIRouter(
     prefix="/api/meson",
     tags=["meson"],
-    dependencies=[Depends(require_tier("control"))],
 )
+
+_CONTROL_TIER = [Depends(require_tier("control"))]
 
 
 class MesonInterpretRequest(BaseModel):
@@ -74,7 +75,7 @@ def _require_org(org_id: str | None) -> str:
     return org_id
 
 
-@router.post("/interpret", response_model=MesonInterpretResult, response_model_by_alias=True)
+@router.post("/interpret", response_model=MesonInterpretResult, response_model_by_alias=True, dependencies=_CONTROL_TIER)
 async def interpret_build_request_route(
     body: MesonInterpretRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -97,7 +98,7 @@ async def interpret_build_request_route(
     )
 
 
-@router.post("/deploy", response_model=MesonDeployResult, response_model_by_alias=True, status_code=status.HTTP_201_CREATED)
+@router.post("/deploy", response_model=MesonDeployResult, response_model_by_alias=True, status_code=status.HTTP_201_CREATED, dependencies=_CONTROL_TIER)
 async def deploy_build_route(
     body: MesonDeployRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -142,7 +143,7 @@ async def deploy_build_route(
     )
 
 
-@router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True)
+@router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True, dependencies=_CONTROL_TIER)
 async def meson_suggestions_route(
     body: MesonSuggestionsRequest,
     _user: Annotated[dict, Depends(get_current_user)],

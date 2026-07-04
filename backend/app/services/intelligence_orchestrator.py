@@ -190,6 +190,7 @@ class IntelligenceOrchestrator:
                 org_id,
                 user_id=user_id,
                 depth="standard",
+                environment_name=environment_name,
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("orchestrator org context skipped org_id=%s error=%s", org_id, exc)

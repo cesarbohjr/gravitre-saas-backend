@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 OrgContextDepth = Literal["minimal", "standard", "full"]
 
 _CACHE_TTL_SECONDS = 60
-_ACTIVE_CONNECTOR_STATUSES = frozenset({"active", "connected", "syncing"})
+from app.connectors.constants import is_connector_usable
 
 _DEPTH_LIMITS: dict[OrgContextDepth, dict[str, int]] = {
     "minimal": {"agents": 0, "workflows": 0, "integrations": 5, "runs": 0, "alerts": 0},
@@ -77,7 +77,7 @@ class OrgContextService:
         self._cache: dict[str, _CacheEntry] = {}
         self._cache_ttl_seconds = cache_ttl_seconds
 
-    def invalidate(self, org_id: str, *, environment_name: str = "default") -> None:
+    def invalidate(self, org_id: str, *, environment_name: str = "production") -> None:
         prefix = f"{org_id}:{environment_name}:"
         for key in list(self._cache):
             if key.startswith(prefix):
@@ -88,7 +88,7 @@ class OrgContextService:
         client: Any,
         org_id: str,
         *,
-        environment_name: str = "default",
+        environment_name: str = "production",
         depth: OrgContextDepth | int | str | None = "standard",
         user_id: str | None = None,
     ) -> dict[str, Any]:
@@ -102,7 +102,7 @@ class OrgContextService:
         user_id: str | None = None,
         depth: OrgContextDepth | int | str | None = "standard",
         *,
-        environment_name: str = "default",
+        environment_name: str = "production",
     ) -> str:
         _, markdown = self._load(client, org_id, environment_name, depth, user_id)
         return markdown
@@ -114,7 +114,7 @@ class OrgContextService:
         *,
         user_id: str | None = None,
         depth: OrgContextDepth | int | str | None = "standard",
-        environment_name: str = "default",
+        environment_name: str = "production",
     ) -> tuple[dict[str, Any], str]:
         return self._load(client, org_id, environment_name, depth, user_id)
 
@@ -189,7 +189,7 @@ class OrgContextService:
                             "status": status or "unknown",
                         }
                     )
-                if status in _ACTIVE_CONNECTOR_STATUSES and ctype:
+                if is_connector_usable(status) and ctype:
                     connected_types.append(ctype)
             return integrations, connected_types
 

@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { Lightbulb, Loader2, Sparkles, TrendingUp } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { Blocks, Lightbulb, Loader2, TrendingUp } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { mesonApi, type MesonInsight, type MesonSuggestion } from "@/lib/api"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
@@ -10,6 +12,8 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export type MesonPageId = "ai-chat" | "model-registry" | "model-detail" | "agent-detail"
+
+const BANNER_ROTATE_MS = 7_000
 
 function briefToInsights(brief: AdvisorBrief | null | undefined): MesonInsight[] {
   if (!brief) return []
@@ -55,10 +59,109 @@ function briefToSuggestions(brief: AdvisorBrief | null | undefined): MesonSugges
     .slice(0, 3)
 }
 
-function confidenceClass(confidence?: number) {
-  if (confidence == null) return "border-border/70 bg-background/70"
-  if (confidence >= 0.75) return "border-emerald-500/30 bg-emerald-500/5"
-  return "border-amber-500/30 bg-amber-500/5"
+type BannerSlide = "suggestions" | "insights"
+
+function MesonLogo({ compact }: { compact?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-500/25",
+        compact ? "h-8 w-8" : "h-9 w-9",
+      )}
+    >
+      <Blocks className={cn("text-white", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+    </div>
+  )
+}
+
+function MesonBannerBody({
+  slide,
+  suggestion,
+  insight,
+  extraSuggestions,
+  extraInsights,
+  compact,
+  onSuggestionClick,
+}: {
+  slide: BannerSlide
+  suggestion?: MesonSuggestion
+  insight?: MesonInsight
+  extraSuggestions: number
+  extraInsights: number
+  compact?: boolean
+  onSuggestionClick?: (suggestion: MesonSuggestion) => void
+}) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      {slide === "suggestions" && suggestion ? (
+        <motion.div
+          key={`suggestion-${suggestion.id}`}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22 }}
+          className="min-h-[4.5rem]"
+        >
+          <div className="flex items-start gap-2.5">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-300">
+              <Lightbulb className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              {onSuggestionClick ? (
+                <button
+                  type="button"
+                  onClick={() => onSuggestionClick(suggestion)}
+                  className="text-left text-sm font-medium leading-snug text-foreground hover:text-violet-700 dark:hover:text-violet-200"
+                >
+                  {suggestion.label}
+                </button>
+              ) : (
+                <p className="text-sm font-medium leading-snug text-foreground">{suggestion.label}</p>
+              )}
+              {suggestion.reason ? (
+                <p className={cn("mt-1 line-clamp-2 text-muted-foreground", compact ? "text-[11px]" : "text-xs")}>
+                  {suggestion.reason}
+                </p>
+              ) : null}
+              {extraSuggestions > 0 ? (
+                <p className="mt-1.5 text-[10px] font-medium text-violet-600/80 dark:text-violet-300/80">
+                  +{extraSuggestions} more suggestion{extraSuggestions === 1 ? "" : "s"}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+
+      {slide === "insights" && insight ? (
+        <motion.div
+          key={`insight-${insight.id}`}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22 }}
+          className="min-h-[4.5rem]"
+        >
+          <div className="flex items-start gap-2.5">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-300">
+              <TrendingUp className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium leading-snug text-foreground">{insight.title}</p>
+              <p className={cn("mt-1 line-clamp-3 text-muted-foreground", compact ? "text-[11px]" : "text-xs")}>
+                {insight.summary}
+              </p>
+              {extraInsights > 0 ? (
+                <p className="mt-1.5 text-[10px] font-medium text-violet-600/80 dark:text-violet-300/80">
+                  +{extraInsights} more insight{extraInsights === 1 ? "" : "s"}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  )
 }
 
 export function MesonPagePanel({
@@ -98,120 +201,124 @@ export function MesonPagePanel({
     .filter((item) => item.label?.trim())
     .slice(0, compact ? 3 : 4)
 
-  const showEmpty = !isLoading && !error && insights.length === 0 && suggestions.length === 0
-  const showInitialLoad = isLoading && !data && streamedInsights.length === 0 && streamedSuggestions.length === 0
+  const hasSuggestions = suggestions.length > 0
+  const hasInsights = insights.length > 0
+  const shouldAlternate = hasSuggestions && hasInsights
+
+  const defaultSlide: BannerSlide = hasSuggestions ? "suggestions" : "insights"
+  const [activeSlide, setActiveSlide] = useState<BannerSlide>(defaultSlide)
+
+  useEffect(() => {
+    setActiveSlide(hasSuggestions ? "suggestions" : "insights")
+  }, [hasSuggestions, hasInsights])
+
+  useEffect(() => {
+    if (!shouldAlternate) return
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current === "suggestions" ? "insights" : "suggestions"))
+    }, BANNER_ROTATE_MS)
+    return () => window.clearInterval(timer)
+  }, [shouldAlternate])
+
+  const slideLabel = useMemo(() => {
+    if (activeSlide === "suggestions") return "Meson suggests"
+    return "Meson insights"
+  }, [activeSlide])
+
+  const showInitialLoad =
+    isLoading && !data && streamedInsights.length === 0 && streamedSuggestions.length === 0
   const showBackgroundRefresh = isValidating && !showInitialLoad && Boolean(data)
+  const showEmpty = !showInitialLoad && !error && !hasSuggestions && !hasInsights
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-        <h3 className="text-sm font-semibold text-foreground">Meson</h3>
-        {advisorBrief?.confidence != null ? (
-          <span className="ml-auto text-[10px] text-muted-foreground">
-            {Math.round(advisorBrief.confidence * 100)}% confidence
-          </span>
+    <div className={cn(className)}>
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/12 via-violet-500/6 to-purple-500/4 shadow-sm shadow-violet-500/10",
+          compact ? "p-3.5" : "p-4",
+        )}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl"
+        />
+
+        <div className="relative flex items-start gap-3">
+          <MesonLogo compact={compact} />
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">Meson</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
+                  {slideLabel}
+                </p>
+              </div>
+              {advisorBrief?.confidence != null ? (
+                <span className="shrink-0 rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-200">
+                  {Math.round(advisorBrief.confidence * 100)}%
+                </span>
+              ) : null}
+            </div>
+
+            {showInitialLoad ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-3/4 bg-violet-500/10" />
+                <Skeleton className="h-3 w-full bg-violet-500/10" />
+                <Skeleton className="h-3 w-5/6 bg-violet-500/10" />
+              </div>
+            ) : showEmpty ? (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {error
+                  ? "Insights unavailable right now."
+                  : "Monitoring your org — suggestions and insights appear as Meson learns."}
+              </p>
+            ) : (
+              <MesonBannerBody
+                slide={activeSlide}
+                suggestion={suggestions[0]}
+                insight={insights[0]}
+                extraSuggestions={Math.max(0, suggestions.length - 1)}
+                extraInsights={Math.max(0, insights.length - 1)}
+                compact={compact}
+                onSuggestionClick={onSuggestionClick}
+              />
+            )}
+          </div>
+        </div>
+
+        {shouldAlternate && !showInitialLoad && !showEmpty ? (
+          <div className="relative mt-3 flex items-center justify-center gap-1.5">
+            {(["suggestions", "insights"] as const).map((slide) => (
+              <button
+                key={slide}
+                type="button"
+                aria-label={slide === "suggestions" ? "Show Meson suggestions" : "Show Meson insights"}
+                aria-pressed={activeSlide === slide}
+                onClick={() => setActiveSlide(slide)}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  activeSlide === slide ? "w-4 bg-violet-500" : "w-1.5 bg-violet-500/30 hover:bg-violet-500/50",
+                )}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        {showBackgroundRefresh ? (
+          <div className="relative mt-2 flex items-center gap-1.5 text-[10px] text-violet-700/70 dark:text-violet-200/70">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Refreshing…
+          </div>
         ) : null}
       </div>
 
-      <section>
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Meson suggests
-        </p>
-        {showInitialLoad ? (
-          <div className="space-y-2">
-            <Skeleton className={cn("w-full", compact ? "h-14" : "h-16")} />
-            <Skeleton className={cn("w-full", compact ? "h-14" : "h-16")} />
-          </div>
-        ) : suggestions.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border/70 bg-background/50 px-3 py-2 text-xs text-muted-foreground">
-            No suggestions yet — Meson learns as you use this surface.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {suggestions.map((suggestion) => (
-              <li
-                key={suggestion.id}
-                className={cn(
-                  "rounded-lg border p-2.5",
-                  confidenceClass(suggestion.confidence),
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
-                    <Lightbulb className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {onSuggestionClick ? (
-                      <button
-                        type="button"
-                        onClick={() => onSuggestionClick(suggestion)}
-                        className="text-left text-xs font-medium text-foreground hover:underline"
-                      >
-                        {suggestion.label}
-                      </button>
-                    ) : (
-                      <p className="text-xs font-medium text-foreground">{suggestion.label}</p>
-                    )}
-                    {suggestion.reason ? (
-                      <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">
-                        {suggestion.reason}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Meson insights
-        </p>
-        {showInitialLoad ? (
-          <Skeleton className={cn("w-full", compact ? "h-12" : "h-14")} />
-        ) : error ? (
-          <p className="text-xs text-muted-foreground">Insights unavailable right now.</p>
-        ) : insights.length === 0 && showEmpty ? (
-          <p className="text-xs text-muted-foreground">Monitoring — insights appear from org learning data.</p>
-        ) : (
-          <ul className="space-y-2">
-            {insights.map((insight) => (
-              <li
-                key={insight.id}
-                className="rounded-lg border border-border/70 bg-secondary/20 p-2.5"
-              >
-                <div className="flex items-start gap-2">
-                  <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-foreground">{insight.title}</p>
-                    <p className="mt-0.5 line-clamp-3 text-[10px] text-muted-foreground">
-                      {insight.summary}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
       {!compact ? (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="mt-2 text-[10px] text-muted-foreground">
           Advisory only — review before acting.{" "}
-          <Link href="/intelligence" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/intelligence" className="text-violet-600 underline-offset-4 hover:underline dark:text-violet-300">
             Intelligence Center
           </Link>
         </p>
-      ) : null}
-
-      {showBackgroundRefresh ? (
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Refreshing insights…
-        </div>
       ) : null}
     </div>
   )

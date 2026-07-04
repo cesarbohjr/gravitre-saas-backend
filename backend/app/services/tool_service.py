@@ -3528,7 +3528,7 @@ def tool_context_from_step(context: Any) -> ToolContext:
         client=context.client,
         org_id=context.org_id,
         actor_id=context.user_id or "",
-        environment_name=context.environment_name or "default",
+        environment_name=context.environment_name or "production",
         run_id=context.run_id,
         step_id=context.step_id,
         step_type=context.step_type,

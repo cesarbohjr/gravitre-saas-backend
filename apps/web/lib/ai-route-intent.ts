@@ -106,10 +106,34 @@ function scoreChat(text: string): number {
   return Math.max(0, score)
 }
 
+"""Fast, dependency-free routing used when the model call is unavailable."""
+
+const CONNECTOR_INTEGRATIONS =
+  /\b(hubspot|salesforce|slack|zendesk|github|stripe|jira|quickbooks|pipedrive|intercom|notion|asana|teams|gmail|google|microsoft|monday|clickup|figma|canva|pagerduty|linkedin|netsuite|workday|marketo|odoo|confluence|crm)\b/
+
+const CONNECTOR_ACTION_VERBS =
+  /\b(search|find|list|get|lookup|query|show|fetch|create|update|post|send|write|close|log|notify|message|assign|enroll|add|sync|pull|push|run|execute|trigger)\b/
+
+/** Connector read/write and connector inventory questions must use governed chat execution. */
+export function isConnectorChatPrompt(prompt: string): boolean {
+  const text = prompt.toLowerCase().trim()
+  if (!text) return false
+  if (/\b(connector|integration)s?\b/.test(text) && /\b(what|which|any|connected|available|do we have|have we)\b/.test(text)) {
+    return true
+  }
+  if (!CONNECTOR_INTEGRATIONS.test(text)) return false
+  return CONNECTOR_ACTION_VERBS.test(text)
+}
+
+function scoreConnectorChat(text: string): number {
+  return isConnectorChatPrompt(text) ? 8 : 0
+}
+
 /** Fast, dependency-free routing used when the model call is unavailable. */
 export function heuristicRouteIntent(prompt: string): AiRouteDecision {
   const text = prompt.toLowerCase().trim()
   const conversationalScore = scoreConversationalOperator(text)
+  const connectorScore = scoreConnectorChat(text)
   const executeScore = scoreExecute(text)
   const findScore = scoreFind(text)
   const chatScore = scoreChat(text)
@@ -119,6 +143,14 @@ export function heuristicRouteIntent(prompt: string): AiRouteDecision {
       mode: "chat",
       confidence: 0.88,
       reason: "Conversational operator flow — confirm details, then create via dialogue.",
+    }
+  }
+
+  if (connectorScore >= 8) {
+    return {
+      mode: "chat",
+      confidence: 0.9,
+      reason: "Connector read/write or integration inventory — use governed chat execution.",
     }
   }
 
@@ -155,6 +187,14 @@ export function reconcileModelRouteIntent(
       mode: "chat",
       confidence: Math.max(model.confidence, 0.85),
       reason: "Agent/workflow creation uses conversational operator mode, not the analysis dashboard.",
+    }
+  }
+
+  if (isConnectorChatPrompt(text)) {
+    return {
+      mode: "chat",
+      confidence: Math.max(model.confidence, 0.88),
+      reason: "Connector execution or inventory — routing to governed chat.",
     }
   }
 

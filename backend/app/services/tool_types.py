@@ -47,7 +47,7 @@ class ToolContext:
     client: Any
     org_id: str
     actor_id: str
-    environment_name: str = "default"
+    environment_name: str = "production"
     run_id: str | None = None
     task_id: str | None = None
     agent_id: str | None = None

@@ -20,9 +20,13 @@ class ToolConnectorSelector:
         org_id: str,
         classification: dict[str, Any],
         agent_persona: dict[str, Any],
+        *,
+        environment_name: str = "production",
     ) -> dict[str, Any]:
         client = get_supabase_client(self.settings)
-        connected = self._registry.list_connected_integrations(client, org_id)
+        connected = self._registry.list_connected_integrations(
+            client, org_id, environment_name=environment_name
+        )
         preferred = set(agent_persona.get("preferred_connectors") or [])
         all_tools = await self._registry.get_available_tools(org_id, [], list(connected))
 

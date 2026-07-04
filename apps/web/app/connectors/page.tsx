@@ -74,6 +74,11 @@ import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
+import {
+  getSelectedEnvironmentFromStorage,
+  setSelectedEnvironmentInStorage,
+  type AppEnvironment,
+} from "@/lib/environment-context"
 import { connectorsApi, ApiRequestError } from "@/lib/api"
 import { publicApiUrl } from "@/lib/public-urls"
 import {
@@ -727,7 +732,7 @@ function AddConnectorModal({
   const [name, setName] = useState("")
   const [apiKey, setApiKey] = useState("")
   const [apiSecret, setApiSecret] = useState("")
-  const [environment, setEnvironment] = useState<"production" | "staging">("staging")
+  const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
   const [isCreating, setIsCreating] = useState(false)
   const [oauthStatus, setOauthStatus] = useState<"idle" | "redirecting" | "success" | "error">("idle")
   const [searchQuery, setSearchQuery] = useState("")
@@ -875,8 +880,14 @@ function AddConnectorModal({
     await completeConnection()
   }
 
+  const pickEnvironment = (env: AppEnvironment) => {
+    setEnvironment(env)
+    setSelectedEnvironmentInStorage(env)
+  }
+
   const completeConnection = async () => {
     if (!selectedType || !name) return
+    setSelectedEnvironmentInStorage(environment)
     setIsCreating(true)
     try {
       const vendor = resolveVendor(getSelectedConnector(), selectedType)
@@ -935,7 +946,8 @@ function AddConnectorModal({
     setName("")
     setApiKey("")
     setApiSecret("")
-    setEnvironment("staging")
+    setEnvironment("production")
+    setSelectedEnvironmentInStorage("production")
     setSearchQuery("")
     setModalCategoryFilter("all")
     setOauthStatus("idle")
@@ -1339,7 +1351,7 @@ function AddConnectorModal({
                   <label className="text-sm font-medium text-foreground">Environment</label>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setEnvironment("staging")}
+                      onClick={() => pickEnvironment("staging")}
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "staging"
@@ -1351,7 +1363,7 @@ function AddConnectorModal({
                       Staging
                     </button>
                     <button
-                      onClick={() => setEnvironment("production")}
+                      onClick={() => pickEnvironment("production")}
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "production"
@@ -1451,7 +1463,7 @@ function AddConnectorModal({
                   <label className="text-sm font-medium text-foreground">Environment</label>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setEnvironment("staging")}
+                      onClick={() => pickEnvironment("staging")}
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "staging"
@@ -1463,7 +1475,7 @@ function AddConnectorModal({
                       Staging
                     </button>
                     <button
-                      onClick={() => setEnvironment("production")}
+                      onClick={() => pickEnvironment("production")}
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "production"
@@ -1678,7 +1690,7 @@ function AddConnectorModal({
                   <label className="text-sm font-medium text-foreground">Environment</label>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setEnvironment("staging")}
+                      onClick={() => pickEnvironment("staging")}
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "staging"
@@ -1690,7 +1702,7 @@ function AddConnectorModal({
                       Staging
                     </button>
                     <button
-                      onClick={() => setEnvironment("production")}
+                      onClick={() => pickEnvironment("production")}
                       className={cn(
                         "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all",
                         environment === "production"

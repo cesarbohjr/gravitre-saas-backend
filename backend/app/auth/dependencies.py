@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase import Client
 
 from app.auth.jwt_verify import decode_supabase_jwt
+from app.connectors.constants import normalize_environment_name
 from app.auth.platform_admin import (
     can_trigger_knowledge_sync,
     is_org_admin_role,
@@ -267,14 +268,12 @@ async def require_platform_admin(
     return current_user
 
 
+
 async def get_environment_context(
     x_environment: Annotated[str | None, Header()] = None,
 ) -> str:
     """Optional environment selector; defaults to 'production'."""
-    env = (x_environment or "production").strip().lower()
-    if env == "default":
-        env = "production"
-    return env or "production"
+    return normalize_environment_name(x_environment)
 
 
 def set_request_auth_context(user_id: str | None, org_id: str | None) -> None:

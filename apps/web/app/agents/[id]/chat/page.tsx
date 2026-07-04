@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { motion, AnimatePresence } from "framer-motion"
 import useSWR from "swr"
@@ -369,6 +370,7 @@ export default function AgentChatPage({
           return {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(orgId ? { "x-org-id": orgId } : {}),
+            "x-environment": getEnvironmentHeader(),
           }
         },
         body: () => ({

@@ -145,3 +145,29 @@ async def test_run_assistant_tools_skips_unknown_ids():
     assert len(results) == 1
     assert results[0]["name"] == "connector_status"
     assert results[0]["displayName"] == "getConnectorStatus"
+
+
+def test_tool_connector_status_uses_production_environment(monkeypatch: pytest.MonkeyPatch):
+    seen: list[str] = []
+
+    def _list_connectors(_client, _org_id, environment_name="production"):
+        seen.append(environment_name)
+        if environment_name == "production":
+            return [
+                {
+                    "id": "c-hubspot",
+                    "name": "HubSpot",
+                    "type": "hubspot",
+                    "status": "connected",
+                    "health": 98,
+                }
+            ]
+        return []
+
+    monkeypatch.setattr("app.connectors.repository.list_connectors", _list_connectors)
+    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
+
+    output = tools_module.tool_connector_status("org-1", _settings())
+    assert seen == ["production"]
+    assert output["connectors"][0]["type"] == "hubspot"
+    assert output["connectors"][0]["status"] == "connected"

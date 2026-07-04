@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
-from app.auth.dependencies import get_current_user, get_org_context
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.billing.service import (
     apply_usage_with_overage,
     build_ai_usage_metadata_from_tokens,
@@ -492,6 +492,7 @@ def _build_assistant_system_prompt(
     agent_id: str | None = None,
     depth: str = "standard",
     query: str | None = None,
+    environment_name: str = "production",
 ) -> str:
     client = get_supabase_client(settings)
     service = get_org_context_service()
@@ -500,6 +501,7 @@ def _build_assistant_system_prompt(
         org_id,
         user_id=user_id,
         depth=depth,
+        environment_name=environment_name,
     )
     agent = None
     memory_block = ""
@@ -578,6 +580,7 @@ def _build_stream(
     existing_summary: str | None,
     mode: str | None,
     preferred_persona: str | None = None,
+    environment_name: str = "production",
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -604,6 +607,7 @@ def _build_stream(
                 assistant_base_prompt=ASSISTANT_SYSTEM_PROMPT,
                 conversation_id=conversation_id,
                 explicit_persona=preferred_persona,
+                environment_name=environment_name,
             ):
                 if isinstance(event, AssistantStreamComplete):
                     complete = event
@@ -733,6 +737,7 @@ async def assistant_chat(
     body: AssistantChatRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
     # Killswitch first — refuse before any tool/model work or spend.
@@ -808,6 +813,7 @@ async def assistant_chat(
         user_id=str(current_user.get("user_id") or "") or None,
         agent_id=body.agent_id,
         query=last_user,
+        environment_name=environment_name,
     )
 
     user_id = str(current_user.get("user_id") or "")
@@ -880,6 +886,7 @@ async def assistant_chat(
             existing_summary=existing_summary,
             mode=body.mode,
             preferred_persona=preferred_persona,
+            environment_name=environment_name,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,
@@ -924,12 +931,15 @@ async def assistant_daily_briefing(
 async def assistant_org_context(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
-    snapshot = get_org_context_service().get_snapshot(client, org_id, depth="standard")
+    snapshot = get_org_context_service().get_snapshot(
+        client, org_id, depth="standard", environment_name=environment_name
+    )
     agents = [
         {"id": str(a.get("id") or ""), "name": str(a.get("name") or "Agent")}
         for a in (snapshot.get("agents") or [])
@@ -1149,6 +1159,7 @@ async def execute_conversation_task(
     body: ConversationExecuteRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     if not org_id:
@@ -1184,6 +1195,7 @@ async def execute_conversation_task(
             user_id=user_id,
             conversation_id=conversation_id,
             client=client,
+            environment_name=environment_name,
         )
     elif pending_type == "connector_action":
         execution = await get_chat_connector_execution_service(settings).execute_confirmed_task(
@@ -1191,6 +1203,7 @@ async def execute_conversation_task(
             user_id=user_id,
             conversation_id=conversation_id,
             client=client,
+            environment_name=environment_name,
         )
     else:
         execution = await get_conversational_execution_service(settings).execute_confirmed_task(

@@ -413,3 +413,29 @@ async def test_tool_knowledge_base_uses_agent_scope(monkeypatch):
     assert output["agentId"] == "agent-revops"
     assert output["sources"][0]["title"] == "playbook"
     assert output["memoryHitCount"] == 1
+
+
+async def test_assistant_org_context_returns_production_connectors(async_client, monkeypatch):
+    _authenticate(org_id="org-1")
+    snapshot = {
+        "agents": [],
+        "workflows": [],
+        "integrations": [{"id": "c1", "type": "hubspot", "status": "connected"}],
+        "counts": {"agents": 0, "workflows": 0, "connectedIntegrations": 1},
+        "connectedIntegrations": ["hubspot"],
+    }
+    service = MagicMock()
+    service.get_snapshot.return_value = snapshot
+    monkeypatch.setattr(assistant_module, "get_org_context_service", lambda: service)
+    monkeypatch.setattr(assistant_module, "get_supabase_client", lambda _s: MagicMock())
+
+    resp = await async_client.get(
+        "/api/assistant/org-context",
+        headers={"Authorization": "Bearer token"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["counts"]["connectors"] == 1
+    assert body["connectors"][0]["type"] == "hubspot"
+    service.get_snapshot.assert_called_once()
+    assert service.get_snapshot.call_args.kwargs["environment_name"] == "production"

@@ -26,6 +26,11 @@ import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useAuth } from "@/lib/auth-context"
 import {
+  getSelectedEnvironmentFromStorage,
+  setSelectedEnvironmentInStorage,
+  type AppEnvironment,
+} from "@/lib/environment-context"
+import {
   DEFAULT_DEMO_ORG_ID,
   SECONDARY_DEMO_ORG_ID,
   ensureSelectedOrg,
@@ -40,7 +45,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, onMenuClick }: TopBarProps) {
-  const [environment, setEnvironment] = useState<"production" | "staging">("production")
+  const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
   const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Acme Corp")
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
@@ -80,7 +85,19 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
       if (stored?.name) setOrg(stored.name)
       else if (orgId) setOrg("Organization")
     })
+    setEnvironment(getSelectedEnvironmentFromStorage())
+    const onEnvChange = (event: Event) => {
+      const detail = (event as CustomEvent<AppEnvironment>).detail
+      if (detail) setEnvironment(detail)
+    }
+    window.addEventListener("gravitre:environment-changed", onEnvChange)
+    return () => window.removeEventListener("gravitre:environment-changed", onEnvChange)
   }, [])
+
+  const selectEnvironment = (next: AppEnvironment) => {
+    setEnvironment(next)
+    setSelectedEnvironmentInStorage(next)
+  }
 
   const handleOrgChange = (nextOrgId: string, nextOrgName: string) => {
     setOrg(nextOrgName)
@@ -181,11 +198,11 @@ export function TopBar({ title, onMenuClick }: TopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-40">
-              <DropdownMenuItem onClick={() => setEnvironment("production")} className="gap-2">
+              <DropdownMenuItem onClick={() => selectEnvironment("production")} className="gap-2">
                 <Icon name="production" size="sm" className="text-success" />
                 Production
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setEnvironment("staging")} className="gap-2">
+              <DropdownMenuItem onClick={() => selectEnvironment("staging")} className="gap-2">
                 <Icon name="staging" size="sm" className="text-warning" />
                 Staging
               </DropdownMenuItem>

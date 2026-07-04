@@ -14,6 +14,7 @@ ALL_ASSISTANT_TOOL_NAMES: list[str] = [
     "generate_document",
     "run_agent_task",
     "create_workflow",
+    "execute_workflow",
     "dependency_impact",
 ]
 
@@ -28,6 +29,7 @@ ASSISTANT_TOOL_TO_REGISTRY: dict[str, str | None] = {
     "generate_document": "assistant_generate_document",
     "run_agent_task": "assistant_run_agent_task",
     "create_workflow": "assistant_create_workflow",
+    "execute_workflow": "assistant_execute_workflow",
     "dependency_impact": "assistant_dependency_impact",
 }
 
@@ -39,6 +41,7 @@ REGISTRY_TO_ASSISTANT_DISPLAY: dict[str, str] = {
     "assistant_generate_document": "generateDocument",
     "assistant_run_agent_task": "runAgentTask",
     "assistant_create_workflow": "createWorkflow",
+    "assistant_execute_workflow": "executeWorkflow",
     "assistant_dependency_impact": "estimateDependencyImpact",
     "web_search": "searchWeb",
 }
@@ -55,6 +58,7 @@ MODE_CONFIG: dict[str, dict[str, Any]] = {
             "agent_status",
             "connector_status",
             "workflow_runs",
+            "execute_workflow",
             "search_web",
         ],
     },
@@ -65,6 +69,7 @@ MODE_CONFIG: dict[str, dict[str, Any]] = {
             "agent_status",
             "connector_status",
             "workflow_runs",
+            "execute_workflow",
             "analytics",
             "search_web",
             "generate_document",
@@ -116,6 +121,23 @@ def resolve_registry_permitted_tools(tool_names: list[str]) -> list[str]:
         if registry_name:
             permitted.append(registry_name)
     return permitted
+
+
+def expand_registry_with_connected_integrations(
+    permitted: list[str],
+    connected_integrations: list[str],
+) -> list[str]:
+    """Allow native connector invoke tools in ReAct when integrations are connected."""
+    expanded = list(permitted)
+    seen = {p.lower() for p in expanded}
+    for integration in connected_integrations:
+        key = str(integration or "").strip().lower()
+        if not key or key == "platform":
+            continue
+        if key not in seen:
+            expanded.append(key)
+            seen.add(key)
+    return expanded
 
 
 def mode_includes_tool(mode: str | None, tool_id: str) -> bool:

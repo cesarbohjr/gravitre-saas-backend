@@ -23,6 +23,7 @@ from app.operators.assistant_mode_config import (
     registry_to_assistant_tool_id,
     resolve_assistant_tool_names,
     resolve_registry_permitted_tools,
+    expand_registry_with_connected_integrations,
 )
 from app.operators.assistant_sse import (
     format_react_tool_output,
@@ -231,7 +232,7 @@ def resolve_agent_record(
     org_id: str,
     agent_id: str,
     *,
-    environment_name: str = "default",
+    environment_name: str = "production",
 ) -> dict[str, Any] | None:
     """Load workflow agent row or synthesize from operator + connector bindings."""
     from app.operators.repository import get_operator, list_connectors_by_ids, list_operator_bindings
@@ -272,7 +273,7 @@ def resolve_agent_record(
 def load_org_context(
     client: Any,
     org_id: str,
-    environment_name: str = "default",
+        environment_name: str = "production",
     *,
     user_id: str | None = None,
     depth: str = "standard",
@@ -815,7 +816,7 @@ class AgentIntelligence:
         actor_id: str | None = None,
         run_id: str | None = None,
         task_id: str | None = None,
-        environment_name: str = "default",
+        environment_name: str = "production",
         client: Any | None = None,
         max_iterations: int | None = None,
     ) -> AgentResult:
@@ -989,7 +990,7 @@ class AgentIntelligence:
         conversation_history: list[dict[str, Any]] | None = None,
         history_summary: str | None = None,
         model_override: str | None = None,
-        environment_name: str = "default",
+        environment_name: str = "production",
         client: Any | None = None,
         assistant_base_prompt: str | None = None,
         conversation_id: str | None = None,
@@ -1187,6 +1188,7 @@ class AgentIntelligence:
             task_state=task_state,
             connected_integrations=connected_early,
             client=client,
+            environment_name=environment_name,
         )
         if orchestration_turn and orchestration_turn.get("stop_pipeline"):
             task_state = orchestration_turn.get("task_state") or task_state
@@ -1238,6 +1240,7 @@ class AgentIntelligence:
             task_state=task_state,
             connected_integrations=connected_early,
             client=client,
+            environment_name=environment_name,
         )
         if connector_turn and connector_turn.get("stop_pipeline"):
             task_state = connector_turn.get("task_state") or task_state
@@ -1310,6 +1313,7 @@ class AgentIntelligence:
         connected_list = list(turn_ctx.connected_integrations)
         if permitted_registry and "platform" not in {str(c).lower() for c in connected_list}:
             connected_list.append("platform")
+        permitted_registry = expand_registry_with_connected_integrations(permitted_registry, connected_list)
 
         clarification = await get_clarification_engine(active_settings).should_clarify(
             pipeline_classification,

@@ -195,6 +195,10 @@ async def lifespan(app: FastAPI):
         start_cache_warming_scheduler,
         stop_cache_warming_scheduler,
     )
+    from app.schedulers.workflow_failure_prediction_scheduler import (
+        start_workflow_failure_prediction_scheduler,
+        stop_workflow_failure_prediction_scheduler,
+    )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
 
     temporal_host = (os.environ.get("TEMPORAL_HOST") or "").strip()
@@ -205,6 +209,7 @@ async def lifespan(app: FastAPI):
     app.state.source_sync_task = start_source_sync_scheduler()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.connector_health_task = start_connector_health_scheduler()
+    app.state.workflow_failure_prediction_task = start_workflow_failure_prediction_scheduler()
     if use_temporal:
         logger.info(
             "Temporal enabled — company intelligence, memory promotion/outcomes, "
@@ -237,6 +242,9 @@ async def lifespan(app: FastAPI):
         await stop_source_sync_scheduler(getattr(app.state, "source_sync_task", None))
         await stop_workflow_schedule_scheduler(getattr(app.state, "workflow_schedule_task", None))
         await stop_connector_health_scheduler(getattr(app.state, "connector_health_task", None))
+        await stop_workflow_failure_prediction_scheduler(
+            getattr(app.state, "workflow_failure_prediction_task", None)
+        )
         await stop_company_intelligence_scheduler(getattr(app.state, "company_intelligence_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
         temporal_task = getattr(app.state, "temporal_worker_task", None)

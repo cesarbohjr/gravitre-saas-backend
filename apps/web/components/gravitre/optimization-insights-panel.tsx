@@ -88,105 +88,13 @@ interface WorkflowVersion {
   status: "active" | "testing" | "archived"
 }
 
-// Mock data
-const mockScoreHistory = [
-  { date: "Mon", score: 74 },
-  { date: "Tue", score: 76 },
-  { date: "Wed", score: 75 },
-  { date: "Thu", score: 79 },
-  { date: "Fri", score: 82 },
-  { date: "Sat", score: 81 },
-  { date: "Sun", score: 82 },
-]
+// Live optimization data is surfaced in the workflow builder Meson copilot; this panel stays empty until org metrics API ships.
+const mockRecommendations: OptimizationRecommendation[] = []
+const mockScoreHistory: { date: string; score: number }[] = []
 
-const mockDimensions: ScoreDimension[] = [
-  { name: "Reliability", score: 94, trend: "up", icon: Shield },
-  { name: "Speed", score: 78, trend: "up", icon: Zap },
-  { name: "Cost Efficiency", score: 85, trend: "stable", icon: TrendingUp },
-  { name: "Override Rate", score: 72, trend: "down", icon: RefreshCw },
-  { name: "Goal Completion", score: 88, trend: "up", icon: Target },
-  { name: "Decision Accuracy", score: 79, trend: "stable", icon: CheckCircle },
-]
+const mockDimensions: ScoreDimension[] = []
 
-const mockRecommendations: OptimizationRecommendation[] = [
-  {
-    id: "opt-1",
-    title: "Move Data Validation Earlier",
-    issue: "Invalid records are causing downstream HubSpot sync failures in 28% of runs.",
-    evidence: [
-      "42 failed runs caused by malformed CRM records",
-      "Average 2.3 retries per failed sync",
-      "Validation errors detected at step 5 of 7",
-    ],
-    suggestedChange: "Add validation step before CRM enrichment to catch invalid records early.",
-    estimatedImpact: "Reduce failed runs by 18-24%",
-    confidence: 87,
-    riskLevel: "low",
-    category: "reliability",
-    affectedNodes: ["Data Enrichment", "HubSpot Sync"],
-  },
-  {
-    id: "opt-2",
-    title: "Remove Redundant Approval Step",
-    issue: "Manager approval adds 2.4 days average delay for low-value leads.",
-    evidence: [
-      "98% approval rate for leads under $5K",
-      "Average wait time: 2.4 days",
-      "No rejections in past 60 days for this segment",
-    ],
-    suggestedChange: "Auto-approve leads under $5K threshold, require approval only for high-value.",
-    estimatedImpact: "Reduce processing time by 2+ days",
-    confidence: 91,
-    riskLevel: "medium",
-    category: "performance",
-    affectedNodes: ["Manager Approval Gate"],
-  },
-  {
-    id: "opt-3",
-    title: "Add Slack Notification on Completion",
-    issue: "Sales team missing follow-up windows for qualified leads.",
-    evidence: [
-      "31% higher conversion when contacted within 10 min",
-      "Average current response time: 47 minutes",
-      "Slack integration available but unused",
-    ],
-    suggestedChange: "Add instant Slack notification to sales channel when lead is qualified.",
-    estimatedImpact: "Improve follow-up rate by 31%",
-    confidence: 78,
-    riskLevel: "low",
-    category: "quality",
-  },
-]
-
-const mockVersions: WorkflowVersion[] = [
-  {
-    id: "v3",
-    version: 3,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    createdBy: "AI Optimization",
-    changes: ["Added early validation step", "Optimized connector sequence"],
-    healthScore: 82,
-    status: "active",
-  },
-  {
-    id: "v2",
-    version: 2,
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    createdBy: "John Smith",
-    changes: ["Added HubSpot sync", "Configured approval gate"],
-    healthScore: 76,
-    status: "archived",
-  },
-  {
-    id: "v1",
-    version: 1,
-    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-    createdBy: "John Smith",
-    changes: ["Initial workflow creation"],
-    healthScore: 68,
-    status: "archived",
-  },
-]
+const mockVersions: WorkflowVersion[] = []
 
 // Health Score Ring Component
 function HealthScoreRing({ score, size = 120 }: { score: number; size?: number }) {

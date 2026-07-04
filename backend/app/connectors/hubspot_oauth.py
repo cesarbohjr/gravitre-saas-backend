@@ -250,7 +250,7 @@ def mark_connector_oauth_success(
     config.pop("oauth_error_at", None)
     if reconnect:
         config["oauth_reconnected_at"] = int(time.time())
-    client.table("connectors").update({"status": "healthy", "config": config}).eq("id", connector_id).eq(
+    client.table("connectors").update({"status": "active", "config": config}).eq("id", connector_id).eq(
         "org_id", org_id
     ).execute()
 

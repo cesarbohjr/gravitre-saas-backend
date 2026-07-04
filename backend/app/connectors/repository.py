@@ -3,6 +3,11 @@ from __future__ import annotations
 
 from supabase import Client
 
+from app.connectors.constants import (
+    ACTIVE_CONNECTOR_STATUSES,
+    connector_environment_candidates,
+    normalize_environment_name,
+)
 from app.connectors.crypto import decrypt_secret, encrypt_secret
 from app.config import Settings
 from app.services.data_residency_service import enforce_region_for_connector_tokens, get_org_data_region
@@ -42,60 +47,85 @@ def _connector_data_region(client: Client, org_id: str, connector_id: str) -> st
     return str(region) if region else None
 
 
-def list_connectors(client: Client, org_id: str, environment_name: str = "default") -> list[dict]:
-    """List connectors for org. No secrets."""
+def _query_connectors_for_env(
+    client: Client,
+    org_id: str,
+    environment_name: str,
+) -> list[dict]:
+    env = normalize_environment_name(environment_name)
     r = (
         client.table("connectors")
-        .select("id, org_id, type, status, config, environment, created_at, updated_at")
+        .select("id, org_id, name, type, vendor, status, config, environment, created_at, updated_at")
         .eq("org_id", org_id)
-        .eq("environment", environment_name)
+        .eq("environment", env)
+        .is_("deleted_at", "null")
         .order("created_at", desc=True)
         .execute()
     )
     return [dict(row) for row in (r.data or [])]
 
 
+def list_connectors(client: Client, org_id: str, environment_name: str = "production") -> list[dict]:
+    """List connectors for org and environment. No secrets."""
+    rows = _query_connectors_for_env(client, org_id, environment_name)
+    if rows:
+        return rows
+    # Fallback: legacy rows may live under default while UI/chat use production.
+    primary = normalize_environment_name(environment_name)
+    if primary == "production":
+        legacy = _query_connectors_for_env(client, org_id, "default")
+        if legacy:
+            return legacy
+    return rows
+
+
 def get_connector_by_type(
     client: Client,
     org_id: str,
     connector_type: str,
-    environment_name: str = "default",
+    environment_name: str = "production",
 ) -> dict | None:
-    """Get first active connector of type for org."""
-    r = (
-        client.table("connectors")
-        .select("id, org_id, type, status, config, environment, created_at, updated_at")
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .eq("type", connector_type)
-        .eq("status", "active")
-        .limit(1)
-        .execute()
-    )
-    if not r.data or len(r.data) == 0:
-        return None
-    return dict(r.data[0])
+    """Get first usable connector of type for org (active, healthy, connected, syncing)."""
+    usable = sorted(ACTIVE_CONNECTOR_STATUSES)
+    for env in connector_environment_candidates(environment_name):
+        r = (
+            client.table("connectors")
+            .select("id, org_id, type, status, config, environment, created_at, updated_at")
+            .eq("org_id", org_id)
+            .eq("environment", env)
+            .eq("type", connector_type)
+            .in_("status", usable)
+            .is_("deleted_at", "null")
+            .order("updated_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if r.data:
+            return dict(r.data[0])
+    return None
 
 
 def get_connector(
     client: Client,
     org_id: str,
     connector_id: str,
-    environment_name: str = "default",
+    environment_name: str = "production",
 ) -> dict | None:
     """Get connector by id. No secrets."""
-    r = (
-        client.table("connectors")
-        .select("id, org_id, type, status, config, environment, created_at, updated_at")
-        .eq("id", connector_id)
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .limit(1)
-        .execute()
-    )
-    if not r.data or len(r.data) == 0:
-        return None
-    return dict(r.data[0])
+    for env in connector_environment_candidates(environment_name):
+        r = (
+            client.table("connectors")
+            .select("id, org_id, type, status, config, environment, created_at, updated_at")
+            .eq("id", connector_id)
+            .eq("org_id", org_id)
+            .eq("environment", env)
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        if r.data:
+            return dict(r.data[0])
+    return None
 
 
 def create_connector(
@@ -104,7 +134,7 @@ def create_connector(
     connector_type: str,
     config: dict,
     created_by: str | None,
-    environment_name: str = "default",
+    environment_name: str = "production",
 ) -> dict:
     """Create connector. Returns row without secrets."""
     row = {
@@ -113,7 +143,7 @@ def create_connector(
         "status": "active",
         "config": config or {},
         "created_by": created_by,
-        "environment": environment_name,
+        "environment": normalize_environment_name(environment_name),
     }
     r = client.table("connectors").insert(row).execute()
     if not r.data or len(r.data) == 0:
@@ -129,7 +159,7 @@ def update_connector(
     connector_id: str,
     config: dict | None,
     status: str | None,
-    environment_name: str = "default",
+    environment_name: str = "production",
 ) -> dict | None:
     """Update connector. Returns updated row without secrets."""
     payload = {}
@@ -144,7 +174,6 @@ def update_connector(
         .update(payload)
         .eq("id", connector_id)
         .eq("org_id", org_id)
-        .eq("environment", environment_name)
         .execute()
     )
     if not r.data or len(r.data) == 0:

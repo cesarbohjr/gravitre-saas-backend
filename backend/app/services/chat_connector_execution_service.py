@@ -293,6 +293,7 @@ class ChatConnectorExecutionService:
         task_state: dict[str, Any],
         connected_integrations: list[str],
         client: Any,
+        environment_name: str = "production",
     ) -> dict[str, Any] | None:
         if not self.is_connector_intent(message, task_state):
             return None
@@ -370,6 +371,7 @@ class ChatConnectorExecutionService:
                 plan=plan,
                 client=client,
                 classification=classification,
+                environment_name=environment_name,
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed)
@@ -382,6 +384,7 @@ class ChatConnectorExecutionService:
                 plan=plan,
                 client=client,
                 classification=classification,
+                environment_name=environment_name,
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed)
@@ -420,6 +423,7 @@ class ChatConnectorExecutionService:
         conversation_id: str,
         client: Any,
         classification: dict[str, Any] | None = None,
+        environment_name: str = "production",
     ) -> ExecutionResult:
         task_state = await self._state.get_task_state(conversation_id, org_id, client=client)
         pending = task_state.get("pending_task") or {}
@@ -449,6 +453,7 @@ class ChatConnectorExecutionService:
             plan=plan,
             client=client,
             classification=classification or {},
+            environment_name=environment_name,
         )
 
     async def execute_plan(
@@ -460,12 +465,14 @@ class ChatConnectorExecutionService:
         plan: ConnectorActionPlan,
         client: Any,
         classification: dict[str, Any],
+        environment_name: str = "production",
     ) -> ExecutionResult:
         ctx = ToolContext(
             settings=self.settings,
             client=client,
             org_id=org_id,
             actor_id=user_id,
+            environment_name=environment_name,
         )
         try:
             observation = await self._registry.execute_tool(

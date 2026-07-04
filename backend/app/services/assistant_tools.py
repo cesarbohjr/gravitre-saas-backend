@@ -27,6 +27,7 @@ TOOL_DISPLAY_NAMES: dict[str, str] = {
     "generate_document": "generateDocument",
     "run_agent_task": "runAgentTask",
     "create_workflow": "createWorkflow",
+    "execute_workflow": "executeWorkflow",
     "create_agent": "createAgent",
     "dependency_impact": "estimateDependencyImpact",
 }
@@ -149,21 +150,21 @@ def tool_agent_status(org_id: str, settings: Settings, *, agent_id: str | None =
         return {"agents": [], "error": "agent status unavailable"}
 
 
-def tool_connector_status(org_id: str, settings: Settings) -> dict[str, Any]:
+def tool_connector_status(
+    org_id: str,
+    settings: Settings,
+    *,
+    environment_name: str = "production",
+) -> dict[str, Any]:
     try:
+        from app.connectors.repository import list_connectors
+
         client = get_supabase_client(settings)
-        rows = (
-            client.table("connectors")
-            .select("id,name,type,status,health")
-            .eq("org_id", org_id)
-            .execute()
-            .data
-            or []
-        )
+        rows = list_connectors(client, org_id, environment_name=environment_name)
         connectors = [
             {
                 "id": str(row.get("id")),
-                "name": str(row.get("name") or "connector"),
+                "name": str(row.get("name") or row.get("type") or "connector"),
                 "type": str(row.get("type") or "Custom"),
                 "status": str(row.get("status") or "disconnected"),
                 "health": int(row.get("health") or 0),
@@ -499,6 +500,68 @@ def tool_create_workflow(
         return {"error": "workflow create failed"}
 
 
+def tool_execute_workflow(
+    org_id: str,
+    query: str,
+    settings: Settings,
+    *,
+    user_id: str | None = None,
+    environment_name: str = "production",
+) -> dict[str, Any]:
+    """Execute an existing workflow by name or id from assistant chat."""
+    try:
+        from fastapi import HTTPException
+
+        from app.connectors.constants import normalize_environment_name
+        from app.routers.workflows import _execute_workflow_with_context
+        from app.workflows.repository import get_supabase_client, list_workflows
+
+        client = get_supabase_client(settings)
+        env = normalize_environment_name(environment_name)
+        needle = query.strip().lower()
+        workflows = list_workflows(client, org_id)
+        match = None
+        for row in workflows:
+            wf_id = str(row.get("id") or "")
+            name = str(row.get("name") or "").lower()
+            if wf_id == needle or (name and name in needle) or (needle and needle in name):
+                match = row
+                break
+        if not match:
+            return {
+                "error": "workflow_not_found",
+                "message": "No matching workflow found. Open Workflows to pick one by exact name.",
+            }
+        workflow_id = str(match.get("id") or "")
+        actor_id = user_id or "system"
+        try:
+            result = _execute_workflow_with_context(
+                client=client,
+                settings=settings,
+                org_id=org_id,
+                environment_name=env,
+                workflow_id=workflow_id,
+                parameters={},
+                actor_id=actor_id,
+                trigger_type="assistant_chat",
+            )
+        except HTTPException as exc:
+            detail = exc.detail
+            if isinstance(detail, dict):
+                detail = detail.get("detail") or str(detail)
+            return {"error": "workflow_execute_failed", "message": str(detail or exc.status_code)}
+        return {
+            "workflowId": workflow_id,
+            "workflowName": str(match.get("name") or "Workflow"),
+            "runId": str(result.get("run_id") or result.get("id") or ""),
+            "status": str(result.get("status") or "queued"),
+            "message": "Workflow run started — open Runs to track progress.",
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("assistant execute_workflow tool failed org_id=%s error=%s", org_id, str(exc))
+        return {"error": "workflow execute failed", "message": str(exc)}
+
+
 async def tool_dependency_impact(
     org_id: str,
     settings: Settings,
@@ -526,6 +589,7 @@ async def run_assistant_tools(
     *,
     agent_id: str | None = None,
     user_id: str | None = None,
+    environment_name: str = "production",
 ) -> list[dict[str, Any]]:
     """Execute requested tools server-side. Returns [{name, displayName, input, output}]."""
     results: list[dict[str, Any]] = []
@@ -544,7 +608,7 @@ async def run_assistant_tools(
             output = tool_agent_status(org_id, settings, agent_id=agent_id)
             tool_input = {"agentId": agent_id} if agent_id else {}
         elif name == "connector_status":
-            output = tool_connector_status(org_id, settings)
+            output = tool_connector_status(org_id, settings, environment_name=environment_name)
             tool_input = {}
         elif name == "workflow_runs":
             output = tool_workflow_runs(org_id, settings, status_filter=status_filter)
@@ -574,6 +638,15 @@ async def run_assistant_tools(
         elif name == "create_workflow":
             output = tool_create_workflow(org_id, query, settings, user_id=user_id)
             tool_input = {"name": _draft_workflow_name(query)}
+        elif name == "execute_workflow":
+            output = tool_execute_workflow(
+                org_id,
+                query,
+                settings,
+                user_id=user_id,
+                environment_name=environment_name,
+            )
+            tool_input = {"query": query[:200]}
         elif name == "create_agent":
             output = tool_create_agent(org_id, query, settings, user_id=user_id)
             tool_input = {"name": _draft_workflow_name(query)}

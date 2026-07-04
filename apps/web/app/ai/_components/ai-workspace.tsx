@@ -25,6 +25,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useAuth, getAccessToken } from "@/lib/auth-context"
 import { ensureSelectedOrg, buildChatOrgPayload } from "@/lib/org-context"
+import { getEnvironmentHeader } from "@/lib/environment-context"
+import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { polishAssistantText } from "@/lib/plain-english"
 import { conversationMessageToUI } from "@/lib/chat-messages"
@@ -211,6 +213,7 @@ export function AiWorkspace({
           return {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(orgId ? { "x-org-id": orgId } : {}),
+            "x-environment": getEnvironmentHeader(),
           }
         },
         body: () => ({

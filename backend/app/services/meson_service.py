@@ -858,7 +858,7 @@ class MesonService:
         suggestions: list[MesonSuggestion] = []
 
         try:
-            connectors = list_connectors(client, org_id)
+            connectors = list_connectors(client, org_id, environment_name=environment_name)
             auth_issues = [
                 c for c in connectors if resolve_connector_auth_status(c).needs_reauth
             ]

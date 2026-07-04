@@ -1,4 +1,5 @@
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
+import { getEnvironmentHeader } from "@/lib/environment-context"
 import { getAccessToken } from "@/lib/auth-context"
 import { clearAuthTransition } from "@/lib/auth-transition"
 import { emitPlanRequired, type PlanRequiredDetail } from "@/lib/billing-plan-required"
@@ -41,6 +42,9 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     const selectedOrg = getSelectedOrgFromStorage()
     if (selectedOrg?.id && !headers.has("x-org-id")) {
       headers.set("x-org-id", selectedOrg.id)
+    }
+    if (!headers.has("x-environment")) {
+      headers.set("x-environment", getEnvironmentHeader())
     }
   }
 

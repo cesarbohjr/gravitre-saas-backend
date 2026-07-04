@@ -66,23 +66,37 @@ function formatConfigValue(config: Record<string, unknown> | undefined, key: str
   return typeof value === "string" && value.trim() ? value : ""
 }
 
-function mapConnectorRecord(live: Connector) {
-  const vendor = live.type || live.vendor
-  const config = live.config ?? {}
+function unwrapConnectorPayload(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== "object") return null
+  const record = payload as Record<string, unknown>
+  if (record.connector && typeof record.connector === "object") {
+    return record.connector as Record<string, unknown>
+  }
+  return record
+}
+
+function mapConnectorRecord(live: Connector | Record<string, unknown>) {
+  const raw = unwrapConnectorPayload(live) ?? (live as Record<string, unknown>)
+  const vendor = String(raw.type || raw.vendor || "")
+  const config = (raw.config as Record<string, unknown> | undefined) ?? {}
+  const statusRaw = String(raw.status || "")
+  const normalizedStatus =
+    statusRaw === "healthy" || statusRaw === "active" ? "connected" : statusRaw || "disconnected"
+  const lastSyncRaw = raw.lastSync ?? raw.last_sync_at
   return {
-    id: live.id,
-    name: live.name,
+    id: String(raw.id || ""),
+    name: String(raw.name || vendor || "Connector"),
     type: vendor,
-    status: live.status,
-    environment: live.environment === "staging" ? ("staging" as const) : ("production" as const),
-    lastSync: live.last_sync_at ? new Date(live.last_sync_at).toLocaleString() : "—",
-    description: live.description || `${vendor} integration`,
+    status: normalizedStatus,
+    environment: raw.environment === "staging" ? ("staging" as const) : ("production" as const),
+    lastSync: lastSyncRaw ? new Date(String(lastSyncRaw)).toLocaleString() : "—",
+    description: String(raw.description || `${vendor} integration`),
     category: lookupConnectorCategory(vendor) ?? "Integration",
-    createdAt: live.created_at?.slice(0, 10) ?? "—",
+    createdAt: String(raw.createdAt ?? raw.created_at ?? "—").slice(0, 10),
     config: {
       apiKey: formatConfigValue(config, "apiKey"),
       webhookUrl: formatConfigValue(config, "webhookUrl"),
-      syncInterval: live.sync_frequency || formatConfigValue(config, "syncInterval") || "—",
+      syncInterval: String(raw.syncFrequency ?? raw.sync_frequency ?? formatConfigValue(config, "syncInterval") || "—"),
     },
   }
 }
@@ -94,7 +108,7 @@ export default function ConnectorDetailPage() {
   const connectorId = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
   // G4: live connector record (the page previously hardcoded Salesforce regardless of id).
-  const { data: liveConnector, error: connectorError, isLoading: connectorLoading } = useSWR<Connector>(
+  const { data: liveConnector, error: connectorError, isLoading: connectorLoading } = useSWR<Connector | Record<string, unknown>>(
     user && connectorId ? `/api/connectors/${connectorId}` : null,
     apiFetcher,
     { revalidateOnFocus: false },

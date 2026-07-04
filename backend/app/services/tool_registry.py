@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 ParamMapper = Callable[[dict[str, Any]], dict[str, Any]]
 
-_ACTIVE_CONNECTOR_STATUSES = frozenset({"active", "connected", "syncing"})
+from app.connectors.constants import is_connector_usable
 
 
 def _hubspot_search_from_query(args: dict[str, Any]) -> dict[str, Any]:
@@ -567,6 +567,18 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             always_available=False,
         ),
         AgentToolSpec(
+            name="assistant_execute_workflow",
+            description="Execute an existing workflow by name or id.",
+            parameters={
+                "type": "object",
+                "properties": {"query": {"type": "string"}, "workflowId": {"type": "string"}},
+                "required": ["query"],
+            },
+            invoke_action="assistant.execute_workflow",
+            integration="platform",
+            always_available=False,
+        ),
+        AgentToolSpec(
             name="assistant_dependency_impact",
             description=(
                 "Report what depends on a connector, agent, or workflow and what would break if removed. "
@@ -644,13 +656,13 @@ class ToolRegistry:
     def list_connected_integrations(
         client: Any,
         org_id: str,
-        environment_name: str = "default",
+        environment_name: str = "production",
     ) -> list[str]:
         """Return connector types with an active connection for the org."""
         types: set[str] = set()
         for row in list_connectors(client, org_id, environment_name=environment_name):
             status = str(row.get("status") or "").lower()
-            if status not in _ACTIVE_CONNECTOR_STATUSES:
+            if not is_connector_usable(status):
                 continue
             ctype = str(row.get("type") or "").strip().lower()
             if ctype:
@@ -956,7 +968,9 @@ class ToolRegistry:
                     org_id, settings, agent_id=agent_id
                 )
             elif tool_name == "assistant_connector_status":
-                payload = assistant_tools_module.tool_connector_status(org_id, settings)
+                payload = assistant_tools_module.tool_connector_status(
+                    org_id, settings, environment_name=ctx.environment_name
+                )
             elif tool_name == "assistant_workflow_runs":
                 payload = assistant_tools_module.tool_workflow_runs(
                     org_id,
@@ -987,6 +1001,15 @@ class ToolRegistry:
                     goal,
                     settings,
                     user_id=user_id,
+                )
+            elif tool_name == "assistant_execute_workflow":
+                goal = str(args.get("query") or args.get("goal") or args.get("name") or "").strip()
+                payload = assistant_tools_module.tool_execute_workflow(
+                    org_id,
+                    goal,
+                    settings,
+                    user_id=user_id,
+                    environment_name=ctx.environment_name,
                 )
             elif tool_name == "assistant_dependency_impact":
                 payload = await assistant_tools_module.tool_dependency_impact(

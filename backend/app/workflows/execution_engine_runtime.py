@@ -209,6 +209,38 @@ def _finalize_run(
                 ctx.run_id,
                 str(exc),
             )
+    if final_status in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED}:
+        try:
+            from app.services.agent_memory_service import create_agent_memory
+            from app.workflows.repository import get_run_with_steps
+
+            run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name)
+            if run_meta:
+                wf_id = str(run_meta.get("workflow_id") or "")
+                params = run_meta.get("parameters") if isinstance(run_meta.get("parameters"), dict) else {}
+                agent_id = str(params.get("agent_id") or params.get("agentId") or "")
+                if wf_id and agent_id:
+                    insight = f"Run {ctx.run_id} finished with status {final_status}."
+                    if errors:
+                        insight += f" Errors: {'; '.join(errors[:3])}"
+                    create_agent_memory(
+                        ctx.settings,
+                        ctx.client,
+                        ctx.org_id,
+                        agent_id,
+                        user_id=ctx.user_id or None,
+                        content=f"Workflow {wf_id} outcome={final_status}: {insight}",
+                        category="pattern",
+                        provenance="outcome_learning",
+                        confidence=70,
+                    )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "workflow_outcome_learning_skipped org_id=%s run_id=%s error=%s",
+                ctx.org_id,
+                ctx.run_id,
+                exc,
+            )
     return final_status, step_rows, errors, rate_limited
 
 

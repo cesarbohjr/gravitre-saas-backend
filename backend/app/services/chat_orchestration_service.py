@@ -122,6 +122,7 @@ class ChatOrchestrationService:
         task_state: dict[str, Any],
         connected_integrations: list[str],
         client: Any,
+        environment_name: str = "production",
     ) -> dict[str, Any] | None:
         if not self.is_orchestration_intent(message, task_state, connected_integrations):
             return None
@@ -167,6 +168,7 @@ class ChatOrchestrationService:
                 task_state=task_state,
                 classification=classification,
                 client=client,
+                environment_name=environment_name,
             )
 
         if status == "awaiting_step_confirm" and confirmed:
@@ -177,6 +179,7 @@ class ChatOrchestrationService:
                 task_state=task_state,
                 classification=classification,
                 client=client,
+                environment_name=environment_name,
             )
 
         if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
@@ -199,6 +202,7 @@ class ChatOrchestrationService:
         conversation_id: str,
         client: Any,
         classification: dict[str, Any] | None = None,
+        environment_name: str = "production",
     ) -> ExecutionResult:
         task_state = await self._state.get_task_state(conversation_id, org_id, client=client)
         pending = task_state.get("pending_task") or {}
@@ -220,6 +224,7 @@ class ChatOrchestrationService:
                 task_state=task_state,
                 classification=classification or {},
                 client=client,
+                environment_name=environment_name,
             )
         elif status == "awaiting_step_confirm":
             turn = await self._execute_current_step(
@@ -229,6 +234,7 @@ class ChatOrchestrationService:
                 task_state=task_state,
                 classification=classification or {},
                 client=client,
+                environment_name=environment_name,
             )
         else:
             return ExecutionResult(
@@ -416,6 +422,7 @@ class ChatOrchestrationService:
         task_state: dict[str, Any],
         classification: dict[str, Any],
         client: Any,
+        environment_name: str = "production",
     ) -> dict[str, Any]:
         params = dict((task_state.get("clarified_params") or {}))
         steps = [OrchestrationStep.from_dict(item) for item in params.get("steps") or []]
@@ -448,6 +455,7 @@ class ChatOrchestrationService:
             task_state=refreshed,
             classification=classification,
             client=client,
+            environment_name=environment_name,
         )
 
     async def _execute_current_step(
@@ -459,6 +467,7 @@ class ChatOrchestrationService:
         task_state: dict[str, Any],
         classification: dict[str, Any],
         client: Any,
+        environment_name: str = "production",
     ) -> dict[str, Any]:
         params = dict((task_state.get("clarified_params") or {}))
         idx = int(params.get("current_step_index") or 0)
@@ -494,6 +503,7 @@ class ChatOrchestrationService:
             plan=plan,
             client=client,
             classification=classification,
+            environment_name=environment_name,
         )
         step_results = list(params.get("step_results") or [])
         step_results.append(
@@ -546,6 +556,7 @@ class ChatOrchestrationService:
             task_state=refreshed,
             classification=classification,
             client=client,
+            environment_name=environment_name,
         )
 
     async def _advance_orchestration(
@@ -557,6 +568,7 @@ class ChatOrchestrationService:
         task_state: dict[str, Any],
         classification: dict[str, Any],
         client: Any,
+        environment_name: str = "production",
     ) -> dict[str, Any]:
         params = dict((task_state.get("clarified_params") or {}))
         steps = [OrchestrationStep.from_dict(item) for item in params.get("steps") or []]
@@ -617,6 +629,7 @@ class ChatOrchestrationService:
                 plan=plan,
                 client=client,
                 classification=classification,
+                environment_name=environment_name,
             )
             if not result.success:
                 return {
