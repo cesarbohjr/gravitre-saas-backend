@@ -31,7 +31,7 @@ export default function ModelProfilePage() {
   const [training, setTraining] = useState(false)
 
   const { data: catalogData, error } = useSWR(user ? "intelligence/models/catalog" : null, () =>
-    mlAdminApi.listCatalog(),
+    intelligenceApi.modelCatalog(),
   )
   const { data: readiness } = useSWR(user ? "intelligence/training-readiness" : null, () =>
     intelligenceApi.trainingReadiness(),

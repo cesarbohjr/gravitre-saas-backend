@@ -11,6 +11,7 @@ from app.core.logging import get_logger
 from app.ml.model_catalog import GRAVITRE_ML_CATALOG
 from app.ml.base import ModelStatus
 from app.services.learning_strategy_keys import (
+    build_model_strategy_key,
     is_cluster_segment,
     parse_base_segment_key_from_segment,
     parse_cluster_id_from_segment,

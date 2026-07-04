@@ -9,11 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth.dependencies import get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.ml.model_catalog import (
-    get_catalog,
+    build_ml_catalog_dashboard,
     get_org_model_status,
     train_ml_model_for_org,
 )
-from app.services.strategy_performance_ledger import get_strategy_performance_ledger
 from app.temporal.starters import start_ml_model_training_workflow
 
 router = APIRouter(prefix="/api/admin/ml", tags=["ml-admin"])
@@ -25,16 +24,7 @@ async def list_ml_catalog(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    catalog = get_catalog()
-    org_status: dict[str, Any] = {}
-    for name, meta in catalog.items():
-        if meta.get("status") == "trained":
-            try:
-                org_status[name] = await get_org_model_status(org_id, name, settings=settings)
-            except ValueError:
-                continue
-    outcome_scores = await get_strategy_performance_ledger(settings).load_model_outcome_scores(org_id)
-    return {"catalog": catalog, "orgTrainingStatus": org_status, "outcomeScores": outcome_scores}
+    return await build_ml_catalog_dashboard(org_id, settings=settings)
 
 
 @router.get("/models/{model_name}/status")

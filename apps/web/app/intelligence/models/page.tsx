@@ -9,7 +9,7 @@ import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/lib/auth-context"
-import { intelligenceApi, mlAdminApi } from "@/lib/api"
+import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { formatScore, modelStatusChipClass, readNumber, readString } from "@/lib/intelligence/helpers"
 
@@ -36,7 +36,7 @@ export default function IntelligenceModelsPage() {
   const { user } = useAuth()
   const { data, error, isLoading, mutate } = useSWR(
     user ? "intelligence/models/catalog" : null,
-    () => mlAdminApi.listCatalog(),
+    () => intelligenceApi.modelCatalog(),
     { revalidateOnFocus: false },
   )
   const { data: readiness } = useSWR(user ? "intelligence/training-readiness" : null, () =>

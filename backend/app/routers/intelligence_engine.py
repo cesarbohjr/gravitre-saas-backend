@@ -6,8 +6,9 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.auth.dependencies import get_org_context, require_admin
+from app.auth.dependencies import get_org_context, require_admin, require_org_member
 from app.config import Settings, get_settings
+from app.ml.model_catalog import build_ml_catalog_dashboard
 from app.services.decision_intelligence_service import get_decision_intelligence_service
 from app.services.explanation_generator import get_explanation_generator
 from app.services.intelligence_router import get_intelligence_router
@@ -16,6 +17,7 @@ from app.services.optimization_suggestion_service import get_optimization_sugges
 from app.services.outcome_tracker import get_outcome_tracker
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.ai_trust_layer import get_ai_trust_layer
+from app.services.training_signal_service import get_training_signal_service
 from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
 
@@ -202,3 +204,23 @@ async def intelligence_execute(
         "risk_evaluation": risk,
         "note": "Execution remains approval-gated; ToolRegistry invoked only after explicit approval.",
     }
+
+
+@router.get("/models/catalog")
+async def intelligence_models_catalog(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Org-scoped ML catalog for Intelligence Center (does not require admin)."""
+    return await build_ml_catalog_dashboard(org_id, settings=settings)
+
+
+@router.get("/training-readiness")
+async def intelligence_training_readiness(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Training readiness signals for Intelligence Center model profiles."""
+    return await get_training_signal_service(settings).get_training_readiness(org_id)

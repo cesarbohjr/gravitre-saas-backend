@@ -1683,6 +1683,7 @@ export type IntelligenceEvaluationsResponse = {
 
 export const intelligenceApi = {
   snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
+  modelCatalog: () => fetcher<MlAdminCatalogResponse>(apiUrl("/api/intelligence/models/catalog")),
   learningProgress: () =>
     fetcher<IntelligenceLearningProgress>(apiUrl("/api/admin/intelligence/learning-progress")),
   evaluations: (params?: { limit?: number; offset?: number; sinceDays?: number }) => {
@@ -1715,7 +1716,7 @@ export const intelligenceApi = {
     return fetcher<Record<string, unknown>>(apiUrl(`/api/admin/intelligence/evaluations/intelligence${suffix}`))
   },
   trainingReadiness: () =>
-    fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/training-readiness")),
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/training-readiness")),
   banditStatus: () =>
     fetcher<Record<string, unknown>>(apiUrl("/api/admin/intelligence/learning/bandit-status")),
   memoryConflicts: () =>

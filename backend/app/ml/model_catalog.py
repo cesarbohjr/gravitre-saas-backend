@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
 from app.ml.active_learning import ActiveLearningCoordinator
 from app.ml.anomaly import AnomalyDetector
 from app.ml.base import ModelStatus
@@ -31,6 +32,8 @@ from app.ml.revenue_forecasting import RevenueForecaster
 from app.ml.self_supervised import SelfSupervisedEmbeddingLearner
 from app.ml.world_models import WorldModelScaffold
 from app.workflows.repository import get_supabase_client
+
+logger = get_logger(__name__)
 
 GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     "intent_classifier": {
@@ -239,85 +242,98 @@ def get_model_instance(model_name: str) -> Any:
 
 
 def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> dict[str, Any]:
-    client = get_supabase_client(settings)
     meta = GRAVITRE_ML_CATALOG[model_name]
     activation = meta.get("activation") or meta.get("min_data") or ""
     counts: dict[str, int] = {}
 
-    if model_name in {"workflow_anomaly_detector", "workflow_duration_forecaster", "workflow_success_predictor"}:
-        rows = client.table("workflow_runs").select("id", count="exact").eq("org_id", org_id).execute()
-        counts["workflow_runs"] = int(rows.count or 0)
-    elif model_name == "intent_classifier":
-        rows = client.table("user_query_patterns").select("id", count="exact").eq("org_id", org_id).execute()
-        counts["logged_queries"] = int(rows.count or 0)
-    elif model_name == "query_clusterer":
-        rows = client.table("user_query_patterns").select("id", count="exact").eq("org_id", org_id).execute()
-        counts["logged_queries"] = int(rows.count or 0)
-    elif model_name == "retrieval_ranker":
-        rows = (
-            client.table("rag_chunk_outcomes")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .not_.is_("outcome_helpful", "null")
-            .execute()
+    try:
+        client = get_supabase_client(settings)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("_count_org_data_points client init failed model=%s error=%s", model_name, exc)
+        return {"activation_requirement": activation, "data_counts": counts}
+
+    try:
+        if model_name in {"workflow_anomaly_detector", "workflow_duration_forecaster", "workflow_success_predictor"}:
+            rows = client.table("workflow_runs").select("id", count="exact").eq("org_id", org_id).execute()
+            counts["workflow_runs"] = int(rows.count or 0)
+        elif model_name == "intent_classifier":
+            rows = client.table("user_query_patterns").select("id", count="exact").eq("org_id", org_id).execute()
+            counts["logged_queries"] = int(rows.count or 0)
+        elif model_name == "query_clusterer":
+            rows = client.table("user_query_patterns").select("id", count="exact").eq("org_id", org_id).execute()
+            counts["logged_queries"] = int(rows.count or 0)
+        elif model_name == "retrieval_ranker":
+            rows = (
+                client.table("rag_chunk_outcomes")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .not_.is_("outcome_helpful", "null")
+                .execute()
+            )
+            counts["scored_chunks"] = int(rows.count or 0)
+        elif model_name == "memory_promotion_scorer":
+            rows = (
+                client.table("memory_promotion_candidates")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .in_("status", ["approved", "auto_promoted", "written", "rejected", "rolled_back", "expired"])
+                .execute()
+            )
+            counts["resolved_candidates"] = int(rows.count or 0)
+        elif model_name == "revenue_forecaster":
+            rows = (
+                client.table("agent_action_outcomes")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .execute()
+            )
+            counts["outcome_rows"] = int(rows.count or 0)
+        elif model_name == "churn_risk_scorer":
+            rows = client.table("agent_action_outcomes").select("id", count="exact").eq("org_id", org_id).execute()
+            counts["outcome_rows"] = int(rows.count or 0)
+        elif model_name == "sla_breach_predictor":
+            rows = (
+                client.table("agent_action_outcomes")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .eq("metric_name", "ticket_volume")
+                .execute()
+            )
+            counts["ticket_volume_rows"] = int(rows.count or 0)
+        elif model_name == "deal_loss_scorer":
+            rows = (
+                client.table("agent_action_outcomes")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .eq("target_entity_type", "deal")
+                .not_.is_("measured_at", "null")
+                .execute()
+            )
+            counts["measured_deal_outcomes"] = int(rows.count or 0)
+        elif model_name == "capacity_forecaster":
+            rows = (
+                client.table("agent_action_outcomes")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .eq("metric_name", "ticket_volume")
+                .execute()
+            )
+            counts["capacity_observations"] = int(rows.count or 0)
+        elif model_name == "graph_neural_network":
+            rows = (
+                client.table("org_entity_relationships")
+                .select("id", count="exact")
+                .eq("org_id", org_id)
+                .execute()
+            )
+            counts["relationship_rows"] = int(rows.count or 0)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(
+            "_count_org_data_points query failed model=%s org_id=%s error=%s",
+            model_name,
+            org_id,
+            exc,
         )
-        counts["scored_chunks"] = int(rows.count or 0)
-    elif model_name == "memory_promotion_scorer":
-        rows = (
-            client.table("memory_promotion_candidates")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .in_("status", ["approved", "auto_promoted", "written", "rejected", "rolled_back", "expired"])
-            .execute()
-        )
-        counts["resolved_candidates"] = int(rows.count or 0)
-    elif model_name == "revenue_forecaster":
-        rows = (
-            client.table("agent_action_outcomes")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .execute()
-        )
-        counts["outcome_rows"] = int(rows.count or 0)
-    elif model_name == "churn_risk_scorer":
-        rows = client.table("agent_action_outcomes").select("id", count="exact").eq("org_id", org_id).execute()
-        counts["outcome_rows"] = int(rows.count or 0)
-    elif model_name == "sla_breach_predictor":
-        rows = (
-            client.table("agent_action_outcomes")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .eq("metric_name", "ticket_volume")
-            .execute()
-        )
-        counts["ticket_volume_rows"] = int(rows.count or 0)
-    elif model_name == "deal_loss_scorer":
-        rows = (
-            client.table("agent_action_outcomes")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .eq("target_entity_type", "deal")
-            .not_.is_("measured_at", "null")
-            .execute()
-        )
-        counts["measured_deal_outcomes"] = int(rows.count or 0)
-    elif model_name == "capacity_forecaster":
-        rows = (
-            client.table("agent_action_outcomes")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .eq("metric_name", "ticket_volume")
-            .execute()
-        )
-        counts["capacity_observations"] = int(rows.count or 0)
-    elif model_name == "graph_neural_network":
-        rows = (
-            client.table("org_entity_relationships")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .execute()
-        )
-        counts["relationship_rows"] = int(rows.count or 0)
 
     return {"activation_requirement": activation, "data_counts": counts}
 
@@ -345,6 +361,28 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
     }:
         payload.update(_count_org_data_points(org_id, model_name, active))
     return payload
+
+
+async def build_ml_catalog_dashboard(org_id: str, *, settings: Settings | None = None) -> dict[str, Any]:
+    """Return catalog + per-org training status for Intelligence Center and admin surfaces."""
+    active = settings or get_settings()
+    catalog = get_catalog()
+    org_status: dict[str, Any] = {}
+    for name, meta in catalog.items():
+        if meta.get("status") != "trained":
+            continue
+        try:
+            org_status[name] = await get_org_model_status(org_id, name, settings=active)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("org_model_status_skipped name=%s org_id=%s error=%s", name, org_id, exc)
+    try:
+        from app.services.strategy_performance_ledger import get_strategy_performance_ledger
+
+        outcome_scores = await get_strategy_performance_ledger(active).load_model_outcome_scores(org_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("load_model_outcome_scores failed org_id=%s error=%s", org_id, exc)
+        outcome_scores = {}
+    return {"catalog": catalog, "orgTrainingStatus": org_status, "outcomeScores": outcome_scores}
 
 
 async def load_org_trained_catalog_model(
