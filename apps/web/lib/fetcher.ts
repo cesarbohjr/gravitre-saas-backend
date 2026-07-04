@@ -65,6 +65,12 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     }
   }
 
+  if (response.status === 429) {
+    const retryAfterHeader = response.headers.get("Retry-After")
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 60
+    throw new RateLimitError(Number.isFinite(retryAfter) ? retryAfter : 60)
+  }
+
   if (response.status === 401 && typeof window !== "undefined") {
     const currentPath = window.location.pathname
     const deferredAuthPages = [
@@ -124,6 +130,19 @@ export class PlanRequiredApiError extends ApiError {
     )
     this.name = "PlanRequiredApiError"
     this.planDetail = planDetail
+  }
+}
+
+export class RateLimitError extends ApiError {
+  retryAfterSeconds: number
+
+  constructor(retryAfterSeconds: number) {
+    super(
+      `Too many requests — try again in ${retryAfterSeconds} seconds.`,
+      429,
+    )
+    this.name = "RateLimitError"
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -189,6 +208,9 @@ export async function fetcher<T>(url: string): Promise<T> {
       }
     } catch (parseError) {
       if (parseError instanceof PlanRequiredApiError) {
+        throw parseError
+      }
+      if (parseError instanceof RateLimitError) {
         throw parseError
       }
       // Keep default detail when body is not JSON.

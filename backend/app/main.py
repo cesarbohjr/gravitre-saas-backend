@@ -145,15 +145,23 @@ def _log_billing_startup_config() -> None:
 
 
 public_app_url = (os.environ.get("NEXT_PUBLIC_APP_URL") or "").strip()
+staging_origin = (os.environ.get("STAGING_ORIGIN") or "").strip()
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://gravitre.app",
+    "https://www.gravitre.app",
 ]
 if public_app_url:
     allowed_origins.append(public_app_url.rstrip("/"))
+if staging_origin:
+    allowed_origins.append(staging_origin.rstrip("/"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.core.logging import setup_logging
+
+    setup_logging(os.environ.get("LOG_LEVEL"))
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
@@ -275,9 +283,33 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(SettingsNotConfiguredError, settings_not_configured_handler)
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    if isinstance(exc, HTTPException):
+        return await http_exception_handler(request, exc)
+    logger.error(
+        "Unhandled exception path=%s error=%s",
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "success": False,
+            "error": "An unexpected error occurred. Our team has been notified.",
+            "code": "INTERNAL_ERROR",
+            "details": {},
+        },
+    )
+
+
 # Dev-safe CORS: single-origin proxy preferred (see docs). Bearer token model: credentials=false.
+from app.middleware.api_rate_limit import ApiRateLimitMiddleware
 from app.middleware.billing_gate import billing_access_gate_middleware
 
+app.add_middleware(ApiRateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
