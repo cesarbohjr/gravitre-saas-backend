@@ -86,12 +86,14 @@ class ContextPrioritizationEngine:
         token_budget: int = _DEFAULT_TOKEN_BUDGET,
         user_role: str | None = None,
         department: str | None = None,
+        retrieval_plan: dict[str, Any] | None = None,
     ) -> ContextProfile:
         scored = self.score_context_sources(
             raw_sources,
             classification,
             user_role=user_role,
             department=department,
+            retrieval_plan=retrieval_plan,
         )
         ranked, sections, tokens_used = self.rank_context_relevance(scored, token_budget=token_budget)
         return ContextProfile(
@@ -110,15 +112,17 @@ class ContextPrioritizationEngine:
         *,
         user_role: str | None = None,
         department: str | None = None,
+        retrieval_plan: dict[str, Any] | None = None,
     ) -> list[ContextSource]:
         intent = str(classification.get("intent") or "").lower()
         requires_action = bool(classification.get("requires_action"))
         requires_graph = bool(classification.get("requires_graph"))
         dept = str(classification.get("department") or department or "").lower()
+        plan_weights = (retrieval_plan or {}).get("source_type_weights") or {}
 
         scored: list[ContextSource] = []
         for source in sources:
-            base = self._BASE_WEIGHTS.get(source.source_type, 0.5)
+            base = plan_weights.get(source.source_type, self._BASE_WEIGHTS.get(source.source_type, 0.5))
             score = base
 
             if source.source_type == "rag" and intent in {"knowledge_lookup", "crm_lookup", "analytics"}:

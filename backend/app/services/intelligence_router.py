@@ -194,6 +194,8 @@ class IntelligenceRouter:
 
         result["domain"] = classification.get("domain") or understanding.get("domain")
         result["domain_routing"] = build_routing_metadata(classification)
+        result["retrieval_plan"] = context.get("retrieval_plan") or {}
+        result["retrieval_effectiveness"] = context.get("retrieval_effectiveness") or {}
 
         result["dialogue_mode"] = policy["mode"]
         result["sentiment"] = sentiment

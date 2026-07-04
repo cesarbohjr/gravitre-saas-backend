@@ -133,6 +133,9 @@ class AgentKnowledgeAssignmentService:
             "owner_user_id": payload.get("owner_user_id"),
             "created_by": payload.get("created_by"),
             "confidence_score": payload.get("confidence_score", 0.75),
+            "confidence_weight": payload.get("confidence_weight", payload.get("confidenceWeight", 1.0)),
+            "department": payload.get("department") or payload.get("owning_department"),
+            "subdomain": payload.get("subdomain"),
             "freshness_status": payload.get("freshness_status") or "unknown",
             "enabled": payload.get("enabled", True),
             "metadata": payload.get("metadata") or {},
@@ -161,7 +164,8 @@ class AgentKnowledgeAssignmentService:
         ensure_agent_in_org(client, org_id, agent_id)
         updates = {key: payload[key] for key in payload if key in {
             "label", "include_rules", "exclude_rules", "sync_schedule", "sync_frequency", "sync_enabled",
-            "owner_user_id", "confidence_score", "freshness_status", "enabled", "metadata", "last_synced_at",
+            "owner_user_id", "confidence_score", "confidence_weight", "department", "subdomain",
+            "freshness_status", "enabled", "metadata", "last_synced_at",
             "connector_id", "external_source_url", "owning_department", "read_scope", "write_scope", "learn_scope",
             "tags_required", "tags_excluded", "freshness_policy", "permission_policy", "provenance_required",
             "last_verified_at",
@@ -239,44 +243,103 @@ class AgentKnowledgeAssignmentService:
             lines.append(f"- [{source_type}] {label} (freshness: {freshness})")
         return "\n".join(lines)
 
-    def build_retrieval_filters(self, assignments: list[dict[str, Any]]) -> dict[str, Any]:
+    def build_retrieval_filters(self, assignments: list[dict[str, Any]], *, strict_assignment_mode: bool = False) -> dict[str, Any]:
         enabled = [row for row in assignments if row.get("enabled", True)]
         return {
             "assignment_source_ids": [str(row.get("sourceId") or row.get("source_id") or "") for row in enabled],
             "assignment_source_types": [str(row.get("sourceType") or row.get("source_type") or "") for row in enabled],
             "assignment_ids": [str(row.get("id")) for row in enabled if row.get("id")],
-            "require_assigned_only": bool(enabled),
+            "require_assigned_only": bool(strict_assignment_mode and enabled),
+            "strict_assignment_mode": bool(strict_assignment_mode),
         }
+
+    def classify_source_match(
+        self,
+        source: dict[str, Any],
+        assignments: list[dict[str, Any]],
+        *,
+        plan: Any | None = None,
+    ) -> str | None:
+        enabled = [row for row in assignments if row.get("enabled", True)]
+        if not enabled:
+            return "unassigned"
+        meta = source.get("metadata") if isinstance(source.get("metadata"), dict) else {}
+        assignment_ids = {str(row.get("id") or "").lower() for row in enabled if row.get("id")}
+        allowed_source_ids = {str(row.get("sourceId") or row.get("source_id") or "").lower() for row in enabled}
+        assignment_id = str(meta.get("assignment_id") or meta.get("assignmentId") or source.get("assignment_id") or "").lower()
+        if assignment_id and assignment_id in assignment_ids:
+            return "assignment_id"
+        source_id = str(meta.get("source_id") or source.get("document_id") or source.get("id") or "").lower()
+        if source_id and source_id in allowed_source_ids:
+            return "source_id"
+        meta_dept = str(meta.get("department") or "").lower()
+        meta_sub = str(meta.get("subdomain") or "").lower()
+        domain_dept = getattr(plan, "domain_department", None) if plan else None
+        domain_sub = getattr(plan, "domain_subdomain", None) if plan else None
+        if domain_dept and meta_dept == str(domain_dept).lower():
+            return "department_subdomain"
+        if domain_sub and meta_sub == str(domain_sub).lower():
+            return "department_subdomain"
+        for row in enabled:
+            row_dept = str(row.get("department") or row.get("owningDepartment") or "").lower()
+            row_sub = str(row.get("subdomain") or "").lower()
+            if domain_dept and row_dept == str(domain_dept).lower():
+                return "department_subdomain"
+            if domain_sub and row_sub == str(domain_sub).lower():
+                return "department_subdomain"
+        allow_label = not plan or getattr(plan, "allow_label_fallback", True)
+        if allow_label:
+            title = str(source.get("title") or source.get("source") or "").lower()
+            for row in enabled:
+                label = str(row.get("label") or "").lower()
+                if label and label in title:
+                    return "label_fallback"
+        return None
+
+    def apply_retrieval_scoring(
+        self,
+        rag_sources: list[dict[str, Any]],
+        assignments: list[dict[str, Any]],
+        *,
+        plan: Any | None = None,
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        from app.services.domain_retrieval_policy import apply_source_score
+        from app.services.retrieval_provenance import build_from_rag_row
+
+        if not rag_sources:
+            return [], []
+        enabled = [row for row in assignments if row.get("enabled", True)]
+        scored: list[dict[str, Any]] = []
+        missing_labels: list[str] = []
+        strict = bool(plan and getattr(plan, "strict_assignment_mode", False))
+        for source in rag_sources:
+            match_tier = self.classify_source_match(source, assignments, plan=plan)
+            if match_tier is None:
+                if strict:
+                    continue
+                match_tier = "unassigned"
+            updated = dict(source)
+            base_score = float(updated.get("score") or 0.0)
+            if plan and getattr(plan, "active", False):
+                updated["score"] = apply_source_score(base_score, updated, plan, match_tier=match_tier)
+            updated["match_tier"] = match_tier
+            updated["provenance"] = build_from_rag_row(updated, plan=plan, match_tier=match_tier)
+            scored.append(updated)
+        scored.sort(key=lambda row: float(row.get("score") or 0.0), reverse=True)
+        matched = [row for row in scored if row.get("match_tier") != "unassigned"]
+        if enabled and not matched:
+            missing_labels = [str(row.get("label") or row.get("sourceType") or "source") for row in enabled[:5]]
+        return scored, missing_labels
 
     def filter_rag_sources(
         self,
         rag_sources: list[dict[str, Any]],
         assignments: list[dict[str, Any]],
+        *,
+        plan: Any | None = None,
     ) -> tuple[list[dict[str, Any]], list[str]]:
-        """Keep only RAG rows matching assigned sources when assignments exist."""
-        enabled = [row for row in assignments if row.get("enabled", True)]
-        if not enabled:
-            return rag_sources, []
-        allowed_ids = {str(row.get("sourceId") or row.get("source_id") or "").lower() for row in enabled}
-        allowed_labels = {str(row.get("label") or "").lower() for row in enabled}
-        filtered: list[dict[str, Any]] = []
-        missing: list[str] = []
-        for source in rag_sources:
-            title = str(source.get("title") or source.get("source") or "").lower()
-            doc_id = str(source.get("document_id") or source.get("id") or "").lower()
-            meta = source.get("metadata") if isinstance(source.get("metadata"), dict) else {}
-            assignment_id = str(meta.get("assignment_id") or meta.get("assignmentId") or "").lower()
-            if assignment_id and assignment_id in {str(row.get("id") or "").lower() for row in enabled}:
-                filtered.append(source)
-                continue
-            if any(label and label in title for label in allowed_labels if label):
-                filtered.append(source)
-                continue
-            if doc_id and doc_id in allowed_ids:
-                filtered.append(source)
-        if not filtered:
-            missing = [row.get("label") or row.get("sourceType") or "source" for row in enabled[:5]]
-        return filtered, missing
+        """Score/tag RAG rows with assignment + domain alignment tiers."""
+        return self.apply_retrieval_scoring(rag_sources, assignments, plan=plan)
 
     def assigned_knowledge_gap_message(self, assignments: list[dict[str, Any]], query: str) -> str | None:
         enabled = [row for row in assignments if row.get("enabled", True)]
@@ -431,6 +494,9 @@ class AgentKnowledgeAssignmentService:
             "ownerUserId": row.get("owner_user_id"),
             "createdBy": row.get("created_by"),
             "confidenceScore": float(row.get("confidence_score") or 0.75),
+            "confidenceWeight": float(row.get("confidence_weight") or 1.0),
+            "department": row.get("department"),
+            "subdomain": row.get("subdomain"),
             "lastSyncedAt": row.get("last_synced_at"),
             "lastVerifiedAt": row.get("last_verified_at"),
             "freshnessStatus": row.get("freshness_status") or "unknown",

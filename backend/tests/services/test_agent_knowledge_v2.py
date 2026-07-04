@@ -19,7 +19,7 @@ def test_validate_source_type_accepts_drive_folder():
     assert validate_source_type("folder") == "google_drive_folder"
 
 
-def test_filter_rag_sources_scopes_to_assignments():
+def test_filter_rag_sources_keeps_unassigned_with_lower_tier():
     service = AgentKnowledgeAssignmentService(settings=MagicMock())
     assignments = [
         {"label": "Brand assets", "sourceId": "fld-1", "enabled": True},
@@ -29,15 +29,23 @@ def test_filter_rag_sources_scopes_to_assignments():
         {"title": "Unassigned HR doc", "source": "HR", "score": 0.8},
     ]
     filtered, missing = service.filter_rag_sources(rag_sources, assignments)
-    assert len(filtered) == 1
-    assert "Brand" in (filtered[0].get("title") or "")
+    assert len(filtered) == 2
+    assert filtered[0]["match_tier"] in {"label_fallback", "source_id", "assignment_id"}
+    assert any(row.get("match_tier") == "unassigned" for row in filtered)
     assert missing == []
 
 
-def test_filter_rag_sources_reports_missing_when_no_match():
+def test_filter_rag_sources_strict_mode_excludes_unassigned():
+    from app.services.domain_retrieval_policy import RetrievalPlan
+
     service = AgentKnowledgeAssignmentService(settings=MagicMock())
     assignments = [{"label": "Sales playbook", "sourceId": "pack-1", "enabled": True}]
-    filtered, missing = service.filter_rag_sources([{"title": "Other doc", "source": "Other"}], assignments)
+    plan = RetrievalPlan(active=True, strict_assignment_mode=True)
+    filtered, missing = service.filter_rag_sources(
+        [{"title": "Other doc", "source": "Other", "score": 0.5}],
+        assignments,
+        plan=plan,
+    )
     assert filtered == []
     assert missing
 

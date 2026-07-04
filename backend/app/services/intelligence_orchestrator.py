@@ -160,6 +160,7 @@ class IntelligenceOrchestrator:
                 "include_task_history": False,
                 "rag_top_k": getattr(engine_settings, "max_chunks", 8),
                 "knowledge_assignments": knowledge_assignments,
+                "classification": classification,
             },
             environment_name=environment_name,
             user_id=user_id,
@@ -169,6 +170,8 @@ class IntelligenceOrchestrator:
                 "title": source.get("title") or source.get("source"),
                 "score": source.get("score"),
                 "documentId": source.get("document_id"),
+                "assignmentId": (source.get("provenance") or {}).get("assignment_id"),
+                "matchTier": source.get("match_tier"),
             }
             for source in retrieval.rag_sources
         ]
@@ -251,6 +254,7 @@ class IntelligenceOrchestrator:
             raw_sources=raw_sources,
             classification=classification,
             department=str(classification.get("department") or ""),
+            retrieval_plan=retrieval.retrieval_plan,
         )
         explanation = self._context_engine.explain_context_used(profile)
         sections = profile.prompt_sections

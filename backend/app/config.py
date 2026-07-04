@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     rag_cross_encoder_enabled: bool = True
     rag_disable_cross_encoder: bool = False
     rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    domain_retrieval_policy_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""
@@ -335,6 +339,11 @@ class Settings(BaseSettings):
             # Leave api_public_url empty when unset/legacy so OAuth uses gravitre.app/api/* proxy.
             if is_legacy_platform_host(self.api_public_url):
                 self.api_public_url = ""
+        elif env in {"dev", "development", "local"}:
+            import os
+
+            if os.getenv("DOMAIN_RETRIEVAL_POLICY_ENABLED") is None:
+                self.domain_retrieval_policy_enabled = True
         return self
 
 

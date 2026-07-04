@@ -50,6 +50,7 @@ class ExplainabilityEngine:
             "advisory_only": True,
             "response_type": response_type,
             "domain_metadata": self._domain_metadata(classification),
+            "retrieval_metadata": self._retrieval_metadata(classification, context_profile),
         }
 
     def format_user_facing(self, envelope: dict[str, Any] | None) -> str:
@@ -91,6 +92,24 @@ class ExplainabilityEngine:
             "profile_id": domain.get("profile_id"),
             "routing_active": domain.get("routing_active"),
             "source": domain.get("source"),
+        }
+
+
+    @staticmethod
+    def _retrieval_metadata(
+        classification: dict[str, Any] | None,
+        context_profile: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        effectiveness = (classification or {}).get("retrieval_effectiveness")
+        if not effectiveness and context_profile:
+            effectiveness = context_profile.get("retrieval_effectiveness")
+        if not effectiveness:
+            return None
+        return {
+            "retrieval_policy": effectiveness.get("retrieval_policy"),
+            "retrieval_score": effectiveness.get("retrieval_score"),
+            "assignment_ids_used": effectiveness.get("assignment_ids_used"),
+            "top_sources": (effectiveness.get("top_sources") or [])[:5],
         }
 
 

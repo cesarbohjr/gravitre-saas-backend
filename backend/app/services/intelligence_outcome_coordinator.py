@@ -103,6 +103,8 @@ class IntelligenceOutcomeCoordinator:
                     "strategy_key": strategy_key,
                     "segment_key": segment_key,
                     "domain": classification.get("domain"),
+                    "retrieval_effectiveness": response.get("retrieval_effectiveness")
+                    or classification.get("retrieval_effectiveness"),
                 },
             )
 
@@ -121,6 +123,8 @@ class IntelligenceOutcomeCoordinator:
                     model_name=(response.get("model_selection") or {}).get("ml_model_name"),
                     strategy_key=strategy_key,
                     domain_context=domain,
+                    retrieval_effectiveness=response.get("retrieval_effectiveness")
+                    or classification.get("retrieval_effectiveness"),
                 )
 
             if response.get("consensus_used"):
