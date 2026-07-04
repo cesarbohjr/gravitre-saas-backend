@@ -45,6 +45,10 @@ SEARCH_FOR = re.compile(
     r"(?:search|find|lookup|list|query|show)\s+(?:for\s+)?(.+?)(?:\s+in\s+\w+|\s*$)",
     re.I,
 )
+HUBSPOT_LIST_CONTACTS = re.compile(
+    r"\b(?:any|all|some|recent)\b.*\bcontacts?\b|\b(?:see|show|list|get|do you see|do you have)\b.*\bcontacts?\b",
+    re.I,
+)
 
 READ_ACTION_HINTS = frozenset(
     {
@@ -205,13 +209,19 @@ class ChatConnectorExecutionService:
         if ("hubspot" in lowered or "crm" in lowered) and "hubspot" in connected:
             spec = self._registry.get_spec("hubspot_search_contacts")
             if spec and "hubspot.contacts.search" in set(list_registered_actions()):
+                if HUBSPOT_LIST_CONTACTS.search(text):
+                    args = {"list_all": True, "limit": 10}
+                    label = "List HubSpot contacts"
+                else:
+                    args = {"query": query, "limit": 10}
+                    label = f"Search HubSpot for “{query[:60]}”"
                 return ConnectorActionPlan(
                     tool_name="hubspot_search_contacts",
                     invoke_action="hubspot.contacts.search",
                     integration="hubspot",
                     kind="read",
-                    label=f"Search HubSpot for “{query[:60]}”",
-                    args={"query": query, "limit": 10},
+                    label=label,
+                    args=args,
                 )
         if "salesforce" in lowered and "salesforce" in connected:
             args = self._extract_args(text, self._registry.get_spec("salesforce_query"))
@@ -656,6 +666,8 @@ class ChatConnectorExecutionService:
         quoted = [m.group(1).strip() for m in QUOTED.finditer(message)]
         try:
             if name == "hubspot_search_contacts":
+                if HUBSPOT_LIST_CONTACTS.search(message):
+                    return {"list_all": True, "limit": 10}
                 query = self._search_query(message) or (quoted[0] if quoted else None)
                 if not query:
                     return None
@@ -840,8 +852,24 @@ class ChatConnectorExecutionService:
         observation: dict[str, Any],
     ) -> str:
         if plan.kind == "read":
-            if "contacts" in result_data:
-                count = len(result_data.get("contacts") or [])
+            contacts = result_data.get("contacts")
+            if contacts is None and isinstance(result_data.get("search"), dict):
+                raw = result_data["search"].get("results") or []
+                contacts = raw if isinstance(raw, list) else None
+            if contacts is not None:
+                count = len(contacts)
+                if count == 0:
+                    return "No HubSpot contacts matched that request."
+                sample = contacts[0]
+                if isinstance(sample, dict):
+                    props = sample.get("properties") or sample
+                    name_bits = [
+                        str(props.get("firstname") or "").strip(),
+                        str(props.get("lastname") or "").strip(),
+                    ]
+                    name = " ".join(bit for bit in name_bits if bit) or str(props.get("email") or "contact")
+                    if count == 1:
+                        return f"Found 1 HubSpot contact: {name}."
                 return f"Found {count} HubSpot contact(s)."
             if "records" in result_data:
                 count = len(result_data.get("records") or [])

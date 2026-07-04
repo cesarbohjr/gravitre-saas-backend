@@ -234,6 +234,23 @@ def search_contacts(
     )
 
 
+def list_contacts(
+    access_token: str,
+    *,
+    properties: list[str] | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """List recent CRM contacts (no search filter required)."""
+    lim = min(max(int(limit), 1), 100)
+    props = properties or ["email", "firstname", "lastname", "company"]
+    return _request(
+        "GET",
+        "/crm/v3/objects/contacts",
+        access_token,
+        params={"limit": lim, "properties": ",".join(props)},
+    )
+
+
 def get_deal(
     access_token: str,
     deal_id: str,

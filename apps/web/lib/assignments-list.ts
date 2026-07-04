@@ -72,11 +72,19 @@ function mapJobToAssignment(job: AgentJob): DemoAssignment {
 export async function fetchAssignmentList(): Promise<DemoAssignment[]> {
   try {
     const response = await apiFetch("/api/assignments?limit=50")
-    if (!response.ok) return []
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      const detail =
+        payload && typeof payload === "object" && "detail" in payload
+          ? String((payload as { detail?: unknown }).detail)
+          : `Request failed (${response.status})`
+      throw new Error(detail)
+    }
 
     const payload = (await response.json()) as { jobs?: AgentJob[] }
     return (payload.jobs ?? []).map(mapJobToAssignment)
-  } catch {
-    return []
+  } catch (error) {
+    if (error instanceof Error) throw error
+    throw new Error("Unable to load assignments")
   }
 }

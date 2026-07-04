@@ -194,6 +194,35 @@ def _finalize_run(
         except Exception as exc:  # noqa: BLE001
             logger.warning("run_completed notification skipped run_id=%s error=%s", ctx.run_id, exc)
         try:
+            from app.services.notification_email_service import send_workflow_completion_email
+            from app.workflows.repository import get_run_with_steps
+
+            run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name) or {}
+            wf_id = str(run_meta.get("workflow_id") or "")
+            wf_name = "Workflow"
+            if wf_id:
+                wf_row = (
+                    ctx.client.table("workflow_defs")
+                    .select("name")
+                    .eq("org_id", ctx.org_id)
+                    .eq("id", wf_id)
+                    .limit(1)
+                    .execute()
+                )
+                if wf_row.data:
+                    wf_name = str(wf_row.data[0].get("name") or wf_name)
+            send_workflow_completion_email(
+                ctx.client,
+                ctx.settings,
+                org_id=ctx.org_id,
+                user_id=ctx.user_id,
+                run_id=ctx.run_id,
+                workflow_name=wf_name,
+                final_status=final_status,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("run_completed email skipped run_id=%s error=%s", ctx.run_id, exc)
+        try:
             from app.marketplace.adoption import maybe_record_workflow_adoption
 
             maybe_record_workflow_adoption(

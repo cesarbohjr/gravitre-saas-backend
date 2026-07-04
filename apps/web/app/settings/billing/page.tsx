@@ -78,6 +78,14 @@ const invoices = [
   { id: "INV-2023-012", date: "Jan 1, 2024", amount: "$499.00", status: "Paid" },
 ]
 
+function formatInvoiceAmount(cents: number | undefined, currency = "usd") {
+  if (cents == null) return "—"
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(cents / 100)
+}
+
 const usageMetrics = [
   { 
     name: "Workflow Runs", 
@@ -238,6 +246,43 @@ function BillingPageInner() {
   const currentTier = (subscription?.tier ?? "node") as PlanCode
   const currentPlan = getPlan(currentTier)
   const subStatus = subscription?.status ?? "active"
+  const liveInvoices =
+    overview?.invoices?.map((invoice) => ({
+      id: invoice.number || invoice.id,
+      date: invoice.created_at
+        ? new Date(invoice.created_at).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "—",
+      amount: formatInvoiceAmount(invoice.amount_due ?? invoice.amount_paid, invoice.currency),
+      status: invoice.status ? invoice.status.replace(/_/g, " ") : "—",
+    })) ?? []
+  const invoiceRows = liveInvoices.length > 0 ? liveInvoices : []
+  const usageFromApi = overview?.usage
+  const resolvedUsageMetrics = usageFromApi
+    ? [
+        {
+          name: "Workflow Runs",
+          used: usageFromApi.workflow_runs ?? 0,
+          limit: usageFromApi.workflow_runs_included ?? currentPlan.limits.workflowRuns,
+          icon: Zap,
+          color: "blue" as const,
+          trend: "",
+          trendUp: true,
+        },
+        {
+          name: "AI Credits",
+          used: usageFromApi.ai_credits ?? 0,
+          limit: usageFromApi.ai_credits_included ?? currentPlan.limits.aiCredits,
+          icon: Sparkles,
+          color: "purple" as const,
+          trend: "",
+          trendUp: true,
+        },
+      ]
+    : usageMetrics
 
   const statusDisplay: Record<string, { label: string; classes: string; beacon: "active" | "warning" | "error" | "idle" }> = {
     active: { label: "Active", classes: "bg-success/10 text-success border-success/20", beacon: "active" },
@@ -274,7 +319,7 @@ function BillingPageInner() {
     // Animate usage values
     const timer = setTimeout(() => {
       const values: Record<string, number> = {}
-      usageMetrics.forEach(m => {
+      resolvedUsageMetrics.forEach(m => {
         values[m.name] = m.used
       })
       setAnimatedValues(values)
@@ -548,7 +593,7 @@ function BillingPageInner() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {usageMetrics.map((metric, i) => {
+                {resolvedUsageMetrics.map((metric, i) => {
                   const percentage = (metric.used / metric.limit) * 100
                   const colors = colorClasses[metric.color as keyof typeof colorClasses]
                   const displayValue = animatedValues[metric.name] ?? 0
@@ -806,12 +851,17 @@ function BillingPageInner() {
                 </div>
 
                 <div className="rounded-2xl border border-border overflow-hidden bg-card">
-                  {invoices.map((invoice, i) => (
+                  {invoiceRows.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+                      No invoices yet. Your billing history will appear here after your first payment.
+                    </div>
+                  ) : (
+                  invoiceRows.map((invoice, i) => (
                     <div 
                       key={invoice.id}
                       className={cn(
                         "flex items-center justify-between px-5 py-4 transition-all duration-300 hover:bg-secondary/50 group",
-                        i !== invoices.length - 1 && "border-b border-border"
+                        i !== invoiceRows.length - 1 && "border-b border-border"
                       )}
                     >
                       <div className="flex items-center gap-4">
@@ -836,7 +886,8 @@ function BillingPageInner() {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  ))
+                  )}
                 </div>
 
                 <p className="text-xs text-muted-foreground mt-4 text-center">

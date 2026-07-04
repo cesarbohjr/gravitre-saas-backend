@@ -123,6 +123,7 @@ class AgentCreateRequest(BaseModel):
     name: str
     description: str | None = None
     role: str | None = None
+    department: str | None = None
     capabilities: list[str] | None = None
     config: dict | None = None
     environment_id: str | None = Field(default=None, alias="environmentId")
@@ -1522,6 +1523,9 @@ async def create_agent_route(
     _validate_icon(body.icon)
     _validate_avatar_color(body.avatar_color)
     avatar_color = body.avatar_color or _default_avatar_color(body.role, "active")
+    config = dict(body.config or {})
+    if body.department:
+        config["department"] = body.department.strip()
     operator = create_operator(
         client,
         org_id,
@@ -1531,7 +1535,7 @@ async def create_agent_route(
             "status": "inactive",
             "role": body.role,
             "capabilities": body.capabilities or [],
-            "config": body.config or {},
+            "config": config,
             "allowed_environments": [environment],
             "environment_id": body.environment_id,
             "icon": body.icon,

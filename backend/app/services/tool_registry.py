@@ -23,11 +23,13 @@ from app.connectors.constants import is_connector_usable
 
 
 def _hubspot_search_from_query(args: dict[str, Any]) -> dict[str, Any]:
-    """Map a simple text query to HubSpot filter_groups."""
+    """Map a simple text query to HubSpot filter_groups, or list recent contacts."""
+    limit = int(args.get("limit") or 10)
+    if args.get("list_all") or args.get("listAll"):
+        return {"list_all": True, "limit": limit}
     query = str(args.get("query") or "").strip()
     if not query:
-        raise ValueError("query is required")
-    limit = int(args.get("limit") or 10)
+        return {"list_all": True, "limit": limit}
     return {
         "filter_groups": [
             {
@@ -38,7 +40,25 @@ def _hubspot_search_from_query(args: dict[str, Any]) -> dict[str, Any]:
                         "value": query,
                     }
                 ]
-            }
+            },
+            {
+                "filters": [
+                    {
+                        "propertyName": "firstname",
+                        "operator": "CONTAINS_TOKEN",
+                        "value": query,
+                    }
+                ]
+            },
+            {
+                "filters": [
+                    {
+                        "propertyName": "lastname",
+                        "operator": "CONTAINS_TOKEN",
+                        "value": query,
+                    }
+                ]
+            },
         ],
         "limit": limit,
     }

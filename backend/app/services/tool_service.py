@@ -417,23 +417,43 @@ def _exec_hubspot_contacts_delete(ctx: ToolContext, params: dict[str, Any]) -> N
 
 def _exec_hubspot_contacts_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
+    limit = int(params.get("limit") or 10)
+    list_all = bool(params.get("list_all") or params.get("listAll"))
     filter_groups = params.get("filter_groups") or params.get("filterGroups")
-    if not isinstance(filter_groups, list) or not filter_groups:
-        raise ToolValidationError("hubspot.contacts.search requires filter_groups array")
     try:
-        data = search_contacts(
-            token,
-            filter_groups=filter_groups,
-            properties=params.get("properties"),
-            limit=int(params.get("limit") or 10),
-        )
+        if list_all:
+            from app.connectors.hubspot import list_contacts
+
+            data = list_contacts(token, properties=params.get("properties"), limit=limit)
+        else:
+            if not isinstance(filter_groups, list) or not filter_groups:
+                raise ToolValidationError("hubspot.contacts.search requires filter_groups array")
+            data = search_contacts(
+                token,
+                filter_groups=filter_groups,
+                properties=params.get("properties"),
+                limit=limit,
+            )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
+    contacts = data.get("results") or []
+    normalized = [
+        {
+            "id": row.get("id"),
+            "properties": row.get("properties") or {},
+        }
+        for row in contacts
+        if isinstance(row, dict)
+    ]
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.search",
         connector_id=cid,
-        data={"search": data},
+        data={
+            "contacts": normalized,
+            "total": data.get("total", len(normalized)),
+            "search": data,
+        },
     )
 
 

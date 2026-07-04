@@ -10,6 +10,7 @@ from typing import Any
 
 from app.config import Settings
 from app.connectors.connection_health import resolve_connector_auth_status
+from app.connectors.constants import ACTIVE_CONNECTOR_STATUSES, connector_environment_candidates
 from app.connectors.hubspot_oauth import OAUTH_TOKEN_KEY, load_oauth_tokens, token_needs_refresh
 from app.connectors.repository import get_decrypted_secret
 from app.services.agent_tool_permissions import (
@@ -24,7 +25,21 @@ logger = logging.getLogger(__name__)
 
 # Platform workflow steps — not OAuth connectors; must not trigger "Missing X connector" alerts.
 PLATFORM_STEP_TYPES = frozenset(
-    {"agent", "agent_task", "rag_query", "delay", "condition", "council", "decision", "approval"}
+    {
+        "agent",
+        "agent_task",
+        "rag_query",
+        "delay",
+        "condition",
+        "council",
+        "decision",
+        "approval",
+        "noop",
+        "invoke_tool",
+        "slack_post_message",
+        "email_send",
+        "webhook_post",
+    }
 )
 
 AUDIT_FAILURE_PREDICTION_SCANNED = "workflow.failure_prediction.scanned"
@@ -123,11 +138,15 @@ def extract_step_requirements(definition: dict[str, Any]) -> list[dict[str, Any]
         if isinstance(config.get("metadata"), dict):
             metadata = {**metadata, **config["metadata"]}
         action = str(config.get("action") or STEP_TYPE_TO_ACTION.get(step_type) or "").strip()
+        if step_type in PLATFORM_STEP_TYPES and not action:
+            continue
         connector_type = None
         if action and "." in action:
             connector_type = action.split(".", 1)[0]
         elif step_type and step_type not in PLATFORM_STEP_TYPES:
             connector_type = step_type.split("_", 1)[0]
+        if connector_type in {"noop", "platform", "internal"}:
+            continue
         connector_id = config.get("connector_id") or config.get("connectorId")
         agent_id = metadata.get("agent_id") or metadata.get("agentId") or config.get("agent_id")
         if not action and not connector_type and not agent_id:
@@ -153,14 +172,16 @@ def _find_active_connector_id(
     *,
     environment_name: str,
 ) -> str | None:
-    for env in {environment_name, "production", "default"}:
+    statuses = list(ACTIVE_CONNECTOR_STATUSES)
+    for env in connector_environment_candidates(environment_name):
         result = (
             client.table("connectors")
             .select("id")
             .eq("org_id", org_id)
             .eq("type", connector_type)
-            .eq("status", "active")
+            .in_("status", statuses)
             .eq("environment", env)
+            .is_("deleted_at", "null")
             .limit(1)
             .execute()
         )
@@ -171,7 +192,8 @@ def _find_active_connector_id(
         .select("id")
         .eq("org_id", org_id)
         .eq("type", connector_type)
-        .eq("status", "active")
+        .in_("status", statuses)
+        .is_("deleted_at", "null")
         .limit(1)
         .execute()
     )

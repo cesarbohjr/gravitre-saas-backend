@@ -105,6 +105,26 @@ export async function rejectAssignment(id: string, reason: string): Promise<Agen
   throw new Error(await parseApiError(response))
 }
 
+export async function updateAssignmentDeliverable(id: string, content: string): Promise<AgentJob> {
+  const response = await apiFetch(`/api/assignments/${id}/deliverable`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  })
+  if (response.ok) {
+    return response.json() as Promise<AgentJob>
+  }
+  throw new Error(await parseApiError(response))
+}
+
+export async function pushAssignmentDeliverable(id: string): Promise<{ ok: boolean; destination?: string }> {
+  const response = await apiFetch(`/api/assignments/${id}/push`, { method: "POST" })
+  if (response.ok) {
+    return response.json() as Promise<{ ok: boolean; destination?: string }>
+  }
+  throw new Error(await parseApiError(response))
+}
+
 function mapDemoStatus(status: DemoAssignment["status"]): JobStatus {
   if (status === "running") return "running"
   if (status === "completed") return "completed"

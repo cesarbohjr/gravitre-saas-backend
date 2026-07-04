@@ -11,6 +11,8 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.workflows.execute import execute_workflow_steps
+from app.workers.workflow_dispatch import try_enqueue_workflow_run_sync
 
 router = APIRouter(prefix="/api/lite", tags=["lite"])
 
@@ -307,7 +309,44 @@ async def assign_lite_work(
         raise HTTPException(status_code=500, detail=str(insert_resp.error))
     if not insert_resp.data:
         raise HTTPException(status_code=500, detail="Failed to create task")
-    return {"task_id": str(insert_resp.data[0].get("id"))}
+    run_id = str(insert_resp.data[0].get("id"))
+    wf_name = wf_resp.data[0].get("name") or "Workflow"
+    queued = try_enqueue_workflow_run_sync(
+        settings,
+        client,
+        org_id=org_id,
+        workflow_id=workflow_id,
+        run_id=run_id,
+    )
+    if not queued:
+        parameters = insert_payload.get("parameters") or {}
+        execute_workflow_steps(
+            settings=settings,
+            org_id=org_id,
+            user_id=_user["user_id"],
+            run_id=run_id,
+            definition=definition,
+            parameters=parameters,
+            client=client,
+            environment_name="production",
+        )
+    try:
+        from app.services.notification_service import create_user_notification
+
+        create_user_notification(
+            client,
+            org_id=org_id,
+            user_id=_user["user_id"],
+            notification_type="run_started",
+            title="Task assigned",
+            body=f"“{wf_name}” is running — you will be notified when it completes.",
+            url=f"/lite/tasks?task={run_id}",
+            entity_type="workflow_run",
+            entity_id=run_id,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return {"task_id": run_id, "queued": queued, "status": "running"}
 
 
 @router.get("/tasks")
