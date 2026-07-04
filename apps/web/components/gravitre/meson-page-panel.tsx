@@ -43,13 +43,16 @@ function briefToInsights(brief: AdvisorBrief | null | undefined): MesonInsight[]
 
 function briefToSuggestions(brief: AdvisorBrief | null | undefined): MesonSuggestion[] {
   if (!brief?.recommended_actions?.length) return []
-  return brief.recommended_actions.slice(0, 3).map((action, index) => ({
-    id: action.id ?? `advisor-action-${index}`,
-    nodeType: "advisory",
-    label: action.action ?? action.title ?? "Review recommendation",
-    reason: action.reason ?? action.summary,
-    confidence: action.confidence,
-  }))
+  return brief.recommended_actions
+    .map((action, index) => ({
+      id: action.id ?? `advisor-action-${index}`,
+      nodeType: "advisory",
+      label: (action.action ?? action.title ?? "").trim(),
+      reason: action.reason ?? action.summary,
+      confidence: action.confidence,
+    }))
+    .filter((s) => s.label.length > 0)
+    .slice(0, 3)
 }
 
 function confidenceClass(confidence?: number) {
@@ -75,16 +78,29 @@ export function MesonPagePanel({
 }) {
   const { user } = useAuth()
   const swrKey = user ? ["meson-page-context", page, entityId ?? ""] : null
-  const { data, error, isLoading } = useSWR(swrKey, () =>
-    mesonApi.pageContext({ page, entityId }),
+  const { data, error, isLoading, isValidating } = useSWR(
+    swrKey,
+    () => mesonApi.pageContext({ page, entityId }),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 120_000,
+      keepPreviousData: true,
+    },
   )
 
   const streamedInsights = briefToInsights(advisorBrief)
   const streamedSuggestions = briefToSuggestions(advisorBrief)
-  const insights = [...streamedInsights, ...(data?.insights ?? [])].slice(0, compact ? 3 : 5)
-  const suggestions = [...streamedSuggestions, ...(data?.suggestions ?? [])].slice(0, compact ? 3 : 4)
+  const insights = [...streamedInsights, ...(data?.insights ?? [])]
+    .filter((item) => item.title?.trim() && item.summary?.trim())
+    .slice(0, compact ? 3 : 5)
+  const suggestions = [...streamedSuggestions, ...(data?.suggestions ?? [])]
+    .filter((item) => item.label?.trim())
+    .slice(0, compact ? 3 : 4)
 
   const showEmpty = !isLoading && !error && insights.length === 0 && suggestions.length === 0
+  const showInitialLoad = isLoading && !data && streamedInsights.length === 0 && streamedSuggestions.length === 0
+  const showBackgroundRefresh = isValidating && !showInitialLoad && Boolean(data)
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -102,7 +118,7 @@ export function MesonPagePanel({
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Meson suggests
         </p>
-        {isLoading ? (
+        {showInitialLoad ? (
           <div className="space-y-2">
             <Skeleton className={cn("w-full", compact ? "h-14" : "h-16")} />
             <Skeleton className={cn("w-full", compact ? "h-14" : "h-16")} />
@@ -154,7 +170,7 @@ export function MesonPagePanel({
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Meson insights
         </p>
-        {isLoading ? (
+        {showInitialLoad ? (
           <Skeleton className={cn("w-full", compact ? "h-12" : "h-14")} />
         ) : error ? (
           <p className="text-xs text-muted-foreground">Insights unavailable right now.</p>
@@ -191,10 +207,10 @@ export function MesonPagePanel({
         </p>
       ) : null}
 
-      {isLoading ? (
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+      {showBackgroundRefresh ? (
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Updating from learning signals…
+          Refreshing insights…
         </div>
       ) : null}
     </div>

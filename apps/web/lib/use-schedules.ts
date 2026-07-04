@@ -4,7 +4,6 @@ import useSWR from "swr"
 
 import {
   aggregateSchedulesClientSide,
-  sampleScheduledItems,
   type ScheduledItem,
 } from "@/lib/schedules"
 import { runsApi, schedulesApi, trainingApi, workflowsApi } from "@/lib/api"
@@ -20,7 +19,7 @@ export interface UseSchedulesResult {
   items: ScheduledItem[]
   isLoading: boolean
   error: unknown
-  /** True when showing sample fallback because no live schedules exist. */
+  /** Always false — sample fallback removed; empty state shown instead. */
   isSample: boolean
   refresh: () => void
 }
@@ -99,14 +98,12 @@ export function useSchedules(optionsOrWorkflowId?: string | UseSchedulesOptions)
   )
 
   const liveItems = data ?? []
-  const isSample = !isLoading && !error && liveItems.length === 0
-  const items = isSample ? sampleScheduledItems() : liveItems
 
   return {
-    items,
+    items: liveItems,
     isLoading,
     error,
-    isSample,
+    isSample: false,
     refresh: () => {
       void mutate()
     },

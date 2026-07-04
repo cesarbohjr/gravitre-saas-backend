@@ -12,6 +12,15 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
+import { fallbackEntityLabel, isUuidPathSegment } from "@/lib/breadcrumb-entity"
+
+interface AppBreadcrumbsProps {
+  /** Human-readable label for the current dynamic segment (e.g. connector name). */
+  entityLabel?: string
+  /** Vendor key for connector detail breadcrumbs. */
+  entityVendor?: string
+}
 
 const LABELS: Record<string, string> = {
   home: "Home",
@@ -49,15 +58,26 @@ const LABELS: Record<string, string> = {
   outcomes: "Outcomes",
 }
 
-function labelForSegment(segment: string, index: number, segments: string[]): string {
+function labelForSegment(
+  segment: string,
+  index: number,
+  segments: string[],
+  entityLabel?: string,
+): string {
   if (segment in LABELS) return LABELS[segment]!
+  if (isUuidPathSegment(segment)) {
+    if (index === segments.length - 1 && entityLabel?.trim()) {
+      return entityLabel.trim()
+    }
+    return fallbackEntityLabel(segments[index - 1])
+  }
   if (index === segments.length - 1 && segments[0] === "agents" && index === 1) return "Agent"
   if (segments[0] === "intelligence" && segment === "agents" && index === 1) return "Agent Profiles"
   if (segments[0] === "intelligence" && segment === "models" && index === 1) return "Model Intelligence"
   return segment.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-export function AppBreadcrumbs() {
+export function AppBreadcrumbs({ entityLabel, entityVendor }: AppBreadcrumbsProps = {}) {
   const pathname = usePathname()
   const segments = pathname.split("/").filter(Boolean)
 
@@ -67,7 +87,7 @@ export function AppBreadcrumbs() {
     const href = `/${segments.slice(0, index + 1).join("/")}`
     return {
       href,
-      label: labelForSegment(segment, index, segments),
+      label: labelForSegment(segment, index, segments, entityLabel),
       isLast: index === segments.length - 1,
     }
   })
@@ -87,7 +107,14 @@ export function AppBreadcrumbs() {
             </BreadcrumbSeparator>
             <BreadcrumbItem>
               {crumb.isLast ? (
-                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                <BreadcrumbPage className="inline-flex items-center gap-2">
+                  {segments[0] === "connectors" &&
+                  isUuidPathSegment(segments[segments.length - 1] ?? "") &&
+                  entityVendor ? (
+                    <ConnectorIcon vendor={entityVendor} size="xs" showStatusIndicator={false} />
+                  ) : null}
+                  {crumb.label}
+                </BreadcrumbPage>
               ) : (
                 <BreadcrumbLink asChild>
                   <Link href={crumb.href}>{crumb.label}</Link>

@@ -1,6 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
+import dynamic from "next/dynamic"
 import { Suspense, startTransition, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
@@ -9,7 +10,13 @@ import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
+const ConnectorRecommendations = dynamic(
+  () =>
+    import("@/components/connectors/connector-recommendations").then((mod) => ({
+      default: mod.ConnectorRecommendations,
+    })),
+  { ssr: false, loading: () => null },
+)
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -66,7 +73,7 @@ import {
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { ensureSelectedOrg } from "@/lib/org-context"
+import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { connectorsApi, ApiRequestError } from "@/lib/api"
 import { publicApiUrl } from "@/lib/public-urls"
 import {
@@ -1869,11 +1876,26 @@ function ConnectorsPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
-  const [orgId, setOrgId] = useState<string | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
+  const [showRecommendations, setShowRecommendations] = useState(false)
 
   useEffect(() => {
     if (user) void ensureSelectedOrg(true).then(setOrgId)
   }, [user])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowRecommendations(true), 300)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [configureModal, setConfigureModal] = useState<Connector | null>(null)
+  const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
+  const [addModal, setAddModal] = useState(false)
+  const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"topology" | "grid">("grid")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   // Fetch connectors from API with SWR (org-scoped key avoids stale cross-device cache)
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
@@ -1891,9 +1913,9 @@ function ConnectorsPageContent() {
       certificationBadge?: string | null
     }>
   }>(
-    user && orgId ? `/api/marketplace/registry?org=${orgId}` : null,
+    user && orgId && addModal ? `/api/marketplace/registry?org=${orgId}` : null,
     apiFetcher,
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, dedupingInterval: 120_000 },
   )
 
   const connectors = normalizeConnectorsResponse(data)
@@ -1934,15 +1956,6 @@ function ConnectorsPageContent() {
       window.history.replaceState({}, "", url.pathname + url.search)
     }
   }, [searchParams, mutate])
-
-  const [searchQuery, setSearchQuery] = useState("")
-  const [configureModal, setConfigureModal] = useState<Connector | null>(null)
-  const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
-  const [addModal, setAddModal] = useState(false)
-  const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   const handleSync = async (connectorId: string) => {
     const previousConnectors = connectors
@@ -2340,7 +2353,9 @@ function ConnectorsPageContent() {
         </div>
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
-        <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
+        {showRecommendations ? (
+          <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
+        ) : null}
 
         {availableToConnect.length > 0 && (
           <section

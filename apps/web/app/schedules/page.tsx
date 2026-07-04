@@ -6,7 +6,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { RefreshCw, Info, CalendarClock } from "lucide-react"
+import { RefreshCw, CalendarClock } from "lucide-react"
 import { useSchedules } from "@/lib/use-schedules"
 import { workflowsApi } from "@/lib/api"
 import type { ScheduleKind } from "@/lib/schedules"
@@ -20,7 +20,7 @@ export default function SchedulesPage() {
   const [kinds, setKinds] = useState<ScheduleKind[] | undefined>(undefined)
   const [workflowId, setWorkflowId] = useState<string | undefined>(undefined)
 
-  const { items, isLoading, isSample, error, refresh } = useSchedules({
+  const { items, isLoading, error, refresh } = useSchedules({
     from: range.from,
     to: range.to,
     kinds,
@@ -72,18 +72,6 @@ export default function SchedulesPage() {
             Refresh
           </Button>
         </div>
-
-        {/* Sample data banner */}
-        {isSample && (
-          <div className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
-            <span>
-              No live schedules found for this organization yet — showing{" "}
-              <span className="font-medium text-foreground">sample data</span> so you can preview
-              the layout. Create a workflow schedule to see real items here.
-            </span>
-          </div>
-        )}
 
         {error && items.length === 0 ? (
           <WorkSectionErrorCard

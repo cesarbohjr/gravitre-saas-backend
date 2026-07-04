@@ -40,6 +40,8 @@ import {
 interface AppShellProps {
   children: React.ReactNode
   title?: string
+  /** Vendor key shown beside connector detail breadcrumbs. */
+  breadcrumbVendor?: string
 }
 
 interface BillingStatus extends BillingStatusSnapshot {
@@ -70,7 +72,7 @@ function daysLeft(isoDate: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }
 
-export function AppShell({ children, title }: AppShellProps) {
+export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
@@ -376,7 +378,7 @@ export function AppShell({ children, title }: AppShellProps) {
 
           <main className="flex-1 overflow-y-auto">
             <div className="px-4 pt-3 md:px-6">
-              <AppBreadcrumbs />
+              <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
             </div>
             {children}
           </main>

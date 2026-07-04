@@ -28,120 +28,6 @@ export interface DemoAssignment {
   qualityChecks?: Array<{ label: string; status: "pass" | "warn" }>
 }
 
-export const DEMO_ASSIGNMENTS: DemoAssignment[] = [
-  {
-    id: "assign-001",
-    title: "Q3 Healthcare Campaign",
-    brief: "Create multi-channel campaign targeting healthcare decision makers",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
-    status: "running",
-    progress: 67,
-    steps: [
-      { name: "Research", status: "done" },
-      { name: "Strategy", status: "done" },
-      { name: "Content", status: "running" },
-      { name: "Review", status: "pending" },
-    ],
-    createdAt: "2 hours ago",
-    outputTypes: ["Emails", "Social Posts", "Segments"],
-    destination: "HubSpot + Outlook",
-    currentStepDetail: "Fetching campaign data from HubSpot…",
-  },
-  {
-    id: "assign-002",
-    title: "Weekly Performance Report",
-    brief: "Generate comprehensive weekly marketing performance analysis",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
-    status: "needs_approval",
-    progress: 100,
-    steps: [
-      { name: "Data Pull", status: "done" },
-      { name: "Analysis", status: "done" },
-      { name: "Report", status: "done" },
-      { name: "Approval", status: "running" },
-    ],
-    createdAt: "5 hours ago",
-    completedAt: "4 hours ago",
-    outputTypes: ["Report"],
-    destination: "Slack",
-    confidence: 94,
-    reportContent: `Weekly Performance Report — Marketing
-
-Overview
-Pipeline influenced by marketing increased 12% week-over-week. Email and paid social remained the top contributors.
-
-Highlights
-• 847 MQLs generated (+8% vs prior week)
-• HubSpot campaigns: 94% delivery rate, 31% open rate
-• Slack digest ready for #marketing-leadership
-
-Sections included
-Executive summary, channel breakdown, top campaigns, and recommended next actions.
-
-Note for reviewer
-Q3 vs Q2 comparison chart is still being refreshed from CRM — all other sections are complete.`,
-    qualityChecks: [
-      { label: "All requested sections included", status: "pass" },
-      { label: "Data sourced from HubSpot + CRM", status: "pass" },
-      { label: "Format matches template", status: "pass" },
-      { label: "Missing: Q3 vs Q2 comparison", status: "warn" },
-    ],
-  },
-  {
-    id: "assign-003",
-    title: "Lead Scoring Analysis",
-    brief: "Analyze and score all leads from Q2 campaign activities",
-    agent: { name: "Nexus", role: "Sales Assistant", gradient: "from-blue-500 to-indigo-500", icon: TrendingUp },
-    status: "completed",
-    progress: 100,
-    steps: [
-      { name: "Import", status: "done" },
-      { name: "Score", status: "done" },
-      { name: "Segment", status: "done" },
-      { name: "Export", status: "done" },
-    ],
-    createdAt: "1 day ago",
-    completedAt: "1 day ago",
-    outputTypes: ["Report", "Segments"],
-    destination: "Salesforce",
-    confidence: 98,
-  },
-  {
-    id: "assign-004",
-    title: "Email Sequence - Re-engagement",
-    brief: "Design 5-email re-engagement sequence for dormant leads",
-    agent: { name: "Atlas", role: "Marketing Agent", gradient: "from-emerald-500 to-teal-500", icon: Megaphone },
-    status: "pending",
-    progress: 0,
-    steps: [
-      { name: "Research", status: "pending" },
-      { name: "Draft", status: "pending" },
-      { name: "Review", status: "pending" },
-      { name: "Publish", status: "pending" },
-    ],
-    createdAt: "Just now",
-    outputTypes: ["Emails"],
-    destination: "HubSpot",
-  },
-  {
-    id: "assign-005",
-    title: "Competitor Analysis Report",
-    brief: "Deep dive analysis of top 5 competitors market positioning",
-    agent: { name: "Oracle", role: "Finance Reporter", gradient: "from-violet-500 to-purple-500", icon: PieChart },
-    status: "failed",
-    progress: 45,
-    steps: [
-      { name: "Research", status: "done" },
-      { name: "Analysis", status: "done" },
-      { name: "Report", status: "pending" },
-      { name: "Export", status: "pending" },
-    ],
-    createdAt: "2 days ago",
-    outputTypes: ["Report"],
-    destination: "Export",
-  },
-]
-
 const runtimeDemoAssignments = new Map<string, DemoAssignment>()
 
 export function registerDemoAssignment(assignment: DemoAssignment): void {
@@ -162,8 +48,9 @@ export function inferAgentIconForRole(role: string): LucideIcon {
   return Brain
 }
 
-export function getDemoAssignment(id: string): DemoAssignment | undefined {
-  return runtimeDemoAssignments.get(id) ?? DEMO_ASSIGNMENTS.find((item) => item.id === id)
+/** Optimistic assignments created locally before the API responds. */
+export function getLocalAssignment(id: string): DemoAssignment | undefined {
+  return runtimeDemoAssignments.get(id)
 }
 
 export type DemoApprovalState = {
@@ -176,10 +63,6 @@ const demoApprovalOverrides = new Map<string, DemoApprovalState>()
 
 export function getDemoApprovalState(id: string): DemoApprovalState | undefined {
   return demoApprovalOverrides.get(id)
-}
-
-function isDemoAssignmentId(id: string): boolean {
-  return id.startsWith("assign-") || Boolean(getDemoAssignment(id))
 }
 
 async function parseApiError(response: Response): Promise<string> {
@@ -195,31 +78,15 @@ async function parseApiError(response: Response): Promise<string> {
 }
 
 export async function approveAssignment(id: string, notes?: string): Promise<AgentJob> {
-  try {
-    const response = await apiFetch(`/api/assignments/${id}/approve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: notes ?? "" }),
-    })
-    if (response.ok) {
-      return response.json() as Promise<AgentJob>
-    }
-    if (response.status === 404 || response.status === 409) {
-      if (isDemoAssignmentId(id)) {
-        demoApprovalOverrides.set(id, { status: "approved", at: new Date().toISOString() })
-        const demo = getDemoAssignment(id)
-        if (demo) return demoAssignmentToAgentJob({ ...demo, status: "completed" })
-      }
-    }
-    throw new Error(await parseApiError(response))
-  } catch (err) {
-    if (isDemoAssignmentId(id)) {
-      demoApprovalOverrides.set(id, { status: "approved", at: new Date().toISOString() })
-      const demo = getDemoAssignment(id)
-      if (demo) return demoAssignmentToAgentJob({ ...demo, status: "completed" })
-    }
-    throw err instanceof Error ? err : new Error("Failed to approve assignment")
+  const response = await apiFetch(`/api/assignments/${id}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notes: notes ?? "" }),
+  })
+  if (response.ok) {
+    return response.json() as Promise<AgentJob>
   }
+  throw new Error(await parseApiError(response))
 }
 
 export async function rejectAssignment(id: string, reason: string): Promise<AgentJob> {
@@ -227,43 +94,15 @@ export async function rejectAssignment(id: string, reason: string): Promise<Agen
   if (!trimmed) {
     throw new Error("A rejection reason is required")
   }
-  try {
-    const response = await apiFetch(`/api/assignments/${id}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: trimmed }),
-    })
-    if (response.ok) {
-      return response.json() as Promise<AgentJob>
-    }
-    if (response.status === 404 || response.status === 409) {
-      if (isDemoAssignmentId(id)) {
-        demoApprovalOverrides.set(id, { status: "rejected", reason: trimmed, at: new Date().toISOString() })
-        const demo = getDemoAssignment(id)
-        if (demo) {
-          return {
-            ...demoAssignmentToAgentJob({ ...demo, status: "failed" }),
-            status: "cancelled",
-            error: trimmed,
-          }
-        }
-      }
-    }
-    throw new Error(await parseApiError(response))
-  } catch (err) {
-    if (isDemoAssignmentId(id)) {
-      demoApprovalOverrides.set(id, { status: "rejected", reason: trimmed, at: new Date().toISOString() })
-      const demo = getDemoAssignment(id)
-      if (demo) {
-        return {
-          ...demoAssignmentToAgentJob({ ...demo, status: "failed" }),
-          status: "cancelled",
-          error: trimmed,
-        }
-      }
-    }
-    throw err instanceof Error ? err : new Error("Failed to reject assignment")
+  const response = await apiFetch(`/api/assignments/${id}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: trimmed }),
+  })
+  if (response.ok) {
+    return response.json() as Promise<AgentJob>
   }
+  throw new Error(await parseApiError(response))
 }
 
 function mapDemoStatus(status: DemoAssignment["status"]): JobStatus {
@@ -350,25 +189,18 @@ export function demoAssignmentToAgentJob(demo: DemoAssignment): AgentJob {
 }
 
 export async function fetchAssignmentJob(id: string): Promise<AgentJob> {
-  if (isDemoAssignmentId(id)) {
-    const demo = getDemoAssignment(id)
-    if (demo) {
-      return demoAssignmentToAgentJob(demo)
-    }
-  }
-
   try {
     const response = await apiFetch(`/api/agent-jobs/${id}`)
     if (response.ok) {
       return response.json() as Promise<AgentJob>
     }
   } catch {
-    // fall through to demo data
+    // fall through to optimistic local assignment if present
   }
 
-  const demo = getDemoAssignment(id)
-  if (demo) {
-    return demoAssignmentToAgentJob(demo)
+  const local = getLocalAssignment(id)
+  if (local) {
+    return demoAssignmentToAgentJob(local)
   }
 
   throw new Error("Assignment not found")

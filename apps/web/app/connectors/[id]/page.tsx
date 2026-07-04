@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
@@ -11,6 +10,8 @@ import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { lookupConnectorCategory } from "@/lib/connectors"
+import { connectorsApi } from "@/lib/api"
 import type { Connector, Workflow, WorkflowListResponse } from "@/types/api"
 import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/connector-actions"
 import { Button } from "@/components/ui/button"
@@ -27,25 +28,15 @@ import {
   RefreshCw,
   Settings,
   Trash2,
-  ExternalLink,
-  Activity,
-  Zap,
   Clock,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
   Eye,
   EyeOff,
   Copy,
   Check,
-  Play,
-  Pause,
-  Calendar,
   MoreVertical,
   Download,
   Key,
   Globe,
-  Link2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -62,71 +53,38 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from "recharts"
-
-// Mock connector data
-const mockConnector = {
-  id: "1",
-  name: "salesforce-api",
-  type: "Salesforce",
-  status: "connected" as const,
-  environment: "production" as const,
-  lastSync: "2 minutes ago",
-  health: 98,
-  description: "Salesforce REST API connector for CRM data synchronization",
-  dataFlowRate: "2.4 MB/s",
-  requestsToday: 12847,
-  latency: 45,
-  category: "CRM / Marketing",
-  authType: "oauth" as const,
-  usedByWorkflows: 8,
-  triggeredByAgents: 3,
-  createdAt: "2024-01-15",
-  config: {
-    apiKey: "sf_live_xxxxxxxxxxxxxxxx",
-    webhookUrl: "https://api.gravitre.app/webhooks/salesforce/abc123",
-    syncInterval: "5m",
-  },
-}
-
-// Mock usage chart data
-const usageData = [
-  { time: "00:00", requests: 420, latency: 45 },
-  { time: "04:00", requests: 180, latency: 42 },
-  { time: "08:00", requests: 890, latency: 48 },
-  { time: "12:00", requests: 1250, latency: 52 },
-  { time: "16:00", requests: 1680, latency: 55 },
-  { time: "20:00", requests: 920, latency: 44 },
-  { time: "Now", requests: 780, latency: 45 },
-]
-
-// Mock activity logs
-const activityLogs = [
-  { id: "1", type: "success", action: "Data sync completed", timestamp: "2 min ago", details: "Synced 1,247 records" },
-  { id: "2", type: "success", action: "API call: GET /accounts", timestamp: "5 min ago", details: "200 OK - 45ms" },
-  { id: "3", type: "warning", action: "Rate limit approaching", timestamp: "12 min ago", details: "85% of daily quota used" },
-  { id: "4", type: "success", action: "API call: POST /leads", timestamp: "15 min ago", details: "201 Created - 120ms" },
-  { id: "5", type: "success", action: "Data sync completed", timestamp: "32 min ago", details: "Synced 892 records" },
-  { id: "6", type: "error", action: "API call: GET /opportunities", timestamp: "45 min ago", details: "429 Too Many Requests" },
-  { id: "7", type: "success", action: "Webhook received", timestamp: "1 hr ago", details: "Contact updated event" },
-  { id: "8", type: "success", action: "Connection verified", timestamp: "2 hr ago", details: "OAuth token refreshed" },
-]
 
 const statusConfig = {
   connected: { color: "text-emerald-500", bg: "bg-emerald-500", icon: CheckCircle2, label: "Connected" },
   disconnected: { color: "text-zinc-500", bg: "bg-zinc-500", icon: WifiOff, label: "Disconnected" },
   error: { color: "text-red-500", bg: "bg-red-500", icon: XCircle, label: "Error" },
   syncing: { color: "text-blue-500", bg: "bg-blue-500", icon: Loader2, label: "Syncing" },
+}
+
+function formatConfigValue(config: Record<string, unknown> | undefined, key: string): string {
+  const value = config?.[key]
+  return typeof value === "string" && value.trim() ? value : ""
+}
+
+function mapConnectorRecord(live: Connector) {
+  const vendor = live.type || live.vendor
+  const config = live.config ?? {}
+  return {
+    id: live.id,
+    name: live.name,
+    type: vendor,
+    status: live.status,
+    environment: live.environment === "staging" ? ("staging" as const) : ("production" as const),
+    lastSync: live.last_sync_at ? new Date(live.last_sync_at).toLocaleString() : "—",
+    description: live.description || `${vendor} integration`,
+    category: lookupConnectorCategory(vendor) ?? "Integration",
+    createdAt: live.created_at?.slice(0, 10) ?? "—",
+    config: {
+      apiKey: formatConfigValue(config, "apiKey"),
+      webhookUrl: formatConfigValue(config, "webhookUrl"),
+      syncInterval: live.sync_frequency || formatConfigValue(config, "syncInterval") || "—",
+    },
+  }
 }
 
 export default function ConnectorDetailPage() {
@@ -136,7 +94,7 @@ export default function ConnectorDetailPage() {
   const connectorId = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : ""
 
   // G4: live connector record (the page previously hardcoded Salesforce regardless of id).
-  const { data: liveConnector } = useSWR<Connector>(
+  const { data: liveConnector, error: connectorError, isLoading: connectorLoading } = useSWR<Connector>(
     user && connectorId ? `/api/connectors/${connectorId}` : null,
     apiFetcher,
     { revalidateOnFocus: false },
@@ -144,43 +102,52 @@ export default function ConnectorDetailPage() {
 
   // G4: action catalog + workflows so we can show real readiness and linkage.
   const { data: catalogData } = useSWR<ConnectorActionCatalogResponse>(
-    user ? "/api/connectors/catalog/actions" : null,
+    user && liveConnector ? "/api/connectors/catalog/actions" : null,
     apiFetcher,
     { revalidateOnFocus: false },
   )
   const { data: workflowsData } = useSWR<WorkflowListResponse>(
-    user ? "/api/workflows" : null,
+    user && liveConnector ? "/api/workflows" : null,
     apiFetcher,
     { revalidateOnFocus: false },
   )
 
-  const connector = useMemo(() => {
-    if (!liveConnector) return mockConnector
-    return {
-      ...mockConnector,
-      id: liveConnector.id,
-      name: liveConnector.name,
-      type: liveConnector.type || liveConnector.vendor,
-      status: liveConnector.status,
-      environment: liveConnector.environment || mockConnector.environment,
-      description: liveConnector.description || mockConnector.description,
-      category: mockConnector.category,
-      createdAt: liveConnector.created_at?.slice(0, 10) || mockConnector.createdAt,
-    }
-  }, [liveConnector])
+  const connector = useMemo(
+    () => (liveConnector ? mapConnectorRecord(liveConnector) : null),
+    [liveConnector],
+  )
 
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
-  const [demoStatusOverride, setDemoStatusOverride] = useState<string | null>(null)
 
-  const displayConnector = useMemo(
-    () =>
-      demoStatusOverride ? { ...connector, status: demoStatusOverride } : connector,
-    [connector, demoStatusOverride],
-  )
+  if (!user || connectorLoading || !connector) {
+    return (
+      <AppShell title="Connector">
+        <div className="flex flex-col items-center justify-center py-24">
+          {!user || connectorLoading ? (
+            <>
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground">Loading connector…</p>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-10 w-10 text-destructive mb-4" />
+              <h2 className="text-base font-medium text-foreground mb-1">Connector not found</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                {connectorError instanceof Error ? connectorError.message : "This connector may have been removed."}
+              </p>
+              <Button asChild variant="outline">
+                <Link href="/connectors">Back to connectors</Link>
+              </Button>
+            </>
+          )}
+        </div>
+      </AppShell>
+    )
+  }
 
   // Resolve the vendor key the catalog is indexed by.
   const vendorKey = (liveConnector?.vendor || liveConnector?.type || connector.type || "").toLowerCase()
@@ -188,14 +155,21 @@ export default function ConnectorDetailPage() {
     catalogData?.vendors.find((v) => v.vendor.toLowerCase() === vendorKey) ?? null
   const workflows: Workflow[] = workflowsData?.workflows ?? []
 
-  const config = statusConfig[(displayConnector.status as keyof typeof statusConfig) || "connected"]
+  const config = statusConfig[(connector.status as keyof typeof statusConfig) || "connected"]
   const StatusIcon = config.icon
 
   const handleSync = async () => {
     setIsSyncing(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setIsSyncing(false)
-    toast.success("Sync completed", { description: "All data has been synchronized" })
+    try {
+      await connectorsApi.sync(connectorId)
+      toast.success("Sync initiated")
+    } catch (err) {
+      toast.error("Sync failed", {
+        description: err instanceof Error ? err.message : "Please try again",
+      })
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   const handleCopy = (text: string, label: string) => {
@@ -210,14 +184,8 @@ export default function ConnectorDetailPage() {
     router.push("/connectors")
   }
 
-  const handleToggleStatus = () => {
-    const newStatus = displayConnector.status === "connected" ? "disconnected" : "connected"
-    setDemoStatusOverride(newStatus)
-    toast.success(newStatus === "connected" ? "Connector enabled" : "Connector disabled")
-  }
-
   return (
-    <AppShell title={connector.name}>
+    <AppShell title={connector.name} breadcrumbVendor={connector.type}>
       <div className="flex flex-col min-h-full">
         {/* Header */}
         <div className="border-b border-border px-4 md:px-6 py-4">
@@ -232,8 +200,9 @@ export default function ConnectorDetailPage() {
               <div className="flex items-center gap-4">
                 <ConnectorIcon 
                   vendor={connector.type}
-                  status={isSyncing ? "syncing" : displayConnector.status === "connected" ? "connected" : displayConnector.status === "error" ? "error" : "disconnected"}
+                  status={isSyncing ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
                   size="md"
+                  showStatusIndicator
                 />
                 <div>
                   <div className="flex items-center gap-2">
@@ -262,14 +231,14 @@ export default function ConnectorDetailPage() {
               <KnowledgeSyncButton
                 connectorId={connectorId}
                 connectorType={liveConnector?.type || liveConnector?.vendor || connector.type}
-                connectorStatus={liveConnector?.status || displayConnector.status}
+                connectorStatus={liveConnector?.status || connector.status}
               />
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="gap-2"
                 onClick={handleSync}
-                disabled={isSyncing || displayConnector.status !== "connected"}
+                disabled={isSyncing || connector.status !== "connected"}
               >
                 <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
                 {isSyncing ? "Syncing..." : "Sync Now"}
@@ -290,13 +259,6 @@ export default function ConnectorDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleToggleStatus}>
-                    {displayConnector.status === "connected" ? (
-                      <><Pause className="h-4 w-4 mr-2" />Disable Connector</>
-                    ) : (
-                      <><Play className="h-4 w-4 mr-2" />Enable Connector</>
-                    )}
-                  </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Download className="h-4 w-4 mr-2" />
                     Export Logs
@@ -323,19 +285,11 @@ export default function ConnectorDetailPage() {
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Health Score</p>
-                    <p className="text-2xl font-bold text-foreground">{connector.health}%</p>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <p className="text-lg font-bold text-foreground capitalize">{connector.status}</p>
                   </div>
-                  <div className={cn(
-                    "h-10 w-10 rounded-full flex items-center justify-center",
-                    connector.health >= 90 ? "bg-emerald-500/10" : 
-                    connector.health >= 70 ? "bg-amber-500/10" : "bg-red-500/10"
-                  )}>
-                    <Activity className={cn(
-                      "h-5 w-5",
-                      connector.health >= 90 ? "text-emerald-500" : 
-                      connector.health >= 70 ? "text-amber-500" : "text-red-500"
-                    )} />
+                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center", config.bg + "/10")}>
+                    <StatusIcon className={cn("h-5 w-5", config.color, connector.status === "syncing" && "animate-spin")} />
                   </div>
                 </div>
               </CardContent>
@@ -344,16 +298,12 @@ export default function ConnectorDetailPage() {
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Requests Today</p>
-                    <p className="text-2xl font-bold text-foreground">{connector.requestsToday?.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Last Sync</p>
+                    <p className="text-sm font-semibold text-foreground">{connector.lastSync}</p>
                   </div>
                   <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10">
-                    <Zap className="h-5 w-5 text-blue-500" />
+                    <Clock className="h-5 w-5 text-blue-500" />
                   </div>
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500">+12% from yesterday</span>
                 </div>
               </CardContent>
             </Card>
@@ -361,16 +311,12 @@ export default function ConnectorDetailPage() {
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Avg Latency</p>
-                    <p className="text-2xl font-bold text-foreground">{connector.latency}ms</p>
+                    <p className="text-xs text-muted-foreground">Sync Interval</p>
+                    <p className="text-sm font-semibold text-foreground">{connector.config.syncInterval}</p>
                   </div>
                   <div className="h-10 w-10 rounded-full flex items-center justify-center bg-violet-500/10">
-                    <Clock className="h-5 w-5 text-violet-500" />
+                    <RefreshCw className="h-5 w-5 text-violet-500" />
                   </div>
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <TrendingDown className="h-3 w-3 text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500">-5ms from avg</span>
                 </div>
               </CardContent>
             </Card>
@@ -378,98 +324,36 @@ export default function ConnectorDetailPage() {
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Throughput</p>
-                    <p className="text-2xl font-bold text-foreground">{connector.dataFlowRate}</p>
+                    <p className="text-xs text-muted-foreground">Environment</p>
+                    <p className="text-sm font-semibold text-foreground capitalize">{connector.environment}</p>
                   </div>
                   <div className="h-10 w-10 rounded-full flex items-center justify-center bg-amber-500/10">
-                    <TrendingUp className="h-5 w-5 text-amber-500" />
+                    <Globe className="h-5 w-5 text-amber-500" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Charts Row */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Request Volume Chart */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Request Volume</CardTitle>
-                <CardDescription className="text-xs">API requests over the last 24 hours</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={usageData}>
-                      <defs>
-                        <linearGradient id="requestsGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                      <XAxis dataKey="time" stroke="#71717a" fontSize={10} />
-                      <YAxis stroke="#71717a" fontSize={10} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#18181b', 
-                          border: '1px solid #27272a',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }} 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="requests" 
-                        stroke="#3b82f6" 
-                        fill="url(#requestsGradient)" 
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Latency Chart */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Latency Trends</CardTitle>
-                <CardDescription className="text-xs">Response time in milliseconds</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={usageData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                      <XAxis dataKey="time" stroke="#71717a" fontSize={10} />
-                      <YAxis stroke="#71717a" fontSize={10} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#18181b', 
-                          border: '1px solid #27272a',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }} 
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="latency" 
-                        stroke="#8b5cf6" 
-                        strokeWidth={2}
-                        dot={{ fill: '#8b5cf6', strokeWidth: 0, r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Usage metrics — available when observability is wired for this connector */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Usage metrics</CardTitle>
+              <CardDescription className="text-xs">
+                Request volume and latency charts will appear here once connector telemetry is enabled for your organization.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+                No telemetry data yet
+              </div>
+            </CardContent>
+          </Card>
 
           {/* G4: live action readiness, workflow linkage, and starter workflows */}
           <ConnectorLinkage
             vendor={vendorKey}
-            connectorStatus={displayConnector.status}
+            connectorStatus={connector.status}
             catalog={vendorCatalog}
             workflows={workflows}
           />
@@ -489,40 +373,50 @@ export default function ConnectorDetailPage() {
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">API Key</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-secondary px-2 py-1.5 rounded font-mono truncate">
-                      {showApiKey ? connector.config.apiKey : "••••••••••••••••"}
+                      {connector.config.apiKey
+                        ? showApiKey
+                          ? connector.config.apiKey
+                          : "••••••••••••••••"
+                        : "Not configured"}
                     </code>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 w-7 p-0"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                    >
-                      {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleCopy(connector.config.apiKey || "", "API Key")}
-                    >
-                      {copied === "API Key" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                    </Button>
+                    {connector.config.apiKey ? (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                        >
+                          {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleCopy(connector.config.apiKey, "API Key")}
+                        >
+                          {copied === "API Key" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Webhook URL</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-secondary px-2 py-1.5 rounded font-mono truncate">
-                      {connector.config.webhookUrl}
+                      {connector.config.webhookUrl || "Not configured"}
                     </code>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleCopy(connector.config.webhookUrl || "", "Webhook URL")}
-                    >
-                      {copied === "Webhook URL" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                    </Button>
+                    {connector.config.webhookUrl ? (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleCopy(connector.config.webhookUrl, "Webhook URL")}
+                      >
+                        {copied === "Webhook URL" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -545,34 +439,8 @@ export default function ConnectorDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {activityLogs.map((log) => (
-                  <div 
-                    key={log.id}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className={cn(
-                      "h-7 w-7 rounded-full flex items-center justify-center shrink-0",
-                      log.type === "success" ? "bg-emerald-500/10" :
-                      log.type === "warning" ? "bg-amber-500/10" : "bg-red-500/10"
-                    )}>
-                      {log.type === "success" ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      ) : log.type === "warning" ? (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-foreground">{log.action}</p>
-                        <span className="text-[10px] text-muted-foreground shrink-0">{log.timestamp}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{log.details}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+                No activity logs recorded yet
               </div>
             </CardContent>
           </Card>

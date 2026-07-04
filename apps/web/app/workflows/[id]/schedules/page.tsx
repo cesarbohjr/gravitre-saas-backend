@@ -35,7 +35,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
   const [range, setRange] = useState(() => monthWindow(new Date()))
   const [kinds, setKinds] = useState<ScheduleKind[] | undefined>(undefined)
 
-  const { items, isLoading, isSample, error, refresh } = useSchedules({
+  const { items, isLoading, error, refresh } = useSchedules({
     workflowId: id,
     from: range.from,
     to: range.to,
@@ -194,18 +194,6 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Sample banner */}
-        {isSample && (
-          <div className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
-            <span>
-              No live schedules or runs for this workflow yet — showing{" "}
-              <span className="font-medium text-foreground">sample data</span>. Create a schedule
-              above to populate this view.
-            </span>
           </div>
         )}
 

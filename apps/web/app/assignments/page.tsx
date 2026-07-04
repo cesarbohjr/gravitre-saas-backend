@@ -36,7 +36,6 @@ import {
   type LucideIcon 
 } from "lucide-react"
 
-// Types — list view uses shared demo catalog (detail resolves via fetchAssignmentJob)
 type Assignment = DemoAssignment
 
 // Agent icon mapping based on role
@@ -525,7 +524,7 @@ export default function AssignmentsPage() {
         value: inProgress,
         icon: "activity",
         color: "blue",
-        trend: { label: "+2 today", direction: "up" },
+        trend: inProgress > 0 ? { label: "Active now", direction: "neutral" } : undefined,
         duration: 0.6,
       },
       {
@@ -533,7 +532,7 @@ export default function AssignmentsPage() {
         value: completed,
         icon: "check",
         color: "emerald",
-        trend: { label: "+5 this week", direction: "up" },
+        trend: completed > 0 ? { label: "Finished tasks", direction: "neutral" } : undefined,
         duration: 0.75,
       },
       {
@@ -678,7 +677,7 @@ export default function AssignmentsPage() {
           {assignmentsError && !showListSkeleton ? (
             <WorkSectionErrorCard
               title="Could not load assignments"
-              message="Your assignments list could not be refreshed. Demo data is still available below."
+              message="Your assignments list could not be refreshed. Showing the last loaded data if available."
               onRetry={() => void refreshAssignments()}
               className="mb-4"
             />

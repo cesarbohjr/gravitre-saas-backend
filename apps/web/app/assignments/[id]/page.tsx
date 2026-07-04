@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import { approveAssignment, fetchAssignmentJob, getDemoAssignment, rejectAssignment } from "@/lib/demo-assignments"
+import { approveAssignment, fetchAssignmentJob, rejectAssignment } from "@/lib/demo-assignments"
 import type { AgentJob } from "@/hooks/use-async-job"
 import { toast } from "sonner"
 import {
@@ -693,12 +693,7 @@ export default function AssignmentDetailPage({
 
   const approvalOpen = needsApproval && !approvalDismissed
 
-  const demoMeta = getDemoAssignment(id)
-
   const qualityChecks = useMemo(() => {
-    if (demoMeta?.qualityChecks?.length) {
-      return demoMeta.qualityChecks
-    }
     const sources = (handoff?.rag_sources ?? [])
       .map((source) => source.source)
       .filter(Boolean) as string[]
@@ -718,14 +713,13 @@ export default function AssignmentDetailPage({
       checks.push({ label: "Optional comparison sections may be incomplete", status: "warn" })
     }
     return checks
-  }, [demoMeta?.qualityChecks, handoff?.rag_sources, confidencePercent])
+  }, [handoff?.rag_sources, confidencePercent])
 
   const reportContent =
-    demoMeta?.reportContent ??
-    (handoff?.answer?.trim() ||
-      handoff?.summary?.trim() ||
-      deliverables[0]?.preview ||
-      taskTitle)
+    handoff?.answer?.trim() ||
+    handoff?.summary?.trim() ||
+    deliverables[0]?.preview ||
+    taskTitle
 
   const selectedItem = deliverables.find((d) => d.id === selectedDeliverable) ?? deliverables[0] ?? null
   const readyCount = deliverables.filter((d) => d.status === "ready").length

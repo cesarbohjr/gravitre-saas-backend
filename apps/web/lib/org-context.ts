@@ -40,6 +40,13 @@ export function invalidateOrgCache() {
   cachedOrgId = undefined
 }
 
+/** Synchronous org id from cache or localStorage — avoids blocking first API fetch. */
+export function getQuickOrgId(): string | null {
+  if (typeof window === "undefined") return null
+  if (cachedOrgId) return cachedOrgId
+  return getSelectedOrgFromStorage()?.id ?? null
+}
+
 export function getSelectedOrgFromStorage(): SelectedOrg | null {
   if (typeof window === "undefined") return null
   const raw = window.localStorage.getItem(ORG_STORAGE_KEY)
