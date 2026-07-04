@@ -43,6 +43,8 @@ const nextConfig = {
       { source: "/command-center", destination: "/ai", permanent: true },
       { source: "/assistant", destination: "/ai", permanent: true },
       { source: "/agents/swarm", destination: "/multi-agent-run", permanent: true },
+      { source: "/tasks", destination: "/runs", permanent: true },
+      { source: "/systems", destination: "/connectors", permanent: true },
     ]
   },
 }

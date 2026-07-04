@@ -120,7 +120,7 @@ export function CommandPalette({
             <Sparkles className="mr-2 h-4 w-4 text-emerald-400" />
             <span>Start Gravitre AI</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.assistant))}>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAiChat))}>
             <Bot className="mr-2 h-4 w-4 text-teal-400" />
             <span>Workspace Chat</span>
           </CommandItem>
@@ -314,7 +314,7 @@ export function CommandPalette({
             <span>Gravitre AI</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push(APP_ROUTES.assistant))}
+            onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAiChat))}
           >
             <Bot className="mr-2 h-4 w-4 text-teal-400" />
             <span>Workspace Chat</span>

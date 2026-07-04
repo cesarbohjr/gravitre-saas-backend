@@ -303,6 +303,26 @@ class ChatConnectorExecutionService:
             task_state=task_state,
         )
         if not plan:
+            if self.is_connector_intent(message, task_state):
+                from app.services.execution_envelope import build_not_executable, format_not_executable_message
+
+                if not connected_integrations:
+                    payload = build_not_executable(
+                        "missing_connector",
+                        next_step="Connect an integration under Connectors, then retry.",
+                    )
+                else:
+                    payload = build_not_executable(
+                        "not_implemented",
+                        next_step="Try naming the integration and action explicitly (e.g. list HubSpot deals).",
+                    )
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "answer",
+                    "message": format_not_executable_message(payload),
+                    "not_executable": payload,
+                    "task_state": task_state,
+                }
             return None
 
         risk = await self._evaluate_risk(org_id, user_id, plan, classification)

@@ -26,6 +26,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 // Notification types
 export interface Notification {

@@ -429,6 +429,9 @@ export interface AgentKnowledgeAssignment {
 
 export interface AgentCapabilityProfile {
   agentId: string
+  capabilities?: string[]
+  allowedConnectors?: string[]
+  canExecuteWithApproval?: boolean
   connectedKnowledgeSources: Array<{ label?: string; sourceType?: string; freshnessStatus?: string }>
   availableReadActions: string[]
   availableWriteActions: string[]

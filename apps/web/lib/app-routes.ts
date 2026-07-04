@@ -4,8 +4,9 @@ export const APP_ROUTES = {
   welcome: "/welcome",
   multiAgentRun: "/multi-agent-run",
   gravitreAi: "/ai",
-  assistant: "/assistant",
-  search: "/search",
+  /** Workspace chat mode on the unified AI surface */
+  gravitreAiChat: "/ai?mode=chat",
+  universalSearch: "/search",
   agents: "/agents",
   training: "/training",
   models: "/models",
@@ -20,6 +21,7 @@ export const APP_ROUTES = {
   marketplace: "/marketplace",
   connectors: "/connectors",
   workflows: "/workflows",
+  runs: "/runs",
   approvals: "/approvals",
   settings: "/settings",
 } as const
@@ -29,6 +31,10 @@ export const LEGACY_APP_ROUTES = {
   operator: "/operator",
   commandCenter: "/command-center",
   agentSwarm: "/agents/swarm",
+  assistant: "/assistant",
+  chat: "/chat",
+  tasks: "/tasks",
+  systems: "/systems",
 } as const
 
 export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES]

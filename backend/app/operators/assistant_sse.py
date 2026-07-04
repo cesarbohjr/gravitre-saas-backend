@@ -71,6 +71,7 @@ def sse_intelligence_metadata(
     advisor_brief: dict[str, Any] | None = None,
     explainability: dict[str, Any] | None = None,
     execution_gate: dict[str, Any] | None = None,
+    trust_envelope: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     return _sse(
         {
@@ -101,6 +102,7 @@ def sse_intelligence_metadata(
                 "advisorBrief": advisor_brief,
                 "explainability": explainability or {},
                 "executionGate": execution_gate or {},
+                "trustEnvelope": trust_envelope or {},
             },
         }
     )

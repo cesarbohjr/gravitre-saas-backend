@@ -1093,6 +1093,19 @@ class AgentIntelligence:
             conversation_history,
             understanding=understanding,
         )
+        from app.services.chat_intelligence_facade import get_chat_intelligence_facade
+
+        chat_facade = get_chat_intelligence_facade(active_settings)
+        pipeline_classification = await chat_facade.enrich_classification(
+            pipeline_classification,
+            org_id,
+            task_text,
+        )
+        router_enrichments = await chat_facade.run_router_enrichments(
+            org_id,
+            task_text,
+            pipeline_classification,
+        )
         classification_confidence = float(
             pipeline_classification.get("classification_confidence") or 0.55
         )
@@ -1337,6 +1350,11 @@ class AgentIntelligence:
             return
 
         risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
+        simulation_summary = await chat_facade.simulate_action_if_required(
+            org_id,
+            user_id,
+            pipeline_classification,
+        )
         if pipeline_classification.get("requires_action"):
             risk_evaluation = await get_risk_approval_evaluator(active_settings).evaluate(
                 org_id,
@@ -1497,12 +1515,18 @@ class AgentIntelligence:
             )
             return
 
-        model = model_override or select_model_for_agent(
+        model, model_selection_meta = await chat_facade.resolve_chat_model(
+            org_id,
             agent,
             client,
-            org_id,
             task_text,
-            parameters={"surface": "assistant"},
+            pipeline_classification,
+            model_override=model_override,
+        )
+        route_metadata = chat_facade.build_route_metadata(
+            pipeline_classification,
+            model_selection_meta,
+            router_enrichments,
         )
         available_tools = self.get_agent_tools(agent, connected_list, permitted_tools=permitted_registry)
         ctx = ToolContext(
@@ -1674,6 +1698,16 @@ class AgentIntelligence:
                     yield sse_text_delta(text_id, suffix)
             yield sse_text_end(text_id)
 
+        trust_meta = chat_facade.build_trust_metadata(
+            answer=full_content,
+            sources=rag_sources,
+            confidence=float(finalized["confidence"].get("score") or classification_confidence),
+            reasoning_summary=str(finalized.get("explanation") or ""),
+            actions_taken=tool_results,
+            actions_pending_approval=[],
+            advisory_only=bool(turn_ctx.execution_gate and turn_ctx.execution_gate.get("blocked")),
+        )
+
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence=finalized["confidence"],
@@ -1685,7 +1719,7 @@ class AgentIntelligence:
             persona_key=str(persona.get("persona_key") or ""),
             proactive_suggestions=suggestion_texts,
             task_state=task_state if dialogue_mode == "guide" else None,
-            simulation_summary=risk_evaluation.get("simulation_summary"),
+            simulation_summary=simulation_summary or risk_evaluation.get("simulation_summary"),
             context_profile=finalized.get("context_profile"),
             context_explanation=finalized.get("context_explanation"),
             business_signals=turn_ctx.business_signals,
@@ -1698,6 +1732,7 @@ class AgentIntelligence:
             advisor_brief=turn_ctx.advisor_brief,
             explainability=turn_ctx.explainability,
             execution_gate=turn_ctx.execution_gate,
+            trust_envelope=trust_meta.get("trust_envelope"),
         )
 
         yield AssistantStreamComplete(
@@ -1742,6 +1777,10 @@ class AgentIntelligence:
                 "answer": full_content,
                 "confidence": finalized["confidence"],
                 "explanation": finalized["explanation"],
+                "strategy_key": route_metadata.get("strategy_key"),
+                "segment_key": route_metadata.get("segment_key"),
+                "model_selection": route_metadata.get("model_selection"),
+                "enrichments": router_enrichments,
             },
             pipeline_classification,
         )

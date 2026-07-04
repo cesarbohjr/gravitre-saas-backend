@@ -1,10 +1,11 @@
 import type { Metadata } from "next"
 import { authenticatedMetadata } from "@/lib/authenticated-metadata"
+import { APP_ROUTES } from "@/lib/app-routes"
 
 export const metadata: Metadata = authenticatedMetadata(
-  "Workspace Chat | Gravitre",
-  "Multi-turn workspace chat with tools and saved threads.",
-  { canonical: "/assistant" },
+  "Gravitre AI | Workspace",
+  "Unified AI workspace for chat, search, and execution.",
+  { canonical: APP_ROUTES.gravitreAi },
 )
 
 export default function Layout({ children }: { children: React.ReactNode }) {

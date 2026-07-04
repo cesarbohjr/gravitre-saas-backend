@@ -4,9 +4,8 @@ export const FOCUS_SEARCH_AFTER_NAV_KEY = "gravitre:focus-search-on-load"
 import { APP_ROUTES } from "@/lib/app-routes"
 
 export const WORK_SECTION_PATH_PREFIXES = [
-  APP_ROUTES.search,
+  APP_ROUTES.universalSearch,
   APP_ROUTES.gravitreAi,
-  APP_ROUTES.assistant,
   APP_ROUTES.agents,
   APP_ROUTES.multiAgentRun,
   "/assignments",

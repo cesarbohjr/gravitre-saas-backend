@@ -187,6 +187,21 @@ def patch_agent_streaming_dialogue_pipeline() -> Iterator[None]:
                 AsyncMock(return_value={"is_valid": True, "confidence": 0.9}),
             )
         )
+        mock_facade = MagicMock()
+        mock_facade.enrich_classification = AsyncMock(side_effect=lambda classification, org_id, query_text: classification)
+        mock_facade.run_router_enrichments = AsyncMock(return_value={})
+        mock_facade.simulate_action_if_required = AsyncMock(return_value=None)
+        mock_facade.resolve_chat_model = AsyncMock(return_value=("gpt-test", {"source": "test"}))
+        mock_facade.build_route_metadata = MagicMock(
+            return_value={"strategy_key": "test", "segment_key": "test", "model_selection": {}},
+        )
+        mock_facade.build_trust_metadata = MagicMock(return_value={"trust_envelope": {}})
+        stack.enter_context(
+            patch(
+                "app.services.chat_intelligence_facade.get_chat_intelligence_facade",
+                return_value=mock_facade,
+            )
+        )
         yield
 
 

@@ -76,6 +76,12 @@ ORCHESTRATION_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "IntelligenceOrchestrator",
         "note": "Unified assistant facade — context prioritization, memory, confidence, execution core.",
     },
+    "chat_intelligence_facade": {
+        "status": "live",
+        "module": "app.services.chat_intelligence_facade",
+        "service": "ChatIntelligenceFacade",
+        "note": "Shared IntelligenceRouter stages for live chat — enrichments, simulation, bandit model selection.",
+    },
     "context_prioritization_engine": {
         "status": "live",
         "module": "app.services.context_prioritization_engine",

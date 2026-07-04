@@ -220,12 +220,19 @@ export default function AgentKnowledgePage({
                 </div>
               </div>
 
-              <Link href="/training">
-                <Button variant="outline" className="gap-2">
-                  <Icon name="add" size="sm" />
-                  Add Training Data
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href={`/agents/${agentId}/capabilities`}>
+                  <Button variant="outline" className="gap-2">
+                    Capabilities
+                  </Button>
+                </Link>
+                <Link href="/training">
+                  <Button variant="outline" className="gap-2">
+                    <Icon name="add" size="sm" />
+                    Add Training Data
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             {/* Stats */}
