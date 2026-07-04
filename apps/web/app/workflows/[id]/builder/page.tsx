@@ -4223,6 +4223,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Evaluate Lead Quality"
                     description="Score and route leads"
                     icon={Target}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4251,6 +4252,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Choose Next Action"
                     description="AI selects best action"
                     icon={Brain}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4278,6 +4280,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Route Customer Request"
                     description="Direct to right team"
                     icon={GitBranch}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,
@@ -4306,6 +4309,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     name="Select Best Channel"
                     description="Choose communication channel"
                     icon={Gauge}
+                    nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
                         id: `node-${Date.now()}`,

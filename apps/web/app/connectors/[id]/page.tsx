@@ -96,7 +96,9 @@ function mapConnectorRecord(live: Connector | Record<string, unknown>) {
     config: {
       apiKey: formatConfigValue(config, "apiKey"),
       webhookUrl: formatConfigValue(config, "webhookUrl"),
-      syncInterval: String(raw.syncFrequency ?? raw.sync_frequency ?? formatConfigValue(config, "syncInterval") || "—"),
+      syncInterval: String(
+        (raw.syncFrequency ?? raw.sync_frequency ?? formatConfigValue(config, "syncInterval")) || "—",
+      ),
     },
   }
 }
@@ -164,7 +166,12 @@ export default function ConnectorDetailPage() {
   }
 
   // Resolve the vendor key the catalog is indexed by.
-  const vendorKey = (liveConnector?.vendor || liveConnector?.type || connector.type || "").toLowerCase()
+  const vendorKey = String(
+    (liveConnector as Connector | undefined)?.vendor
+      ?? (liveConnector as Connector | undefined)?.type
+      ?? connector.type
+      ?? "",
+  ).toLowerCase()
   const vendorCatalog: VendorActionCatalog | null =
     catalogData?.vendors.find((v) => v.vendor.toLowerCase() === vendorKey) ?? null
   const workflows: Workflow[] = workflowsData?.workflows ?? []
@@ -244,8 +251,14 @@ export default function ConnectorDetailPage() {
             <div className="flex items-center gap-2">
               <KnowledgeSyncButton
                 connectorId={connectorId}
-                connectorType={liveConnector?.type || liveConnector?.vendor || connector.type}
-                connectorStatus={liveConnector?.status || connector.status}
+                connectorType={String(
+                  (liveConnector as Connector | undefined)?.type
+                    ?? (liveConnector as Connector | undefined)?.vendor
+                    ?? connector.type,
+                )}
+                connectorStatus={String(
+                  (liveConnector as Connector | undefined)?.status ?? connector.status,
+                )}
               />
               <Button 
                 variant="outline" 

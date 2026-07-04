@@ -248,7 +248,7 @@ function BillingPageInner() {
   const subStatus = subscription?.status ?? "active"
   const liveInvoices =
     overview?.invoices?.map((invoice) => ({
-      id: invoice.number || invoice.id,
+      id: invoice.id,
       date: invoice.created_at
         ? new Date(invoice.created_at).toLocaleDateString(undefined, {
             month: "short",
@@ -256,7 +256,7 @@ function BillingPageInner() {
             year: "numeric",
           })
         : "—",
-      amount: formatInvoiceAmount(invoice.amount_due ?? invoice.amount_paid, invoice.currency),
+      amount: formatInvoiceAmount(invoice.amount_cents, invoice.currency),
       status: invoice.status ? invoice.status.replace(/_/g, " ") : "—",
     })) ?? []
   const invoiceRows = liveInvoices.length > 0 ? liveInvoices : []
@@ -265,21 +265,23 @@ function BillingPageInner() {
     ? [
         {
           name: "Workflow Runs",
-          used: usageFromApi.workflow_runs ?? 0,
-          limit: usageFromApi.workflow_runs_included ?? currentPlan.limits.workflowRuns,
+          used: usageFromApi.totals.workflow_runs ?? 0,
+          limit: usageFromApi.included_outputs ?? 50000,
           icon: Zap,
           color: "blue" as const,
           trend: "",
           trendUp: true,
+          unit: undefined as string | undefined,
         },
         {
           name: "AI Credits",
-          used: usageFromApi.ai_credits ?? 0,
-          limit: usageFromApi.ai_credits_included ?? currentPlan.limits.aiCredits,
+          used: usageFromApi.totals.ai_tokens ?? 0,
+          limit: 2000,
           icon: Sparkles,
           color: "purple" as const,
           trend: "",
           trendUp: true,
+          unit: undefined as string | undefined,
         },
       ]
     : usageMetrics
@@ -628,10 +630,10 @@ function BillingPageInner() {
                         {/* Value */}
                         <div className="mb-4">
                           <p className="text-3xl font-bold text-foreground tracking-tight tabular-nums">
-                            {displayValue.toLocaleString()}{metric.unit ? ` ${metric.unit}` : ''}
+                            {displayValue.toLocaleString()}{"unit" in metric && metric.unit ? ` ${metric.unit}` : ""}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            of {metric.limit.toLocaleString()}{metric.unit ? ` ${metric.unit}` : ''} {metric.name.toLowerCase()}
+                            of {metric.limit.toLocaleString()}{"unit" in metric && metric.unit ? ` ${metric.unit}` : ""} {metric.name.toLowerCase()}
                           </p>
                         </div>
 
