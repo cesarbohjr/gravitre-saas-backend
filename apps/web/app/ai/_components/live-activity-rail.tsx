@@ -1,18 +1,23 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { useAuth } from "@/lib/auth-context"
 import { runsApi } from "@/lib/api"
 import { assistantApi } from "@/lib/api"
+import { getSelectedOrgFromStorage, ensureSelectedOrg } from "@/lib/org-context"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import type { Run, RunStatus } from "@/types/api"
 import { Activity, CheckCircle2, Loader2, PlayCircle } from "lucide-react"
 import { AiExecuteResults } from "./ai-execute-results"
 import type { AgentJob } from "@/hooks/use-async-job"
 import type { InlineExecutePlan } from "@/lib/ai-inline-execute"
 import type { LayoutColumn, ResultBlockId } from "./draggable-result-stack"
+import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
+import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
 
 function relativeTime(value?: string): string {
   if (!value) return ""
@@ -44,6 +49,7 @@ function runName(run: Run): string {
 
 /** Right-hand rail summarizing live org activity for the unified AI surface. */
 export function LiveActivityRail({
+  advisorBrief = null,
   layoutPlan = null,
   layoutJob = null,
   layoutProcessing = false,
@@ -54,6 +60,7 @@ export function LiveActivityRail({
   onReorderLayoutBlocks,
   onMoveLayoutBlockToColumn,
 }: {
+  advisorBrief?: AdvisorBrief | null
   layoutPlan?: InlineExecutePlan | null
   layoutJob?: AgentJob | null
   layoutProcessing?: boolean
@@ -65,14 +72,30 @@ export function LiveActivityRail({
   onMoveLayoutBlockToColumn?: (blockId: ResultBlockId, target: LayoutColumn) => void
 } = {}) {
   const { user } = useAuth()
+  const [orgId, setOrgId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id ?? null : null,
+  )
+
+  useEffect(() => {
+    if (!user) {
+      setOrgId(null)
+      return
+    }
+    void ensureSelectedOrg(false).then((resolved) => setOrgId(resolved))
+  }, [user])
 
   const { data: runsData } = useSWR(
-    user ? "ai-rail-runs" : null,
+    user && orgId ? ["ai-rail-runs", orgId] : null,
     () => runsApi.list({ limit: 8 }),
     { revalidateOnFocus: false, refreshInterval: 20_000 },
   )
-  const { data: orgContext, error: orgContextError } = useSWR(
-    user ? "ai-rail-org-context" : null,
+  const {
+    data: orgContext,
+    error: orgContextError,
+    mutate: refreshOrgContext,
+    isLoading: orgContextLoading,
+  } = useSWR(
+    user && orgId ? ["ai-rail-org-context", orgId] : null,
     () => assistantApi.orgContext(),
     { revalidateOnFocus: false },
   )
@@ -83,12 +106,20 @@ export function LiveActivityRail({
   const recent = runs.filter((r) => !isRunning(r.status)).slice(0, 4)
   const connectorCount = orgContext?.counts.connectors ?? 0
   const systemsHealthy = connectorCount > 0
-  const systemsDisplay = orgContextError ? "—" : systemsHealthy ? String(connectorCount) : "0"
-  const systemsCaption = orgContextError ? "Status unavailable" : "Systems healthy"
+  const systemsUnavailable = Boolean(orgContextError)
+  const systemsDisplay = systemsUnavailable ? "—" : systemsHealthy ? String(connectorCount) : "0"
+  const systemsCaption = orgContextLoading
+    ? "Checking status…"
+    : systemsUnavailable
+      ? "Status unavailable"
+      : "Systems healthy"
 
   return (
-    <aside className="hidden w-72 shrink-0 border-l border-border bg-card/30 xl:block xl:max-h-full xl:overflow-y-auto">
+    <aside className="hidden w-80 shrink-0 border-l border-border bg-card/30 xl:block xl:max-h-full xl:overflow-y-auto">
       <div className="flex flex-col gap-6 p-5">
+        <MesonPagePanel page="ai-chat" compact advisorBrief={advisorBrief} />
+
+        <div className="border-t border-border/70 pt-4">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/70" />
@@ -96,14 +127,32 @@ export function LiveActivityRail({
           </span>
           <h2 className="text-sm font-semibold text-foreground">Live activity</h2>
         </div>
+        </div>
 
         {/* Summary tiles */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-border/70 bg-background p-3">
-            <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+            <p
+              className={cn(
+                "text-2xl font-semibold tabular-nums",
+                systemsUnavailable
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-emerald-600 dark:text-emerald-400",
+              )}
+            >
               {systemsDisplay}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">{systemsCaption}</p>
+            {systemsUnavailable ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 h-7 px-2 text-xs"
+                onClick={() => void refreshOrgContext()}
+              >
+                Retry
+              </Button>
+            ) : null}
           </div>
           <div className="rounded-xl border border-border/70 bg-background p-3">
             <p className="text-2xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">{active.length}</p>

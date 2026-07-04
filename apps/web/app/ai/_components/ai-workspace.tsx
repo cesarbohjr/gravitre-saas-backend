@@ -78,7 +78,7 @@ import {
   BusinessSignalsBanner,
   type BusinessSignal,
 } from "@/components/gravitre/assistant/business-signals-banner"
-import { AdvisorBriefPanel, type AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
+import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
 import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
 import {
@@ -139,6 +139,7 @@ export function AiWorkspace({
   const [conversationLoading, setConversationLoading] = useState(false)
   const [sessionBusy, setSessionBusy] = useState(false)
   const [orgReady, setOrgReady] = useState(false)
+  const [threadRestoreStale, setThreadRestoreStale] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
@@ -433,6 +434,7 @@ export function AiWorkspace({
     activeConversationIdRef.current = null
     setMessages([])
     setConversationTitle("Gravitre AI")
+    setThreadRestoreStale(false)
   }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
 
   useEffect(() => {
@@ -504,11 +506,23 @@ export function AiWorkspace({
 
   const loadConversationMessages = useCallback(
     async (id: string, options?: { preferApi?: boolean; silent?: boolean }) => {
+      const orgId = await ensureSelectedOrg(true)
+      if (!orgId) {
+        if (!options?.silent) {
+          toast.error("Organization context required", {
+            description: "Select a workspace before loading conversations.",
+          })
+        }
+        return
+      }
+
       const cached = readCachedConversationMessages(id)
       const showBlockingLoader = !options?.silent && !cached?.length
+      let fetchedCount = cached?.length ?? 0
 
       if (showBlockingLoader) {
         setConversationLoading(true)
+        setThreadRestoreStale(false)
       }
       if (!options?.silent && !cached?.length) {
         setInlineTurns([])
@@ -519,13 +533,19 @@ export function AiWorkspace({
 
       try {
         const { messages: stored } = await conversationsApi.getMessages(id)
+        fetchedCount = stored.length
         if (stored.length > 0) {
           const uiMessages = stored.map(conversationMessageToUI)
           setMessages(uiMessages)
           writeCachedConversationMessages(id, uiMessages)
+          setThreadRestoreStale(false)
         } else if (!options?.preferApi) {
-          if (cached?.length) setMessages(cached)
-          else setMessages([])
+          if (cached?.length) {
+            setMessages(cached)
+            setThreadRestoreStale(false)
+          } else {
+            setMessages([])
+          }
         } else if (!cached?.length) {
           setMessages([])
         }
@@ -538,16 +558,22 @@ export function AiWorkspace({
       } catch (error) {
         if (cached?.length) {
           setMessages(cached)
+          setThreadRestoreStale(false)
         } else if (error instanceof ApiError && error.status === 404) {
           writeStoredConversationId(null)
           setActiveConversationId(null)
           activeConversationIdRef.current = null
           setMessages([])
           setConversationTitle("Gravitre AI")
+          setThreadRestoreStale(false)
         } else if (!cached?.length) {
           if (error instanceof ApiError && (error.status === 502 || error.status === 503)) {
             toast.error("Gravitre AI is reconnecting", {
               description: "The backend is unavailable. Try again in a moment or start a new conversation.",
+            })
+          } else if (error instanceof ApiError && error.status === 403) {
+            toast.error("Could not load conversation", {
+              description: "Organization context is missing or invalid for this thread.",
             })
           } else {
             toast.error("Could not load conversation")
@@ -556,6 +582,10 @@ export function AiWorkspace({
       } finally {
         if (showBlockingLoader) {
           setConversationLoading(false)
+        }
+        if (fetchedCount === 0 && !cached?.length) {
+          const selected = conversations.find((conversation) => conversation.id === id)
+          setThreadRestoreStale((selected?.message_count ?? 0) > 0)
         }
       }
     },
@@ -723,10 +753,20 @@ export function AiWorkspace({
         return
       }
 
+      const orgId = await ensureSelectedOrg(true)
+      if (!orgId) {
+        toast.error("Organization context required", {
+          description: "Select a workspace before opening conversations.",
+        })
+        return
+      }
+      setOrgReady(true)
+
       setSessionBusy(false)
       submitLockRef.current = false
       setSidebarOpen(false)
       stop()
+      setThreadRestoreStale(false)
 
       setActiveConversationId(id)
       activeConversationIdRef.current = id
@@ -745,13 +785,7 @@ export function AiWorkspace({
       const selected = conversations.find((conversation) => conversation.id === id)
       if (selected?.title) setConversationTitle(selected.title)
 
-      try {
-        await loadConversationMessages(id)
-      } catch {
-        toast.error("Could not load conversation")
-      } finally {
-        setConversationLoading(false)
-      }
+      await loadConversationMessages(id)
     },
     [conversations, loadConversationMessages, messages.length, resetExecuteJob, setMessages, stop],
   )
@@ -768,6 +802,7 @@ export function AiWorkspace({
     resetExecuteJob()
     setConversationTitle("Gravitre AI")
     setConversationLoading(false)
+    setThreadRestoreStale(false)
     setSessionBusy(false)
     submitLockRef.current = false
     inputRef.current?.focus()
@@ -821,10 +856,16 @@ export function AiWorkspace({
   const activeConversationHasStoredMessages = (activeConversation?.message_count ?? 0) > 0
 
   useEffect(() => {
-    if (!initialConversationId || initialConversationHandledRef.current || !user) return
+    if (!initialConversationId || initialConversationHandledRef.current || !user || !orgReady) return
+    if (
+      conversations.length > 0 &&
+      !conversations.some((conversation) => conversation.id === initialConversationId)
+    ) {
+      return
+    }
     initialConversationHandledRef.current = true
     void handleSelectConversation(initialConversationId)
-  }, [initialConversationId, user, handleSelectConversation])
+  }, [initialConversationId, user, orgReady, conversations, handleSelectConversation])
 
   useEffect(() => {
     if (!orgReady || !user || !activeConversationId || messages.length > 0 || sessionBusy || isChatBusy || conversationLoading) {
@@ -921,6 +962,7 @@ export function AiWorkspace({
     !isChatBusy &&
     !sessionBusy &&
     !routing &&
+    !threadRestoreStale &&
     !activeConversationHasStoredMessages
 
   const showWaitingForReply =
@@ -1013,11 +1055,6 @@ export function AiWorkspace({
         </div>
 
         <BusinessSignalsBanner signals={activeBusinessSignals} />
-        {advisorBrief ? (
-          <div className="border-b border-border px-4 py-2 md:px-6">
-            <AdvisorBriefPanel brief={advisorBrief} />
-          </div>
-        ) : null}
         {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
         {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
           <div className="border-b border-amber-200/60 bg-amber-50/50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200 md:px-6">
@@ -1100,10 +1137,15 @@ export function AiWorkspace({
             })
               : null}
 
-            {!showLanding && !conversationLoading && activeConversationHasStoredMessages && messages.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Restoring conversation…
+            {!showLanding && !conversationLoading && threadRestoreStale ? (
+              <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 px-4 py-8 text-center text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Messages could not be restored</p>
+                <p className="mt-1 text-xs">
+                  This thread has history metadata but no retrievable messages. Send a new message to continue, or start fresh.
+                </p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={handleNewConversation}>
+                  Start fresh
+                </Button>
               </div>
             ) : null}
 
@@ -1249,6 +1291,7 @@ export function AiWorkspace({
       </div>
 
       <LiveActivityRail
+        advisorBrief={advisorBrief}
         layoutPlan={latestExecuteTurn?.executePlan ?? null}
         layoutJob={latestExecuteTurn?.executeJob ?? null}
         layoutProcessing={Boolean(latestExecuteTurn?.status === "running" && executeWorking)}

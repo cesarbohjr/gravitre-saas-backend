@@ -31,6 +31,7 @@ export { TimelineItem, Timeline } from "./timeline-item"
 // AI Components
 export { AICommandInput } from "./ai-command-input"
 export { MesonInsightsPanel, AIInsightsPanel } from "./ai-insights-panel"
+export { MesonPagePanel } from "./meson-page-panel"
 export { AIPresence } from "./ai-presence"
 export { AIProcessingStatus } from "./ai-processing-status"
 export { ReasoningBlock } from "./reasoning-block"

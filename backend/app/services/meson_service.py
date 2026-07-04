@@ -117,6 +117,14 @@ class MesonInsightsResponse(BaseModel):
     insights: list[MesonInsight] = Field(default_factory=list)
 
 
+class MesonPageContextResponse(BaseModel):
+    """Page-scoped Meson insights and suggestions for registry, agents, and AI chat."""
+
+    insights: list[MesonInsight] = Field(default_factory=list)
+    suggestions: list[MesonSuggestion] = Field(default_factory=list)
+    source: str | None = None
+
+
 class MesonFeedbackResult(BaseModel):
     ok: bool = True
 
@@ -811,6 +819,530 @@ class MesonService:
             )
 
         return MesonInsightsResponse(insights=insights[:10])
+
+    def get_page_context(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        page: str,
+        entity_id: str | None = None,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        """Return Meson insights and suggestions scoped to a product surface."""
+        normalized = (page or "").strip().lower().replace("_", "-")
+        if normalized == "ai-chat":
+            return self._page_context_ai_chat(client, org_id, environment_name=environment_name)
+        if normalized == "model-registry":
+            return self._page_context_model_registry(client, org_id, entity_id=entity_id)
+        if normalized in {"model-detail", "model-detail-page"}:
+            return self._page_context_model_detail(client, org_id, entity_id=entity_id)
+        if normalized in {"agent-detail", "agent-detail-page"}:
+            return self._page_context_agent_detail(client, org_id, entity_id=entity_id)
+        base = self.get_proactive_insights(client, org_id, environment_name=environment_name)
+        return MesonPageContextResponse(
+            insights=base.insights[:5],
+            suggestions=[],
+            source="general",
+        )
+
+    def _page_context_ai_chat(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        environment_name: str,
+    ) -> MesonPageContextResponse:
+        insights_resp = self.get_proactive_insights(client, org_id, environment_name=environment_name)
+        insights = insights_resp.insights[:4]
+        suggestions: list[MesonSuggestion] = []
+
+        try:
+            connectors = list_connectors(client, org_id)
+            auth_issues = [
+                c for c in connectors if resolve_connector_auth_status(c).needs_reauth
+            ]
+            if auth_issues:
+                names = ", ".join(
+                    str(c.get("name") or c.get("type") or "connector") for c in auth_issues[:3]
+                )
+                insights.insert(
+                    0,
+                    MesonInsight(
+                        id="connectors-auth",
+                        title="Connectors need authentication",
+                        summary=f"{len(auth_issues)} connector(s) require re-auth ({names}).",
+                        category="operations",
+                    ),
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="fix-connectors",
+                        nodeType="navigate",
+                        label="Review connector health",
+                        reason="Restore data access before delegating tasks.",
+                        confidence=0.88,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson ai-chat connector lookup: %s", exc)
+
+        try:
+            recent_runs = (
+                client.table("workflow_runs")
+                .select("id, status, workflow_id")
+                .eq("org_id", org_id)
+                .eq("environment", environment_name)
+                .order("created_at", desc=True)
+                .limit(8)
+                .execute()
+            )
+            completed = [
+                r for r in (recent_runs.data or []) if str(r.get("status") or "") in {"completed", "success"}
+            ]
+            if completed:
+                suggestions.append(
+                    MesonSuggestion(
+                        id="summarize-runs",
+                        nodeType="chat",
+                        label="Summarize recent agent work",
+                        reason=f"{len(completed)} task(s) completed recently — ask for a recap.",
+                        confidence=0.72,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson ai-chat run lookup: %s", exc)
+
+        if not suggestions:
+            suggestions.append(
+                MesonSuggestion(
+                    id="delegate-task",
+                    nodeType="chat",
+                    label="Delegate a recurring workflow",
+                    reason="Switch to Execute mode to assign operational work to agents.",
+                    confidence=0.7,
+                )
+            )
+
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="ai-chat",
+        )
+
+    def _page_context_model_registry(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        entity_id: str | None,
+    ) -> MesonPageContextResponse:
+        if entity_id:
+            return self._page_context_model_detail(client, org_id, entity_id=entity_id)
+
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        rows: list[dict[str, Any]] = []
+
+        try:
+            resp = (
+                client.table("trained_models")
+                .select("id, name, status, model_type, deployed_version, current_version, dataset_id")
+                .eq("org_id", org_id)
+                .limit(200)
+                .execute()
+            )
+            rows = resp.data or []
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson model registry lookup: %s", exc)
+
+        if not rows:
+            return MesonPageContextResponse(
+                insights=[
+                    MesonInsight(
+                        id="no-models",
+                        title="Start your model registry",
+                        summary="Register a classifier, forecaster, or fine-tuned LLM to wire ML into workflows.",
+                        category="ml",
+                    )
+                ],
+                suggestions=[
+                    MesonSuggestion(
+                        id="register-first-model",
+                        nodeType="navigate",
+                        label="Register your first model",
+                        reason="Pick a template from the ML stack layers to get started.",
+                        confidence=0.85,
+                    )
+                ],
+                source="model-registry",
+            )
+
+        status_counts: dict[str, int] = {}
+        for row in rows:
+            key = str(row.get("status") or "draft")
+            status_counts[key] = status_counts.get(key, 0) + 1
+
+        deployed = status_counts.get("deployed", 0)
+        training = status_counts.get("training", 0) + status_counts.get("validating", 0)
+        ready = status_counts.get("ready", 0)
+        failed = status_counts.get("failed", 0)
+
+        if training:
+            insights.append(
+                MesonInsight(
+                    id="models-training",
+                    title=f"{training} model(s) in training",
+                    summary="Monitor validation metrics before promoting to production deploy.",
+                    category="ml",
+                )
+            )
+        if ready and not deployed:
+            insights.append(
+                MesonInsight(
+                    id="models-ready-not-deployed",
+                    title="Ready models awaiting deploy",
+                    summary=f"{ready} model(s) passed validation but are not live in production yet.",
+                    category="ml",
+                )
+            )
+        if failed:
+            insights.append(
+                MesonInsight(
+                    id="models-failed",
+                    title="Training failures detected",
+                    summary=f"{failed} model(s) failed — review dataset quality and hyperparameters.",
+                    category="ml",
+                )
+            )
+        without_dataset = sum(1 for r in rows if not r.get("dataset_id"))
+        if without_dataset:
+            suggestions.append(
+                MesonSuggestion(
+                    id="link-datasets",
+                    nodeType="navigate",
+                    label="Link training datasets",
+                    reason=f"{without_dataset} registered model(s) have no dataset — connect from Training.",
+                    confidence=0.8,
+                )
+            )
+        if ready:
+            suggestions.append(
+                MesonSuggestion(
+                    id="deploy-ready-models",
+                    nodeType="navigate",
+                    label="Deploy validated models",
+                    reason="Promote ready versions to production inference endpoints.",
+                    confidence=0.82,
+                )
+            )
+
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="registry-healthy",
+                    title="Registry looks healthy",
+                    summary=f"{len(rows)} model(s) tracked — {deployed} deployed to production.",
+                    category="ml",
+                )
+            )
+
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="model-registry",
+        )
+
+    def _page_context_model_detail(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        entity_id: str | None,
+    ) -> MesonPageContextResponse:
+        if not entity_id:
+            return self._page_context_model_registry(client, org_id, entity_id=None)
+
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        model: dict[str, Any] | None = None
+
+        try:
+            resp = (
+                client.table("trained_models")
+                .select(
+                    "id, name, status, model_type, deployed_version, current_version, dataset_id, base_model, task_type"
+                )
+                .eq("org_id", org_id)
+                .eq("id", entity_id)
+                .limit(1)
+                .execute()
+            )
+            model = (resp.data or [None])[0]
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson model detail lookup: %s", exc)
+
+        if not model:
+            return MesonPageContextResponse(
+                insights=[
+                    MesonInsight(
+                        id="model-not-found",
+                        title="Model not found",
+                        summary="This registry entry may have been archived or removed.",
+                        category="ml",
+                    )
+                ],
+                suggestions=[],
+                source="model-detail",
+            )
+
+        name = str(model.get("name") or "This model")
+        status = str(model.get("status") or "draft")
+        current_version = int(model.get("current_version") or 0)
+        deployed_version = model.get("deployed_version")
+
+        if status == "draft" and current_version == 0:
+            insights.append(
+                MesonInsight(
+                    id="model-needs-training",
+                    title="Training not started",
+                    summary=f"{name} is registered but has no trained versions yet.",
+                    category="ml",
+                )
+            )
+            suggestions.append(
+                MesonSuggestion(
+                    id="start-training",
+                    nodeType="navigate",
+                    label="Start a training job",
+                    reason="Link a dataset and launch training from the Training surface.",
+                    confidence=0.86,
+                )
+            )
+        elif status in {"ready", "deployed"} and deployed_version is None:
+            insights.append(
+                MesonInsight(
+                    id="model-ready-deploy",
+                    title="Ready for production deploy",
+                    summary=f"Version v{current_version} validated — deploy to enable workflow inference.",
+                    category="ml",
+                )
+            )
+            suggestions.append(
+                MesonSuggestion(
+                    id="deploy-model",
+                    nodeType="action",
+                    label="Deploy latest version",
+                    reason="Activate this model for production inference calls.",
+                    confidence=0.84,
+                )
+            )
+        elif status == "deployed":
+            insights.append(
+                MesonInsight(
+                    id="model-live",
+                    title="Live in production",
+                    summary=f"{name} v{deployed_version} is serving inference — monitor drift via Org Learning.",
+                    category="ml",
+                )
+            )
+            suggestions.append(
+                MesonSuggestion(
+                    id="run-inference-test",
+                    nodeType="action",
+                    label="Run inference smoke test",
+                    reason="Validate latency and output quality on a sample payload.",
+                    confidence=0.75,
+                )
+            )
+
+        if not model.get("dataset_id"):
+            suggestions.append(
+                MesonSuggestion(
+                    id="attach-dataset",
+                    nodeType="navigate",
+                    label="Attach a training dataset",
+                    reason="Models with linked datasets retrain faster from org learning signals.",
+                    confidence=0.78,
+                )
+            )
+
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="model-on-track",
+                    title="Model lifecycle on track",
+                    summary=f"{name} is in {status.replace('_', ' ')} — Meson will flag drift as usage grows.",
+                    category="ml",
+                )
+            )
+
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="model-detail",
+        )
+
+    def _page_context_agent_detail(
+        self,
+        client: Any,
+        org_id: str,
+        *,
+        entity_id: str | None,
+    ) -> MesonPageContextResponse:
+        if not entity_id:
+            return MesonPageContextResponse(
+                insights=[
+                    MesonInsight(
+                        id="select-agent",
+                        title="Open an agent profile",
+                        summary="Meson surfaces learning insights per agent once you select a teammate.",
+                        category="agents",
+                    )
+                ],
+                suggestions=[],
+                source="agent-detail",
+            )
+
+        insights: list[MesonInsight] = []
+        suggestions: list[MesonSuggestion] = []
+        agent: dict[str, Any] | None = None
+
+        try:
+            resp = (
+                client.table("agents")
+                .select("id, name, status, role, department, capabilities, permissions, config, stats")
+                .eq("org_id", org_id)
+                .eq("id", entity_id)
+                .limit(1)
+                .execute()
+            )
+            agent = (resp.data or [None])[0]
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meson agent detail lookup: %s", exc)
+
+        if not agent:
+            return MesonPageContextResponse(
+                insights=[
+                    MesonInsight(
+                        id="agent-not-found",
+                        title="Agent not found",
+                        summary="This agent may have been removed or you lack access.",
+                        category="agents",
+                    )
+                ],
+                suggestions=[],
+                source="agent-detail",
+            )
+
+        name = str(agent.get("name") or "This agent")
+        stats = agent.get("stats") if isinstance(agent.get("stats"), dict) else {}
+        success_rate = stats.get("successRate") or stats.get("success_rate")
+        tasks_today = stats.get("tasksToday") or stats.get("tasks_today") or 0
+        capabilities = agent.get("capabilities") or []
+        config = agent.get("config") if isinstance(agent.get("config"), dict) else {}
+        ref_folders = config.get("reference_folders") or config.get("referenceFolders") or []
+
+        if success_rate is not None:
+            rate = float(success_rate)
+            if rate < 70:
+                insights.append(
+                    MesonInsight(
+                        id="agent-low-success",
+                        title="Success rate below target",
+                        summary=f"{name} is at {rate:.0f}% success — review knowledge and tool permissions.",
+                        category="learning",
+                    )
+                )
+                suggestions.append(
+                    MesonSuggestion(
+                        id="expand-knowledge",
+                        nodeType="navigate",
+                        label="Add reference knowledge",
+                        reason="Ground the agent with department playbooks and examples.",
+                        confidence=0.83,
+                    )
+                )
+            elif rate >= 90:
+                insights.append(
+                    MesonInsight(
+                        id="agent-high-success",
+                        title="Strong operational performance",
+                        summary=f"{name} maintains {rate:.0f}% success — consider cloning patterns to other agents.",
+                        category="learning",
+                    )
+                )
+
+        if not ref_folders:
+            suggestions.append(
+                MesonSuggestion(
+                    id="add-reference-folders",
+                    nodeType="navigate",
+                    label="Organize reference folders",
+                    reason="Structured knowledge improves retrieval quality for this agent.",
+                    confidence=0.8,
+                )
+            )
+
+        if not capabilities:
+            insights.append(
+                MesonInsight(
+                    id="agent-no-capabilities",
+                    title="Capabilities not configured",
+                    summary=f"{name} has no declared capabilities — define scope before delegating work.",
+                    category="agents",
+                )
+            )
+
+        if tasks_today and int(tasks_today) >= 3:
+            suggestions.append(
+                MesonSuggestion(
+                    id="review-agent-runs",
+                    nodeType="navigate",
+                    label="Review today's runs",
+                    reason=f"{name} completed {int(tasks_today)} task(s) today — inspect outcomes for learning.",
+                    confidence=0.74,
+                )
+            )
+
+        status = str(agent.get("status") or "")
+        if status in {"processing", "training"}:
+            insights.insert(
+                0,
+                MesonInsight(
+                    id="agent-training",
+                    title="Agent training in progress",
+                    summary=f"{name} is updating from recent examples — expect improved responses soon.",
+                    category="learning",
+                ),
+            )
+
+        if not insights:
+            insights.append(
+                MesonInsight(
+                    id="agent-monitoring",
+                    title="Meson is learning from this agent",
+                    summary=f"Org learning signals will refine {name}'s recommendations over time.",
+                    category="learning",
+                )
+            )
+
+        if not suggestions:
+            suggestions.append(
+                MesonSuggestion(
+                    id="chat-with-agent",
+                    nodeType="navigate",
+                    label="Open agent chat",
+                    reason="Test delegation patterns and capture feedback for learning loops.",
+                    confidence=0.7,
+                )
+            )
+
+        return MesonPageContextResponse(
+            insights=insights[:5],
+            suggestions=suggestions[:4],
+            source="agent-detail",
+        )
 
     def get_workflow_optimizations(
         self,

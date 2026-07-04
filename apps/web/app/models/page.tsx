@@ -62,6 +62,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
+import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
+import type { MesonSuggestion } from "@/lib/api"
 
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
@@ -278,9 +280,25 @@ export default function ModelsPage() {
     return [...groups.entries()]
   }, [baseModelOptions])
 
+  function handleMesonSuggestion(suggestion: MesonSuggestion) {
+    if (suggestion.id.includes("register")) {
+      openRegisterDialog()
+      return
+    }
+    if (suggestion.id.includes("dataset") || suggestion.id.includes("training")) {
+      router.push("/training")
+      return
+    }
+    if (suggestion.id.includes("deploy")) {
+      const ready = models.find((m) => m.status === "ready" || m.status === "deployed")
+      if (ready) router.push(`/models/${ready.id}`)
+    }
+  }
+
   return (
     <AppShell title="Model Registry">
-      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className="mx-auto flex max-w-7xl gap-6 p-4 sm:p-6">
+        <div className="min-w-0 flex-1 space-y-6">
         <LearningSurfacesCallout current="model-registry" />
         <PageHeader
           title="Model Registry"
@@ -412,6 +430,16 @@ export default function ModelsPage() {
           ) : null}
         </div>
         ) : null}
+        </div>
+
+        <aside className="hidden w-80 shrink-0 lg:block">
+          <div className="sticky top-6 rounded-xl border border-border/70 bg-card/40 p-4">
+            <MesonPagePanel
+              page="model-registry"
+              onSuggestionClick={handleMesonSuggestion}
+            />
+          </div>
+        </aside>
       </div>
 
       <Dialog

@@ -17,6 +17,7 @@ from app.services.meson_service import (
     MesonFeedbackResult,
     MesonInsightsResponse,
     MesonInterpretResult,
+    MesonPageContextResponse,
     MesonPreferencesResponse,
     MesonService,
     MesonSuggestionsResponse,
@@ -194,6 +195,28 @@ async def meson_insights_route(
     return meson.get_proactive_insights(
         client,
         resolved_org,
+        environment_name=environment_name,
+    )
+
+
+@router.get("/page-context", response_model=MesonPageContextResponse, response_model_by_alias=True)
+async def meson_page_context_route(
+    page: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    meson: Annotated[MesonService, Depends(get_meson_service)],
+    entity_id: str | None = None,
+) -> MesonPageContextResponse:
+    """Return page-scoped Meson insights and suggestions (AI chat, model registry, agents)."""
+    resolved_org = _require_org(org_id)
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return meson.get_page_context(
+        client,
+        resolved_org,
+        page=page,
+        entity_id=entity_id,
         environment_name=environment_name,
     )
 

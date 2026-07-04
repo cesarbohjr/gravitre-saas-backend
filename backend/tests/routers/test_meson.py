@@ -111,6 +111,7 @@ def _mock_meson_service() -> MesonService:
     )
     mock.detect_anomalies = MagicMock(return_value={"alerts": []})
     mock.get_proactive_insights = MagicMock(return_value={"insights": []})
+    mock.get_page_context = MagicMock(return_value={"insights": [], "suggestions": [], "source": "ai-chat"})
     mock.get_workflow_optimizations = MagicMock(return_value={"insights": []})
     mock.record_feedback = MagicMock(return_value={"ok": True})
     mock.get_user_preferences = MagicMock(
@@ -220,6 +221,18 @@ def test_workflow_optimizations_returns_insights():
     assert response.status_code == 200
     assert response.json()["insights"] == []
     mock.get_workflow_optimizations.assert_called_once()
+
+
+def test_page_context_returns_insights_and_suggestions():
+    _authenticate()
+    mock = _mock_meson_service()
+    app.dependency_overrides[get_meson_service] = lambda: mock
+    response = client.get("/api/meson/page-context?page=model-registry")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["insights"] == []
+    assert body["suggestions"] == []
+    mock.get_page_context.assert_called_once()
 
 
 def test_feedback_metrics_returns_acceptance_rate():
