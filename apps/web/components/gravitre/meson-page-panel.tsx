@@ -11,7 +11,7 @@ import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
-export type MesonPageId = "ai-chat" | "model-registry" | "model-detail" | "agent-detail"
+export type MesonPageId = "ai-chat" | "model-registry" | "model-detail" | "agent-detail" | string
 
 const BANNER_ROTATE_MS = 7_000
 

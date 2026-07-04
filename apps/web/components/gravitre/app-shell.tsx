@@ -22,6 +22,7 @@ import { AppBreadcrumbs } from "./app-breadcrumbs"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
+import { MesonToolbarPopup } from "@/components/gravitre/meson-toolbar-popup"
 import {
   PLAN_REQUIRED_EVENT,
   readStoredPlanRequired,
@@ -375,7 +376,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
             </div>
           )}
 
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto pb-20">
             <div className="px-4 pt-3 md:px-6">
               <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
             </div>
@@ -416,6 +417,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
         onOpenChange={setUpgradeModalOpen}
         subscriptionStatus={planRequired?.subscription_status ?? billingStatusData?.billingState}
       />
+      <MesonToolbarPopup />
     </div>
   )
 }

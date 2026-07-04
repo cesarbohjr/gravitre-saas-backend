@@ -1,7 +1,6 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import dynamic from "next/dynamic"
 import { Suspense, startTransition, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
@@ -10,13 +9,8 @@ import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
-const ConnectorRecommendations = dynamic(
-  () =>
-    import("@/components/connectors/connector-recommendations").then((mod) => ({
-      default: mod.ConnectorRecommendations,
-    })),
-  { ssr: false, loading: () => null },
-)
+import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
+import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -1889,23 +1883,17 @@ function ConnectorsPageContent() {
   const searchParams = useSearchParams()
   const [gaPropertyPicker, setGaPropertyPicker] = useState<{ connectorId: string } | null>(null)
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
-  const [showRecommendations, setShowRecommendations] = useState(false)
 
   useEffect(() => {
     if (user) void ensureSelectedOrg(true).then(setOrgId)
   }, [user])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setShowRecommendations(true), 300)
-    return () => window.clearTimeout(timer)
-  }, [])
 
   const [searchQuery, setSearchQuery] = useState("")
   const [configureModal, setConfigureModal] = useState<Connector | null>(null)
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
   const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"topology" | "grid">("grid")
+  const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
@@ -1925,9 +1913,9 @@ function ConnectorsPageContent() {
       certificationBadge?: string | null
     }>
   }>(
-    user && orgId && addModal ? `/api/marketplace/registry?org=${orgId}` : null,
+    user && orgId ? `/api/marketplace/registry?org=${orgId}` : null,
     apiFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 120_000 },
+    { revalidateOnFocus: false },
   )
 
   const connectors = normalizeConnectorsResponse(data)
@@ -2365,50 +2353,13 @@ function ConnectorsPageContent() {
         </div>
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
-        {showRecommendations ? (
-          <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
-        ) : null}
+        <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
 
-        {availableToConnect.length > 0 && (
-          <section
-            aria-label="Available connectors"
-            className="border-b border-border bg-secondary/20 px-4 md:px-6 py-4"
-          >
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Available connectors</h2>
-                <p className="text-xs text-muted-foreground">
-                  Self-serve integrations ready to connect from this workspace.
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="h-8" onClick={() => openAddModal()}>
-                Browse all
-              </Button>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {availableToConnect.map((entry) => (
-                <button
-                  key={entry.vendorKey}
-                  type="button"
-                  onClick={() => openAddModal(entry.type)}
-                  className="group flex min-w-[180px] shrink-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-blue-500/30 hover:bg-blue-500/5"
-                >
-                  <ConnectorIcon vendor={entry.type} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium text-foreground">{entry.type}</span>
-                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium uppercase text-emerald-500">
-                        Available
-                      </span>
-                    </div>
-                    <p className="truncate text-[11px] text-muted-foreground">{entry.description}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        <AvailableConnectorsStrip
+          entries={availableToConnect}
+          onBrowseAll={() => openAddModal()}
+          onSelect={(type) => openAddModal(type)}
+        />
 
         {/* Network Topology View */}
         <div className="flex-1 p-4 md:p-6 overflow-auto">

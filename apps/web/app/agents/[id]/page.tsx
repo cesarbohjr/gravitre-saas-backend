@@ -16,8 +16,6 @@ import { agentsApi } from "@/lib/api"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { Loader2 } from "lucide-react"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
-import { MesonPagePanel } from "@/components/gravitre/meson-page-panel"
-import type { MesonSuggestion } from "@/lib/api"
 
 // Types
 interface Agent {
@@ -322,24 +320,9 @@ export default function AgentProfilePage({
   const agent = toProfileAgent(apiAgent)
   const status = statusConfig[agent.status]
 
-  function handleMesonSuggestion(suggestion: MesonSuggestion) {
-    if (suggestion.id.includes("knowledge") || suggestion.id.includes("reference")) {
-      router.push(`/agents/${id}/knowledge`)
-      return
-    }
-    if (suggestion.id.includes("chat")) {
-      router.push(`/agents/${id}/chat`)
-      return
-    }
-    if (suggestion.id.includes("run")) {
-      router.push("/runs")
-    }
-  }
-
   return (
     <AppShell title={agent.name}>
-      <div className="flex min-h-full">
-        <div className="min-w-0 flex-1 flex flex-col">
+      <div className="flex min-h-full flex-col">
         {/* Hero Header */}
         <div className="relative overflow-hidden border-b border-border">
           {/* Background effects */}
@@ -621,17 +604,6 @@ export default function AgentProfilePage({
             )}
           </AnimatePresence>
         </div>
-      </div>
-
-        <aside className="hidden w-80 shrink-0 border-l border-border bg-card/30 p-5 lg:block">
-          <div className="sticky top-6">
-            <MesonPagePanel
-              page="agent-detail"
-              entityId={id}
-              onSuggestionClick={handleMesonSuggestion}
-            />
-          </div>
-        </aside>
       </div>
     </AppShell>
   )
