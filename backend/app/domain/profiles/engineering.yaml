@@ -1,0 +1,13 @@
+profile_id: engineering
+department: engineering
+label: Engineering
+kpis: [deployment_frequency, mttr, change_failure_rate, incident_count]
+terminology: [deploy, api, incident, on-call, sprint, pull request]
+connector_preferences: [github, slack, pagerduty]
+retrieval_preferences: [runbooks, architecture_docs, incident_reports]
+memory_priorities: [incident_postmortems, deployment_history, tech_debt]
+workflow_priorities: [incident_response, release_approval, code_review]
+risk_tolerance: low
+recommendation_types: [incident_mitigation, release_plan, architecture_review]
+success_metrics: [mttr, deployment_success, defect_escape_rate]
+learning_signals: [incident_resolution, deployment_outcomes, code_review_quality]

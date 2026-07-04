@@ -20,6 +20,8 @@ class FederatedLearningCoordinator(CatalogScaffoldModel):
     5. Minimum 100 participating orgs
 
     Until activated: each org's models train only on that org's own data.
+
+    Activation architecture: docs/ai/FEDERATED_LEARNING_ACTIVATION.md
     """
 
     model_type = ModelType.EMBEDDING

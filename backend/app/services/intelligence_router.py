@@ -190,6 +190,11 @@ class IntelligenceRouter:
         result["strategy_key"] = strategy_key
         result["segment_key"] = segment_key
 
+        from app.services.domain_routing_policy import build_routing_metadata
+
+        result["domain"] = classification.get("domain") or understanding.get("domain")
+        result["domain_routing"] = build_routing_metadata(classification)
+
         result["dialogue_mode"] = policy["mode"]
         result["sentiment"] = sentiment
         result["understanding"] = understanding

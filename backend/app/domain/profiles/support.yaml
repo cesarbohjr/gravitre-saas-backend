@@ -1,0 +1,13 @@
+profile_id: support
+department: support
+label: Support
+kpis: [first_response_time, resolution_time, csat, escalation_rate]
+terminology: [ticket, sla, escalation, customer health, renewal]
+connector_preferences: [zendesk, slack, hubspot]
+retrieval_preferences: [knowledge_base, runbooks, ticket_history]
+memory_priorities: [resolution_patterns, escalation_paths, customer_context]
+workflow_priorities: [ticket_triage, escalation_handoff, renewal_outreach]
+risk_tolerance: medium
+recommendation_types: [resolution_suggestion, escalation_guidance, health_alert]
+success_metrics: [ticket_resolution, customer_satisfaction, escalation_patterns]
+learning_signals: [ticket_resolution, customer_satisfaction, escalation_patterns]

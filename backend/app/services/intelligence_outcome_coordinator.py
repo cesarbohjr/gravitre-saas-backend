@@ -102,21 +102,25 @@ class IntelligenceOutcomeCoordinator:
                     "agent_id": agent_id,
                     "strategy_key": strategy_key,
                     "segment_key": segment_key,
+                    "domain": classification.get("domain"),
                 },
             )
 
             from app.services.outcome_learning_service import get_outcome_learning_service
 
             learning = get_outcome_learning_service(self.settings)
+            domain = classification.get("domain") or {}
             if message_id:
                 learning.record_recommendation_outcome_async(
                     org_id=org_id,
                     recommendation_id=message_id,
                     outcome_event="recommendation_created",
+                    department=domain.get("department_key") or classification.get("department"),
                     task_type=classification.get("intent"),
                     confidence_score=response.get("confidence"),
                     model_name=(response.get("model_selection") or {}).get("ml_model_name"),
                     strategy_key=strategy_key,
+                    domain_context=domain,
                 )
 
             if response.get("consensus_used"):

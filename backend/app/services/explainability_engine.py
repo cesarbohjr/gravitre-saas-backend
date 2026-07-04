@@ -49,6 +49,7 @@ class ExplainabilityEngine:
             "missing_context": missing,
             "advisory_only": True,
             "response_type": response_type,
+            "domain_metadata": self._domain_metadata(classification),
         }
 
     def format_user_facing(self, envelope: dict[str, Any] | None) -> str:
@@ -76,6 +77,21 @@ class ExplainabilityEngine:
         if missing:
             return f"{base} Gaps: {', '.join(missing)}."
         return base
+
+    @staticmethod
+    def _domain_metadata(classification: dict[str, Any] | None) -> dict[str, Any] | None:
+        domain = (classification or {}).get("domain")
+        if not domain:
+            return None
+        return {
+            "industry": domain.get("industry"),
+            "department": domain.get("department"),
+            "subdomain": domain.get("subdomain"),
+            "confidence": domain.get("confidence"),
+            "profile_id": domain.get("profile_id"),
+            "routing_active": domain.get("routing_active"),
+            "source": domain.get("source"),
+        }
 
 
 _engine: ExplainabilityEngine | None = None

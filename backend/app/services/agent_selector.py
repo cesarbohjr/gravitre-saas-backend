@@ -10,6 +10,7 @@ from app.operators.agent_prompts import (
     infer_task_persona_key,
 )
 from app.workflows.repository import get_supabase_client
+from app.services.domain_routing_policy import apply_agent_selection_policy
 
 SWARM_ELIGIBLE_TASKS = frozenset(
     {
@@ -41,7 +42,7 @@ class AgentSelector:
         required = list(persona_meta.get("preferred_connectors") or persona.preferred_tools)
         available = await self._get_connected(org_id)
         missing = [connector for connector in required if connector not in available]
-        return {
+        result = {
             "persona_key": persona_key,
             "persona": {
                 "key": persona.key,
@@ -54,6 +55,7 @@ class AgentSelector:
             "missing_connectors": missing,
             "requires_swarm": requires_action and task_type in SWARM_ELIGIBLE_TASKS,
         }
+        return apply_agent_selection_policy(result, classification)
 
     async def _get_connected(self, org_id: str) -> set[str]:
         client = get_supabase_client(self.settings)

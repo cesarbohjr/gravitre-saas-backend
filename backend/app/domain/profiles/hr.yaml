@@ -1,0 +1,13 @@
+profile_id: hr
+department: hr
+label: HR
+kpis: [time_to_hire, retention_rate, offer_acceptance, headcount_plan]
+terminology: [recruiting, onboarding, compensation, performance, headcount]
+connector_preferences: [slack, microsoft365]
+retrieval_preferences: [job_descriptions, policy_handbook, org_chart]
+memory_priorities: [hiring_pipeline, policy_updates, review_cycles]
+workflow_priorities: [candidate_screening, onboarding_checklist, review_cycle]
+risk_tolerance: low
+recommendation_types: [hiring_plan, policy_guidance, retention_risk]
+success_metrics: [time_to_fill, retention, employee_satisfaction]
+learning_signals: [hiring_outcomes, onboarding_completion, review_ratings]

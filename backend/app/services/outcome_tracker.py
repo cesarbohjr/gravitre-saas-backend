@@ -80,6 +80,11 @@ class OutcomeTracker:
                         "stage_name": "outcome_tracked",
                         "intent": classification.get("intent"),
                         "message_id": message_id,
+                        "industry": (classification.get("domain") or {}).get("industry_key"),
+                        "department": (classification.get("domain") or {}).get("department_key")
+                        or classification.get("department"),
+                        "subdomain": (classification.get("domain") or {}).get("subdomain_key"),
+                        "domain_confidence": (classification.get("domain") or {}).get("confidence"),
                     }
                 ],
             )

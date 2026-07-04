@@ -5,6 +5,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.services.tool_registry import ToolRegistry
+from app.services.domain_routing_policy import apply_tool_selection_policy
 from app.workflows.repository import get_supabase_client
 
 
@@ -51,12 +52,13 @@ class ToolConnectorSelector:
             if str(tool.get("capability_tier") or "").lower() == "write"
             or tool.get("requires_approval") is True
         ]
-        return {
+        result = {
             "read_tools": read_tools,
             "write_tools": write_tools,
             "write_requires_approval": len(write_tools) > 0,
             "tool_count": len(task_tools),
         }
+        return apply_tool_selection_policy(result, classification, agent_persona)
 
 
 _tool_connector_selector: ToolConnectorSelector | None = None

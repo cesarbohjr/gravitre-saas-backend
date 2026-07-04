@@ -14,6 +14,7 @@ from app.services.learning_strategy_keys import (
 )
 from app.services.model_router import ModelRouter
 from app.services.strategy_performance_ledger import get_strategy_performance_ledger
+from app.services.domain_routing_policy import apply_model_selection_policy
 
 ML_TASK_MAP: dict[str, str] = {
     "data_analysis": "workflow_anomaly_detector",
@@ -47,7 +48,7 @@ class ModelSelector:
         if ml_candidate and ml_candidate in GRAVITRE_ML_CATALOG:
             catalog_meta = GRAVITRE_ML_CATALOG[ml_candidate]
             if catalog_meta["status"] == ModelStatus.PLANNED:
-                return await self._llm_selection_with_ledger(
+                selection = await self._llm_selection_with_ledger(
                     org_id,
                     task_type,
                     classification,
@@ -55,8 +56,9 @@ class ModelSelector:
                     fallback_segment_key=fallback_segment_key,
                     reason=f"{ml_candidate} is PLANNED",
                 )
+                return apply_model_selection_policy(selection, classification)
             if catalog_meta["status"] == ModelStatus.DISABLED:
-                return await self._llm_selection_with_ledger(
+                selection = await self._llm_selection_with_ledger(
                     org_id,
                     task_type,
                     classification,
@@ -64,6 +66,7 @@ class ModelSelector:
                     fallback_segment_key=fallback_segment_key,
                     reason=f"{ml_candidate} is DISABLED",
                 )
+                return apply_model_selection_policy(selection, classification)
             try:
                 deployed = await self._list_deployed_ml_models(org_id)
                 if deployed:
@@ -77,7 +80,7 @@ class ModelSelector:
                     ml_candidate = preferred
                 if await self._org_has_deployed_model(org_id, ml_candidate):
                     org_status = await get_org_model_status(org_id, ml_candidate, settings=self.settings)
-                    return {
+                    selection = {
                         "primary_model": "ml_internal",
                         "ml_model_name": ml_candidate,
                         "llm_tier": "fast",
@@ -86,15 +89,17 @@ class ModelSelector:
                         "catalog_status": org_status.get("catalog_status"),
                         "segment_key": segment_key,
                     }
+                    return apply_model_selection_policy(selection, classification)
             except Exception:  # noqa: BLE001
                 pass
-        return await self._llm_selection_with_ledger(
+        selection = await self._llm_selection_with_ledger(
             org_id,
             task_type,
             classification,
             segment_key,
             fallback_segment_key=fallback_segment_key,
         )
+        return apply_model_selection_policy(selection, classification)
 
     async def _list_deployed_ml_models(self, org_id: str) -> list[str]:
         deployed: list[str] = []

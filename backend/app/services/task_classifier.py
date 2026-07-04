@@ -144,6 +144,13 @@ class TaskClassifier:
             pipeline_flags["requires_web_search"] = True
 
         department = base.get("department")
+        domain_context = (understanding or {}).get("domain") if understanding else None
+        if domain_context:
+            base["domain"] = domain_context
+            if domain_context.get("routing_active") and domain_context.get("department_key"):
+                department = domain_context.get("department_key")
+            elif domain_context.get("department_key") and not department:
+                department = domain_context.get("department_key")
         if not department and understanding:
             department = understanding.get("department_inference")
         if not department:
@@ -160,6 +167,7 @@ class TaskClassifier:
             "department": department,
             "request": request,
             "understanding": understanding or {},
+            "domain": domain_context or base.get("domain"),
         }
 
     async def _classify_with_ml(self, org_id: str, request: str) -> dict[str, Any]:

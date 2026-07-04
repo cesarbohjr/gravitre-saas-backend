@@ -3,6 +3,34 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.domain_intelligence_service import DOMAIN_CONFIDENCE_THRESHOLD
+
+
+def domain_segment_active(classification: dict[str, Any] | None) -> bool:
+    domain = (classification or {}).get("domain") or {}
+    if domain.get("routing_active") is False:
+        return False
+    if domain.get("routing_active") is True:
+        return True
+    return float(domain.get("confidence") or 0) >= DOMAIN_CONFIDENCE_THRESHOLD
+
+
+def _domain_parts(classification: dict[str, Any] | None, department: str | None = None) -> tuple[str, str, str, str]:
+    cls = classification or {}
+    domain = cls.get("domain") or {}
+    industry = str(domain.get("industry_key") or domain.get("industry") or "default").lower()
+    dept = str(
+        department
+        or domain.get("department_key")
+        or domain.get("department")
+        or cls.get("department")
+        or cls.get("entity_type")
+        or "default"
+    ).lower()
+    subdomain = str(domain.get("subdomain_key") or domain.get("subdomain") or "general").lower()
+    task = str(cls.get("intent") or cls.get("task_type") or "general").lower()
+    return industry, dept, subdomain, task
+
 
 def build_route_strategy_key(
     model_selection: dict[str, Any] | None,
@@ -21,7 +49,11 @@ def build_route_strategy_key(
     prediction = "pred" if enrich.get("prediction") else "no_pred"
     causal = "causal" if enrich.get("causal") else "no_causal"
     web = "web" if enrich.get("web") else "no_web"
-    return f"route:{intent}:{model_part}:{graph}:{prediction}:{causal}:{web}"
+    domain_suffix = ""
+    if domain_segment_active(cls):
+        industry, dept, subdomain, _task = _domain_parts(cls)
+        domain_suffix = f":{industry}:{dept}:{subdomain}"
+    return f"route:{intent}:{model_part}:{graph}:{prediction}:{causal}:{web}{domain_suffix}"
 
 
 def build_model_strategy_key(model_name: str) -> str:
@@ -30,6 +62,9 @@ def build_model_strategy_key(model_name: str) -> str:
 
 def parse_base_segment_key(classification: dict[str, Any] | None, department: str | None = None) -> str:
     cls = classification or {}
+    if domain_segment_active(cls):
+        industry, dept, subdomain, task = _domain_parts(cls, department)
+        return f"{industry}:{dept}:{subdomain}:{task}"
     dept = department or cls.get("department") or cls.get("entity_type") or "default"
     task = cls.get("intent") or cls.get("task_type") or "general"
     return f"{dept}:{task}"

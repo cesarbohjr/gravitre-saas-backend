@@ -58,7 +58,6 @@ class ContextualUnderstandingService:
         conversation_history: list[dict] | None,
         org_id: str,
     ) -> dict[str, Any]:
-        _ = org_id
         entities = self._extract_entities_rule_based(message)
         temporal = self._extract_temporal(message)
         format_hint = self._detect_output_format(message, self._is_conversational_create(message))
@@ -73,16 +72,34 @@ class ContextualUnderstandingService:
             goal = extracted.get("goal")
             constraints = extracted.get("constraints") or []
 
-        return {
+        department_inference = self._infer_department(entities, message)
+        partial = {
             "entities": entities,
             "goal": goal,
             "constraints": constraints,
             "temporal_references": temporal,
-            "expected_output_format": self._detect_output_format(message, conversational_create),
+            "expected_output_format": format_hint,
             "conversational_create": conversational_create,
-            "department_inference": self._infer_department(entities, message),
+            "department_inference": department_inference,
             "connector_dependencies": connectors,
             "already_known_from_history": known,
+        }
+        from app.services.domain_intelligence_service import get_domain_intelligence_service
+
+        domain = await get_domain_intelligence_service(self.settings).classify(
+            org_id,
+            message,
+            conversation_history,
+            understanding=partial,
+        )
+        if domain.get("department_key") and not department_inference:
+            department_inference = domain.get("department_key")
+
+        return {
+            **partial,
+            "expected_output_format": self._detect_output_format(message, conversational_create),
+            "department_inference": department_inference,
+            "domain": domain,
         }
 
     def _extract_entities_rule_based(self, message: str) -> list[dict[str, Any]]:

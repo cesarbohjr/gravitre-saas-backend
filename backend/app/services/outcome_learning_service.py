@@ -116,11 +116,20 @@ class OutcomeLearningService:
         after_value: float | None = None,
         measured_at: str | None = None,
         strategy_key: str | None = None,
+        domain_context: dict[str, Any] | None = None,
     ) -> None:
         self._validate_event(outcome_event)
         metadata: dict[str, Any] = {}
         if strategy_key:
             metadata["strategy_key"] = strategy_key
+        if domain_context:
+            metadata["domain"] = {
+                "industry": domain_context.get("industry_key") or domain_context.get("industry"),
+                "department": domain_context.get("department_key") or domain_context.get("department"),
+                "subdomain": domain_context.get("subdomain_key") or domain_context.get("subdomain"),
+                "confidence": domain_context.get("confidence"),
+                "profile_id": domain_context.get("profile_id"),
+            }
         payload = {
             "id": str(uuid4()),
             "org_id": org_id,
