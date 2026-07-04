@@ -195,7 +195,6 @@ def _finalize_run(
             logger.warning("run_completed notification skipped run_id=%s error=%s", ctx.run_id, exc)
         try:
             from app.services.notification_email_service import send_workflow_completion_email
-            from app.workflows.repository import get_run_with_steps
 
             run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name) or {}
             wf_id = str(run_meta.get("workflow_id") or "")
@@ -241,7 +240,6 @@ def _finalize_run(
     if final_status in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED}:
         try:
             from app.services.agent_memory_service import create_agent_memory
-            from app.workflows.repository import get_run_with_steps
 
             run_meta = get_run_with_steps(ctx.client, ctx.org_id, ctx.run_id, ctx.environment_name)
             if run_meta:
