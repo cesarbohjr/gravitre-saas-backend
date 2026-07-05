@@ -20,6 +20,9 @@ export async function generateMetadata({
   if (!post) return { title: "Post not found" }
 
   const url = `${SITE_URL}/blog/${post.slug}`
+  const ogImage = post.heroImage
+    ? `${SITE_URL}${post.heroImage}`
+    : `${SITE_URL}/images/gravitre-logo-black.png`
   return {
     metadataBase: new URL(SITE_URL),
     title: `${post.title} | Gravitre Blog`,
@@ -37,13 +40,13 @@ export async function generateMetadata({
       modifiedTime: post.dateModified,
       authors: [post.author.name],
       tags: post.keywords,
-      images: [{ url: post.heroImage, width: 1200, height: 630, alt: post.heroAlt }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: post.heroAlt }],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: [post.heroImage],
+      images: [ogImage],
     },
   }
 }
@@ -92,7 +95,7 @@ function ArticleJsonLd({ post }: { post: BlogPost }) {
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     headline: post.title,
     description: post.description,
-    image: `${SITE_URL}${post.heroImage}`,
+    image: post.heroImage ? `${SITE_URL}${post.heroImage}` : `${SITE_URL}/images/gravitre-logo-black.png`,
     datePublished: post.datePublished,
     dateModified: post.dateModified,
     author,
@@ -188,14 +191,26 @@ export default async function BlogPostPage({
 
           {/* Hero image */}
           <figure className="mt-8 overflow-hidden rounded-2xl border border-zinc-200">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.heroImage || "/placeholder.svg"}
-              alt={post.heroAlt}
-              width={1200}
-              height={630}
-              className="aspect-video w-full object-cover"
-            />
+            {post.heroImage ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={post.heroImage}
+                alt={post.heroAlt}
+                width={1200}
+                height={630}
+                className="aspect-video w-full object-cover"
+              />
+            ) : (
+              <div
+                className={`aspect-video w-full bg-gradient-to-br ${post.heroGradient ?? "from-emerald-50 to-zinc-100"} flex items-center justify-center px-8`}
+                role="img"
+                aria-label={post.heroAlt}
+              >
+                <span className="text-center text-sm font-medium uppercase tracking-wider text-emerald-700/80">
+                  {post.category}
+                </span>
+              </div>
+            )}
           </figure>
 
           {/* Key takeaways: extractable summary for answer engines (AEO) */}
@@ -216,7 +231,7 @@ export default async function BlogPostPage({
 
           {/* Body */}
           <div
-            className="mt-10 text-lg leading-relaxed text-zinc-700 [&>*:first-child]:mt-0 [&_a]:font-medium [&_a]:text-emerald-700 [&_a]:underline [&_a]:underline-offset-2 [&_h2]:mt-12 [&_h2]:text-pretty [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-zinc-900 [&_p]:mt-6 [&_strong]:font-semibold [&_strong]:text-zinc-900"
+            className="mt-10 text-lg leading-relaxed text-zinc-700 [&>*:first-child]:mt-0 [&_a]:font-medium [&_a]:text-emerald-700 [&_a]:underline [&_a]:underline-offset-2 [&_h2]:mt-12 [&_h2]:text-pretty [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-zinc-900 [&_p]:mt-6 [&_strong]:font-semibold [&_strong]:text-zinc-900 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6"
           >
             <Content />
           </div>
