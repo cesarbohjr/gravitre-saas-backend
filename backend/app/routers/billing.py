@@ -30,7 +30,6 @@ from app.billing.stripe import (
     create_subscription_for_payment_element,
     plan_code_for_price,
     price_id_for_plan,
-    verify_webhook,
 )
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
@@ -870,100 +869,7 @@ async def handle_webhook(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    payload = await request.body()
-    signature = request.headers.get("stripe-signature")
-    if not settings.stripe_webhook_secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=error_detail("Stripe webhook not configured", "INVALID_CONFIG"),
-        )
-    event = verify_webhook(settings, payload, signature)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    event_type = event["type"]
-    data = event["data"]["object"]
-    metadata = data.get("metadata") or {} if isinstance(data, dict) else {}
-    org_id = metadata.get("org_id") if isinstance(metadata, dict) else None
-    if not org_id and isinstance(metadata, dict):
-        org_id = _resolve_org_id_from_checkout_metadata(client, metadata)
-    if event_type == "checkout.session.completed":
-        subscription_id = data.get("subscription")
-        customer_id = data.get("customer")
-        plan_code = (metadata.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower() if isinstance(metadata, dict) else DEFAULT_PLAN_CODE
-        if org_id:
-            client.table("org_billing").upsert(
-                {
-                    "org_id": org_id,
-                    "stripe_customer_id": customer_id,
-                    "stripe_subscription_id": subscription_id,
-                    "plan_code": plan_code,
-                    "billing_status": "active",
-                },
-                on_conflict="org_id",
-            ).execute()
-        if org_id:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id="stripe",
-                action="billing.subscription.created",
-                resource_type="org_billing",
-                resource_id=str(org_id),
-                metadata={"subscription_id": subscription_id},
-            )
-    if event_type in {"customer.subscription.updated", "customer.subscription.created"}:
-        subscription_id = data.get("id")
-        customer_id = data.get("customer")
-        current_period_end = data.get("current_period_end")
-        status_value = data.get("status") or "active"
-        price_id = None
-        items = data.get("items", {}).get("data", [])
-        if items:
-            price_id = items[0].get("price", {}).get("id")
-        plan_code = plan_code_for_price(settings, price_id)
-        update_row = {
-            "org_id": org_id,
-            "stripe_customer_id": customer_id,
-            "stripe_subscription_id": subscription_id,
-            "stripe_price_id": price_id,
-            "plan_code": plan_code,
-            "billing_status": status_value,
-            "current_period_end": datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
-            if current_period_end
-            else None,
-            "cancel_at_period_end": bool(data.get("cancel_at_period_end")),
-        }
-        client.table("org_billing").upsert(update_row).execute()
-        if org_id:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id="stripe",
-                action="billing.subscription.updated",
-                resource_type="org_billing",
-                resource_id=str(org_id),
-                metadata={"subscription_id": subscription_id, "status": status_value},
-            )
-    if event_type == "customer.subscription.deleted":
-        subscription_id = data.get("id")
-        client.table("org_billing").update(
-            {"stripe_subscription_id": None, "billing_status": "cancelled"}
-        ).eq("stripe_subscription_id", subscription_id).execute()
-        if org_id:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id="stripe",
-                action="billing.subscription.cancelled",
-                resource_type="org_billing",
-                resource_id=str(org_id),
-                metadata={"subscription_id": subscription_id},
-            )
-    if event_type == "account.updated":
-        from app.services.marketplace_billing_service import handle_connect_account_updated
+    """Legacy Stripe webhook URL (/api/billing/webhook) — canonical handler lives in webhooks.stripe."""
+    from app.routers.webhooks.stripe import stripe_webhook
 
-        handle_connect_account_updated(client, settings, data if isinstance(data, dict) else {})
-
-    client.table("billing_events").insert(
-        {"org_id": org_id, "event_type": event_type, "payload": event}
-    ).execute()
-    return {"received": True}
+    return await stripe_webhook(request, settings)
