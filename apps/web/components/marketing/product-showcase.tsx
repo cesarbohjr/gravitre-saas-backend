@@ -22,20 +22,20 @@ import {
 
 // Tab-based product showcase like Chatbase's "Discover the platform"
 const showcaseTabs = [
-  { id: "operator", label: "AI Operator", icon: Bot },
+  { id: "operator", label: "Gravitre AI", icon: Bot },
   { id: "agents", label: "Agents", icon: Users },
   { id: "workflows", label: "Workflows", icon: Workflow },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "analytics", label: "Insights", icon: BarChart3 },
 ]
 
 // Animated Operator Screen
 function OperatorScreen() {
   const [messageIndex, setMessageIndex] = useState(0)
   const messages = [
-    { type: "user", text: "Show me failed workflows from the past week" },
-    { type: "ai", text: "Found 3 failed workflows. The main issue is API rate limiting on the Salesforce connector. I recommend enabling retry with exponential backoff.", agent: "System Monitor" },
-    { type: "user", text: "Apply that fix automatically" },
-    { type: "ai", text: "Done! I've updated the Salesforce connector configuration and re-queued the 3 failed workflows. They should complete within the next 5 minutes.", agent: "Workflow Manager" },
+    { type: "user", text: "Why did the HubSpot contact sync fail?" },
+    { type: "ai", text: "HubSpot is connected, but contact search permission is missing. Confidence: High. Complete OAuth scopes, then re-run the workflow.", agent: "Connector check" },
+    { type: "user", text: "Show stalled deals over 30 days" },
+    { type: "ai", text: "14 deals stalled >30 days. Main bottleneck: approval queue adding 2.4 days. Recommended: remove one approval step on deals under $50k.", agent: "Insights" },
   ]
 
   useEffect(() => {
@@ -57,7 +57,7 @@ function OperatorScreen() {
             <div className="h-3 w-3 rounded-full bg-yellow-500" />
             <div className="h-3 w-3 rounded-full bg-green-500" />
           </div>
-          <span className="text-sm font-medium text-zinc-400">AI Operator</span>
+          <span className="text-sm font-medium text-zinc-400">Gravitre AI</span>
         </div>
         <div className="flex items-center gap-2">
           <motion.div
