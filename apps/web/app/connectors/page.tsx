@@ -216,8 +216,8 @@ function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAv
           className={cn(
             "text-[9px] px-1.5 py-0.5 rounded border font-medium",
             ok
-              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-              : "bg-zinc-800/80 text-zinc-500 border-zinc-700/80",
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+              : "bg-muted text-muted-foreground border-border/70",
           )}
         >
           {label}
