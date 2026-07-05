@@ -42,7 +42,7 @@ class ExplainabilityEngine:
                     }
                 )
 
-        return {
+        envelope = {
             "summary": summary,
             "evidence": evidence,
             "confidence_note": self._confidence_note(score, missing),
@@ -52,6 +52,33 @@ class ExplainabilityEngine:
             "domain_metadata": self._domain_metadata(classification),
             "retrieval_metadata": self._retrieval_metadata(classification, context_profile),
         }
+        return await self._maybe_enrich_with_visibility(
+            org_id,
+            envelope,
+            classification=classification,
+            context_profile=context_profile,
+        )
+
+    async def _maybe_enrich_with_visibility(
+        self,
+        org_id: str,
+        envelope: dict[str, Any],
+        *,
+        classification: dict[str, Any] | None = None,
+        context_profile: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        from app.config import get_settings
+        from app.services.intelligence_visibility_service import get_intelligence_visibility_service
+
+        visibility = get_intelligence_visibility_service(get_settings())
+        if not visibility.is_enabled():
+            return envelope
+        return await visibility.enrich_legacy_explainability(
+            org_id,
+            envelope,
+            classification=classification,
+            context=context_profile,
+        )
 
     def format_user_facing(self, envelope: dict[str, Any] | None) -> str:
         if not envelope:

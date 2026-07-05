@@ -245,6 +245,17 @@ class IntelligenceRouter:
             connected_integrations=context.get("connected_integrations") or [],
         )
         result["proactive_suggestions"] = suggestions
+        from app.services.intelligence_visibility_service import get_intelligence_visibility_service
+
+        visibility = get_intelligence_visibility_service(self.settings)
+        if visibility.is_enabled():
+            result["decision_transparency"] = await visibility.build_decision_envelope_from_response(
+                org_id,
+                result,
+                classification,
+                context,
+                decision_type=str(policy.get("mode") or "answer"),
+            )
         return result
 
     async def _run_enrichments(
