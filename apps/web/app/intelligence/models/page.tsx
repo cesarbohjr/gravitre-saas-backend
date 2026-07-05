@@ -12,6 +12,9 @@ import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { formatScore, modelStatusChipClass, readNumber, readString } from "@/lib/intelligence/helpers"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
+import { PageHeader } from "@/components/gravitre/page-header"
 
 function dataSufficiencyProgress(
   modelName: string,
@@ -34,6 +37,7 @@ function dataSufficiencyProgress(
 
 export default function IntelligenceModelsPage() {
   const { user } = useAuth()
+  const copy = SURFACE_COPY.builtInModels
   const { data, error, isLoading, mutate } = useSWR(
     user ? "intelligence/models/catalog" : null,
     () => intelligenceApi.modelCatalog(),
@@ -45,18 +49,18 @@ export default function IntelligenceModelsPage() {
 
   if (!user) {
     return (
-      <AppShell title="Model Intelligence">
-        <EmptyState title="Sign in required" description="Log in to view model intelligence profiles." />
+      <AppShell title={copy.title}>
+        <EmptyState title="Sign in required" description="Log in to view built-in models." />
       </AppShell>
     )
   }
 
   if (error) {
     return (
-      <AppShell title="Model Intelligence">
+      <AppShell title={copy.title}>
         <ErrorState
-          title="Unable to load models"
-          description={error instanceof ApiError ? error.message : "Please try again."}
+          title="Unable to load built-in models"
+          description={error instanceof ApiError ? error.message : "Try again in a moment."}
           onRetry={() => mutate()}
         />
       </AppShell>
@@ -69,16 +73,14 @@ export default function IntelligenceModelsPage() {
   const names = Object.keys(catalog).sort()
 
   return (
-    <AppShell title="Model Intelligence">
+    <AppShell title={copy.title}>
       <div className="space-y-6 p-4 md:p-6">
-        <p className="text-sm text-muted-foreground text-pretty">
-          Catalog models from Gravitre ML with honest TRAINED / PLANNED / DISABLED status and org training readiness.
-        </p>
+        <PageHeader title={copy.title} description={copy.intro} />
 
         {isLoading && !data ? (
-          <p className="text-sm text-muted-foreground">Loading model catalog…</p>
+          <p className="text-sm text-muted-foreground">Loading built-in models…</p>
         ) : names.length === 0 ? (
-          <EmptyState title="No models in catalog" description="The ML catalog has not been configured for this org yet." />
+          <EmptyState title={copy.emptyTitle} description={copy.emptyDescription} />
         ) : (
           <AdaptiveDataView className="rounded-2xl border-border/70">
             <table className="min-w-full text-sm">
@@ -102,7 +104,7 @@ export default function IntelligenceModelsPage() {
                   return (
                     <tr key={name} className="border-b border-border/60 last:border-0">
                       <td className="px-4 py-3 font-medium">
-                        <Link href={`/intelligence/models/${encodeURIComponent(name)}`} className="text-primary hover:underline">
+                        <Link href={`${APP_ROUTES.builtInModels}/${encodeURIComponent(name)}`} className="text-primary hover:underline">
                           {name}
                         </Link>
                       </td>

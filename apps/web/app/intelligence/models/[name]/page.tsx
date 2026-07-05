@@ -15,6 +15,8 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi, mlAdminApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   formatPercent,
   formatScore,
@@ -106,9 +108,9 @@ export default function ModelProfilePage() {
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/intelligence/models">
+            <Link href={APP_ROUTES.builtInModels}>
               <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
-              Models
+              {SURFACE_COPY.builtInModels.title}
             </Link>
           </Button>
           <Badge variant="outline" className={modelStatusChipClass(status)}>

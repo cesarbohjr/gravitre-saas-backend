@@ -19,6 +19,7 @@ import {
   type GoalRecord,
 } from "@/lib/goals-list"
 import { cn } from "@/lib/utils"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
@@ -94,8 +95,8 @@ export default function GoalsPage() {
     <AppShell>
       <div className="mx-auto max-w-5xl space-y-6 p-6">
         <PageHeader
-          title="Goals"
-          description="Define business outcomes and generate governed workflow plans from real org data."
+          title={SURFACE_COPY.pages.goals.title}
+          description={SURFACE_COPY.pages.goals.description}
           icon={Target}
           actions={
             <div className="flex items-center gap-2">

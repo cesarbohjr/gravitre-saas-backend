@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { BookOpen, Brain, ListChecks, Rocket } from "lucide-react"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 type TrainingOverviewProps = {
   totalDatasets: number
@@ -43,21 +45,21 @@ export function TrainingOverview({
               transition={{ duration: 2.4, repeat: Infinity }}
               className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"
             />
-            Agent fine-tuning workspace
+            {SURFACE_COPY.training.badge}
           </div>
           <h2 className="text-balance text-xl font-semibold text-foreground sm:text-2xl">
-            Build datasets, run jobs, and shape agent behavior
+            {SURFACE_COPY.training.heroTitle}
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Agent Training sits between{" "}
-            <Link href="/admin/intelligence" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
-              Org Learning
+            Add datasets, run fine-tunes, and assign models to workflow agents. Starts from what{" "}
+            <Link href={APP_ROUTES.learning} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+              {SURFACE_COPY.learning.title}
             </Link>{" "}
-            (what the org already knows) and the{" "}
-            <Link href="/models" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
-              Model Registry
-            </Link>{" "}
-            (production deployable models). Create examples, queue fine-tunes, and assign models to workflow agents.
+            already detected. Deploy finished models in{" "}
+            <Link href={APP_ROUTES.models} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+              {SURFACE_COPY.models.title}
+            </Link>
+            .
           </p>
         </div>
 

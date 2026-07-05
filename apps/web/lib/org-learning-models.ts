@@ -1,4 +1,4 @@
-/** Org-scoped intelligence models trainable from Admin → Org Learning → Engine. */
+/** Org-scoped intelligence models trainable from Learning → Engine. */
 export type OrgLearningModelId =
   | "intent_classifier"
   | "query_clusterer"

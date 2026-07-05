@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { connectorVendorKey } from "@/lib/connectors"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -138,7 +139,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
         <Button variant="ghost" size="sm" className="-ml-2 h-8" asChild>
           <Link href="/models">
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Model Registry
+            {SURFACE_COPY.models.title}
           </Link>
         </Button>
 

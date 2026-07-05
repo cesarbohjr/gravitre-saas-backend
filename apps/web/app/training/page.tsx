@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Brain, RefreshCw } from "lucide-react"
 
 function statusClasses(status: string): string {
@@ -404,13 +405,13 @@ function TrainingPageContent() {
     (instructionsError ? formatTrainingError(instructionsError) : null)
 
   return (
-    <AppShell title="Agent Training">
+    <AppShell title={SURFACE_COPY.training.title}>
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <LearningSurfacesCallout current="agent-training" />
 
         <PageHeader
-          title="Agent Training"
-          description="Fine-tune agents with datasets, training jobs, custom instructions, and model assignments."
+          title={SURFACE_COPY.training.title}
+          description={SURFACE_COPY.training.description}
           icon={Brain}
           iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-6"
@@ -916,9 +917,9 @@ export default function TrainingPage() {
   return (
     <Suspense
       fallback={
-        <AppShell title="Agent Training">
+        <AppShell title={SURFACE_COPY.training.title}>
           <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-            Loading agent training…
+            Loading training…
           </div>
         </AppShell>
       }

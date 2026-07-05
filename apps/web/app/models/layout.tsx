@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import { authenticatedMetadata } from "@/lib/authenticated-metadata"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 export const metadata: Metadata = authenticatedMetadata(
-  "Model Registry | Gravitre",
-  "Configure and manage ML models.",
+  `${SURFACE_COPY.models.title} | Gravitre`,
+  SURFACE_COPY.models.description,
   { canonical: "/models" },
 )
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   CommandDialog,
   CommandInput,
@@ -48,6 +49,7 @@ import {
   TrendingUp,
   Activity,
   Brain,
+  Cpu,
   ShieldAlert,
   Rocket,
   Package,
@@ -184,22 +186,26 @@ export function CommandPalette({
 
         <CommandSeparator />
 
-        <CommandGroup heading="Learning & models">
-          <CommandItem onSelect={() => runCommand(() => router.push("/intelligence"))}>
+        <CommandGroup heading="Insights & learning">
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligence))}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
-            <span>Intelligence Center</span>
+            <span>{SURFACE_COPY.insights.title}</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/admin/intelligence"))}>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.learning))}>
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
-            <span>Org Learning</span>
+            <span>{SURFACE_COPY.learning.title}</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/training"))}>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.builtInModels))}>
+            <Cpu className="mr-2 h-4 w-4 text-teal-400" />
+            <span>{SURFACE_COPY.builtInModels.title}</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.training))}>
             <Brain className="mr-2 h-4 w-4 text-emerald-400" />
-            <span>Agent Training</span>
+            <span>{SURFACE_COPY.training.title}</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/models"))}>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.models))}>
             <Brain className="mr-2 h-4 w-4 text-blue-400" />
-            <span>Model Registry</span>
+            <span>{SURFACE_COPY.models.title}</span>
           </CommandItem>
         </CommandGroup>
 
@@ -329,7 +335,7 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligence))}
           >
             <Sparkles className="mr-2 h-4 w-4 text-violet-400" />
-            <span>Intelligence Center</span>
+            <span>{SURFACE_COPY.insights.title}</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.revenueRisk))}

@@ -1,9 +1,10 @@
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 export default function Loading() {
   return (
-    <AppShell title="Agent Intelligence Profiles">
+    <AppShell title={SURFACE_COPY.hubLinks.agents.title}>
       <div className="space-y-6 p-4 md:p-6">
         <Skeleton className="h-6 w-1/3" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -10,11 +10,16 @@ export const APP_ROUTES = {
   agents: "/agents",
   training: "/training",
   models: "/models",
-  orgLearning: "/admin/intelligence",
-  revenueRisk: "/admin/intelligence#revenue-risk",
+  /** Org-wide learning from usage (Observe step) */
+  learning: "/intelligence/learning",
+  builtInModels: "/models/built-in",
+  /** @deprecated use learning */
+  orgLearning: "/intelligence/learning",
+  revenueRisk: "/intelligence/learning#revenue-risk",
   intelligence: "/intelligence",
   intelligenceAgents: "/intelligence/agents",
-  intelligenceModels: "/intelligence/models",
+  /** @deprecated use builtInModels */
+  intelligenceModels: "/models/built-in",
   intelligencePredictive: "/intelligence/predictive",
   intelligenceMemory: "/intelligence/memory",
   intelligenceReports: "/intelligence/reports",
@@ -35,6 +40,8 @@ export const LEGACY_APP_ROUTES = {
   chat: "/chat",
   tasks: "/tasks",
   systems: "/systems",
+  adminIntelligence: "/admin/intelligence",
+  intelligenceModelsPath: "/intelligence/models",
 } as const
 
 export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES]

@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth-context"
 import { mesonApi, type MesonInsight, type MesonSuggestion } from "@/lib/api"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { cn } from "@/lib/utils"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export type MesonPageId = "ai-chat" | "model-registry" | "model-detail" | "agent-detail" | string
@@ -315,8 +317,8 @@ export function MesonPagePanel({
       {!compact ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           Advisory only — review before acting.{" "}
-          <Link href="/intelligence" className="text-violet-600 underline-offset-4 hover:underline dark:text-violet-300">
-            Intelligence Center
+          <Link href={APP_ROUTES.intelligence} className="text-violet-600 underline-offset-4 hover:underline dark:text-violet-300">
+            {SURFACE_COPY.insights.title}
           </Link>
         </p>
       ) : null}

@@ -16,7 +16,10 @@ import { LearningTab } from "./_components/learning-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { Robot } from "@phosphor-icons/react"
+
+const profileCopy = SURFACE_COPY.pages.agents
 
 type TabKey = "health" | "performance" | "learning" | "outcomes"
 
@@ -47,7 +50,7 @@ export default function AgentProfilePage() {
 
   if (!user) {
     return (
-      <AppShell title="Agent Profile">
+      <AppShell title={profileCopy.profileTitle}>
         <EmptyState title="Sign in required" description="Log in to view agent profile." />
       </AppShell>
     )
@@ -55,7 +58,7 @@ export default function AgentProfilePage() {
 
   if (agentError) {
     return (
-      <AppShell title="Agent Profile">
+      <AppShell title={profileCopy.profileTitle}>
         <ErrorState
           title="Unable to load agent"
           description={agentError instanceof ApiError ? agentError.message : "Failed to load agent profile."}
@@ -66,7 +69,7 @@ export default function AgentProfilePage() {
 
   if (agentLoading) {
     return (
-      <AppShell title="Agent Profile">
+      <AppShell title={profileCopy.profileTitle}>
         <div className="p-6 text-sm text-muted-foreground">Loading agent profile…</div>
       </AppShell>
     )
@@ -74,7 +77,7 @@ export default function AgentProfilePage() {
 
   if (!agent) {
     return (
-      <AppShell title="Agent Profile">
+      <AppShell title={profileCopy.profileTitle}>
         <EmptyState title="Agent not found" description="This agent does not exist or has been deleted." />
       </AppShell>
     )

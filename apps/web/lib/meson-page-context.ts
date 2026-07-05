@@ -1,3 +1,5 @@
+import { APP_ROUTES } from "@/lib/app-routes"
+
 export type ResolvedMesonPage = {
   page: string
   entityId?: string
@@ -102,7 +104,7 @@ export function routeMesonSuggestion(
     return
   }
   if (path.startsWith("/intelligence")) {
-    go("/admin/intelligence")
+    go(APP_ROUTES.learning)
     return
   }
   if (id.includes("run") || label.includes("run")) {

@@ -7,9 +7,11 @@ import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { PageHeader, StatCard, StatsGrid } from "@/components/gravitre/page-header"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { RecommendationExplanation } from "@/components/intelligence/recommendation-explanation"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
@@ -24,40 +26,16 @@ import {
 } from "@phosphor-icons/react"
 
 const LINKS = [
-  {
-    href: "/intelligence/agents",
-    title: "Agent profiles",
-    summary: "Health, performance, learning, and outcomes per agent.",
-    icon: Robot,
-  },
-  {
-    href: "/intelligence/models",
-    title: "Model intelligence",
-    summary: "Catalog status, training readiness, and outcome scores.",
-    icon: Cpu,
-  },
-  {
-    href: "/intelligence/predictive",
-    title: "Predictive operations",
-    summary: "Domain packs for SLA, deal-loss, capacity, and workflow risk.",
-    icon: ChartLineUp,
-  },
-  {
-    href: "/intelligence/memory",
-    title: "Organizational memory",
-    summary: "Promoted memories, auto-promotions, and knowledge graph lens.",
-    icon: Brain,
-  },
-  {
-    href: "/intelligence/reports",
-    title: "Executive reports",
-    summary: "ROI metrics and department scorecards.",
-    icon: ChartLineUp,
-  },
+  { ...SURFACE_COPY.hubLinks.agents, icon: Robot },
+  { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
+  { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
+  { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
+  { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
 ]
 
 export default function IntelligenceCenterPage() {
   const { user } = useAuth()
+  const copy = SURFACE_COPY.insights
   const { data: outcomes, error, mutate, isLoading } = useSWR(
     user ? ["intelligence/outcomes", 7] : null,
     () => intelligenceApi.outcomes({ periodDays: 7 }),
@@ -72,18 +50,18 @@ export default function IntelligenceCenterPage() {
 
   if (!user) {
     return (
-      <AppShell title="Intelligence Center">
-        <EmptyState title="Sign in required" description="Log in to view intelligence visibility." />
+      <AppShell title={copy.title}>
+        <EmptyState title="Sign in required" description="Log in to view insights." />
       </AppShell>
     )
   }
 
   if (error) {
     return (
-      <AppShell title="Intelligence Center">
+      <AppShell title={copy.title}>
         <ErrorState
-          title="Unable to load intelligence center"
-          description={error instanceof ApiError ? error.message : "Please try again."}
+          title="Unable to load insights"
+          description={error instanceof ApiError ? error.message : "Try again in a moment."}
           onRetry={() => mutate()}
         />
       </AppShell>
@@ -96,36 +74,33 @@ export default function IntelligenceCenterPage() {
   const avgConfidence = trust?.avg_confidence as number | null | undefined
 
   return (
-    <AppShell title="Intelligence Center">
+    <AppShell title={copy.title}>
       <div className="space-y-6 p-4 md:p-6">
-        <PageHeader
-          title="Intelligence Center"
-          description="See what Gravitre knows, why recommendations were made, and how confident the system is — without exposing internal chain-of-thought."
-        />
+        <PageHeader title={copy.title} description={copy.description} />
 
         {isLoading && !outcomes ? (
-          <p className="text-sm text-muted-foreground">Loading intelligence snapshot…</p>
+          <p className="text-sm text-muted-foreground">Loading insights…</p>
         ) : totalEvents === 0 ? (
           <EmptyState
             variant="ai"
             iconSlot={<Sparkle className="h-8 w-8 text-violet-500" weight="duotone" aria-hidden />}
-            title="Intelligence profile is building"
-            description="Outcome events, recommendations, and trust signals appear here as agents complete work with measurable results."
+            title={copy.emptyTitle}
+            description={copy.emptyDescription}
           />
         ) : (
           <StatsGrid columns={4}>
-            <StatCard label="Outcome events (7d)" value={totalEvents} variant="info" />
+            <StatCard label={SURFACE_COPY.stats.outcomeEvents} value={totalEvents} variant="info" />
             <StatCard
-              label="Avg confidence"
+              label={SURFACE_COPY.stats.avgConfidence}
               value={avgConfidence != null ? formatPercent(avgConfidence) : "—"}
               variant="success"
             />
             <StatCard
-              label="Recommendations created"
+              label={SURFACE_COPY.stats.recommendationsCreated}
               value={readNumber(byEvent.recommendation_created, 0)}
             />
             <StatCard
-              label="Recommendations rejected"
+              label={SURFACE_COPY.stats.recommendationsRejected}
               value={readNumber(byEvent.recommendation_rejected, 0)}
               variant="warning"
             />
@@ -133,7 +108,7 @@ export default function IntelligenceCenterPage() {
         )}
 
         <RecommendationExplanation
-          summary="Recommendations combine org signals, retrieval quality, and model routing. Each suggestion stays advisory until a human approves or rejects it."
+          summary={SURFACE_COPY.sections.recommendationSummary}
           confidence={typeof avgConfidence === "number" ? avgConfidence : null}
           advisoryOnly
           sources={[{ type: "optimization_suggestions", label: "Org optimization signals" }]}
@@ -143,9 +118,9 @@ export default function IntelligenceCenterPage() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="rounded-2xl border border-border/70 bg-card p-5">
-            <h2 className="text-base font-semibold text-foreground">Routing trace (safe summary)</h2>
+            <h2 className="text-base font-semibold text-foreground">{SURFACE_COPY.sections.routingTrace}</h2>
             <p className="mt-1 text-sm text-muted-foreground text-pretty">
-              High-level stages only — no raw prompts or chain-of-thought.
+              {SURFACE_COPY.sections.routingTraceHint}
             </p>
             <div className="mt-4">
               <IntelligenceTrace
@@ -170,10 +145,8 @@ export default function IntelligenceCenterPage() {
             </div>
           </section>
           <section className="rounded-2xl border border-border/70 bg-card p-5">
-            <h2 className="text-base font-semibold text-foreground">Latest simulation</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Pre-execution estimates from historical evidence — never fabricated.
-            </p>
+            <h2 className="text-base font-semibold text-foreground">{SURFACE_COPY.sections.latestSimulation}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{SURFACE_COPY.sections.latestSimulationHint}</p>
             <div className="mt-4">
               <SimulationCard simulation={(simulations as Record<string, unknown> | undefined) ?? null} />
             </div>
@@ -185,8 +158,8 @@ export default function IntelligenceCenterPage() {
             const Icon = link.icon
             return (
               <Link
-                key={link.href}
-                href={link.href}
+                key={link.route}
+                href={link.route}
                 className="group rounded-2xl border border-border/70 bg-card p-5 transition-colors hover:border-primary/30 hover:bg-card/80"
               >
                 <div className="flex items-start gap-3">
@@ -209,7 +182,7 @@ export default function IntelligenceCenterPage() {
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/admin/intelligence">Org Learning admin</Link>
+            <Link href={APP_ROUTES.learning}>{SURFACE_COPY.learning.title}</Link>
           </Button>
         </div>
       </div>

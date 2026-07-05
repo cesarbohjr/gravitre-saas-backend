@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   Area,
   AreaChart,
@@ -505,14 +506,14 @@ export default function MetricsPage() {
   const { days: throughputData, target: throughputTarget } = normalizeWeeklyThroughput(throughputDataRaw)
 
   return (
-    <AppShell title="Metrics">
+    <AppShell title={SURFACE_COPY.pages.metrics.title}>
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex-shrink-0 px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-border">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
             <div>
-              <h1 className="text-lg md:text-xl font-semibold text-foreground">System Intelligence</h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">AI-powered monitoring and insights</p>
+              <h1 className="text-lg md:text-xl font-semibold text-foreground">{SURFACE_COPY.pages.metrics.headline}</h1>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">{SURFACE_COPY.pages.metrics.description}</p>
             </div>
             <div className="flex items-center gap-2">
               <DropdownMenu>

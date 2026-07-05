@@ -65,6 +65,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
@@ -2239,7 +2240,7 @@ function ConnectorsPageContent() {
   )
 
   return (
-    <AppShell title="Connectors">
+    <AppShell title={SURFACE_COPY.pages.connectors.title}>
       <div className="flex flex-col min-h-full">
         {/* Header */}
         <div className="border-b border-border px-4 md:px-6 py-4">
@@ -2249,8 +2250,8 @@ function ConnectorsPageContent() {
                 <Cable className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
               </div>
               <div>
-                <h1 className="text-base md:text-lg font-semibold text-foreground">Integration Hub</h1>
-                <p className="text-xs md:text-sm text-muted-foreground">Connect and manage your data sources</p>
+                <h1 className="text-base md:text-lg font-semibold text-foreground">{SURFACE_COPY.pages.connectors.headline}</h1>
+                <p className="text-xs md:text-sm text-muted-foreground">{SURFACE_COPY.pages.connectors.description}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 md:gap-3">
@@ -2706,7 +2707,7 @@ function ConnectorsPageContent() {
 
 function ConnectorsPageFallback() {
   return (
-    <AppShell title="Connectors">
+    <AppShell title={SURFACE_COPY.pages.connectors.title}>
       <div className="flex h-[50vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>

@@ -9,6 +9,7 @@ import { Gauge, ListChecks, Clock, Hash } from "@phosphor-icons/react"
 import { SectionCard, NotYetPopulated, TabStateGate, ScoreBar, scoreColor, formatScore, formatTime } from "./shared"
 import { LearningToRankCard } from "./learning-to-rank-card"
 import { cn } from "@/lib/utils"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 /** A compact labeled metric shown on a scored-response row. */
 function MetricPill({ label, value, tone }: { label: string; value: string; tone?: string }) {
@@ -56,8 +57,8 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
     <TabStateGate isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
       <div className="space-y-4">
         <SectionCard
-          title="Response quality"
-          description="A composite score for how good the engine's answers are, blending three weighted signals."
+          title={SURFACE_COPY.learningAdmin.evaluationQualityTitle}
+          description={SURFACE_COPY.learningAdmin.evaluationQualityHint}
           icon={<Gauge className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] md:items-center">
@@ -116,7 +117,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
         {data ? <LearningToRankCard status={data.retrievalRanker} delay={0.06} /> : null}
 
         <SectionCard
-          title="Scored responses"
+          title={SURFACE_COPY.learningAdmin.scoredResponsesTitle}
           description="Recent answers with their individual quality scores."
           icon={<ListChecks className="h-5 w-5" weight="duotone" aria-hidden />}
           delay={0.12}

@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { connectorsApi, mlModelsApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { connectorVendorKey } from "@/lib/connectors"
 import { mlProviderVendorKey } from "@/lib/brand-vendor"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
@@ -62,6 +63,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 const statusStyles: Record<string, string> = {
   draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
@@ -285,12 +287,12 @@ export default function ModelsPage() {
   }, [baseModelOptions])
 
   return (
-    <AppShell title="Model Registry">
+    <AppShell title={SURFACE_COPY.models.title}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
         <LearningSurfacesCallout current="model-registry" />
         <PageHeader
-          title="Model Registry"
-          description="Register, version, and deploy production ML models for workflows and services — not org learning or agent fine-tunes."
+          title={SURFACE_COPY.models.title}
+          description={SURFACE_COPY.models.description}
           icon={Brain}
           iconColor="from-emerald-500/20 to-teal-500/20 ring-emerald-500/20"
           actions={
@@ -306,6 +308,14 @@ export default function ModelsPage() {
             </div>
           }
         />
+
+        <p className="text-sm text-muted-foreground">
+          Looking for Gravitre&apos;s system catalog? See{" "}
+          <Link href={APP_ROUTES.builtInModels} className="text-primary hover:underline">
+            {SURFACE_COPY.builtInModels.title}
+          </Link>
+          .
+        </p>
 
         <ModelRegistryOverview
           totalModels={models.length}

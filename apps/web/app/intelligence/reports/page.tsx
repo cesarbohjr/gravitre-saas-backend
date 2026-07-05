@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { ApiError } from "@/lib/fetcher"
 import {
   DEPARTMENTS,
@@ -29,6 +30,9 @@ import {
 import { IntelligenceSparkline } from "@/components/intelligence/intelligence-sparkline"
 import { ExecutiveIntelligenceScorecard } from "@/components/intelligence/executive-intelligence-scorecard"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
+import { SURFACE_COPY } from "@/lib/surface-copy"
+
+const reportsCopy = SURFACE_COPY.pages.reports
 
 function sparkFromEvents(events: Array<Record<string, unknown>>, key: string) {
   return events.slice(0, 14).map((row, index) => ({
@@ -59,15 +63,15 @@ export default function IntelligenceReportsPage() {
 
   if (!user) {
     return (
-      <AppShell title="Executive Intelligence Reports">
-        <EmptyState title="Sign in required" description="Log in to view executive intelligence reports." />
+      <AppShell title={reportsCopy.title}>
+        <EmptyState title="Sign in required" description="Log in to view reports." />
       </AppShell>
     )
   }
 
   if (error) {
     return (
-      <AppShell title="Executive Intelligence Reports">
+      <AppShell title={reportsCopy.title}>
         <ErrorState
           title="Unable to load reports"
           description={error instanceof ApiError ? error.message : "Please try again."}
@@ -98,12 +102,10 @@ export default function IntelligenceReportsPage() {
   ]
 
   return (
-    <AppShell title="Executive Intelligence Reports">
+    <AppShell title={reportsCopy.title}>
       <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground text-pretty">
-            ROI metrics and department scorecards — honest dashes when measurement is unavailable.
-          </p>
+          <p className="text-sm text-muted-foreground text-pretty">{reportsCopy.description}</p>
           <Select value={String(period)} onValueChange={(value) => setPeriod(Number(value) as IntelligencePeriod)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Period" />
@@ -118,9 +120,9 @@ export default function IntelligenceReportsPage() {
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap">
-            <TabsTrigger value="roi">Intelligence ROI</TabsTrigger>
-            <TabsTrigger value="scorecards">Department scorecards</TabsTrigger>
-            <TabsTrigger value="executive">Executive scorecard</TabsTrigger>
+            <TabsTrigger value="roi">{reportsCopy.tabRoi}</TabsTrigger>
+            <TabsTrigger value="scorecards">{reportsCopy.tabScorecards}</TabsTrigger>
+            <TabsTrigger value="executive">{reportsCopy.tabExecutive}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -194,7 +196,7 @@ export default function IntelligenceReportsPage() {
               })}
             </div>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/admin/intelligence">View detailed org learning evaluations</Link>
+              <Link href={APP_ROUTES.learning}>View learning evaluations</Link>
             </Button>
           </TabsContent>
 

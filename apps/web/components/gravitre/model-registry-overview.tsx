@@ -14,6 +14,8 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   ML_STACK_LAYERS,
   type MlStackLayerId,
@@ -84,23 +86,19 @@ export function ModelRegistryOverview({
                 transition={{ duration: 2.4, repeat: Infinity }}
                 className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
               />
-              Org-scoped AI models
+              {SURFACE_COPY.models.badge}
             </div>
             <h2 className="text-balance text-xl font-semibold text-foreground sm:text-2xl">
-              Register, train, and deploy production ML
+              {SURFACE_COPY.models.heroTitle}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Model Registry is the production control plane: capture metadata, track versions, wire datasets
-              from{" "}
-              <Link href="/training" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
-                Agent Training
+              Track versions, wire datasets from{" "}
+              <Link href={APP_ROUTES.training} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+                {SURFACE_COPY.training.title}
               </Link>
-              , and expose inference to workflows. For automatic org learning from usage, see{" "}
-              <Link
-                href="/admin/intelligence"
-                className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300"
-              >
-                Org Learning
+              , and expose inference to workflows. For org-wide signals, see{" "}
+              <Link href={APP_ROUTES.learning} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+                {SURFACE_COPY.learning.title}
               </Link>
               .
             </p>

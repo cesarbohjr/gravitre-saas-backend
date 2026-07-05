@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LearningConfidenceBadge } from "@/components/intelligence/learning-confidence-badge"
 import { intelligenceApi } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { formatPercent, readNumber, readString } from "@/lib/intelligence/helpers"
 import {
   formatHealthScore,
@@ -87,14 +89,12 @@ export function IntelligenceHealthGrid({ orgScopedKey }: { orgScopedKey: string 
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Intelligence health</h2>
-          <p className="mt-1 text-sm text-muted-foreground text-pretty">
-            Org-wide trust, maturity, and domain health — measured from real platform signals.
-          </p>
+          <h2 className="text-base font-semibold text-foreground">{SURFACE_COPY.insightsHealth.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground text-pretty">{SURFACE_COPY.insightsHealth.subtitle}</p>
         </div>
         {isAdmin ? (
           <Button variant="outline" size="sm" asChild>
-            <Link href="/intelligence/reports">Executive reports</Link>
+            <Link href={APP_ROUTES.intelligenceReports}>{SURFACE_COPY.insightsHealth.reportsLink}</Link>
           </Button>
         ) : null}
       </div>

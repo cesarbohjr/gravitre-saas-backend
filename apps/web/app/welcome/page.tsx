@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   clearWelcomeDraft,
   markWelcomeCompletedLocal,
@@ -323,7 +324,7 @@ export default function WelcomePage() {
             >
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>• Connect more tools to unlock department agents and ML models</li>
-                <li>• Visit Intelligence Center to see confidence and outcomes</li>
+                <li>• Visit {SURFACE_COPY.insights.title} to see confidence and outcomes</li>
                 <li>• Resume setup anytime from Getting Started in the sidebar</li>
               </ul>
             </StepShell>

@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { intelligenceApi } from "@/lib/api"
+import { SURFACE_COPY } from "@/lib/surface-copy"
+
+const copy = SURFACE_COPY.pages.predictive
 
 const DOMAINS = ["sales", "support", "operations", "finance", "marketing"] as const
 
@@ -21,10 +24,7 @@ export default function PredictiveOpsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <PageHeader
-        title="Predictive operations"
-        description="Domain model packs with honest TRAINED / not_trained / data_gate status. All outputs are advisory only."
-      />
+      <PageHeader title={copy.title} description={copy.description} />
       <div className="flex items-center gap-3">
         <span className="text-sm text-muted-foreground">Domain pack</span>
         <Select value={domain} onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}>

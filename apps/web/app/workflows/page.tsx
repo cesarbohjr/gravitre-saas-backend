@@ -40,6 +40,7 @@ import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { workflowsApi } from "@/lib/api"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import type { Workflow as ApiWorkflow, WorkflowStatus } from "@/types/api"
 
 interface WorkflowNode {
@@ -293,7 +294,7 @@ export default function WorkflowsPage() {
   }
 
   return (
-    <AppShell title="Workflows">
+    <AppShell title={SURFACE_COPY.pages.workflows.title}>
       <div className="relative flex flex-col h-full overflow-hidden">
         {/* Premium ambient background */}
         <div className="absolute inset-0 pointer-events-none z-0">
@@ -318,8 +319,8 @@ export default function WorkflowsPage() {
         {/* Header */}
         <div className="relative z-10">
           <PageHeader
-            title="Workflows"
-            description="Manage and monitor your automated workflows"
+            title={SURFACE_COPY.pages.workflows.title}
+            description={SURFACE_COPY.pages.workflows.description}
             icon={Workflow}
             iconColor="from-blue-500/20 to-cyan-500/20"
             actions={

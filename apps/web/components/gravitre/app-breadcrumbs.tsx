@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { fallbackEntityLabel, isUuidPathSegment } from "@/lib/breadcrumb-entity"
 
@@ -34,14 +35,15 @@ const LABELS: Record<string, string> = {
   agents: "AI Team",
   "multi-agent-run": "Multi-Agent Run",
   swarm: "Multi-Agent Run",
-  intelligence: "Intelligence Center",
+  intelligence: SURFACE_COPY.insights.title,
   admin: "Admin",
   marketplace: "Marketplace",
   workflows: "Workflows",
   connectors: "Connectors",
   sources: "Sources",
-  training: "Agent Training",
-  models: "Model Registry",
+  training: SURFACE_COPY.training.title,
+  models: SURFACE_COPY.models.title,
+  "built-in": SURFACE_COPY.builtInModels.title,
   runs: "Runs",
   schedules: "Schedules",
   approvals: "Approvals",
@@ -51,11 +53,11 @@ const LABELS: Record<string, string> = {
   environments: "Environments",
   assignments: "Assignments",
   goals: "Goals",
-  memory: "Organizational Memory",
-  reports: "Executive Reports",
-  performance: "Performance",
-  learning: "Learning",
-  outcomes: "Outcomes",
+  memory: SURFACE_COPY.hubLinks.memory.title,
+  reports: SURFACE_COPY.hubLinks.reports.title,
+  performance: SURFACE_COPY.adminTabs.performance,
+  learning: SURFACE_COPY.learning.title,
+  outcomes: SURFACE_COPY.adminTabs.outcomes,
 }
 
 function labelForSegment(
@@ -72,8 +74,9 @@ function labelForSegment(
     return fallbackEntityLabel(segments[index - 1])
   }
   if (index === segments.length - 1 && segments[0] === "agents" && index === 1) return "Agent"
-  if (segments[0] === "intelligence" && segment === "agents" && index === 1) return "Agent Profiles"
-  if (segments[0] === "intelligence" && segment === "models" && index === 1) return "Model Intelligence"
+  if (segments[0] === "intelligence" && segment === "agents" && index === 1) return SURFACE_COPY.hubLinks.agents.title
+  if (segments[0] === "models" && segment === "built-in" && index === 1) return SURFACE_COPY.builtInModels.title
+  if (segments[0] === "intelligence" && segment === "models" && index === 1) return SURFACE_COPY.builtInModels.title
   return segment.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
 }
 

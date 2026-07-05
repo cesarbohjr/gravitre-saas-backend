@@ -30,6 +30,7 @@ import {
   ParticleField,
 } from "@/components/gravitre/premium-effects"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { cardVariants, entranceContainer, useMotionPrefs } from "@/lib/animations"
 import { cn } from "@/lib/utils"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
@@ -205,7 +206,7 @@ export function HomeDashboard({
             variants={cardVariants}
             className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm lg:col-span-2"
           >
-            <PanelHeader icon={Brain} title="Intelligence status" href={APP_ROUTES.intelligence} linkLabel="View Intelligence Center" />
+            <PanelHeader icon={Brain} title="Insights status" href={APP_ROUTES.intelligence} linkLabel={`View ${SURFACE_COPY.insights.title}`} />
             {hasLearningSnapshot || mlActive != null || memoriesCount != null ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                 <div className="rounded-lg border border-border/60 px-3 py-2">
@@ -224,8 +225,8 @@ export function HomeDashboard({
             ) : (
               <div className="mt-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center">
                 <Brain className="mx-auto h-8 w-8 text-primary" weight="duotone" />
-                <p className="mt-2 text-sm font-medium text-foreground">Intelligence is warming up</p>
-                <p className="mt-1 text-xs text-muted-foreground">Run workflows and connect tools to begin learning.</p>
+                <p className="mt-2 text-sm font-medium text-foreground">{SURFACE_COPY.insightsHealth.warmingTitle}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{SURFACE_COPY.insightsHealth.warmingHint}</p>
               </div>
             )}
           </motion.section>
@@ -234,7 +235,7 @@ export function HomeDashboard({
             variants={cardVariants}
             className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm"
           >
-            <PanelHeader icon={Sparkle} title="Confidence trend" href={APP_ROUTES.intelligence} linkLabel="Intelligence Center" />
+            <PanelHeader icon={Sparkle} title="Confidence trend" href={APP_ROUTES.intelligence} linkLabel={SURFACE_COPY.insights.title} />
             <div className="mt-4 h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={confidenceSeries}>
@@ -275,7 +276,7 @@ export function HomeDashboard({
             variants={cardVariants}
             className="rounded-2xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm"
           >
-            <PanelHeader icon={Brain} title="Learning velocity" href={APP_ROUTES.orgLearning} linkLabel="Org Learning" />
+            <PanelHeader icon={Brain} title="Learning velocity" href={APP_ROUTES.learning} linkLabel={SURFACE_COPY.learning.title} />
             <div className="mt-4 h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={learningBars} layout="vertical" barSize={18}>

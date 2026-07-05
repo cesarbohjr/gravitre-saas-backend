@@ -3,11 +3,11 @@ import { authenticatedMetadata } from "@/lib/authenticated-metadata"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
 export const metadata: Metadata = authenticatedMetadata(
-  `${SURFACE_COPY.training.title} | Gravitre`,
-  SURFACE_COPY.training.description,
-  { canonical: "/training" },
+  `${SURFACE_COPY.builtInModels.title} | Gravitre`,
+  SURFACE_COPY.builtInModels.description,
+  { canonical: "/models/built-in" },
 )
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function BuiltInModelDetailLayout({ children }: { children: React.ReactNode }) {
   return children
 }

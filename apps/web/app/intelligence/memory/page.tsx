@@ -15,6 +15,10 @@ import { intelligenceApi, memoryPromotionApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { plainDecisionReasoning, readString } from "@/lib/intelligence/helpers"
 import { MemoryCategoryChip } from "@/components/intelligence/memory-category-chip"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { SURFACE_COPY } from "@/lib/surface-copy"
+
+const copy = SURFACE_COPY.pages.memory
 
 function RelationshipsLens() {
   const { data, isLoading } = useSWR("intelligence/memory/relationships", () => intelligenceApi.relationships())
@@ -60,15 +64,15 @@ export default function IntelligenceMemoryPage() {
 
   if (!user) {
     return (
-      <AppShell title="Organizational Memory">
-        <EmptyState title="Sign in required" description="Log in to explore organizational memory." />
+      <AppShell title={copy.title}>
+        <EmptyState title="Sign in required" description="Log in to explore org memory." />
       </AppShell>
     )
   }
 
   if (error) {
     return (
-      <AppShell title="Organizational Memory">
+      <AppShell title={copy.title}>
         <ErrorState
           title="Unable to load memory data"
           description={error instanceof ApiError ? error.message : "Please try again."}
@@ -93,17 +97,15 @@ export default function IntelligenceMemoryPage() {
   }
 
   return (
-    <AppShell title="Organizational Memory">
+    <AppShell title={copy.title}>
       <div className="space-y-6 p-4 md:p-6">
-        <p className="text-sm text-muted-foreground text-pretty">
-          Promoted memories, auto-promotion audit trail, and knowledge graph relationships — org-scoped only.
-        </p>
+        <p className="text-sm text-muted-foreground text-pretty">{copy.description}</p>
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex w-full flex-wrap justify-start">
-            <TabsTrigger value="org">Organizational memory</TabsTrigger>
-            <TabsTrigger value="auto">Auto-promotions</TabsTrigger>
-            <TabsTrigger value="graph">Knowledge graph</TabsTrigger>
+            <TabsTrigger value="org">{copy.tabPromoted}</TabsTrigger>
+            <TabsTrigger value="auto">{copy.tabAuto}</TabsTrigger>
+            <TabsTrigger value="graph">{copy.tabGraph}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="org" className="mt-6 space-y-4">
@@ -150,11 +152,9 @@ export default function IntelligenceMemoryPage() {
 
           <TabsContent value="auto" className="mt-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">
-                Recent automatic promotions from the org learning engine.
-              </p>
+              <p className="text-sm text-muted-foreground">{copy.autoHint}</p>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/admin/intelligence">Open full Memory promotion admin</Link>
+                <Link href={APP_ROUTES.learning}>{copy.autoAdminLink}</Link>
               </Button>
             </div>
             {autoItems.length === 0 ? (
@@ -183,10 +183,7 @@ export default function IntelligenceMemoryPage() {
           </TabsContent>
 
           <TabsContent value="graph" className="mt-6 space-y-4">
-            <p className="text-sm text-muted-foreground text-pretty">
-              Memory lens: entity relationships below also indicate which graph nodes have promoted memories attached in
-              the promotion audit trail.
-            </p>
+            <p className="text-sm text-muted-foreground text-pretty">{copy.graphHint}</p>
             <RelationshipsLens />
             {auditItems.length > 0 ? (
               <ul className="space-y-2 text-sm">
