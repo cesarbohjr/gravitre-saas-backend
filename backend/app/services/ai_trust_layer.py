@@ -118,6 +118,23 @@ class AITrustLayer:
         }
         return label, warnings, envelope
 
+    def build_optimization_trust_metadata(
+        self,
+        *,
+        freshness_envelope: dict[str, Any] | None = None,
+        optimization_summary: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        optimization = optimization_summary or {}
+        return {
+            "freshness": freshness_envelope or {},
+            "domain_optimization": {
+                "pending_recommendations": int(optimization.get("pending_count") or 0),
+                "advisory_only": True,
+                "auto_execution_enabled": False,
+                "insufficient_data_warnings": optimization.get("insufficient_data_warnings") or [],
+            },
+        }
+
     async def generate_answer_explanation(
         self,
         sources: list[dict[str, Any]],

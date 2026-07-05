@@ -237,6 +237,113 @@ class KnowledgeFreshnessService:
             return min(0.15, 0.03 * stale_count)
         return 0.0
 
+    async def load_admin_summary(self, org_id: str, *, client: Any | None = None) -> dict[str, Any]:
+        from app.workflows.repository import get_supabase_client
+
+        db = client or get_supabase_client(self.settings)
+        try:
+            rows = (
+                db.table("agent_knowledge_assignments")
+                .select(
+                    "id, org_id, agent_id, source_type, source_id, label, department, subdomain, "
+                    "freshness_status, last_synced_at, last_verified_at, confidence_weight, enabled, metadata"
+                )
+                .eq("org_id", org_id)
+                .eq("enabled", True)
+                .order("updated_at", desc=True)
+                .limit(500)
+                .execute()
+                .data
+                or []
+            )
+        except Exception:  # noqa: BLE001
+            rows = []
+
+        stale_sources: list[dict[str, Any]] = []
+        inaccessible_sources: list[dict[str, Any]] = []
+        freshness_scores: list[dict[str, Any]] = []
+        affected_agents: dict[str, dict[str, Any]] = {}
+        affected_domains: dict[str, dict[str, Any]] = {}
+        recommended_actions: list[dict[str, Any]] = []
+        assessments: dict[str, FreshnessAssessment] = {}
+
+        for row in rows:
+            assessment = self.assess_assignment(row, client=db, org_id=org_id)
+            assessments[assessment.assignment_id] = assessment
+            agent_id = str(row.get("agent_id") or "")
+            department = str(row.get("department") or row.get("owning_department") or "").lower()
+            subdomain = str(row.get("subdomain") or "").lower()
+            entry = {
+                "assignment_id": assessment.assignment_id,
+                "label": row.get("label"),
+                "agent_id": agent_id,
+                "source_type": row.get("source_type"),
+                "source_id": row.get("source_id"),
+                "department": department or None,
+                "subdomain": subdomain or None,
+                **assessment.to_dict(),
+            }
+            freshness_scores.append(entry)
+            if agent_id:
+                affected_agents.setdefault(
+                    agent_id,
+                    {"agent_id": agent_id, "assignment_count": 0, "stale_count": 0, "inaccessible_count": 0},
+                )
+                affected_agents[agent_id]["assignment_count"] += 1
+            domain_key = f"{department}:{subdomain}" if department or subdomain else "unknown"
+            affected_domains.setdefault(
+                domain_key,
+                {
+                    "department": department or None,
+                    "subdomain": subdomain or None,
+                    "assignment_count": 0,
+                    "stale_count": 0,
+                    "inaccessible_count": 0,
+                },
+            )
+            affected_domains[domain_key]["assignment_count"] += 1
+
+            if assessment.freshness_multiplier == FRESHNESS_MULTIPLIER_INACCESSIBLE:
+                inaccessible_sources.append(entry)
+                if agent_id:
+                    affected_agents[agent_id]["inaccessible_count"] += 1
+                affected_domains[domain_key]["inaccessible_count"] += 1
+                recommended_actions.append(
+                    {
+                        "action": "revalidate_permissions",
+                        "assignment_id": assessment.assignment_id,
+                        "label": row.get("label"),
+                        "reason": assessment.stale_reason or "source_inaccessible",
+                    }
+                )
+            elif assessment.stale:
+                stale_sources.append(entry)
+                if agent_id:
+                    affected_agents[agent_id]["stale_count"] += 1
+                affected_domains[domain_key]["stale_count"] += 1
+                recommended_actions.append(
+                    {
+                        "action": "refresh_knowledge_source",
+                        "assignment_id": assessment.assignment_id,
+                        "label": row.get("label"),
+                        "reason": assessment.stale_reason or "stale_sync",
+                    }
+                )
+
+        return {
+            "status": "ok",
+            "org_id": org_id,
+            "assignment_count": len(rows),
+            "stale_sources": stale_sources,
+            "inaccessible_sources": inaccessible_sources,
+            "freshness_scores": freshness_scores,
+            "affected_agents": list(affected_agents.values()),
+            "affected_domains": list(affected_domains.values()),
+            "recommended_actions": recommended_actions,
+            "freshness_label": self.aggregate_freshness_label(assessments) if assessments else "unknown",
+            "last_assessed_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     def _inaccessible(
         self,
         assignment_id: str,

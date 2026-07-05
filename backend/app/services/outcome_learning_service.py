@@ -395,6 +395,16 @@ class OutcomeLearningService:
             "period_days": period_days,
         }
 
+    async def get_domain_optimization_metrics(self, org_id: str, *, period_days: int = 30) -> dict[str, Any]:
+        summary = await self.load_admin_outcomes_summary(org_id, period_days=period_days)
+        return {
+            "total_events": summary.get("summary", {}).get("total_events", 0),
+            "insufficient_data_rate": summary.get("insufficient_data_rate"),
+            "by_event_type": summary.get("by_event_type") or {},
+            "by_department": summary.get("by_department") or {},
+            "period_days": period_days,
+        }
+
 
 _outcome_learning_service: OutcomeLearningService | None = None
 

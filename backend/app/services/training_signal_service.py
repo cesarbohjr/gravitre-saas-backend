@@ -147,6 +147,15 @@ class TrainingSignalService:
             "recommended_next_training": recommendations,
         }
 
+    async def get_domain_optimization_signals(self, org_id: str) -> dict[str, Any]:
+        readiness = await self.get_training_readiness(org_id)
+        return {
+            "retrain_candidates": readiness.get("recommended_next_training") or [],
+            "by_model": readiness.get("by_model") or {},
+            "advisory_only": True,
+            "auto_training_enabled": False,
+        }
+
     async def recommend_retraining(self, org_id: str) -> list[dict[str, Any]]:
         readiness = await self.get_training_readiness(org_id)
         recommended: list[dict[str, Any]] = []
