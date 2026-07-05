@@ -714,7 +714,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <IntelligenceEngineSection />
+      <IntelligenceEngineSection variant="compact" />
 
       {/* How Gravitre Works - Architecture Diagram */}
       <section className="relative pb-32">
