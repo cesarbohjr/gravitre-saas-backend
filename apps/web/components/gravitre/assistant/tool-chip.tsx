@@ -247,13 +247,16 @@ function renderToolDetails(toolName: string, result: unknown) {
 
 export function ToolChip({
   invocation,
-  expanded,
-  onToggle,
+  expanded: expandedProp,
+  onToggle: onToggleProp,
 }: {
   invocation: ToolInvocation
-  expanded: boolean
-  onToggle: () => void
+  expanded?: boolean
+  onToggle?: () => void
 }) {
+  const [internalExpanded, setInternalExpanded] = useState(false)
+  const expanded = expandedProp ?? internalExpanded
+  const onToggle = onToggleProp ?? (() => setInternalExpanded((value) => !value))
   const isComplete = invocation.state === "result"
   const outcome = isComplete ? getToolOutcome(invocation.toolName, invocation.result) : "success"
   const Icon = toolIcons[invocation.toolName] || Database

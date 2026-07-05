@@ -69,6 +69,7 @@ class UnifiedRetrievalService:
 
         from app.services.domain_retrieval_policy import build_retrieval_plan, should_fetch_graph
         from app.services.learning_strategy_keys import parse_segment_key
+        from app.services.adaptive_learning_service import get_adaptive_learning_service
 
         retrieval_plan = build_retrieval_plan(
             classification,
@@ -79,8 +80,6 @@ class UnifiedRetrievalService:
         if getattr(self.settings, "domain_adaptive_learning_enabled", False) or await get_adaptive_learning_service(
             self.settings
         ).is_enabled_for_org(org_id):
-            from app.services.adaptive_learning_service import get_adaptive_learning_service
-
             segment_key = parse_segment_key(classification)
             retrieval_plan = await get_adaptive_learning_service(self.settings).apply_to_retrieval_plan(
                 retrieval_plan,
