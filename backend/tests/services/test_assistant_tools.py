@@ -150,58 +150,61 @@ async def test_run_assistant_tools_skips_unknown_ids():
 def test_tool_connector_status_uses_production_environment(monkeypatch: pytest.MonkeyPatch):
     seen: list[str] = []
 
-    def _list_connectors(_client, _org_id, environment_name="production"):
+    def _list_availability(_client, _org_id, _settings, *, environment_name="production", force_live=False, action_key=None):
         seen.append(environment_name)
         if environment_name == "production":
             return [
                 {
-                    "id": "c-hubspot",
+                    "connector_id": "c-hubspot",
                     "name": "HubSpot",
+                    "vendor": "hubspot",
                     "type": "hubspot",
+                    "display_status": "connected",
                     "status": "connected",
-                    "health": 98,
+                    "connected": True,
+                    "auth_status": "connected",
+                    "execution_available": True,
+                    "source_of_truth": "connector_availability_service",
                 }
             ]
         return []
 
-    monkeypatch.setattr("app.connectors.repository.list_connectors", _list_connectors)
-    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
     monkeypatch.setattr(
-        "app.connectors.connection_health.resolve_connector_auth_status",
-        lambda *_args, **_kwargs: None,
+        "app.connectors.connector_availability_service.list_connector_availability",
+        _list_availability,
     )
+    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
 
     output = tools_module.tool_connector_status("org-1", _settings())
     assert seen == ["production"]
-    assert output["connectors"][0]["type"] == "hubspot"
+    assert output["connectors"][0]["vendor"] == "hubspot"
     assert output["connectors"][0]["status"] == "connected"
     assert output["connectors"][0]["connected"] is True
 
 
 def test_tool_connector_status_prefers_live_auth_over_stale_error(monkeypatch: pytest.MonkeyPatch):
-    def _list_connectors(_client, _org_id, environment_name="production"):
-        return [
-            {
-                "id": "c-hubspot",
-                "name": "HubSpot",
-                "type": "hubspot",
-                "status": "error",
-                "health": 0,
-                "environment": "production",
-            }
-        ]
-
-    monkeypatch.setattr("app.connectors.repository.list_connectors", _list_connectors)
-    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
     monkeypatch.setattr(
-        "app.connectors.connection_health.resolve_connector_auth_status",
-        lambda *_args, **_kwargs: "connected",
+        "app.connectors.connector_availability_service.list_connector_availability",
+        lambda *_args, **_kwargs: [
+            {
+                "connector_id": "c-hubspot",
+                "name": "HubSpot",
+                "vendor": "hubspot",
+                "display_status": "connected",
+                "status": "connected",
+                "connected": True,
+                "auth_status": "connected",
+                "raw_status": "error",
+                "execution_available": True,
+                "source_of_truth": "connector_availability_service",
+            }
+        ],
     )
+    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
 
     output = tools_module.tool_connector_status("org-1", _settings())
     connector = output["connectors"][0]
     assert connector["status"] == "connected"
     assert connector["connected"] is True
-    assert connector["authStatus"] == "connected"
-    assert connector["rawStatus"] == "error"
-    assert connector["health"] == 0
+    assert connector["auth_status"] == "connected"
+    assert connector["raw_status"] == "error"

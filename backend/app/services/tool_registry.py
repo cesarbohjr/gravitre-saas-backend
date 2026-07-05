@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from app.config import get_settings
 from app.connectors.repository import list_connectors
 from app.core.logging import get_logger
 from app.services.tool_service import invoke_tool, list_registered_actions
@@ -677,17 +678,21 @@ class ToolRegistry:
         client: Any,
         org_id: str,
         environment_name: str = "production",
+        *,
+        force_live: bool = True,
+        action_key: str | None = None,
     ) -> list[str]:
-        """Return connector types with an active connection for the org."""
-        types: set[str] = set()
-        for row in list_connectors(client, org_id, environment_name=environment_name):
-            status = str(row.get("status") or "").lower()
-            if not is_connector_usable(status):
-                continue
-            ctype = str(row.get("type") or "").strip().lower()
-            if ctype:
-                types.add(ctype)
-        return sorted(types)
+        """Return connector types with an active, executable connection for the org."""
+        from app.connectors.connector_availability_service import list_executable_integrations
+
+        return list_executable_integrations(
+            client,
+            org_id,
+            get_settings(),
+            environment_name=environment_name,
+            force_live=force_live,
+            action_key=action_key,
+        )
 
     def _permitted(self, spec: AgentToolSpec, permitted_tools: list[str]) -> bool:
         if spec.always_available:

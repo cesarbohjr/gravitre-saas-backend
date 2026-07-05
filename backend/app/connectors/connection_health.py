@@ -55,6 +55,7 @@ def resolve_connector_auth_status(
     settings: Settings,
     *,
     environment_name: str | None = None,
+    validate_remote: bool = False,
 ) -> str | None:
     """Return auth status for OAuth connectors, or None if not applicable."""
     if vendor == "odoo":
@@ -67,7 +68,12 @@ def resolve_connector_auth_status(
         )
     if normalize_hubspot_vendor(vendor) == "hubspot":
         return hubspot_connection_auth_status(
-            client, org_id, connector_id, settings, environment_name=environment_name
+            client,
+            org_id,
+            connector_id,
+            settings,
+            environment_name=environment_name,
+            validate_remote=validate_remote,
         )
     if normalize_salesforce_vendor(vendor) == "salesforce":
         return salesforce_connection_auth_status(

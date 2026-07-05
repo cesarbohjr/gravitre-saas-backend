@@ -90,11 +90,25 @@ import {
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
+interface ConnectorAvailability {
+  configured: boolean
+  authenticated: boolean
+  tokenValid: boolean
+  scopesValid: boolean
+  healthy: boolean
+  executable: boolean
+  blockingReason?: string
+  recoveryAction?: string
+  lastCheckedAt?: string
+  sourceOfTruth?: string
+}
+
 interface Connector {
   id: string
   name: string
   type: string
   status: "connected" | "disconnected" | "error" | "syncing"
+  displayStatus?: string
   environment: "production" | "staging"
   lastSync: string
   health: number
@@ -105,6 +119,9 @@ interface Connector {
   category?: string
   authType?: "oauth" | "apiKey" | "webhook"
   authStatus?: string
+  blockingReason?: string
+  recoveryAction?: string
+  availability?: ConnectorAvailability
   usedByWorkflows?: number
   triggeredByAgents?: number
   config?: {
@@ -133,8 +150,16 @@ function formatLastSync(value: unknown): string {
 
 function resolveConnectorStatus(
   rawStatus: string,
-  authStatus: string
+  authStatus: string,
+  displayStatus?: string,
 ): Connector["status"] {
+  const normalizedDisplay = String(displayStatus ?? "").trim().toLowerCase()
+  if (normalizedDisplay === "connected" || normalizedDisplay === "syncing") {
+    return normalizedDisplay
+  }
+  if (normalizedDisplay === "error") return "error"
+  if (normalizedDisplay === "disconnected") return "disconnected"
+
   if (authStatus === "connected") return "connected"
   if (authStatus === "auth_expired" || authStatus === "misconfigured") return "error"
   if (authStatus === "pending_auth" || authStatus === "pending_property") return "disconnected"
@@ -149,6 +174,58 @@ function resolveConnectorStatus(
   return "disconnected"
 }
 
+function parseConnectorAvailability(model: Record<string, unknown>): ConnectorAvailability | undefined {
+  const raw =
+    model.availability && typeof model.availability === "object"
+      ? (model.availability as Record<string, unknown>)
+      : null
+  if (!raw) return undefined
+  return {
+    configured: Boolean(raw.configured),
+    authenticated: Boolean(raw.authenticated),
+    tokenValid: Boolean(raw.tokenValid ?? raw.token_valid),
+    scopesValid: Boolean(raw.scopesValid ?? raw.scopes_valid),
+    healthy: Boolean(raw.healthy),
+    executable: Boolean(raw.executable ?? raw.execution_available),
+    blockingReason: String(raw.blockingReason ?? raw.blocking_reason ?? "").trim() || undefined,
+    recoveryAction: String(raw.recoveryAction ?? raw.recovery_action ?? "").trim() || undefined,
+    lastCheckedAt: String(raw.lastCheckedAt ?? raw.last_checked_at ?? "").trim() || undefined,
+    sourceOfTruth: String(raw.sourceOfTruth ?? raw.source_of_truth ?? "").trim() || undefined,
+  }
+}
+
+function connectorIsExecutable(connector: Connector): boolean {
+  if (connector.availability) return connector.availability.executable
+  return connector.status === "connected" || connector.status === "syncing"
+}
+
+function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAvailability }) {
+  if (!availability) return null
+  const badges = [
+    { label: "Configured", ok: availability.configured },
+    { label: "Authenticated", ok: availability.authenticated },
+    { label: "Healthy", ok: availability.healthy },
+    { label: "Executable", ok: availability.executable },
+  ]
+  return (
+    <div className="flex flex-wrap gap-1 mb-3">
+      {badges.map(({ label, ok }) => (
+        <span
+          key={label}
+          className={cn(
+            "text-[9px] px-1.5 py-0.5 rounded border font-medium",
+            ok
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+              : "bg-zinc-800/80 text-zinc-500 border-zinc-700/80",
+          )}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function connectorNeedsOAuthReconnect(connector: Connector): boolean {
   if (connector.authType !== "oauth") return false
   if (connector.status === "disconnected") return true
@@ -157,8 +234,19 @@ function connectorNeedsOAuthReconnect(connector: Connector): boolean {
 
 function connectorStatusLabel(connector: Connector): string {
   if (connector.status === "syncing") return statusConfig.syncing.label
-  if (connector.authStatus === "auth_expired") return "Reconnect required"
-  if (connector.authStatus === "misconfigured") return "Setup required"
+  if (connector.blockingReason === "token_expired" || connector.authStatus === "auth_expired") {
+    return "Reconnect required"
+  }
+  if (connector.blockingReason === "missing_scope") return "Missing OAuth scopes"
+  if (connector.blockingReason === "unsupported_action") return "Action unsupported"
+  if (connector.blockingReason === "pending_auth" || connector.authStatus === "pending_auth") {
+    return "Authentication required"
+  }
+  if (connector.authStatus === "misconfigured" || connector.blockingReason === "misconfigured") {
+    return "Setup required"
+  }
+  if (connector.availability?.executable) return "Connected and executable"
+  if (connector.availability?.healthy && !connector.availability.executable) return "Connected, not executable"
   return statusConfig[connector.status].label
 }
 
@@ -183,13 +271,16 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
         ? "oauth"
         : "apiKey"
   const authStatus = String(model.authStatus ?? model.auth_status ?? "")
+  const displayStatus = String(model.displayStatus ?? model.display_status ?? "")
+  const availability = parseConnectorAvailability(model)
   const vendor = String(model.type ?? model.vendor ?? "unknown")
-  const normalizedStatus = resolveConnectorStatus(rawStatus, authStatus)
+  const normalizedStatus = resolveConnectorStatus(rawStatus, authStatus, displayStatus)
   return {
     id: String(model.id ?? ""),
     name: String(model.name ?? "connector"),
     type: formatVendorLabel(vendor),
     status: normalizedStatus,
+    displayStatus: displayStatus || undefined,
     environment: environment === "production" ? "production" : "staging",
     lastSync: formatLastSync(model.lastSync ?? model.last_sync ?? model.last_sync_at),
     health: Number(model.health ?? 0),
@@ -200,6 +291,9 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     category: String(model.category ?? lookupConnectorCategory(vendor) ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
     authStatus: authStatus || undefined,
+    blockingReason: availability?.blockingReason,
+    recoveryAction: availability?.recoveryAction,
+    availability,
     usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
     triggeredByAgents: Number(model.triggeredByAgents ?? model.triggered_by_agents ?? 0),
     config:
@@ -428,6 +522,8 @@ function ConnectorNode({
             </DropdownMenu>
           </div>
 
+          <ConnectorReadinessBadges availability={connector.availability} />
+
           {/* Live metrics */}
           <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-secondary/50 mb-3">
             <div className="text-center">
@@ -445,7 +541,7 @@ function ConnectorNode({
           </div>
 
           {/* AI Usage Indicators */}
-          {(connector.usedByWorkflows || connector.triggeredByAgents) && connector.status === "connected" && (
+          {(connector.usedByWorkflows || connector.triggeredByAgents) && connectorIsExecutable(connector) && (
             <div className="flex items-center gap-3 mb-3 text-[10px] text-muted-foreground">
               {connector.usedByWorkflows && connector.usedByWorkflows > 0 && (
                 <div className="flex items-center gap-1">
@@ -501,7 +597,7 @@ function ConnectorNode({
 
         {/* Data flow line - hidden on mobile */}
         <div className="hidden md:flex w-16 items-center">
-          <DataFlowLine active={connector.status === "connected" || connector.status === "syncing"} direction={position === "left" ? "right" : "left"} />
+          <DataFlowLine active={connectorIsExecutable(connector)} direction={position === "left" ? "right" : "left"} />
         </div>
       </div>
     </motion.div>
@@ -1896,13 +1992,32 @@ function ConnectorsPageContent() {
   const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
+
+  const connectorsKey = user && orgId ? `/api/connectors?org=${orgId}` : null
 
   // Fetch connectors from API with SWR (org-scoped key avoids stale cross-device cache)
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
-    user && orgId ? `/api/connectors?org=${orgId}` : null,
+    connectorsKey,
     apiFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
+
+  const refreshLiveStatus = async () => {
+    if (!orgId) return
+    setIsLiveRefreshing(true)
+    try {
+      const live = await apiFetcher<{ connectors: Connector[] }>(`/api/connectors?org=${orgId}&live=1`)
+      await mutate(live, { revalidate: false })
+    } catch (err) {
+      console.error("[connectors] live status refresh failed:", err)
+      toast.error("Live status check failed", {
+        description: formatUnknownError(err, "Could not refresh OAuth token validity."),
+      })
+    } finally {
+      setIsLiveRefreshing(false)
+    }
+  }
 
   const { data: registryData } = useSWR<{
     connectors: Array<{
@@ -2074,7 +2189,7 @@ function ConnectorsPageContent() {
   const leftConnectors = filteredConnectors.filter((_, i) => i % 2 === 0)
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
 
-  const connectedCount = connectors.filter((c) => c.status === "connected").length
+  const connectedCount = connectors.filter((c) => connectorIsExecutable(c)).length
   const connectedVendorKeys = useMemo(
     () => new Set(connectors.map((c) => connectorVendorKey(c.type))),
     [connectors],
@@ -2090,7 +2205,7 @@ function ConnectorsPageContent() {
     searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all",
   )
   const hubConnectedCount = hasActiveFilters
-    ? filteredConnectors.filter((c) => c.status === "connected").length
+    ? filteredConnectors.filter((c) => connectorIsExecutable(c)).length
     : connectedCount
   const hubTotalCount = hasActiveFilters ? filteredConnectors.length : connectors.length
 
@@ -2314,6 +2429,16 @@ function ConnectorsPageContent() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 shrink-0"
+                disabled={isLiveRefreshing || isValidating || !orgId}
+                onClick={() => void refreshLiveStatus()}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
+                <span className="hidden sm:inline">Check live status</span>
+              </Button>
               <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Connector</span>
@@ -2367,8 +2492,8 @@ function ConnectorsPageContent() {
             <div className="mb-4 flex justify-end">
               <DataFreshness
                 updatedAt={data ? Date.now() : null}
-                isRefreshing={isValidating}
-                onRefresh={() => mutate()}
+                isRefreshing={isValidating || isLiveRefreshing}
+                onRefresh={() => void refreshLiveStatus()}
               />
             </div>
           )}
@@ -2395,6 +2520,16 @@ function ConnectorsPageContent() {
               <p className="text-sm text-muted-foreground mb-4 max-w-sm">
                 Connect your CRM, analytics, and productivity tools to power workflows and agents.
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={isLiveRefreshing || isValidating || !orgId}
+                onClick={() => void refreshLiveStatus()}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
+                Check live status
+              </Button>
               <Button onClick={() => openAddModal()} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add your first connector

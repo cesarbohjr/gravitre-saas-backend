@@ -9,6 +9,8 @@ NotExecutableReason = Literal[
     "missing_permission",
     "not_implemented",
     "requires_approval",
+    "token_expired",
+    "unsupported_action",
 ]
 
 
@@ -35,6 +37,8 @@ def format_not_executable_message(payload: dict[str, Any]) -> str:
         "missing_permission": "Your role does not allow this action.",
         "not_implemented": "This action is not available yet.",
         "requires_approval": "This action requires explicit approval before it can run.",
+        "token_expired": "The connector is configured, but authentication has expired.",
+        "unsupported_action": "This connector action is not supported yet.",
     }
     base = labels.get(reason, "This action cannot run right now.")
     return f"{base} {next_step}".strip()

@@ -43,6 +43,44 @@ export interface ToolInvocation {
 
 type ToolOutcome = "success" | "warning" | "error"
 
+type ConnectorStatusRow = {
+  name?: string
+  type?: string
+  vendor?: string
+  status?: string
+  display_status?: string
+  execution_available?: boolean
+  blocking_reason?: string
+  recovery_action?: string
+  connected?: boolean
+}
+
+function connectorStatusRows(result: unknown): ConnectorStatusRow[] {
+  const data = asRecord(result)
+  if (!data || !Array.isArray(data.connectors)) return []
+  return data.connectors as ConnectorStatusRow[]
+}
+
+function connectorStatusLine(row: ConnectorStatusRow): string {
+  const label = row.name || row.type || row.vendor || "Connector"
+  if (row.execution_available) return `${label} — connected and executable`
+  const reason = String(row.blocking_reason || "").trim()
+  if (reason === "token_expired") {
+    return `${label} — authentication expired (reconnect required)`
+  }
+  if (reason === "missing_scope") {
+    return `${label} — connected, missing OAuth scopes`
+  }
+  if (reason === "unsupported_action") {
+    return `${label} — connected, action unsupported`
+  }
+  if (reason === "pending_auth") {
+    return `${label} — authentication required`
+  }
+  const status = row.display_status || row.status || "unknown"
+  return `${label} — ${status}`
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>
@@ -71,12 +109,12 @@ function getToolOutcome(toolName: string, result: unknown): ToolOutcome {
     if ((total ?? results.length ?? sources.length) === 0) return "warning"
   }
 
-  if (toolName === "getConnectorStatus" && Array.isArray(data.connectors)) {
-    const connectors = data.connectors as { status?: string }[]
+  if (toolName === "getConnectorStatus") {
+    const connectors = connectorStatusRows(result)
     if (connectors.length === 0) return "warning"
-    if (connectors.every((c) => c.status === "pending_auth" || c.status === "disconnected")) {
-      return "warning"
-    }
+    if (connectors.every((c) => !c.execution_available)) return "warning"
+    if (connectors.some((c) => c.blocking_reason === "token_expired")) return "warning"
+    return "success"
   }
 
   return "success"
@@ -156,8 +194,8 @@ function renderToolDetails(toolName: string, result: unknown) {
     )
   }
 
-  if (toolName === "getConnectorStatus" && Array.isArray(data.connectors)) {
-    const connectors = data.connectors as { name?: string; type?: string; status?: string }[]
+  if (toolName === "getConnectorStatus") {
+    const connectors = connectorStatusRows(result)
     if (connectors.length === 0) {
       return (
         <div className="space-y-2 text-amber-300">
@@ -168,19 +206,25 @@ function renderToolDetails(toolName: string, result: unknown) {
         </div>
       )
     }
+    const needsAuth = connectors.some(
+      (c) =>
+        c.blocking_reason === "pending_auth" ||
+        c.blocking_reason === "token_expired" ||
+        c.status === "pending_auth" ||
+        c.display_status === "disconnected",
+    )
     return (
       <div className="space-y-2">
         <ul className="space-y-1">
           {connectors.map((c, i) => (
             <li key={i} className="text-zinc-300">
-              • {c.name || c.type} — {c.status}
-              {c.status === "pending_auth" ? " ⚠️" : ""}
+              • {connectorStatusLine(c)}
             </li>
           ))}
         </ul>
-        {connectors.some((c) => c.status === "pending_auth") && (
+        {needsAuth && (
           <Link href="/connectors" className="text-emerald-400 hover:underline text-[11px]">
-            Fix authentication →
+            Fix authentication on Connectors →
           </Link>
         )}
       </div>
@@ -296,8 +340,12 @@ export function ToolChip({
 export function extractPendingAuthConnectors(tools: ToolInvocation[]) {
   for (const tool of tools) {
     if (tool.toolName !== "getConnectorStatus" || !tool.result) continue
-    const output = tool.result as { connectors?: { name?: string; type?: string; status?: string }[] }
-    const pending = (output.connectors || []).filter((c) => c.status === "pending_auth")
+    const pending = connectorStatusRows(tool.result).filter(
+      (c) =>
+        c.blocking_reason === "pending_auth" ||
+        c.blocking_reason === "token_expired" ||
+        c.status === "pending_auth",
+    )
     if (pending.length) return pending
   }
   return []

@@ -79,6 +79,10 @@ async def test_write_action_returns_confirm(connector_service):
         connector_service,
         "_evaluate_risk",
         AsyncMock(return_value={"requires_approval": True, "approval_reason": "Write action"}),
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
+        return_value=None,
     ):
         result = await connector_service.process_turn(
             org_id="org-1",
@@ -124,6 +128,10 @@ async def test_read_action_executes_immediately(connector_service):
         connector_service,
         "_evaluate_risk",
         AsyncMock(return_value={"requires_approval": False, "can_proceed_without_approval": True}),
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
+        return_value=None,
     ), patch.object(
         connector_service,
         "execute_plan",
@@ -181,6 +189,10 @@ async def test_confirmation_executes_write_action(connector_service):
         AsyncMock(return_value={"requires_approval": True}),
     ), patch.object(
         connector_service,
+        "_verify_plan_executable",
+        return_value=None,
+    ), patch.object(
+        connector_service,
         "execute_plan",
         mock_execute := AsyncMock(return_value=mock_execution),
     ):
@@ -205,3 +217,109 @@ async def test_confirmation_executes_write_action(connector_service):
     assert result is not None
     assert result["execution_result"]["success"] is True
     mock_execute.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_hubspot_token_expired_returns_reconnect_message(connector_service):
+    with patch(
+        "app.services.chat_connector_execution_service.find_integration_availability",
+        return_value={
+            "execution_available": False,
+            "blocking_reason": "token_expired",
+            "recovery_action": "HubSpot is configured, but authentication has expired. Reconnect HubSpot.",
+        },
+    ), patch.object(
+        connector_service,
+        "plan_action",
+        return_value=None,
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Search HubSpot for Acme contacts",
+            classification={"intent": "crm_lookup", "risk_level": "low"},
+            task_state={},
+            connected_integrations=["hubspot"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert "authentication has expired" in result["message"].lower()
+    assert result["stop_pipeline"] is True
+
+
+@pytest.mark.asyncio
+async def test_hubspot_missing_scope_returns_precise_message(connector_service):
+    with patch.object(
+        connector_service,
+        "plan_action",
+        return_value=ConnectorActionPlan(
+            tool_name="hubspot_search_contacts",
+            invoke_action="hubspot.contacts.search",
+            integration="hubspot",
+            kind="read",
+            label="Search HubSpot contacts",
+            args={"query": "Acme", "limit": 10},
+            requires_approval=False,
+        ),
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
+        return_value=(
+            "HubSpot is connected, but hubspot contacts search is not executable because "
+            "required OAuth scopes are missing."
+        ),
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Search HubSpot for Acme contacts",
+            classification={"intent": "crm_lookup", "risk_level": "low"},
+            task_state={},
+            connected_integrations=["hubspot"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert "scopes are missing" in result["message"].lower()
+    assert result["stop_pipeline"] is True
+
+
+@pytest.mark.asyncio
+async def test_hubspot_unsupported_action_returns_precise_message(connector_service):
+    with patch.object(
+        connector_service,
+        "plan_action",
+        return_value=ConnectorActionPlan(
+            tool_name="hubspot_search_contacts",
+            invoke_action="hubspot.contacts.search",
+            integration="hubspot",
+            kind="read",
+            label="Search HubSpot contacts",
+            args={"query": "Acme", "limit": 10},
+            requires_approval=False,
+        ),
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
+        return_value=(
+            "HubSpot is connected, but hubspot contacts search is not executable because "
+            "the action is not supported yet."
+        ),
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Search HubSpot for Acme contacts",
+            classification={"intent": "crm_lookup", "risk_level": "low"},
+            task_state={},
+            connected_integrations=["hubspot"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert "not executable" in result["message"].lower()
+    assert result["stop_pipeline"] is True
