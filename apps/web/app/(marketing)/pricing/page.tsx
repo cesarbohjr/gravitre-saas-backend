@@ -73,7 +73,7 @@ const tiers = [
     features: [
       "CRM + Outlook integrations",
       "Multi-step execution",
-      "Org Learning admin",
+      "Learning admin (GIBE)",
       "Failure predictions",
       "Full campaign outputs",
       "Slack delivery",

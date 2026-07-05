@@ -1,5 +1,5 @@
 ---
-title: Workspace Chat
+title: Gravitre AI (Chat mode)
 description: Multi-turn conversational AI for org Q&A, connector-aware help, and daily briefings.
 audience: public
 depth: high
@@ -8,30 +8,30 @@ status: published
 category: Core Concepts
 readTime: 5 min
 prev:
-  title: AI Models
+  title: Models
   href: /docs/concepts/ai-models
 next:
   title: Universal Search
   href: /docs/concepts/search
 ---
 
-**Workspace Chat** (`/assistant`) is Gravitre's streaming chat interface for org-aware questions, troubleshooting, and light operational tasks. It is not the Command Center and not Universal Search.
+**Gravitre AI (Chat mode)** (`/ai?mode=chat`) is Gravitre's streaming chat interface for org-aware questions, troubleshooting, and light operational tasks. Legacy `/assistant` redirects here. It is not Gravitre AI (Execute mode) and not Universal Search.
 
 ## Three AI surfaces (not one master chat)
 
 | Surface | Route | Job |
 |---------|-------|-----|
-| **Command Center** | `/command-center` | Delegate tracked work with plans and async jobs |
-| **Workspace Chat** | `/assistant` | Multi-turn conversation with tools and briefings |
+| **Gravitre AI** | `/ai?mode=execute` | Delegate tracked work with plans and async jobs |
+| **Gravitre AI** | `/ai?mode=chat` | Multi-turn conversation with tools and briefings |
 | **Universal Search** | `/search` | Find records — returns links, not chat replies |
 
-## Workspace Chat vs Command Center
+## Chat mode vs Execute mode
 
-| | **Workspace Chat** | **Command Center** |
-|---|-------------------|---------------------|
+| | **Gravitre AI (Chat mode)** | **Gravitre AI (Execute mode)** |
+|---|-----------------------------|--------------------------------|
 | **Interaction** | Multi-turn chat with history | Work console for plans and monitored jobs |
 | **Best for** | Q&A, exploration, quick fixes | End-to-end work assignment and execution tracking |
-| **Route** | `/assistant` | `/command-center` |
+| **Route** | `/ai?mode=chat` | `/ai?mode=execute` |
 
 Both can use connected **Connectors** when configured; each run shows what was analyzed and what executed.
 
@@ -45,16 +45,16 @@ Both can use connected **Connectors** when configured; each run shows what was a
 - **Daily briefing** — optional summary bullets linking to runs, workflows, or connectors that need attention
 - **Follow-up suggestions** — suggested next questions after each reply
 
-## When to use Workspace Chat
+## When to use Chat mode
 
 - "Which connectors failed sync overnight?"
 - "Summarize open approvals for my team"
 - "Draft steps to fix a recurring workflow error"
 
-For durable assigned work with explicit plans, prefer **Command Center**. To locate a record by keyword, use **Universal Search** first.
+For durable assigned work with explicit plans, prefer **Gravitre AI (Execute mode)**. To locate a record by keyword, use **Universal Search** first.
 
 ## Next steps
 
-- [Use Workspace Chat](/docs/guides/how-to/assistant)
+- [Use Gravitre AI (Chat mode)](/docs/guides/how-to/assistant)
 - [Universal Search](/docs/concepts/search) for cross-entity lookup without chat
-- [Use Command Center](/docs/guides/how-to/ai-operator)
+- [Use Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator)

@@ -8,7 +8,7 @@ status: published
 category: Core Concepts
 readTime: 4 min
 prev:
-  title: Workspace Chat
+  title: Gravitre AI (Chat mode)
   href: /docs/concepts/assistant
 next:
   title: Assignments
@@ -30,15 +30,15 @@ Results are grouped by entity type:
 | **Sources** | Connected databases and warehouses |
 | **Documents** | Ingested knowledge files |
 
-## Universal Search vs Workspace Chat vs Command Center
+## Universal Search vs Gravitre AI
 
-| **Universal Search** | **Workspace Chat** | **Command Center** |
-|----------------------|--------------------|--------------------|
+| **Universal Search** | **Gravitre AI (Chat mode)** | **Gravitre AI (Execute mode)** |
+|----------------------|-----------------------------|--------------------------------|
 | Structured results with links | Natural-language answers in a thread | Action plans and tracked jobs |
 | Best for known keywords | Best for exploratory dialogue | Best for delegated execution |
-| `/search` | `/assistant` | `/command-center` |
+| `/search` | `/ai?mode=chat` | `/ai?mode=execute` |
 
-Use Universal Search to locate an object; use Workspace Chat to interpret and recommend next steps; use Command Center to assign and monitor work.
+Use Universal Search to locate an object; use Gravitre AI (Chat mode) to interpret and recommend next steps; use Gravitre AI (Execute mode) to assign and monitor work.
 
 ## History
 
@@ -47,5 +47,5 @@ Search saves recent queries per user (`GET /api/search/history`) for quick repla
 ## Next steps
 
 - [Universal Search](/docs/guides/how-to/search)
-- [Use Workspace Chat](/docs/guides/how-to/assistant)
-- [Use Command Center](/docs/guides/how-to/ai-operator)
+- [Use Gravitre AI (Chat mode)](/docs/guides/how-to/assistant)
+- [Use Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator)

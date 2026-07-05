@@ -15,7 +15,7 @@ next:
   href: /docs/guides/how-to/sources
 ---
 
-**Connectors** link Gravitre to external SaaS tools — CRM, support, dev platforms, finance, Google Workspace, email, and more. Workflows, agents, **Command Center**, and Marketplace assets invoke Connector actions only when the integration is **connected**, **healthy**, and authorized in the active **Environment**.
+**Connectors** link Gravitre to external SaaS tools — CRM, support, dev platforms, finance, Google Workspace, email, and more. Workflows, agents, **Gravitre AI (Execute mode)**, and Marketplace assets invoke Connector actions only when the integration is **connected**, **healthy**, and authorized in the active **Environment**.
 
 ## Open Connectors
 
@@ -53,7 +53,7 @@ After connection:
 
 1. **Workflow builder** — Connector actions appear in the step picker
 2. **Agents** — tools list includes vendor operations
-3. **Command Center** — context packs load connector health and related workflows
+3. **Gravitre AI (Execute mode)** — context packs load connector health and related workflows
 4. **Marketplace** — install checks pass when required Connectors are connected
 
 <Callout title="Strict execution policy">
@@ -80,7 +80,7 @@ curl -s -X POST "https://gravitre.app/api/connectors/CONNECTOR_ID/sync" \
 
 ### Operator context
 
-Debug a Connector from **Command Center** by attaching **Connector context**:
+Debug a Connector from **Gravitre AI (Execute mode)** by attaching **Connector context**:
 
 ```bash
 curl -s "https://gravitre.app/api/operator/context/connector/CONNECTOR_ID" \
@@ -159,4 +159,4 @@ See [OpenAPI](/docs/api/openapi.json) for create, update, and disconnect endpoin
 
 - [Build workflows](/docs/guides/how-to/workflows)
 - [Install from Marketplace](/docs/guides/how-to/marketplace)
-- [Configure Enterprise integration health](/docs/guides/how-to/enterprise#integration-health-command-center)
+- [Configure Enterprise integration health](/docs/guides/how-to/enterprise#integration-health)

@@ -17,6 +17,8 @@ next:
 
 Gravitre is an AI-assisted automation platform for teams that want to plan work in natural language, connect business tools, and run repeatable workflows with human oversight where it matters.
 
+At the center is **GIBE** — the **Gravitre Intelligent Business Engine** — which learns from verified org signals (queries, runs, memories) and powers built-in ML models, predictive ops, and confidence-scored recommendations.
+
 ## Who Gravitre is for
 
 - **Operations and RevOps** — sync CRM data, route approvals, schedule recurring jobs
@@ -29,7 +31,7 @@ Gravitre is an AI-assisted automation platform for teams that want to plan work 
 ```text
 Week 1: Quickstart → one Connector → first Run
 Week 2: Workflows or Marketplace templates → Approvals policy
-Week 3: Command Center + Workspace Chat for daily ops → Metrics dashboards
+Week 3: Gravitre AI + GIBE Learning for daily ops → Insights & Metrics
 Month 2+: Goals, Multi-Agent Run, Enterprise controls (as plan allows)
 ```
 
@@ -37,16 +39,19 @@ Month 2+: Goals, Multi-Agent Run, Enterprise controls (as plan allows)
 
 | Concept | What it means |
 |---------|----------------|
-| **Command Center** | Work console for plans, async jobs, and monitored execution (`/command-center`) |
-| **Workspace Chat** | Multi-turn conversational help and org Q&A (`/assistant`) |
-| **Universal Search** | Unified lookup across runs, workflows, agents, connectors, and documents (`/search`) |
+| **GIBE** | Gravitre Intelligent Business Engine — org-scoped learning, built-in ML, memory, predictive ops (`/intelligence/learning`) |
+| **Gravitre AI** | Unified surface for Execute, Chat, and Find modes (`/ai`) |
+| **Insights** | Recommendations, confidence scores, routing traces (`/intelligence`) |
+| **Learning** | GIBE admin — clusters, gaps, promotion, evaluation (`/intelligence/learning`) |
+| **Training** | Agent fine-tunes, datasets, custom instructions (`/training`) |
+| **Models** | Production model registry — deploy and predict (`/models`) |
+| **Built-in models** | GIBE ML catalog with per-org TRAINED / data-gate status (`/models/built-in`) |
+| **Universal Search** | Unified lookup across runs, workflows, agents, connectors (`/search`) |
 | **Agents** | Configurable AI workers with tools and memory |
 | **Workflows** | Visual automations with triggers, steps, and approvals |
-| **Connectors** | OAuth and API integrations to external systems |
+| **Connectors** | OAuth and API integrations with Configured → Executable checks |
 | **Sources** | Data connected for search, queries, and knowledge sync |
 | **Marketplace** | Catalog of installable agents, workflows, knowledge, and department packs |
-| **Training Hub** | Datasets, fine-tuning jobs, and custom instructions for agents |
-| **AI Models** | Production model registry, deploy, and inference (Command plan) |
 | **Schedules** | Calendar of upcoming workflow crons, tasks, and training jobs |
 | **Runs** | History and status of workflow and agent executions |
 | **Assignments** | Delegated work tracking for people and agents |
@@ -62,22 +67,25 @@ Month 2+: Goals, Multi-Agent Run, Enterprise controls (as plan allows)
 
 | Section | Key routes | Docs starting point |
 |---------|------------|---------------------|
-| **WORK** | Command Center, Workspace Chat, Universal Search, Agents, Assignments, Goals | [Command Center](/docs/guides/how-to/ai-operator) |
+| **WORK** | Gravitre AI, Agents, Assignments, Goals, Universal Search | [Gravitre AI](/docs/guides/how-to/ai-operator) |
+| **INSIGHTS** | Insights, Learning, Training, Models, Built-in models | [GIBE — Learning](/docs/guides/how-to/org-learning) |
 | **BUILD** | Workflows, Connectors, Sources, Marketplace, Meson | [Workflows](/docs/guides/how-to/workflows) |
 | **ACTIVITY** | Runs, Schedules, Approvals | [Monitor Runs](/docs/guides/how-to/runs) |
-| **INSIGHTS** | Metrics, History | [View metrics](/docs/guides/how-to/metrics) |
+| **ANALYTICS** | Metrics, History | [View metrics](/docs/guides/how-to/metrics) |
 | **Settings** | Org, Security, API keys, Enterprise, Billing | [Manage settings](/docs/guides/how-to/settings) |
 
 ## Learning paths
 
-**Command Center-first** — [Quickstart](/docs/getting-started/quickstart) → [Command Center](/docs/guides/how-to/ai-operator) → [Workspace Chat](/docs/guides/how-to/assistant) → [Runs](/docs/guides/how-to/runs)
+**Operator-first** — [Quickstart](/docs/getting-started/quickstart) → [Gravitre AI (Execute mode)](/docs/guides/how-to/ai-operator) → [Gravitre AI (Chat mode)](/docs/guides/how-to/assistant) → [Runs](/docs/guides/how-to/runs)
+
+**GIBE-first** — [GIBE — Learning](/docs/guides/how-to/org-learning) → [Built-in models](/docs/concepts/ai-models) → [Insights](/docs/guides/how-to/metrics)
 
 **Builder-first** — [Workflows](/docs/guides/how-to/workflows) → [Connectors](/docs/guides/how-to/connectors) → [Marketplace](/docs/guides/how-to/marketplace) → [Schedules](/docs/guides/how-to/schedules)
 
 **Admin-first** — [Settings](/docs/guides/how-to/settings) → [Partner Connections](/docs/guides/how-to/partner-connections) → [Security](/docs/concepts/security) → [Enterprise](/docs/guides/how-to/enterprise) → [History](/docs/guides/how-to/history)
 
 <Callout title="Execution depends on your setup">
-Connector actions run when integrations are linked and configured. Gravitre shows what each run analyzed and executed — not every action is guaranteed without a connected integration.
+Connector actions run when integrations are linked and executable. Gravitre shows what each run analyzed and executed — not every action is guaranteed without a connected integration.
 </Callout>
 
 ## Plans at a glance
@@ -85,8 +93,8 @@ Connector actions run when integrations are linked and configured. Gravitre show
 | Plan | Best for |
 |------|----------|
 | **Free / Node** | Individuals exploring core workflows |
-| **Control** | Growing teams; includes Meson and Partner Connections |
-| **Command** | Advanced teams; Multi-Agent Run, AI Models, SCIM |
+| **Control** | Growing teams; includes Meson, GIBE Learning admin, Partner Connections |
+| **Command** | Advanced teams; Multi-Agent Run, Models registry, SCIM |
 | **Enterprise** | Custom deployment, support, and security reviews |
 
 See [Plans and checkout](/docs/billing/plans-and-checkout) for billing details.
@@ -99,6 +107,7 @@ See [Plans and checkout](/docs/billing/plans-and-checkout) for billing details.
 - Coordinate parallel agent work with **Multi-Agent Run** (Command plan)
 - Publish approved workflow templates to your org via **Marketplace**
 - Export audit logs to your SIEM (Enterprise **Security log export**)
+- Improve answers over time with **GIBE** query clusters and memory promotion
 
 ## Next steps
 

@@ -415,7 +415,7 @@ function AIOperatorScreen() {
             <div className="h-3 w-3 rounded-full bg-amber-400" />
             <div className="h-3 w-3 rounded-full bg-emerald-400" />
           </div>
-          <span className="text-xs font-medium text-zinc-500 ml-2">AI Operator</span>
+          <span className="text-xs font-medium text-zinc-500 ml-2">Gravitre AI</span>
         </div>
         <div className="flex items-center gap-1">
           <motion.div
@@ -728,7 +728,7 @@ export default function FeaturesPage() {
           >
             <h2 className="text-3xl font-bold text-zinc-900 mb-4">How Gravitre works</h2>
             <p className="text-zinc-600 max-w-2xl mx-auto">
-              Your team → Gravitre AI → agents → connected tools — with the intelligence engine learning between every run.
+              Your team → Gravitre AI → agents → connected tools — with GIBE learning from every verified run.
             </p>
           </motion.div>
 
@@ -792,7 +792,7 @@ export default function FeaturesPage() {
                   <div className="w-0.5 h-8 bg-gradient-to-b from-zinc-300 to-emerald-400" />
                 </motion.div>
 
-                {/* AI Operator (Central Hub) */}
+                {/* Gravitre AI (Central Hub) */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
@@ -1029,7 +1029,7 @@ export default function FeaturesPage() {
           </motion.div>
 
           <div className="space-y-32">
-            {/* Feature 1: AI Operator */}
+            {/* Feature 1: Gravitre AI */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1039,7 +1039,7 @@ export default function FeaturesPage() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 mb-4">
                   <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="text-xs font-medium text-emerald-700">AI Operator</span>
+                  <span className="text-xs font-medium text-emerald-700">Gravitre AI</span>
                 </div>
                 <h3 className="text-3xl font-bold text-zinc-900 mb-4">Natural language command center</h3>
                 <p className="text-zinc-600 mb-6 leading-relaxed text-lg">
@@ -1068,7 +1068,7 @@ export default function FeaturesPage() {
                       <div className="h-3 w-3 rounded-full bg-emerald-400" />
                     </div>
                     <div className="flex-1 flex justify-center">
-                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">AI Operator</div>
+                      <div className="px-3 py-1 rounded-md bg-zinc-100 text-[10px] text-zinc-500">Gravitre AI</div>
                     </div>
                   </div>
                   {/* Chat interface */}

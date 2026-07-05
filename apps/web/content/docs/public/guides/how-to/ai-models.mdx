@@ -1,6 +1,6 @@
 ---
-title: Manage AI Models
-description: Register, train, deploy, and run inference with org-scoped models in the AI Models registry.
+title: Manage Models
+description: Register, train, deploy, and run inference with org-scoped models and GIBE built-in ML in the Models registry.
 audience: public
 depth: mid
 tier: command
@@ -8,20 +8,29 @@ status: published
 category: How-to Guides
 readTime: 12 min
 prev:
-  title: Use the Training Hub
+  title: Use Training
   href: /docs/guides/how-to/training
 next:
   title: Monitor Runs
   href: /docs/guides/how-to/runs
 ---
 
-**AI Models** (sidebar: BUILD → **AI Models**, `/models`) manages production ML assets for Command-tier organizations.
+**Models** (sidebar: INSIGHTS → **Models**, `/models`) manages production ML assets for Command-tier organizations. **GIBE** (Gravitre Intelligent Business Engine) powers the **Built-in models** catalog at `/models/built-in` — org-scoped models trained on verified signals without a manual training job.
 
 ## Open the registry
 
 The overview shows totals for registered, deployed, and in-training models plus connected data **Sources** available for training.
 
 Pick a **stack layer** template (generative, classical, forecasting, anomaly, MLOps) to pre-fill a create dialog.
+
+## Browse GIBE built-in models
+
+1. Open **INSIGHTS → Built-in models** (`/models/built-in`)
+2. Review available GIBE models — failure predictors, rankers, duration forecasts, and similar
+3. Check signal coverage and last evaluation date before relying on a built-in model in production
+4. Deploy or attach built-in models to workflows when status is **ready**
+
+Built-in models update as your org accumulates runs, chat turns, and promoted memories. See [GIBE — Learning](/docs/guides/how-to/org-learning) for evaluation and quality tools.
 
 ## Register a model
 
@@ -89,11 +98,12 @@ Use list filters by status and model type. Open a model row for version metadata
 All `/api/ml/*` routes require **Command** plan entitlements.
 
 <Callout title="Former name">
-Docs and UI previously said **Model Registry**. User-facing label is now **AI Models**; API paths remain `/api/ml`.
+Docs and UI previously said **Model Registry** or **AI Models**. User-facing label is now **Models**; GIBE built-in catalog lives at `/models/built-in`. API paths remain `/api/ml`.
 </Callout>
 
 ## Related
 
-- [AI Models overview](/docs/concepts/ai-models)
-- [Use the Training Hub](/docs/guides/how-to/training)
+- [Models overview](/docs/concepts/ai-models)
+- [Use Training](/docs/guides/how-to/training)
+- [GIBE — Learning](/docs/guides/how-to/org-learning)
 - [Connect Sources](/docs/guides/how-to/sources)

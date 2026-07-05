@@ -143,7 +143,7 @@ export function OperatorDemo() {
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
-            <span className="font-medium text-sm text-foreground">AI Operator</span>
+            <span className="font-medium text-sm text-foreground">Gravitre AI</span>
             <span className="text-xs text-emerald-600 ml-2">Online</span>
           </div>
         </div>
@@ -244,7 +244,7 @@ export function OperatorDemo() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Ask the AI Operator..."
+            placeholder="Ask Gravitre AI..."
             disabled={isTyping}
             className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:opacity-50"
           />

@@ -45,13 +45,13 @@ Changes write audit events viewable under **History**.
 
 ---
 
-## AI Models (defaults)
+## Models (defaults)
 
-Set workspace-wide model defaults — distinct from the **AI Models** registry at `/models`.
+Set workspace-wide model defaults — distinct from the **Models** registry at `/models`.
 
-1. Open **Settings → AI Models**
+1. Open **Settings → Models**
 2. **Workspace default** — Auto (recommended) or explicit model
-3. **Command Center default** — analysis and plan generation
+3. **Gravitre AI (Execute mode) default** — analysis and plan generation
 4. **Agent default** — inherited by newly created agents
 5. **Fallback model** — when primary is rate-limited or unavailable
 6. **Model policies** — allow user overrides; log model in activity
@@ -69,7 +69,7 @@ curl -s -X PUT "https://gravitre.app/api/settings/model-policy" \
   -d '{"mode": "restricted", "providers": ["openai", "anthropic"], "models": []}'
 ```
 
-See [AI Models overview](/docs/concepts/ai-models) for deploy/predict on Command plan.
+See [Models overview](/docs/concepts/ai-models) for deploy/predict on Command plan.
 
 ---
 

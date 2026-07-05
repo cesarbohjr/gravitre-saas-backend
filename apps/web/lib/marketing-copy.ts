@@ -4,10 +4,10 @@
  */
 export const MARKETING_COPY = {
   hero: {
-    badge: "Intelligence engine + operations platform",
+    badge: "GIBE + operations platform",
     headline: ["Operators with", "org memory"],
     subhead:
-      "Gravitre connects your stack, runs workflows, and learns from verified outcomes — with confidence scores, not guesswork.",
+      "Gravitre connects your stack, runs workflows, and learns through GIBE — the Gravitre Intelligent Business Engine — with confidence scores, not guesswork.",
     ctaPrimary: "Get Started Free",
     ctaSecondary: "See How It Works",
   },
@@ -18,10 +18,10 @@ export const MARKETING_COPY = {
     { value: "Live", label: "Configured → Executable checks" },
   ],
   intelligenceEngine: {
-    badge: "Gravitre Intelligence Engine",
+    badge: "Gravitre Intelligent Business Engine (GIBE)",
     title: "An MCP server with a brain",
     subtitle:
-      "Connectors give Gravitre hands. The intelligence engine gives it memory, models, and judgment — scoped to your org, verified before it acts.",
+      "Connectors give Gravitre hands. GIBE gives it memory, ML models, and judgment — scoped to your org, verified before it acts.",
     tagline: "Observe → Learn → Recommend → Execute (with approval)",
     layers: [
       {
@@ -69,7 +69,7 @@ export const MARKETING_COPY = {
       {
         title: "Built-in ML catalog",
         description:
-          "Intent classifiers, anomaly detectors, duration forecasters, and domain predictive ops — each with readiness gates, not marketing fluff.",
+          "Intent classifiers, anomaly detectors, duration forecasters, and domain predictive ops — each with TRAINED / data-gate status inside GIBE.",
       },
       {
         title: "MCP-native execution",
@@ -111,14 +111,14 @@ export const MARKETING_COPY = {
     {
       title: "Insights & Learning",
       description:
-        "Observe query patterns, memory promotion, predictive ops, and ROI — dashes when measurement isn't ready yet.",
+        "GIBE surfaces query patterns, memory promotion, predictive ops, and ROI — with honest dashes when measurement is not ready.",
     },
   ],
   howItWorks: {
     eyebrow: "How it works",
     title: "From connected stack to verified action",
     subtitle:
-      "Connect tools, assign work to agents, route through the intelligence engine, and approve execution — with evidence at every step.",
+      "Connect tools, assign work to agents, route through GIBE, and approve execution — with evidence at every step.",
     steps: [
       {
         number: "01",
@@ -130,7 +130,7 @@ export const MARKETING_COPY = {
         number: "02",
         title: "Observe and learn",
         description:
-          "Queries, workflow runs, and retrieval quality feed the learning loop — clusters, gaps, rankers, and memory promotion when data gates pass.",
+          "Queries, workflow runs, and retrieval quality feed GIBE — clusters, gaps, rankers, and memory promotion when data gates pass.",
       },
       {
         number: "03",
@@ -145,7 +145,7 @@ export const MARKETING_COPY = {
     headline: ["Everything to run", "AI operations"],
     subtitle:
       "Agents, workflows, connectors, learning, and models — one stack with governance built in.",
-    pills: ["Intelligence Engine", "Gravitre AI", "Agents", "Workflows", "Learning", "Models"],
+    pills: ["GIBE", "Gravitre AI", "Agents", "Workflows", "Learning", "Models"],
   },
   meson: {
     title: "Meson builds systems, not slide decks",
@@ -197,12 +197,13 @@ export const MARKETING_COPY = {
     ],
   },
   meta: {
-    title: "Gravitre — AI operations with an intelligence engine",
+    title: "Gravitre — AI operations with GIBE",
     description:
-      "Connect your stack, run agents and workflows, and learn from verified outcomes. Gravitre Intelligence Engine: memory, ML catalog, predictive ops, and MCP-native execution with approval gates.",
+      "Connect your stack, run agents and workflows, and learn from verified outcomes. GIBE (Gravitre Intelligent Business Engine): memory, ML catalog, predictive ops, and MCP-native execution with approval gates.",
     keywords: [
       "AI operations platform",
-      "intelligence engine",
+      "GIBE",
+      "Gravitre Intelligent Business Engine",
       "AI agents",
       "workflow automation",
       "MCP server",
@@ -215,19 +216,19 @@ export const MARKETING_COPY = {
     badge: "Plans for operators",
     headline: ["Intelligence included.", "Scale when ready."],
     subhead:
-      "Every plan includes Gravitre AI, connector health checks, and governed execution. Higher tiers add Meson, cross-team agents, and org learning surfaces.",
+      "Every plan includes Gravitre AI, connector health checks, and governed execution. Higher tiers add Meson, cross-team agents, and GIBE admin surfaces.",
     subheadNote: "Pay for outputs and team seats — not buzzword tiers.",
     comparisonIntro:
-      "See what each plan includes. Intelligence Engine features (Insights, Learning, failure predictions) are available on all paid plans; depth scales with usage.",
+      "See what each plan includes. GIBE features (Insights, Learning, failure predictions, built-in ML) are available on all paid plans; depth scales with usage.",
     intelligenceRows: [
       { feature: "Insights & confidence scores", node: true, control: true, command: true },
       { feature: "Connector executability checks", node: true, control: true, command: true },
-      { feature: "Org Learning admin", node: false, control: true, command: true },
+      { feature: "Learning admin (GIBE)", node: false, control: true, command: true },
       { feature: "Predictive ops & failure alerts", node: false, control: true, command: true },
       { feature: "Custom training & model registry", node: false, control: false, command: true },
     ],
     faqLearning:
-      "Yes — on Control and Command. Gravitre observes queries, workflow runs, and retrieval quality, then surfaces clusters, gaps, and memory promotion when data gates pass. Nothing auto-applies without review.",
+      "Yes — on Control and Command. GIBE observes queries, workflow runs, and retrieval quality, then surfaces clusters, gaps, built-in ML readiness, and memory promotion when data gates pass. Nothing auto-applies without review.",
     faqMeson:
       "Meson builds agents, datasets, and workflow drafts from one prompt — configured for your review before production. Available on Control and Command.",
     cta: {
@@ -237,21 +238,21 @@ export const MARKETING_COPY = {
   },
   changelog: {
     subtitle:
-      "Shipped features, measured improvements, and honest fixes — including the Gravitre Intelligence Engine rollout.",
+      "Shipped features, measured improvements, and honest fixes — including the GIBE rollout.",
     releases: [
       {
         version: "3.0.0",
         date: "July 5, 2026",
-        title: "Gravitre Intelligence Engine",
+        title: "Gravitre Intelligent Business Engine (GIBE)",
         description:
-          "Org-scoped learning, connector executability, predictive ops, and Insights surfaces — one engine behind chat, workflows, and admin.",
+          "Org-scoped learning, connector executability, predictive ops, built-in ML catalog, and Insights surfaces — one engine behind chat, workflows, and admin.",
         type: "major",
         highlights: [
+          "GIBE: query clusters, memory promotion, retrieval rankers, and predictive ops with data-gate honesty",
           "Canonical connector availability (Configured → Executable) across chat and UI",
           "Insights, Learning, Training, and Models surfaces with unified copy and routes",
-          "Predictive ops domain packs with TRAINED / data-gate honesty",
+          "Built-in ML catalog with TRAINED / not_trained / data_gate status per org",
           "Workflow failure predictions from auth, scopes, and run history",
-          "Memory promotion, query clusters, and retrieval ranker training gates",
         ],
       },
       {
@@ -273,7 +274,7 @@ export const MARKETING_COPY = {
   docs: {
     title: "Documentation",
     description:
-      "Guides for the Intelligence Engine, connectors, workflows, and API — facts-first setup for operators and builders.",
+      "Guides for GIBE, Gravitre AI, connectors, workflows, and API — facts-first setup for operators and builders.",
     quickLinks: [
       {
         iconKey: "Zap",
@@ -283,15 +284,15 @@ export const MARKETING_COPY = {
       },
       {
         iconKey: "Brain",
-        title: "Learning",
-        description: "Org learning, memory promotion, and quality evaluation",
+        title: "GIBE (Learning)",
+        description: "Built-in ML, memory promotion, query clusters, and quality evaluation",
         href: "/docs/guides/how-to/org-learning",
       },
       {
         iconKey: "Bot",
         title: "Gravitre AI",
         description: "Execute, chat, and search — with connector availability checks",
-        href: "/docs/guides/how-to/assistant",
+        href: "/docs/guides/how-to/ai-operator",
       },
       {
         iconKey: "Database",
@@ -320,13 +321,13 @@ export const MARKETING_COPY = {
       {
         iconKey: "Code",
         title: "API quickstart",
-        description: "REST + intelligence endpoints with approval gates",
+        description: "REST + GIBE/intelligence endpoints with approval gates",
         href: "/docs/api/quickstart",
       },
     ],
     integrationsIntro:
       "Connect your stack with live health checks. Gravitre verifies auth, scopes, and executability before agents or workflows act.",
     faqIntro:
-      "Common questions about the Intelligence Engine, billing, connectors, and execution — search or browse by category.",
+      "Common questions about GIBE, billing, connectors, and execution — search or browse by category.",
   },
 } as const

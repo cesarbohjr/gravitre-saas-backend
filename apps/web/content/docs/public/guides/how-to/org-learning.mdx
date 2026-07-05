@@ -1,12 +1,12 @@
 ---
-title: Org Learning
-description: Admin tools for org memory, evaluation, and search quality (Intelligence admin area).
+title: GIBE — Learning & built-in ML
+description: Admin tools for the Gravitre Intelligent Business Engine — org memory, built-in models, evaluation, and search quality.
 audience: public
 depth: mid
 tier: control
 status: published
 category: How-to Guides
-readTime: 6 min
+readTime: 8 min
 prev:
   title: Partner Connections
   href: /docs/guides/how-to/partner-connections
@@ -15,22 +15,67 @@ next:
   href: /docs/guides/how-to/agents
 ---
 
-**Org Learning** covers the admin **Intelligence** area (`/admin/intelligence`) — org-wide learning, memory promotion, and quality evaluation.
+**GIBE** (Gravitre Intelligent Business Engine) is Gravitre's org-scoped learning stack. It powers **Insights**, **Learning**, built-in ML models, memory promotion, and quality evaluation — all scoped to your organization.
+
+Open **Insights → Learning** (`/intelligence/learning`). Legacy `/admin/intelligence` redirects here.
+
+## What GIBE learns from
+
+GIBE trains only on **verified signals** in your org:
+
+| Signal | What it improves |
+|--------|------------------|
+| Gravitre AI queries & chat turns | Query clusters, knowledge gaps, retrieval rankers |
+| Workflow runs & outcomes | Predictive ops, failure alerts, duration forecasts |
+| Promoted memories & entity graph | Hybrid retrieval and org-specific answers |
+| User feedback on recommendations | Confidence calibration and bandit routing |
+
+Each model shows honest status: **TRAINED**, **not_trained**, or blocked by a **data gate** — not fake green checks.
 
 ## Who should use this
 
-Org admins improving search quality, promoted team knowledge, and agent memory hygiene.
+Org admins improving search quality, promoted team knowledge, built-in ML readiness, and agent memory hygiene.
 
 ## Key tasks
 
-- Review learning progress and outcome evaluations
-- **Save to team knowledge** — promote vetted agent memories to shared org knowledge (formerly "memory promotion")
-- Monitor search ranking status for admin diagnostics
+1. **Review learning progress** — queries logged vs data gates, workflow runs observed
+2. **Inspect built-in models** — intent classifiers, anomaly detectors, predictive ops packs at **Models → Built-in** (`/models/built-in`)
+3. **Promote team knowledge** — save vetted agent memories to shared org knowledge (memory promotion)
+4. **Monitor answer quality** — evaluation scores, failed searches, memory conflicts
+5. **Open Insights** (`/intelligence`) — confidence scores, recommendations, and routing traces
+
+## Activate GIBE for your org
+
+1. Connect at least one **Connector** and run a few **Workflows** or **Gravitre AI** sessions — GIBE needs observed activity
+2. Open **Learning** and confirm progress counters are moving (queries logged, runs observed)
+3. When data gates pass, review **query clusters** and **knowledge gaps** — act on recommendations manually
+4. Check **Built-in models** for models that reached **TRAINED** status; others show what data is still needed
+5. Optionally enable engine settings tabs (memory, evaluation, outcomes) as your plan allows
+
+<Callout title="Advisory by default">
+GIBE recommendations, predictions, and promoted memories stay **advisory** until you approve or apply them. Nothing silently rewrites production workflows.
+</Callout>
+
+## Related surfaces
+
+| Surface | Route | Role in GIBE |
+|---------|-------|----------------|
+| **Insights** | `/intelligence` | Recommendations, confidence, routing traces |
+| **Learning** | `/intelligence/learning` | Clusters, gaps, promotion, evaluation admin |
+| **Training** | `/training` | Agent fine-tunes and custom instructions (Train step) |
+| **Models** | `/models` | Production registry — deploy and predict |
+| **Built-in models** | `/models/built-in` | GIBE ML catalog with readiness per org |
 
 ## Public documentation boundary
 
-This guide covers **what admins can do in the UI**. Internal ranking models, training pipelines, and algorithm details are documented only on the private internal docs site.
+This guide covers **what admins can do in the UI**. Internal ranking algorithms and training pipeline details are documented only on the private internal docs site.
 
 ## API
 
-Admin intelligence endpoints are under `/api/admin/intelligence/*` and require admin privileges.
+Admin intelligence endpoints are under `/api/admin/intelligence/*` and require admin privileges. Built-in model status is available under `/api/ml/*` for Command-plan orgs.
+
+## Related
+
+- [Use Gravitre AI](/docs/guides/how-to/ai-operator) — generates queries GIBE learns from
+- [Built-in models overview](/docs/concepts/ai-models)
+- [Use Training](/docs/guides/how-to/training)

@@ -27,7 +27,7 @@ Use the left sub-nav (or `?tab=` query param):
 
 | Tab | Deep link |
 |-----|-----------|
-| Command Center | `/settings/enterprise?tab=cs` |
+| Integration health | `/settings/enterprise?tab=cs` |
 | Knowledge Sync | `/settings/enterprise?tab=knowledge` |
 | Data Residency | `/settings/enterprise?tab=region` |
 | White Label | `/settings/enterprise?tab=branding` |
@@ -37,13 +37,13 @@ Use the left sub-nav (or `?tab=` query param):
 
 ---
 
-## Integration health (Command Center)
+## Integration health
 
 Monitor org-wide connector posture and act on recommendations.
 
 ### Review current health
 
-1. Open **Command Center**
+1. Open **Settings → Enterprise** → **Integration health**
 2. Read the composite **score**, **grade**, and **dimensions** (sync freshness, error rates, coverage, etc.)
 3. Expand **risks** — each item links to affected connectors or workflows
 4. Adjust **lookback days** (7–90) if the default 30-day window misses seasonal patterns
@@ -108,7 +108,7 @@ curl -s -X POST "https://gravitre.app/api/enterprise/integration-suggestions/SUG
 
 ## Knowledge sync
 
-Feed **Org Learning**, **Search**, and agent RAG from connected knowledge pipelines.
+Feed **Learning (GIBE)**, **Search**, and agent RAG from connected knowledge pipelines.
 
 1. Open **Knowledge Sync**
 2. Review ingest jobs — status, last run, error messages
