@@ -3,30 +3,19 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 const stats = [
-  { value: "70%", label: "Time freed for strategy" },
-  { value: "Per-run", label: "Execution visibility" },
-  { value: "94%", label: "Team satisfaction" },
+  { value: "4-layer", label: "Intelligence stack" },
+  { value: "Verified", label: "Learning signals only" },
+  { value: "Live", label: "Connector executability" },
 ]
 
-const principles = [
-  {
-    number: "01",
-    title: "Strategy over busywork",
-    description: "AI handles the repetitive. Humans do the thinking.",
-  },
-  {
-    number: "02", 
-    title: "Amplify, never replace",
-    description: "We give your team superpowers, not pink slips.",
-  },
-  {
-    number: "03",
-    title: "Transparency builds trust",
-    description: "Every agent shows its reasoning. No black boxes.",
-  },
-]
+const principles = MARKETING_COPY.about.principles.map((item, index) => ({
+  number: String(index + 1).padStart(2, "0"),
+  title: item.title,
+  description: item.description,
+}))
 
 const milestones = [
   { year: "2024", text: "Founded to fix how work gets done" },
@@ -231,8 +220,8 @@ export default function AboutPage() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="mt-8 text-xl sm:text-2xl text-zinc-500 max-w-2xl mx-auto font-light"
           >
-            We build AI agents that handle the mechanical work,
-            so your team can do what they were actually hired for.
+            We build an intelligence engine that connects your stack, learns from verified outcomes,
+            and executes through agents — with approval gates where it matters.
           </motion.p>
           
           <motion.div

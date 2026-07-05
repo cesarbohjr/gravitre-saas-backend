@@ -3,8 +3,10 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight, Sparkles, Wrench, Shield, Zap } from "lucide-react"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 const releases = [
+  ...MARKETING_COPY.changelog.releases,
   { version: "2.4.0", date: "April 5, 2026", title: "Multi-Agent Collaboration", description: "Coordinate multiple agents on complex tasks with defined roles. Each sub-agent completes its scoped work; results are aggregated after completion—not live shared memory.", type: "feature", highlights: ["Parallel sub-agent jobs via the agent queue", "Council-style aggregation of completed subtask results", "Collaboration graph in workflow builder", "Parallel job scheduling improvements"] },
   { version: "2.3.2", date: "March 28, 2026", title: "Security Enhancements", description: "Major security improvements with enhanced encryption, audit logging, and access controls for enterprise customers.", type: "security", highlights: ["Enhanced audit logging", "IP allowlisting for API access", "Session management improvements", "End-to-end encryption updates"] },
   { version: "2.3.0", date: "March 21, 2026", title: "Workflow Templates Library", description: "50+ pre-built workflow templates to help you get started faster.", type: "feature", highlights: ["Sales automation templates", "Marketing operations templates", "Finance and reporting templates", "One-click template deployment"] },
@@ -46,7 +48,7 @@ export default function ChangelogPage() {
         <div className="relative mx-auto max-w-4xl text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">Changelog</h1>
-            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">New features, improvements, and fixes. Stay up to date with everything we&apos;re building.</p>
+            <p className="mt-6 text-lg text-zinc-600 max-w-2xl mx-auto">{MARKETING_COPY.changelog.subtitle}</p>
             <div className="mt-8">
               <Link href="/roadmap" className="inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-500">View our roadmap<ArrowRight className="h-4 w-4" /></Link>
             </div>

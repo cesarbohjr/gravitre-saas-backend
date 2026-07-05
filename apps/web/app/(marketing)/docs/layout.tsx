@@ -1,10 +1,10 @@
 import { marketingMetadata } from "@/lib/seo"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 export const metadata = marketingMetadata({
   title: "Documentation",
-  description:
-    "Gravitre documentation: guides, API references, and tutorials for building, deploying, and governing AI agents and workflows.",
-  ogDescription: "Guides, API references, and tutorials for building and governing AI agents.",
+  description: MARKETING_COPY.docs.description,
+  ogDescription: "Guides for the Intelligence Engine, connectors, workflows, and API.",
 })
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {

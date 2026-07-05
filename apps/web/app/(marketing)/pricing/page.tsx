@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, ArrowRight, HelpCircle, Zap, Play, Mail, FileText, Send, ChevronRight, Users, Crown, Smartphone, Monitor, Building2, Rocket, Info, Shield, Cpu, Sparkles, X, Blocks, Star, Clock, BadgeCheck, RefreshCcw, Minus } from "lucide-react"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 import {
   Tooltip,
   TooltipContent,
@@ -47,6 +48,7 @@ const tiers = [
       "Email delivery",
       "Basic campaign outputs",
       "3 app integrations",
+      "Insights & connector health",
       "Community support",
     ],
     cta: "Start 7-day free trial",
@@ -71,6 +73,8 @@ const tiers = [
     features: [
       "CRM + Outlook integrations",
       "Multi-step execution",
+      "Org Learning admin",
+      "Failure predictions",
       "Full campaign outputs",
       "Slack delivery",
       "Priority support",
@@ -97,11 +101,12 @@ const tiers = [
     meson: { count: 40, label: "40 Mesons / month" },
     features: [
       "Approvals + workflows",
+      "Predictive ops packs",
       "Advanced integrations",
       "Team collaboration workspace",
       "Cross-department agents",
+      "Model registry & training",
       "Dedicated support",
-      "Custom agent training",
     ],
     cta: "Start 7-day free trial",
     highlighted: false,
@@ -160,7 +165,7 @@ const faqs = [
   },
   {
     question: "Do agents learn my business?",
-    answer: "Yes. Agents are trained on your brand voice, ICP, messaging framework, and historical work. The more you use them, the more aligned they become with how your team operates.",
+    answer: MARKETING_COPY.pricing.faqLearning,
   },
   {
     question: "Can agents be shared across departments?",
@@ -168,7 +173,7 @@ const faqs = [
   },
   {
     question: "What is Meson?",
-    answer: "Meson is our system builder. It creates agents, training configurations, and workflows from a single request. Instead of manually setting everything up, describe what you need and Meson builds it. Available in Control and Command plans.",
+    answer: MARKETING_COPY.pricing.faqMeson,
   },
   {
     question: "How do Mesons work?",
@@ -434,7 +439,7 @@ export default function PricingPage() {
                 animate={{ scale: [1, 1.3, 1] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
               />
-              <span className="text-sm font-medium text-amber-700">Simple, transparent pricing</span>
+              <span className="text-sm font-medium text-amber-700">{MARKETING_COPY.pricing.badge}</span>
             </motion.div>
             
             {/* Headline with staggered animation */}
@@ -446,7 +451,7 @@ export default function PricingPage() {
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight"
               >
                 <span className="text-zinc-900">
-                  Deploy AI that actually
+                  {MARKETING_COPY.pricing.headline[0]}
                 </span>
               </motion.h1>
             </div>
@@ -458,7 +463,7 @@ export default function PricingPage() {
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight"
               >
                 <span className="bg-gradient-to-r from-amber-600 to-orange-500 bg-clip-text text-transparent">
-                  does the work.
+                  {MARKETING_COPY.pricing.headline[1]}
                 </span>
               </motion.h1>
             </div>
@@ -469,7 +474,7 @@ export default function PricingPage() {
               transition={{ delay: 0.5 }}
               className="mt-6 text-lg text-zinc-600 leading-relaxed"
             >
-              Assign work. Get results. Gravitre agents plan, build, and deliver complete outputs across your tools.
+              {MARKETING_COPY.pricing.subhead}
             </motion.p>
 
             <motion.p 
@@ -478,7 +483,7 @@ export default function PricingPage() {
               transition={{ delay: 0.6 }}
               className="mt-3 text-sm text-zinc-500"
             >
-              Replace hours of work with a single task.
+              {MARKETING_COPY.pricing.subheadNote}
             </motion.p>
             
             {/* Secondary CTA */}
@@ -968,7 +973,7 @@ export default function PricingPage() {
               Compare all features
             </h2>
             <p className="mt-4 text-zinc-600 max-w-xl mx-auto">
-              See exactly what you get with each plan. All plans include our core platform features.
+              {MARKETING_COPY.pricing.comparisonIntro}
             </p>
           </motion.div>
 
@@ -1079,6 +1084,7 @@ export default function PricingPage() {
                   { feature: "Multi-step execution", node: false, control: true, command: true },
                   { feature: "Custom agent training", node: false, control: false, command: true },
                   { feature: "Cross-department agents", node: false, control: false, command: true },
+                  ...MARKETING_COPY.pricing.intelligenceRows,
                 ].map((row, i) => (
                   <motion.div
                     key={i}
@@ -1401,10 +1407,10 @@ export default function PricingPage() {
             className="mx-auto max-w-2xl text-center"
           >
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900">
-              Put your work on autopilot.
+              {MARKETING_COPY.pricing.cta.title}
             </h2>
             <p className="mt-4 text-zinc-600">
-              See complete outputs in minutes.
+              {MARKETING_COPY.pricing.cta.subtitle}
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link

@@ -11,10 +11,11 @@ import {
   FaqExperience,
   type FaqClientSection,
 } from "@/components/docs/faq-experience"
+import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 export const metadata = {
   title: "FAQ | Gravitre Docs",
-  description: "Common questions about Gravitre features, billing, and integrations.",
+  description: MARKETING_COPY.docs.faqIntro,
 }
 
 async function renderMarkdown(source: string) {
@@ -71,8 +72,7 @@ export default async function FaqPage() {
             Frequently asked questions
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-600 text-pretty">
-            Common questions about Gravitre features, billing, and integrations. Search below or
-            browse by category.
+            {MARKETING_COPY.docs.faqIntro}
           </p>
         </header>
 
