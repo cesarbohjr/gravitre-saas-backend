@@ -5,6 +5,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { Check, ArrowRight, HelpCircle, Zap, Play, Mail, FileText, Send, ChevronRight, Users, Crown, Smartphone, Monitor, Building2, Rocket, Info, Shield, Cpu, Sparkles, X, Blocks, Star, Clock, BadgeCheck, RefreshCcw, Minus } from "lucide-react"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { PLAN_CATALOG, type PlanCode } from "@/lib/plans"
 import {
   Tooltip,
   TooltipContent,
@@ -52,6 +53,11 @@ const aiCapabilityRows: PlanComparisonRow[] = [
   ...MARKETING_COPY.pricing.intelligenceRows,
 ]
 
+function planPrices(code: PlanCode) {
+  const plan = PLAN_CATALOG[code]
+  return { monthly: plan.price ?? 0, annual: plan.annualPrice ?? 0 }
+}
+
 // Role definitions for tooltips
 const roles = {
   masterAdmin: {
@@ -74,8 +80,9 @@ const roles = {
 const tiers = [
   {
     name: "Node",
+    planCode: "node" as const,
     tagline: "Focused execution for small teams",
-    price: { monthly: 49, annual: 41 },
+    price: planPrices("node"),
     description: "Generate complete outputs like campaigns, reports, or workflows—without building everything from scratch.",
     outputs: "Up to 10 complete outputs / month",
     team: {
@@ -100,8 +107,9 @@ const tiers = [
   },
   {
     name: "Control",
+    planCode: "control" as const,
     tagline: "Coordinate work across your systems",
-    price: { monthly: 129, annual: 107 },
+    price: planPrices("control"),
     description: "Plan and execute multi-step work across email, CRM, and data sources with full campaign capabilities.",
     outputs: "Up to 40 complete outputs / month",
     team: {
@@ -129,8 +137,9 @@ const tiers = [
   },
   {
     name: "Command",
+    planCode: "command" as const,
     tagline: "Run AI agents across your entire team",
-    price: { monthly: 299, annual: 249 },
+    price: planPrices("command"),
     description: "Deploy multiple agents that collaborate, execute, and deliver work across your organization.",
     outputs: "Up to 120 complete outputs / month",
     team: {
@@ -432,7 +441,7 @@ function PricingCard({ tier, isAnnual, index }: { tier: typeof tiers[0]; isAnnua
         
         {/* CTA */}
         <Link
-          href="/get-started"
+          href={`/get-started?plan=${tier.planCode}&interval=${isAnnual ? "annual" : "monthly"}`}
           className={`group/btn inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition-all ${
             tier.highlighted
               ? "bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-zinc-900/20"
@@ -450,7 +459,7 @@ function PricingCard({ tier, isAnnual, index }: { tier: typeof tiers[0]; isAnnua
 }
 
 export default function PricingPage() {
-  const [isAnnual, setIsAnnual] = useState(true)
+  const [isAnnual, setIsAnnual] = useState(false)
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
 
   return (
@@ -585,7 +594,9 @@ export default function PricingPage() {
               transition={{ delay: 0.8 }}
               className="mt-3 text-xs text-zinc-500"
             >
-              Save with annual billing
+              {isAnnual
+                ? "Annual billing — per-month equivalent shown (billed yearly)"
+                : "Prices in USD · billed monthly"}
             </motion.p>
           </motion.div>
         </div>
@@ -1028,16 +1039,20 @@ export default function PricingPage() {
               <div className="p-6 bg-zinc-50">
                 <span className="text-sm font-medium text-zinc-500">Features by plan</span>
               </div>
-              {[
-                { name: "Node", price: "$41", desc: "For individuals", color: "zinc" },
-                { name: "Control", price: "$107", desc: "Most popular", color: "amber", highlighted: true },
-                { name: "Command", price: "$249", desc: "For teams", color: "zinc" },
-              ].map((plan) => (
+              {tiers.map((tier) => {
+                const displayPrice = isAnnual ? tier.price.annual : tier.price.monthly
+                const planMeta =
+                  tier.name === "Control"
+                    ? { desc: "Most popular", highlighted: true as const }
+                    : tier.name === "Node"
+                      ? { desc: "For individuals", highlighted: false as const }
+                      : { desc: "For teams", highlighted: false as const }
+                return (
                 <div 
-                  key={plan.name} 
-                  className={`p-6 text-center ${plan.highlighted ? 'bg-gradient-to-b from-amber-50 to-amber-50/30 relative pt-10' : 'bg-white'}`}
+                  key={tier.name} 
+                  className={`p-6 text-center ${planMeta.highlighted ? 'bg-gradient-to-b from-amber-50 to-amber-50/30 relative pt-10' : 'bg-white'}`}
                 >
-                  {plan.highlighted && (
+                  {planMeta.highlighted && (
                     <div className="absolute top-3 left-1/2 -translate-x-1/2">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
                         <Star className="h-3 w-3 fill-white text-white" />
@@ -1045,14 +1060,14 @@ export default function PricingPage() {
                       </span>
                     </div>
                   )}
-                  <h3 className="font-semibold text-zinc-900 text-lg">{plan.name}</h3>
+                  <h3 className="font-semibold text-zinc-900 text-lg">{tier.name}</h3>
                   <div className="mt-1">
-                    <span className="text-2xl font-bold text-zinc-900">{plan.price}</span>
+                    <span className="text-2xl font-bold text-zinc-900">${displayPrice}</span>
                     <span className="text-sm text-zinc-500">/mo</span>
                   </div>
-                  <p className="mt-1 text-xs text-zinc-500">{plan.desc}</p>
+                  <p className="mt-1 text-xs text-zinc-500">{planMeta.desc}</p>
                 </div>
-              ))}
+              )})}
             </div>
 
             {/* Feature Categories */}
