@@ -49,19 +49,28 @@ class RetrievalPlan:
     domain_department: str | None = None
     domain_subdomain: str | None = None
     profile_id: str | None = None
-    adaptive_weight_delta: float = 0.0
-    meta_learning_delta: float = 0.0
+    adaptive_weight_delta: float = 1.0
+    meta_learning_delta: float = 1.0
     freshness_multiplier: float = 1.0
     outcome_multiplier: float = 1.0
     optimization_multiplier: float = 1.0
+    assignment_freshness_multipliers: dict[str, float] = field(default_factory=dict)
+    assignment_stale_warnings: dict[str, str] = field(default_factory=dict)
+    freshness_label: str | None = None
+    freshness_trust_warnings: list[str] = field(default_factory=list)
+    learning_confidence: str | None = None
+    insufficient_data: bool = False
 
     def to_params(self) -> dict[str, Any]:
         return asdict(self)
 
     def learning_multiplier(self) -> float:
-        base = 1.0 + float(self.adaptive_weight_delta or 0) + float(self.meta_learning_delta or 0)
-        return base * float(self.freshness_multiplier or 1.0) * float(self.outcome_multiplier or 1.0) * float(
-            self.optimization_multiplier or 1.0
+        """Segment-level multiplicative learning — per-source freshness applied separately."""
+        return (
+            float(self.adaptive_weight_delta or 1.0)
+            * float(self.meta_learning_delta or 1.0)
+            * float(self.outcome_multiplier or 1.0)
+            * float(self.optimization_multiplier or 1.0)
         )
 
 
@@ -233,5 +242,13 @@ def apply_source_score(
         score *= 0.75
     elif match_tier == "department_subdomain":
         score *= 0.9
+    freshness_mult = 1.0
+    if assignment_id and assignment_id in plan.assignment_freshness_multipliers:
+        freshness_mult = float(plan.assignment_freshness_multipliers[assignment_id])
+    elif meta.get("freshness_multiplier") is not None:
+        freshness_mult = float(meta.get("freshness_multiplier"))
+    if freshness_mult <= 0.0:
+        return 0.0
+    score *= freshness_mult
     score *= plan.learning_multiplier()
     return round(score, 6)

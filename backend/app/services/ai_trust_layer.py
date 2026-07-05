@@ -48,6 +48,8 @@ class AITrustLayer:
         routing_summary: str | None = None,
         simulation_summary: dict[str, Any] | None = None,
         action_safety_level: str | None = None,
+        stale_source_warnings: list[str] | None = None,
+        knowledge_freshness: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         band = self.confidence_band(confidence)
         base = {
@@ -76,8 +78,45 @@ class AITrustLayer:
             "routing_summary": routing_summary,
             "simulation_summary": simulation_summary,
             "action_safety_level": action_safety_level or "low",
+            "stale_source_warnings": stale_source_warnings or [],
+            "knowledge_freshness": knowledge_freshness or {},
         }
+        if stale_source_warnings:
+            base["risks"] = list(risks or []) + [
+                warning for warning in stale_source_warnings if warning not in (risks or [])
+            ]
         return base
+
+    def apply_freshness_to_confidence(
+        self,
+        confidence: float,
+        *,
+        stale_source_warnings: list[str] | None = None,
+        freshness_penalty: float = 0.0,
+    ) -> float:
+        penalty = float(freshness_penalty or 0.0)
+        if stale_source_warnings:
+            penalty = max(penalty, min(0.2, 0.04 * len(stale_source_warnings)))
+        return round(max(0.0, min(1.0, float(confidence) - penalty)), 4)
+
+    def build_knowledge_freshness_envelope(
+        self,
+        retrieval_plan: dict[str, Any] | None,
+    ) -> tuple[str | None, list[str], dict[str, Any]]:
+        plan = retrieval_plan or {}
+        warnings = list(plan.get("freshness_trust_warnings") or [])
+        stale_map = plan.get("assignment_stale_warnings") or {}
+        for warning in stale_map.values():
+            if warning and warning not in warnings:
+                warnings.append(str(warning))
+        label = plan.get("freshness_label") or plan.get("data_freshness")
+        envelope = {
+            "freshness_label": label,
+            "learning_confidence": plan.get("learning_confidence"),
+            "insufficient_data": bool(plan.get("insufficient_data")),
+            "stale_source_count": len(warnings),
+        }
+        return label, warnings, envelope
 
     async def generate_answer_explanation(
         self,

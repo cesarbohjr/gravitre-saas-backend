@@ -364,8 +364,18 @@ class IntelligenceRouter:
                 f"{explanation} External web sources were included where org knowledge was insufficient."
             )
 
+        trust_layer = get_ai_trust_layer()
+        freshness_label, stale_warnings, freshness_envelope = trust_layer.build_knowledge_freshness_envelope(
+            context.get("retrieval_plan"),
+        )
+        confidence = trust_layer.apply_freshness_to_confidence(
+            confidence,
+            stale_source_warnings=stale_warnings,
+            freshness_penalty=min(0.15, 0.03 * len(stale_warnings)) if stale_warnings else 0.0,
+        )
+
         answer = str(primary.get("action") or self._summarize_context(context, request))
-        wrapped = get_ai_trust_layer().wrap_response(
+        wrapped = trust_layer.wrap_response(
             answer=answer,
             sources=sources,
             confidence=confidence,
@@ -373,6 +383,9 @@ class IntelligenceRouter:
             actions_taken=[],
             actions_pending_approval=primary if primary.get("requires_approval", True) else [],
             advisory_only=True,
+            data_freshness=freshness_label,
+            stale_source_warnings=stale_warnings,
+            knowledge_freshness=freshness_envelope,
         )
         wrapped["classification"] = classification
         wrapped["model_selection"] = model_selection

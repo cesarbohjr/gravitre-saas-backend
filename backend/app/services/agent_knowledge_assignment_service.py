@@ -326,6 +326,7 @@ class AgentKnowledgeAssignmentService:
             updated["provenance"] = build_from_rag_row(updated, plan=plan, match_tier=match_tier)
             scored.append(updated)
         scored.sort(key=lambda row: float(row.get("score") or 0.0), reverse=True)
+        scored = [row for row in scored if float(row.get("score") or 0.0) > 0.0]
         matched = [row for row in scored if row.get("match_tier") != "unassigned"]
         if enabled and not matched:
             missing_labels = [str(row.get("label") or row.get("sourceType") or "source") for row in enabled[:5]]

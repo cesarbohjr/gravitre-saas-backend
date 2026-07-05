@@ -68,6 +68,7 @@ class UnifiedRetrievalService:
         strict_mode = bool(params.get("strict_assignment_mode"))
 
         from app.services.domain_retrieval_policy import build_retrieval_plan, should_fetch_graph
+        from app.services.learning_strategy_keys import parse_segment_key
 
         retrieval_plan = build_retrieval_plan(
             classification,
@@ -75,6 +76,17 @@ class UnifiedRetrievalService:
             settings=self.settings,
             strict_assignment_mode=strict_mode,
         )
+        if getattr(self.settings, "domain_adaptive_learning_enabled", False):
+            from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+            segment_key = parse_segment_key(classification)
+            retrieval_plan = await get_adaptive_learning_service(self.settings).apply_to_retrieval_plan(
+                retrieval_plan,
+                org_id,
+                segment_key,
+                assignments,
+                client=client,
+            )
 
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:

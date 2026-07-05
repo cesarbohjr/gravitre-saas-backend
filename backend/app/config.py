@@ -82,6 +82,10 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"),
     )
+    domain_adaptive_learning_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"),
+    )
     rag_uploads_bucket: str = "rag-uploads"
     rag_store_raw_files: bool = True
     blob_read_write_token: str = ""
@@ -344,6 +348,8 @@ class Settings(BaseSettings):
 
             if os.getenv("DOMAIN_RETRIEVAL_POLICY_ENABLED") is None:
                 self.domain_retrieval_policy_enabled = True
+            if os.getenv("DOMAIN_ADAPTIVE_LEARNING_ENABLED") is None:
+                self.domain_adaptive_learning_enabled = True
         return self
 
 

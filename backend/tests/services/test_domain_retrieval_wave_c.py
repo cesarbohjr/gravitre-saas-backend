@@ -140,13 +140,32 @@ def test_intelligence_pack_catalog_has_four_packs():
 def test_future_proof_retrieval_plan_fields():
     plan = RetrievalPlan(
         active=True,
-        adaptive_weight_delta=0.1,
-        meta_learning_delta=0.05,
-        freshness_multiplier=0.9,
+        adaptive_weight_delta=1.1,
+        meta_learning_delta=1.05,
         outcome_multiplier=1.1,
         optimization_multiplier=1.0,
     )
-    assert plan.learning_multiplier() > 1.0
+    assert plan.learning_multiplier() == pytest.approx(1.1 * 1.05 * 1.1 * 1.0)
+
+
+def test_apply_source_score_multiplicative_learning():
+    plan = RetrievalPlan(
+        active=True,
+        adaptive_weight_delta=1.1,
+        outcome_multiplier=1.1,
+        assignment_freshness_multipliers={"a1": 0.85},
+        assignment_boosts={"a1": 1.2},
+    )
+    source = {"metadata": {"assignment_id": "a1"}, "score": 1.0}
+    score = apply_source_score(1.0, source, plan, match_tier="assignment_id")
+    expected = 1.0 * 1.2 * 0.85 * 1.1 * 1.1
+    assert score == pytest.approx(round(expected, 6))
+
+
+def test_inaccessible_source_scores_zero():
+    plan = RetrievalPlan(active=True, assignment_freshness_multipliers={"a1": 0.0})
+    source = {"metadata": {"assignment_id": "a1"}, "score": 0.9}
+    assert apply_source_score(0.9, source, plan, match_tier="assignment_id") == 0.0
 
 
 @pytest.mark.asyncio

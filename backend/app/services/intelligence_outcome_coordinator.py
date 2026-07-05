@@ -141,6 +141,22 @@ class IntelligenceOutcomeCoordinator:
                         "minority_opinion_count": len(response.get("minority_opinions") or []),
                     },
                 )
+
+            from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+            adaptive = get_adaptive_learning_service(self.settings)
+            if adaptive.is_enabled():
+                await adaptive.ingest_response_outcome(
+                    org_id,
+                    segment_key=str(segment_key),
+                    classification=classification,
+                    response=response,
+                    metadata={
+                        "retrieval_effectiveness": response.get("retrieval_effectiveness")
+                        or classification.get("retrieval_effectiveness"),
+                        "strategy_key": strategy_key,
+                    },
+                )
         except Exception as exc:  # noqa: BLE001
             logger.debug("intelligence_outcome_coordinator_skipped org_id=%s error=%s", org_id, exc)
 

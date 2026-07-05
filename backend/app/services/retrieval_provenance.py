@@ -128,6 +128,9 @@ def summarize_retrieval_effectiveness(
             assignment_ids.append(str(aid))
     scores = [float(row.get("score") or 0) for row in sources[:8] if row.get("score") is not None]
     retrieval_score = round(sum(scores) / len(scores), 4) if scores else None
+    stale_sources = []
+    if plan and plan.assignment_stale_warnings:
+        stale_sources = list(plan.assignment_stale_warnings.values())
     return {
         "retrieval_policy": (plan.policy_version if plan and plan.active else "legacy"),
         "domain_department": domain.get("department_key") or domain.get("department"),
@@ -136,4 +139,6 @@ def summarize_retrieval_effectiveness(
         "assignment_ids_used": assignment_ids,
         "retrieval_score": retrieval_score,
         "source_count": len(sources),
+        "stale_sources": stale_sources,
+        "learning_confidence": getattr(plan, "learning_confidence", None) if plan else None,
     }
