@@ -60,6 +60,7 @@ class RetrievalPlan:
     freshness_trust_warnings: list[str] = field(default_factory=list)
     learning_confidence: str | None = None
     insufficient_data: bool = False
+    meta_learning_guidance: dict[str, Any] = field(default_factory=dict)
 
     def to_params(self) -> dict[str, Any]:
         return asdict(self)

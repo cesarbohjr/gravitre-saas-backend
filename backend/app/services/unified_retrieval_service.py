@@ -87,6 +87,14 @@ class UnifiedRetrievalService:
                 assignments,
                 client=client,
             )
+            from app.services.meta_learning_service import get_meta_learning_service
+
+            retrieval_plan = await get_meta_learning_service(self.settings).apply_to_retrieval_plan(
+                retrieval_plan,
+                org_id,
+                segment_key,
+                default_retrieval_key=f"retrieval:{retrieval_plan.policy_version if retrieval_plan.active else 'legacy'}",
+            )
 
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:

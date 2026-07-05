@@ -188,6 +188,28 @@ async def get_strategy_performance(
     }
 
 
+@router.get("/adaptive-learning")
+async def get_adaptive_learning_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+    return await get_adaptive_learning_service(settings).get_admin_summary(org_id)
+
+
+@router.get("/meta-learning")
+async def get_meta_learning_summary(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.meta_learning_service import get_meta_learning_service
+
+    return await get_meta_learning_service(settings).get_meta_learning_summary(org_id)
+
+
 @router.get("/predictive-ops/domain/{domain}")
 async def get_predictive_ops_domain(
     domain: str,

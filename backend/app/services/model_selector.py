@@ -163,6 +163,19 @@ class ModelSelector:
                 if pref.get("reason") == "ledger_win_rate":
                     base["reason"] = f"Ledger preferred LLM tier {tier} for {task_type}"
         base["segment_key"] = segment_key
+        from app.services.meta_learning_service import get_meta_learning_service
+
+        meta = get_meta_learning_service(self.settings)
+        if meta.is_enabled():
+            guidance = await meta.get_selection_guidance(
+                org_id,
+                segment_key,
+                "model",
+                candidate_keys,
+                default_key=selected,
+                classification=classification,
+            )
+            base = meta.apply_model_soft_prior(base, guidance, ledger_reason=str(pref.get("reason") or ""))
         return base
 
     async def _org_has_deployed_model(self, org_id: str, catalog_name: str) -> bool:

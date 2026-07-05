@@ -6,6 +6,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.services.tool_registry import ToolRegistry
 from app.services.domain_routing_policy import apply_tool_selection_policy
+from app.services.learning_strategy_keys import parse_segment_key
 from app.workflows.repository import get_supabase_client
 
 
@@ -58,7 +59,24 @@ class ToolConnectorSelector:
             "write_requires_approval": len(write_tools) > 0,
             "tool_count": len(task_tools),
         }
-        return apply_tool_selection_policy(result, classification, agent_persona)
+        routed = apply_tool_selection_policy(result, classification, agent_persona)
+        from app.services.meta_learning_service import get_meta_learning_service
+
+        meta = get_meta_learning_service(self.settings)
+        if meta.is_enabled():
+            segment_key = parse_segment_key(classification)
+            connectors = list(agent_persona.get("preferred_connectors") or [])
+            combo_key = meta.build_connector_combo_key(connectors)
+            guidance = await meta.get_selection_guidance(
+                org_id,
+                segment_key,
+                "connector_combo",
+                [combo_key],
+                default_key=combo_key,
+                classification=classification,
+            )
+            routed = meta.apply_tool_soft_prior(routed, guidance)
+        return routed
 
 
 _tool_connector_selector: ToolConnectorSelector | None = None
