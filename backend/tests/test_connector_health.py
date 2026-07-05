@@ -126,3 +126,15 @@ def test_scheduler_disabled_when_interval_zero(monkeypatch: pytest.MonkeyPatch):
         lambda: _settings(connector_health_interval_seconds=0),
     )
     assert start_connector_health_scheduler() is None
+
+
+def test_resolve_display_connector_status_prefers_auth_connected():
+    from app.connectors.connection_health import (
+        connector_is_connected_for_assistant,
+        resolve_display_connector_status,
+    )
+
+    assert resolve_display_connector_status("error", "connected") == "connected"
+    assert connector_is_connected_for_assistant("error", "connected") is True
+    assert resolve_display_connector_status("healthy", None) == "connected"
+    assert resolve_display_connector_status("error", "auth_expired") == "error"

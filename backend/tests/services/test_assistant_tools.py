@@ -166,8 +166,42 @@ def test_tool_connector_status_uses_production_environment(monkeypatch: pytest.M
 
     monkeypatch.setattr("app.connectors.repository.list_connectors", _list_connectors)
     monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
+    monkeypatch.setattr(
+        "app.connectors.connection_health.resolve_connector_auth_status",
+        lambda *_args, **_kwargs: None,
+    )
 
     output = tools_module.tool_connector_status("org-1", _settings())
     assert seen == ["production"]
     assert output["connectors"][0]["type"] == "hubspot"
     assert output["connectors"][0]["status"] == "connected"
+    assert output["connectors"][0]["connected"] is True
+
+
+def test_tool_connector_status_prefers_live_auth_over_stale_error(monkeypatch: pytest.MonkeyPatch):
+    def _list_connectors(_client, _org_id, environment_name="production"):
+        return [
+            {
+                "id": "c-hubspot",
+                "name": "HubSpot",
+                "type": "hubspot",
+                "status": "error",
+                "health": 0,
+                "environment": "production",
+            }
+        ]
+
+    monkeypatch.setattr("app.connectors.repository.list_connectors", _list_connectors)
+    monkeypatch.setattr(tools_module, "get_supabase_client", lambda _s: MagicMock())
+    monkeypatch.setattr(
+        "app.connectors.connection_health.resolve_connector_auth_status",
+        lambda *_args, **_kwargs: "connected",
+    )
+
+    output = tools_module.tool_connector_status("org-1", _settings())
+    connector = output["connectors"][0]
+    assert connector["status"] == "connected"
+    assert connector["connected"] is True
+    assert connector["authStatus"] == "connected"
+    assert connector["rawStatus"] == "error"
+    assert connector["health"] == 0

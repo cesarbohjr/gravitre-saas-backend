@@ -106,9 +106,8 @@ export default function AgentProfilePage() {
         />
 
         <AgentIntelligenceVisibilitySection
+          agentId={agent.id}
           orgScopedKey={orgId ? `agent-intel-${orgId}-${agent.id}` : null}
-          department={agent.department}
-          capabilities={agent.capabilities ?? agent.permissions}
         />
 
         {!hasMeasuredData ? (

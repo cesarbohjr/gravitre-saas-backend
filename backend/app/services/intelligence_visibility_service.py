@@ -269,6 +269,99 @@ class IntelligenceVisibilityService:
         )
         return sanitize_envelope(summary.model_dump())
 
+    async def get_agent_visibility(self, org_id: str, agent_id: str) -> dict[str, Any]:
+        if not self.is_enabled():
+            return {"status": "disabled", "org_id": org_id, "agent_id": agent_id, "advisory_only": True}
+
+        from app.services.agent_capability_profile_service import get_agent_capability_profile_service
+        from app.services.agent_memory_service import ensure_agent_in_org
+        from app.services.learning_confidence_service import get_learning_confidence_service
+        from app.services.outcome_learning_service import get_outcome_learning_service
+        from app.workflows.repository import get_supabase_client
+
+        client = get_supabase_client(self.settings)
+        agent = ensure_agent_in_org(client, org_id, agent_id)
+        department = str(agent.get("department") or "").lower()
+        capability = get_agent_capability_profile_service(self.settings).build_profile(client, org_id, agent_id)
+        assignments = capability.get("connectedKnowledgeSources") or []
+
+        stale_assignments = [
+            {"label": row.get("label"), "freshness_status": row.get("freshnessStatus")}
+            for row in assignments
+            if str(row.get("freshnessStatus") or "").lower() in {"stale", "expired"}
+        ]
+
+        domain_entries = await self._compute_domain_health_entries(org_id)
+        domain_entry = next((entry for entry in domain_entries if str(entry.department or "").lower() == department), None)
+        if domain_entry is None and department:
+            domain_entry = next(
+                (entry for entry in domain_entries if department in str(entry.domain or "").lower()),
+                None,
+            )
+
+        outcome = await get_outcome_learning_service(self.settings).get_agent_success_rate(org_id, agent_id)
+
+        sample_count = positive_count = negative_count = 0
+        adaptive = await self._safe_admin_call("adaptive_learning", org_id)
+        for row in adaptive.get("segment_summaries") or []:
+            segment_key = str(row.get("segment_key") or "")
+            if department and f":{department}:" not in segment_key and not segment_key.startswith(f"default:{department}:"):
+                continue
+            sample_count += int(row.get("sample_count") or 0)
+            positive_count += int(row.get("positive_count") or 0)
+            negative_count += int(row.get("negative_count") or 0)
+
+        learning_assessment = get_learning_confidence_service(self.settings).assess(
+            sample_count=sample_count,
+            positive_count=positive_count,
+            negative_count=negative_count,
+        )
+
+        optimization_count = 0
+        optimization = await self._safe_admin_call("domain_optimization", org_id)
+        for row in optimization.get("pending_recommendations") or []:
+            segment_key = str(row.get("segment_key") or "")
+            if not department or f":{department}:" in segment_key or segment_key.startswith(f"default:{department}:"):
+                optimization_count += 1
+
+        payload = {
+            "status": "ok",
+            "org_id": org_id,
+            "agent_id": agent_id,
+            "agent_name": agent.get("name"),
+            "department": agent.get("department"),
+            "advisory_only": True,
+            "knowledge_health": {
+                "assignment_count": len(assignments),
+                "stale_assignment_count": len(stale_assignments),
+                "freshness_status": capability.get("freshnessStatus") or "unknown",
+                "assignments": assignments[:12],
+                "stale_assignments": stale_assignments[:8],
+            },
+            "learning_confidence": {
+                "level": learning_assessment.level,
+                "sample_count": learning_assessment.sample_count,
+                "insufficient_data": learning_assessment.insufficient_data,
+            },
+            "freshness": capability.get("freshnessStatus")
+            or (domain_entry.freshness if domain_entry else "unknown"),
+            "domain_health": domain_entry.model_dump() if domain_entry else None,
+            "capability_visibility": {
+                "capabilities": capability.get("capabilities") or [],
+                "connected_knowledge_sources": assignments,
+                "allowed_connectors": capability.get("allowedConnectors") or [],
+                "available_read_actions": (capability.get("availableReadActions") or [])[:12],
+                "available_write_actions": (capability.get("availableWriteActions") or [])[:12],
+                "approval_required_actions": (capability.get("approvalRequiredActions") or [])[:12],
+                "memory_count": capability.get("memoryCount"),
+                "can_recommend": capability.get("canRecommend"),
+                "can_execute_with_approval": capability.get("canExecuteWithApproval"),
+            },
+            "outcome_summary": outcome,
+            "optimization_recommendations": optimization_count,
+        }
+        return sanitize_envelope(payload)
+
     async def _compute_domain_health_entries(self, org_id: str) -> list[DomainHealthEntry]:
         from app.domain.loader import list_profile_ids, load_domain_profile
         from app.services.learning_confidence_service import get_learning_confidence_service

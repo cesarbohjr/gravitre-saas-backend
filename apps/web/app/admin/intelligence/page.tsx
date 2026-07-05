@@ -18,11 +18,12 @@ import { EvaluationTab } from "./_components/evaluation-tab"
 import { OutcomesTab } from "./_components/outcomes-tab"
 import { EngineTab } from "./_components/engine-tab"
 import { PerformanceTab } from "./_components/performance-tab"
+import { LearningTrendsTab } from "./_components/learning-trends-tab"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { PageHeader } from "@/components/gravitre/page-header"
 import { Brain } from "lucide-react"
 
-type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "engine" | "performance"
+type TabKey = "overview" | "memory" | "relationships" | "evaluation" | "outcomes" | "learning" | "engine" | "performance"
 
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
@@ -87,6 +88,9 @@ export default function AdminIntelligencePage() {
             <TabsTrigger value="outcomes" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
               Outcomes
             </TabsTrigger>
+            <TabsTrigger value="learning" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Learning trends
+            </TabsTrigger>
             <TabsTrigger value="engine" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
               Engine
             </TabsTrigger>
@@ -114,6 +118,10 @@ export default function AdminIntelligencePage() {
 
           <TabsContent value="outcomes" className="mt-0">
             <OutcomesTab enabled={tab === "outcomes"} />
+          </TabsContent>
+
+          <TabsContent value="learning" className="mt-0">
+            <LearningTrendsTab enabled={tab === "learning"} />
           </TabsContent>
 
           <TabsContent value="engine" className="mt-0">

@@ -22,7 +22,7 @@ import { AppBreadcrumbs } from "./app-breadcrumbs"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
-import { MesonToolbarPopup } from "@/components/gravitre/meson-toolbar-popup"
+import { MesonToolbarPopup, MesonToolbarProvider } from "@/components/gravitre/meson-toolbar-popup"
 import {
   PLAN_REQUIRED_EVENT,
   readStoredPlanRequired,
@@ -287,6 +287,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   }
 
   return (
+    <MesonToolbarProvider>
     <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -419,5 +420,6 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
       />
       <MesonToolbarPopup />
     </div>
+    </MesonToolbarProvider>
   )
 }

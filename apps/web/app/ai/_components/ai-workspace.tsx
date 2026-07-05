@@ -49,6 +49,13 @@ import type { SearchResult } from "@/types/api"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { usePreferredPersona } from "@/hooks/use-preferred-persona"
 import { useAsyncJob, type AgentJob } from "@/hooks/use-async-job"
 import {
@@ -58,7 +65,7 @@ import {
   runSyncOperatorTask,
   type InlineExecutePlan,
 } from "@/lib/ai-inline-execute"
-import { isConversationalOperatorPrompt } from "@/lib/ai-route-intent"
+import { isConversationalOperatorPrompt, heuristicRouteIntent } from "@/lib/ai-route-intent"
 import {
   describeOperatorJobError,
   isBackendUnavailableError,
@@ -474,14 +481,7 @@ export function AiWorkspace({
   }, [messages, inlineTurns, status, conversationLoading])
 
   const classifyIntent = useCallback(async (prompt: string): Promise<AiEngine> => {
-    const res = await fetch("/api/ai/route-intent", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    })
-    if (!res.ok) throw new Error(`route-intent ${res.status}`)
-    const data = (await res.json()) as { mode: AiEngine }
-    return data.mode
+    return heuristicRouteIntent(prompt).mode
   }, [])
 
   const resolveEngine = useCallback(
@@ -1153,22 +1153,6 @@ export function AiWorkspace({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <select
-                value={selectedDepartment}
-                onChange={(event) => {
-                  const value = event.target.value
-                  setSelectedDepartment(value)
-                  setSelectedDepartmentInStorage(value)
-                }}
-                className="h-8 max-w-[140px] rounded-md border border-border bg-background px-2 text-xs text-foreground"
-                aria-label="Department context"
-              >
-                {DEPARTMENT_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
               <button
                 type="button"
                 onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
@@ -1212,6 +1196,30 @@ export function AiWorkspace({
                 {m.label}
               </button>
             ))}
+            <div className="ml-auto shrink-0 pl-2">
+              <Select
+                value={selectedDepartment}
+                onValueChange={(value) => {
+                  setSelectedDepartment(value)
+                  setSelectedDepartmentInStorage(value)
+                }}
+              >
+                <SelectTrigger
+                  size="sm"
+                  className="h-8 w-[148px] border-border bg-background text-xs"
+                  aria-label="Department context"
+                >
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent align="end" className="z-[60]">
+                  {DEPARTMENT_OPTIONS.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

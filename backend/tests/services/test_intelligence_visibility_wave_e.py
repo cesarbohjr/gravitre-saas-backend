@@ -259,6 +259,68 @@ async def test_visibility_trust_health_member_route(member_client):
 
 
 @pytest.mark.asyncio
+async def test_visibility_agent_profile_route(member_client):
+    client, org_id = member_client
+    payload = {
+        "status": "ok",
+        "org_id": org_id,
+        "agent_id": "agent-123",
+        "agent_name": "Marketing Analyst",
+        "advisory_only": True,
+        "learning_confidence": {"level": "insufficient_data", "insufficient_data": True},
+        "outcome_summary": {"status": "insufficient_data", "events_found": 1, "min_required": 5},
+    }
+    with patch(
+        "app.services.intelligence_visibility_service.IntelligenceVisibilityService.get_agent_visibility",
+        new=AsyncMock(return_value=payload),
+    ):
+        response = await client.get("/api/intelligence/visibility/agents/agent-123")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["agent_id"] == "agent-123"
+    assert body["advisory_only"] is True
+    assert "chain_of_thought" not in body
+
+
+@pytest.mark.asyncio
+async def test_get_agent_visibility_org_scoped():
+    svc = IntelligenceVisibilityService(settings=_settings())
+    with patch("app.workflows.repository.get_supabase_client") as mock_client:
+        mock_client.return_value = MagicMock()
+        with patch(
+            "app.services.agent_memory_service.ensure_agent_in_org",
+            return_value={"id": "agent-1", "name": "Ops Agent", "department": "operations"},
+        ):
+            with patch(
+                "app.services.agent_capability_profile_service.get_agent_capability_profile_service"
+            ) as mock_cap:
+                mock_cap.return_value.build_profile.return_value = {
+                    "capabilities": ["search"],
+                    "connectedKnowledgeSources": [],
+                    "freshnessStatus": "unknown",
+                    "allowedConnectors": [],
+                    "availableReadActions": [],
+                    "availableWriteActions": [],
+                    "approvalRequiredActions": [],
+                    "memoryCount": 0,
+                    "canRecommend": True,
+                    "canExecuteWithApproval": False,
+                }
+                with patch.object(svc, "_compute_domain_health_entries", new=AsyncMock(return_value=[])):
+                    with patch(
+                        "app.services.outcome_learning_service.get_outcome_learning_service"
+                    ) as mock_outcome:
+                        mock_outcome.return_value.get_agent_success_rate = AsyncMock(
+                            return_value={"status": "insufficient_data", "events_found": 0, "min_required": 5}
+                        )
+                        with patch.object(svc, "_safe_admin_call", new=AsyncMock(return_value={"segment_summaries": []})):
+                            payload = await svc.get_agent_visibility("org-a", "agent-1")
+    assert payload["status"] == "ok"
+    assert payload["agent_id"] == "agent-1"
+    assert payload["advisory_only"] is True
+
+
+@pytest.mark.asyncio
 async def test_visibility_executive_admin_route(admin_client):
     client, org_id = admin_client
     payload = {

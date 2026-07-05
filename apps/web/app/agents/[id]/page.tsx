@@ -538,9 +538,8 @@ export default function AgentProfilePage({
 
                 <div className="col-span-2">
                   <AgentIntelligenceVisibilitySection
+                    agentId={agent.id}
                     orgScopedKey={orgId ? `agent-op-${orgId}-${agent.id}` : null}
-                    department={apiAgent.department}
-                    capabilities={apiAgent.capabilities ?? apiAgent.permissions}
                     compact
                   />
                 </div>

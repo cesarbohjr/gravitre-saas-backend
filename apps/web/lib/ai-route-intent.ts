@@ -118,6 +118,7 @@ const CONNECTOR_ACTION_VERBS =
 export function isConnectorChatPrompt(prompt: string): boolean {
   const text = prompt.toLowerCase().trim()
   if (!text) return false
+  if (OPERATIONAL_EXECUTE.test(text)) return false
   if (/\b(connector|integration)s?\b/.test(text) && /\b(what|which|any|connected|available|do we have|have we)\b/.test(text)) {
     return true
   }

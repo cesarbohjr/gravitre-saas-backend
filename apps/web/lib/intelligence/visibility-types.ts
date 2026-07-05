@@ -94,3 +94,41 @@ export type VisibilityDomainHealth = {
   improving_domains?: string[]
   advisory_only?: boolean
 }
+
+export type AgentVisibilityProfile = {
+  status?: string
+  org_id?: string
+  agent_id?: string
+  agent_name?: string
+  department?: string | null
+  advisory_only?: boolean
+  knowledge_health?: {
+    assignment_count?: number
+    stale_assignment_count?: number
+    freshness_status?: string
+    assignments?: Array<Record<string, unknown>>
+    stale_assignments?: Array<Record<string, unknown>>
+  }
+  learning_confidence?: LearningConfidenceView
+  freshness?: string
+  domain_health?: DomainHealthEntry | null
+  capability_visibility?: {
+    capabilities?: string[]
+    connected_knowledge_sources?: Array<Record<string, unknown>>
+    allowed_connectors?: string[]
+    available_read_actions?: string[]
+    available_write_actions?: string[]
+    approval_required_actions?: string[]
+    memory_count?: number
+    can_recommend?: boolean
+    can_execute_with_approval?: boolean
+  }
+  outcome_summary?: {
+    status?: string
+    score?: number
+    events_count?: number
+    events_found?: number
+    min_required?: number
+  }
+  optimization_recommendations?: number
+}

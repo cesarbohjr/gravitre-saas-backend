@@ -101,3 +101,14 @@ async def get_visibility_maturity(
 
     maturity = await get_intelligence_maturity_service().compute_maturity(org_id, settings=settings)
     return {"status": "ok", "org_id": org_id, "maturity": maturity}
+
+
+@router.get("/agents/{agent_id}")
+async def get_visibility_agent_profile(
+    agent_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    _require_visibility_enabled(settings)
+    return await get_intelligence_visibility_service(settings).get_agent_visibility(org_id, agent_id)

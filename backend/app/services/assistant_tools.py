@@ -157,20 +157,45 @@ def tool_connector_status(
     environment_name: str = "production",
 ) -> dict[str, Any]:
     try:
+        from app.connectors.connection_health import (
+            connector_is_connected_for_assistant,
+            map_auth_status_to_connector_status,
+            resolve_connector_auth_status,
+            resolve_display_connector_status,
+        )
         from app.connectors.repository import list_connectors
 
         client = get_supabase_client(settings)
         rows = list_connectors(client, org_id, environment_name=environment_name)
-        connectors = [
-            {
-                "id": str(row.get("id")),
-                "name": str(row.get("name") or row.get("type") or "connector"),
-                "type": str(row.get("type") or "Custom"),
-                "status": str(row.get("status") or "disconnected"),
-                "health": int(row.get("health") or 0),
-            }
-            for row in rows
-        ]
+        connectors = []
+        for row in rows:
+            connector_id = str(row.get("id"))
+            vendor = str(row.get("vendor") or row.get("type") or "Custom")
+            env = str(row.get("environment") or environment_name)
+            raw_status = str(row.get("status") or "disconnected")
+            auth_status = resolve_connector_auth_status(
+                client,
+                org_id,
+                connector_id,
+                vendor,
+                settings,
+                environment_name=env,
+            )
+            mapped_status = map_auth_status_to_connector_status(auth_status, raw_status)
+            display_status = resolve_display_connector_status(mapped_status, auth_status)
+            connected = connector_is_connected_for_assistant(mapped_status, auth_status)
+            connectors.append(
+                {
+                    "id": connector_id,
+                    "name": str(row.get("name") or vendor or "connector"),
+                    "type": vendor,
+                    "status": display_status,
+                    "rawStatus": raw_status,
+                    "authStatus": auth_status,
+                    "connected": connected,
+                    "health": int(row.get("health") or 0),
+                }
+            )
         return {"connectors": connectors}
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant connector_status tool failed org_id=%s error=%s", org_id, str(exc))

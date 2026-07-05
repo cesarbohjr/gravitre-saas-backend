@@ -1831,6 +1831,10 @@ export const intelligenceApi = {
     fetcher<import("@/lib/intelligence/visibility-types").ExecutiveIntelligenceSummary>(
       apiUrl("/api/intelligence/visibility/executive"),
     ),
+  visibilityAgent: (agentId: string) =>
+    fetcher<import("@/lib/intelligence/visibility-types").AgentVisibilityProfile>(
+      apiUrl(`/api/intelligence/visibility/agents/${encodeURIComponent(agentId)}`),
+    ),
 }
 
 export const architectureAdminApi = {
