@@ -12,6 +12,46 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+type PlanComparisonCell = boolean | string
+
+type PlanComparisonRow = {
+  feature: string
+  node: PlanComparisonCell
+  control: PlanComparisonCell
+  command: PlanComparisonCell
+}
+
+function renderPlanComparisonCell(value: PlanComparisonCell, tier: "node" | "control" | "command") {
+  if (typeof value === "boolean") {
+    return value ? (
+      <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
+        <Check className="h-4 w-4 text-emerald-600" />
+      </div>
+    ) : (
+      <div className="h-6 w-6 rounded-full bg-zinc-100 flex items-center justify-center">
+        <Minus className="h-4 w-4 text-zinc-400" />
+      </div>
+    )
+  }
+
+  const className =
+    tier === "node"
+      ? "inline-flex items-center justify-center px-2 py-1 rounded-full bg-zinc-100 text-sm font-semibold text-zinc-900"
+      : tier === "control"
+        ? "inline-flex items-center justify-center px-2 py-1 rounded-full bg-amber-100 text-sm font-semibold text-amber-700"
+        : "inline-flex items-center justify-center px-2 py-1 rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700"
+
+  return <span className={className}>{value}</span>
+}
+
+const aiCapabilityRows: PlanComparisonRow[] = [
+  { feature: "Meson (System Builder)", node: false, control: "10/mo", command: "40/mo" },
+  { feature: "Multi-step execution", node: false, control: true, command: true },
+  { feature: "Custom agent training", node: false, control: false, command: true },
+  { feature: "Cross-department agents", node: false, control: false, command: true },
+  ...MARKETING_COPY.pricing.intelligenceRows,
+]
+
 // Role definitions for tooltips
 const roles = {
   masterAdmin: {
@@ -1079,13 +1119,7 @@ export default function PricingPage() {
                   <div className="px-6 py-3 bg-amber-50/50" />
                   <div className="px-6 py-3" />
                 </div>
-                {[
-                  { feature: "Meson (System Builder)", node: false, control: "10/mo", command: "40/mo" },
-                  { feature: "Multi-step execution", node: false, control: true, command: true },
-                  { feature: "Custom agent training", node: false, control: false, command: true },
-                  { feature: "Cross-department agents", node: false, control: false, command: true },
-                  ...MARKETING_COPY.pricing.intelligenceRows,
-                ].map((row, i) => (
+                {aiCapabilityRows.map((row, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0 }}
@@ -1098,55 +1132,13 @@ export default function PricingPage() {
                       <span className="text-sm text-zinc-700">{row.feature}</span>
                     </div>
                     <div className="px-6 py-4 flex justify-center">
-                      {typeof row.node === 'boolean' ? (
-                        row.node ? (
-                          <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          </div>
-                        ) : (
-                          <div className="h-6 w-6 rounded-full bg-zinc-100 flex items-center justify-center">
-                            <Minus className="h-4 w-4 text-zinc-400" />
-                          </div>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-zinc-100 text-sm font-semibold text-zinc-900">
-                          {row.node}
-                        </span>
-                      )}
+                      {renderPlanComparisonCell(row.node, "node")}
                     </div>
                     <div className="px-6 py-4 flex justify-center bg-amber-50/30">
-                      {typeof row.control === 'boolean' ? (
-                        row.control ? (
-                          <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          </div>
-                        ) : (
-                          <div className="h-6 w-6 rounded-full bg-zinc-100 flex items-center justify-center">
-                            <Minus className="h-4 w-4 text-zinc-400" />
-                          </div>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-amber-100 text-sm font-semibold text-amber-700">
-                          {row.control}
-                        </span>
-                      )}
+                      {renderPlanComparisonCell(row.control, "control")}
                     </div>
                     <div className="px-6 py-4 flex justify-center">
-                      {typeof row.command === 'boolean' ? (
-                        row.command ? (
-                          <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          </div>
-                        ) : (
-                          <div className="h-6 w-6 rounded-full bg-zinc-100 flex items-center justify-center">
-                            <Minus className="h-4 w-4 text-zinc-400" />
-                          </div>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-                          {row.command}
-                        </span>
-                      )}
+                      {renderPlanComparisonCell(row.command, "command")}
                     </div>
                   </motion.div>
                 ))}
