@@ -13,6 +13,7 @@ import { formatPercent, readNumber, readString } from "@/lib/intelligence/helper
 import { RecommendationExplanation } from "@/components/intelligence/recommendation-explanation"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceTrace } from "@/components/intelligence/intelligence-trace"
+import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
 import {
   ArrowRight,
   Brain,
@@ -137,6 +138,8 @@ export default function IntelligenceCenterPage() {
           advisoryOnly
           sources={[{ type: "optimization_suggestions", label: "Org optimization signals" }]}
         />
+
+        <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="rounded-2xl border border-border/70 bg-card p-5">

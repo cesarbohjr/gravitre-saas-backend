@@ -13,6 +13,8 @@ import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
+import { getSelectedOrgFromStorage } from "@/lib/org-context"
+import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
 import { Loader2 } from "lucide-react"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
@@ -319,6 +321,7 @@ export default function AgentProfilePage({
 
   const agent = toProfileAgent(apiAgent)
   const status = statusConfig[agent.status]
+  const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
 
   return (
     <AppShell title={agent.name}>
@@ -530,6 +533,15 @@ export default function AgentProfilePage({
                   <AgentReferenceFoldersPanel
                     folders={apiAgent.referenceFolders ?? []}
                     editHref={`/agents/${agent.id}/knowledge`}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <AgentIntelligenceVisibilitySection
+                    orgScopedKey={orgId ? `agent-op-${orgId}-${agent.id}` : null}
+                    department={apiAgent.department}
+                    capabilities={apiAgent.capabilities ?? apiAgent.permissions}
+                    compact
                   />
                 </div>
 

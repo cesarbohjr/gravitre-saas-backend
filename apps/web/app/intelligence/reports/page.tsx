@@ -27,6 +27,8 @@ import {
   readString,
 } from "@/lib/intelligence/helpers"
 import { IntelligenceSparkline } from "@/components/intelligence/intelligence-sparkline"
+import { ExecutiveIntelligenceScorecard } from "@/components/intelligence/executive-intelligence-scorecard"
+import { getSelectedOrgFromStorage } from "@/lib/org-context"
 
 function sparkFromEvents(events: Array<Record<string, unknown>>, key: string) {
   return events.slice(0, 14).map((row, index) => ({
@@ -80,6 +82,7 @@ export default function IntelligenceReportsPage() {
   const totalEvents = readNumber((outcomes?.summary as Record<string, unknown> | undefined)?.total_events, 0)
   const approvalRate = evaluations?.recommendation_approval_rate as number | null | undefined
   const insufficient = totalEvents < 5
+  const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
 
   const roiCards = [
     { label: "Hours saved", value: metricValue(null), note: insufficient ? "insufficient_data" : undefined },
@@ -114,9 +117,10 @@ export default function IntelligenceReportsPage() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+          <TabsList className="flex flex-wrap">
             <TabsTrigger value="roi">Intelligence ROI</TabsTrigger>
             <TabsTrigger value="scorecards">Department scorecards</TabsTrigger>
+            <TabsTrigger value="executive">Executive scorecard</TabsTrigger>
           </TabsList>
 
           <TabsContent value="roi" className="mt-6 space-y-4">
@@ -192,6 +196,10 @@ export default function IntelligenceReportsPage() {
             <Button variant="outline" size="sm" asChild>
               <Link href="/admin/intelligence">View detailed org learning evaluations</Link>
             </Button>
+          </TabsContent>
+
+          <TabsContent value="executive" className="mt-6">
+            <ExecutiveIntelligenceScorecard orgScopedKey={user && orgId ? `reports-${orgId}` : null} />
           </TabsContent>
         </Tabs>
       </div>

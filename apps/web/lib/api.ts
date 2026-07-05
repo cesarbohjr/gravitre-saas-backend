@@ -1809,6 +1809,28 @@ export const intelligenceApi = {
       sampleCount: number
     }>(apiUrl(`/api/admin/intelligence/performance${suffix}`))
   },
+  visibilityExplainability: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/explainability")),
+  visibilityTrustHealth: () =>
+    fetcher<import("@/lib/intelligence/visibility-types").VisibilityTrustHealth>(
+      apiUrl("/api/intelligence/visibility/trust-health"),
+    ),
+  visibilityMaturity: () =>
+    fetcher<{ status?: string; org_id?: string; maturity?: import("@/lib/intelligence/visibility-types").IntelligenceMaturityView }>(
+      apiUrl("/api/intelligence/visibility/maturity"),
+    ),
+  visibilityLearningHealth: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/learning-health")),
+  visibilityDomainHealth: () =>
+    fetcher<import("@/lib/intelligence/visibility-types").VisibilityDomainHealth>(
+      apiUrl("/api/intelligence/visibility/domain-health"),
+    ),
+  visibilityKnowledgeHealth: () =>
+    fetcher<Record<string, unknown>>(apiUrl("/api/intelligence/visibility/knowledge-health")),
+  visibilityExecutive: () =>
+    fetcher<import("@/lib/intelligence/visibility-types").ExecutiveIntelligenceSummary>(
+      apiUrl("/api/intelligence/visibility/executive"),
+    ),
 }
 
 export const architectureAdminApi = {
