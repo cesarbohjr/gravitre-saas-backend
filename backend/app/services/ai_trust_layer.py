@@ -190,6 +190,41 @@ class AITrustLayer:
                 parts.append("This action is treated as irreversible.")
         return " ".join(parts)
 
+    def wrap_response_calibrated(
+        self,
+        org_id: str,
+        *,
+        answer: str,
+        sources: list[dict[str, Any]],
+        confidence: float,
+        reasoning_summary: str | None,
+        actions_taken: list[dict[str, Any]],
+        actions_pending_approval: list[dict[str, Any]],
+        advisory_only: bool,
+        surface: str = "assistant",
+        settings: Any | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        from app.config import get_settings
+        from app.services.confidence_calibrator import get_confidence_calibrator
+
+        active = settings or get_settings()
+        multiplier = get_confidence_calibrator(active).get_multiplier(org_id, surface)
+        adjusted = round(max(0.0, min(1.0, float(confidence) * multiplier)), 4)
+        envelope = self.wrap_response(
+            answer,
+            sources,
+            adjusted,
+            reasoning_summary,
+            actions_taken,
+            actions_pending_approval,
+            advisory_only,
+            **kwargs,
+        )
+        envelope["calibration_multiplier"] = multiplier
+        envelope["calibrated_confidence"] = adjusted
+        return envelope
+
 
 _ai_trust_layer: AITrustLayer | None = None
 

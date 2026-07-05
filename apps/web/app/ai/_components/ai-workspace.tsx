@@ -46,7 +46,7 @@ import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
-import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
+import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
 import {
@@ -137,6 +137,31 @@ function normalizeChatText(message: UIMessage): string {
     .filter((part) => part.type === "text" && typeof part.text === "string")
     .map((part) => part.text as string)
     .join("")
+}
+
+function extractChatToolInvocations(message: UIMessage): ToolInvocation[] {
+  const invocations: ToolInvocation[] = []
+  for (const part of message.parts ?? []) {
+    const row = part as {
+      type?: string
+      toolCallId?: string
+      toolName?: string
+      state?: string
+      output?: unknown
+      result?: unknown
+    }
+    if (!row.type?.startsWith("tool-") && row.type !== "dynamic-tool") continue
+    const toolName = row.toolName || row.type?.replace(/^tool-/, "") || "tool"
+    const result = row.output ?? row.result
+    const state = row.state === "output-available" || result !== undefined ? "result" : "call"
+    invocations.push({
+      toolCallId: row.toolCallId || `${message.id}-${toolName}-${invocations.length}`,
+      toolName,
+      state: state as ToolInvocation["state"],
+      result,
+    })
+  }
+  return invocations
 }
 
 export function AiWorkspace({
@@ -1254,8 +1279,9 @@ export function AiWorkspace({
 
             {!showLanding && (!conversationLoading || sessionBusy || isChatBusy)
               ? messages.map((message) => {
-              const text = normalizeChatText(message)
               const isUser = message.role === "user"
+              const text = normalizeChatText(message)
+              const toolInvocations = !isUser ? extractChatToolInvocations(message) : []
               const displayText = isUser ? text : polishAssistantText(text)
               const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
               return (
@@ -1282,6 +1308,13 @@ export function AiWorkspace({
                       <p className="whitespace-pre-wrap">{text}</p>
                     ) : (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
+                        {toolInvocations.length > 0 ? (
+                          <div className="not-prose mb-3 flex flex-wrap gap-2">
+                            {toolInvocations.map((invocation) => (
+                              <ToolChip key={invocation.toolCallId} invocation={invocation} />
+                            ))}
+                          </div>
+                        ) : null}
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText || "…"}</ReactMarkdown>
                         {!isUser && message.id === lastAssistantId ? (
                           <>

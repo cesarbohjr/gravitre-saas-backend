@@ -4,6 +4,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from uuid import uuid4
+
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.ml.anomaly import AnomalyDetector
@@ -644,6 +646,94 @@ async def train_capacity_forecaster(
     return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(series)}
 
 
+    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(series)}
+
+
+async def sync_retrieval_ranker_examples(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Mirror rag_chunk_outcomes into retrieval_ranker_examples for admin metrics parity."""
+    active = settings or get_settings()
+    db = client or get_supabase_client(active)
+    rag_count = await count_training_examples(org_id, db)
+    synced = 0
+    try:
+        rows = (
+            db.table("rag_chunk_outcomes")
+            .select("chunk_id, message_id, outcome_helpful, recorded_at")
+            .eq("org_id", org_id)
+            .not_.is_("outcome_helpful", "null")
+            .order("recorded_at", desc=True)
+            .limit(500)
+            .execute()
+            .data
+            or []
+        )
+        for row in rows:
+            label = 1 if row.get("outcome_helpful") else 0
+            payload = {
+                "id": str(uuid4()),
+                "org_id": org_id,
+                "chunk_id": row.get("chunk_id"),
+                "message_id": row.get("message_id"),
+                "query_text": str(row.get("message_id") or row.get("chunk_id") or ""),
+                "relevance_label": label,
+                "created_at": row.get("recorded_at") or datetime.now(timezone.utc).isoformat(),
+            }
+            try:
+                db.table("retrieval_ranker_examples").upsert(payload, on_conflict="org_id,chunk_id,message_id").execute()
+                synced += 1
+            except Exception:  # noqa: BLE001
+                try:
+                    db.table("retrieval_ranker_examples").insert(payload).execute()
+                    synced += 1
+                except Exception:  # noqa: BLE001
+                    continue
+    except Exception:  # noqa: BLE001
+        return {"example_count": rag_count, "synced_rows": 0, "source": "rag_chunk_outcomes_only"}
+    return {
+        "example_count": max(rag_count, synced),
+        "synced_rows": synced,
+        "rag_chunk_outcomes": rag_count,
+        "source": "rag_chunk_outcomes",
+    }
+
+
+async def train_causal_impact_analyzer(
+    org_id: str,
+    *,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    from app.ml.causal_analysis import CausalImpactAnalyzer
+
+    active = settings or get_settings()
+    analyzer = CausalImpactAnalyzer()
+    structured = await analyzer.predict_structured(org_id=org_id, metric_name="deal_amount", settings=active)
+    if structured.get("status") != "ok":
+        return {"trained": False, **structured}
+    metrics = ModelMetrics(
+        accuracy=float(structured.get("confidence") or 0.5),
+        custom_metrics={
+            "sample_size": structured.get("sample_size"),
+            "estimated_effect": structured.get("estimated_effect"),
+            "method": structured.get("method"),
+        },
+    )
+    model_id = await register_trained_artifact(
+        org_id,
+        name="catalog-causal-impact",
+        model_type=ModelType.CAUSAL_MODEL,
+        base_model="causal_impact_analyzer",
+        artifact=str(structured).encode("utf-8"),
+        metrics=metrics,
+        description="Org-scoped pre/post causal impact analyzer",
+    )
+    return {"trained": model_id is not None, "model_id": model_id, **structured}
+
+
 TRAINING_DISPATCH: dict[str, Any] = {
     "intent_classifier": train_v2_intent_classifier,
     "query_clusterer": train_v3_query_clusterer,
@@ -658,6 +748,7 @@ TRAINING_DISPATCH: dict[str, Any] = {
     "sla_breach_predictor": train_sla_breach_predictor,
     "deal_loss_scorer": train_deal_loss_scorer,
     "capacity_forecaster": train_capacity_forecaster,
+    "causal_impact_analyzer": train_causal_impact_analyzer,
 }
 
 

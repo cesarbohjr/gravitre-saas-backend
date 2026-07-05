@@ -594,3 +594,26 @@ async def get_consensus_history_admin(
         "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else 0.0,
         "advisory_only": True,
     }
+
+
+@router.post("/ml-upgrades/run")
+async def run_ml_upgrades(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.ml_upgrade_service import get_ml_upgrade_service
+
+    return await get_ml_upgrade_service(settings).run_all_upgrades(org_id)
+
+
+@router.get("/process-conformance")
+async def get_process_conformance_admin(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.services.process_mining_service import get_process_mining_service
+
+    report = await get_process_mining_service(settings).check_process_conformance(org_id)
+    return {"status": "ok", "report": report, "advisory_only": True}

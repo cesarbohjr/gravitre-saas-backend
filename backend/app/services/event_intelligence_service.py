@@ -30,6 +30,9 @@ class EventIntelligenceService:
         ("hubspot", "deal.stage_changed"): "_handle_deal_stage_change",
         ("stripe", "subscription.updated"): "_handle_subscription_update",
         ("zendesk", "ticket.created"): "_handle_support_ticket_created",
+        ("salesforce", "opportunity.stage_changed"): "_handle_generic_crm_signal",
+        ("github", "issue.opened"): "_handle_generic_dev_signal",
+        ("jira", "issue.updated"): "_handle_generic_dev_signal",
     }
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -47,6 +50,12 @@ class EventIntelligenceService:
             return "subscription.updated"
         if connector == "zendesk" and normalized.endswith("tickets.create"):
             return "ticket.created"
+        if connector == "salesforce" and "opportunity" in normalized and "stage" in normalized:
+            return "opportunity.stage_changed"
+        if connector == "github" and normalized.endswith("issues.create"):
+            return "issue.opened"
+        if connector == "jira" and "issue" in normalized and "update" in normalized:
+            return "issue.updated"
         if payload.get("event_type"):
             return str(payload["event_type"])
         return None
@@ -81,8 +90,11 @@ class EventIntelligenceService:
         event_type = self.infer_event_type(connector, action, payload)
         if not event_type:
             return
+        enriched = dict(payload or {})
+        enriched.setdefault("connector", connector.lower())
+        enriched.setdefault("event_type", event_type)
         asyncio.create_task(
-            self.handle_connector_event(org_id, connector, event_type, entity_id, payload)
+            self.handle_connector_event(org_id, connector, event_type, entity_id, enriched)
         )
 
     async def _handle_deal_stage_change(
@@ -137,6 +149,24 @@ class EventIntelligenceService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("event_intelligence_ticket_suggestion_skipped error=%s", exc)
         await self._record_advisor_signal(org_id, "zendesk", "ticket.created", entity_id, payload)
+
+    async def _handle_generic_crm_signal(
+        self,
+        org_id: str,
+        entity_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        await self._record_advisor_signal(org_id, "salesforce", "opportunity.stage_changed", entity_id, payload)
+
+    async def _handle_generic_dev_signal(
+        self,
+        org_id: str,
+        entity_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        connector = str(payload.get("connector") or "dev")
+        event_type = str(payload.get("event_type") or "issue.updated")
+        await self._record_advisor_signal(org_id, connector, event_type, entity_id, payload)
 
     async def _record_advisor_signal(
         self,

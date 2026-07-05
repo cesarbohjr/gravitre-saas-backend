@@ -136,6 +136,21 @@ export function ExecutiveIntelligenceScorecard({ orgScopedKey }: { orgScopedKey:
         </div>
       ) : null}
 
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm">
+          <p className="text-xs text-muted-foreground">Learning velocity</p>
+          <p className="mt-1 font-medium capitalize text-foreground">
+            {readString(data?.learning_velocity, "unknown")}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm">
+          <p className="text-xs text-muted-foreground">Retrieval ranker examples</p>
+          <p className="mt-1 font-medium tabular-nums text-foreground">
+            {readNumber(data?.retrieval_ranker_examples) ?? "—"}
+          </p>
+        </div>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <Card className="border-border/70">
           <CardHeader className="pb-2">

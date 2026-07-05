@@ -420,7 +420,7 @@ async def train_ml_model_for_org(org_id: str, model_name: str, *, settings: Sett
 
     start = time.perf_counter()
 
-    if model_name in {"causal_impact_analyzer", "graph_neural_network", "multimodal_router"}:
+    if model_name in {"graph_neural_network", "multimodal_router"}:
         instance = get_model_instance(model_name)
         structured = await instance.predict_structured()
         return {"trained": False, "result": structured}

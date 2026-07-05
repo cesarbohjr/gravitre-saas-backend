@@ -76,7 +76,9 @@ class UnifiedRetrievalService:
             settings=self.settings,
             strict_assignment_mode=strict_mode,
         )
-        if getattr(self.settings, "domain_adaptive_learning_enabled", False):
+        if getattr(self.settings, "domain_adaptive_learning_enabled", False) or await get_adaptive_learning_service(
+            self.settings
+        ).is_enabled_for_org(org_id):
             from app.services.adaptive_learning_service import get_adaptive_learning_service
 
             segment_key = parse_segment_key(classification)
@@ -89,12 +91,14 @@ class UnifiedRetrievalService:
             )
             from app.services.meta_learning_service import get_meta_learning_service
 
-            retrieval_plan = await get_meta_learning_service(self.settings).apply_to_retrieval_plan(
-                retrieval_plan,
-                org_id,
-                segment_key,
-                default_retrieval_key=f"retrieval:{retrieval_plan.policy_version if retrieval_plan.active else 'legacy'}",
-            )
+            meta = get_meta_learning_service(self.settings)
+            if await meta.is_enabled_for_org(org_id):
+                retrieval_plan = await meta.apply_to_retrieval_plan(
+                    retrieval_plan,
+                    org_id,
+                    segment_key,
+                    default_retrieval_key=f"retrieval:{retrieval_plan.policy_version if retrieval_plan.active else 'legacy'}",
+                )
 
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:
@@ -232,6 +236,51 @@ class UnifiedRetrievalService:
                     sources.append({"kind": "graph", **graph_context})
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_graph_skipped org_id=%s error=%s", org_id, exc)
+
+        hybrid_fused = False
+        if active_scopes.knowledge:
+            try:
+                from app.services.hybrid_memory_service import get_hybrid_memory_service
+
+                hybrid_bundle = await get_hybrid_memory_service(self.settings).query_all_memory(
+                    org_id,
+                    agent_id or None,
+                    query,
+                    top_k=int(params.get("rag_top_k") or self.settings.rag_top_k or 8),
+                )
+                hybrid_rows = get_hybrid_memory_service(self.settings).flatten_to_ranked_candidates(hybrid_bundle)
+                if hybrid_rows:
+                    rag_sources = get_hybrid_memory_service(self.settings).fuse_with_rag_sources(
+                        rag_sources,
+                        hybrid_rows,
+                        top_k=int(params.get("rag_top_k") or self.settings.rag_top_k or 8),
+                    )
+                    for row in hybrid_rows[:5]:
+                        sources.append({"kind": row.get("kind") or "hybrid_memory", **row})
+                    metrics = dict(metrics or {})
+                    metrics["hybrid_memory_fusion"] = True
+                    metrics["hybrid_memory_candidates"] = len(hybrid_rows)
+                    hybrid_fused = True
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("unified_retrieval_hybrid_fusion_skipped org_id=%s error=%s", org_id, exc)
+
+        if hybrid_fused and rag_sources:
+            rag_section = (
+                "<knowledge_base>\n"
+                + json.dumps(
+                    [
+                        {
+                            "source": source.get("source"),
+                            "content": source.get("content", "")[:1200],
+                            "score": source.get("score"),
+                            "kind": source.get("kind"),
+                        }
+                        for source in rag_sources
+                    ],
+                    default=str,
+                )[:12000]
+                + "\n</knowledge_base>\n"
+            )
 
         from app.services.retrieval_provenance import summarize_retrieval_effectiveness
 

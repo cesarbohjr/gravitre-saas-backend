@@ -70,7 +70,7 @@ LEARNING_LAYER_REGISTRY: dict[str, dict[str, str]] = {
     "external_knowledge_service": {
         "module": "app.services.external_knowledge_service",
         "status": "active",
-        "extends": "AutonomousResearchService Wikipedia + contradiction detection",
+        "extends": "AutonomousResearchService Wikipedia + PubMed + industry provider registry",
     },
     "platform_intelligence_dedup": {
         "module": "app.services.platform_intelligence_dedup",

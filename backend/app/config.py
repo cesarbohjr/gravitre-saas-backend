@@ -86,6 +86,10 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"),
     )
+    audio_transcription_model: str = Field(
+        default="gpt-4o-mini-transcribe",
+        validation_alias=AliasChoices("AUDIO_TRANSCRIPTION_MODEL", "audio_transcription_model"),
+    )
     intelligence_visibility_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices("INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"),

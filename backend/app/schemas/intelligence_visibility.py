@@ -79,4 +79,6 @@ class ExecutiveIntelligenceSummary(BaseModel):
     weak_domains: list[str] = Field(default_factory=list)
     missing_knowledge_areas: list[str] = Field(default_factory=list)
     optimization_opportunities: int = 0
+    learning_velocity: str | None = None
+    retrieval_ranker_examples: int | None = None
     advisory_only: bool = True

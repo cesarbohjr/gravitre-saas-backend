@@ -13,7 +13,7 @@ from app.services.learning_strategy_keys import (
     parse_segment_key,
 )
 from app.services.model_router import ModelRouter
-from app.services.strategy_performance_ledger import get_strategy_performance_ledger
+from app.services.strategy_performance_ledger import get_strategy_performance_ledger, PROVIDER_STRATEGY_KEYS
 from app.services.domain_routing_policy import apply_model_selection_policy
 
 ML_TASK_MAP: dict[str, str] = {
@@ -162,6 +162,20 @@ class ModelSelector:
                 base["llm_tier"] = tier
                 if pref.get("reason") == "ledger_win_rate":
                     base["reason"] = f"Ledger preferred LLM tier {tier} for {task_type}"
+        provider_keys = list(PROVIDER_STRATEGY_KEYS)
+        default_provider = str(getattr(self.settings, "preferred_ai_provider", "openai") or "openai")
+        provider_pref = await get_strategy_performance_ledger(self.settings).choose_preferred_strategy(
+            org_id,
+            f"provider:{default_provider}",
+            provider_keys,
+            segment_key=segment_key,
+            fallback_segment_key=fallback_segment_key,
+        )
+        provider_selected = str(provider_pref.get("selected_key") or f"provider:{default_provider}")
+        if provider_selected.startswith("provider:"):
+            base["preferred_provider"] = provider_selected.split(":", 1)[1]
+            if provider_pref.get("reason") == "ledger_win_rate":
+                base["provider_reason"] = f"Ledger preferred provider {base['preferred_provider']}"
         base["segment_key"] = segment_key
         from app.services.meta_learning_service import get_meta_learning_service
 

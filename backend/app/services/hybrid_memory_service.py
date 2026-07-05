@@ -128,6 +128,85 @@ class HybridMemoryService:
             "query_clusters": cluster_rows,
         }
 
+    def flatten_to_ranked_candidates(self, bundle: dict[str, Any]) -> list[dict[str, Any]]:
+        """Normalize hybrid memory buckets into rankable retrieval rows."""
+        ranked: list[dict[str, Any]] = []
+        for row in bundle.get("episodic_memories") or []:
+            if not isinstance(row, dict):
+                continue
+            ranked.append(
+                {
+                    "id": f"memory:{row.get('id')}",
+                    "kind": "memory",
+                    "content": str(row.get("content") or "")[:500],
+                    "score": float(row.get("score") or 0.2),
+                    "source": "agent_memory",
+                }
+            )
+        for index, row in enumerate(bundle.get("graph_context") or []):
+            if not isinstance(row, dict):
+                continue
+            ranked.append(
+                {
+                    "id": f"graph:{index}:{row.get('relationship_type')}",
+                    "kind": "graph",
+                    "content": " ".join(
+                        str(row.get(key) or "")
+                        for key in (
+                            "source_entity_type",
+                            "target_entity_type",
+                            "relationship_type",
+                        )
+                    )[:500],
+                    "score": float(row.get("confidence") or 0.35),
+                    "source": "entity_graph",
+                }
+            )
+        for row in bundle.get("vocabulary") or []:
+            if not isinstance(row, dict):
+                continue
+            ranked.append(
+                {
+                    "id": f"glossary:{row.get('term')}",
+                    "kind": "glossary",
+                    "content": str(row.get("term") or ""),
+                    "score": 0.45,
+                    "source": "org_glossary",
+                }
+            )
+        ranked.sort(key=lambda item: float(item.get("score") or 0.0), reverse=True)
+        return ranked
+
+    def fuse_with_rag_sources(
+        self,
+        rag_sources: list[dict[str, Any]],
+        hybrid_rows: list[dict[str, Any]],
+        *,
+        top_k: int = 12,
+    ) -> list[dict[str, Any]]:
+        from app.rag.hybrid_rerank import rrf_merge
+
+        rag_ranked = [
+            {
+                "id": str(row.get("id") or row.get("document_id") or row.get("content", "")[:40]),
+                **row,
+            }
+            for row in rag_sources
+        ]
+        hybrid_ranked = [
+            {
+                "id": str(row.get("id") or row.get("content", "")[:40]),
+                **row,
+            }
+            for row in hybrid_rows
+        ]
+        if not hybrid_ranked:
+            return rag_sources
+        if not rag_ranked:
+            return hybrid_rows[:top_k]
+        merged = rrf_merge(rag_ranked, hybrid_ranked, top_k=top_k)
+        return merged
+
 
 _hybrid_memory_service: HybridMemoryService | None = None
 

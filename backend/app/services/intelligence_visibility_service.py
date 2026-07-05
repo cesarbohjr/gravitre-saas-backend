@@ -239,6 +239,9 @@ class IntelligenceVisibilityService:
         learning = await self._safe_admin_call("adaptive_learning", org_id)
         freshness = await self._safe_admin_call("knowledge_freshness", org_id)
         optimization = await self._safe_admin_call("domain_optimization", org_id)
+        from app.services.ai_architecture_status_service import get_ai_architecture_status_service
+
+        learning_status = await get_ai_architecture_status_service(self.settings).get_learning_status(org_id)
 
         trust_score = self._normalize_band_score((trust.get("confidence") or {}).get("band"))
         learning_score = self._learning_score(learning)
@@ -265,6 +268,8 @@ class IntelligenceVisibilityService:
             weak_domains=[e.domain for e in domain_entries if e.health_label == "needs_attention"][:5],
             missing_knowledge_areas=list({str(g.get("department") or "general") for g in (freshness.get("recommended_actions") or [])})[:5],
             optimization_opportunities=int(optimization.get("pending_count") or 0),
+            learning_velocity=str(learning_status.get("learning_velocity") or "unknown"),
+            retrieval_ranker_examples=int(learning_status.get("retrieval_ranker_examples") or 0),
             advisory_only=True,
         )
         return sanitize_envelope(summary.model_dump())

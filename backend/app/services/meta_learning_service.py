@@ -40,6 +40,11 @@ class MetaLearningService:
     def is_enabled(self) -> bool:
         return bool(getattr(self.settings, "domain_adaptive_learning_enabled", False))
 
+    async def is_enabled_for_org(self, org_id: str) -> bool:
+        from app.services.org_learning_profile_service import get_org_learning_profile_service
+
+        return await get_org_learning_profile_service(self.settings).is_adaptive_learning_enabled(org_id)
+
     @staticmethod
     def build_agent_strategy_key(persona_key: str) -> str:
         return f"agent:{persona_key}"

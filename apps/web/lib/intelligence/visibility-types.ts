@@ -64,6 +64,8 @@ export type ExecutiveIntelligenceSummary = {
   weak_domains?: string[]
   missing_knowledge_areas?: string[]
   optimization_opportunities?: number
+  learning_velocity?: string | null
+  retrieval_ranker_examples?: number | null
   advisory_only?: boolean
 }
 

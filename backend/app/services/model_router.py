@@ -876,7 +876,8 @@ class ModelRouter:
         if has_image:
             return self.VISION_MODELS.get("openai") or MODEL_TIERS["vision"]["openai"]
         if has_audio:
-            return "planned"
+            audio_model = getattr(self.settings, "audio_transcription_model", None) or "gpt-4o-mini-transcribe"
+            return str(audio_model)
         return self._get_model_for_complexity("medium")
 
     def _get_model_for_complexity(self, task_complexity: str) -> str:
