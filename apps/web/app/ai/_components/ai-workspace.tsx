@@ -47,6 +47,7 @@ import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
 import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
 import {
