@@ -10,7 +10,7 @@ import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { lookupConnectorCategory } from "@/lib/connectors"
+import { lookupConnectorCategory, resolveConnectorDisplayStatus } from "@/lib/connectors"
 import { connectorsApi } from "@/lib/api"
 import type { Connector, Workflow, WorkflowListResponse } from "@/types/api"
 import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/connector-actions"
@@ -79,9 +79,10 @@ function mapConnectorRecord(live: Connector | Record<string, unknown>) {
   const raw = unwrapConnectorPayload(live) ?? (live as Record<string, unknown>)
   const vendor = String(raw.type || raw.vendor || "")
   const config = (raw.config as Record<string, unknown> | undefined) ?? {}
-  const statusRaw = String(raw.status || "")
-  const normalizedStatus =
-    statusRaw === "healthy" || statusRaw === "active" ? "connected" : statusRaw || "disconnected"
+  const statusRaw = String(raw.status || "disconnected")
+  const authStatus = String(raw.authStatus ?? raw.auth_status ?? "")
+  const displayStatus = String(raw.displayStatus ?? raw.display_status ?? "")
+  const normalizedStatus = resolveConnectorDisplayStatus(statusRaw, authStatus, displayStatus)
   const lastSyncRaw = raw.lastSync ?? raw.last_sync_at
   return {
     id: String(raw.id || ""),
@@ -176,7 +177,7 @@ export default function ConnectorDetailPage() {
     catalogData?.vendors.find((v) => v.vendor.toLowerCase() === vendorKey) ?? null
   const workflows: Workflow[] = workflowsData?.workflows ?? []
 
-  const config = statusConfig[(connector.status as keyof typeof statusConfig) || "connected"]
+  const config = statusConfig[connector.status as keyof typeof statusConfig] ?? statusConfig.disconnected
   const StatusIcon = config.icon
 
   const handleSync = async () => {

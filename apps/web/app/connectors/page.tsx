@@ -87,6 +87,7 @@ import {
   isShippedConnector,
   listAvailableConnectors,
   lookupConnectorCategory,
+  resolveConnectorDisplayStatus,
   supportsDualPatAuth,
 } from "@/lib/connectors"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
@@ -147,32 +148,6 @@ function formatLastSync(value: unknown): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
   return `${Math.floor(seconds / 86400)} days ago`
-}
-
-function resolveConnectorStatus(
-  rawStatus: string,
-  authStatus: string,
-  displayStatus?: string,
-): Connector["status"] {
-  const normalizedDisplay = String(displayStatus ?? "").trim().toLowerCase()
-  if (normalizedDisplay === "connected" || normalizedDisplay === "syncing") {
-    return normalizedDisplay
-  }
-  if (normalizedDisplay === "error") return "error"
-  if (normalizedDisplay === "disconnected") return "disconnected"
-
-  if (authStatus === "connected") return "connected"
-  if (authStatus === "auth_expired" || authStatus === "misconfigured") return "error"
-  if (authStatus === "pending_auth" || authStatus === "pending_property") return "disconnected"
-
-  if (rawStatus === "connected" || rawStatus === "syncing" || rawStatus === "error" || rawStatus === "disconnected") {
-    return rawStatus
-  }
-  if (rawStatus === "healthy" || rawStatus === "active") return "connected"
-  if (rawStatus === "pending_auth" || rawStatus === "pending") return "disconnected"
-  if (rawStatus === "error") return "error"
-  if (rawStatus === "inactive") return "disconnected"
-  return "disconnected"
 }
 
 function parseConnectorAvailability(model: Record<string, unknown>): ConnectorAvailability | undefined {
@@ -248,7 +223,7 @@ function connectorStatusLabel(connector: Connector): string {
   }
   if (connector.availability?.executable) return "Connected and executable"
   if (connector.availability?.healthy && !connector.availability.executable) return "Connected, not executable"
-  return statusConfig[connector.status].label
+  return statusConfig[connector.status]?.label ?? statusConfig.disconnected.label
 }
 
 function normalizeConnector(input: Record<string, unknown> | ApiConnector): Connector {
@@ -275,7 +250,7 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
   const displayStatus = String(model.displayStatus ?? model.display_status ?? "")
   const availability = parseConnectorAvailability(model)
   const vendor = String(model.type ?? model.vendor ?? "unknown")
-  const normalizedStatus = resolveConnectorStatus(rawStatus, authStatus, displayStatus)
+  const normalizedStatus = resolveConnectorDisplayStatus(rawStatus, authStatus, displayStatus)
   return {
     id: String(model.id ?? ""),
     name: String(model.name ?? "connector"),
@@ -431,7 +406,7 @@ function ConnectorNode({
   onDelete: () => void
 }) {
   const [isHovered, setIsHovered] = useState(false)
-  const config = statusConfig[connector.status]
+  const config = statusConfig[connector.status] ?? statusConfig.disconnected
   const StatusIcon = config.icon
   const isSyncing = connector.status === "syncing"
 
