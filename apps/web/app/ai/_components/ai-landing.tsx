@@ -54,7 +54,7 @@ export function AiLanding({
   }
 
   return (
-    <div className="relative z-10 mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-10 md:px-6 md:py-16">
+    <div className="relative z-10 mx-auto flex w-full max-w-[920px] flex-col px-2 py-6 md:px-4">
       <div className="text-center">
         <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
           <Lightning className="h-3.5 w-3.5 text-emerald-500" weight="fill" aria-hidden />

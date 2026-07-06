@@ -10,15 +10,12 @@ import {
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import useSWR from "swr"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { motion } from "framer-motion"
-import Image from "next/image"
 import {
   ArrowUp,
   Loader2,
   PanelLeft,
   PanelLeftClose,
+  PanelRight,
   Square,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -38,7 +35,7 @@ import { parseChatError } from "@/lib/chat-errors"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
-import { conversationMessageToUI } from "@/lib/chat-messages"
+import { buildConversationTranscript } from "@/lib/conversation-transcript"
 import {
   serializeInlineTurn,
   splitConversationMessages,
@@ -48,8 +45,7 @@ import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
-import { type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
-import { AssistantSourceLinks } from "@/components/gravitre/assistant/assistant-source-links"
+import { ChatTranscript } from "@/components/gravitre/assistant/chat-transcript"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
@@ -80,11 +76,22 @@ import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import {
-  ChatExecutionPanel,
   type ChatExecutionResult,
   type ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
 import { useNotifications } from "@/components/gravitre/notification-center"
+import {
+  clearCachedConversationMessages,
+  readCachedConversationMessages,
+  readCachedInlineTurns,
+  readStoredConversationId,
+  writeCachedConversationMessages,
+  writeCachedInlineTurns,
+  writeStoredConversationId,
+} from "@/lib/ai-conversation-storage"
+import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
+import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
+import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
 import {
   DEFAULT_RESULT_BLOCK_ORDER,
   type LayoutColumn,
@@ -98,23 +105,11 @@ import {
   persistLayoutEnabled,
   persistLayoutOrder,
 } from "./ai-layout-storage"
-import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
+
 const LiveActivityRail = dynamic(
   () => import("./live-activity-rail").then((module) => ({ default: module.LiveActivityRail })),
   { ssr: false, loading: () => null },
 )
-import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
-import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
-import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
-import {
-  clearCachedConversationMessages,
-  readCachedConversationMessages,
-  readCachedInlineTurns,
-  readStoredConversationId,
-  writeCachedConversationMessages,
-  writeCachedInlineTurns,
-  writeStoredConversationId,
-} from "@/lib/ai-conversation-storage"
 
 type InlineTurn = {
   id: string
@@ -135,56 +130,12 @@ type AiWorkspaceProps = {
   initialConversationId?: string | null
 }
 
-function GravitreChatAvatar({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-1 ring-emerald-500/20",
-        className,
-      )}
-    >
-      <Image
-        src="/images/gravitre-icon-white.png"
-        alt="Gravitre"
-        width={20}
-        height={20}
-        className="h-5 w-5 object-contain"
-      />
-    </div>
-  )
-}
-
 function normalizeChatText(message: UIMessage): string {
   const parts = (message.parts ?? []) as Array<{ type?: string; text?: string }>
   return parts
     .filter((part) => part.type === "text" && typeof part.text === "string")
     .map((part) => part.text as string)
     .join("")
-}
-
-function extractChatToolInvocations(message: UIMessage): ToolInvocation[] {
-  const invocations: ToolInvocation[] = []
-  for (const part of message.parts ?? []) {
-    const row = part as {
-      type?: string
-      toolCallId?: string
-      toolName?: string
-      state?: string
-      output?: unknown
-      result?: unknown
-    }
-    if (!row.type?.startsWith("tool-") && row.type !== "dynamic-tool") continue
-    const toolName = row.toolName || row.type?.replace(/^tool-/, "") || "tool"
-    const result = row.output ?? row.result
-    const state = row.state === "output-available" || result !== undefined ? "result" : "call"
-    invocations.push({
-      toolCallId: row.toolCallId || `${message.id}-${toolName}-${invocations.length}`,
-      toolName,
-      state: state as ToolInvocation["state"],
-      result,
-    })
-  }
-  return invocations
 }
 
 export function AiWorkspace({
@@ -201,6 +152,7 @@ export function AiWorkspace({
   const [routing, setRouting] = useState(false)
   const [routedTo, setRoutedTo] = useState<AiEngine | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activityRailOpen, setActivityRailOpen] = useState(false)
   const [inlineTurns, setInlineTurns] = useState<InlineTurn[]>([])
   const [layoutBlockOrder, setLayoutBlockOrder] = useState<ResultBlockId[]>(DEFAULT_RESULT_BLOCK_ORDER)
   const [layoutEnabledBlocks, setLayoutEnabledBlocks] = useState<ResultBlockId[]>([])
@@ -712,14 +664,16 @@ export function AiWorkspace({
 
         const { messages: stored } = messagesResponse
         fetchedCount = stored.length
-        const { chatMessages, inlineTurns: restoredTurns } = splitConversationMessages(stored)
+        const { inlineTurns: restoredTurns } = splitConversationMessages(stored)
 
         if (stored.length > 0) {
-          const uiMessages = chatMessages.map(conversationMessageToUI)
+          const uiMessages = buildConversationTranscript(stored, {
+            conversationTitle: conversationMeta?.title ?? conversationTitle,
+          })
           setMessages(uiMessages)
-          for (let i = 1; i < chatMessages.length; i += 1) {
-            const prev = chatMessages[i - 1]
-            const current = chatMessages[i]
+          for (let i = 1; i < stored.length; i += 1) {
+            const prev = stored[i - 1]
+            const current = stored[i]
             if (prev.role === "user" && current.role === "assistant") {
               persistedChatPairIdsRef.current.add(`${prev.id}:${current.id}`)
             }
@@ -1263,7 +1217,7 @@ export function AiWorkspace({
   }
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-full min-h-0 flex-1">
       <ConversationSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -1280,85 +1234,50 @@ export function AiWorkspace({
         onRetry={() => void mutateConversations()}
       />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="border-b border-border bg-card/40">
-          <div className="flex min-h-14 items-center justify-between gap-3 px-4 md:px-6">
-            <div className="flex min-w-0 items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen((open) => !open)}
-                className="h-8 w-8 shrink-0 text-muted-foreground"
-                aria-label={sidebarOpen ? "Hide history" : "Show history"}
-              >
-                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-              </Button>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {activeMode.badge} · results stay on this page
-                </p>
-              </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f4f8f7] dark:bg-[#0a1211]">
+        <div className="shrink-0 border-b border-border/70 bg-white/80 backdrop-blur dark:bg-card/70">
+          <div className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 md:px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen((open) => !open)}
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              aria-label={sidebarOpen ? "Hide history" : "Show history"}
+            >
+              {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+            </Button>
+
+            <div className="min-w-0 shrink">
+              <p className="truncate text-sm font-semibold text-foreground">{conversationTitle}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
-                title={
-                  chatMode === "deep"
-                    ? "Agent mode — full connector tool surface with ReAct"
-                    : "Fast mode — lighter reasoning, fewer tool iterations"
-                }
-                className={cn(
-                  "h-8 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
-                  chatMode === "deep"
-                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
-                    : "border-border text-muted-foreground",
+
+            <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
+
+            <div className="flex shrink-0 items-center gap-1">
+              {AI_MODES.length > 1
+                ? AI_MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMode(m.id)}
+                      className={cn(
+                        "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide transition-colors",
+                        mode === m.id
+                          ? cn("ring-1", m.ring, "text-foreground")
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))
+                : (
+                  <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {activeMode.badge}
+                  </span>
                 )}
-              >
-                {chatMode === "deep" ? "Agent" : "Fast"}
-              </button>
-              {user ? (
-                <PersonaSelector
-                  value={preferredPersona}
-                  onChange={handlePersonaChange}
-                  disabled={!user}
-                />
-              ) : null}
-              {!showLanding ? (
-                <AiLayoutPanelPicker
-                  enabledBlocks={layoutEnabledBlocks}
-                  onToggleBlock={handleToggleLayoutBlock}
-                />
-              ) : null}
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto border-t border-border/60 px-4 py-2 md:px-6">
-            {AI_MODES.length > 1
-              ? AI_MODES.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMode(m.id)}
-                    className={cn(
-                      "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide transition-colors",
-                      mode === m.id
-                        ? cn("ring-1", m.ring, "text-foreground")
-                        : "border-border text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {m.label}
-                  </button>
-                ))
-              : (
-                <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {activeMode.badge}
-                </span>
-              )}
-            <span className="hidden text-[10px] text-muted-foreground sm:inline">
-              · Connector writes require approval
-            </span>
-            <div className="ml-auto shrink-0 pl-2">
+
+            <div className="ml-auto flex shrink-0 items-center gap-1.5">
               <Select
                 value={selectedDepartment}
                 onValueChange={(value) => {
@@ -1368,7 +1287,7 @@ export function AiWorkspace({
               >
                 <SelectTrigger
                   size="sm"
-                  className="h-8 w-[148px] border-border bg-background text-xs"
+                  className="hidden h-7 w-[128px] border-border bg-background text-[11px] sm:flex"
                   aria-label="Department context"
                 >
                   <SelectValue placeholder="Department" />
@@ -1381,20 +1300,63 @@ export function AiWorkspace({
                   ))}
                 </SelectContent>
               </Select>
+
+              <button
+                type="button"
+                onClick={() => setChatMode((current) => (current === "deep" ? "standard" : "deep"))}
+                title={
+                  chatMode === "deep"
+                    ? "Agent mode — full connector tool surface with ReAct"
+                    : "Fast mode — lighter reasoning, fewer tool iterations"
+                }
+                className={cn(
+                  "h-7 rounded-md border px-2 text-[10px] font-medium uppercase tracking-wide",
+                  chatMode === "deep"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                {chatMode === "deep" ? "Agent" : "Fast"}
+              </button>
+
+              {user ? (
+                <PersonaSelector
+                  value={preferredPersona}
+                  onChange={handlePersonaChange}
+                  disabled={!user}
+                />
+              ) : null}
+
+              {!showLanding ? (
+                <AiLayoutPanelPicker
+                  enabledBlocks={layoutEnabledBlocks}
+                  onToggleBlock={handleToggleLayoutBlock}
+                />
+              ) : null}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground"
+                aria-label={activityRailOpen ? "Hide activity panel" : "Show activity panel"}
+                onClick={() => setActivityRailOpen((open) => !open)}
+              >
+                <PanelRight className={cn("h-4 w-4", activityRailOpen && "text-emerald-600")} />
+              </Button>
             </div>
           </div>
         </div>
 
         {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
         {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
-          <div className="border-b border-amber-200/60 bg-amber-50/50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200 md:px-6">
+          <div className="shrink-0 border-b border-amber-200/60 bg-amber-50/50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
             {executionGate.reason ?? "Execution requires review before proceeding."}
           </div>
         ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f8f7] px-4 py-6 dark:bg-[#0a1211] md:px-6">
-          <div className="mx-auto w-full max-w-[880px] space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4">
+          <div className="mx-auto w-full">
             {showLanding ? (
               <AiLanding
                 mode={mode}
@@ -1419,58 +1381,19 @@ export function AiWorkspace({
               </div>
             ) : null}
 
-            {!showLanding
-              ? messages.map((message) => {
-              const isUser = message.role === "user"
-              const text = normalizeChatText(message)
-              const toolInvocations = !isUser ? extractChatToolInvocations(message) : []
-              const displayText = isUser ? text : polishAssistantText(text)
-              const lastAssistantId = [...messages].reverse().find((row) => row.role === "assistant")?.id
-              return (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
-                >
-                  {!isUser ? <GravitreChatAvatar /> : null}
-                  <div
-                    className={cn(
-                      "max-w-[min(720px,92%)] rounded-2xl px-4 py-3.5 text-sm leading-relaxed",
-                      isUser
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border/80 bg-card text-foreground shadow-sm",
-                    )}
-                  >
-                    {isUser ? (
-                      <p className="whitespace-pre-wrap">{text}</p>
-                    ) : (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText || "…"}</ReactMarkdown>
-                        <AssistantSourceLinks invocations={toolInvocations} />
-                        {!isUser && message.id === lastAssistantId ? (
-                          <>
-                            <ChatExecutionPanel
-                              dialogueMode={dialogueMode}
-                              executionResult={executionResult}
-                              pendingTask={pendingTask}
-                              confirming={confirmExecuting}
-                              onConfirm={() => void handleConfirmExecution()}
-                            />
-                            <ExplainabilityPanel
-                              explanation={explainability}
-                              contextExplanation={contextExplanation}
-                              toolInvocations={toolInvocations}
-                            />
-                          </>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })
-              : null}
+            {!showLanding ? (
+              <ChatTranscript
+                messages={messages}
+                showWaiting={showWaitingForReply && !conversationLoading}
+                explainability={explainability}
+                contextExplanation={contextExplanation}
+                dialogueMode={dialogueMode}
+                executionResult={executionResult}
+                pendingTask={pendingTask}
+                confirmExecuting={confirmExecuting}
+                onConfirmExecution={() => void handleConfirmExecution()}
+              />
+            ) : null}
 
             {!showLanding && !conversationLoading && threadRestoreStale ? (
               <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 px-4 py-8 text-center text-sm text-muted-foreground">
@@ -1481,16 +1404,6 @@ export function AiWorkspace({
                 <Button variant="outline" size="sm" className="mt-4" onClick={handleNewConversation}>
                   Start fresh
                 </Button>
-              </div>
-            ) : null}
-
-            {!showLanding && !conversationLoading && showWaitingForReply ? (
-              <div className="flex items-start gap-3">
-                <GravitreChatAvatar />
-                <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-                  Gravitre is thinking…
-                </div>
               </div>
             ) : null}
 
@@ -1572,8 +1485,8 @@ export function AiWorkspace({
         </div>
 
         {showComposer ? (
-        <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
-          <div className="mx-auto w-full max-w-[880px]">
+        <div className="shrink-0 border-t border-border/70 bg-white/95 px-3 py-2 backdrop-blur dark:bg-card/95 md:px-5">
+          <div className="mx-auto w-full max-w-[920px]">
             {!showLanding && messages.length === 0 && inlineTurns.length === 0 && !isChatBusy ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2">
                 {AI_EXAMPLE_PROMPTS.slice(0, 4).map((example) => (
@@ -1596,7 +1509,7 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
-                  "flex min-h-[88px] flex-col justify-center gap-2 rounded-2xl border bg-card p-3 shadow-sm focus-within:ring-2",
+                  "flex min-h-[72px] flex-col justify-center gap-1.5 rounded-[1.25rem] border border-border/70 bg-white p-2.5 shadow-sm focus-within:ring-2 dark:bg-card",
                   activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
                   activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
                   activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
@@ -1608,20 +1521,17 @@ export function AiWorkspace({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
-                  rows={2}
+                  rows={1}
                   disabled={routing}
-                  placeholder="Ask, delegate, or search — results appear here…"
-                  className={cn(
-                    "max-h-[200px] min-h-[56px] flex-1 resize-none bg-transparent px-2 text-center text-sm outline-none placeholder:text-muted-foreground/70 md:text-left md:placeholder:text-left",
-                    !input.trim() && "md:text-center",
-                  )}
+                  placeholder="Ask, delegate, or search…"
+                  className="max-h-[160px] min-h-[44px] flex-1 resize-none bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground/70"
                   onInput={(event) => {
                     const target = event.target as HTMLTextAreaElement
-                    target.style.height = "56px"
-                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 56), 200)}px`
+                    target.style.height = "44px"
+                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 44), 160)}px`
                   }}
                 />
-                <div className="flex shrink-0 items-center justify-end gap-2">
+                <div className="flex shrink-0 items-center justify-end gap-2 px-1">
                   {isChatBusy ? (
                     <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
                       <Square className="mr-1 h-3 w-3" />
@@ -1645,6 +1555,7 @@ export function AiWorkspace({
         </div>
       </div>
 
+      {activityRailOpen ? (
       <LiveActivityRail
         advisorBrief={advisorBrief}
         layoutPlan={latestExecuteTurn?.executePlan ?? null}
@@ -1657,6 +1568,7 @@ export function AiWorkspace({
         onReorderLayoutBlocks={handleReorderLayoutBlocks}
         onMoveLayoutBlockToColumn={handleMoveLayoutBlockToColumn}
       />
+      ) : null}
     </div>
   )
 }

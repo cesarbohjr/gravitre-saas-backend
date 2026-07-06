@@ -91,6 +91,7 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
   const [planRequired, setPlanRequired] = useState<PlanRequiredDetail | null>(null)
   const router = useRouter()
   const pathname = usePathname()
+  const isImmersiveChat = pathname === "/ai" || pathname.startsWith("/ai/")
   const { user, loading } = useAuth()
   const { effectiveHidePoweredBy } = useEnterpriseBranding()
 
@@ -377,15 +378,22 @@ export function AppShell({ children, title, breadcrumbVendor }: AppShellProps) {
             </div>
           )}
 
-          <main className="flex-1 overflow-y-auto pb-20">
-            <div className="px-4 pt-3 md:px-6">
-              <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
-            </div>
+          <main
+            className={cn(
+              "flex min-h-0 flex-1 flex-col",
+              isImmersiveChat ? "overflow-hidden pb-0" : "overflow-y-auto pb-20",
+            )}
+          >
+            {!isImmersiveChat ? (
+              <div className="px-4 pt-3 md:px-6">
+                <AppBreadcrumbs entityLabel={title} entityVendor={breadcrumbVendor} />
+              </div>
+            ) : null}
             {children}
           </main>
 
-          {/* White-label footer - hidden when org sets hidePoweredBy */}
-          {!effectiveHidePoweredBy && (
+          {/* White-label footer - hidden when org sets hidePoweredBy or on immersive chat */}
+          {!effectiveHidePoweredBy && !isImmersiveChat && (
             <footer className="border-t border-border px-4 py-2 text-center">
               <span className="text-[11px] text-muted-foreground/60">
                 Powered by{" "}
