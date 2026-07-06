@@ -45,6 +45,42 @@ def test_maps_asana_task_create():
     assert "Q3" in str(match.args.get("name", ""))
 
 
+def test_maps_asana_task_create_an_asana_task_phrasing():
+    match = get_chat_action_mapper().match_segment(
+        "Create an Asana task for reviewing the Q3 campaign.",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "asana.tasks.create"
+
+
+def test_maps_asana_follow_up_tasks_in_asana():
+    match = get_chat_action_mapper().match_segment(
+        "Create follow-up tasks in Asana",
+        connected_integrations=["asana"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "asana.tasks.create"
+
+
+def test_maps_hubspot_deal_stage_update():
+    match = get_chat_action_mapper().match_segment(
+        "Update those deal stages in HubSpot after approval.",
+        connected_integrations=["hubspot"],
+    )
+    assert match is not None
+    assert match.entry.registry_key in {"hubspot.deals.update", "hubspot.deals.update_stage"}
+
+
+def test_maps_hubspot_contact_create_without_email():
+    match = get_chat_action_mapper().match_segment(
+        "Create a HubSpot contact from the top row after approval.",
+        connected_integrations=["hubspot"],
+    )
+    assert match is not None
+    assert match.entry.registry_key == "hubspot.contacts.create"
+
+
 def test_maps_slack_post_for_approval():
     match = get_chat_action_mapper().match_segment(
         "Post this summary to Slack for approval.",

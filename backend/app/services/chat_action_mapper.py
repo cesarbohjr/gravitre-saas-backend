@@ -207,6 +207,34 @@ class ChatActionMapper:
         if entry.connector_id == "asana" and "tasks.create" in entry.action_key:
             if re.search(r"\bcreate\s+(?:a\s+)?task\b", text, re.I):
                 score += 16.0
+            if re.search(r"\bcreate\s+an\s+asana\s+task\b", text, re.I):
+                score += 20.0
+            if re.search(r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\b", text, re.I):
+                score += 14.0
+        if entry.connector_id == "asana" and "tasks.update" in entry.action_key:
+            if re.search(r"\bcreate\s+(?:an?\s+)?(?:asana\s+)?tasks?\b", text, re.I) and not re.search(
+                r"\btask\s*#?\s*\w+",
+                text,
+                re.I,
+            ):
+                score -= 24.0
+        if "hubspot" in entry.connector_id and "contacts.create" in entry.action_key:
+            if re.search(r"\bcreate\s+(?:a\s+)?(?:hubspot\s+)?contacts?\b", text, re.I):
+                score += 22.0
+        if "hubspot" in entry.connector_id and "contacts.update" in entry.action_key:
+            if re.search(r"\bcreate\s+(?:a\s+)?(?:hubspot\s+)?contacts?\b", text, re.I):
+                score -= 24.0
+        if "hubspot" in entry.connector_id and "deals.update" in entry.action_key:
+            if re.search(r"\bupdate\b", text, re.I) and "deal" in text:
+                score += 18.0
+            if "stage" in text:
+                score += 10.0
+        if "hubspot" in entry.connector_id and "deals.update_stage" in entry.action_key:
+            if re.search(r"\bupdate\b", text, re.I) and "deal" in text and "stage" in text:
+                score += 24.0
+        if "hubspot" in entry.connector_id and "deals.create" in entry.action_key:
+            if re.search(r"\bupdate\b", text, re.I) and "deal" in text and "create" not in text:
+                score -= 20.0
         return score
 
     def _extract_args(self, message: str, entry: ConnectorActionMatrixEntry) -> dict[str, Any] | None:
@@ -276,6 +304,28 @@ class ChatActionMapper:
                 )
                 if task_match:
                     name = task_match.group(1).strip()
+            if not name:
+                asana_task_match = re.search(
+                    r"\bcreate\s+an\s+asana\s+task\s+(?:for\s+)?(.+?)(?:[?.!]|$)",
+                    text,
+                    re.I,
+                )
+                if asana_task_match:
+                    name = asana_task_match.group(1).strip()
+            if not name:
+                follow_up_match = re.search(
+                    r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\s+(?:in\s+asana\s+)?(?:for\s+)?(.+?)(?:[?.!]|$)",
+                    text,
+                    re.I,
+                )
+                if follow_up_match:
+                    name = follow_up_match.group(1).strip()
+            if not name and re.search(
+                r"\bcreate\s+(?:follow[- ]?up\s+)?tasks?\s+in\s+asana\b",
+                text,
+                re.I,
+            ):
+                name = "Follow-up tasks"
             if name:
                 return {"name": name[:200]}
             return None
@@ -331,6 +381,10 @@ class ChatActionMapper:
                 args["email"] = email.group(0)
             if quoted:
                 args["firstname"] = quoted[0]
+            if re.search(r"\bcreate\s+(?:a\s+)?(?:hubspot\s+)?contacts?\b", text, re.I):
+                if not args:
+                    args["properties"] = {"firstname": "Imported contact"}
+                return args
             return args if args else None
 
         if quoted:

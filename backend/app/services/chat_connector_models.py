@@ -15,7 +15,7 @@ INTEGRATION_ALIASES: dict[str, tuple[str, ...]] = {
     "monday": ("monday", "monday.com", "monday board"),
     "google_drive": ("google drive", "drive", "gdrive", "google sheet"),
     "google_sheets": ("google sheets", "spreadsheet", "sheet"),
-    "google_docs": ("google docs", "google doc", "document"),
+    "google_docs": ("google docs", "google doc"),
     "google_calendar": ("google calendar", "calendar event", "calendar"),
     "gmail": ("gmail", "email", "send email", "send mail"),
     "microsoft365": ("microsoft 365", "m365", "outlook", "microsoft graph", "teams"),
