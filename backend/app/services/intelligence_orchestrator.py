@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -150,21 +151,44 @@ class IntelligenceOrchestrator:
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
         knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
-        retrieval = await self._retrieval.retrieve(
-            org_id=org_id,
-            query=query,
-            client=client,
-            agent=agent,
-            parameters={
-                "surface": "assistant",
-                "include_task_history": False,
-                "rag_top_k": getattr(engine_settings, "max_chunks", 8),
-                "knowledge_assignments": knowledge_assignments,
-                "classification": classification,
-            },
-            environment_name=environment_name,
-            user_id=user_id,
+        retrieval, org_bundle, company_block, entity_block, signals_payload = await asyncio.gather(
+            self._retrieval.retrieve(
+                org_id=org_id,
+                query=query,
+                client=client,
+                agent=agent,
+                parameters={
+                    "surface": "assistant",
+                    "include_task_history": False,
+                    "rag_top_k": getattr(engine_settings, "max_chunks", 8),
+                    "knowledge_assignments": knowledge_assignments,
+                    "classification": classification,
+                },
+                environment_name=environment_name,
+                user_id=user_id,
+            ),
+            asyncio.to_thread(
+                get_org_context_service().get_context_bundle,
+                client,
+                org_id,
+                user_id=user_id,
+                depth="standard",
+                environment_name=environment_name,
+            ),
+            get_company_intelligence_orchestrator().get_context_for_prompt(org_id),
+            build_entity_context_section(org_id, query, settings=self.settings, client=client),
+            self._signals.collect_signals(
+                org_id,
+                department=str(classification.get("department") or ""),
+                query=query if classification.get("requires_graph") else None,
+                client=client,
+            ),
         )
+        try:
+            _, org_context_block = org_bundle
+        except Exception:  # noqa: BLE001
+            org_context_block = ""
+
         assigned_sources_used = [
             {
                 "title": source.get("title") or source.get("source"),
@@ -186,25 +210,6 @@ class IntelligenceOrchestrator:
                 "Try syncing the source or adjusting include rules."
             )
 
-        org_context_block = ""
-        try:
-            _, org_context_block = get_org_context_service().get_context_bundle(
-                client,
-                org_id,
-                user_id=user_id,
-                depth="standard",
-                environment_name=environment_name,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("orchestrator org context skipped org_id=%s error=%s", org_id, exc)
-
-        company_block = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
-        entity_block = ""
-        try:
-            entity_block = await build_entity_context_section(org_id, query, settings=self.settings, client=client)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("orchestrator entity context skipped org_id=%s error=%s", org_id, exc)
-
         task_state_section = ""
         if task_state:
             compact = {
@@ -215,12 +220,6 @@ class IntelligenceOrchestrator:
             if compact:
                 task_state_section = json.dumps(compact, default=str)[:3000]
 
-        signals_payload = await self._signals.collect_signals(
-            org_id,
-            department=str(classification.get("department") or ""),
-            query=query if classification.get("requires_graph") else None,
-            client=client,
-        )
         business_signals = list(signals_payload.get("signals") or [])
         business_signals = [
             row

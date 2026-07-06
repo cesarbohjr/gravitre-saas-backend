@@ -1,6 +1,7 @@
 """Assistant conversation history API (sidebar metadata + messages)."""
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
@@ -10,9 +11,11 @@ from supabase import create_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
+from app.core.logging import get_logger
 from app.core.supabase_response import response_error
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
+logger = get_logger(__name__)
 
 
 def _is_missing_table_error(error: Exception | None) -> bool:
@@ -462,6 +465,7 @@ async def list_conversation_messages(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
+    load_started = time.monotonic()
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     _get_owned_conversation(
         client,
@@ -477,10 +481,22 @@ async def list_conversation_messages(
         .execute()
     )
     if _is_missing_table_error(response_error(response)):
+        logger.info(
+            "chat_perf stage=conversation_load conversation_id=%s ms=%s messages=0",
+            conversation_id,
+            int((time.monotonic() - load_started) * 1000),
+        )
         return {"messages": []}
     if response_error(response):
         raise HTTPException(status_code=500, detail=str(response_error(response)))
-    return {"messages": [_normalize_message(row) for row in (response.data or [])]}
+    rows = [_normalize_message(row) for row in (response.data or [])]
+    logger.info(
+        "chat_perf stage=conversation_load conversation_id=%s ms=%s messages=%s",
+        conversation_id,
+        int((time.monotonic() - load_started) * 1000),
+        len(rows),
+    )
+    return {"messages": rows}
 
 
 @router.post("/{conversation_id}/messages", status_code=status.HTTP_201_CREATED)

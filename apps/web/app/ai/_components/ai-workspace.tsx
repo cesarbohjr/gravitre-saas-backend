@@ -35,7 +35,9 @@ import {
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
+import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
+import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { conversationMessageToUI } from "@/lib/chat-messages"
 import {
   serializeInlineTurn,
@@ -46,7 +48,8 @@ import { conversationsApi, searchApi, assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import type { AiEngine } from "@/lib/ai-surface-handoff"
 import type { SearchResult } from "@/types/api"
-import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { AssistantSourceLinks } from "@/components/gravitre/assistant/assistant-source-links"
 import { ConversationSidebar } from "@/components/gravitre/assistant/conversation-sidebar"
 import { PersonaSelector } from "@/components/gravitre/assistant/persona-selector"
 import { Button } from "@/components/ui/button"
@@ -95,11 +98,11 @@ import {
   persistLayoutEnabled,
   persistLayoutOrder,
 } from "./ai-layout-storage"
-import { LiveActivityRail } from "./live-activity-rail"
-import {
-  BusinessSignalsBanner,
-  type BusinessSignal,
-} from "@/components/gravitre/assistant/business-signals-banner"
+import type { BusinessSignal } from "@/components/gravitre/assistant/business-signals-banner"
+const LiveActivityRail = dynamic(
+  () => import("./live-activity-rail").then((module) => ({ default: module.LiveActivityRail })),
+  { ssr: false, loading: () => null },
+)
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
 import { PlanProgressIndicator } from "@/components/gravitre/assistant/plan-progress-indicator"
@@ -206,6 +209,7 @@ export function AiWorkspace({
   const [sessionBusy, setSessionBusy] = useState(false)
   const [orgReady, setOrgReady] = useState(false)
   const [threadRestoreStale, setThreadRestoreStale] = useState(false)
+  const [messagesHydrated, setMessagesHydrated] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null
     return initialConversationId || readStoredConversationId()
@@ -259,6 +263,7 @@ export function AiWorkspace({
   const crossDepartmentRef = useRef(false)
   const loadingMessagesForRef = useRef<string | null>(null)
   const messagesLoadResolvedRef = useRef<{ conversationId: string; resolved: boolean } | null>(null)
+  const chatFirstTokenMarkedRef = useRef(false)
   const persistedTurnIdsRef = useRef<Set<string>>(new Set())
   const persistedChatPairIdsRef = useRef<Set<string>>(new Set())
 
@@ -507,7 +512,15 @@ export function AiWorkspace({
   }, [user])
 
   useEffect(() => {
+    startChatPerf("page_load")
+    return () => {
+      endChatPerf("page_load")
+    }
+  }, [])
+
+  useEffect(() => {
     if (!orgReady || !activeConversationId || conversationsLoading) return
+    if (conversations.length === 0) return
     if (conversations.some((conversation) => conversation.id === activeConversationId)) return
     writeStoredConversationId(null)
     setActiveConversationId(null)
@@ -515,6 +528,7 @@ export function AiWorkspace({
     setMessages([])
     setConversationTitle("Gravitre AI")
     setThreadRestoreStale(false)
+    setMessagesHydrated(false)
   }, [orgReady, activeConversationId, conversations, conversationsLoading, setMessages])
 
   useEffect(() => {
@@ -660,10 +674,16 @@ export function AiWorkspace({
         return
       }
 
+      if (!options?.silent) {
+        setMessagesHydrated(false)
+        startChatPerf("conversation_load", id)
+      }
+
       const cached = readCachedConversationMessages(id)
       const cachedTurns = readCachedInlineTurns<InlineTurn>(id)
       const showBlockingLoader = !options?.silent && !cached?.length && !cachedTurns?.length
       let fetchedCount = cached?.length ?? 0
+      let conversationMeta = conversations.find((conversation) => conversation.id === id) ?? null
 
       loadingMessagesForRef.current = id
       if (showBlockingLoader) {
@@ -674,12 +694,23 @@ export function AiWorkspace({
         setInlineTurns([])
       }
       if ((cached?.length || cachedTurns?.length) && !options?.silent) {
-        if (cached?.length) setMessages(cached)
-        if (cachedTurns?.length) setInlineTurns(cachedTurns)
+        if (cached?.length && activeConversationIdRef.current === id) setMessages(cached)
+        if (cachedTurns?.length && activeConversationIdRef.current === id) setInlineTurns(cachedTurns)
       }
 
       try {
-        const { messages: stored } = await conversationsApi.getMessages(id)
+        const [messagesResponse, fetchedConversation] = await Promise.all([
+          conversationsApi.getMessages(id),
+          conversationMeta ? Promise.resolve(conversationMeta) : conversationsApi.get(id).catch(() => null),
+        ])
+        if (activeConversationIdRef.current !== id) return
+
+        if (fetchedConversation) {
+          conversationMeta = fetchedConversation
+          if (fetchedConversation.title) setConversationTitle(fetchedConversation.title)
+        }
+
+        const { messages: stored } = messagesResponse
         fetchedCount = stored.length
         const { chatMessages, inlineTurns: restoredTurns } = splitConversationMessages(stored)
 
@@ -716,10 +747,8 @@ export function AiWorkspace({
           setMessages([])
           setInlineTurns([])
         }
-
-        const selected = conversations.find((conversation) => conversation.id === id)
-        if (selected?.title) setConversationTitle(selected.title)
       } catch (error) {
+        if (activeConversationIdRef.current !== id) return
         if (cached?.length || cachedTurns?.length) {
           if (cached?.length) setMessages(cached)
           if (cachedTurns?.length) setInlineTurns(cachedTurns)
@@ -754,14 +783,20 @@ export function AiWorkspace({
         if (showBlockingLoader) {
           setConversationLoading(false)
         }
+        if (!options?.silent) {
+          endChatPerf("conversation_load", id)
+          if (activeConversationIdRef.current === id) {
+            setMessagesHydrated(true)
+          }
+        }
         if (
+          activeConversationIdRef.current === id &&
           fetchedCount === 0 &&
           !cached?.length &&
           !cachedTurns?.length &&
           !messagesLoadResolvedRef.current?.resolved
         ) {
-          const selected = conversations.find((conversation) => conversation.id === id)
-          const stale = (selected?.message_count ?? 0) > 0
+          const stale = (conversationMeta?.message_count ?? 0) > 0
           setThreadRestoreStale(stale)
           messagesLoadResolvedRef.current = { conversationId: id, resolved: true }
         }
@@ -774,6 +809,9 @@ export function AiWorkspace({
     async (prompt: string) => {
       submitLockRef.current = true
       setSessionBusy(true)
+      chatFirstTokenMarkedRef.current = false
+      startChatPerf("total_response")
+      startChatPerf("first_token")
       await ensureConversation(prompt)
       sendMessage({ text: prompt })
     },
@@ -944,7 +982,11 @@ export function AiWorkspace({
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
-      if (id === activeConversationIdRef.current && (messages.length > 0 || inlineTurns.length > 0)) {
+      if (
+        id === activeConversationIdRef.current &&
+        messagesHydrated &&
+        (messages.length > 0 || inlineTurns.length > 0)
+      ) {
         setSidebarOpen(false)
         return
       }
@@ -963,6 +1005,7 @@ export function AiWorkspace({
       setSidebarOpen(false)
       stop()
       setThreadRestoreStale(false)
+      setMessagesHydrated(false)
       messagesLoadResolvedRef.current = null
       persistedTurnIdsRef.current = new Set()
       persistedChatPairIdsRef.current = new Set()
@@ -987,7 +1030,7 @@ export function AiWorkspace({
 
       await loadConversationMessages(id, { force: true })
     },
-    [conversations, inlineTurns.length, loadConversationMessages, messages.length, resetExecuteJob, setMessages, stop],
+    [conversations, inlineTurns.length, loadConversationMessages, messages.length, messagesHydrated, resetExecuteJob, setMessages, stop],
   )
 
   const handleNewConversation = useCallback(() => {
@@ -1007,6 +1050,7 @@ export function AiWorkspace({
     setConversationTitle("Gravitre AI")
     setConversationLoading(false)
     setThreadRestoreStale(false)
+    setMessagesHydrated(true)
     setSessionBusy(false)
     submitLockRef.current = false
     inputRef.current?.focus()
@@ -1058,6 +1102,22 @@ export function AiWorkspace({
     [conversations, activeConversationId],
   )
   const activeConversationHasStoredMessages = (activeConversation?.message_count ?? 0) > 0
+
+  useEffect(() => {
+    if (status !== "streaming") return
+    const last = messages[messages.length - 1]
+    if (!last || last.role !== "assistant") return
+    const text = normalizeChatText(last).trim()
+    if (!text || chatFirstTokenMarkedRef.current) return
+    chatFirstTokenMarkedRef.current = true
+    endChatPerf("first_token")
+  }, [status, messages])
+
+  useEffect(() => {
+    if (status !== "ready" || !chatFirstTokenMarkedRef.current) return
+    endChatPerf("total_response")
+    chatFirstTokenMarkedRef.current = false
+  }, [status])
 
   useEffect(() => {
     if (!initialConversationId || initialConversationHandledRef.current || !user || !orgReady) return
@@ -1175,6 +1235,7 @@ export function AiWorkspace({
 
   const showEmptyThreadHint =
     !showLanding &&
+    messagesHydrated &&
     !conversationLoading &&
     activeConversationId &&
     messages.length === 0 &&
@@ -1219,7 +1280,7 @@ export function AiWorkspace({
         onRetry={() => void mutateConversations()}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="border-b border-border bg-card/40">
           <div className="flex min-h-14 items-center justify-between gap-3 px-4 md:px-6">
             <div className="flex min-w-0 items-center gap-3">
@@ -1324,7 +1385,6 @@ export function AiWorkspace({
           </div>
         </div>
 
-        <BusinessSignalsBanner signals={activeBusinessSignals} />
         {dialogueMode === "guide" ? <PlanProgressIndicator taskState={taskState} /> : null}
         {executionGate && (executionGate.requires_approval || executionGate.can_proceed === false) ? (
           <div className="border-b border-amber-200/60 bg-amber-50/50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200 md:px-6">
@@ -1332,8 +1392,9 @@ export function AiWorkspace({
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-y-auto bg-[#f4f8f7] px-4 py-6 dark:bg-[#0a1211] md:px-8">
-          <div className="mx-auto max-w-3xl space-y-6">
+        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f8f7] px-4 py-6 dark:bg-[#0a1211] md:px-6">
+          <div className="mx-auto w-full max-w-[880px] space-y-5">
             {showLanding ? (
               <AiLanding
                 mode={mode}
@@ -1347,9 +1408,14 @@ export function AiWorkspace({
             ) : null}
 
             {conversationLoading && !sessionBusy && !isChatBusy ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading conversation…
+              <div className="space-y-4 py-4">
+                <div className="flex justify-end">
+                  <div className="h-12 w-[min(420px,72%)] animate-pulse rounded-2xl bg-primary/20" />
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-muted" />
+                  <div className="h-24 w-[min(560px,88%)] animate-pulse rounded-2xl bg-muted/60" />
+                </div>
               </div>
             ) : null}
 
@@ -1370,24 +1436,18 @@ export function AiWorkspace({
                   {!isUser ? <GravitreChatAvatar /> : null}
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-3 text-sm",
+                      "max-w-[min(720px,92%)] rounded-2xl px-4 py-3.5 text-sm leading-relaxed",
                       isUser
                         ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-card text-foreground",
+                        : "border border-border/80 bg-card text-foreground shadow-sm",
                     )}
                   >
                     {isUser ? (
                       <p className="whitespace-pre-wrap">{text}</p>
                     ) : (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        {toolInvocations.length > 0 ? (
-                          <div className="not-prose mb-3 flex flex-wrap gap-2">
-                            {toolInvocations.map((invocation) => (
-                              <ToolChip key={invocation.toolCallId} invocation={invocation} />
-                            ))}
-                          </div>
-                        ) : null}
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText || "…"}</ReactMarkdown>
+                        <AssistantSourceLinks invocations={toolInvocations} />
                         {!isUser && message.id === lastAssistantId ? (
                           <>
                             <ChatExecutionPanel
@@ -1400,6 +1460,7 @@ export function AiWorkspace({
                             <ExplainabilityPanel
                               explanation={explainability}
                               contextExplanation={contextExplanation}
+                              toolInvocations={toolInvocations}
                             />
                           </>
                         ) : null}
@@ -1444,7 +1505,7 @@ export function AiWorkspace({
               ? inlineTurns.map((turn) => (
               <div key={turn.id} className="space-y-4">
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground">
+                  <div className="max-w-[min(720px,92%)] rounded-2xl bg-primary px-4 py-3.5 text-sm leading-relaxed text-primary-foreground">
                     <p className="whitespace-pre-wrap">{turn.prompt}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
                       {getModeMeta(turn.engine).badge}
@@ -1511,8 +1572,8 @@ export function AiWorkspace({
         </div>
 
         {showComposer ? (
-        <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur md:px-8">
-          <div className="mx-auto max-w-3xl">
+        <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
+          <div className="mx-auto w-full max-w-[880px]">
             {!showLanding && messages.length === 0 && inlineTurns.length === 0 && !isChatBusy ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2">
                 {AI_EXAMPLE_PROMPTS.slice(0, 4).map((example) => (
@@ -1581,6 +1642,7 @@ export function AiWorkspace({
           </div>
         </div>
         ) : null}
+        </div>
       </div>
 
       <LiveActivityRail

@@ -6,6 +6,7 @@ injection — never treat tool payloads as instructions.
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -16,6 +17,26 @@ from app.services.org_context_service import get_org_context_service
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
+
+_CONNECTOR_STATUS_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_ANALYTICS_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_ASSISTANT_TOOL_CACHE_TTL_SECONDS = 45
+
+
+def _cache_get(cache: dict[str, tuple[float, dict[str, Any]]], key: str) -> dict[str, Any] | None:
+    row = cache.get(key)
+    if not row:
+        return None
+    ts, payload = row
+    if time.time() - ts > _ASSISTANT_TOOL_CACHE_TTL_SECONDS:
+        cache.pop(key, None)
+        return None
+    return payload
+
+
+def _cache_set(cache: dict[str, tuple[float, dict[str, Any]]], key: str, payload: dict[str, Any]) -> dict[str, Any]:
+    cache[key] = (time.time(), payload)
+    return payload
 
 TOOL_DISPLAY_NAMES: dict[str, str] = {
     "knowledge_base": "searchKnowledgeBase",
@@ -156,6 +177,10 @@ def tool_connector_status(
     *,
     environment_name: str = "production",
 ) -> dict[str, Any]:
+    cache_key = f"{org_id}:{environment_name}"
+    cached = _cache_get(_CONNECTOR_STATUS_CACHE, cache_key)
+    if cached is not None:
+        return cached
     try:
         from app.connectors.connector_availability_service import list_connector_availability
 
@@ -167,7 +192,7 @@ def tool_connector_status(
             environment_name=environment_name,
             force_live=True,
         )
-        return {"connectors": connectors}
+        return _cache_set(_CONNECTOR_STATUS_CACHE, cache_key, {"connectors": connectors})
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant connector_status tool failed org_id=%s error=%s", org_id, str(exc))
         return {"connectors": [], "error": "connector status unavailable"}
@@ -238,6 +263,10 @@ def tool_analytics(
     *,
     user_id: str | None = None,
 ) -> dict[str, Any]:
+    cache_key = f"{org_id}:{user_id or 'org'}"
+    cached = _cache_get(_ANALYTICS_CACHE, cache_key)
+    if cached is not None:
+        return cached
     try:
         client = get_supabase_client(settings)
         service = get_org_context_service()
@@ -259,7 +288,7 @@ def tool_analytics(
         total_runs = len(run_rows)
         completed = status_counts.get("completed", 0)
         success_rate = round((completed / total_runs) * 100, 1) if total_runs else None
-        return {
+        payload = {
             "orgName": snapshot.get("orgName"),
             "counts": snapshot.get("counts") or {},
             "connectedIntegrations": snapshot.get("connectedIntegrations") or [],
@@ -270,6 +299,7 @@ def tool_analytics(
                 "successRatePercent": success_rate,
             },
         }
+        return _cache_set(_ANALYTICS_CACHE, cache_key, payload)
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant analytics tool failed org_id=%s error=%s", org_id, str(exc))
         return {"error": "analytics unavailable"}

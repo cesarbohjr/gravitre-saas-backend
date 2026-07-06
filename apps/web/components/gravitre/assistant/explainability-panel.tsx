@@ -7,6 +7,7 @@ import { DecisionTransparencyCard } from "@/components/intelligence/decision-tra
 import { OptimizationVisibilityPanel } from "@/components/intelligence/optimization-visibility-panel"
 import { RetrievalSummaryPanel } from "@/components/intelligence/retrieval-summary-panel"
 import { SourceIntelligencePanel } from "@/components/intelligence/source-intelligence-panel"
+import { ToolChip, type ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
 import type { DecisionTransparencyEnvelope } from "@/lib/intelligence/visibility-types"
 
 type ExplainabilityEnvelope = DecisionTransparencyEnvelope & {
@@ -37,31 +38,40 @@ export function ExplainabilityPanel({
   explanation,
   contextExplanation,
   decisionTransparency,
+  toolInvocations = [],
 }: {
   explanation?: ExplainabilityEnvelope | null
   contextExplanation?: string | null
   decisionTransparency?: DecisionTransparencyEnvelope | null
+  toolInvocations?: ToolInvocation[]
 }) {
   const [expanded, setExpanded] = useState(false)
   const summary = explanation?.summary || contextExplanation
   const envelope = asTransparencyEnvelope(explanation, decisionTransparency)
-  if (!summary && !envelope) return null
+  if (!summary && !envelope && toolInvocations.length === 0) return null
 
   return (
-    <div className="mt-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+    <div id="why-this-answer" className="mt-3 border-t border-border/50 pt-2">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center gap-2 text-left"
+        className="flex w-full items-center gap-2 text-left text-muted-foreground transition-colors hover:text-foreground"
       >
-        <Info className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-[11px] font-medium text-foreground">Why this answer?</span>
+        <Info className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-[11px] font-medium">Why this answer?</span>
         <ChevronDown
-          className={cn("ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-180")}
+          className={cn("ml-auto h-3.5 w-3.5 transition-transform", expanded && "rotate-180")}
         />
       </button>
       {expanded ? (
         <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+          {toolInvocations.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {toolInvocations.map((invocation) => (
+                <ToolChip key={invocation.toolCallId} invocation={invocation} />
+              ))}
+            </div>
+          ) : null}
           {summary ? <p className="whitespace-pre-wrap text-foreground/90">{summary}</p> : null}
           {explanation?.confidence_note ? <p>{explanation.confidence_note}</p> : null}
           {explanation?.evidence?.length ? (
@@ -98,7 +108,7 @@ export function ExplainabilityPanel({
               />
             </div>
           ) : null}
-          <p className="rounded-md border border-dashed border-amber-500/30 bg-amber-500/5 px-2 py-1 text-[11px] text-amber-900 dark:text-amber-200">
+          <p className="text-[11px] text-muted-foreground/80">
             Advisory only — verify before acting on recommendations.
           </p>
         </div>
