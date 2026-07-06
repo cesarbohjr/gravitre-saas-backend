@@ -19,11 +19,11 @@ type PerfMark = {
 const marks: PerfMark[] = []
 const stageStarts = new Map<string, number>()
 
-export function startChatPerf(stage: ChatPerfStage, key = stage): void {
+export function startChatPerf(stage: ChatPerfStage, key: string = stage): void {
   stageStarts.set(key, performance.now())
 }
 
-export function endChatPerf(stage: ChatPerfStage, key = stage): number | null {
+export function endChatPerf(stage: ChatPerfStage, key: string = stage): number | null {
   const started = stageStarts.get(key)
   if (started == null) return null
   const ms = Math.round(performance.now() - started)
