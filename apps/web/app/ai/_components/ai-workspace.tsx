@@ -13,12 +13,12 @@ import useSWR from "swr"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { motion } from "framer-motion"
+import Image from "next/image"
 import {
   ArrowUp,
   Loader2,
   PanelLeft,
   PanelLeftClose,
-  Sparkles,
   Square,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -75,7 +75,7 @@ import { AiExecuteResults } from "./ai-execute-results"
 import { AiFindResults } from "./ai-find-results"
 import { AiLanding } from "./ai-landing"
 import { AiLayoutPanelPicker } from "./ai-layout-panel-picker"
-import { AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
+import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import {
   ChatExecutionPanel,
   type ChatExecutionResult,
@@ -130,6 +130,25 @@ type AiWorkspaceProps = {
   initialMode?: ModeId
   initialPrompt?: string
   initialConversationId?: string | null
+}
+
+function GravitreChatAvatar({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0d3b36] ring-1 ring-emerald-500/20",
+        className,
+      )}
+    >
+      <Image
+        src="/images/gravitre-icon-white.png"
+        alt="Gravitre"
+        width={20}
+        height={20}
+        className="h-5 w-5 object-contain"
+      />
+    </div>
+  )
 }
 
 function normalizeChatText(message: UIMessage): string {
@@ -192,7 +211,7 @@ export function AiWorkspace({
     return initialConversationId || readStoredConversationId()
   })
   const [conversationTitle, setConversationTitle] = useState("Gravitre AI")
-  const [chatMode, setChatMode] = useState<"standard" | "deep">("deep")
+  const [chatMode, setChatMode] = useState<"standard" | "deep">("standard")
   const [selectedDepartment, setSelectedDepartment] = useState(() =>
     typeof window === "undefined" ? "all" : getQuickDepartment(),
   )
@@ -241,6 +260,7 @@ export function AiWorkspace({
   const loadingMessagesForRef = useRef<string | null>(null)
   const messagesLoadResolvedRef = useRef<{ conversationId: string; resolved: boolean } | null>(null)
   const persistedTurnIdsRef = useRef<Set<string>>(new Set())
+  const persistedChatPairIdsRef = useRef<Set<string>>(new Set())
 
   const activeMode = useMemo(() => getModeMeta(mode), [mode])
 
@@ -289,9 +309,10 @@ export function AiWorkspace({
       setSessionBusy(false)
       toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
     },
-    onFinish: () => {
+    onFinish: ({ messages: finishedMessages }) => {
       submitLockRef.current = false
       setSessionBusy(false)
+      void persistChatTurn(finishedMessages)
       void mutateConversations()
     },
     onData: (dataPart) => {
@@ -582,6 +603,49 @@ export function AiWorkspace({
     [mutateConversations],
   )
 
+  const persistChatTurn = useCallback(
+    async (finishedMessages: UIMessage[]) => {
+      if (finishedMessages.length < 2) return
+      const last = finishedMessages[finishedMessages.length - 1]
+      const prev = finishedMessages[finishedMessages.length - 2]
+      if (last.role !== "assistant" || prev.role !== "user") return
+
+      const pairKey = `${prev.id}:${last.id}`
+      if (persistedChatPairIdsRef.current.has(pairKey)) return
+
+      const conversationId = activeConversationIdRef.current
+      if (!conversationId) return
+
+      const userText = normalizeChatText(prev).trim()
+      const assistantText = polishAssistantText(normalizeChatText(last)).trim()
+      if (!userText || !assistantText) return
+
+      try {
+        const { messages: stored } = await conversationsApi.getMessages(conversationId)
+        const trailingAssistant = stored.length > 0 && stored[stored.length - 1]?.role === "assistant"
+        const trailingUser = stored.length > 1 && stored[stored.length - 2]?.role === "user"
+        if (
+          trailingAssistant &&
+          trailingUser &&
+          stored[stored.length - 2]?.content.trim() === userText
+        ) {
+          persistedChatPairIdsRef.current.add(pairKey)
+          return
+        }
+
+        await conversationsApi.appendMessages(conversationId, [
+          { role: "user", content: userText },
+          { role: "assistant", content: assistantText },
+        ])
+        persistedChatPairIdsRef.current.add(pairKey)
+        void mutateConversations()
+      } catch {
+        // Backend persist is primary; this is a best-effort client backup.
+      }
+    },
+    [mutateConversations],
+  )
+
   const loadConversationMessages = useCallback(
     async (id: string, options?: { preferApi?: boolean; silent?: boolean; force?: boolean }) => {
       if (loadingMessagesForRef.current === id && !options?.force) return
@@ -622,6 +686,13 @@ export function AiWorkspace({
         if (stored.length > 0) {
           const uiMessages = chatMessages.map(conversationMessageToUI)
           setMessages(uiMessages)
+          for (let i = 1; i < chatMessages.length; i += 1) {
+            const prev = chatMessages[i - 1]
+            const current = chatMessages[i]
+            if (prev.role === "user" && current.role === "assistant") {
+              persistedChatPairIdsRef.current.add(`${prev.id}:${current.id}`)
+            }
+          }
           if (restoredTurns.length > 0) {
             setInlineTurns(restoredTurns as InlineTurn[])
             writeCachedInlineTurns(id, restoredTurns)
@@ -894,6 +965,7 @@ export function AiWorkspace({
       setThreadRestoreStale(false)
       messagesLoadResolvedRef.current = null
       persistedTurnIdsRef.current = new Set()
+      persistedChatPairIdsRef.current = new Set()
 
       setActiveConversationId(id)
       activeConversationIdRef.current = id
@@ -929,6 +1001,7 @@ export function AiWorkspace({
     messagesLoadResolvedRef.current = null
     loadingMessagesForRef.current = null
     persistedTurnIdsRef.current = new Set()
+    persistedChatPairIdsRef.current = new Set()
     writeStoredConversationId(null)
     resetExecuteJob()
     setConversationTitle("Gravitre AI")
@@ -1116,8 +1189,8 @@ export function AiWorkspace({
     !showLanding &&
     !conversationLoading &&
     (sessionBusy || isChatBusy) &&
-    messages.length === 0 &&
-    inlineTurns.length === 0
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === "user"
 
   const showComposer = !showLanding || Boolean(activeConversationId)
 
@@ -1259,7 +1332,7 @@ export function AiWorkspace({
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div className="flex-1 overflow-y-auto bg-[#f4f8f7] px-4 py-6 dark:bg-[#0a1211] md:px-8">
           <div className="mx-auto max-w-3xl space-y-6">
             {showLanding ? (
               <AiLanding
@@ -1280,7 +1353,7 @@ export function AiWorkspace({
               </div>
             ) : null}
 
-            {!showLanding && (!conversationLoading || sessionBusy || isChatBusy)
+            {!showLanding
               ? messages.map((message) => {
               const isUser = message.role === "user"
               const text = normalizeChatText(message)
@@ -1294,11 +1367,7 @@ export function AiWorkspace({
                   animate={{ opacity: 1, y: 0 }}
                   className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
                 >
-                  {!isUser ? (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500">
-                      <Sparkles className="h-4 w-4 text-white" />
-                    </div>
-                  ) : null}
+                  {!isUser ? <GravitreChatAvatar /> : null}
                   <div
                     className={cn(
                       "max-w-[85%] rounded-2xl px-4 py-3 text-sm",
@@ -1355,9 +1424,12 @@ export function AiWorkspace({
             ) : null}
 
             {!showLanding && !conversationLoading && showWaitingForReply ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-                Gravitre is thinking…
+              <div className="flex items-start gap-3">
+                <GravitreChatAvatar />
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                  Gravitre is thinking…
+                </div>
               </div>
             ) : null}
 
@@ -1441,6 +1513,20 @@ export function AiWorkspace({
         {showComposer ? (
         <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur md:px-8">
           <div className="mx-auto max-w-3xl">
+            {!showLanding && messages.length === 0 && inlineTurns.length === 0 && !isChatBusy ? (
+              <div className="mb-3 flex flex-wrap justify-center gap-2">
+                {AI_EXAMPLE_PROMPTS.slice(0, 4).map((example) => (
+                  <button
+                    key={example.text}
+                    type="button"
+                    onClick={() => void submitPrompt(example.text)}
+                    className="rounded-full border border-border/80 bg-card/80 px-3 py-1.5 text-center text-xs text-muted-foreground transition-colors hover:border-emerald-500/30 hover:text-foreground"
+                  >
+                    {example.text}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <form
               onSubmit={(event) => {
                 event.preventDefault()
@@ -1449,7 +1535,7 @@ export function AiWorkspace({
             >
               <div
                 className={cn(
-                  "flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-sm focus-within:ring-2",
+                  "flex min-h-[88px] flex-col justify-center gap-2 rounded-2xl border bg-card p-3 shadow-sm focus-within:ring-2",
                   activeMode.id === "execute" && "focus-within:border-emerald-500/50 focus-within:ring-emerald-500/20",
                   activeMode.id === "chat" && "focus-within:border-blue-500/50 focus-within:ring-blue-500/20",
                   activeMode.id === "find" && "focus-within:border-amber-500/50 focus-within:ring-amber-500/20",
@@ -1461,18 +1547,20 @@ export function AiWorkspace({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
-                  rows={1}
+                  rows={2}
                   disabled={routing}
                   placeholder="Ask, delegate, or search — results appear here…"
-                  className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70"
-                  style={{ height: "24px" }}
+                  className={cn(
+                    "max-h-[200px] min-h-[56px] flex-1 resize-none bg-transparent px-2 text-center text-sm outline-none placeholder:text-muted-foreground/70 md:text-left md:placeholder:text-left",
+                    !input.trim() && "md:text-center",
+                  )}
                   onInput={(event) => {
                     const target = event.target as HTMLTextAreaElement
-                    target.style.height = "24px"
-                    target.style.height = `${Math.min(target.scrollHeight, 200)}px`
+                    target.style.height = "56px"
+                    target.style.height = `${Math.min(Math.max(target.scrollHeight, 56), 200)}px`
                   }}
                 />
-                <div className="flex shrink-0 items-center gap-2 pb-0.5">
+                <div className="flex shrink-0 items-center justify-end gap-2">
                   {isChatBusy ? (
                     <Button variant="outline" size="sm" className="h-8" onClick={() => stop()}>
                       <Square className="mr-1 h-3 w-3" />
@@ -1489,7 +1577,6 @@ export function AiWorkspace({
                   </button>
                 </div>
               </div>
-              <p className="mt-2 px-1 text-xs text-muted-foreground">{activeMode.blurb}</p>
             </form>
           </div>
         </div>

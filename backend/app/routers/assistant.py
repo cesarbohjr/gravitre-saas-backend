@@ -78,7 +78,7 @@ from app.workflows.repository import get_supabase_client
 logger = get_logger(__name__)
 
 # Cap follow-up chip generation so the stream can finish before proxy timeouts.
-FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS = 8.0
+FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS = 2.5
 
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 
@@ -647,35 +647,12 @@ def _build_stream(
                 yield sse_done()
                 return
 
-        suggestions: list[str] = []
-        try:
-            suggestions = await asyncio.wait_for(
-                _generate_followup_suggestions(
-                    user_question=user_text,
-                    assistant_response=assistant_text,
-                    org_id=org_id,
-                    settings=settings,
-                ),
-                timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
-            )
-        except asyncio.TimeoutError:
-            logger.info(
-                "assistant followup suggestions timed out org_id=%s after %.1fs",
-                org_id,
-                FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
-
-        if suggestions:
-            yield assistant_event_to_sse_line(sse_suggestions(suggestions))
-            cache_key = _response_cache_key(org_id, user_text)
-            _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
-
         yield assistant_event_to_sse_line(sse_finish_step())
         yield assistant_event_to_sse_line(sse_finish())
-        asyncio.create_task(
-            asyncio.to_thread(
+
+        # Persist before closing the stream so history always includes assistant replies.
+        try:
+            await asyncio.to_thread(
                 _persist_conversation_turn,
                 settings,
                 org_id=org_id,
@@ -686,8 +663,41 @@ def _build_stream(
                 tool_results=complete.tool_results if complete else [],
                 assistant_message_id=complete.message_id if complete else None,
             )
-        )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "assistant conversation persist failed org_id=%s user_id=%s error=%s",
+                org_id,
+                user_id,
+                str(exc),
+            )
+
         yield sse_done()
+
+        async def _emit_followup_suggestions() -> None:
+            suggestions: list[str] = []
+            try:
+                suggestions = await asyncio.wait_for(
+                    _generate_followup_suggestions(
+                        user_question=user_text,
+                        assistant_response=assistant_text,
+                        org_id=org_id,
+                        settings=settings,
+                    ),
+                    timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                logger.info(
+                    "assistant followup suggestions timed out org_id=%s after %.1fs",
+                    org_id,
+                    FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
+            if suggestions:
+                cache_key = _response_cache_key(org_id, user_text)
+                _RESPONSE_CACHE[cache_key] = (time.time(), assistant_text, suggestions)
+
+        asyncio.create_task(_emit_followup_suggestions())
 
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
         billing_result = _estimate_model_response(

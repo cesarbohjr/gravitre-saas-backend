@@ -579,6 +579,9 @@ export function ConversationSidebar({
                                   >
                                     {conv.title || "New conversation"}
                                   </p>
+                                  {conv.preview && conv.preview !== conv.title ? (
+                                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{conv.preview}</p>
+                                  ) : null}
                                   <p className="mt-0.5 text-[10px] text-muted-foreground">{formatRelativeTime(conv.updated_at)}</p>
                                 </>
                               )}
