@@ -66,7 +66,7 @@ import {
   runSyncOperatorTask,
   type InlineExecutePlan,
 } from "@/lib/ai-inline-execute"
-import { isConversationalOperatorPrompt, heuristicRouteIntent } from "@/lib/ai-route-intent"
+import { isConversationalOperatorPrompt } from "@/lib/ai-route-intent"
 import {
   describeOperatorJobError,
   isBackendUnavailableError,
@@ -506,10 +506,6 @@ export function AiWorkspace({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, inlineTurns, status, conversationLoading])
 
-  const classifyIntent = useCallback(async (prompt: string): Promise<AiEngine> => {
-    return heuristicRouteIntent(prompt).mode
-  }, [])
-
   const resolveEngine = useCallback(
     async (prompt: string, selectedMode: ModeId): Promise<AiEngine> => {
       if (isConversationalOperatorPrompt(prompt)) {
@@ -519,21 +515,9 @@ export function AiWorkspace({
       if (selectedMode === "auto" || selectedMode === "chat") {
         return "chat"
       }
-      if (selectedMode !== "auto") return selectedMode
-      setRouting(true)
-      setRoutedTo(null)
-      try {
-        const engine = await classifyIntent(prompt)
-        setRoutedTo(engine)
-        return engine
-      } catch {
-        return "chat"
-      } finally {
-        setRouting(false)
-        setRoutedTo(null)
-      }
+      return selectedMode
     },
-    [classifyIntent],
+    [],
   )
 
   const ensureConversation = useCallback(
